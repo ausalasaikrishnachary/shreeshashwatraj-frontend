@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
 
-function AdminDashboard() {
+function Staff() {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
@@ -16,4 +16,4 @@ function AdminDashboard() {
   );
 }
 
-export default AdminDashboard;
+export default Staff;

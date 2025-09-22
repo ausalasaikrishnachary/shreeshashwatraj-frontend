@@ -1,0 +1,105 @@
+/* .admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  padding: 15px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
+  margin-left: 250px;
+  transition: margin-left 0.3s ease;
+}
+
+.admin-header.collapsed {
+  margin-left: 80px;
+}
+
+.admin-header h3 {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.admin-header .welcome {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+@media (max-width: 768px) {
+  .admin-header {
+    margin-left: 0 !important;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .admin-header h3 {
+    font-size: 16px;
+  }
+
+  .admin-header .welcome {
+    font-size: 13px;
+  }
+} */
+
+
+
+
+
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  padding: 15px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
+  margin-left: 250px;
+  transition: margin-left 0.3s ease;
+}
+
+.admin-header.collapsed {
+  margin-left: 80px;
+}
+
+.admin-header h3 {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.admin-header .welcome {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-header {
+    margin-left: 0 !important;
+    padding-left: 70px; /* Make space for mobile toggle button */
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .admin-header h3 {
+    font-size: 16px;
+  }
+
+  .admin-header .welcome {
+    font-size: 13px;
+  }
+}
+
+/* Tablet specific styles */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .admin-header {
+    margin-left: 80px !important; /* Fixed for icons-only sidebar */
+  }
+
+  .admin-header.collapsed {
+    margin-left: 80px !important;
+  }
+}

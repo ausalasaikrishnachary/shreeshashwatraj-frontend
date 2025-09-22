@@ -1,0 +1,112 @@
+/* Base container */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+/* Login card */
+.login-form {
+  background: #ffffff;
+  padding: 2.2rem;
+  border-radius: 18px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.login-form:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+/* Heading */
+.login-form h2 {
+  margin-bottom: 2rem;
+  color: #333;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Form group */
+.form-group {
+  text-align: left;
+  margin-bottom: 1.5rem;
+}
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: #444;
+}
+
+/* Inputs */
+.login-form input {
+  width: 94%;
+  padding: 14px 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: border 0.3s ease, box-shadow 0.3s ease;
+}
+.login-form input:focus {
+  border-color: #4facfe;
+  box-shadow: 0 0 6px rgba(79, 172, 254, 0.4);
+  outline: none;
+}
+
+/* Button */
+.login-form button {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(90deg, #4facfe, #00c6ff);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1.05rem;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+.login-form button:hover {
+  background: linear-gradient(90deg, #00c6ff, #4facfe);
+  transform: translateY(-2px);
+}
+
+/* Hint text */
+.hint {
+  margin-top: 1.8rem;
+  font-size: 0.9rem;
+  color: #666;
+  text-align: left;
+  line-height: 1.5;
+  background: #f9f9f9;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #4facfe;
+}
+
+/* ---------- 📱 MOBILE ---------- */
+@media (max-width: 767px) {
+  .login-form {
+    padding: 1.5rem;
+    max-width: 92%;
+  }
+  .login-form h2 {
+    font-size: 1.6rem;
+  }
+  .login-form input,
+  .login-form button {
+    font-size: 0.95rem;
+    padding: 12px;
+    width: 91%;
+
+  }
+  .hint {
+    font-size: 0.85rem;
+  }
+}
