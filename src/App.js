@@ -57,8 +57,10 @@ import Login from "./Component/Panels/Auth/Login";
 
 // Admin Pages
 import AdminRetailers from "./Component/Panels/Admin/AdminRetailers/Retailers";
+import AddRetailerForm from "./Component/Panels/Admin/AdminRetailers/AddRetailer"
 import AdminStaff from "./Component/Panels/Admin/AdminStaff/Staff";
 import AdminSales from "./Component/Panels/Admin/AdminSales/Sales";
+import AddSales from "./Component/Panels/Admin/AdminSales/AddSales"
 import AdminProducts from "./Component/Panels/Admin/AdminProducts/Products";
 import AdminMarketing from "./Component/Panels/Admin/AdminMarketing/Marketing";
 import AdminExpenses from "./Component/Panels/Admin/AdminExpenses/Expenses";
@@ -79,8 +81,10 @@ function App() {
 
         {/* Admin Sub Pages */}
         <Route path="/admindashboard/retailers" element={<AdminRetailers />} />
+        <Route path="/admindashboard/retailers/add" element={<AddRetailerForm />} /> 
         <Route path="/admindashboard/staff" element={<AdminStaff />} />
         <Route path="/admindashboard/sales" element={<AdminSales />} />
+        <Route path="/admindashboard/sales/add" element={<AddSales />} />
         <Route path="/admindashboard/products" element={<AdminProducts />} />
         <Route path="/admindashboard/marketing" element={<AdminMarketing />} />
         <Route path="/admindashboard/expenses" element={<AdminExpenses />} />
