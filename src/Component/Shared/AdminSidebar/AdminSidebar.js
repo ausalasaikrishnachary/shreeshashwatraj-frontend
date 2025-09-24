@@ -1,101 +1,3 @@
-// import React, { useState } from "react";
-// import { NavLink } from "react-router-dom";
-// import {
-//   FaTachometerAlt,
-//   FaUsers,
-//   FaUserTie,
-//   FaChartLine,
-//   FaBox,
-//   FaTags,
-//   FaMoneyBill,
-//   FaFileAlt,
-//   FaKey,
-//   FaBars,
-// } from "react-icons/fa";
-// import "./AdminSidebar.css";
-
-// function AdminSidebar({ isCollapsed, setIsCollapsed }) {
-//   const [isMobileOpen, setIsMobileOpen] = useState(false);
-
-//   const menuItems = [
-//     { path: "", name: "Dashboard", icon: <FaTachometerAlt /> },
-//     { path: "/retailers", name: "Retailers", icon: <FaUsers /> },
-//     { path: "/staff", name: "Staff", icon: <FaUserTie /> },
-//     { path: "/sales", name: "Sales", icon: <FaChartLine /> },
-//     { path: "/products", name: "Products", icon: <FaBox /> },
-//     { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },
-//     { path: "/expenses", name: "Expenses", icon: <FaMoneyBill /> },
-//     { path: "/reports", name: "Reports", icon: <FaFileAlt /> },
-//     { path: "/roleaccess", name: "Role Access", icon: <FaKey /> },
-//   ];
-
-//   return (
-//     <>
-//       {/* Mobile toggle button */}
-//       <button
-//         className="sidebar-toggle"
-//         onClick={() => setIsMobileOpen(!isMobileOpen)}
-//       >
-//         ☰
-//       </button>
-
-//       <div
-//         className={`sidebar ${isCollapsed ? "collapsed" : ""} ${
-//           isMobileOpen ? "open" : ""
-//         }`}
-//       >
-//         {/* Logo + collapse row */}
-//         <div className="sidebar-header">
-//           <h2 className="logo">{isCollapsed ? "RP" : "RetailPro"}</h2>
-//           <button
-//             className="sidebar-collapse-btn"
-//             onClick={() => setIsCollapsed(!isCollapsed)}
-//           >
-//             <FaBars />
-//           </button>
-//         </div>
-
-//         <nav>
-//           <ul>
-//             {menuItems.map((item) => (
-//               <li key={item.path}>
-//                 <NavLink
-//                   to={item.path}
-//                   className={({ isActive }) =>
-//                     isActive ? "active" : undefined
-//                   }
-//                 >
-//                   <span className="icon">{item.icon}</span>
-//                   {!isCollapsed && <span className="link-text">{item.name}</span>}
-//                 </NavLink>
-//               </li>
-//             ))}
-//           </ul>
-//         </nav>
-
-//         <div className="sidebar-footer">
-//           <p>{isCollapsed ? "AU" : "Admin User"}</p>
-//           {!isCollapsed && <small>admin@gmail.com</small>}
-//         </div>
-//       </div>
-//     </>
-//   );
-// }
-
-// export default AdminSidebar;
-
-
-
-
-
-
-
-
-
-
-
-
-
 import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import {
@@ -109,9 +11,11 @@ import {
   FaFileAlt,
   FaKey,
   FaBars,
-  FaTimes
+  FaTimes,
+  FaSignOutAlt
 } from "react-icons/fa";
 import "./AdminSidebar.css";
+import UserCard from "../../Panels/UserCard/UserCard"
 
 function AdminSidebar({ isCollapsed, setIsCollapsed }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -148,6 +52,11 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
   // Close mobile sidebar when clicking outside (on overlay)
   const handleOverlayClick = () => {
     setIsMobileOpen(false);
+  };
+
+  const handleLogout = () => {
+    // Add your logout logic here
+    console.log("Logout clicked");
   };
 
   return (
@@ -204,9 +113,9 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
           </ul>
         </nav>
 
+        {/* Updated sidebar footer with rounded border */}
         <div className="sidebar-footer">
-          <p>{isCollapsed || isMobile ? "AU" : "Admin User"}</p>
-          {!isCollapsed && !isMobile && <small>admin@gmail.com</small>}
+          <UserCard />
         </div>
       </div>
     </>

@@ -1,0 +1,73 @@
+.user-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 400px;
+  padding: 12px 16px;
+  background-color: #111827; /* dark background */
+  color: #fff;
+  border: 1px solid #374151; /* border color */
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+/* User Info */
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.user-email {
+  font-size: 12px;
+  color: #9ca3af; /* gray text */
+}
+
+/* Logout Button */
+.logout-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logout-btn:hover {
+  background-color: #1f2937; /* hover effect */
+}
+
+.logout-icon {
+  width: 22px;
+  height: 22px;
+  color: #fff;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .user-card {
+    max-width: 100%;
+    padding: 10px 12px;
+  }
+
+  .user-name {
+    font-size: 13px;
+  }
+
+  .user-email {
+    font-size: 11px;
+  }
+
+  .logout-icon {
+    width: 20px;
+    height: 20px;
+  }
+}

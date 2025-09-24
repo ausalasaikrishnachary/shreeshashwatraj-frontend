@@ -111,8 +111,8 @@
   margin: 0 0 20px 0;
 }
 
-/* Recent Activity */
-.admin-dashboard-activity-section {
+/* Distribution Sections */
+.admin-dashboard-distribution-section {
   background: white;
   padding: 24px;
   border-radius: 12px;
@@ -120,102 +120,55 @@
   border: 1px solid #e5e7eb;
 }
 
-.admin-dashboard-activity-list {
+.admin-dashboard-distribution-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.admin-dashboard-activity-item {
+.admin-dashboard-distribution-item {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 8px;
   padding: 12px 0;
   border-bottom: 1px solid #f3f4f6;
 }
 
-.admin-dashboard-activity-item:last-child {
+.admin-dashboard-distribution-item:last-child {
   border-bottom: none;
 }
 
-.admin-dashboard-activity-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.admin-dashboard-activity-type {
-  font-size: 14px;
-  color: #1f2937;
-  font-weight: 600;
-}
-
-.admin-dashboard-activity-details {
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.admin-dashboard-activity-time {
-  font-size: 12px;
-  color: #9ca3af;
-  white-space: nowrap;
-}
-
-/* Quick Actions */
-.admin-dashboard-actions-section {
-  background: white;
-  padding: 24px;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-}
-
-.admin-dashboard-actions-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.admin-dashboard-action-card {
+.admin-dashboard-distribution-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: left;
-  width: 100%;
 }
 
-.admin-dashboard-action-card:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
-}
-
-.admin-dashboard-action-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.admin-dashboard-action-title {
+.admin-dashboard-distribution-label {
   font-size: 14px;
-  font-weight: 600;
   color: #1f2937;
+  font-weight: 500;
 }
 
-.admin-dashboard-action-description {
-  font-size: 12px;
+.admin-dashboard-distribution-value {
+  font-size: 14px;
   color: #6b7280;
+  font-weight: 600;
 }
 
-.admin-dashboard-action-arrow {
-  font-size: 18px;
-  color: #9ca3af;
-  font-weight: bold;
+.admin-dashboard-distribution-bar {
+  width: 100%;
+  height: 6px;
+  background-color: #f3f4f6;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.admin-dashboard-distribution-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: 3px;
+  transition: width 0.3s ease;
 }
 
 /* Responsive Design */
@@ -271,19 +224,8 @@
     gap: 20px;
   }
   
-  .admin-dashboard-activity-section,
-  .admin-dashboard-actions-section {
+  .admin-dashboard-distribution-section {
     padding: 20px;
-  }
-  
-  .admin-dashboard-activity-item {
-    flex-direction: column;
-    gap: 8px;
-    align-items: flex-start;
-  }
-  
-  .admin-dashboard-activity-time {
-    align-self: flex-end;
   }
 }
 
@@ -304,22 +246,51 @@
     font-size: 24px;
   }
   
-  .admin-dashboard-activity-section,
-  .admin-dashboard-actions-section {
+  .admin-dashboard-distribution-section {
     padding: 16px;
   }
 }
 
 /* Animation for better user experience */
 .admin-dashboard-stat-card,
-.admin-dashboard-activity-section,
-.admin-dashboard-actions-section {
+.admin-dashboard-distribution-section {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .admin-dashboard-stat-card:hover,
-.admin-dashboard-activity-section:hover,
-.admin-dashboard-actions-section:hover {
+.admin-dashboard-distribution-section:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+
+/* Charts Section */
+.admin-dashboard-charts-section {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  margin-top: 32px;
+}
+
+/* Responsive adjustments for charts */
+@media (max-width: 1200px) {
+  .admin-dashboard-charts-section {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-dashboard-charts-section {
+    padding: 20px;
+    margin-top: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-dashboard-charts-section {
+    padding: 16px;
+    margin-top: 20px;
+  }
 }
