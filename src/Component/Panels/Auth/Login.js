@@ -10,7 +10,7 @@ function Login() {
   const credentials = {
     "admin@gmail.com": { password: "1234", route: "/admindashboard" },
     "staff@gmail.com": { password: "1234", route: "/staffdashboard" },
-    "retailer@gmail.com": { password: "1234", route: "/retailerdashboard" },
+    "retailer@gmail.com": { password: "1234", route: "/retailer-home" },
   };
 
   const handleSubmit = (e) => {

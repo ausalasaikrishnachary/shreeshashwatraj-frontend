@@ -1,25 +1,23 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  FaTachometerAlt,
-  FaBullseye,
-  FaClipboardList,
-  FaChartLine,
+  FaHome,
+  FaHistory,
+  FaTags,
   FaUser,
   FaSignOutAlt
 } from "react-icons/fa";
-import "./StaffMobileLayout.css";
+import "./RetailerMobileLayout.css";
 
-function StaffMobileLayout({ children }) {
+function RetailerMobileLayout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
 
   const menuItems = [
-    { path: "/staffdashboard", icon: <FaTachometerAlt />, label: "Dashboard" },
-    { path: "/staff/retailers", icon: <FaBullseye />, label: "My Retailers" },
-    { path: "/staff/sales-visits", icon: <FaClipboardList />, label: "Sales Visits" },
-    { path: "/staff/expences", icon: <FaChartLine />, label: "Expenses" },
-    { path: "/staff/offers", icon: <FaUser />, label: "Offers" },
+    { path: "/retailer-home", icon: <FaHome />, label: "Home" },
+        { path: "/retailer-offers", icon: <FaTags />, label: "Offers" },
+    { path: "/retailer-history", icon: <FaHistory />, label: "History" },
+    { path: "/retailer-profile", icon: <FaUser />, label: "Profile" },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -27,16 +25,16 @@ function StaffMobileLayout({ children }) {
   const handleLogout = () => {
     // Add your logout logic here
     console.log("Logout clicked");
-     navigate("/");
+ navigate("/");
   };
 
   return (
-    <div className="staff-mobile-container">
+    <div className="retailer-mobile-container">
       {/* Top Navigation Bar */}
-      <header className="staff-top-nav">
+      <header className="retailer-top-nav">
         <div className="nav-logo">
           <h2>RetailPro</h2>
-          <span>Staff Dashboard</span>
+          <span>Retailer Portal</span>
         </div>
         <button className="logout-btn" onClick={handleLogout}>
           <FaSignOutAlt />
@@ -45,10 +43,10 @@ function StaffMobileLayout({ children }) {
       </header>
 
       {/* Main Content */}
-      <main className="staff-mobile-main">{children}</main>
+      <main className="retailer-mobile-main">{children}</main>
 
       {/* Bottom Navigation */}
-      <nav className="staff-bottom-nav">
+      <nav className="retailer-bottom-nav">
         {menuItems.map((item) => (
           <button
             key={item.path}
@@ -64,4 +62,4 @@ function StaffMobileLayout({ children }) {
   );
 }
 
-export default StaffMobileLayout;
+export default RetailerMobileLayout;
