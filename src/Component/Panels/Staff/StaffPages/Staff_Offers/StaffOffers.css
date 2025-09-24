@@ -1,0 +1,332 @@
+.staff-offers-mobile {
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.offers-header {
+  margin-bottom: 20px;
+}
+
+.offers-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 5px 0;
+  color: #000;
+}
+
+.offers-header p {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
+/* Stats Overview */
+.stats-overview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #007bff;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+/* Tabs Section */
+.tabs-section {
+  margin-bottom: 20px;
+}
+
+.tabs-container {
+  display: flex;
+  background: white;
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tab-item {
+  flex: 1;
+  padding: 12px 16px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.tab-item.active {
+  background: #007bff;
+  color: white;
+  font-weight: 600;
+}
+
+/* Offers List */
+.offers-content {
+  margin-bottom: 20px;
+}
+
+.offers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.offer-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0f0f0;
+}
+
+.offer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.offer-title-section {
+  flex: 1;
+}
+
+.offer-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #000;
+  margin: 0 0 8px 0;
+}
+
+.offer-category-type {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.offer-category, .offer-type {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.offer-category {
+  background: #e7f3ff;
+  color: #0066cc;
+}
+
+.offer-type {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.status-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.expired {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-badge.scheduled {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.sent {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.offer-description {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.4;
+  margin: 0 0 16px 0;
+}
+
+.offer-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #000;
+}
+
+.detail-value.discount {
+  color: #28a745;
+  font-weight: 700;
+}
+
+.detail-value.performance {
+  color: #007bff;
+}
+
+.offer-terms {
+  font-size: 12px;
+  color: #666;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  border-left: 3px solid #007bff;
+}
+
+.offer-usage {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.usage-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.usage-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #000;
+}
+
+/* Campaigns List */
+.campaigns-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.campaign-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0f0f0;
+}
+
+.campaign-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.campaign-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #000;
+  margin: 0;
+}
+
+.campaign-type {
+  font-size: 13px;
+  color: #007bff;
+  font-weight: 500;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background: #e7f3ff;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.campaign-description {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.4;
+  margin: 0 0 16px 0;
+}
+
+.campaign-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .staff-offers-mobile {
+    padding: 16px;
+  }
+  
+  .stats-overview {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  
+  .offer-details {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .tabs-container {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 360px) {
+  .offer-card,
+  .campaign-card {
+    padding: 12px;
+  }
+  
+  .stat-value {
+    font-size: 20px;
+  }
+  
+  .offer-title {
+    font-size: 15px;
+  }
+}

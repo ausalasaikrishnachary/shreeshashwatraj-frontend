@@ -51,8 +51,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 // Dashboards
 import AdminDashboard from "./Component/Panels/Admin/AdminDashboard/AdminDashboard";
-import StaffDashboard from "./Component/Panels/Staff/StaffDashboard/StaffDashboard";
-import RetailerDashboard from "./Component/Panels/Retailer/RetailerDashboard/RetailerDashboard";
+import StaffDashboard from "./Component/Panels/Staff/StaffPages/StaffDashboard";
+import RetailerDashboard from "./Component/Panels/Retailer/RetailersPages/RetailerDashboard";
 import Login from "./Component/Panels/Auth/Login";
 
 // Admin Pages
@@ -71,6 +71,15 @@ import AdminReports from "./Component/Panels/Admin/AdminReports/Reports";
 import AdminRoleAccess from "./Component/Panels/Admin/AdminRoleAccess/RoleAccess";
 import DashboardCard from "./Component/Panels/Admin/AdminDashboard/DashboardCard"
 
+// Staff Pages (Mobile Only)
+import MyRetailers from "./Component/Panels/Staff/StaffPages/Staff_MyRetailers/MyRetailers";
+import AddRetailer from "./Component/Panels/Staff/StaffPages/Staff_MyRetailers/AddRetailer";
+import SalesVisits from "./Component/Panels/Staff/StaffPages/Staff_SalesVisits/SalesVisits";
+import LogVisit from "./Component/Panels/Staff/StaffPages/Staff_SalesVisits/LogVisit";
+import StaffExpenses from "./Component/Panels/Staff/StaffPages/Staff_Expenses/StaffExpenses";
+import AddExpense from "./Component/Panels/Staff/StaffPages/Staff_Expenses/AddExpense";
+import StaffOffers from "./Component/Panels/Staff/StaffPages/Staff_Offers/StaffOffers";
+
 function App() {
   return (
     <Router>
@@ -84,7 +93,19 @@ function App() {
         <Route path="/staffdashboard" element={<StaffDashboard />} />
         <Route path="/retailerdashboard" element={<RetailerDashboard />} />
 
-        {/* Admin Sub Pages */}
+     
+
+
+             {/* Staff Mobile Pages */}
+        <Route path="/staff/retailers" element={<MyRetailers />} />
+        <Route path="/staff/add-retailer" element={<AddRetailer />} />
+        <Route path="/staff/sales-visits" element={<SalesVisits />} />
+        <Route path="/staff/log-visit" element={<LogVisit />} />
+        <Route path="/staff/expences" element={<StaffExpenses />} />
+       <Route path="/staff/add-expense" element={<AddExpense />} />
+
+   {/* Admin  Pages */}
+        <Route path="/staff/offers" element={<StaffOffers />} />
         <Route path="/retailers" element={<AdminRetailers />} />
         <Route path="/retailers/add" element={<AddRetailerForm />} /> 
         <Route path="/staff" element={<AdminStaff />} />
