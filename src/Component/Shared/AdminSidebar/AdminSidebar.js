@@ -18,15 +18,15 @@
 //   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
 //   const menuItems = [
-//     { path: "/admindashboard", name: "Dashboard", icon: <FaTachometerAlt /> },
-//     { path: "/admindashboard/retailers", name: "Retailers", icon: <FaUsers /> },
-//     { path: "/admindashboard/staff", name: "Staff", icon: <FaUserTie /> },
-//     { path: "/admindashboard/sales", name: "Sales", icon: <FaChartLine /> },
-//     { path: "/admindashboard/products", name: "Products", icon: <FaBox /> },
-//     { path: "/admindashboard/marketing", name: "Offers & Marketing", icon: <FaTags /> },
-//     { path: "/admindashboard/expenses", name: "Expenses", icon: <FaMoneyBill /> },
-//     { path: "/admindashboard/reports", name: "Reports", icon: <FaFileAlt /> },
-//     { path: "/admindashboard/roleaccess", name: "Role Access", icon: <FaKey /> },
+//     { path: "", name: "Dashboard", icon: <FaTachometerAlt /> },
+//     { path: "/retailers", name: "Retailers", icon: <FaUsers /> },
+//     { path: "/staff", name: "Staff", icon: <FaUserTie /> },
+//     { path: "/sales", name: "Sales", icon: <FaChartLine /> },
+//     { path: "/products", name: "Products", icon: <FaBox /> },
+//     { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },
+//     { path: "/expenses", name: "Expenses", icon: <FaMoneyBill /> },
+//     { path: "/reports", name: "Reports", icon: <FaFileAlt /> },
+//     { path: "/roleaccess", name: "Role Access", icon: <FaKey /> },
 //   ];
 
 //   return (
@@ -135,14 +135,14 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
 
   const menuItems = [
     { path: "/admindashboard", name: "Dashboard", icon: <FaTachometerAlt /> },
-    { path: "/admindashboard/retailers", name: "Retailers", icon: <FaUsers /> },
-    { path: "/admindashboard/staff", name: "Staff", icon: <FaUserTie /> },
-    { path: "/admindashboard/sales", name: "Sales", icon: <FaChartLine /> },
-    { path: "/admindashboard/products", name: "Products", icon: <FaBox /> },
-    { path: "/admindashboard/marketing", name: "Offers & Marketing", icon: <FaTags /> },
-    { path: "/admindashboard/expenses", name: "Expenses", icon: <FaMoneyBill /> },
-    { path: "/admindashboard/reports", name: "Reports", icon: <FaFileAlt /> },
-    { path: "/admindashboard/roleaccess", name: "Role Access", icon: <FaKey /> },
+    { path: "/retailers", name: "Retailers", icon: <FaUsers /> },
+    { path: "/staff", name: "Staff", icon: <FaUserTie /> },
+    { path: "/sales", name: "Sales", icon: <FaChartLine /> },
+    { path: "/products", name: "Products", icon: <FaBox /> },
+    { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },
+    { path: "/expenses", name: "Expenses", icon: <FaMoneyBill /> },
+    { path: "/reports", name: "Reports", icon: <FaFileAlt /> },
+    { path: "/roleaccess", name: "Role Access", icon: <FaKey /> },
   ];
 
   // Close mobile sidebar when clicking outside (on overlay)

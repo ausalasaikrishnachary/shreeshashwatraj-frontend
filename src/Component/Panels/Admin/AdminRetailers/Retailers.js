@@ -101,7 +101,7 @@ function Retailers() {
   ];
 
   const handleAddRetailerClick = () => {
-    navigate("/admindashboard/retailers/add");
+    navigate("/retailers/add");
   };
 
   return (

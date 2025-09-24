@@ -8,14 +8,14 @@ function AdminHeader({ isCollapsed }) {
   // Map routes to page titles
   const pageTitles = {
     "/admindashboard": "Dashboard",
-    "/admindashboard/retailers": "Retailers",
-    "/admindashboard/staff": "Staff",
-    "/admindashboard/sales": "Sales",
-    "/admindashboard/products": "Products",
-    "/admindashboard/marketing": "Offers & Marketing",
-    "/admindashboard/expenses": "Expenses",
-    "/admindashboard/reports": "Reports",
-    "/admindashboard/roleaccess": "Role Access",
+    "/retailers": "Retailers",
+    "/staff": "Staff",
+    "/sales": "Sales",
+    "/products": "Products",
+    "/marketing": "Offers & Marketing",
+    "/expenses": "Expenses",
+    "/reports": "Reports",
+    "/roleaccess": "Role Access",
   };
 
   const title = pageTitles[location.pathname] || "Dashboard";
