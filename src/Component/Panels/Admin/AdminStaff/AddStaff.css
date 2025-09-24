@@ -1,0 +1,268 @@
+.add-staff-page-wrapper {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.add-staff-main-content {
+  flex: 1;
+  margin-left: 250px;
+  transition: margin-left 0.3s ease;
+  padding: 20px;
+}
+
+.add-staff-main-content.collapsed {
+  margin-left: 80px;
+}
+
+.add-staff-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Page Header */
+.page-header-section {
+  margin-bottom: 2rem;
+  padding: 0 10px;
+}
+
+.page-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+/* Card Styling */
+.add-staff-form-section {
+  background: white;
+  border-radius: 12px;
+  padding: 2.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+  margin: 0 auto;
+  max-width: 800px;
+}
+
+.staff-form {
+  width: 100%;
+}
+
+/* Form Rows and Groups */
+.form-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.8rem;
+  align-items: flex-start;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.form-group.full-width {
+  flex: 1 1 100%;
+}
+
+.form-group.half-width {
+  flex: 1 1 calc(50% - 0.75rem);
+  min-width: 0;
+}
+
+.form-label {
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+  display: block;
+}
+
+.form-label.invisible {
+  visibility: hidden;
+  height: 0;
+  margin-bottom: 0;
+}
+
+.form-input,
+.form-select {
+  padding: 0.875rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #fff;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transform: translateY(-1px);
+}
+
+.form-input::placeholder {
+  color: #9ca3af;
+}
+
+.form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23666' d='m0 1 2 2 2-2z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 12px;
+}
+
+.spacer-field {
+  height: 46px; /* Match input height */
+  visibility: hidden;
+}
+
+/* Action Buttons */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid #f3f4f6;
+}
+
+.cancel-btn,
+.save-staff-btn {
+  padding: 0.875rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+  min-width: 120px;
+}
+
+.cancel-btn {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.cancel-btn:hover {
+  background-color: #e5e7eb;
+  transform: translateY(-1px);
+}
+
+.save-staff-btn {
+  background-color: #2563eb;
+  color: white;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+.save-staff-btn:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+}
+
+.save-staff-btn:active {
+  transform: translateY(0);
+}
+
+/* Validation Styles */
+.form-input:invalid:not(:focus):not(:placeholder-shown) {
+  border-color: #ef4444;
+}
+
+.form-input:valid:not(:focus):not(:placeholder-shown) {
+  border-color: #10b981;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .add-staff-main-content {
+    margin-left: 0;
+    padding: 15px;
+  }
+  
+  .add-staff-main-content.collapsed {
+    margin-left: 0;
+  }
+  
+  .add-staff-form-section {
+    padding: 2rem;
+    margin: 0 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .add-staff-container {
+    padding: 0;
+  }
+  
+  .page-header-section {
+    padding: 0 15px;
+  }
+  
+  .add-staff-form-section {
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin: 0;
+  }
+  
+  .form-row {
+    flex-direction: column;
+    gap: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group.half-width {
+    flex: 1 1 100%;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .cancel-btn,
+  .save-staff-btn {
+    width: 100%;
+    min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .add-staff-form-section {
+    padding: 1.25rem;
+  }
+  
+  .page-title {
+    font-size: 1.5rem;
+  }
+  
+  .form-input,
+  .form-select {
+    padding: 0.75rem;
+  }
+  
+  .cancel-btn,
+  .save-staff-btn {
+    padding: 0.75rem 1.5rem;
+  }
+}
+
+/* Loading state */
+.save-staff-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.save-staff-btn:disabled:hover {
+  background-color: #9ca3af;
+  transform: none;
+}

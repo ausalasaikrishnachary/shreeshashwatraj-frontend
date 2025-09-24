@@ -1,0 +1,413 @@
+.staff-page-wrapper {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Main content wrapper */
+.staff-content-with-header {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: 250px;
+  transition: margin-left 0.3s ease;
+  width: calc(100% - 250px);
+}
+
+.staff-content-with-header.collapsed {
+  margin-left: 80px;
+  width: calc(100% - 80px);
+}
+
+.staff-main-content {
+  flex: 1;
+  padding: 0;
+  background: #f8f9fa;
+  min-height: calc(100vh - 70px);
+  margin-top: 70px;
+  width: 100%;
+}
+
+.staff-container {
+  padding: 30px;
+  max-width: 1400px;
+  margin: 0 auto;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Page Header Section */
+.page-header-section {
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 8px 0;
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  font-size: 16px;
+  color: #718096;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Controls Section */
+.staff-controls-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.search-controls {
+  flex: 1;
+  max-width: 400px;
+}
+
+.action-controls {
+  flex-shrink: 0;
+}
+
+/* Search Box */
+.search-box {
+  position: relative;
+  width: 100%;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 45px 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  background: white;
+  font-family: inherit;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.search-input::placeholder {
+  color: #a0aec0;
+}
+
+.search-icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #718096;
+}
+
+/* Add Staff Button */
+.add-staff-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #4299e1;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.add-staff-btn:hover {
+  background: #3182ce;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+}
+
+/* Table Section */
+.table-section {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* Custom styles for ReusableTable integration */
+.rt-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rt-table__header {
+  background: #f7fafc !important;
+  padding: 16px 12px !important;
+  text-align: left;
+  font-weight: 600;
+  color: #4a5568 !important;
+  font-size: 14px;
+  border-bottom: 2px solid #e2e8f0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rt-table__cell {
+  padding: 16px 12px !important;
+  border-bottom: 1px solid #edf2f7;
+  color: #2d3748;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.rt-table__row:hover {
+  background: #fafafa !important;
+}
+
+.rt-table__row:last-child .rt-table__cell {
+  border-bottom: none;
+}
+
+/* Staff Info Styles */
+.staff-name {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.staff-email {
+  color: #718096;
+  font-size: 14px;
+}
+
+.staff-mobile {
+  color: #4a5568;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+/* Badge Styles */
+.role-badge {
+  background: #ebf8ff;
+  color: #3182ce;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+
+.status-badge {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+
+.status-active {
+  background: #f0fff4;
+  color: #38a169;
+  border: 1px solid #c6f6d5;
+}
+
+.status-inactive {
+  background: #fff5f5;
+  color: #e53e3e;
+  border: 1px solid #fed7d7;
+}
+
+.last-login {
+  color: #718096;
+  font-size: 13px;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-family: inherit;
+}
+
+.view-btn {
+  background: #ebf8ff;
+  color: #3182ce;
+  border: 1px solid #bee3f8;
+}
+
+.view-btn:hover {
+  background: #bee3f8;
+}
+
+.edit-btn {
+  background: #fff5f5;
+  color: #e53e3e;
+  border: 1px solid #fed7d7;
+}
+
+.edit-btn:hover {
+  background: #fed7d7;
+}
+
+.delete-btn {
+  background: #fffaf0;
+  color: #dd6b20;
+  border: 1px solid #feebc8;
+}
+
+.delete-btn:hover {
+  background: #feebc8;
+}
+
+/* Reusable Table Customizations */
+.rt-container {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.rt-header {
+  display: none !important;
+}
+
+.rt-table-container {
+  border: none !important;
+}
+
+.rt-footer {
+  background: #f7fafc !important;
+  border-top: 1px solid #e2e8f0 !important;
+  padding: 16px 24px !important;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .staff-content-with-header {
+    margin-left: 80px;
+    width: calc(100% - 80px);
+  }
+  
+  .staff-content-with-header.collapsed {
+    margin-left: 80px;
+    width: calc(100% - 80px);
+  }
+  
+  .staff-container {
+    padding: 20px;
+  }
+  
+  .staff-controls-section {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .search-controls {
+    max-width: 100%;
+  }
+  
+  .action-controls {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 768px) {
+  .staff-content-with-header {
+    margin-left: 0;
+    width: 100%;
+  }
+  
+  .staff-content-with-header.collapsed {
+    margin-left: 0;
+    width: 100%;
+  }
+  
+  .staff-main-content {
+    margin-top: 70px;
+    min-height: calc(100vh - 70px);
+  }
+  
+  .staff-container {
+    padding: 15px;
+  }
+  
+  .page-title {
+    font-size: 24px;
+  }
+  
+  .page-subtitle {
+    font-size: 14px;
+  }
+  
+  .table-section {
+    border-radius: 8px;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .action-btn {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+  
+  .add-staff-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .staff-container {
+    padding: 10px;
+  }
+  
+  .page-title {
+    font-size: 20px;
+  }
+  
+  .search-input {
+    padding: 10px 40px 10px 12px;
+    font-size: 13px;
+  }
+  
+  .role-badge,
+  .status-badge {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+  
+  .rt-table__header,
+  .rt-table__cell {
+    padding: 12px 8px !important;
+    font-size: 13px;
+  }
+}
