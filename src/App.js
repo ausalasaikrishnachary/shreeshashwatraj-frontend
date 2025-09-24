@@ -52,8 +52,16 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 // Dashboards
 import AdminDashboard from "./Component/Panels/Admin/AdminDashboard/AdminDashboard";
 import StaffDashboard from "./Component/Panels/Staff/StaffPages/StaffDashboard";
-import RetailerDashboard from "./Component/Panels/Retailer/RetailersPages/RetailerDashboard";
 import Login from "./Component/Panels/Auth/Login";
+
+//Retailer pages
+
+import RetailerHome from "./Component/Panels/Retailer/RetailerHome/RetailerHomeWrapper";
+import RetailerHistory from "./Component/Panels/Retailer/RetailerHistory/RetailerHistoryWrapper";
+import RetailerOffers from "./Component/Panels/Retailer/RetailerOffers/RetailerOffersWrapper";
+import RetailerProfile from "./Component/Panels/Retailer/RetailerProfile/RetailerProfileWrapper";
+
+
 
 // Admin Pages
 import AdminRetailers from "./Component/Panels/Admin/AdminRetailers/Retailers";
@@ -91,7 +99,13 @@ function App() {
         <Route path="/dashboard" element={<DashboardCard />} />
         <Route path="/admindashboard" element={<AdminDashboard />} />
         <Route path="/staffdashboard" element={<StaffDashboard />} />
-        <Route path="/retailerdashboard" element={<RetailerDashboard />} />
+
+
+        {/* Retailers */}
+        <Route path="/retailer-home" element={<RetailerHome />} />
+        <Route path="/retailer-history" element={<RetailerHistory />} />
+        <Route path="/retailer-offers" element={<RetailerOffers />} />
+        <Route path="/retailer-profile" element={<RetailerProfile />} />
 
      
 
