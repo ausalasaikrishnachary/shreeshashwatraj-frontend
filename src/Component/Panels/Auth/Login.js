@@ -57,12 +57,7 @@ function Login() {
         {/* Button */}
         <button type="submit">Login</button>
 
-        {/* Hint */}
-        {/* <div className="hint">
-          <p><strong>Admin:</strong> admin@gmail.com / 1234</p>
-          <p><strong>Staff:</strong> staff@gmail.com / 1234</p>
-          <p><strong>Retailer:</strong> retailer@gmail.com / 1234</p>
-        </div> */}
+        
       </form>
     </div>
   );
