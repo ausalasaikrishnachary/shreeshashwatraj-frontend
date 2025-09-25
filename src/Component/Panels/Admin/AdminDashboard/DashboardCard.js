@@ -10,6 +10,7 @@ import {
   BarElement,
 } from "chart.js";
 import { Pie, Bar } from "react-chartjs-2";
+import "./DashboardCard.css"
 
 // Register Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend, Title, CategoryScale, LinearScale, BarElement);
@@ -29,7 +30,7 @@ const DashboardCharts = () => {
   };
 
   const regionalOptions = {
-    responsive: false, // disable auto-resize
+    responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
@@ -37,12 +38,13 @@ const DashboardCharts = () => {
         position: "right",
         labels: {
           font: { size: 14 },
+          boxWidth: 15,
         },
       },
       title: {
         display: true,
         text: "Regional Distribution",
-        font: { size: 18, weight: "bold" },
+        font: { size: 16, weight: "bold" },
       },
     },
   };
@@ -61,43 +63,39 @@ const DashboardCharts = () => {
   };
 
   const categoryOptions = {
-    responsive: false, // disable auto-resize
+    responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       title: {
         display: true,
         text: "Category Distribution",
-        font: { size: 18, weight: "bold" },
+        font: { size: 16, weight: "bold" },
       },
     },
     scales: {
       x: {
-        ticks: { font: { size: 14 } },
+        ticks: { font: { size: 12 } },
       },
       y: {
-        ticks: { font: { size: 14 } },
+        ticks: { font: { size: 12 } },
+        beginAtZero: true,
       },
     },
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        justifyContent: "space-between",
-        gap: "20px",
-      }}
-    >
-      {/* Regional Distribution */}
-      <div style={{ width: "500px", height: "500px" }}>
-        <Pie data={regionalData} options={regionalOptions} width={500} height={500} />
+    <div className="charts-container">
+      <div className="chart-wrapper">
+        <div className="chart-container">
+          <Pie data={regionalData} options={regionalOptions} />
+        </div>
       </div>
-
-      {/* Category Distribution */}
-      <div style={{ width: "500px", height: "500px" }}>
-        <Bar data={categoryData} options={categoryOptions} width={500} height={500} />
+      
+      <div className="chart-wrapper">
+        <div className="chart-container">
+          <Bar data={categoryData} options={categoryOptions} />
+        </div>
       </div>
     </div>
   );
