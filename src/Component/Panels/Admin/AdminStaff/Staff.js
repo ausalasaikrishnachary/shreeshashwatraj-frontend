@@ -30,13 +30,8 @@ function Staff() {
       
       const data = await response.json();
       
-      // Filter data to show only staff with role "Staff"
-      const filteredStaff = data.filter(staff => 
-        staff.role && staff.role.toLowerCase() === "staff"
-      );
-      
       // Add serial numbers and format data
-      const formattedData = filteredStaff.map((staff, index) => ({
+      const formattedData = data.map((staff, index) => ({
         id: staff.id,
         serial: index + 1,
         name: staff.full_name || staff.name || "N/A",
@@ -100,9 +95,9 @@ function Staff() {
     navigate("/staff/add");
   };
 
-  // const handleViewStaff = (staffId) => {
-  //   navigate(`/staff/view/${staffId}`);
-  // };
+  const handleViewStaff = (staffId) => {
+    navigate(`/staff/view/${staffId}`);
+  };
 
   const handleEditStaff = (staffId) => {
     navigate(`/staff/edit/${staffId}`);
@@ -174,23 +169,23 @@ function Staff() {
       key: "actions",
       title: "Actions",
       render: (item) => (
-        <div className="action-icons">
-          {/* <button 
-            className="icon-btn view-btn" 
+       <div className="staff-actions">
+          <button 
+            className="staff-action-btn staff-view-btn" 
             title="View"
             onClick={() => handleViewStaff(item.id)}
           >
             <FaEye size={16} />
-          </button> */}
+          </button>
           <button 
-            className="edit-btn" 
+            className="staff-action-btn staff-edit-btn" 
             title="Edit"
             onClick={() => handleEditStaff(item.id)}
           >
             <FaEdit size={16} />
           </button>
           <button 
-            className="icon-btn delete-btn" 
+            className="staff-action-btn staff-delete-btn" 
             title="Delete"
             onClick={() => handleDeleteStaff(item.id)}
           >
