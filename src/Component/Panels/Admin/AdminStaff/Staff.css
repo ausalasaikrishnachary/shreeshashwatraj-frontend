@@ -23,7 +23,7 @@
   padding: 0;
   background: #f8f9fa;
   min-height: calc(100vh - 70px);
-  margin-top: 70px;
+  /* margin-top: 70px; */
   width: 100%;
 }
 
@@ -233,181 +233,108 @@
   font-size: 13px;
 }
 
-/* Action Buttons */
-.action-buttons {
+/* ========================= */
+/* Action Icons Styling      */
+/* ========================= */
+
+.action-icons {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px; /* consistent spacing */
 }
 
-.action-btn {
-  padding: 6px 12px;
+.icon-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   border: none;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  font-family: inherit;
+  transition: all 0.25s ease;
+  background: #f9fafb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* View Button */
 .view-btn {
-  background: #ebf8ff;
   color: #3182ce;
+  background: #ebf8ff;
   border: 1px solid #bee3f8;
 }
 
 .view-btn:hover {
   background: #bee3f8;
+  color: #2b6cb0;
 }
 
+/* Edit Button */
 .edit-btn {
-  background: #fff5f5;
-  color: #e53e3e;
-  border: 1px solid #fed7d7;
+  color: #38a169;
+  background: #f0fff4;
+  border: 1px solid #c6f6d5;
 }
 
 .edit-btn:hover {
-  background: #fed7d7;
+  background: #c6f6d5;
+  color: #2f855a;
 }
 
+/* Delete Button */
 .delete-btn {
-  background: #fffaf0;
-  color: #dd6b20;
-  border: 1px solid #feebc8;
+  color: #e53e3e;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
 }
 
 .delete-btn:hover {
-  background: #feebc8;
+  background: #fed7d7;
+  color: #c53030;
 }
 
-/* Reusable Table Customizations */
-.rt-container {
-  border: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-
-.rt-header {
-  display: none !important;
-}
-
-.rt-table-container {
-  border: none !important;
-}
-
-.rt-footer {
-  background: #f7fafc !important;
-  border-top: 1px solid #e2e8f0 !important;
-  padding: 16px 24px !important;
-}
-
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .staff-content-with-header {
-    margin-left: 80px;
-    width: calc(100% - 80px);
-  }
-  
-  .staff-content-with-header.collapsed {
-    margin-left: 80px;
-    width: calc(100% - 80px);
-  }
-  
-  .staff-container {
-    padding: 20px;
-  }
-  
-  .staff-controls-section {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-  }
-  
-  .search-controls {
-    max-width: 100%;
-  }
-  
-  .action-controls {
-    align-self: flex-end;
-  }
-}
-
+/* ========================= */
+/* Responsive Adjustments    */
+/* ========================= */
 @media (max-width: 768px) {
-  .staff-content-with-header {
-    margin-left: 0;
-    width: 100%;
+  .action-icons {
+    gap: 6px;
   }
-  
-  .staff-content-with-header.collapsed {
-    margin-left: 0;
-    width: 100%;
+
+  .icon-btn {
+    width: 32px;
+    height: 32px;
   }
-  
-  .staff-main-content {
-    margin-top: 70px;
-    min-height: calc(100vh - 70px);
-  }
-  
-  .staff-container {
-    padding: 15px;
-  }
-  
-  .page-title {
-    font-size: 24px;
-  }
-  
-  .page-subtitle {
-    font-size: 14px;
-  }
-  
-  .table-section {
-    border-radius: 8px;
-  }
-  
-  .action-buttons {
-    flex-direction: column;
-    gap: 4px;
-  }
-  
-  .action-btn {
-    padding: 4px 8px;
-    font-size: 10px;
-  }
-  
-  .add-staff-btn {
-    padding: 10px 16px;
-    font-size: 13px;
-    width: 100%;
-    justify-content: center;
+
+  .icon-btn svg {
+    width: 14px;
+    height: 14px;
   }
 }
 
 @media (max-width: 480px) {
-  .staff-container {
-    padding: 10px;
+  .action-icons {
+    gap: 4px;
   }
-  
-  .page-title {
-    font-size: 20px;
+
+  .icon-btn {
+    width: 28px;
+    height: 28px;
   }
-  
-  .search-input {
-    padding: 10px 40px 10px 12px;
-    font-size: 13px;
-  }
-  
-  .role-badge,
-  .status-badge {
-    font-size: 10px;
-    padding: 4px 8px;
-  }
-  
-  .rt-table__header,
-  .rt-table__cell {
-    padding: 12px 8px !important;
-    font-size: 13px;
+
+  .icon-btn svg {
+    width: 12px;
+    height: 12px;
   }
 }

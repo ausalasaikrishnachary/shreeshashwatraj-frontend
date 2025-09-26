@@ -1,0 +1,268 @@
+.sales-report-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+  margin-bottom: 30px;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #4F81FF;
+  padding-bottom: 10px;
+}
+
+.chart-container {
+  margin-bottom: 30px;
+}
+
+.chart-subtitle {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+/* Vertical Bar Chart Styles */
+.bar-chart {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 300px;
+  padding: 0 20px;
+  gap: 30px;
+}
+
+.bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+}
+
+.bar-wrapper {
+  height: 100%;
+  width: 60px;
+  display: flex;
+  align-items: flex-end;
+  position: relative;
+  background: #f8fafc;
+  border-radius: 8px 8px 0 0;
+  overflow: hidden;
+}
+
+.bar {
+  width: 100%;
+  border-radius: 8px 8px 0 0;
+  transition: all 0.3s ease;
+  position: relative;
+  min-height: 20px;
+}
+
+.bar-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
+
+.bar-label {
+  margin-top: 10px;
+  font-weight: 500;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+/* Horizontal Bar Chart Styles */
+.bar-chart.horizontal {
+  flex-direction: column;
+  height: auto;
+  gap: 20px;
+  padding: 0;
+}
+
+.bar-item.horizontal {
+  flex-direction: row;
+  align-items: center;
+  height: auto;
+  gap: 15px;
+}
+
+.bar-wrapper.horizontal {
+  height: 40px;
+  width: 100%;
+  flex: 1;
+  border-radius: 8px;
+}
+
+.bar.horizontal {
+  height: 100%;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  min-width: 60px;
+}
+
+.staff-name {
+  min-width: 120px;
+  text-align: right;
+  margin-top: 0;
+  font-weight: 500;
+}
+
+.bar.horizontal .bar-value {
+  position: static;
+  transform: none;
+  text-align: right;
+  width: 100%;
+}
+
+.section-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 40px 0;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .sales-report-container {
+    padding: 25px;
+  }
+  
+  .bar-chart {
+    height: 250px;
+    gap: 20px;
+  }
+  
+  .bar-wrapper {
+    width: 50px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sales-report-container {
+    padding: 20px;
+  }
+  
+  .section-title {
+    font-size: 1.3rem;
+  }
+  
+  .chart-subtitle {
+    font-size: 1rem;
+  }
+  
+  .bar-chart {
+    height: 200px;
+    gap: 15px;
+    padding: 0 10px;
+  }
+  
+  .bar-wrapper {
+    width: 40px;
+  }
+  
+  .bar-value {
+    font-size: 0.7rem;
+  }
+  
+  .bar-label {
+    font-size: 0.8rem;
+  }
+  
+  .staff-name {
+    min-width: 100px;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .sales-report-container {
+    padding: 15px;
+  }
+  
+  .bar-chart {
+    flex-direction: column;
+    height: auto;
+    gap: 15px;
+  }
+  
+  .bar-item {
+    flex-direction: row;
+    align-items: center;
+    height: auto;
+    width: 100%;
+    gap: 15px;
+  }
+  
+  .bar-wrapper {
+    height: 40px;
+    width: 100%;
+    flex: 1;
+  }
+  
+  .bar {
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+  }
+  
+  .bar-value {
+    position: static;
+    transform: none;
+    text-align: right;
+    width: 100%;
+  }
+  
+  .bar-label {
+    margin-top: 0;
+    min-width: 40px;
+    text-align: center;
+  }
+  
+  /* Horizontal chart adjustments for mobile */
+  .bar-chart.horizontal .bar-item.horizontal {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .bar-chart.horizontal .staff-name {
+    text-align: left;
+    min-width: auto;
+  }
+}
+
+@media (max-width: 360px) {
+  .sales-report-container {
+    padding: 10px;
+  }
+  
+  .section-title {
+    font-size: 1.2rem;
+  }
+  
+  .chart-subtitle {
+    font-size: 0.9rem;
+  }
+  
+  .bar-value {
+    font-size: 0.6rem;
+  }
+  
+  .bar-label {
+    font-size: 0.7rem;
+  }
+}

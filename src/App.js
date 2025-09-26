@@ -75,6 +75,7 @@ import AddProduct from './Component/Panels/Admin/AdminProducts/AddProducts';
 import AdminMarketing from "./Component/Panels/Admin/AdminMarketing/Marketing";
 import AddMarketing from "./Component/Panels/Admin/AdminMarketing/AddMarketing";
 import AdminExpenses from "./Component/Panels/Admin/AdminExpenses/Expenses";
+import AddExpenses from "./Component/Panels/Admin/AdminExpenses/AddExpenses";
 import AdminReports from "./Component/Panels/Admin/AdminReports/Reports";
 import AdminRoleAccess from "./Component/Panels/Admin/AdminRoleAccess/RoleAccess";
 import DashboardCard from "./Component/Panels/Admin/AdminDashboard/DashboardCard"
@@ -126,6 +127,7 @@ function App() {
         <Route path="/staff/add" element={<AddStaff />} />
         <Route path="/sales" element={<AdminSales />} />
         <Route path="/sales/add" element={<AddSales />} />
+        <Route path="/staff/edit/:id" element={<AddStaff />} />
         <Route path="/products" element={<AdminProducts />} />
         <Route path="/add-product" element={<AddProduct />} />
         <Route path="/marketing" element={<AdminMarketing />} />
@@ -137,6 +139,7 @@ function App() {
         <Route path="/retailers/view/:id" element={<AddRetailerForm mode="view" />} />
 
         <Route path="/expenses" element={<AdminExpenses />} />
+        <Route path="/expenses/add" element={<AddExpenses />} />
         <Route path="/reports" element={<AdminReports />} />
         <Route path="/roleaccess" element={<AdminRoleAccess />} />
       </Routes>

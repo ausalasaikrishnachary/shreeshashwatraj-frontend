@@ -1,21 +1,59 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
-import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import "./AddStaff.css";
 
 function AddStaff() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
+  const { id } = useParams(); // Get the staff ID from URL params for edit mode
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [error, setError] = useState("");
+  const [isEditMode, setIsEditMode] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: "",
     mobileNumber: "",
-    password: "",
     email: "",
     role: "",
     status: "Active"
   });
+
+  // Check if we're in edit mode and fetch staff data
+  useEffect(() => {
+    if (id) {
+      setIsEditMode(true);
+      fetchStaffData();
+    }
+  }, [id]);
+
+  const fetchStaffData = async () => {
+    try {
+      setIsFetching(true);
+      const response = await fetch(`http://localhost:5000/api/staff/${id}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const staffData = await response.json();
+      
+      // Map backend fields to form data
+      setFormData({
+        fullName: staffData.full_name || "",
+        mobileNumber: staffData.mobile_number || "",
+        email: staffData.email || "",
+        role: staffData.role || "",
+        status: staffData.status || "Active"
+      });
+    } catch (error) {
+      console.error("Error fetching staff data:", error);
+      setError("Failed to load staff data");
+    } finally {
+      setIsFetching(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -23,18 +61,116 @@ function AddStaff() {
       ...prevState,
       [name]: value
     }));
+    if (error) setError("");
   };
 
-  const handleSubmit = (e) => {
+  const validateForm = () => {
+    const { fullName, mobileNumber, email, role } = formData;
+    
+    if (!fullName.trim()) {
+      setError("Full name is required");
+      return false;
+    }
+    
+    if (!mobileNumber.trim() || !/^\d{10}$/.test(mobileNumber)) {
+      setError("Please enter a valid 10-digit mobile number");
+      return false;
+    }
+    
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Please enter a valid email address");
+      return false;
+    }
+    
+    if (!role) {
+      setError("Please select a role");
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission logic here
-    console.log("Staff data:", formData);
-    // You can add API call here
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      if (isEditMode) {
+        // Update existing staff (PUT request)
+        const response = await fetch(`http://localhost:5000/api/staff/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to update staff account");
+        }
+
+        console.log("Staff updated successfully:", result);
+        
+        // Show success message and redirect
+        alert("Staff account updated successfully!");
+        navigate("/staff");
+      } else {
+        // Create new staff (POST request)
+        const response = await fetch("http://localhost:5000/api/staff", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to create staff account");
+        }
+
+        console.log("Staff created successfully:", result);
+        
+        // Show success message and redirect
+        alert("Staff account created successfully! Default password is their mobile number.");
+        navigate("/staff");
+      }
+    } catch (err) {
+      console.error(`Error ${isEditMode ? "updating" : "creating"} staff:`, err);
+      setError(err.message || `An error occurred while ${isEditMode ? "updating" : "creating"} staff`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
     navigate("/staff");
   };
+
+  if (isEditMode && isFetching) {
+    return (
+      <div className="add-staff-page-wrapper">
+        <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <div className={`add-staff-main-content ${isCollapsed ? "collapsed" : ""}`}>
+          <div className="add-staff-container">
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Loading staff data...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="add-staff-page-wrapper">
@@ -46,18 +182,34 @@ function AddStaff() {
           
           {/* Page Header */}
           <div className="page-header-section">
-            <h1 className="page-title">Add New Staff</h1>
+            <h1 className="page-title">
+              {isEditMode ? "Edit Staff Member" : "Add New Staff"}
+            </h1>
+            <p className="page-subtitle">
+              {isEditMode 
+                ? "Update staff account information and permissions" 
+                : "Create a new staff account with appropriate permissions"
+              }
+            </p>
           </div>
 
-          {/* Add Staff Form */}
+          {/* Error Message */}
+          {error && (
+            <div className="error-message">
+              <span className="error-icon">⚠</span>
+              {error}
+            </div>
+          )}
+
+          {/* Add/Edit Staff Form */}
           <div className="add-staff-form-section">
             <form onSubmit={handleSubmit} className="staff-form">
               
-              {/* First Row - Two Fields */}
+              {/* Full Name */}
               <div className="form-row">
                 <div className="form-group full-width">
                   <label htmlFor="fullName" className="form-label">
-                    Full Name
+                    Full Name <span className="required">*</span>
                   </label>
                   <input
                     type="text"
@@ -67,16 +219,16 @@ function AddStaff() {
                     onChange={handleInputChange}
                     className="form-input"
                     placeholder="Enter full name"
-                    required
+                    disabled={isLoading}
                   />
                 </div>
               </div>
 
-              {/* Second Row - Two Fields */}
+              {/* Mobile Number and Email */}
               <div className="form-row">
                 <div className="form-group half-width">
                   <label htmlFor="mobileNumber" className="form-label">
-                    Mobile Number
+                    Mobile Number <span className="required">*</span>
                   </label>
                   <input
                     type="tel"
@@ -85,33 +237,21 @@ function AddStaff() {
                     value={formData.mobileNumber}
                     onChange={handleInputChange}
                     className="form-input"
-                    placeholder="Enter mobile number"
-                    required
+                    placeholder="Enter 10-digit mobile number"
+                    pattern="[0-9]{10}"
+                    maxLength="10"
+                    disabled={isLoading || isEditMode} // Disable mobile number in edit mode
                   />
+                  {isEditMode && (
+                    <small className="field-note">
+                      Mobile number cannot be changed
+                    </small>
+                  )}
                 </div>
                 
                 <div className="form-group half-width">
-                  <label htmlFor="password" className="form-label">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="form-input"
-                    placeholder="Enter password"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Third Row - Two Fields */}
-              <div className="form-row">
-                <div className="form-group half-width">
                   <label htmlFor="email" className="form-label">
-                    Email
+                    Email <span className="required">*</span>
                   </label>
                   <input
                     type="email"
@@ -121,13 +261,16 @@ function AddStaff() {
                     onChange={handleInputChange}
                     className="form-input"
                     placeholder="Enter email address"
-                    required
+                    disabled={isLoading}
                   />
                 </div>
-                
+              </div>
+
+              {/* Role and Status */}
+              <div className="form-row">
                 <div className="form-group half-width">
                   <label htmlFor="role" className="form-label">
-                    Role
+                    Role <span className="required">*</span>
                   </label>
                   <select
                     id="role"
@@ -135,18 +278,15 @@ function AddStaff() {
                     value={formData.role}
                     onChange={handleInputChange}
                     className="form-select"
-                    required
+                    disabled={isLoading}
                   >
                     <option value="">Select role</option>
                     <option value="Admin">Admin</option>
-                    <option value="Staff">Staff</option>
                     <option value="Manager">Manager</option>
+                    <option value="Staff">Staff</option>
                   </select>
                 </div>
-              </div>
-
-              {/* Fourth Row - Two Fields */}
-              <div className="form-row">
+                
                 <div className="form-group half-width">
                   <label htmlFor="status" className="form-label">
                     Status
@@ -157,26 +297,47 @@ function AddStaff() {
                     value={formData.status}
                     onChange={handleInputChange}
                     className="form-select"
+                    disabled={isLoading}
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
                   </select>
                 </div>
-                
-                <div className="form-group half-width">
-                  {/* Empty field for alignment - you can add another field here if needed */}
-                  <label className="form-label invisible">Spacer</label>
-                  <div className="spacer-field"></div>
-                </div>
               </div>
+
+              {/* Password Info - Only show for add mode */}
+              {!isEditMode && (
+                <div className="form-info">
+                  <p className="info-text">
+                    💡 <strong>Note:</strong> Default password will be the mobile number. 
+                    Staff can change it after first login.
+                  </p>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="form-actions">
-                <button type="button" className="cancel-btn" onClick={handleCancel}>
+                <button 
+                  type="button" 
+                  className="cancel-btn" 
+                  onClick={handleCancel}
+                  disabled={isLoading}
+                >
                   Cancel
                 </button>
-                <button type="submit" className="save-staff-btn">
-                  Save Staff
+                <button 
+                  type="submit" 
+                  className="save-staff-btn"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="loading-spinner"></span>
+                      {isEditMode ? "Updating..." : "Creating..."}
+                    </>
+                  ) : (
+                    isEditMode ? "Update Staff" : "Create Staff"
+                  )}
                 </button>
               </div>
             </form>

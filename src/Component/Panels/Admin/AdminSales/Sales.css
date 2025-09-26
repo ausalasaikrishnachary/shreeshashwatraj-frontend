@@ -23,7 +23,7 @@
   padding: 24px;
   overflow-y: auto;
   height: calc(100vh - 70px); /* Subtract header height */
-  margin-top: 70px; /* Make space for fixed header */
+  /* margin-top: 70px;  */
 }
 
 /* Header Section - Now below the AdminHeader */

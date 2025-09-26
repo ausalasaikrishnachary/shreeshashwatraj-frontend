@@ -23,7 +23,16 @@ function AdminHeader({ isCollapsed }) {
     "/roleaccess": "Role Access",
   };
 
-  const title = pageTitles[location.pathname] || "Dashboard";
+  // If pathname starts with a key, use that title
+  let title = "Dashboard";
+
+  for (const path in pageTitles) {
+    if (location.pathname.startsWith(path)) {
+      title = pageTitles[path];
+      break;
+    }
+  }
+
 
   return (
     <div className={`admin-header ${isCollapsed ? "collapsed" : ""}`}>
