@@ -99,11 +99,6 @@ const handleDelete = async (expenseId) => {
     <div className="expenses-wrapper">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
 
-      <div className={`main-content ${isCollapsed ? "collapsed" : ""}`}>
-              <AdminHeader isCollapsed={isCollapsed} />
-
-        {showAddExpense ? <AddExpenseForm /> : <ExpensesTable />}
-
       <div className={`expenses-content-area ${isCollapsed ? "collapsed" : ""}`}>
         <div className="expenses-main-content">
           <AdminHeader isCollapsed={isCollapsed} />
@@ -171,8 +166,6 @@ const handleDelete = async (expenseId) => {
         </div>
       </div>
     </div>
-        </div>
-
   );
 }
 
