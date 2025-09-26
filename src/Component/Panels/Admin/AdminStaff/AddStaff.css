@@ -30,7 +30,13 @@
   font-size: 1.8rem;
   font-weight: 600;
   color: #2d3748;
+  margin: 0 0 0.5rem 0;
+}
+
+.page-subtitle {
+  color: #6b7280;
   margin: 0;
+  font-size: 0.95rem;
 }
 
 /* Card Styling */
@@ -79,10 +85,8 @@
   display: block;
 }
 
-.form-label.invisible {
-  visibility: hidden;
-  height: 0;
-  margin-bottom: 0;
+.required {
+  color: #ef4444;
 }
 
 .form-input,
@@ -102,7 +106,13 @@
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  transform: translateY(-1px);
+}
+
+.form-input:disabled,
+.form-select:disabled {
+  background-color: #f9fafb;
+  color: #6b7280;
+  cursor: not-allowed;
 }
 
 .form-input::placeholder {
@@ -117,9 +127,40 @@
   background-size: 12px;
 }
 
-.spacer-field {
-  height: 46px; /* Match input height */
-  visibility: hidden;
+/* Form Info */
+.form-info {
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1.5rem 0;
+}
+
+.info-text {
+  margin: 0;
+  color: #0369a1;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Error Message */
+.error-message {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 0.875rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.error-icon {
+  font-size: 1.1rem;
 }
 
 /* Action Buttons */
@@ -127,7 +168,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  margin-top: 2.5rem;
+  margin-top: 2rem;
   padding-top: 2rem;
   border-top: 1px solid #f3f4f6;
 }
@@ -142,6 +183,10 @@
   transition: all 0.2s ease;
   font-size: 0.95rem;
   min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .cancel-btn {
@@ -150,9 +195,8 @@
   border: 1px solid #d1d5db;
 }
 
-.cancel-btn:hover {
+.cancel-btn:hover:not(:disabled) {
   background-color: #e5e7eb;
-  transform: translateY(-1px);
 }
 
 .save-staff-btn {
@@ -161,23 +205,48 @@
   box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
 }
 
-.save-staff-btn:hover {
+.save-staff-btn:hover:not(:disabled) {
   background-color: #1d4ed8;
-  transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
 }
 
-.save-staff-btn:active {
-  transform: translateY(0);
+/* Loading Spinner */
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Disabled States */
+.cancel-btn:disabled,
+.save-staff-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.save-staff-btn:disabled {
+  background-color: #9ca3af;
+  box-shadow: none;
 }
 
 /* Validation Styles */
 .form-input:invalid:not(:focus):not(:placeholder-shown) {
   border-color: #ef4444;
+  background-color: #fef2f2;
 }
 
 .form-input:valid:not(:focus):not(:placeholder-shown) {
   border-color: #10b981;
+  background-color: #f0fdf4;
 }
 
 /* Responsive Design */
@@ -254,15 +323,45 @@
   }
 }
 
-/* Loading state */
-.save-staff-btn:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  min-height: 300px;
 }
 
-.save-staff-btn:disabled:hover {
-  background-color: #9ca3af;
-  transform: none;
+.loading-spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3498db;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin-right: 10px;
+  display: inline-block;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.field-note {
+  color: #666;
+  font-size: 12px;
+  margin-top: 5px;
+  display: block;
+}
+
+/* Ensure the form maintains proper spacing */
+.form-group {
+  position: relative;
+}
+
+.save-staff-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
 }

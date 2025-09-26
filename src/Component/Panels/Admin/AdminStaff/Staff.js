@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaEye, FaEdit, FaTrash, FaSearch, FaPlus } from "react-icons/fa";
 import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
@@ -7,35 +8,126 @@ import "./Staff.css";
 
 function Staff() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [staffData, setStaffData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
+
+  // Fetch staff data from backend
+  useEffect(() => {
+    fetchStaffData();
+  }, []);
+
+  const fetchStaffData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:5000/api/staff");
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Filter data to show only staff with role "Staff"
+      const filteredStaff = data.filter(staff => 
+        staff.role && staff.role.toLowerCase() === "staff"
+      );
+      
+      // Add serial numbers and format data
+      const formattedData = filteredStaff.map((staff, index) => ({
+        id: staff.id,
+        serial: index + 1,
+        name: staff.full_name || staff.name || "N/A",
+        email: staff.email || "N/A",
+        mobile: staff.mobile_number || staff.mobile || "N/A",
+        role: staff.role || "Staff",
+        status: staff.status || "Active",
+        lastLogin: staff.last_login || staff.lastLogin || "Never"
+      }));
+      
+      setStaffData(formattedData);
+      setFilteredData(formattedData);
+    } catch (error) {
+      console.error("Error fetching staff data:", error);
+      // Fallback to sample data if API fails
+      const sampleData = [
+        {
+          id: 1,
+          serial: 1,
+          name: "Ravi Kumar",
+          email: "ravi@example.com",
+          mobile: "9876543210",
+          role: "Staff",
+          status: "Active",
+          lastLogin: "18 Sep 2025"
+        },
+        {
+          id: 2,
+          serial: 2,
+          name: "Abc",
+          email: "abc@example.com",
+          mobile: "xxxxxxxxxxxx",
+          role: "Staff",
+          status: "Active",
+          lastLogin: "18 Sep 2025"
+        }
+      ];
+      setStaffData(sampleData);
+      setFilteredData(sampleData);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle search functionality
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setFilteredData(staffData);
+    } else {
+      const filtered = staffData.filter(staff =>
+        staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        staff.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        staff.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        staff.mobile.includes(searchTerm)
+      );
+      setFilteredData(filtered);
+    }
+  }, [searchTerm, staffData]);
 
   const handleAddStaff = () => {
     navigate("/staff/add");
   };
 
-  // Sample staff data
-  const staffData = [
-    {
-      id: 1,
-      serial: 1,
-      name: "Ravi Kumar",
-      email: "ravi@example.com",
-      mobile: "9876543210",
-      role: "Staff",
-      status: "Active",
-      lastLogin: "18 Sep 2025"
-    },
-    {
-      id: 2,
-      serial: 2,
-      name: "Abc",
-      email: "abc@example.com",
-      mobile: "xxxxxxxxxxxx",
-      role: "Staff",
-      status: "Active",
-      lastLogin: "18 Sep 2025"
+  // const handleViewStaff = (staffId) => {
+  //   navigate(`/staff/view/${staffId}`);
+  // };
+
+  const handleEditStaff = (staffId) => {
+    navigate(`/staff/edit/${staffId}`);
+  };
+
+  const handleDeleteStaff = async (staffId) => {
+    if (window.confirm("Are you sure you want to delete this staff member?")) {
+      try {
+        const response = await fetch(`http://localhost:5000/api/staff/${staffId}`, {
+          method: "DELETE"
+        });
+
+        if (response.ok) {
+          alert("Staff deleted successfully");
+          fetchStaffData(); // Refresh the data
+        } else {
+          const errorData = await response.json();
+          alert(`Error: ${errorData.error}`);
+        }
+      } catch (error) {
+        console.error("Error deleting staff:", error);
+        alert("Error deleting staff member");
+      }
     }
-  ];
+  };
 
   // Columns configuration for reusable table
   const columns = [
@@ -82,15 +174,52 @@ function Staff() {
       key: "actions",
       title: "Actions",
       render: (item) => (
-        <div className="action-buttons">
-          <button className="action-btn view-btn">View</button>
-          <button className="action-btn edit-btn">Edit</button>
-          <button className="action-btn delete-btn">Delete</button>
+        <div className="action-icons">
+          {/* <button 
+            className="icon-btn view-btn" 
+            title="View"
+            onClick={() => handleViewStaff(item.id)}
+          >
+            <FaEye size={16} />
+          </button> */}
+          <button 
+            className="edit-btn" 
+            title="Edit"
+            onClick={() => handleEditStaff(item.id)}
+          >
+            <FaEdit size={16} />
+          </button>
+          <button 
+            className="icon-btn delete-btn" 
+            title="Delete"
+            onClick={() => handleDeleteStaff(item.id)}
+          >
+            <FaTrash size={16} />
+          </button>
         </div>
       ),
-      style: { width: "200px" }
+      style: { width: "150px", textAlign: "center" }
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="staff-page-wrapper">
+        <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <div className={`staff-content-with-header ${isCollapsed ? "collapsed" : ""}`}>
+          <AdminHeader isCollapsed={isCollapsed} />
+          <div className="staff-main-content">
+            <div className="staff-container">
+              <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Loading staff data...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="staff-page-wrapper">
@@ -106,6 +235,7 @@ function Staff() {
             {/* Page Header */}
             <div className="page-header-section">
               <h1 className="page-title">Staff Management</h1>
+              <p className="page-subtitle">Manage staff members with role 'Staff'</p>
             </div>
 
             {/* Controls Section */}
@@ -114,17 +244,18 @@ function Staff() {
                 <div className="search-box">
                   <input
                     type="text"
-                    placeholder="Search by name or role"
+                    placeholder="Search by name, email, or mobile"
                     className="search-input"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
+                  <FaSearch className="search-icon" size={18} />
                 </div>
               </div>
               
               <div className="action-controls">
                 <button className="add-staff-btn" onClick={handleAddStaff}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M12 5v14m-7-7h14" strokeWidth="2" strokeLinecap="round"/>
-                  </svg>
+                  <FaPlus size={18} />
                   Add Staff
                 </button>
               </div>
@@ -132,15 +263,21 @@ function Staff() {
 
             {/* Table Section */}
             <div className="table-section">
-              <ReusableTable
-                data={staffData}
-                columns={columns}
-                searchPlaceholder="Search staff..."
-                initialEntriesPerPage={10}
-                showSearch={false}
-                showEntriesSelector={true}
-                showPagination={true}
-              />
+              {filteredData.length === 0 ? (
+                <div className="no-data-message">
+                  <p>No staff members found.</p>
+                </div>
+              ) : (
+                <ReusableTable
+                  data={filteredData}
+                  columns={columns}
+                  searchPlaceholder="Search staff..."
+                  initialEntriesPerPage={10}
+                  showSearch={false} // We're using our own search
+                  showEntriesSelector={true}
+                  showPagination={true}
+                />
+              )}
             </div>
           </div>
         </div>

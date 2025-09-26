@@ -127,6 +127,7 @@ function App() {
         <Route path="/staff/add" element={<AddStaff />} />
         <Route path="/sales" element={<AdminSales />} />
         <Route path="/sales/add" element={<AddSales />} />
+        <Route path="/staff/edit/:id" element={<AddStaff />} />
         <Route path="/products" element={<AdminProducts />} />
         <Route path="/add-product" element={<AddProduct />} />
         <Route path="/marketing" element={<AdminMarketing />} />
