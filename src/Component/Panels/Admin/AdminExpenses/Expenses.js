@@ -405,8 +405,9 @@ function Expenses() {
   return (
     <div>
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-      <AdminHeader isCollapsed={isCollapsed} />
       <div className={`main-content ${isCollapsed ? "collapsed" : ""}`}>
+              <AdminHeader isCollapsed={isCollapsed} />
+
         {showAddExpense ? <AddExpenseForm /> : <ExpensesTable />}
       </div>
     </div>

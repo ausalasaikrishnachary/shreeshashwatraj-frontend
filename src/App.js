@@ -82,6 +82,7 @@ import DashboardCard from "./Component/Panels/Admin/AdminDashboard/DashboardCard
 // Staff Pages (Mobile Only)
 import MyRetailers from "./Component/Panels/Staff/StaffPages/Staff_MyRetailers/MyRetailers";
 import AddRetailer from "./Component/Panels/Staff/StaffPages/Staff_MyRetailers/AddRetailer";
+
 import SalesVisits from "./Component/Panels/Staff/StaffPages/Staff_SalesVisits/SalesVisits";
 import LogVisit from "./Component/Panels/Staff/StaffPages/Staff_SalesVisits/LogVisit";
 import StaffExpenses from "./Component/Panels/Staff/StaffPages/Staff_Expenses/StaffExpenses";
@@ -107,21 +108,20 @@ function App() {
         <Route path="/retailer-offers" element={<RetailerOffers />} />
         <Route path="/retailer-profile" element={<RetailerProfile />} />
 
-     
 
 
-             {/* Staff Mobile Pages */}
+
+        {/* Staff Mobile Pages */}
         <Route path="/staff/retailers" element={<MyRetailers />} />
         <Route path="/staff/add-retailer" element={<AddRetailer />} />
         <Route path="/staff/sales-visits" element={<SalesVisits />} />
         <Route path="/staff/log-visit" element={<LogVisit />} />
         <Route path="/staff/expences" element={<StaffExpenses />} />
-       <Route path="/staff/add-expense" element={<AddExpense />} />
+        <Route path="/staff/add-expense" element={<AddExpense />} />
 
-   {/* Admin  Pages */}
+        {/* Admin  Pages */}
         <Route path="/staff/offers" element={<StaffOffers />} />
-        <Route path="/retailers" element={<AdminRetailers />} />
-        <Route path="/retailers/add" element={<AddRetailerForm />} /> 
+    
         <Route path="/staff" element={<AdminStaff />} />
         <Route path="/staff/add" element={<AddStaff />} />
         <Route path="/sales" element={<AdminSales />} />
@@ -130,6 +130,12 @@ function App() {
         <Route path="/add-product" element={<AddProduct />} />
         <Route path="/marketing" element={<AdminMarketing />} />
         <Route path="/add-marketing" element={<AddMarketing />} />
+ 
+        <Route path="/retailers" element={<AdminRetailers />} />
+        <Route path="/retailers/add" element={<AddRetailerForm mode="add" />} />
+        <Route path="/retailers/edit/:id" element={<AddRetailerForm mode="edit" />} />
+        <Route path="/retailers/view/:id" element={<AddRetailerForm mode="view" />} />
+
         <Route path="/expenses" element={<AdminExpenses />} />
         <Route path="/reports" element={<AdminReports />} />
         <Route path="/roleaccess" element={<AdminRoleAccess />} />

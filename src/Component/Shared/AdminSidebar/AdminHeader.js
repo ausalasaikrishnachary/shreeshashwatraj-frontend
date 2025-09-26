@@ -9,10 +9,15 @@ function AdminHeader({ isCollapsed }) {
   const pageTitles = {
     "/admindashboard": "Dashboard",
     "/retailers": "Retailers",
-    "/staff": "Staff",
+ "/retailers/add": "Retailers",
+     "/staff": "Staff",
     "/sales": "Sales",
     "/products": "Products",
+        "/add-product": "Products",
+
     "/marketing": "Offers & Marketing",
+        "/add-marketing": "Offers & Marketing",
+
     "/expenses": "Expenses",
     "/reports": "Reports",
     "/roleaccess": "Role Access",

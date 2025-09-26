@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from 'react-bootstrap';
+import AdminSidebar from "../../Shared/AdminSidebar/AdminSidebar";
+import AdminHeader from "../../Shared/AdminSidebar/AdminHeader";
+
 
 const FormLayout = ({ 
   user, 
@@ -11,26 +14,37 @@ const FormLayout = ({
   sidebarCollapsed,
   setSidebarCollapsed
 }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   return (
     <div className="dashboard-container">
-          <div className="container customer-form-container">
-            <h1 className="customer-form-title">{title}</h1>
-            
-            <div className="customer-form-tabs">
-              {tabs.map((tab) => (
-                <div 
-                  key={tab.id}
-                  className={`customer-tab ${activeTab === tab.id ? 'active' : ''}`}
-                  onClick={() => onTabClick(tab.id)}
-                >
-                  {tab.label}
-                </div>
-              ))}
-            </div>
+      <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+      
+      {/* Main Content Area */}
+      <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
+                <AdminHeader isCollapsed={isCollapsed} />
 
-            {children}
+        {/* Remove AdminHeader component since we have custom header below */}
+      
+        <div className="container customer-form-container">
+          <h1 className="customer-form-title">{title}</h1>
+          
+          <div className="customer-form-tabs">
+            {tabs.map((tab) => (
+              <div 
+                key={tab.id}
+                className={`customer-tab ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => onTabClick(tab.id)}
+              >
+                {tab.label}
+              </div>
+            ))}
           </div>
+
+          {children}
         </div>
+      </div>
+    </div>
   );
 };
 

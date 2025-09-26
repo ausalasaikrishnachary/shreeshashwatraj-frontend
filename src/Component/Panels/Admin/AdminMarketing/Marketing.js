@@ -93,8 +93,9 @@ function Marketing() {
   return (
     <div>
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-      <AdminHeader isCollapsed={isCollapsed} />
       <div className={`marketing-content ${isCollapsed ? "collapsed" : ""}`}>
+              <AdminHeader isCollapsed={isCollapsed} />
+
         <div className="marketing-container">
           {/* Header with tabs */}
           <div className="marketing-header">
