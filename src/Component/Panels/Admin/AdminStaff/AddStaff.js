@@ -16,7 +16,7 @@ function AddStaff() {
     fullName: "",
     mobileNumber: "",
     email: "",
-    role: "",
+    role: "Staff", // Default value set to "Staff"
     status: "Active"
   });
 
@@ -44,7 +44,7 @@ function AddStaff() {
         fullName: staffData.full_name || "",
         mobileNumber: staffData.mobile_number || "",
         email: staffData.email || "",
-        role: staffData.role || "",
+        role: staffData.role || "Staff",
         status: staffData.status || "Active"
       });
     } catch (error) {
@@ -83,7 +83,7 @@ function AddStaff() {
     }
     
     if (!role) {
-      setError("Please select a role");
+      setError("Role is required");
       return false;
     }
     
@@ -207,7 +207,7 @@ function AddStaff() {
               
               {/* Full Name */}
               <div className="form-row">
-                <div className="form-group full-width">
+                <div className="form-group half-width">
                   <label htmlFor="fullName" className="form-label">
                     Full Name <span className="required">*</span>
                   </label>
@@ -222,11 +222,8 @@ function AddStaff() {
                     disabled={isLoading}
                   />
                 </div>
-              </div>
 
-              {/* Mobile Number and Email */}
-              <div className="form-row">
-                <div className="form-group half-width">
+                 <div className="form-group half-width">
                   <label htmlFor="mobileNumber" className="form-label">
                     Mobile Number <span className="required">*</span>
                   </label>
@@ -248,6 +245,12 @@ function AddStaff() {
                     </small>
                   )}
                 </div>
+
+
+              </div>
+
+              {/* Email and Status */}
+              <div className="form-row">
                 
                 <div className="form-group half-width">
                   <label htmlFor="email" className="form-label">
@@ -264,29 +267,7 @@ function AddStaff() {
                     disabled={isLoading}
                   />
                 </div>
-              </div>
 
-              {/* Role and Status */}
-              <div className="form-row">
-                <div className="form-group half-width">
-                  <label htmlFor="role" className="form-label">
-                    Role <span className="required">*</span>
-                  </label>
-                  <select
-                    id="role"
-                    name="role"
-                    value={formData.role}
-                    onChange={handleInputChange}
-                    className="form-select"
-                    disabled={isLoading}
-                  >
-                    <option value="">Select role</option>
-                    <option value="Admin">Admin</option>
-                    <option value="Manager">Manager</option>
-                    <option value="Staff">Staff</option>
-                  </select>
-                </div>
-                
                 <div className="form-group half-width">
                   <label htmlFor="status" className="form-label">
                     Status
@@ -303,43 +284,39 @@ function AddStaff() {
                     <option value="Inactive">Inactive</option>
                   </select>
                 </div>
+
               </div>
 
-              {/* Password Info - Only show for add mode */}
-              {!isEditMode && (
-                <div className="form-info">
-                  <p className="info-text">
-                    💡 <strong>Note:</strong> Default password will be the mobile number. 
-                    Staff can change it after first login.
-                  </p>
-                </div>
-              )}
 
               {/* Action Buttons */}
-              <div className="form-actions">
-                <button 
-                  type="button" 
-                  className="cancel-btn" 
-                  onClick={handleCancel}
-                  disabled={isLoading}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="save-staff-btn"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <span className="loading-spinner"></span>
-                      {isEditMode ? "Updating..." : "Creating..."}
-                    </>
-                  ) : (
-                    isEditMode ? "Update Staff" : "Create Staff"
-                  )}
-                </button>
-              </div>
+            
+            {/* Action Buttons */}
+            <div className="add-staff-form-actions">
+              <button 
+                type="button" 
+                className="add-staff-cancel-btn" 
+                onClick={handleCancel}
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                className="add-staff-submit-btn"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <span className="add-staff-loading-spinner"></span>
+                    {isEditMode ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  isEditMode ? "Update" : "Submit"
+                )}
+              </button>
+            </div>
+
+
             </form>
           </div>
         </div>

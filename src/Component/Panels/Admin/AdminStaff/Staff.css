@@ -338,3 +338,84 @@
     height: 12px;
   }
 }
+
+
+
+
+
+.staff-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.staff-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  background: transparent;
+}
+
+.staff-action-btn:hover {
+  transform: scale(1.1);
+}
+
+.staff-view-btn {
+  color: #1890ff;
+}
+
+.staff-view-btn:hover {
+  background-color: #e6f7ff;
+}
+
+.staff-edit-btn {
+  color: #52c41a;
+}
+
+.staff-edit-btn:hover {
+  background-color: #f6ffed;
+}
+
+.staff-delete-btn {
+  color: #ff4d4f;
+}
+
+.staff-delete-btn:hover {
+  background-color: #fff2f0;
+}
+
+/* If you need to ensure proper icon alignment */
+.staff-action-btn svg {
+  display: block;
+  margin: 0 auto;
+}
+
+/* For the LAST LOGIN section */
+.last-login-section {
+  color: #999;
+  font-style: italic;
+}
+
+.staff-actions-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+/* If you want the actions to be more compact */
+.compact-actions .staff-action-btn {
+  width: 28px;
+  height: 28px;
+}
+
+.compact-actions .staff-action-btn svg {
+  size: 14px;
+}
