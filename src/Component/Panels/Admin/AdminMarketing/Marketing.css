@@ -1,6 +1,5 @@
 .marketing-content {
   margin-left: 250px;
-  padding: 20px;
   transition: margin-left 0.3s ease-in-out;
   min-height: 100vh;
   background: #f8fafc;
@@ -12,7 +11,7 @@
 
 .marketing-container {
   max-width: 1200px;
-  margin: 0 auto;
+  margin: 20px auto;
 }
 
 /* Header Styles */

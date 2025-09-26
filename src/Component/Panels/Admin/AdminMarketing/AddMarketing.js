@@ -46,6 +46,8 @@ function AddMarketing() {
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
       {/* <AdminHeader isCollapsed={isCollapsed} /> */}
       <div className={`add-marketing-content ${isCollapsed ? "collapsed" : ""}`}>
+                      <AdminHeader isCollapsed={isCollapsed} />
+
         <div className="add-marketing-container">
           <div className="add-marketing-header">
             <h1>Create New Offer</h1>

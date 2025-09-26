@@ -38,6 +38,8 @@ function AddProduct() {
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
       
       <div className={`main-content ${isCollapsed ? "collapsed" : ""}`}>
+                <AdminHeader isCollapsed={isCollapsed} />
+
         <div className="add-product-container">
           <div className="add-product-header">
             <h1>Add New Product</h1>
@@ -195,7 +197,8 @@ function AddProduct() {
               <button type="submit" className="submit-btn">
                 Add Product
               </button>
-              <button type="button" className="cancel-btn">
+              <button type="button" className="cancel-btn"
+                onClick={() => window.history.back()}>
                 Cancel
               </button>
             </div>

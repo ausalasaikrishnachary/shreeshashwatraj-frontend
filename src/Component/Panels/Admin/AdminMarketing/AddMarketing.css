@@ -1,6 +1,5 @@
 .add-marketing-content {
   margin-left: 250px;
-  padding: 20px;
   transition: margin-left 0.3s ease-in-out;
   min-height: 100vh;
   background: #f8fafc;
@@ -11,8 +10,8 @@
 }
 
 .add-marketing-container {
-  max-width: 800px;
-  margin: 0 auto;
+  /* max-width: 800px; */
+  margin: 20px auto;
   background: white;
   border-radius: 12px;
   padding: 30px;

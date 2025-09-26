@@ -1,48 +1,582 @@
-import React, { useState } from "react";
+// import React, { useState, useEffect } from "react";
+// import { useNavigate } from "react-router-dom";
+// import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
+// import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
+// import ReusableTable from "../../../Layouts/TableLayout/DataTable";
+// import "./Retailers.css";
+
+// function Retailers() {
+//   const [isCollapsed, setIsCollapsed] = useState(false);
+//   const [retailersData, setRetailersData] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState(null);
+//   const navigate = useNavigate();
+
+//   // Fetch data from API
+//   useEffect(() => {
+//     const fetchRetailers = async () => {
+//       try {
+//         const response = await fetch('http://localhost:5000/accounts');
+//         if (!response.ok) {
+//           throw new Error('Failed to fetch data');
+//         }
+//         const data = await response.json();
+        
+//         // Transform API data to match table structure
+//         const transformedData = data.map(item => ({
+//           id: item.id,
+//           retailer: item.business_name || item.name,
+//           contact: `${item.mobile_number || ''}\n${item.email || ''}`,
+//           typeLocation: `${item.entity_type || 'Customer'}\n${item.billing_city || item.shipping_city || 'N/A'}`,
+//           assignedStaff: "Not Assigned", // This field doesn't exist in API
+//           performance: "0/10\n₹ 0", // Default performance data
+//           status: "Active" // Default status
+//         }));
+        
+//         setRetailersData(transformedData);
+//         setLoading(false);
+//       } catch (err) {
+//         setError(err.message);
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchRetailers();
+//   }, []);
+
+//   // Custom renderers
+//   const renderRetailerCell = (item) => (
+//     <div className="retailers-table__retailer-cell">
+//       <strong className="retailers-table__retailer-name">{item.retailer}</strong>
+//       <span className="retailers-table__retailer-id">ID: {item.id}</span>
+//     </div>
+//   );
+
+//   const renderContactCell = (item) => (
+//     <div className="retailers-table__contact-cell">
+//       <div className="retailers-table__contact-item">
+//         <span className="retailers-table__contact-icon">📞</span>
+//         {item.contact.split("\n")[0]}
+//       </div>
+//       <div className="retailers-table__contact-email">
+//         {item.contact.split("\n")[1]}
+//       </div>
+//     </div>
+//   );
+
+//   const renderTypeLocationCell = (item) => (
+//     <div className="retailers-table__type-location-cell">
+//       <strong className="retailers-table__type">
+//         {item.typeLocation.split("\n")[0]}
+//       </strong>
+//       <div className="retailers-table__location">
+//         <span className="retailers-table__location-icon">📍</span>
+//         {item.typeLocation.split("\n")[1]}
+//       </div>
+//     </div>
+//   );
+
+//   const renderPerformanceCell = (item) => (
+//     <div className="retailers-table__performance-cell">
+//       <div className="retailers-table__rating">
+//         <span className="retailers-table__rating-icon">⭐</span>
+//         {item.performance.split("\n")[0]}
+//       </div>
+//       <div className="retailers-table__revenue">
+//         {item.performance.split("\n")[1]}
+//       </div>
+//     </div>
+//   );
+
+//   const renderStatusCell = (item) => (
+//     <span
+//       className={`retailers-table__status retailers-table__status--${item.status.toLowerCase()}`}
+//     >
+//       {item.status}
+//     </span>
+//   );
+
+//   const columns = [
+//     { key: "retailer", title: "Retailer", render: renderRetailerCell },
+//     { key: "contact", title: "Contact", render: renderContactCell },
+//     { key: "typeLocation", title: "Type & Location", render: renderTypeLocationCell },
+//     { key: "assignedStaff", title: "Assigned Staff" },
+//     { key: "performance", title: "Performance", render: renderPerformanceCell },
+//     { key: "status", title: "Status", render: renderStatusCell }
+//   ];
+
+//   const handleAddRetailerClick = () => {
+//     navigate("/retailers/add");
+//   };
+
+//   // Loading state
+//   if (loading) {
+//     return (
+//       <div className="retailers-wrapper">
+//         <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+//         <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
+//           <AdminHeader isCollapsed={isCollapsed} />
+//           <div className="retailers-main-content">
+//             <div className="retailers-loading">Loading retailers...</div>
+//           </div>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   // Error state
+//   if (error) {
+//     return (
+//       <div className="retailers-wrapper">
+//         <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+//         <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
+//           <AdminHeader isCollapsed={isCollapsed} />
+//           <div className="retailers-main-content">
+//             <div className="retailers-error">Error: {error}</div>
+//           </div>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="retailers-wrapper">
+//       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+      
+//       <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
+//         <AdminHeader isCollapsed={isCollapsed} />
+
+//         <div className="retailers-main-content">
+//           <div className="retailers-content-section">
+//             {/* Page Title and Add Button */}
+//             <div className="retailers-header-top">
+//               <div className="retailers-title-section">
+//                 <h1 className="retailers-main-title">All Retailers</h1>
+//                 <p className="retailers-subtitle">
+//                   Manage retailer relationships and track performance
+//                 </p>
+//               </div>
+//               <button
+//                 className="retailers-add-button retailers-add-button--top"
+//                 onClick={handleAddRetailerClick}
+//               >
+//                 <span className="retailers-add-icon">+</span>
+//                 Add Retailer
+//               </button>
+//             </div>
+
+//             {/* Search Bar */}
+//             <div className="retailers-search-container">
+//               <div className="retailers-search-box">
+//                 <span className="retailers-search-icon">🔍</span>
+//                 <input
+//                   type="text"
+//                   placeholder="Search retailers..."
+//                   className="retailers-search-input"
+//                 />
+//               </div>
+//             </div>
+
+//             {/* Retailers List Section */}
+//             <div className="retailers-list-section">
+//               <div className="retailers-section-header">
+//                 <h2 className="retailers-section-title">
+//                   Retailers ({retailersData.length})
+//                 </h2>
+//                 <p className="retailers-section-description">
+//                   Track retailer performance and manage relationships
+//                 </p>
+//               </div>
+
+//               {/* Table Section */}
+//               <div className="retailers-table-container">
+//                 {retailersData.length > 0 ? (
+//                   <ReusableTable
+//                     data={retailersData}
+//                     columns={columns}
+//                     initialEntriesPerPage={10}
+//                     searchPlaceholder="Search retailers..."
+//                     showSearch={false}
+//                     showEntriesSelector={true}
+//                     showPagination={true}
+//                   />
+//                 ) : (
+//                   <div className="retailers-no-data">
+//                     No retailers found. Click "Add Retailer" to get started.
+//                   </div>
+//                 )}
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+// export default Retailers;
+
+
+
+
+
+// import React, { useState, useEffect } from "react";
+// import { useNavigate } from "react-router-dom";
+// import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
+// import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
+// import ReusableTable from "../../../Layouts/TableLayout/DataTable";
+// import "./Retailers.css";
+
+// function Retailers() {
+//   const [isCollapsed, setIsCollapsed] = useState(false);
+//   const [retailersData, setRetailersData] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState(null);
+//   const navigate = useNavigate();
+
+//   // Fetch data from API
+//   const fetchRetailers = async () => {
+//     try {
+//       const response = await fetch('http://localhost:5000/accounts');
+//       if (!response.ok) {
+//         throw new Error('Failed to fetch data');
+//       }
+//       const data = await response.json();
+      
+//       // Transform API data to match table structure
+//       const transformedData = data.map(item => ({
+//         id: item.id,
+//         retailer: item.business_name || item.name,
+//         contact: `${item.mobile_number || ''}\n${item.email || ''}`,
+//         typeLocation: `${item.entity_type || 'Customer'}\n${item.billing_city || item.shipping_city || 'N/A'}`,
+//         assignedStaff: "Not Assigned",
+//         performance: "0/10\n₹ 0",
+//         status: "Active",
+//         // Include original data for edit/view
+//         originalData: item
+//       }));
+      
+//       setRetailersData(transformedData);
+//       setLoading(false);
+//     } catch (err) {
+//       setError(err.message);
+//       setLoading(false);
+//     }
+//   };
+
+//   useEffect(() => {
+//     fetchRetailers();
+//   }, []);
+
+//   // Handle Edit
+//   const handleEdit = (retailer) => {
+//     navigate(`/retailers/edit/${retailer.id}`, { 
+//       state: { retailerData: retailer.originalData } 
+//     });
+//   };
+
+//   // Handle View
+//   const handleView = (retailer) => {
+//     navigate(`/retailers/view/${retailer.id}`, { 
+//       state: { retailerData: retailer.originalData } 
+//     });
+//   };
+
+//   // Handle Delete
+//   const handleDelete = async (retailer) => {
+//     if (window.confirm(`Are you sure you want to delete ${retailer.retailer}?`)) {
+//       try {
+//         const response = await fetch(`http://localhost:5000/accounts/${retailer.id}`, {
+//           method: 'DELETE'
+//         });
+
+//         if (!response.ok) {
+//           throw new Error('Failed to delete retailer');
+//         }
+
+//         // Refresh the data
+//         await fetchRetailers();
+//         alert('Retailer deleted successfully!');
+//       } catch (err) {
+//         alert('Error deleting retailer: ' + err.message);
+//       }
+//     }
+//   };
+
+//   // Action buttons renderer
+//   const renderActionsCell = (item) => (
+//     <div className="retailers-table__actions">
+//       <button 
+//         className="retailers-table__action-btn retailers-table__action-btn--view"
+//         onClick={() => handleView(item)}
+//         title="View Details"
+//       >
+//         👁️
+//       </button>
+//       <button 
+//         className="retailers-table__action-btn retailers-table__action-btn--edit"
+//         onClick={() => handleEdit(item)}
+//         title="Edit"
+//       >
+//         ✏️
+//       </button>
+//       <button 
+//         className="retailers-table__action-btn retailers-table__action-btn--delete"
+//         onClick={() => handleDelete(item)}
+//         title="Delete"
+//       >
+//         🗑️
+//       </button>
+//     </div>
+//   );
+
+//   // Custom renderers
+//   const renderRetailerCell = (item) => (
+//     <div className="retailers-table__retailer-cell">
+//       <strong className="retailers-table__retailer-name">{item.retailer}</strong>
+//       <span className="retailers-table__retailer-id">ID: {item.id}</span>
+//     </div>
+//   );
+
+//   const renderContactCell = (item) => (
+//     <div className="retailers-table__contact-cell">
+//       <div className="retailers-table__contact-item">
+//         <span className="retailers-table__contact-icon">📞</span>
+//         {item.contact.split("\n")[0]}
+//       </div>
+//       <div className="retailers-table__contact-email">
+//         {item.contact.split("\n")[1]}
+//       </div>
+//     </div>
+//   );
+
+//   const renderTypeLocationCell = (item) => (
+//     <div className="retailers-table__type-location-cell">
+//       <strong className="retailers-table__type">
+//         {item.typeLocation.split("\n")[0]}
+//       </strong>
+//       <div className="retailers-table__location">
+//         <span className="retailers-table__location-icon">📍</span>
+//         {item.typeLocation.split("\n")[1]}
+//       </div>
+//     </div>
+//   );
+
+//   const renderPerformanceCell = (item) => (
+//     <div className="retailers-table__performance-cell">
+//       <div className="retailers-table__rating">
+//         <span className="retailers-table__rating-icon">⭐</span>
+//         {item.performance.split("\n")[0]}
+//       </div>
+//       <div className="retailers-table__revenue">
+//         {item.performance.split("\n")[1]}
+//       </div>
+//     </div>
+//   );
+
+//   const renderStatusCell = (item) => (
+//     <span
+//       className={`retailers-table__status retailers-table__status--${item.status.toLowerCase()}`}
+//     >
+//       {item.status}
+//     </span>
+//   );
+
+//   const columns = [
+//     { key: "retailer", title: "Retailer", render: renderRetailerCell },
+//     { key: "contact", title: "Contact", render: renderContactCell },
+//     { key: "typeLocation", title: "Type & Location", render: renderTypeLocationCell },
+//     { key: "assignedStaff", title: "Assigned Staff" },
+//     { key: "performance", title: "Performance", render: renderPerformanceCell },
+//     { key: "status", title: "Status", render: renderStatusCell },
+//     { key: "actions", title: "Actions", render: renderActionsCell }
+//   ];
+
+//   const handleAddRetailerClick = () => {
+//     navigate("/retailers/add");
+//   };
+
+//   // Loading state
+//   if (loading) {
+//     return (
+//       <div className="retailers-wrapper">
+//         <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+//         <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
+//           <AdminHeader isCollapsed={isCollapsed} />
+//           <div className="retailers-main-content">
+//             <div className="retailers-loading">Loading retailers...</div>
+//           </div>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   // Error state
+//   if (error) {
+//     return (
+//       <div className="retailers-wrapper">
+//         <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+//         <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
+//           <AdminHeader isCollapsed={isCollapsed} />
+//           <div className="retailers-main-content">
+//             <div className="retailers-error">Error: {error}</div>
+//           </div>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="retailers-wrapper">
+//       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+      
+//       <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
+//         <AdminHeader isCollapsed={isCollapsed} />
+
+//         <div className="retailers-main-content">
+//           <div className="retailers-content-section">
+//             {/* Page Title and Add Button */}
+//             <div className="retailers-header-top">
+//               <div className="retailers-title-section">
+//                 <h1 className="retailers-main-title">All Retailers</h1>
+//                 <p className="retailers-subtitle">
+//                   Manage retailer relationships and track performance
+//                 </p>
+//               </div>
+//               <button
+//                 className="retailers-add-button retailers-add-button--top"
+//                 onClick={handleAddRetailerClick}
+//               >
+//                 <span className="retailers-add-icon">+</span>
+//                 Add Retailer
+//               </button>
+//             </div>
+
+//             {/* Search Bar */}
+//             <div className="retailers-search-container">
+//               <div className="retailers-search-box">
+//                 <span className="retailers-search-icon">🔍</span>
+//                 <input
+//                   type="text"
+//                   placeholder="Search retailers..."
+//                   className="retailers-search-input"
+//                 />
+//               </div>
+//             </div>
+
+//             {/* Retailers List Section */}
+//             <div className="retailers-list-section">
+//               <div className="retailers-section-header">
+//                 <h2 className="retailers-section-title">
+//                   Retailers ({retailersData.length})
+//                 </h2>
+//                 <p className="retailers-section-description">
+//                   Track retailer performance and manage relationships
+//                 </p>
+//               </div>
+
+//               {/* Table Section */}
+//               <div className="retailers-table-container">
+//                 {retailersData.length > 0 ? (
+//                   <ReusableTable
+//                     data={retailersData}
+//                     columns={columns}
+//                     initialEntriesPerPage={10}
+//                     searchPlaceholder="Search retailers..."
+//                     showSearch={false}
+//                     showEntriesSelector={true}
+//                     showPagination={true}
+//                   />
+//                 ) : (
+//                   <div className="retailers-no-data">
+//                     No retailers found. Click "Add Retailer" to get started.
+//                   </div>
+//                 )}
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+// export default Retailers;
+
+
+
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
+import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import "./Retailers.css";
+import axios from "axios";
+import { baseurl } from "../../../BaseURL/BaseURL";
 
 function Retailers() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
+  const [retailersData, setRetailersData] = useState([]);
+  const [filteredRetailersData, setFilteredRetailersData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock data matching the image exactly
-  const retailersData = [
-    {
-      id: 1,
-      retailer: "Sharma Electronics",
-      contact: "+91 98765 43210\nsharma@email.com",
-      typeLocation: "Electronics\nDelhi",
-      assignedStaff: "Ravi Kumar",
-      performance: "8.5/10\n₹ 125,000",
-      status: "Active"
-    },
-    {
-      id: 2,
-      retailer: "Gupta General Store",
-      contact: "+91 98765 43211\ngupta@email.com",
-      typeLocation: "General Store\nMumbai",
-      assignedStaff: "Priya Singh",
-      performance: "7.2/10\n₹ 89,000",
-      status: "Active"
-    },
-    {
-      id: 3,
-      retailer: "Khan Textiles",
-      contact: "+91 98765 43212\nkhan@email.com",
-      typeLocation: "Textiles\nBangalore",
-      assignedStaff: "Amit Verma",
-      performance: "9.1/10\n₹ 156,000",
-      status: "Active"
+  // Fetch retailers data from API
+  useEffect(() => {
+    fetchRetailers();
+  }, []);
+
+  // Filter retailers by role when data changes
+  useEffect(() => {
+    if (retailersData.length > 0) {
+      const filteredData = retailersData.filter(item => item.role === "retailer");
+      setFilteredRetailersData(filteredData);
     }
-  ];
+  }, [retailersData]);
 
-  // Custom renderers (keep your existing renderers)
+  const fetchRetailers = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${baseurl}/accounts`);
+      setRetailersData(response.data);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch retailers:', err);
+      setError('Failed to load retailers data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle delete retailer
+  const handleDelete = async (id, retailerName) => {
+    if (window.confirm(`Are you sure you want to delete ${retailerName}?`)) {
+      try {
+        await axios.delete(`${baseurl}/accounts/${id}`);
+        alert('Retailer deleted successfully!');
+        fetchRetailers(); // Refresh the list
+      } catch (err) {
+        console.error('Failed to delete retailer:', err);
+        alert('Failed to delete retailer');
+      }
+    }
+  };
+
+  // Handle edit retailer
+  const handleEdit = (id) => {
+    navigate(`/retailers/edit/${id}`);
+  };
+
+  // Handle view retailer
+  const handleView = (id) => {
+    navigate(`/retailers/view/${id}`);
+  };
+
+  // Custom renderers
   const renderRetailerCell = (item) => (
     <div className="retailers-table__retailer-cell">
-      <strong className="retailers-table__retailer-name">{item.retailer}</strong>
+      <strong className="retailers-table__retailer-name">{item.business_name || item.name}</strong>
       <span className="retailers-table__retailer-id">ID: {item.id}</span>
     </div>
   );
@@ -51,10 +585,10 @@ function Retailers() {
     <div className="retailers-table__contact-cell">
       <div className="retailers-table__contact-item">
         <span className="retailers-table__contact-icon">📞</span>
-        {item.contact.split("\n")[0]}
+        {item.mobile_number}
       </div>
       <div className="retailers-table__contact-email">
-        {item.contact.split("\n")[1]}
+        {item.email}
       </div>
     </div>
   );
@@ -62,11 +596,11 @@ function Retailers() {
   const renderTypeLocationCell = (item) => (
     <div className="retailers-table__type-location-cell">
       <strong className="retailers-table__type">
-        {item.typeLocation.split("\n")[0]}
+        {item.entity_type}
       </strong>
       <div className="retailers-table__location">
         <span className="retailers-table__location-icon">📍</span>
-        {item.typeLocation.split("\n")[1]}
+        {item.shipping_city}, {item.shipping_state}
       </div>
     </div>
   );
@@ -75,57 +609,109 @@ function Retailers() {
     <div className="retailers-table__performance-cell">
       <div className="retailers-table__rating">
         <span className="retailers-table__rating-icon">⭐</span>
-        {item.performance.split("\n")[0]}
+        {item.tds_slab_rate || "N/A"}
       </div>
       <div className="retailers-table__revenue">
-        {item.performance.split("\n")[1]}
+        ₹ {item.opening_balance ? parseInt(item.opening_balance).toLocaleString() : "0"}
       </div>
     </div>
   );
 
+  const renderGroupTypeCell = (item) => (
+    <div className="retailers-table__group-type-cell">
+      <span className="retailers-table__group-type">
+        {item.group || "N/A"}
+      </span>
+    </div>
+  );
+
   const renderStatusCell = (item) => (
-    <span
-      className={`retailers-table__status retailers-table__status--${item.status.toLowerCase()}`}
-    >
-      {item.status}
+    <span className={`retailers-table__status retailers-table__status--active`}>
+      Active
     </span>
+  );
+
+  const renderActionsCell = (item) => (
+    <div className="retailers-table__actions">
+      <button 
+        className="retailers-table__action-btn retailers-table__action-btn--view"
+        onClick={() => handleView(item.id)}
+        title="View"
+      >
+        👁️
+      </button>
+      <button 
+        className="retailers-table__action-btn retailers-table__action-btn--edit"
+        onClick={() => handleEdit(item.id)}
+        title="Edit"
+      >
+        ✏️
+      </button>
+      <button 
+        className="retailers-table__action-btn retailers-table__action-btn--delete"
+        onClick={() => handleDelete(item.id, item.business_name || item.name)}
+        title="Delete"
+      >
+        🗑️
+      </button>
+    </div>
   );
 
   const columns = [
     { key: "retailer", title: "Retailer", render: renderRetailerCell },
     { key: "contact", title: "Contact", render: renderContactCell },
     { key: "typeLocation", title: "Type & Location", render: renderTypeLocationCell },
-    { key: "assignedStaff", title: "Assigned Staff" },
+    { key: "display_name", title: "Display Name" },
+    { key: "group", title: "Group Type", render: renderGroupTypeCell },
     { key: "performance", title: "Performance", render: renderPerformanceCell },
-    { key: "status", title: "Status", render: renderStatusCell }
+    { key: "status", title: "Status", render: renderStatusCell },
+    { key: "actions", title: "Actions", render: renderActionsCell }
   ];
 
   const handleAddRetailerClick = () => {
     navigate("/retailers/add");
   };
 
+  if (loading) {
+    return (
+      <div className="retailers-wrapper">
+        <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
+          <div className="retailers-main-content">
+            <div className="loading-spinner">Loading retailers...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="retailers-wrapper">
+        <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
+          <div className="retailers-main-content">
+            <div className="error-message">
+              <p>{error}</p>
+              <button onClick={fetchRetailers} className="retry-button">
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="retailers-wrapper">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
       
-      {/* Main Content Area */}
       <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
-        {/* Remove AdminHeader component since we have custom header below */}
-        
-        <div className="retailers-main-content">
-          {/* Header Section - This replaces the AdminHeader */}
-          <div className="retailers-page-header">
-            <div className="retailers-page-header-content">
-              <div className="retailers-header-info">
-                <h1 className="retailers-page-title">Retailers</h1>
-                <span className="retailers-welcome">Welcome back, Admin User</span>
-              </div>
-            </div>
-          </div>
+        <AdminHeader isCollapsed={isCollapsed} />
 
-          {/* Content Section */}
+        <div className="retailers-main-content">
           <div className="retailers-content-section">
-            {/* Page Title and Add Button */}
             <div className="retailers-header-top">
               <div className="retailers-title-section">
                 <h1 className="retailers-main-title">All Retailers</h1>
@@ -142,7 +728,6 @@ function Retailers() {
               </button>
             </div>
 
-            {/* Search Bar */}
             <div className="retailers-search-container">
               <div className="retailers-search-box">
                 <span className="retailers-search-icon">🔍</span>
@@ -154,25 +739,23 @@ function Retailers() {
               </div>
             </div>
 
-            {/* Retailers List Section */}
             <div className="retailers-list-section">
               <div className="retailers-section-header">
                 <h2 className="retailers-section-title">
-                  Retailers ({retailersData.length})
+                  Retailers ({filteredRetailersData.length})
                 </h2>
                 <p className="retailers-section-description">
                   Track retailer performance and manage relationships
                 </p>
               </div>
 
-              {/* Table Section */}
               <div className="retailers-table-container">
                 <ReusableTable
-                  data={retailersData}
+                  data={filteredRetailersData}
                   columns={columns}
-                  initialEntriesPerPage={2}
+                  initialEntriesPerPage={10}
                   searchPlaceholder="Search retailers..."
-                  showSearch={false}
+                  showSearch={true}
                   showEntriesSelector={true}
                   showPagination={true}
                 />
