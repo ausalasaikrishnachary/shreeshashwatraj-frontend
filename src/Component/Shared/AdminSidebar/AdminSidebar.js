@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   FaTachometerAlt,
   FaUsers,
@@ -20,6 +20,7 @@ import UserCard from "../../Panels/UserCard/UserCard"
 function AdminSidebar({ isCollapsed, setIsCollapsed }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const navigate = useNavigate();
 
   // Detect screen size changes
   useEffect(() => {
@@ -55,8 +56,26 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
   };
 
   const handleLogout = () => {
-    // Add your logout logic here
-    console.log("Logout clicked");
+    // Clear all authentication data from localStorage
+    localStorage.removeItem("user");
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("isAdmin");
+    localStorage.removeItem("isStaff");
+    localStorage.removeItem("isRetailer");
+    localStorage.removeItem("loginTime");
+    
+    // Optional: Clear all localStorage (use with caution)
+    // localStorage.clear();
+    
+    // Navigate to login page
+    navigate("/login");
+    
+    // Close mobile sidebar if open
+    if (isMobile) {
+      setIsMobileOpen(false);
+    }
+    
+    console.log("Logged out successfully");
   };
 
   return (
@@ -110,6 +129,17 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
                 </NavLink>
               </li>
             ))}
+            
+            {/* Logout Button */}
+            <li className="logout-item">
+              <button 
+                className="logout-btn"
+                onClick={handleLogout}
+              >
+                <span className="icon"><FaSignOutAlt /></span>
+                {(!isCollapsed && !isMobile) && <span className="link-text">Logout</span>}
+              </button>
+            </li>
           </ul>
         </nav>
 

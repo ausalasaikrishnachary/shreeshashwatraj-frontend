@@ -444,3 +444,54 @@
     font-size: 0.85rem;
   }
 }
+
+
+/* Logout Button Styles */
+.logout-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  color: #e9ecef;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.logout-btn:hover {
+  background-color: #495057;
+  color: #fff;
+  border-left: 4px solid #dc3545;
+}
+
+.logout-btn .icon {
+  margin-right: 12px;
+  font-size: 16px;
+  min-width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* When sidebar is collapsed */
+.sidebar.collapsed .logout-btn {
+  justify-content: center;
+  padding: 12px;
+}
+
+.sidebar.collapsed .logout-btn .icon {
+  margin-right: 0;
+}
+
+/* Mobile styles */
+.sidebar.mobile .logout-btn {
+  padding: 15px 20px;
+}
+
+.sidebar.mobile .logout-btn .link-text {
+  display: block;
+}

@@ -1,10 +1,19 @@
 import React from "react";
-import { FaSignOutAlt } from "react-icons/fa"; // logout icon
+import { FaSignOutAlt } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import "./UserCard.css";
 
 const UserCard = () => {
+  const navigate = useNavigate();
+
   const handleLogout = () => {
-    // 🔑 add your logout logic here (clear auth, redirect, etc.)
+    // Clear localStorage
+    localStorage.removeItem("user");
+    localStorage.removeItem("isAdmin");
+    
+    // Navigate to home page
+    navigate("/");
+    
     console.log("User logged out");
   };
 

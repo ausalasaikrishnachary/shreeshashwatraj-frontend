@@ -230,7 +230,7 @@ function Staff() {
             {/* Page Header */}
             <div className="page-header-section">
               <h1 className="page-title">Staff Management</h1>
-              <p className="page-subtitle">Manage staff members with role 'Staff'</p>
+              {/* <p className="page-subtitle">Manage staff members with role 'Staff'</p> */}
             </div>
 
             {/* Controls Section */}

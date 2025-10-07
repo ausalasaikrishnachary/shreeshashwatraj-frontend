@@ -1,25 +1,87 @@
+// Login.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
 
 function Login() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const credentials = {
-    "admin@gmail.com": { password: "1234", route: "/admindashboard" },
-    "staff@gmail.com": { password: "1234", route: "/staffdashboard" },
-    "retailer@gmail.com": { password: "1234", route: "/retailerdashboard" },
+  // Static admin credentials
+  const ADMIN_CREDENTIALS = {
+    email: "admin@gmail.com",
+    password: "1234"
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const user = credentials[email];
-    if (user && user.password === password) {
-      navigate(user.route);
-    } else {
-      alert("Invalid email or password!");
+    setLoading(true);
+    setError("");
+
+    try {
+      // Check for static admin credentials first
+      if (username.trim() === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
+        // Admin login successful
+        const adminUser = {
+          id: 1,
+          username: "admin",
+          email: ADMIN_CREDENTIALS.email,
+          role: "admin",
+          name: "Administrator"
+        };
+        
+        // Store admin data in localStorage
+        localStorage.setItem("user", JSON.stringify(adminUser));
+        localStorage.setItem("isAdmin", "true");
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("loginTime", new Date().toISOString());
+        
+        // Navigate to admin dashboard or appropriate route
+        navigate("/admindashboard");
+        return;
+      }
+
+      // If not admin, proceed with regular login API call
+      const response = await fetch("http://localhost:5000/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: username.trim(),
+          password: password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store user data in localStorage
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("loginTime", new Date().toISOString());
+        
+        // Store role-specific flags
+        if (data.user.role.toLowerCase() === 'admin') {
+          localStorage.setItem("isAdmin", "true");
+        } else if (data.user.role.toLowerCase() === 'staff') {
+          localStorage.setItem("isStaff", "true");
+        } else if (data.user.role.toLowerCase() === 'retailer') {
+          localStorage.setItem("isRetailer", "true");
+        }
+        
+        navigate(data.route);
+      } else {
+        setError(data.error || "Login failed");
+      }
+    } catch (err) {
+      setError("Network error. Please try again.");
+      console.error("Login error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -28,15 +90,22 @@ function Login() {
       <form className="login-form" onSubmit={handleSubmit}>
         <h2>Welcome Back 👋</h2>
 
-        {/* Email Field */}
+        {/* Error Message */}
+        {error && (
+          <div className="error-message">
+            {error}
+          </div>
+        )}
+
+        {/* Username Field (Email or Mobile) */}
         <div className="form-group">
-          <label htmlFor="email">Email Address</label>
+          <label htmlFor="username">Email or Mobile Number</label>
           <input
-            type="email"
-            id="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            id="username"
+            placeholder="Enter your email or mobile number"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             required
           />
         </div>
@@ -54,15 +123,10 @@ function Login() {
           />
         </div>
 
-        {/* Button */}
-        <button type="submit">Login</button>
-
-        {/* Hint */}
-        {/* <div className="hint">
-          <p><strong>Admin:</strong> admin@gmail.com / 1234</p>
-          <p><strong>Staff:</strong> staff@gmail.com / 1234</p>
-          <p><strong>Retailer:</strong> retailer@gmail.com / 1234</p>
-        </div> */}
+        {/* Login Button */}
+        <button type="submit" disabled={loading}>
+          {loading ? "Logging in..." : "Login"}
+        </button>
       </form>
     </div>
   );
