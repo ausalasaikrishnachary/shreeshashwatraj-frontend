@@ -55,28 +55,8 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
     setIsMobileOpen(false);
   };
 
-  const handleLogout = () => {
-    // Clear all authentication data from localStorage
-    localStorage.removeItem("user");
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("isAdmin");
-    localStorage.removeItem("isStaff");
-    localStorage.removeItem("isRetailer");
-    localStorage.removeItem("loginTime");
-    
-    // Optional: Clear all localStorage (use with caution)
-    // localStorage.clear();
-    
-    // Navigate to login page
-    navigate("/login");
-    
-    // Close mobile sidebar if open
-    if (isMobile) {
-      setIsMobileOpen(false);
-    }
-    
-    console.log("Logged out successfully");
-  };
+
+
 
   return (
     <>
@@ -130,23 +110,13 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
               </li>
             ))}
             
-            {/* Logout Button */}
-            <li className="logout-item">
-              <button 
-                className="logout-btn"
-                onClick={handleLogout}
-              >
-                <span className="icon"><FaSignOutAlt /></span>
-                {(!isCollapsed && !isMobile) && <span className="link-text">Logout</span>}
-              </button>
-            </li>
           </ul>
         </nav>
 
         {/* Updated sidebar footer with rounded border */}
-        <div className="sidebar-footer">
-          <UserCard />
-        </div>
+          <div className="sidebar-footer">
+            <UserCard isCollapsed={isCollapsed} />
+          </div>
       </div>
     </>
   );

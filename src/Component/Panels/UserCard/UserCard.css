@@ -1,3 +1,4 @@
+/* UserCard.css */
 .user-card {
   display: flex;
   justify-content: space-between;
@@ -5,11 +6,12 @@
   width: 100%;
   max-width: 400px;
   padding: 12px 16px;
-  background-color: #111827; /* dark background */
+  background-color: #111827;
   color: #fff;
-  border: 1px solid #374151; /* border color */
+  border: 1px solid #374151;
   border-radius: 8px;
   box-sizing: border-box;
+  transition: all 0.3s ease-in-out;
 }
 
 /* User Info */
@@ -25,7 +27,7 @@
 
 .user-email {
   font-size: 12px;
-  color: #9ca3af; /* gray text */
+  color: #9ca3af;
 }
 
 /* Logout Button */
@@ -42,7 +44,7 @@
 }
 
 .logout-btn:hover {
-  background-color: #1f2937; /* hover effect */
+  background-color: #1f2937;
 }
 
 .logout-icon {
@@ -51,11 +53,46 @@
   color: #fff;
 }
 
-/* Responsive */
-@media (max-width: 480px) {
+/* User Card Collapsed State */
+.user-card.collapsed {
+  justify-content: center;
+  padding: 12px;
+  max-width: none; /* Remove max-width restriction */
+}
+
+.user-card.collapsed .user-info {
+  display: none;
+}
+
+/* Logout button icon-only state */
+.logout-btn.icon-only {
+  margin: 0;
+  padding: 8px;
+}
+
+/* Add proper spacing between content and icon in large screen */
+.user-card:not(.collapsed) {
+  gap: 16px;
+}
+
+.user-card:not(.collapsed) .user-info {
+  flex: 1;
+}
+
+.user-card:not(.collapsed) .logout-btn {
+  flex-shrink: 0;
+}
+
+/* Responsive - Ensure UserCard is always visible */
+@media (max-width: 768px) {
   .user-card {
     max-width: 100%;
     padding: 10px 12px;
+  }
+
+  .user-card.collapsed {
+    padding: 10px;
+    max-width: 100%; /* Ensure full width on mobile */
   }
 
   .user-name {
@@ -72,4 +109,13 @@
   }
 }
 
-
+/* Extra small screens */
+@media (max-width: 480px) {
+  .user-card {
+    padding: 8px 10px;
+  }
+  
+  .user-card.collapsed {
+    padding: 8px;
+  }
+}

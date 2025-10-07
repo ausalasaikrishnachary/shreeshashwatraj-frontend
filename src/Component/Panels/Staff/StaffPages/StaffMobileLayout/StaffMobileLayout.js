@@ -24,11 +24,20 @@ function StaffMobileLayout({ children }) {
 
   const isActive = (path) => location.pathname === path;
 
-  const handleLogout = () => {
-    // Add your logout logic here
-    console.log("Logout clicked");
-     navigate("/");
-  };
+ const handleLogout = () => {
+  // Clear staff-related localStorage items
+  localStorage.removeItem("user");
+  localStorage.removeItem("isStaff");
+  localStorage.removeItem("isLoggedIn");
+  localStorage.removeItem("loginTime");
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("userRole");
+  
+  // Navigate to home page
+  navigate("/");
+  
+  console.log("Staff logged out");
+};
 
   return (
     <div className="staff-mobile-container">
@@ -40,7 +49,7 @@ function StaffMobileLayout({ children }) {
         </div>
         <button className="logout-btn" onClick={handleLogout}>
           <FaSignOutAlt />
-          <span>Logout</span>
+          {/* <span>Logout</span> */}
         </button>
       </header>
 
