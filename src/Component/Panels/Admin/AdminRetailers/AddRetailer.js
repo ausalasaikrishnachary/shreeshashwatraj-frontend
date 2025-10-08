@@ -1576,7 +1576,6 @@
 
 
 
-
 import React, { useState, useEffect } from 'react'; 
 import FormLayout, { FormSection } from '../../../Layouts/FormLayout/FormLayout';
 import "./AddRetailer.css";
@@ -1598,6 +1597,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
   const [accountGroups, setAccountGroups] = useState([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [loading, setLoading] = useState(mode !== 'add');
+  const [staffList, setStaffList] = useState([]);
   
   const [formData, setFormData] = useState({
     group: "customer",
@@ -1608,6 +1608,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     group: "",
     mobile_number: "",
     email: "",
+   assigned_staff: "",
+    staffid: "",
     gstin: "",
     gst_registered_name: "",
     business_name: "",
@@ -1695,6 +1697,16 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     }
   }, [id, mode]);
 
+  // Sync assigned_staff name when staffid changes or staffList loads
+  useEffect(() => {
+    if (formData.staffid && staffList.length > 0) {
+      const selectedOption = staffList.find(option => option.value == formData.staffid);
+      if (selectedOption && formData.assigned_staff !== selectedOption.label) {
+        setFormData(prev => ({ ...prev, assigned_staff: selectedOption.label }));
+      }
+    }
+  }, [formData.staffid, staffList]);
+
   const handleGstinChange = async (e) => {
     if (isViewing) return;
     
@@ -1770,6 +1782,16 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
+
+    // Special handling for staffid
+    if (name === 'staffid') {
+      const selectedOption = staffList.find(option => option.value === value);
+      if (selectedOption) {
+        setFormData(prev => ({ ...prev, assigned_staff: selectedOption.label }));
+      } else {
+        setFormData(prev => ({ ...prev, assigned_staff: '' }));
+      }
+    }
   };
 
   const validateCurrentTab = () => {
@@ -1779,7 +1801,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     
     switch (activeTab) {
       case 'information':
-        const infoFields = ['title', 'name', 'role', 'entity_type', 'group', 'mobile_number', 'email', 'display_name'];
+        const infoFields = ['title', 'name', 'role', 'entity_type', 'group', 'mobile_number', 'email', 'assigned_staff', 'display_name'];
         infoFields.forEach(field => {
           if (!formData[field]) {
             newErrors[field] = 'This field is required';
@@ -1839,6 +1861,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
 
   const handleNext = () => {
     if (!validateCurrentTab()) {
+      alert('Please fill all required fields in the current tab.');
       return;
     }
     
@@ -1898,6 +1921,29 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     }
   };
 
+
+useEffect(() => {
+  const fetchStaff = async () => {
+    try {
+      const res = await axios.get(`${baseurl}/api/account`);
+      if (res.data.success) {
+        // Map results into { value, label } format
+        const options = res.data.staff.map((staff) => ({
+          value: staff.id,
+          label: staff.name,
+        }));
+        setStaffList(options);
+      }
+    } catch (err) {
+      console.error("Failed to fetch staff data:", err);
+    }
+  };
+
+  fetchStaff();
+}, []);
+
+
+  
   const handleCancel = () => {
     navigate('/retailers');
   };
@@ -1919,16 +1965,21 @@ const RetailerForm = ({ user, mode = 'add' }) => {
   };
 
   const renderField = (fieldConfig) => {
-    const { type = 'text', name, label, required = true, options, ...props } = fieldConfig;
+    const { type = 'text', name, label, required = true, options, onChange: customOnChange, ...props } = fieldConfig;
     
-    if (isViewing) {
-      return (
-        <div className="mb-3">
-          <label className="customer-form-label view-mode-label">{label}</label>
-          <div className="view-mode-value">{formData[name] || 'N/A'}</div>
-        </div>
-      );
-    }
+ if (isViewing) {
+  // Special handling for staffid: show assigned_staff name instead of ID
+  const displayValue = (name === 'staffid' && formData.assigned_staff) 
+    ? formData.assigned_staff 
+    : (formData[name] || 'N/A');
+  
+  return (
+    <div className="mb-3">
+      <label className="customer-form-label view-mode-label">{label}</label>
+      <div className="view-mode-value">{displayValue}</div>
+    </div>
+  );
+}
 
     if (type === 'select') {
       return (
@@ -1962,7 +2013,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
           name={name} 
           value={formData[name]} 
           className={getInputClass(name)} 
-          onChange={handleChange} 
+          onChange={customOnChange || handleChange} 
           required={required}
           {...props}
         />
@@ -2039,7 +2090,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                 {renderField({
                   name: 'gstin',
                   label: 'Customer GSTIN',
-                  maxLength: 15
+                  maxLength: 15,
+                  onChange: handleGstinChange
                 })}
 
                 {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
@@ -2078,6 +2130,13 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                   name: 'email',
                   label: 'Email'
                 })}
+
+      {renderField({
+        type: "select",
+        name: "staffid",
+        label: "Assign staff",
+        options: staffList,
+      })}
 
                 {renderField({
                   name: 'gst_registered_name',
