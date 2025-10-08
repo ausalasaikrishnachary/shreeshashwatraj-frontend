@@ -1610,7 +1610,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     email: "",
    assigned_staff: "",
     staffid: "",
-    password: "",
     gstin: "",
     gst_registered_name: "",
     business_name: "",
@@ -1802,7 +1801,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     
     switch (activeTab) {
       case 'information':
-        const infoFields = ['title', 'name', 'role', 'entity_type', 'group', 'mobile_number', 'email', 'assigned_staff', 'display_name', 'password'];
+        const infoFields = ['title', 'name', 'role', 'entity_type', 'group', 'mobile_number', 'email', 'assigned_staff', 'display_name'];
         infoFields.forEach(field => {
           if (!formData[field]) {
             newErrors[field] = 'This field is required';
@@ -1879,61 +1878,48 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     }
   };
 
-  useEffect(() => {
-  // Auto-fill password when name changes
-  setFormData(prev => ({
-    ...prev,
-    password: prev.name ? `${prev.name}@123` : ''
-  }));
-}, [formData.name]);
-
- const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  if (isViewing) {
-    navigate('/retailers');
-    return;
-  }
-  
-  if (!validateCurrentTab()) {
-    return;
-  }
-
-  // Auto-generate password as Name@123
-  let finalData = { 
-    ...formData, 
-    password: `${formData.name}@123` 
-  };
-
-  if (sameAsShipping) {
-    finalData = {
-      ...finalData,
-      billing_address_line1: formData.shipping_address_line1,
-      billing_address_line2: formData.shipping_address_line2,
-      billing_city: formData.shipping_city,
-      billing_pin_code: formData.shipping_pin_code,
-      billing_state: formData.shipping_state,
-      billing_country: formData.shipping_country,
-      billing_branch_name: formData.shipping_branch_name,
-      billing_gstin: formData.shipping_gstin
-    };
-  }
-
-  try {
-    if (isEditing) {
-      await axios.put(`${baseurl}/accounts/${id}`, finalData);
-      alert('Retailer updated successfully!');
-    } else {
-      await axios.post(`${baseurl}/accounts`, finalData);
-      alert('Retailer added successfully!');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (isViewing) {
+      navigate('/retailers');
+      return;
     }
-    navigate('/retailers');
-  } catch (err) {
-    console.error(err);
-    alert(`Failed to ${isEditing ? 'update' : 'add'} retailer`);
-  }
-};
+    
+    if (!validateCurrentTab()) {
+      return;
+    }
 
+    let finalData = { ...formData };
+
+    if (sameAsShipping) {
+      finalData = {
+        ...finalData,
+        billing_address_line1: formData.shipping_address_line1,
+        billing_address_line2: formData.shipping_address_line2,
+        billing_city: formData.shipping_city,
+        billing_pin_code: formData.shipping_pin_code,
+        billing_state: formData.shipping_state,
+        billing_country: formData.shipping_country,
+        billing_branch_name: formData.shipping_branch_name,
+        billing_gstin: formData.shipping_gstin
+      };
+    }
+
+    try {
+      if (isEditing) {
+        await axios.put(`${baseurl}/accounts/${id}`, finalData);
+        alert('Retailer updated successfully!');
+      } else {
+        await axios.post(`${baseurl}/accounts`, finalData);
+        alert('Retailer added successfully!');
+      }
+      navigate('/retailers');
+    } catch (err) {
+      console.error(err);
+      alert(`Failed to ${isEditing ? 'update' : 'add'} retailer`);
+    }
+  };
 
 
 useEffect(() => {
@@ -2044,164 +2030,138 @@ useEffect(() => {
     switch (activeTab) {
       case 'information':
         return (
-      <FormSection
-  id="information"
-  activeTab={activeTab}
-  title="Information"
-  onBack={null}
-  onNext={handleNext}
-  nextLabel="Banking & Taxes"
-  isViewing={isViewing}
-  onCancel={handleCancel}
->
-  {/* First row - Title, Name, Entity Type (unchanged col-md structure) */}
-  <div className="row">
-    <div className="col-md-6">
-      <div className="row">
-        <div className="col-md-4">
-          {renderField({
-            type: 'select',
-            name: 'title',
-            label: 'Title',
-            options: [
-              { value: 'Mr.', label: 'Mr.' },
-              { value: 'Mrs.', label: 'Mrs.' },
-              { value: 'Ms.', label: 'Ms.' },
-              { value: 'Dr.', label: 'Dr.' }
-            ]
-          })}
-        </div>
-        <div className="col-md-8">
-          {renderField({
-            name: 'name',
-            label: 'Name'
-          })}
-        </div>
-      </div>
-    </div>
-    <div className="col-md-6">
-      {renderField({
-        type: 'select',
-        name: 'entity_type',
-        label: 'Entity Type',
-        options: [
-          { value: 'Individual', label: 'Individual' },
-          { value: 'Company', label: 'Company' },
-          { value: 'Partnership', label: 'Partnership' }
-        ]
-      })}
-    </div>
-  </div>
+          <FormSection
+            id="information"
+            activeTab={activeTab}
+            title="Information"
+            onBack={null}
+            onNext={handleNext}
+            nextLabel="Banking & Taxes"
+            isViewing={isViewing}
+            onCancel={handleCancel}
+          >
+            <div className="row">
+              <div className="col-md-6">
+                <div className="row">
+                  <div className="col-md-4">
+                    {renderField({
+                      type: 'select',
+                      name: 'title',
+                      label: 'Title',
+                      options: [
+                        { value: 'Mr.', label: 'Mr.' },
+                        { value: 'Mrs.', label: 'Mrs.' },
+                        { value: 'Ms.', label: 'Ms.' },
+                        { value: 'Dr.', label: 'Dr.' }
+                      ]
+                    })}
+                  </div>
+                  <div className="col-md-8">
+                    {renderField({
+                      name: 'name',
+                      label: 'Name'
+                    })}
+                  </div>
+                </div>
 
-  {/* Second row onwards - two fields per row */}
-  <div className="row">
-    <div className="col-md-6">
-      {renderField({
-        type: 'select',
-        name: 'group',
-        label: 'Group Type',
-        options: accountGroups.map(group => ({
-          value: group.AccountsGroupName,
-          label: group.AccountsGroupName
-        }))
-      })}
-    </div>
-    <div className="col-md-6">
-      {renderField({
-        name: 'gstin',
-        label: 'Customer GSTIN',
-        maxLength: 15,
-        onChange: handleGstinChange
-      })}
-      {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
-      {gstinError && <div className="text-danger small">{gstinError}</div>}
-    </div>
-  </div>
+                {/* {renderField({
+                  type: 'select',
+                  name: 'role',
+                  label: 'Role',
+                  options: [
+                    { value: 'retailer', label: 'Retailer' },
+                    { value: 'wholesaler', label: 'Wholesaler' },
+                    { value: 'distributor', label: 'Distributor' },
+                    { value: 'customer', label: 'Customer' },
+                    { value: 'supplier', label: 'Supplier' }
+                  ]
+                })} */}
 
-  <div className="row">
-    <div className="col-md-6">
-      {renderField({
-        type: 'email',
-        name: 'email',
-        label: 'Email'
-      })}
-    </div>
-    <div className="col-md-6">
-      {renderField({
-        type: 'select',
-        name: 'staffid',
-        label: 'Assign staff',
-        options: staffList
-      })}
-    </div>
-  </div>
+                {renderField({
+                  type: 'select',
+                  name: 'group',
+                  label: 'Group Type',
+                  options: accountGroups.map(group => ({
+                    value: group.AccountsGroupName,
+                    label: group.AccountsGroupName
+                  }))
+                })}
 
-  <div className="row">
-    <div className="col-md-6">
-      {renderField({
-        name: 'business_name',
-        label: 'Business Name'
-      })}
-    </div>
-    <div className="col-md-6">
-      {renderField({
-        name: 'display_name',
-        label: 'Display Name'
-      })}
-    </div>
-  </div>
+                {renderField({
+                  name: 'gstin',
+                  label: 'Customer GSTIN',
+                  maxLength: 15,
+                  onChange: handleGstinChange
+                })}
 
-  <div className="row">
-    <div className="col-md-6">
-      {renderField({
-        name: 'gst_registered_name',
-        label: 'Customer GST Registered Name'
-      })}
-    </div>
-    <div className="col-md-6">
-      {renderField({
-        name: 'additional_business_name',
-        label: 'Additional Business Name'
-      })}
-    </div>
-  </div>
+                {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
+                {gstinError && <div className="text-danger small">{gstinError}</div>}
 
-  <div className="row">
-    <div className="col-md-6">
-      {renderField({
-        type: 'tel',
-        name: 'phone_number',
-        label: 'Phone Number'
-      })}
-    </div>
-        <div className="col-md-6">
-      {renderField({
-        name: 'fax',
-        label: 'Fax'
-      })}
-    </div>
-  </div>
+                {renderField({
+                  name: 'business_name',
+                  label: 'Business Name'
+                })}
 
-  <div className="row">
+                {renderField({
+                  name: 'display_name',
+                  label: 'Display Name'
+                })}
 
-    <div className="col-md-6">
+                {renderField({
+                  name: 'fax',
+                  label: 'Fax'
+                })}
+              </div>
+
+              <div className="col-md-6">
+                {renderField({
+                  type: 'select',
+                  name: 'entity_type',
+                  label: 'Entity Type',
+                  options: [
+                    { value: 'Individual', label: 'Individual' },
+                    { value: 'Company', label: 'Company' },
+                    { value: 'Partnership', label: 'Partnership' }
+                  ]
+                })}
+
+                {renderField({
+                  type: 'email',
+                  name: 'email',
+                  label: 'Email'
+                })}
+
       {renderField({
-        type: 'tel',
-        name: 'mobile_number',
-        label: 'Mobile Number'
+        type: "select",
+        name: "staffid",
+        label: "Assign staff",
+        options: staffList,
       })}
-    </div>
-    <div className="col-md-6">
-      {renderField({
-        type: 'text',
-        name: 'password',
-        label: 'Password',
-        value: formData.password,
-        disabled: true
-      })}
-    </div>
-  </div>
-</FormSection>
+
+                {renderField({
+                  name: 'gst_registered_name',
+                  label: 'Customer GST Registered Name'
+                })}
+
+                {renderField({
+                  name: 'additional_business_name',
+                  label: 'Additional Business Name'
+                })}
+
+                {renderField({
+                  type: 'tel',
+                  name: 'phone_number',
+                  label: 'Phone Number'
+                })}
+
+                {renderField({
+                  type: 'tel',
+                  name: 'mobile_number',
+                  label: 'Mobile Number'
+                })}
+              </div>
+            </div>
+          </FormSection>
         );
 
       case 'banking':

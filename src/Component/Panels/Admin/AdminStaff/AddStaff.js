@@ -16,7 +16,7 @@ function AddStaff() {
     fullName: "",
     mobileNumber: "",
     email: "",
-    role: "Staff", // Default value set to "Staff"
+    role: "staff", // Default value set to "Staff"
     status: "Active"
   });
 
