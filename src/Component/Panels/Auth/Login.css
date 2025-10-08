@@ -110,3 +110,23 @@
     font-size: 0.85rem;
   }
 }
+
+
+
+/* Updated Login.css for forgot password section */
+.forgot-password-link {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.forgot-password-link a {
+  color: #007bff;
+  text-decoration: none;
+  margin-left: 4px;
+}
+
+.forgot-password-link a:hover {
+  text-decoration: underline;
+}

@@ -1,6 +1,6 @@
 // Login.js
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import "./Login.css";
 
 function Login() {
@@ -121,6 +121,18 @@ function Login() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+        </div>
+
+        {/* Forgot Password Link */}
+      
+        <div className="forgot-password-link">
+          Forgot Password?{" "}
+          <Link 
+            to="/forgot-password" 
+            state={{ email: username.includes('@') ? username : '' }}
+          >
+            Reset Here
+          </Link>
         </div>
 
         {/* Login Button */}

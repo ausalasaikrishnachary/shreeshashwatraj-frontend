@@ -53,6 +53,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import AdminDashboard from "./Component/Panels/Admin/AdminDashboard/AdminDashboard";
 import StaffDashboard from "./Component/Panels/Staff/StaffPages/StaffDashboard";
 import Login from "./Component/Panels/Auth/Login";
+import ForgotPassword from "./Component/Panels/Auth/ForgotPassword";
+import ResetPassword from "./Component/Panels/Auth/ResetPassword";
 
 //Retailer pages
 
@@ -96,6 +98,8 @@ function App() {
       <Routes>
         {/* Public */}
         <Route path="/" element={<Login />} />
+         <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Dashboards */}
         <Route path="/dashboard" element={<DashboardCard />} />
