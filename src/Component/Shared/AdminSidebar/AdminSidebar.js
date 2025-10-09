@@ -12,7 +12,8 @@ import {
   FaKey,
   FaBars,
   FaTimes,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaClipboardList 
 } from "react-icons/fa";
 import "./AdminSidebar.css";
 import UserCard from "../../Panels/UserCard/UserCard"
@@ -42,6 +43,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
     { path: "/admindashboard", name: "Dashboard", icon: <FaTachometerAlt /> },
     { path: "/retailers", name: "Retailers", icon: <FaUsers /> },
     { path: "/staff", name: "Staff", icon: <FaUserTie /> },
+     { path: "/sales_visit", name: "Sales Visit", icon: <FaClipboardList  /> },
     { path: "/sales", name: "Sales", icon: <FaChartLine /> },
     { path: "/products", name: "Products", icon: <FaBox /> },
     { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },

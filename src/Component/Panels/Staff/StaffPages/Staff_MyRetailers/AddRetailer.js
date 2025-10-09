@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
@@ -84,9 +83,8 @@ const userName = user ? user.name : null;
     { id: "billing", label: "Billing Address" },
   ];
 
-  // Get token from localStorage or context (replace with your auth mechanism)
   const getAuthToken = () => {
-    return localStorage.getItem("token") || ""; // Adjust based on your auth setup
+    return localStorage.getItem("token") || ""; 
   };
 
   useEffect(() => {
@@ -422,16 +420,7 @@ const userName = user ? user.name : null;
   };
 
   const getTitle = () => {
-    switch (mode) {
-      case "add":
-        return "Add New Retailer";
-      case "edit":
-        return "Edit Retailer";
-      case "view":
-        return "View Retailer";
-      default:
-        return "Retailer";
-    }
+    return "Add New Retailer";
   };
 
   const renderActiveTab = () => {
@@ -491,7 +480,7 @@ const userName = user ? user.name : null;
             {renderField({ name: "password", label: "Password", required: false })}
             <div className="form-buttons">
               <button type="button" className="cancel-btn" onClick={handleCancel}>
-                {mode === "view" ? "Back" : "Cancel"}
+                Cancel
               </button>
               <button type="button" className="submit-btn" onClick={handleNext}>
                 Next: Banking & Taxes
@@ -699,7 +688,7 @@ const userName = user ? user.name : null;
                 Back
               </button>
               <button type="submit" className="submit-btn">
-                {mode === "view" ? "Back" : mode === "edit" ? "Update Retailer" : "Add Retailer"}
+                Add Retailer
               </button>
             </div>
           </div>
@@ -714,20 +703,8 @@ const userName = user ? user.name : null;
       <div className="add-retailer-mobile">
         <header className="form-header">
           <h1>{getTitle()}</h1>
-          <p>Fill in the details to {mode === "edit" ? "update" : mode === "view" ? "view" : "add"} a retailer to your network</p>
+          <p>Fill in the details to add a retailer to your network</p>
         </header>
-        <div className="tabs">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              className={`tab-button ${activeTab === tab.id ? "active" : ""}`}
-              onClick={() => mode !== "view" && setActiveTab(tab.id)}
-              disabled={mode === "view"}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
         <form onSubmit={handleSubmit} className="retailer-form">
           {renderActiveTab()}
         </form>
@@ -737,4 +714,3 @@ const userName = user ? user.name : null;
 }
 
 export default AddRetailer;
-

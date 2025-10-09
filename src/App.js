@@ -91,6 +91,7 @@ import LogVisit from "./Component/Panels/Staff/StaffPages/Staff_SalesVisits/LogV
 import StaffExpenses from "./Component/Panels/Staff/StaffPages/Staff_Expenses/StaffExpenses";
 import AddExpense from "./Component/Panels/Staff/StaffPages/Staff_Expenses/AddExpense";
 import StaffOffers from "./Component/Panels/Staff/StaffPages/Staff_Offers/StaffOffers";
+import SalesVisit from "./Component/Panels/Admin/AdminSalesvisit/SalesVisit"
 
 function App() {
   return (
@@ -146,6 +147,9 @@ function App() {
         <Route path="/expenses/add" element={<AddExpenses />} />
         <Route path="/reports" element={<AdminReports />} />
         <Route path="/roleaccess" element={<AdminRoleAccess />} />
+        <Route path="/sales_visit" element={<SalesVisit />} />
+          <Route path="/sales_visit/edit/:id" element={<SalesVisit mode="edit"/>} />
+             <Route path="/sales_visit/view/:id" element={<SalesVisit mode="view"/>} />
       </Routes>
     </Router>
   );
