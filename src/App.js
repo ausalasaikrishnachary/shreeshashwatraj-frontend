@@ -91,7 +91,19 @@ import LogVisit from "./Component/Panels/Staff/StaffPages/Staff_SalesVisits/LogV
 import StaffExpenses from "./Component/Panels/Staff/StaffPages/Staff_Expenses/StaffExpenses";
 import AddExpense from "./Component/Panels/Staff/StaffPages/Staff_Expenses/AddExpense";
 import StaffOffers from "./Component/Panels/Staff/StaffPages/Staff_Offers/StaffOffers";
-import SalesVisit from "./Component/Panels/Admin/AdminSalesvisit/SalesVisit"
+import SalesVisit from "./Component/Panels/Admin/AdminSalesvisit/SalesVisit";
+
+import PurchasedItems from './Component/Panels/Admin/Inventory/PurchasedItems/PurchasedItems';
+import SalesItems from "./Component/Panels/Admin/Inventory/Sales_catalogue/SalesItems";
+import SalesItemsPage from "./Component/Panels/Admin/Inventory/Sales_catalogue/SalesItemsPage";
+import AddProductPage from "./Component/Panels/Admin/Inventory/PurchasedItems/AddProductPage";
+import AddCompanyModal from "./Component/Panels/Admin/Inventory/Sales_catalogue/AddCompanyModal";
+import AddCategoryModal from "./Component/Panels/Admin/Inventory/PurchasedItems/AddCategoryModal";
+import StockDetailsModal from "./Component/Panels/Admin/Inventory/PurchasedItems/StockDetailsModal";
+import DeductStockModal from "./Component/Panels/Admin/Inventory/PurchasedItems/DeductStockModal";
+import AddStockModal from "./Component/Panels/Admin/Inventory/PurchasedItems/AddStockModal";
+import AddServiceModal from "./Component/Panels/Admin/Inventory/PurchasedItems/AddServiceModal";
+
 
 function App() {
   return (
@@ -150,6 +162,18 @@ function App() {
         <Route path="/sales_visit" element={<SalesVisit />} />
           <Route path="/sales_visit/edit/:id" element={<SalesVisit mode="edit"/>} />
              <Route path="/sales_visit/view/:id" element={<SalesVisit mode="view"/>} />
+
+           <Route path="/purchased_items" element={<PurchasedItems />} />
+           <Route path="/sale_items" element={<SalesItems />} />
+             <Route path='/AddProductPage' element={<AddProductPage />} />
+            <Route path='/salesitemspage' element={<SalesItemsPage />} />
+            <Route path="/addcompanymodal " element={<AddCompanyModal />} />
+            <Route path="/addcategorymodal" element={<AddCategoryModal />} />
+            <Route path="/stockdetailsmodule" element={< StockDetailsModal />} />
+            <Route path="/deductstockmodal" element={< DeductStockModal />} />
+            <Route path="/addstockmodal" element={< AddStockModal />} />
+            <Route path="/addservicemodal" element={<AddServiceModal />} />
+
       </Routes>
     </Router>
   );

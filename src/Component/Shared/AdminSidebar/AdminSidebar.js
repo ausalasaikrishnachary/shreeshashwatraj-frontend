@@ -1,49 +1,68 @@
 import React, { useState, useEffect } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
+
 import {
   FaTachometerAlt,
   FaUsers,
   FaUserTie,
-  FaChartLine,
-  FaBox,
+  FaChartBar,
+  FaBoxes,
   FaTags,
   FaMoneyBill,
   FaFileAlt,
   FaKey,
   FaBars,
   FaTimes,
-  FaSignOutAlt,
-  FaClipboardList 
+  FaClipboardList,
+  FaChevronDown,
+  FaChevronUp,
+  FaBookOpen,
+  FaShoppingCart,
+
+
+  FaChartLine,
+  FaBox,
+  FaHandHoldingUsd,
+
 } from "react-icons/fa";
+
 import "./AdminSidebar.css";
-import UserCard from "../../Panels/UserCard/UserCard"
+import UserCard from "../../Panels/UserCard/UserCard";
 
 function AdminSidebar({ isCollapsed, setIsCollapsed }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const navigate = useNavigate();
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const location = useLocation();
 
-  // Detect screen size changes
+  const navigate = useNavigate();
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth <= 768;
       setIsMobile(mobile);
-      
-      // Auto-close sidebar on resize to mobile
-      if (mobile) {
-        setIsMobileOpen(false);
-      }
+      if (mobile) setIsMobileOpen(false);
     };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  const toggleDropdown = (menuName) => {
+    setOpenDropdown(openDropdown === menuName ? null : menuName);
+  };
 
   const menuItems = [
     { path: "/admindashboard", name: "Dashboard", icon: <FaTachometerAlt /> },
     { path: "/retailers", name: "Retailers", icon: <FaUsers /> },
     { path: "/staff", name: "Staff", icon: <FaUserTie /> },
-     { path: "/sales_visit", name: "Sales Visit", icon: <FaClipboardList  /> },
+    { path: "/sales_visit", name: "Sales Visit", icon: <FaClipboardList /> },
+  {
+    name: "Inventory", // dropdown only
+    icon: <FaHandHoldingUsd />,
+    subMenu: [
+      { path: "/sale_items", name: "Sales Catalogue", icon: <FaBookOpen /> },
+      { path: "/purchased_items", name: "Purchased Items", icon: <FaShoppingCart /> }
+    ]
+  },
     { path: "/sales", name: "Sales", icon: <FaChartLine /> },
     { path: "/products", name: "Products", icon: <FaBox /> },
     { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },
@@ -52,17 +71,13 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
     { path: "/roleaccess", name: "Role Access", icon: <FaKey /> },
   ];
 
-  // Close mobile sidebar when clicking outside (on overlay)
   const handleOverlayClick = () => {
     setIsMobileOpen(false);
   };
 
-
-
-
   return (
     <>
-      {/* Mobile toggle button */}
+      {/* Mobile toggle */}
       <button
         className="sidebar-toggle"
         onClick={() => setIsMobileOpen(!isMobileOpen)}
@@ -70,7 +85,6 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
         {isMobileOpen ? <FaTimes /> : <FaBars />}
       </button>
 
-      {/* Overlay for mobile */}
       {isMobileOpen && isMobile && (
         <div className="sidebar-overlay" onClick={handleOverlayClick}></div>
       )}
@@ -80,7 +94,6 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
           isMobileOpen ? "open" : ""
         } ${isMobile ? "mobile" : ""}`}
       >
-        {/* Logo + collapse row */}
         <div className="sidebar-header">
           <h2 className="logo">
             {isCollapsed || isMobile ? "RP" : "RetailPro"}
@@ -98,27 +111,66 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
         <nav>
           <ul>
             {menuItems.map((item) => (
-              <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    isActive ? "active" : undefined
-                  }
-                  onClick={() => isMobile && setIsMobileOpen(false)}
-                >
-                  <span className="icon">{item.icon}</span>
-                  {(!isCollapsed && !isMobile) && <span className="link-text">{item.name}</span>}
-                </NavLink>
+              <li key={item.name}>
+                {/* If has submenu */}
+                {item.subMenu ? (
+                  <>
+                    <button
+                      className="dropdown-btn-link"
+                      onClick={() => toggleDropdown(item.name)}
+                    >
+                      <span className="icon">{item.icon}</span>
+                      {!isCollapsed && !isMobile && (
+                        <span className="link-text">
+                          {item.name}
+                          <span className="dropdown-arrow">
+                            {openDropdown === item.name ? (
+                              <FaChevronUp size={12} />
+                            ) : (
+                              <FaChevronDown size={12} />
+                            )}
+                          </span>
+                        </span>
+                      )}
+                    </button>
+
+                    {openDropdown === item.name && (
+<ul className="submenu" style={{ display: openDropdown === item.name ? "block" : "none" }}>
+  {item.subMenu.map((sub) => (
+    <li
+      key={sub.path}
+      className={location.pathname === sub.path ? "active" : ""}
+    >
+      <NavLink to={sub.path} className="submenu-link">
+        <span className="submenu-icon">{sub.icon}</span>
+        <span>{sub.name}</span>
+      </NavLink>
+    </li>
+  ))}
+</ul>
+
+                    )}
+                  </>
+                ) : (
+                  <NavLink
+                    to={item.path}
+                    className={({ isActive }) => (isActive ? "active" : undefined)}
+                    onClick={() => isMobile && setIsMobileOpen(false)}
+                  >
+                    <span className="icon">{item.icon}</span>
+                    {!isCollapsed && !isMobile && (
+                      <span className="link-text">{item.name}</span>
+                    )}
+                  </NavLink>
+                )}
               </li>
             ))}
-            
           </ul>
         </nav>
 
-        {/* Updated sidebar footer with rounded border */}
-          <div className="sidebar-footer">
-            <UserCard isCollapsed={isCollapsed} />
-          </div>
+        <div className="sidebar-footer">
+          <UserCard isCollapsed={isCollapsed} />
+        </div>
       </div>
     </>
   );

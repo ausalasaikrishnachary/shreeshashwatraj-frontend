@@ -390,7 +390,7 @@ const SalesVisit = ({ mode = "list" }) => {
               </div>
 
               {/* Search box */}
-              <div className="retailers-search-container">
+              <div className="retailers-search-container ">
                 <div className="retailers-search-box">
                   <span className="retailers-search-icon">🔍</span>
                   <input

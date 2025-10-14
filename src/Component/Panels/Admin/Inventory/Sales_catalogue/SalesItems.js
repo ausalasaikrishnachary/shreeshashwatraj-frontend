@@ -1,0 +1,238 @@
+import React, { useState, useEffect } from "react";
+import { FaEdit, FaTrash, FaPlusCircle, FaMinusCircle, FaEye, FaShoppingBag } from "react-icons/fa";
+import AdminSidebar from "./../../../../Shared/AdminSidebar/AdminSidebar";
+import Header from "./../../../../Shared/AdminSidebar/AdminHeader";
+import ReusableTable from "./../../../../Layouts/TableLayout/ReusableTable"
+import AddServiceModal from "../PurchasedItems/AddServiceModal";
+import AddStockModal from "../PurchasedItems/AddStockModal";
+import DeductStockModal from "../PurchasedItems/DeductStockModal";
+import StockDetailsModal from "../PurchasedItems/StockDetailsModal";
+import { baseurl } from "../../../../BaseURL/BaseURL";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import "./salesitems.css"; // reuse the same CSS
+
+const SalesItems = ({ user }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [items, setItems] = useState([]);
+  const [search, setSearch] = useState("");
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [showDeductModal, setShowDeductModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState(null);
+  const [currentStockData, setCurrentStockData] = useState({
+    opening_stock: 0,
+    stock_in: 0,
+    stock_out: 0,
+    balance_stock: 0,
+  });
+  const [stockData, setStockData] = useState(null);
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get(`${baseurl}/products`);
+      const formatted = response.data
+        .filter((item) => item.group_by === "Salescatalog")
+        .map((item) => ({
+          id: item.id,
+          name: item.goods_name,
+          price: item.price,
+          description: item.description,
+          gst: item.gst_rate,
+          updatedBy: "System",
+          updatedOn: new Date(item.updated_at).toLocaleDateString(),
+          opening_stock: item.opening_stock || 0,
+          stock_in: item.stock_in || 0,
+          stock_out: item.stock_out || 0,
+          balance_stock: item.balance_stock || 0,
+          category_id: item.category_id,
+          company_id: item.company_id,
+          inclusive_gst: item.inclusive_gst,
+          non_taxable: item.non_taxable,
+          net_price: item.net_price,
+          hsn_code: item.hsn_code,
+          unit: item.unit,
+          cess_rate: item.cess_rate,
+          cess_amount: item.cess_amount,
+          sku: item.sku,
+          opening_stock_date: item.opening_stock_date,
+          min_stock_alert: item.min_stock_alert,
+          max_stock_alert: item.max_stock_alert,
+          can_be_sold: item.can_be_sold,
+          maintain_batch: item.maintain_batch,
+        }));
+      setItems(formatted);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  const handleDeleteProduct = async (productId) => {
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
+    try {
+      await axios.delete(`${baseurl}/products/${productId}`);
+      setItems((prev) => prev.filter((p) => p.id !== productId));
+      alert("Product deleted successfully!");
+    } catch (error) {
+      console.error("Delete failed:", error.response || error.message);
+      alert("Failed to delete product");
+    }
+  };
+
+  const handleAddStock = async ({ quantity, remark }) => {
+    try {
+      await axios.post(`${baseurl}/stock/${selectedProductId}`, {
+        stock_in: quantity,
+        stock_out: 0,
+        date: new Date().toISOString().split("T")[0],
+        remark,
+      });
+      fetchProducts();
+      alert("Stock added successfully!");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to add stock");
+    }
+  };
+
+  const handleDeductStock = async ({ quantity, remark }) => {
+    try {
+      await axios.post(`${baseurl}/stock/${selectedProductId}`, {
+        stock_in: 0,
+        stock_out: quantity,
+        date: new Date().toISOString().split("T")[0],
+        remark,
+      });
+      fetchProducts();
+      alert("Stock deducted successfully!");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to deduct stock");
+    }
+  };
+
+  const handleEditClick = (product) => {
+    navigate("/salesitemspage", { state: { productToEdit: product } });
+  };
+
+  const filteredItems = items.filter((item) =>
+    item.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const columns = [
+    { key: "name", title: "Product Name" },
+    { key: "description", title: "Description" },
+    { key: "gst", title: "GST Rate" },
+    { key: "updatedBy", title: "Updated By" },
+    {
+      key: "actions",
+      title: "Action",
+      render: (item) => (
+        <>
+          <FaEdit className="text-success me-2 action-icon" onClick={() => handleEditClick(item)} />
+          <FaTrash className="text-danger me-2 action-icon" onClick={() => handleDeleteProduct(item.id)} />
+          <FaPlusCircle className="text-warning me-2 action-icon" onClick={() => { setSelectedProductId(item.id); setCurrentStockData(item); setShowStockModal(true); }} />
+          <FaMinusCircle className="text-danger me-2 action-icon" onClick={() => { setSelectedProductId(item.id); setCurrentStockData(item); setShowDeductModal(true); }} />
+          <FaEye className="text-primary action-icon" onClick={() => { setStockData(item); setShowViewModal(true); }} />
+        </>
+      ),
+    },
+  ];
+
+  return (
+    <div className="dashboard-container">
+      <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+      <div className={`main-content ${isCollapsed ? "collapsed" : ""}`}>
+        <Header user={user} toggleSidebar={() => setIsCollapsed(!isCollapsed)} />
+
+        <div className="container-fluid mt-3 sales-items-wrapper">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <div className="retailers-search-container">
+              <div className="retailers-search-box">
+                <span className="retailers-search-icon">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search sales items..."
+                  className="retailers-search-input"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+                <div className="d-flex gap-2">
+                  <div className="dropdown">
+                    <button className="btn btn-info dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                      <i className="bi bi-list me-2"></i> Sales Catalogue
+                    </button>
+                    <ul className="dropdown-menu">
+                      <li><a className="dropdown-item" href="/sale_items">Sales Catalogue</a></li>
+                      <li><a className="dropdown-item" href="/purchased_items">Purchased Items</a></li>
+                    </ul>
+                  </div>
+                  <div className="dropdown">
+                    <button className="btn btn-success dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                      <i className="bi bi-plus-circle me-2"></i> ADD
+                    </button>
+                    <ul className="dropdown-menu">
+                      <li>
+                        <button
+                          className="dropdown-item"
+                          onClick={() => navigate("/salesitemspage")}
+                        >
+                          Products
+                        </button>
+                      </li>
+                      <li>
+                        <button className="dropdown-item" onClick={() => setShowServiceModal(true)}>Services</button>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+          </div>
+
+          <ReusableTable
+            data={filteredItems}
+            columns={columns}
+            initialEntriesPerPage={10}
+            showSearch={false}
+            showPagination={true}
+          />
+        </div>
+      </div>
+
+      <AddServiceModal
+        show={showServiceModal}
+        onClose={() => setShowServiceModal(false)}
+        groupType="Salescatalog"
+      />
+      <AddStockModal
+        show={showStockModal}
+        onClose={() => setShowStockModal(false)}
+        currentStock={currentStockData.balance_stock}
+        onSave={handleAddStock}
+      />
+      <DeductStockModal
+        show={showDeductModal}
+        onClose={() => setShowDeductModal(false)}
+        currentStock={currentStockData.balance_stock}
+        onSave={handleDeductStock}
+      />
+      <StockDetailsModal
+        show={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        stockData={stockData}
+        context="sales"
+      />
+    </div>
+  );
+};
+
+export default SalesItems;
