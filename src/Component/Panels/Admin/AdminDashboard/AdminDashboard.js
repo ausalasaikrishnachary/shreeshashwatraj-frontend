@@ -15,11 +15,12 @@ import {
 
 import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
-import DashboardCharts from "./DashboardCard"; // Import the DashboardCharts component
+import DashboardCharts from "./DashboardCard";
 import "./AdminDashboard.css";
 
 function AdminDashboard() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false); // Add mobile state
 
   // Mock data
   const dashboardData = {
@@ -33,33 +34,27 @@ function AdminDashboard() {
     scoreChange: "+0.3",
   };
 
-  // Regional distribution data
-  const regionalData = [
-    { name: "Mumbai", value: 4 },
-    { name: "Delhi", value: 7 },
-  ];
-
-  // Category distribution data
-  const categoryData = [
-    { name: "Electronics", value: 38 },
-    { name: "General Store", value: 45 },
-    { name: "Textiles", value: 48 },
-    { name: "Ovocettes", value: 50 },
-    { name: "Medical", value: 75 },
-  ];
-
-  const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
+  const handleToggleMobile = () => {
+    setIsMobileOpen(!isMobileOpen);
+  };
 
   return (
     <div className="admin-dashboard-wrapper">
-      <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+      <AdminSidebar 
+        isCollapsed={isCollapsed} 
+        setIsCollapsed={setIsCollapsed}
+        onToggleMobile={isMobileOpen} // Pass mobile state
+      />
 
       <div
         className={`admin-dashboard-content-area ${
           isCollapsed ? "collapsed" : ""
         }`}
       >
-        <AdminHeader isCollapsed={isCollapsed} />
+        <AdminHeader 
+          isCollapsed={isCollapsed} 
+          onToggleSidebar={handleToggleMobile} // Pass toggle function
+        />
 
         <div
           className={`admin-dashboard-main-content ${

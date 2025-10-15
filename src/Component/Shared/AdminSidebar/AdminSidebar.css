@@ -12,91 +12,156 @@
   left: 0;
   transition: all 0.3s ease-in-out;
   z-index: 1000;
-
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: thin; /* for Firefox */
-  scrollbar-color: #2563eb #1e293b; 
 }
 
 .sidebar.collapsed {
   width: 80px;
 }
 
-/* Mobile-specific styles */
+/* Mobile-specific styles - Show icons-only sidebar (80px) */
 .sidebar.mobile {
-  width: 250px; /* Show full sidebar when open on mobile */
+  width: 80px; /* Icons-only on mobile */
   transform: translateX(-100%);
+  transition: transform 0.3s ease-in-out;
 }
 
 .sidebar.mobile.open {
   transform: translateX(0);
 }
 
-/* Header row with logo + collapse button */
+/* Tablet specific styles - icons only */
+.sidebar.tablet {
+  width: 80px; /* Always icons-only on tablet */
+  transform: translateX(0) !important;
+}
+
+.sidebar.tablet.collapsed {
+  width: 80px;
+}
+
+/* Desktop - full sidebar */
+.sidebar:not(.mobile):not(.tablet) {
+  width: 250px;
+}
+
+.sidebar:not(.mobile):not(.tablet).collapsed {
+  width: 80px;
+}
+
+/* Header */
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: #0f172a;
   padding: 15px 20px;
+  min-height: 60px;
+  box-sizing: border-box;
 }
 
 .sidebar .logo {
   font-size: 22px;
   font-weight: bold;
   white-space: nowrap;
+  margin: 0;
+  transition: all 0.3s ease;
 }
 
-.sidebar-collapse-btn {
+/* Smaller logo for mobile and tablet */
+.sidebar.mobile .logo,
+.sidebar.tablet .logo {
+  font-size: 18px;
+}
+
+.sidebar-collapse-btn,
+.sidebar-close-btn {
   background: none;
   border: none;
   color: #fff;
   font-size: 18px;
   cursor: pointer;
-  transition: transform 0.3s;
+  transition: color 0.3s;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.sidebar-collapse-btn:hover {
+.sidebar-collapse-btn:hover,
+.sidebar-close-btn:hover {
   color: #2563eb;
 }
 
-.sidebar.collapsed .logo {
+/* Hide collapse button on mobile and tablet */
+.sidebar.mobile .sidebar-collapse-btn,
+.sidebar.tablet .sidebar-collapse-btn {
   display: none;
 }
 
-.sidebar.mobile .logo {
-  display: block; 
+/* Navigation */
+.sidebar nav {
+  flex: 1;
+  /* overflow-y: auto; */
+  padding: 10px 0;
 }
 
-/* Navigation */
 .sidebar nav ul {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
+.sidebar nav ul li {
+  position: relative;
+}
+
 .sidebar nav ul li a {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 15px 20px;
   color: #cbd5e1;
   text-decoration: none;
   font-size: 15px;
   border-radius: 6px;
   transition: all 0.2s;
+  margin: 2px 10px;
 }
 
+/* Desktop - full sidebar with text */
+.sidebar:not(.mobile):not(.tablet) nav ul li a {
+  padding: 15px 20px;
+  gap: 12px;
+  justify-content: flex-start;
+}
+
+/* Mobile and Tablet - icons only */
+.sidebar.mobile nav ul li a,
+.sidebar.tablet nav ul li a,
 .sidebar.collapsed nav ul li a {
-  justify-content: center;
   padding: 15px;
+  justify-content: center;
+  margin: 2px 12px;
 }
 
 .sidebar nav ul li a .icon {
   font-size: 18px;
   min-width: 20px;
   text-align: center;
+  flex-shrink: 0;
+}
+
+.sidebar nav ul li a .link-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hide text on mobile, tablet, and when collapsed */
+.sidebar.mobile .link-text,
+.sidebar.tablet .link-text,
+.sidebar.collapsed .link-text {
+  display: none;
 }
 
 .sidebar nav ul li a.active,
@@ -105,22 +170,156 @@
   color: #fff;
 }
 
-/* Footer - FIXED: Ensure UserCard is always visible */
+/* Dropdown styles */
+.dropdown-btn-link {
+  display: flex;
+  align-items: center;
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 15px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin: 2px 10px;
+}
+
+/* Desktop dropdown */
+.sidebar:not(.mobile):not(.tablet) .dropdown-btn-link {
+  padding: 15px 20px;
+  gap: 12px;
+  justify-content: space-between;
+  width: calc(100% - 20px);
+}
+
+/* Mobile and tablet dropdown - icons only */
+.sidebar.mobile .dropdown-btn-link,
+.sidebar.tablet .dropdown-btn-link,
+.sidebar.collapsed .dropdown-btn-link {
+  padding: 15px;
+  justify-content: center;
+  margin: 2px 12px;
+  width: auto;
+}
+
+.dropdown-btn-link .icon {
+  font-size: 18px;
+  min-width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.dropdown-btn-link .link-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.dropdown-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+/* Hide dropdown arrow on mobile, tablet, and when collapsed */
+.sidebar.mobile .dropdown-arrow,
+.sidebar.tablet .dropdown-arrow,
+.sidebar.collapsed .dropdown-arrow {
+  display: none;
+}
+
+.dropdown-btn-link.open .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.dropdown-btn-link:hover,
+.dropdown-btn-link.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+/* Submenu */
+.submenu {
+  list-style: none;
+  padding: 5px 0;
+  margin: 0;
+  background: #0f172a;
+  border-radius: 0 0 6px 6px;
+  overflow: hidden;
+}
+
+.submenu li {
+  margin: 0;
+}
+
+.submenu-link {
+  display: flex;
+  align-items: center;
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.2s;
+  margin: 0 10px;
+  border-radius: 4px;
+}
+
+/* Desktop submenu */
+.sidebar:not(.mobile):not(.tablet) .submenu-link {
+  padding: 12px 20px 12px 50px;
+  gap: 12px;
+  justify-content: flex-start;
+  width: calc(100% - 20px);
+}
+
+/* Mobile and tablet submenu - icons only */
+.sidebar.mobile .submenu-link,
+.sidebar.tablet .submenu-link,
+.sidebar.collapsed .submenu-link {
+  padding: 12px;
+  justify-content: center;
+  margin: 0 12px;
+}
+
+.submenu-link:hover,
+.submenu-link.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+.submenu-icon {
+  font-size: 16px;
+  min-width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.submenu-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hide submenu text on mobile, tablet, and when collapsed */
+.sidebar.mobile .submenu-text,
+.sidebar.tablet .submenu-text,
+.sidebar.collapsed .submenu-text {
+  display: none;
+}
+
+/* Footer */
 .sidebar-footer {
   padding: 15px;
   background: #0f172a;
   border-top: 1px solid #374151;
+  flex-shrink: 0;
 }
 
-/* Make sure UserCard container doesn't hide content */
-.sidebar-footer .user-card {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-
-/* Mobile toggle */
+/* Mobile toggle button */
 .sidebar-toggle {
   display: none;
   position: fixed;
@@ -135,94 +334,6 @@
   cursor: pointer;
   z-index: 1002;
 }
-/* Make dropdown button flex with space-between */
-.dropdown-btn-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between; /* Push icon to right */
-  gap: 12px; /* space between icon and text */
-  padding: 15px 20px;
-  color: #cbd5e1;
-  text-decoration: none;
-  font-size: 15px;
-  border-radius: 6px;
-  transition: all 0.2s;
-  background: none;
-  border: none;
-  width: 100%;
-  cursor: pointer;
-}
-
-/* Dropdown arrow container */
-.dropdown-arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: auto; /* ensure it is at far right */
-}
-
-/* Rotate arrow when open */
-.dropdown-btn-link.open .dropdown-arrow {
-  transform: rotate(180deg); /* optional if you want */
-}
-
-.dropdown-btn-link:hover,
-.dropdown-btn-link.active {
-  background: #2563eb;
-  color: #fff;
-}
-
-/* Fix submenu alignment and styling */
-.submenu {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 0 20px; /* Add left margin to align with sidebar */
-  background: #1e293b; /* Match sidebar background */
-  border-left: 2px solid #2563eb; /* Optional: Add a visual separator */
-}
-
-.submenu li {
-  padding: 10px 20px;
-}
-
-.submenu-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: #cbd5e1;
-  text-decoration: none;
-  font-size: 14px;
-}
-
-.submenu-link:hover,
-.submenu-link.active {
-  background: #2563eb;
-  color: #fff;
-  border-radius: 4px;
-}
-.sidebar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.sidebar::-webkit-scrollbar-track {
-  background: #1e293b;
-}
-
-.sidebar::-webkit-scrollbar-thumb {
-  background-color: #2563eb;
-  border-radius: 3px;
-}
-
-
-/* Ensure submenu is visible and properly positioned */
-.sidebar nav ul .submenu {
-  display: block; /* Override inline style */
-}
-
-/* Adjust for collapsed sidebar */
-.sidebar.collapsed .submenu {
-  display: none; /* Hide submenu when sidebar is collapsed */
-}
 
 /* Overlay for mobile */
 .sidebar-overlay {
@@ -233,7 +344,6 @@
   height: 100%;
   background: rgba(0, 0, 0, 0.5);
   z-index: 999;
-  display: none;
 }
 
 /* Responsive */
@@ -242,54 +352,22 @@
     display: block;
   }
 
-  .sidebar-overlay {
-    display: block;
+  .sidebar.mobile {
+    transform: translateX(-100%);
   }
 
-  .sidebar-collapse-btn {
-    display: none;
-  }
-
-  /* Ensure UserCard is properly styled on mobile */
-  .sidebar.mobile .sidebar-footer {
-    padding: 12px;
-  }
-  
-  .sidebar.mobile .user-card {
-    max-width: 100%;
-  }
-  
-  .sidebar.mobile .user-card.collapsed {
-    justify-content: center;
+  .sidebar.mobile.open {
+    transform: translateX(0);
   }
 }
 
 /* Tablet specific styles (768px - 1024px) */
 @media (min-width: 769px) and (max-width: 1024px) {
   .sidebar {
-    width: 80px; /* Icons only for tablet */
-  }
-  
-  .sidebar.collapsed {
     width: 80px;
   }
-
+  
   .sidebar-toggle {
-    display: none;
-  }
-
-  .sidebar nav ul li a {
-    justify-content: center;
-    padding: 15px;
-  }
-  
-  /* Ensure UserCard shows only icon on tablet */
-  .sidebar .user-card {
-    justify-content: center;
-    padding: 10px;
-  }
-  
-  .sidebar .user-card .user-info {
     display: none;
   }
 }
@@ -303,5 +381,13 @@
   
   .sidebar.mobile.collapsed {
     width: 80px;
+  }
+  
+  .sidebar-overlay {
+    display: none !important;
+  }
+  
+  .sidebar-toggle {
+    display: none;
   }
 }
