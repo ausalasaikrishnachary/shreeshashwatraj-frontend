@@ -6,6 +6,8 @@ import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import { useParams, useNavigate } from "react-router-dom";
+import {  FaSearch} from "react-icons/fa";
+
 
 const SalesVisit = ({ mode = "list" }) => {
   const { id } = useParams();
@@ -14,6 +16,8 @@ const SalesVisit = ({ mode = "list" }) => {
   const [salesVisitsData, setSalesVisitsData] = useState([]);
   const [selectedVisit, setSelectedVisit] = useState(null);
   const [loading, setLoading] = useState(true);
+const [filteredSalesVisits, setFilteredSalesVisits] = useState([]); // filtered based on search
+
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     retailer_name: "",
@@ -116,12 +120,20 @@ const SalesVisit = ({ mode = "list" }) => {
   };
 
   // Filter data based on search input
-  const filteredSalesVisits = salesVisitsData.filter(
-    (visit) =>
-      visit.id.toString().includes(searchTerm) ||
-      visit.retailer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      visit.staff_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+useEffect(() => {
+  if (salesVisitsData.length > 0) {
+    const filtered = salesVisitsData.filter((item) => 
+      (item.id?.toString().includes(searchTerm)) ||
+      (item.retailer_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.staff_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.visit_type?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.visit_outcome?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.transaction_type?.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    setFilteredSalesVisits(filtered);
+  }
+}, [searchTerm, salesVisitsData]);
+
 
   const columns = [
     { title: "ID", key: "id" },
@@ -390,29 +402,29 @@ const SalesVisit = ({ mode = "list" }) => {
               </div>
 
               {/* Search box */}
-              <div className="retailers-search-container ">
-                <div className="retailers-search-box">
-                  <span className="retailers-search-icon">🔍</span>
+            <div className="sales-visit-search-container">
+                <div className="sales-visit-search-box">
                   <input
                     type="text"
-                    placeholder="Search by ID, Retailer, or Staff..."
-                    className="retailers-search-input"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </div>
+      placeholder="Search by ID, Retailer, Staff, or Transaction..."
+      className="sales-visits-search-input"
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+    />
+       <FaSearch className="sales-visits-search-icon" size={18} />
+  </div>
+</div>
 
               <div className="sales-visits-table-container">
-                <ReusableTable
-                  data={filteredSalesVisits}
-                  columns={columns}
-                  initialEntriesPerPage={10}
-                  showSearch={false} // hide built-in search
-                  showEntriesSelector={true}
-                  showPagination={true}
-                />
-              </div>
+  <ReusableTable
+    data={filteredSalesVisits} // filtered array based on searchTerm
+    columns={columns}
+    initialEntriesPerPage={10}
+    showSearch={false} // hide built-in search
+    showEntriesSelector={true}
+    showPagination={true}
+  />
+</div>
             </>
           )}
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaEdit, FaTrash, FaPlusCircle, FaMinusCircle, FaEye, FaShoppingBag } from "react-icons/fa";
+import { FaEdit, FaTrash, FaPlusCircle, FaMinusCircle, FaEye, FaShoppingBag , FaSearch } from "react-icons/fa";
 import AdminSidebar from "./../../../../Shared/AdminSidebar/AdminSidebar";
 import Header from "./../../../../Shared/AdminSidebar/AdminHeader";
 import ReusableTable from "./../../../../Layouts/TableLayout/ReusableTable"
@@ -45,7 +45,7 @@ const SalesItems = ({ user }) => {
           name: item.goods_name,
           price: item.price,
           description: item.description,
-          gst: item.gst_rate,
+           gst_rate: item.gst_rate,
           updatedBy: "System",
           updatedOn: new Date(item.updated_at).toLocaleDateString(),
           opening_stock: item.opening_stock || 0,
@@ -122,14 +122,18 @@ const SalesItems = ({ user }) => {
     navigate("/salesitemspage", { state: { productToEdit: product } });
   };
 
-  const filteredItems = items.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase())
-  );
+ const filteredItems = items.filter((item) =>
+  item.name?.toLowerCase().includes(search.toLowerCase()) ||
+  item.description?.toLowerCase().includes(search.toLowerCase()) ||
+  item.gst_rate?.toString().toLowerCase().includes(search.toLowerCase()) ||
+  item.updatedBy?.toLowerCase().includes(search.toLowerCase()) 
+ 
+);
 
   const columns = [
     { key: "name", title: "Product Name" },
     { key: "description", title: "Description" },
-    { key: "gst", title: "GST Rate" },
+    { key: "gst_rate", title: "GST Rate" },
     { key: "updatedBy", title: "Updated By" },
     {
       key: "actions",
@@ -153,50 +157,79 @@ const SalesItems = ({ user }) => {
         <Header user={user} toggleSidebar={() => setIsCollapsed(!isCollapsed)} />
 
         <div className="container-fluid mt-3 sales-items-wrapper">
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <div className="retailers-search-container">
-              <div className="retailers-search-box">
-                <span className="retailers-search-icon">🔍</span>
-                <input
-                  type="text"
-                  placeholder="Search sales items..."
-                  className="retailers-search-input"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-            </div>
-                <div className="d-flex gap-2">
-                  <div className="dropdown">
-                    <button className="btn btn-info dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                      <i className="bi bi-list me-2"></i> Sales Catalogue
-                    </button>
-                    <ul className="dropdown-menu">
-                      <li><a className="dropdown-item" href="/sale_items">Sales Catalogue</a></li>
-                      <li><a className="dropdown-item" href="/purchased_items">Purchased Items</a></li>
-                    </ul>
-                  </div>
-                  <div className="dropdown">
-                    <button className="btn btn-success dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                      <i className="bi bi-plus-circle me-2"></i> ADD
-                    </button>
-                    <ul className="dropdown-menu">
-                      <li>
-                        <button
-                          className="dropdown-item"
-                          onClick={() => navigate("/salesitemspage")}
-                        >
-                          Products
-                        </button>
-                      </li>
-                      <li>
-                        <button className="dropdown-item" onClick={() => setShowServiceModal(true)}>Services</button>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
+    <div className="d-flex justify-content-between  mb-3 flex-wrap">
+  {/* Left: Search Box */}
+  <div className="sales-items-search-container me-3 flex-grow-1">
+    <div className="sales-items-search-box position-relative">
+      <input
+        type="text"
+        placeholder="Search sales items..."
+        className="sales-items-search-input"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+      <FaSearch className="sales-items-search-icon" size={18} />
+    </div>
+  </div>
 
-          </div>
+  {/* Right: Buttons */}
+  <div className="d-flex gap-2 flex-shrink-0 mt-0">
+    {/* Sales Catalogue Dropdown */}
+    <div className="dropdown">
+      <button
+        className="btn btn-info dropdown-toggle d-flex align-items-center"
+        type="button"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+      >
+        <i className="bi bi-list me-2"></i> Sales Catalogue
+      </button>
+      <ul className="dropdown-menu">
+        <li>
+          <a className="dropdown-item" href="/sale_items">
+            Sales Catalogue
+          </a>
+        </li>
+        <li>
+          <a className="dropdown-item" href="/purchased_items">
+            Purchased Items
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    {/* ADD Dropdown */}
+    <div className="dropdown">
+      <button
+        className="btn btn-success dropdown-toggle d-flex align-items-center"
+        type="button"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+      >
+        <i className="bi bi-plus-circle me-2"></i> ADD
+      </button>
+      <ul className="dropdown-menu">
+        <li>
+          <button
+            className="dropdown-item"
+            onClick={() => navigate("/salesitemspage")}
+          >
+            Products
+          </button>
+        </li>
+        <li>
+          <button
+            className="dropdown-item"
+            onClick={() => setShowServiceModal(true)}
+          >
+            Services
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 
           <ReusableTable
             data={filteredItems}

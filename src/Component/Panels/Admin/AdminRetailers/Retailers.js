@@ -513,6 +513,8 @@ import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import "./Retailers.css";
 import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
+import {  FaSearch} from "react-icons/fa";
+
 
 function Retailers() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -521,6 +523,7 @@ function Retailers() {
   const [filteredRetailersData, setFilteredRetailersData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+   const [searchTerm, setSearchTerm] = useState("");
 
   // Fetch retailers data from API
   useEffect(() => {
@@ -528,12 +531,23 @@ function Retailers() {
   }, []);
 
   // Filter retailers by role when data changes
-  useEffect(() => {
-    if (retailersData.length > 0) {
-      const filteredData = retailersData.filter(item => item.role === "retailer");
-      setFilteredRetailersData(filteredData);
-    }
-  }, [retailersData]);
+useEffect(() => {
+  if (retailersData.length > 0) {
+    const filteredData = retailersData
+      .filter(item => item.role === "retailer")
+      .filter(item =>
+        // Convert fields to lowercase for case-insensitive search
+        (item.business_name || item.name || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        (item.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.mobile_number || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.group || "").toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    setFilteredRetailersData(filteredData);
+  }
+}, [retailersData, searchTerm]);
+
 
   const fetchRetailers = async () => {
     try {
@@ -719,25 +733,45 @@ function Retailers() {
                   Manage retailer relationships and track performance
                 </p>
               </div>
-              <button
+          
+            </div>
+
+<div className="d-flex justify-content-between">
+{/* <div className="retailers-search-container">
+  <div className="retailers-search-box">
+    <span className="retailers-search-icon">🔍</span>
+    <input
+      type="text"
+      placeholder="Search retailers ..."
+      className="retailers-search-input"
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+    />
+  </div>
+</div> */}
+
+      <div className="retailers-search-container">
+                <div className="retailers-search-box">
+                  <input
+                    type="text"
+      placeholder="Search retailers ..."
+      className="retailers-search-input"
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+    />
+       <FaSearch className="retailers-search-icon" size={18} />
+  </div>
+</div>
+
+    <button
                 className="retailers-add-button retailers-add-button--top"
                 onClick={handleAddRetailerClick}
               >
                 <span className="retailers-add-icon">+</span>
                 Add Retailer
               </button>
-            </div>
 
-            <div className="retailers-search-container">
-              <div className="retailers-search-box">
-                <span className="retailers-search-icon">🔍</span>
-                <input
-                  type="text"
-                  placeholder="Search retailers..."
-                  className="retailers-search-input"
-                />
-              </div>
-            </div>
+</div>
 
             <div className="retailers-list-section">
               <div className="retailers-section-header">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FaEdit, FaTrash, FaPlusCircle, FaMinusCircle, FaEye } from "react-icons/fa";
+import { FaEdit, FaTrash, FaPlusCircle, FaMinusCircle, FaEye, FaSearch } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 import AdminSidebar from "../../../../Shared/AdminSidebar/AdminSidebar";
@@ -117,20 +117,25 @@ const PurchasedItems = ({ user }) => {
     navigate("/AddProductPage", { state: { productToEdit: productData } });
   };
 
-  const handleAddStock = async ({ quantity, remark }) => {
-    try {
-      await axios.post(`${baseurl}/stock/${selectedProductId}`, {
-        stock_in: quantity,
-        stock_out: 0,
-        date: new Date().toISOString().split("T")[0],
-        remark,
-      });
-      fetchProducts();
-      alert("Stock added successfully!");
-    } catch (error) {
-      alert("Failed to add stock");
-    }
-  };
+const handleAddStock = async ({ quantity, remark }) => {
+  try {
+    await axios.post(`${baseurl}/stock/${selectedProductId}`, {
+      stock_in: quantity,
+      stock_out: 0,
+      date: new Date().toISOString().split("T")[0],
+      remark,
+    });
+
+    fetchProducts();
+
+    // ✅ Simple success alert
+    window.alert("✅ New purchased item added successfully!");
+  } catch (error) {
+    console.error("❌ Failed to add stock:", error);
+    window.alert("❌ Failed to add stock. Please try again.");
+  }
+};
+
 
   const handleDeductStock = async ({ quantity, remark }) => {
     try {
@@ -147,9 +152,14 @@ const PurchasedItems = ({ user }) => {
     }
   };
 
-  const filteredItems = items.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase())
-  );
+const filteredItems = items.filter((item) =>
+  item.name?.toLowerCase().includes(search.toLowerCase()) ||
+  item.description?.toLowerCase().includes(search.toLowerCase()) ||
+  item.gst?.toString().toLowerCase().includes(search.toLowerCase()) ||
+  item.updatedBy?.toLowerCase().includes(search.toLowerCase()) ||
+  item.updatedOn?.toLowerCase().includes(search.toLowerCase())
+);
+
 
   const columns = [
     { key: "name", title: "Product Name" },
@@ -180,46 +190,77 @@ const PurchasedItems = ({ user }) => {
         <AdminHeader toggleSidebar={() => setIsCollapsed(!isCollapsed)} />
 
         <div className="container-fluid mt-3 purchased-items-wrapper">
-          {/* Top buttons */}
-          <div className="d-flex justify-content-between">
+     <div className="d-flex justify-content-between align-items-center flex-wrap mb-3">
+  {/* Left: Search Box */}
+  <div className="purchase-items-search-container flex-grow-1 me-3">
+    <div className="purchase-items-search-box position-relative">
+      <input
+        type="text"
+        placeholder="Search purchased items..."
+        className="purchase-items-search-input"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+      <FaSearch className="purchase-items-search-icon" size={18} />
+    </div>
+  </div>
 
-                  {/* Search */}
-          <div className="retailers-search-container mb-3">
-            <div className="retailers-search-box">
-              <span className="retailers-search-icon">🔍</span>
-              <input
-                type="text"
-                placeholder="Search purchased items..."
-                className="retailers-search-input"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="d-flex gap-2 mb-3 justify-content-end">
-            <div className="dropdown">
-              <button className="btn btn-info dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown">
-                <i className="bi bi-list me-2"></i> Purchased Items
-              </button>
-              <ul className="dropdown-menu">
-                <li><a className="dropdown-item" href="/purchased_items">Purchased Items</a></li>
-                <li><a className="dropdown-item" href="/sale_items">Sales Catalog</a></li>
-              </ul>
-            </div>
+  {/* Right: Buttons */}
+  <div className="d-flex gap-2 flex-shrink-0 mt-2 mt-md-0">
+    {/* Purchased Items Dropdown */}
+    <div className="dropdown">
+      <button
+        className="btn btn-info dropdown-toggle d-flex align-items-center"
+        type="button"
+        data-bs-toggle="dropdown"
+      >
+        <i className="bi bi-list me-2"></i> Purchased Items
+      </button>
+      <ul className="dropdown-menu">
+        <li>
+          <a className="dropdown-item" href="/purchased_items">
+            Purchased Items
+          </a>
+        </li>
+        <li>
+          <a className="dropdown-item" href="/sale_items">
+            Sales Catalog
+          </a>
+        </li>
+      </ul>
+    </div>
 
-            <div className="dropdown">
-              <button className="btn btn-success dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown">
-                <i className="bi bi-plus-circle me-2"></i> ADD
-              </button>
-              <ul className="dropdown-menu">
-                <li><button className="dropdown-item" onClick={() => navigate("/AddProductPage")}>Products</button></li>
-                <li><button className="dropdown-item" onClick={() => setShowServiceModal(true)}>Services</button></li>
-              </ul>
-            </div>
-          </div>
+    {/* Add Dropdown */}
+    <div className="dropdown">
+      <button
+        className="btn btn-success dropdown-toggle d-flex align-items-center"
+        type="button"
+        data-bs-toggle="dropdown"
+      >
+        <i className="bi bi-plus-circle me-2"></i> ADD
+      </button>
+      <ul className="dropdown-menu">
+        <li>
+          <button
+            className="dropdown-item"
+            onClick={() => navigate("/AddProductPage")}
+          >
+            Products
+          </button>
+        </li>
+        <li>
+          <button
+            className="dropdown-item"
+            onClick={() => setShowServiceModal(true)}
+          >
+            Services
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
 
-    
-          </div>
 
           {/* Table */}
           <ReusableTable

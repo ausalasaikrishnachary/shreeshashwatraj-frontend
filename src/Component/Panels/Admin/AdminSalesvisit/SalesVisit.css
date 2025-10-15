@@ -115,19 +115,85 @@
   background-color: #218838;
 }
 
-.sales-visits-table-container {
-  margin-top: 20px;
-  width: 100%;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  overflow-x: hidden;
+.search-controls {
+  flex: 1;
+  max-width: 400px;
 }
 
+.action-controls {
+  flex-shrink: 0;
+}
+
+
+
+
+.sales-visit-search-container {
+  max-width: 420px;
+  margin-bottom: 20px;
+}
+
+/* Search Box */
+.sales-visit-search-box {
+  position: relative;
+  width: 100%;
+}
+
+.sales-visits-search-input {
+  width: 100%;
+  padding: 12px 45px 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  background: white;
+  font-family: inherit;
+}
+
+.sales-visits-search-input:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.sales-visits-search-input::placeholder {
+  color: #a0aec0;
+}
+
+.sales-visits-search-icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #718096;
+}
+
+
+
+
+
+
+
+
+
+
+
+/* Table */
 .sales-visits-table-container table {
   width: 100%;
-  table-layout: auto; 
-  border-collapse: collapse; 
+  border-collapse: collapse;
+  min-width: 900px; /* ensures enough space for all columns */
 }
+
+.sales-visits-table-container th,
+.sales-visits-table-container td {
+  padding: 10px 16px; /* increased padding for more space */
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 
 .sales-visits-table-container th {
   padding: 12px; 
@@ -146,6 +212,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+   background-color: #fff;
   border-bottom: 1px solid #ddd; /* Added for row separation */
 }
 
@@ -179,6 +246,6 @@
   }
 
   .sales-visits-table-container table {
-    min-width: 600px;
+    min-width: 700px;
   }
 }

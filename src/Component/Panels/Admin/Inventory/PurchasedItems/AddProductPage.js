@@ -196,65 +196,66 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
     const updated = batches.filter((b) => b.id !== id);
     setBatches(updated);
   };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsLoading(true);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  // Validate batches if Maintain Batch is enabled
+  if (maintainBatch) {
+    const invalidBatches = batches.filter(batch =>
+      !batch.batchNumber || !batch.quantity || !batch.sellingPrice
+    );
 
-    if (maintainBatch) {
-      const invalidBatches = batches.filter(batch =>
-        !batch.batchNumber || !batch.quantity || !batch.sellingPrice
-      );
-
-      if (invalidBatches.length > 0) {
-        showAlert("Please fill all required fields in batch details (Batch Number, Quantity, and Selling Price)", "warning");
-        setIsLoading(false);
-        return;
-      }
-    }
-
-    try {
-      const batchesForBackend = maintainBatch ? batches.map(batch => ({
-        batchNumber: batch.batchNumber,
-        mfgDate: batch.mfgDate || null,
-        expDate: batch.expDate || null,
-        quantity: batch.quantity,
-        costPrice: batch.costPrice || 0,
-        sellingPrice: batch.sellingPrice,
-        purchasePrice: batch.purchasePrice || 0,
-        mrp: batch.mrp || 0,
-        batchPrice: batch.batchPrice || 0
-      })) : [];
-
-      const dataToSend = {
-        ...formData,
-        ...(maintainBatch && { batches: batchesForBackend })
-      };
-
-      if (productToEdit) {
-        await axios.put(`${baseurl}/products/${productToEdit.id}`, dataToSend, {
-          headers: { "Content-Type": "application/json" },
-        });
-        showAlert("Product updated successfully!");
-      } else {
-        await axios.post(`${baseurl}/products`, dataToSend, {
-          headers: { "Content-Type": "application/json" },
-        });
-        showAlert("Product added successfully!");
-      }
-
-      setTimeout(() => navigate('/purchased_items'), 1500);
-    } catch (error) {
-      console.error("Failed to add/update product.", error);
-      showAlert("Failed to add/update product.", "danger");
-    } finally {
+    if (invalidBatches.length > 0) {
+      window.alert("Please fill all required fields in batch details (Batch Number, Quantity, and Selling Price)");
       setIsLoading(false);
+      return;
     }
-  };
+  }
 
-  const pageTitle = productToEdit
-    ? `Edit Product in Purchased Items`
-    : `Add Product to Purchased Items`;
+  try {
+    const batchesForBackend = maintainBatch ? batches.map(batch => ({
+      batchNumber: batch.batchNumber,
+      mfgDate: batch.mfgDate || null,
+      expDate: batch.expDate || null,
+      quantity: batch.quantity,
+      costPrice: batch.costPrice || 0,
+      sellingPrice: batch.sellingPrice,
+      purchasePrice: batch.purchasePrice || 0,
+      mrp: batch.mrp || 0,
+      batchPrice: batch.batchPrice || 0
+    })) : [];
+
+    const dataToSend = {
+      ...formData,
+      ...(maintainBatch && { batches: batchesForBackend })
+    };
+
+    if (productToEdit) {
+      await axios.put(`${baseurl}/products/${productToEdit.id}`, dataToSend, {
+        headers: { "Content-Type": "application/json" },
+      });
+      window.alert(`Product "${formData.goods_name}" updated successfully!`);
+    } else {
+      await axios.post(`${baseurl}/products`, dataToSend, {
+        headers: { "Content-Type": "application/json" },
+      });
+      window.alert("New product added successfully!");
+    }
+
+    // Navigate after alert
+    navigate('/purchased_items');
+
+  } catch (error) {
+    console.error("Failed to add/update product.", error);
+    window.alert("Failed to add/update product.");
+  } finally {
+    setIsLoading(false);
+  }
+};
+const pageTitle = productToEdit
+  ? `Edit Product in Purchased Items`
+  : `Add Product to Purchased Items`;
 
   if (isLoading && !isDataLoaded) {
     return (

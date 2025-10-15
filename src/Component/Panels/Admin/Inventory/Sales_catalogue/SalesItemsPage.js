@@ -284,66 +284,68 @@ const SalesItemsPage = ({ groupType = "Salescatalog", user }) => {
     setBatches(updated);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log("🚀 Submitting form...");
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  console.log("🚀 Submitting form...");
 
-    if (maintainBatch) {
-      const invalidBatches = batches.filter(batch =>
-        !batch.batchNumber || !batch.quantity || !batch.sellingPrice
-      );
+  if (maintainBatch) {
+    const invalidBatches = batches.filter(batch =>
+      !batch.batchNumber || !batch.quantity || !batch.sellingPrice
+    );
 
-      if (invalidBatches.length > 0) {
-        showAlert("Please fill all required fields in batch details (Batch Number, Quantity, and Selling Price)", "warning");
-        return;
-      }
+    if (invalidBatches.length > 0) {
+      window.alert("Please fill all required fields in batch details (Batch Number, Quantity, and Selling Price)");
+      return;
+    }
+  }
+
+  setIsLoading(true);
+
+  try {
+    const batchesForBackend = maintainBatch ? batches.map(batch => ({
+      batch_number: batch.batchNumber,
+      mfg_date: batch.mfgDate || null,
+      exp_date: batch.expDate || null,
+      quantity: batch.quantity,
+      cost_price: batch.costPrice || 0,
+      selling_price: batch.sellingPrice,
+      purchase_price: batch.purchasePrice || 0,
+      mrp: batch.mrp || 0,
+      batch_price: batch.batchPrice || 0
+    })) : [];
+
+    const dataToSend = {
+      ...formData,
+      ...(maintainBatch && { batches: batchesForBackend })
+    };
+
+    console.log("📤 Sending data:", dataToSend);
+
+    if (productToEdit || productId) {
+      const idToUpdate = productToEdit?.id || productId;
+      console.log(`🔄 Updating product ID: ${idToUpdate}`);
+      await axios.put(`${baseurl}/products/${idToUpdate}`, dataToSend, {
+        headers: { "Content-Type": "application/json" },
+      });
+      window.alert(`Product "${formData.goods_name}" updated successfully!`);
+    } else {
+      console.log("➕ Creating new product");
+      await axios.post(`${baseurl}/products`, dataToSend, {
+        headers: { "Content-Type": "application/json" },
+      });
+      window.alert("New product added successfully!");
     }
 
-    setIsLoading(true);
+    // Navigate after alert
+    navigate('/sale_items');
 
-    try {
-      const batchesForBackend = maintainBatch ? batches.map(batch => ({
-        batch_number: batch.batchNumber,
-        mfg_date: batch.mfgDate || null,
-        exp_date: batch.expDate || null,
-        quantity: batch.quantity,
-        cost_price: batch.costPrice || 0,
-        selling_price: batch.sellingPrice,
-        purchase_price: batch.purchasePrice || 0,
-        mrp: batch.mrp || 0,
-        batch_price: batch.batchPrice || 0
-      })) : [];
-
-      const dataToSend = {
-        ...formData,
-        ...(maintainBatch && { batches: batchesForBackend })
-      };
-
-      console.log("📤 Sending data:", dataToSend);
-
-      if (productToEdit || productId) {
-        const idToUpdate = productToEdit?.id || productId;
-        console.log(`🔄 Updating product ID: ${idToUpdate}`);
-        await axios.put(`${baseurl}/products/${idToUpdate}`, dataToSend, {
-          headers: { "Content-Type": "application/json" },
-        });
-        showAlert("Product updated successfully!");
-      } else {
-        console.log("➕ Creating new product");
-        await axios.post(`${baseurl}/products`, dataToSend, {
-          headers: { "Content-Type": "application/json" },
-        });
-        showAlert("Product added successfully!");
-      }
-
-      setTimeout(() => navigate('/sale_items'), 1500);
-    } catch (error) {
-      console.error("❌ Failed to add/update product:", error);
-      showAlert("Failed to add/update product.", "danger");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error("❌ Failed to add/update product:", error);
+    window.alert("Failed to add/update product.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const pageTitle = (productToEdit || productId) 
     ? `Edit Product in Sales Catalog`
@@ -384,17 +386,7 @@ const SalesItemsPage = ({ groupType = "Salescatalog", user }) => {
             <div className="container justify-content-center mt-4">
               <h3 className="mb-4 text-center">{pageTitle}</h3>
               
-              {(productToEdit || productId) && (
-                <Alert variant="info" className="mb-3">
-                  <small>
-                    <strong>Editing Mode:</strong> {productToEdit ? `Product ID: ${productToEdit.id}` : `URL ID: ${productId}`}
-                    <br />
-                    <strong>Product Name:</strong> {formData.goods_name}
-                    <br />
-                    <strong>Batches:</strong> {batches.length}
-                  </small>
-                </Alert>
-              )}
+          
 
               <Form onSubmit={handleSubmit}>
                 <div className="row mb-3">

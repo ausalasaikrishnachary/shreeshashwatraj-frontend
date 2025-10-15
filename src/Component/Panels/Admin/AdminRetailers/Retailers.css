@@ -121,7 +121,7 @@
 }
 
 /* Search Box */
-.retailers-search-container {
+/* .retailers-search-container {
   max-width: 400px;
   margin-bottom: 32px;
 }
@@ -134,14 +134,14 @@
 
 .retailers-search-icon {
   position: absolute;
-  left: 12px;
+  right: 12px;
   font-size: 16px;
   color: #6b7280;
 }
 
 .retailers-search-input {
   width: 100%;
-  padding: 12px 12px 12px 40px;
+  padding: 12px 12px 12px 40px; 
   border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 14px;
@@ -151,9 +151,63 @@
 
 .retailers-search-input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+} */
+
+
+
+
+
+
+.retailers-search-container {
+  max-width: 420px;
+  margin-bottom: 20px;
 }
+
+/* Search Box */
+.retailers-search-box {
+  position: relative;
+  width: 100%;
+}
+
+.retailers-search-input {
+  width: 100%;
+  padding: 12px 45px 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  background: white;
+  font-family: inherit;
+}
+
+.retailers-search-input:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.retailers-search-input::placeholder {
+  color: #a0aec0;
+}
+
+.retailers-search-icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #718096;
+}
+
+
+
+
+
+
+
+
+
 
 /* Retailers List Section */
 .retailers-list-section {

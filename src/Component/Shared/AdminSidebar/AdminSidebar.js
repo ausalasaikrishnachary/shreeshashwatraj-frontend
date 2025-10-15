@@ -115,24 +115,17 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
                 {/* If has submenu */}
                 {item.subMenu ? (
                   <>
-                    <button
-                      className="dropdown-btn-link"
-                      onClick={() => toggleDropdown(item.name)}
-                    >
-                      <span className="icon">{item.icon}</span>
-                      {!isCollapsed && !isMobile && (
-                        <span className="link-text">
-                          {item.name}
-                          <span className="dropdown-arrow">
-                            {openDropdown === item.name ? (
-                              <FaChevronUp size={12} />
-                            ) : (
-                              <FaChevronDown size={12} />
-                            )}
-                          </span>
-                        </span>
-                      )}
-                    </button>
+               <button
+  className={`dropdown-btn-link ${openDropdown === item.name ? "open" : ""}`}
+  onClick={() => toggleDropdown(item.name)}
+>
+  <span className="icon">{item.icon}</span>
+  {!isCollapsed && !isMobile && <span>{item.name}</span>}
+  <span className="dropdown-arrow">
+    {openDropdown === item.name ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
+  </span>
+</button>
+
 
                     {openDropdown === item.name && (
 <ul className="submenu" style={{ display: openDropdown === item.name ? "block" : "none" }}>

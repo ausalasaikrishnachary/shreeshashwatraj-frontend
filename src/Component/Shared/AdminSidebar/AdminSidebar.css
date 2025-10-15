@@ -135,22 +135,35 @@
   cursor: pointer;
   z-index: 1002;
 }
-/* Ensure dropdown button inherits sidebar styles */
+/* Make dropdown button flex with space-between */
 .dropdown-btn-link {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between; /* Push icon to right */
+  gap: 12px; /* space between icon and text */
   padding: 15px 20px;
   color: #cbd5e1;
   text-decoration: none;
   font-size: 15px;
   border-radius: 6px;
   transition: all 0.2s;
-  background: none; /* Remove default button background */
-  border: none; /* Remove default button border */
+  background: none;
+  border: none;
   width: 100%;
-  text-align: left;
   cursor: pointer;
+}
+
+/* Dropdown arrow container */
+.dropdown-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto; /* ensure it is at far right */
+}
+
+/* Rotate arrow when open */
+.dropdown-btn-link.open .dropdown-arrow {
+  transform: rotate(180deg); /* optional if you want */
 }
 
 .dropdown-btn-link:hover,
