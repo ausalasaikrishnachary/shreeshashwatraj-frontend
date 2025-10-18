@@ -1,11 +1,12 @@
-// Login.js
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { FaEye, FaEyeSlash } from "react-icons/fa"; // 👁️ Eye icons
 import "./Login.css";
 
 function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // 👁️ Password toggle
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -22,9 +23,11 @@ function Login() {
     setError("");
 
     try {
-      // Check for static admin credentials first
-      if (username.trim() === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
-        // Admin login successful
+      // ✅ Check for static admin credentials
+      if (
+        username.trim() === ADMIN_CREDENTIALS.email &&
+        password === ADMIN_CREDENTIALS.password
+      ) {
         const adminUser = {
           id: 1,
           username: "admin",
@@ -32,54 +35,51 @@ function Login() {
           role: "admin",
           name: "Administrator"
         };
-        
-        // Store admin data in localStorage
+
+        // Save admin info
         localStorage.setItem("user", JSON.stringify(adminUser));
         localStorage.setItem("isAdmin", "true");
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("loginTime", new Date().toISOString());
-        
-        // Navigate to admin dashboard or appropriate route
+
         navigate("/admindashboard");
         return;
       }
 
-      // If not admin, proceed with regular login API call
+      // ✅ Normal user login via API
       const response = await fetch("http://localhost:5000/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: username.trim(),
           password: password
-        }),
+        })
       });
 
       const data = await response.json();
 
       if (data.success) {
-        // Store user data in localStorage
+        // Store user data
         localStorage.setItem("user", JSON.stringify(data.user));
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("loginTime", new Date().toISOString());
-        
-        // Store role-specific flags
-        if (data.user.role.toLowerCase() === 'admin') {
+
+        // Role-based flags
+        if (data.user.role.toLowerCase() === "admin") {
           localStorage.setItem("isAdmin", "true");
-        } else if (data.user.role.toLowerCase() === 'staff') {
+        } else if (data.user.role.toLowerCase() === "staff") {
           localStorage.setItem("isStaff", "true");
-        } else if (data.user.role.toLowerCase() === 'retailer') {
+        } else if (data.user.role.toLowerCase() === "retailer") {
           localStorage.setItem("isRetailer", "true");
         }
-        
+
         navigate(data.route);
       } else {
         setError(data.error || "Login failed");
       }
     } catch (err) {
-      setError("Network error. Please try again.");
       console.error("Login error:", err);
+      setError("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -91,13 +91,9 @@ function Login() {
         <h2>Welcome Back 👋</h2>
 
         {/* Error Message */}
-        {error && (
-          <div className="error-message">
-            {error}
-          </div>
-        )}
+        {error && <div className="error-message">{error}</div>}
 
-        {/* Username Field (Email or Mobile) */}
+        {/* Username */}
         <div className="form-group">
           <label htmlFor="username">Email or Mobile Number</label>
           <input
@@ -110,32 +106,39 @@ function Login() {
           />
         </div>
 
-        {/* Password Field */}
-        <div className="form-group">
+        {/* Password with Eye Toggle */}
+        <div className="form-group password-group">
           <label htmlFor="password">Password</label>
-          <input
-            type="password"
-            id="password"
-            placeholder="Enter your password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div className="password-wrapper">
+            <input
+              type={showPassword ? "text" : "password"}
+              id="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <span
+              className="password-toggle"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </span>
+          </div>
         </div>
 
-        {/* Forgot Password Link */}
-      
+        {/* Forgot Password */}
         <div className="forgot-password-link">
           Forgot Password?{" "}
-          <Link 
-            to="/forgot-password" 
-            state={{ email: username.includes('@') ? username : '' }}
+          <Link
+            to="/forgot-password"
+            state={{ email: username.includes("@") ? username : "" }}
           >
             Reset Here
           </Link>
         </div>
 
-        {/* Login Button */}
+        {/* Submit Button */}
         <button type="submit" disabled={loading}>
           {loading ? "Logging in..." : "Login"}
         </button>
