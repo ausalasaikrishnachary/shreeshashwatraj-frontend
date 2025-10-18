@@ -108,12 +108,19 @@
   .log-visit-mobile {
     padding: 15px;
   }
+  .form-header{
+    text-align: center;
+  }
   
   .visit-form {
     padding: 15px;
+    width: 320px ;
   }
   
   .form-buttons {
-    flex-direction: column;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: row !important;
   }
 }

@@ -1,9 +1,8 @@
-.staff-expenses-mobile {
+.my-retailers-mobile {
   padding: 20px;
   background-color: #f5f5f5;
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  padding-bottom: 100px;
 }
 
 .page-header {
@@ -34,7 +33,7 @@
   margin: 0;
 }
 
-.add-expense-btn {
+.add-retailer-btn-top {
   background: #007bff;
   color: white;
   border: none;
@@ -51,7 +50,7 @@
   gap: 5px;
 }
 
-.add-expense-btn:hover {
+.add-retailer-btn-top:hover {
   background: #0056b3;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
@@ -84,7 +83,7 @@
   color: #999;
 }
 
-.expenses-section {
+.retailers-section {
   margin-bottom: 20px;
 }
 
@@ -101,13 +100,13 @@
   margin: 0 0 15px 0;
 }
 
-.expenses-list {
+.retailers-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.expense-card {
+.retailer-card {
   background: white;
   border-radius: 12px;
   padding: 16px;
@@ -115,19 +114,94 @@
   border: 1px solid #f0f0f0;
 }
 
-.expense-header {
+.retailer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.retailer-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: #000;
+}
+
+.retailer-id {
+  font-size: 12px;
+  color: #666;
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.retailer-contact {
+  margin-bottom: 12px;
+}
+
+.contact-phone {
+  font-size: 14px;
+  font-weight: 500;
+  color: #000;
+  margin-bottom: 2px;
+}
+
+.contact-email {
+  font-size: 12px;
+  color: #666;
+}
+
+.retailer-details {
+  margin-bottom: 12px;
+}
+
+.type-location {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.retailer-type, .retailer-location {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #f8f9fa;
+  color: #495057;
+}
+
+.retailer-performance {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
-  padding-bottom: 12px;
+  padding: 8px 0;
+  border-top: 1px solid #f0f0f0;
   border-bottom: 1px solid #f0f0f0;
 }
 
-.expense-id {
-  font-size: 16px;
+.performance-score {
+  font-size: 14px;
   font-weight: 600;
   color: #000;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.score-icon {
+  color: #dc3545;
+  font-size: 12px;
+}
+
+.sales-amount {
+  font-size: 14px;
+  font-weight: 600;
+  color: #28a745;
+}
+
+.retailer-status {
+  text-align: right;
 }
 
 .status-badge {
@@ -138,115 +212,19 @@
   text-transform: uppercase;
 }
 
-.status-badge.pending {
-  background: #fff3cd;
-  color: #856404;
-}
-
-.status-badge.approved {
+.status-badge.active {
   background: #d4edda;
   color: #155724;
 }
 
-.status-badge.rejected {
+.status-badge.inactive {
   background: #f8d7da;
   color: #721c24;
 }
 
-.expense-category-date {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-  gap: 10px;
-}
-
-.category-badge {
-  font-size: 14px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 6px;
-  background: #007bff;
-  color: white;
-}
-
-.date-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-}
-
-.date-label {
-  font-size: 12px;
-  color: #666;
-}
-
-.expense-amount {
-  font-size: 24px;
-  font-weight: 700;
-  color: #000;
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-.expense-description {
-  font-size: 14px;
-  color: #666;
-  line-height: 1.4;
-  margin-bottom: 16px;
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 6px;
-  border-left: 4px solid #007bff;
-}
-
-.expense-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-.view-details-btn, .edit-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.view-details-btn {
-  background: #007bff;
-  color: white;
-}
-
-.view-details-btn:hover {
-  background: #0056b3;
-}
-
-.edit-btn {
-  background: #6c757d;
-  color: white;
-}
-
-.edit-btn:hover {
-  background: #545b62;
-}
-
-.no-expenses {
-  text-align: center;
-  padding: 40px 20px;
-  background: white;
-  border-radius: 12px;
-  border: 2px dashed #e0e0e0;
-}
-
-.no-expenses p {
-  font-size: 16px;
-  color: #666;
-  margin: 0;
+/* Remove the old floating button styles */
+.add-retailer-btn {
+  display: none;
 }
 
 /* Responsive adjustments */
@@ -257,49 +235,26 @@
     gap: 10px;
   }
   
-  .add-expense-btn {
+  .add-retailer-btn-top {
     align-self: flex-end;
     width: auto;
-  }
-  
-  .expense-category-date {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  
-  .date-info {
-    align-items: flex-start;
-  }
-  
-  .expense-actions {
-    justify-content: space-between;
   }
 }
 
 @media (max-width: 360px) {
-  .staff-expenses-mobile {
+  .my-retailers-mobile {
     padding: 15px;
   }
   
-  .expense-card {
+  .retailer-card {
     padding: 12px;
   }
   
-  .add-expense-btn {
+  .add-retailer-btn-top {
     padding: 10px 12px;
     font-size: 13px;
-    margin: auto !important;
-  }
-  
-  .expense-amount {
-    font-size: 20px;
-  }
-  .expense-actions{
     text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
 
+ margin: auto !important;
+  }
 }

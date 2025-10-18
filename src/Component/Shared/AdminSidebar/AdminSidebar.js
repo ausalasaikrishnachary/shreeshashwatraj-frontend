@@ -23,6 +23,7 @@ import {
   FaChartLine,
   FaBox,
   FaHandHoldingUsd,
+  FaMoneyBillWave
 
 } from "react-icons/fa";
 
@@ -30,7 +31,7 @@ import "./AdminSidebar.css";
 import UserCard from "../../Panels/UserCard/UserCard";
 
 function AdminSidebar({ isCollapsed, setIsCollapsed }) {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);  
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [openDropdown, setOpenDropdown] = useState(null);
   const location = useLocation();
@@ -64,6 +65,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
     ]
   },
     { path: "/sales", name: "Sales", icon: <FaChartLine /> },
+     { path: "/admin_expensive", name: "Expensive Request", icon: <FaMoneyBillWave /> },
     { path: "/products", name: "Products", icon: <FaBox /> },
     { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },
     { path: "/expenses", name: "Expenses", icon: <FaMoneyBill /> },

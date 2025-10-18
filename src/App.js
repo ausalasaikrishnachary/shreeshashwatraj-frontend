@@ -103,6 +103,9 @@ import StockDetailsModal from "./Component/Panels/Admin/Inventory/PurchasedItems
 import DeductStockModal from "./Component/Panels/Admin/Inventory/PurchasedItems/DeductStockModal";
 import AddStockModal from "./Component/Panels/Admin/Inventory/PurchasedItems/AddStockModal";
 import AddServiceModal from "./Component/Panels/Admin/Inventory/PurchasedItems/AddServiceModal";
+import Staff_expensive from "./Component/Panels/Staff/StaffPages/Expensive/Staff_expensive";
+import Staff_Add_expensive from "./Component/Panels/Staff/StaffPages/Expensive/Staff_Add_expensive";
+import AdminExpensiveRequest from "./Component/Panels/Admin/AdminExpensiveRequest/AdminExpensiveRequest";
 
 
 function App() {
@@ -173,6 +176,14 @@ function App() {
             <Route path="/deductstockmodal" element={< DeductStockModal />} />
             <Route path="/addstockmodal" element={< AddStockModal />} />
             <Route path="/addservicemodal" element={<AddServiceModal />} />
+
+            <Route path="/staff_expensive" element={<Staff_expensive />} />
+            <Route path="/staff_add_expensive" element={<Staff_Add_expensive />} />
+<Route path="/admin_expensive" element={<AdminExpensiveRequest />} />
+<Route path="/admin_expensive/view/:id" element={<AdminExpensiveRequest mode="view"/>} />
+<Route path="/admin_expensive/edit/:id" element={<AdminExpensiveRequest mode="edit"/>} />
+
+
 
       </Routes>
     </Router>

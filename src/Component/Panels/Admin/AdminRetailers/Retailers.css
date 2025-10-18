@@ -158,11 +158,13 @@
 
 
 
-
-
+/* Container centered & fixed width */
 .retailers-search-container {
+  width: 100%;
   max-width: 420px;
   margin-bottom: 20px;
+  display: flex;
+  justify-content: start;
 }
 
 /* Search Box */
@@ -171,15 +173,16 @@
   width: 100%;
 }
 
+/* Input field styling */
 .retailers-search-input {
   width: 100%;
   padding: 12px 45px 12px 16px;
   border: 2px solid #e2e8f0;
   border-radius: 8px;
   font-size: 14px;
-  transition: all 0.3s ease;
   background: white;
-  font-family: inherit;
+  transition: all 0.3s ease;
+  box-sizing: border-box; /* ✅ ensures padding doesn’t break width */
 }
 
 .retailers-search-input:focus {
@@ -192,6 +195,7 @@
   color: #a0aec0;
 }
 
+/* Search icon positioning */
 .retailers-search-icon {
   position: absolute;
   right: 16px;
