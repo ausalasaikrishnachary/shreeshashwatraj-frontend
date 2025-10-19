@@ -106,6 +106,7 @@ import AddServiceModal from "./Component/Panels/Admin/Inventory/PurchasedItems/A
 import Staff_expensive from "./Component/Panels/Staff/StaffPages/Expensive/Staff_expensive";
 import Staff_Add_expensive from "./Component/Panels/Staff/StaffPages/Expensive/Staff_Add_expensive";
 import AdminExpensiveRequest from "./Component/Panels/Admin/AdminExpensiveRequest/AdminExpensiveRequest";
+import Salesitems_productsdetails from "./Component/Panels/Admin/Inventory/PurchasedItems/Salesitems_productsdetails";
 
 
 function App() {
@@ -182,6 +183,8 @@ function App() {
 <Route path="/admin_expensive" element={<AdminExpensiveRequest />} />
 <Route path="/admin_expensive/view/:id" element={<AdminExpensiveRequest mode="view"/>} />
 <Route path="/admin_expensive/edit/:id" element={<AdminExpensiveRequest mode="edit"/>} />
+<Route path="/salesitems_productdetails/:id" element={<Salesitems_productsdetails />} />
+
 
 
 

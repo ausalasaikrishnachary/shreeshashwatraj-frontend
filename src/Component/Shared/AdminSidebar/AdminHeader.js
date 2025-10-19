@@ -19,6 +19,9 @@ function AdminHeader({ isCollapsed, onToggleSidebar }) {
     "/expenses": "Expenses",
     "/reports": "Reports",
     "/roleaccess": "Role Access",
+    "/purchased_items": "Purchase Items",
+    "/sale_items": "Sales Items",
+    "/admin_expensive" : "Expensive Request", 
   };
 
   let title = "Dashboard";

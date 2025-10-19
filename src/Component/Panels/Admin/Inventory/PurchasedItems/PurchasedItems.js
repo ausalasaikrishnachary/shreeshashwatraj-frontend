@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FaEdit, FaTrash, FaPlusCircle, FaMinusCircle, FaEye, FaSearch } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { FaEdit, FaTrash, FaPlusCircle, FaMinusCircle, FaEye, FaSearch ,FaShoppingBag} from "react-icons/fa";
+import {Link, useNavigate } from "react-router-dom";
 
 import AdminSidebar from "../../../../Shared/AdminSidebar/AdminSidebar";
 import ReusableTable from "../../../../Layouts/TableLayout/ReusableTable";
@@ -162,8 +162,24 @@ const filteredItems = items.filter((item) =>
 
 
   const columns = [
-    { key: "name", title: "Product Name" },
-    { key: "description", title: "Description" },
+  {
+    key: "name",
+    title: "Product Name",
+    render: (item) => (
+      <div>
+        <FaShoppingBag className="me-2 text-info" />
+        <Link
+          to={`/salesitems_productdetails/${item.id}`}
+          className="text-primary text-decoration-none fw-semibold"
+        >
+          {item.name}
+        </Link>
+        <br />
+        <span className="text-muted">RS. {item.price}</span>
+      </div>
+    ),
+  },
+      { key: "description", title: "Description" },
     { key: "gst", title: "GST Rate" },
     { key: "updatedBy", title: "Updated By" },
     { key: "updatedOn", title: "Updated On" },
