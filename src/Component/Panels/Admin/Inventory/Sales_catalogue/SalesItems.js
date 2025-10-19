@@ -42,7 +42,7 @@ const SalesItems = ({ user }) => {
         .filter((item) => item.group_by === "Salescatalog")
         .map((item) => ({
           id: item.id,
-          name: item.goods_name,
+          goods_name: item.goods_name,
           price: item.price,
           description: item.description,
            gst_rate: item.gst_rate,
@@ -123,7 +123,7 @@ const SalesItems = ({ user }) => {
   };
 
  const filteredItems = items.filter((item) =>
-  item.name?.toLowerCase().includes(search.toLowerCase()) ||
+  item.goods_name?.toLowerCase().includes(search.toLowerCase()) ||
   item.description?.toLowerCase().includes(search.toLowerCase()) ||
   item.gst_rate?.toString().toLowerCase().includes(search.toLowerCase()) ||
   item.updatedBy?.toLowerCase().includes(search.toLowerCase()) 
@@ -132,16 +132,16 @@ const SalesItems = ({ user }) => {
 
   const columns = [
     {
-    key: "name",
+    key: "goods_name",
     title: "Product Name",
-    render: (item) => (
+    render: (_, item) => (
       <div>
         <FaShoppingBag className="me-2 text-info" />
         <Link
           to={`/salesitems_productdetails/${item.id}`}
           className="text-primary text-decoration-none fw-semibold"
         >
-          {item.name}
+          {item.goods_name}
         </Link>
         <br />
         <span className="text-muted">RS. {item.price}</span>

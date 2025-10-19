@@ -44,7 +44,7 @@ const PurchasedItems = ({ user }) => {
         .filter((item) => item.group_by === "Purchaseditems")
         .map((item) => ({
            id: item.id,
-          name: item.goods_name,
+          goods_name: item.goods_name,
           price: item.price,
           description: item.description,
           gst: item.gst_rate,
@@ -153,7 +153,7 @@ const handleAddStock = async ({ quantity, remark }) => {
   };
 
 const filteredItems = items.filter((item) =>
-  item.name?.toLowerCase().includes(search.toLowerCase()) ||
+  item.goods_name?.toLowerCase().includes(search.toLowerCase()) ||
   item.description?.toLowerCase().includes(search.toLowerCase()) ||
   item.gst?.toString().toLowerCase().includes(search.toLowerCase()) ||
   item.updatedBy?.toLowerCase().includes(search.toLowerCase()) ||
@@ -163,22 +163,23 @@ const filteredItems = items.filter((item) =>
 
   const columns = [
   {
-    key: "name",
-    title: "Product Name",
-    render: (item) => (
-      <div>
-        <FaShoppingBag className="me-2 text-info" />
-        <Link
-          to={`/salesitems_productdetails/${item.id}`}
-          className="text-primary text-decoration-none fw-semibold"
-        >
-          {item.name}
-        </Link>
-        <br />
-        <span className="text-muted">RS. {item.price}</span>
-      </div>
-    ),
-  },
+  key: "goods_name",
+  title: "Product Name",
+  render: (_, item) => (
+    <div className="product-name-cell">
+      <FaShoppingBag className="me-2 text-info" />
+      <Link
+        to={`/salesitems_productdetails/${item?.id ?? 0}`}
+        className="product-name-link"
+      >
+        {item?.goods_name || "N/A"}
+      </Link>
+      <br />
+      <span className="text-muted">Rs. {item?.price ?? 0}</span>
+    </div>
+  ),
+},
+
       { key: "description", title: "Description" },
     { key: "gst", title: "GST Rate" },
     { key: "updatedBy", title: "Updated By" },

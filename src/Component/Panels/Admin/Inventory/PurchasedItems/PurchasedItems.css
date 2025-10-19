@@ -73,6 +73,7 @@
   font-size: 14px;
 }
 
+
 .purchase-items-search-input:focus {
   outline: none;
   border-color: #4299e1;
@@ -91,9 +92,9 @@
   color: #6b7280;
 }
 
-
-
-
+.product-name-link{
+  text-decoration: none;
+}
 
 /* Action icons */
 .action-icon {
