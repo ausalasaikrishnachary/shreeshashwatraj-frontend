@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
-import './PurchaseOrder.css';
+import './DebitNote.css';
 
-const PurchaseOrderTable = () => {
+const DebitNoteTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState('Purchase Order');
+  const [activeTab, setActiveTab] = useState('Debit Note');
   const navigate = useNavigate();
 
   const [month, setMonth] = useState('July');
@@ -30,25 +30,26 @@ const PurchaseOrderTable = () => {
     navigate(tab.path);
   };
 
-  // Sample purchase order data
-  const purchaseOrderData = [
-    // Add your purchase order data here
+  // Sample debit note data
+  const debitNoteData = [
+    // Add your debit note data here
     // Example:
     // {
     //   supplierName: "ABC Suppliers",
-    //   number: "PO-001",
-    //   amount: "₹ 50,000.00",
-    //   created: "2025-07-01",
+    //   noteNumber: "DN-001",
+    //   document: "DN_001.pdf",
+    //   debitAmount: "₹ 15,000.00",
+    //   created: "2025-07-15",
     //   action: "View"
     // }
   ];
 
-  // Purchase order stats data
-  const purchaseOrderStats = [
-    { label: "Total Purchase Orders", value: "₹ 3,50,000", change: "+20%", type: "total" },
-    { label: "Completed Orders", value: "₹ 2,80,000", change: "+18%", type: "completed" },
-    { label: "Pending Orders", value: "₹ 55,000", change: "+10%", type: "pending" },
-    { label: "Cancelled Orders", value: "₹ 15,000", change: "-2%", type: "cancelled" }
+  // Debit note stats data
+  const debitNoteStats = [
+    { label: "Total Debit Notes", value: "₹ 2,50,000", change: "+18%", type: "total" },
+    { label: "This Month", value: "₹ 45,000", change: "+12%", type: "month" },
+    { label: "Pending Approval", value: "₹ 75,000", change: "+5%", type: "pending" },
+    { label: "Approved", value: "₹ 1,75,000", change: "+22%", type: "approved" }
   ];
 
   const columns = [
@@ -58,13 +59,28 @@ const PurchaseOrderTable = () => {
       style: { textAlign: 'left' }
     },
     {
-      key: 'number',
-      title: 'NUMBER',
+      key: 'noteNumber',
+      title: 'NOTE NUMBER',
       style: { textAlign: 'center' }
     },
     {
-      key: 'amount',
-      title: 'AMOUNT',
+      key: 'document',
+      title: 'DOCUMENT',
+      style: { textAlign: 'center' },
+      render: (item) => (
+        item.document ? (
+          <a href="#" className="document-link" onClick={(e) => handleDocumentClick(e, item.document)}>
+            <i className="bi bi-file-earmark-pdf me-1"></i>
+            {item.document}
+          </a>
+        ) : (
+          <span className="text-muted">No document</span>
+        )
+      )
+    },
+    {
+      key: 'debitAmount',
+      title: 'DEBIT AMOUNT',
       style: { textAlign: 'right' }
     },
     {
@@ -88,13 +104,19 @@ const PurchaseOrderTable = () => {
   ];
 
   const handleCreateClick = () => {
-    navigate("/purchase/create-purchase-order");
+    navigate("/purchase/create-debit-note");
   };
 
-  const handleViewClick = (order) => {
+  const handleViewClick = (debitNote) => {
     // Handle view action
-    console.log('View order:', order);
-    // navigate(`/purchase/purchase-order/${order.id}`);
+    console.log('View debit note:', debitNote);
+    // navigate(`/purchase/debit-note/${debitNote.id}`);
+  };
+
+  const handleDocumentClick = (e, documentName) => {
+    e.preventDefault();
+    // Handle document download/view
+    console.log('Download document:', documentName);
   };
 
   const handleDownloadMonth = () => {
@@ -108,19 +130,19 @@ const PurchaseOrderTable = () => {
   };
 
   return (
-    <div className="purchase-order-wrapper">
+    <div className="debit-note-wrapper">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-      <div className={`purchase-order-main-content ${isCollapsed ? "collapsed" : ""}`}>
+      <div className={`debit-note-main-content ${isCollapsed ? "collapsed" : ""}`}>
         <AdminHeader isCollapsed={isCollapsed} />
         
-        <div className="purchase-order-content-area">
+        <div className="debit-note-content-area">
           {/* ✅ Purchase Navigation Tabs Section */}
-          <div className="purchase-order-tabs-section">
-            <div className="purchase-order-tabs-container">
+          <div className="debit-note-tabs-section">
+            <div className="debit-note-tabs-container">
               {tabs.map((tab) => (
                 <button
                   key={tab.name}
-                  className={`purchase-order-tab ${activeTab === tab.name ? 'purchase-order-tab--active' : ''}`}
+                  className={`debit-note-tab ${activeTab === tab.name ? 'debit-note-tab--active' : ''}`}
                   onClick={() => handleTabClick(tab)}
                 >
                   {tab.name}
@@ -129,22 +151,22 @@ const PurchaseOrderTable = () => {
             </div>
           </div>
 
-          <div className="purchase-order-header-section">
-            <div className="purchase-order-header-top">
-              <div className="purchase-order-title-section">
-                <h1 className="purchase-order-main-title">Purchase Order Management</h1>
-                <p className="purchase-order-subtitle">Create, manage and track all your purchase orders</p>
+          <div className="debit-note-header-section">
+            <div className="debit-note-header-top">
+              <div className="debit-note-title-section">
+                <h1 className="debit-note-main-title">Debit Note Management</h1>
+                <p className="debit-note-subtitle">Create, manage and track all your debit notes</p>
               </div>
             </div>
           </div>
 
-          {/* Purchase Order Stats */}
-          <div className="purchase-order-stats-grid">
-            {purchaseOrderStats.map((stat, index) => (
-              <div key={index} className={`purchase-order-stat-card purchase-order-stat-card--${stat.type}`}>
-                <h3 className="purchase-order-stat-label">{stat.label}</h3>
-                <div className="purchase-order-stat-value">{stat.value}</div>
-                <div className={`purchase-order-stat-change ${stat.change.startsWith("+") ? "purchase-order-stat-change--positive" : "purchase-order-stat-change--negative"}`}>
+          {/* Debit Note Stats */}
+          <div className="debit-note-stats-grid">
+            {debitNoteStats.map((stat, index) => (
+              <div key={index} className={`debit-note-stat-card debit-note-stat-card--${stat.type}`}>
+                <h3 className="debit-note-stat-label">{stat.label}</h3>
+                <div className="debit-note-stat-value">{stat.value}</div>
+                <div className={`debit-note-stat-change ${stat.change.startsWith("+") ? "debit-note-stat-change--positive" : "debit-note-stat-change--negative"}`}>
                   {stat.change} from last month
                 </div>
               </div>
@@ -152,9 +174,9 @@ const PurchaseOrderTable = () => {
           </div>
 
           {/* Filters and Actions Section */}
-          <div className="purchase-order-actions-section">
+          <div className="debit-note-actions-section">
             <div className="quotation-container p-3">
-              <h5 className="mb-3 fw-bold">View Purchase Order Details</h5>
+              <h5 className="mb-3 fw-bold">View Debit Note Details</h5>
 
               {/* Filters Section */}
               <div className="row align-items-end g-3 mb-3">
@@ -225,11 +247,11 @@ const PurchaseOrderTable = () => {
 
               {/* Table Section */}
               <ReusableTable
-                title="Purchase Orders"
-                data={purchaseOrderData}
+                title="Debit Notes"
+                data={debitNoteData}
                 columns={columns}
                 initialEntriesPerPage={10}
-                searchPlaceholder="Search purchase orders..."
+                searchPlaceholder="Search debit notes..."
                 showSearch={true}
                 showEntriesSelector={true}
                 showPagination={true}
@@ -242,4 +264,4 @@ const PurchaseOrderTable = () => {
   );
 };
 
-export default PurchaseOrderTable;
+export default DebitNoteTable;
