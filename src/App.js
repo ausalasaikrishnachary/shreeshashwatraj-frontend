@@ -120,6 +120,8 @@ import Staff_expensive from "./Component/Panels/Staff/StaffPages/Expensive/Staff
 import Staff_Add_expensive from "./Component/Panels/Staff/StaffPages/Expensive/Staff_Add_expensive";
 import AdminExpensiveRequest from "./Component/Panels/Admin/AdminExpensiveRequest/AdminExpensiveRequest";
 import Salesitems_productsdetails from "./Component/Panels/Admin/Inventory/PurchasedItems/Salesitems_productsdetails";
+import DebitNoteTable from "./Component/Panels/Admin/DebitTable/DebitTableNote";
+import PayablesTable from "./Component/Panels/Admin/Payables/Payables";
 
 
 function App() {
@@ -180,10 +182,13 @@ function App() {
         <Route path="/sales/add" element={<AddSales />} />
         <Route path="/staff/edit/:id" element={<AddStaff />} />
         <Route path="/product" element={<AdminProducts />} />
-        <Route path="/purchase/purchase_invoice" element={<PurchaseInvoiceTable />} />
+
+        <Route path="/purchase/purchase-invoice" element={<PurchaseInvoiceTable />} />
         <Route path="/purchase/create-purchase-invoice" element={<CreatePurchaseInvoiceForm />} />
-        <Route path="/purchase/purchase_order" element={<PurchaseOrderTable />} />
+        <Route path="/purchase/purchase-order" element={<PurchaseOrderTable />} />
         <Route path="/purchase/voucher" element={<VoucherTable />} />
+        <Route path="/purchase/debit-note" element={<DebitNoteTable />} />
+        <Route path="/purchase/payables" element={<PayablesTable />} />
 
         <Route path="/add-product" element={<AddProduct />} />
         <Route path="/marketing" element={<AdminMarketing />} />

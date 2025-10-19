@@ -1,25 +1,25 @@
-.purchase-order-wrapper {
+.debit-note-wrapper {
   display: flex;
   min-height: 100vh;
   background-color: #f8f9fa;
 }
 
-.purchase-order-main-content {
+.debit-note-main-content {
   flex: 1;
   margin-left: 250px;
   transition: margin-left 0.3s ease;
 }
 
-.purchase-order-main-content.collapsed {
+.debit-note-main-content.collapsed {
   margin-left: 80px;
 }
 
-.purchase-order-content-area {
+.debit-note-content-area {
   padding: 20px;
 }
 
 /* Navigation Tabs */
-.purchase-order-tabs-section {
+.debit-note-tabs-section {
   background: white;
   border-radius: 10px 10px 0 0;
   padding: 0 25px;
@@ -28,13 +28,13 @@
   border-bottom: 1px solid #dee2e6;
 }
 
-.purchase-order-tabs-container {
+.debit-note-tabs-container {
   display: flex;
   gap: 0;
   overflow-x: auto;
 }
 
-.purchase-order-tab {
+.debit-note-tab {
   padding: 16px 24px;
   background: none;
   border: none;
@@ -47,18 +47,18 @@
   font-size: 14px;
 }
 
-.purchase-order-tab:hover {
+.debit-note-tab:hover {
   color: #007bff;
   background-color: #f8f9fa;
 }
 
-.purchase-order-tab--active {
+.debit-note-tab--active {
   color: #007bff;
   border-bottom-color: #007bff;
   background-color: #f8f9fa;
 }
 
-.purchase-order-header-section {
+.debit-note-header-section {
   background: white;
   border-radius: 0 0 10px 10px;
   padding: 25px;
@@ -66,38 +66,38 @@
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.purchase-order-header-top {
+.debit-note-header-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
 }
 
-.purchase-order-title-section {
+.debit-note-title-section {
   flex: 1;
 }
 
-.purchase-order-main-title {
+.debit-note-main-title {
   font-size: 28px;
   font-weight: 700;
   color: #2c3e50;
   margin-bottom: 8px;
 }
 
-.purchase-order-subtitle {
+.debit-note-subtitle {
   font-size: 16px;
   color: #6c757d;
   margin-bottom: 0;
 }
 
 /* Stats Grid */
-.purchase-order-stats-grid {
+.debit-note-stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 20px;
   margin-bottom: 24px;
 }
 
-.purchase-order-stat-card {
+.debit-note-stat-card {
   background: white;
   border-radius: 10px;
   padding: 24px;
@@ -105,23 +105,23 @@
   border-left: 4px solid #007bff;
 }
 
-.purchase-order-stat-card--total {
+.debit-note-stat-card--total {
   border-left-color: #007bff;
 }
 
-.purchase-order-stat-card--completed {
+.debit-note-stat-card--month {
   border-left-color: #28a745;
 }
 
-.purchase-order-stat-card--pending {
+.debit-note-stat-card--pending {
   border-left-color: #ffc107;
 }
 
-.purchase-order-stat-card--cancelled {
-  border-left-color: #dc3545;
+.debit-note-stat-card--approved {
+  border-left-color: #17a2b8;
 }
 
-.purchase-order-stat-label {
+.debit-note-stat-label {
   font-size: 14px;
   font-weight: 600;
   color: #6c757d;
@@ -130,28 +130,28 @@
   letter-spacing: 0.5px;
 }
 
-.purchase-order-stat-value {
+.debit-note-stat-value {
   font-size: 24px;
   font-weight: 700;
   color: #2c3e50;
   margin-bottom: 8px;
 }
 
-.purchase-order-stat-change {
+.debit-note-stat-change {
   font-size: 12px;
   font-weight: 500;
 }
 
-.purchase-order-stat-change--positive {
+.debit-note-stat-change--positive {
   color: #28a745;
 }
 
-.purchase-order-stat-change--negative {
+.debit-note-stat-change--negative {
   color: #dc3545;
 }
 
 /* Actions Section */
-.purchase-order-actions-section {
+.debit-note-actions-section {
   background: white;
   border-radius: 10px;
   overflow: hidden;
@@ -225,30 +225,43 @@
   font-size: 12px;
 }
 
+/* Document Link */
+.document-link {
+  color: #007bff;
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.2s ease;
+}
+
+.document-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
-  .purchase-order-main-content {
+  .debit-note-main-content {
     margin-left: 0;
   }
   
-  .purchase-order-main-content.collapsed {
+  .debit-note-main-content.collapsed {
     margin-left: 0;
   }
   
-  .purchase-order-stats-grid {
+  .debit-note-stats-grid {
     grid-template-columns: 1fr;
   }
   
-  .purchase-order-header-top {
+  .debit-note-header-top {
     flex-direction: column;
     gap: 16px;
   }
   
-  .purchase-order-tabs-container {
+  .debit-note-tabs-container {
     flex-wrap: wrap;
   }
   
-  .purchase-order-tab {
+  .debit-note-tab {
     flex: 1;
     min-width: 120px;
     text-align: center;
@@ -277,19 +290,19 @@
 }
 
 @media (max-width: 576px) {
-  .purchase-order-content-area {
+  .debit-note-content-area {
     padding: 15px;
   }
   
-  .purchase-order-main-title {
+  .debit-note-main-title {
     font-size: 24px;
   }
   
-  .purchase-order-stat-value {
+  .debit-note-stat-value {
     font-size: 20px;
   }
   
-  .purchase-order-tab {
+  .debit-note-tab {
     padding: 10px 12px;
     font-size: 12px;
   }

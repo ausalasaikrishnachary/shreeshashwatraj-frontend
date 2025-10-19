@@ -7,12 +7,28 @@ import './Voucher.css';
 
 const VoucherTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState('Voucher');
   const navigate = useNavigate();
 
   const [month, setMonth] = useState('July');
   const [year, setYear] = useState('2025');
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
+
+  // Define tabs with their corresponding routes
+  const tabs = [
+    { name: 'Purchase Invoice', path: '/purchase/purchase-invoice' },
+    { name: 'Purchase Order', path: '/purchase/purchase-order' },
+    { name: 'Voucher', path: '/purchase/voucher' },
+    { name: 'Debit Note', path: '/purchase/debit-note' },
+    { name: 'Payables', path: '/purchase/payables' }
+  ];
+
+  // Handle tab click - navigate to corresponding route
+  const handleTabClick = (tab) => {
+    setActiveTab(tab.name);
+    navigate(tab.path);
+  };
 
   // Sample voucher data
   const voucherData = [
@@ -81,6 +97,16 @@ const VoucherTable = () => {
     // navigate(`/purchase/voucher/${voucher.id}`);
   };
 
+  const handleDownloadMonth = () => {
+    // Handle month download
+    console.log('Download month data:', month, year);
+  };
+
+  const handleDownloadRange = () => {
+    // Handle date range download
+    console.log('Download range data:', startDate, endDate);
+  };
+
   return (
     <div className="voucher-wrapper">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
@@ -88,6 +114,21 @@ const VoucherTable = () => {
         <AdminHeader isCollapsed={isCollapsed} />
         
         <div className="voucher-content-area">
+          {/* ✅ Purchase Navigation Tabs Section */}
+          <div className="voucher-tabs-section">
+            <div className="voucher-tabs-container">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.name}
+                  className={`voucher-tab ${activeTab === tab.name ? 'voucher-tab--active' : ''}`}
+                  onClick={() => handleTabClick(tab)}
+                >
+                  {tab.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="voucher-header-section">
             <div className="voucher-header-top">
               <div className="voucher-title-section">
@@ -143,7 +184,7 @@ const VoucherTable = () => {
                 </div>
 
                 <div className="col-md-auto">
-                  <button className="btn btn-success mt-4">
+                  <button className="btn btn-success mt-4" onClick={handleDownloadMonth}>
                     <i className="bi bi-download me-1"></i> Download
                   </button>
                 </div>
@@ -167,7 +208,7 @@ const VoucherTable = () => {
                 </div>
 
                 <div className="col-md-auto">
-                  <button className="btn btn-success mt-4">
+                  <button className="btn btn-success mt-4" onClick={handleDownloadRange}>
                     <i className="bi bi-download me-1"></i> Download Range
                   </button>
                 </div>
