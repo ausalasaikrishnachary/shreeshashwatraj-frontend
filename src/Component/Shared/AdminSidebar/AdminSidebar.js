@@ -30,9 +30,14 @@ import {
   FaClipboardCheck,
   FaStickyNote,
   FaFileExport,
+  FaMoneyBillWave
+
+
+
 } from "react-icons/fa";
 import "./AdminSidebar.css";
 import UserCard from "../../Panels/UserCard/UserCard";
+
 
 function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -133,6 +138,9 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
         { path: "/purchase/payables", name: "Payables", icon: <FaHandHoldingUsd /> },
       ],
     },
+    { path: "/sales", name: "Sales", icon: <FaChartLine /> },
+     { path: "/admin_expensive", name: "Expensive Request", icon: <FaMoneyBillWave /> },
+    { path: "/products", name: "Products", icon: <FaBox /> },
     { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },
     { path: "/expenses", name: "Expenses", icon: <FaMoneyBill /> },
     { path: "/reports", name: "Reports", icon: <FaFileAlt /> },

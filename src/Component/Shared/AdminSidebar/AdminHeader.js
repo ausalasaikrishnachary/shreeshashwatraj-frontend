@@ -22,6 +22,9 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
     "/sales_visit": "Sales Visit",
     "/sale_items": "Sales Catalogue",
     "/purchased_items": "Purchased Items",
+    "/purchased_items": "Purchase Items",
+    "/sale_items": "Sales Items",
+    "/admin_expensive" : "Expensive Request", 
   };
 
   const getPageTitle = () => {

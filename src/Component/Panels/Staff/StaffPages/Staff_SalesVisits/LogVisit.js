@@ -237,11 +237,12 @@ function LogVisit() {
 
           {/* Buttons */}
           <div className="form-buttons">
-              <button type="submit" className="submit-btn">
-            Submit
-            </button>
+             
             <button type="button" className="cancel-btn" onClick={handleCancel}>
               Cancel
+            </button>
+             <button type="submit" className="submit-btn">
+            Submit
             </button>
           
           </div>

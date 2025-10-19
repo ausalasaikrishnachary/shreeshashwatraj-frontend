@@ -483,7 +483,7 @@ const userName = user ? user.name : null;
                 Cancel
               </button>
               <button type="button" className="submit-btn" onClick={handleNext}>
-                Next: Banking & Taxes
+                Banking & Taxes
               </button>
             </div>
           </div>

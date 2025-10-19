@@ -16,13 +16,14 @@
   overflow-x: hidden;
 }
 
+/* Collapsed sidebar */
 .sidebar.collapsed {
   width: 80px;
 }
 
-/* Mobile-specific styles - Show icons-only sidebar (80px) */
+/* Mobile-specific styles */
 .sidebar.mobile {
-  width: 80px; /* Icons-only on mobile */
+  width: 80px;
   transform: translateX(-100%);
   transition: transform 0.3s ease-in-out;
 }
@@ -31,9 +32,9 @@
   transform: translateX(0);
 }
 
-/* Tablet specific styles - icons only */
+/* Tablet styles */
 .sidebar.tablet {
-  width: 80px; /* Always icons-only on tablet */
+  width: 80px;
   transform: translateX(0) !important;
 }
 
@@ -41,7 +42,7 @@
   width: 80px;
 }
 
-/* Desktop - full sidebar */
+/* Desktop styles */
 .sidebar:not(.mobile):not(.tablet) {
   width: 250px;
 }
@@ -50,7 +51,7 @@
   width: 80px;
 }
 
-/* Header */
+/* Sidebar header */
 .sidebar-header {
   display: flex;
   align-items: center;
@@ -75,6 +76,7 @@
   font-size: 18px;
 }
 
+/* Collapse & Close buttons */
 .sidebar-collapse-btn,
 .sidebar-close-btn {
   background: none;
@@ -94,7 +96,7 @@
   color: #2563eb;
 }
 
-/* Hide collapse button on mobile and tablet */
+/* Hide collapse button on mobile/tablet */
 .sidebar.mobile .sidebar-collapse-btn,
 .sidebar.tablet .sidebar-collapse-btn {
   display: none;
@@ -103,7 +105,6 @@
 /* Navigation */
 .sidebar nav {
   flex: 1;
-  /* overflow-y: auto; */
   padding: 10px 0;
 }
 
@@ -128,7 +129,7 @@
   margin: 2px 10px;
 }
 
-/* Desktop - full sidebar with text */
+/* Desktop - full sidebar */
 .sidebar:not(.mobile):not(.tablet) nav ul li a {
   padding: 15px 20px;
   gap: 12px;
@@ -193,7 +194,7 @@
   width: calc(100% - 20px);
 }
 
-/* Mobile and tablet dropdown - icons only */
+/* Mobile/tablet dropdown - icons only */
 .sidebar.mobile .dropdown-btn-link,
 .sidebar.tablet .dropdown-btn-link,
 .sidebar.collapsed .dropdown-btn-link {
@@ -226,7 +227,7 @@
   flex-shrink: 0;
 }
 
-/* Hide dropdown arrow on mobile, tablet, and when collapsed */
+/* Hide dropdown arrow on mobile/tablet/collapsed */
 .sidebar.mobile .dropdown-arrow,
 .sidebar.tablet .dropdown-arrow,
 .sidebar.collapsed .dropdown-arrow {
@@ -251,10 +252,15 @@
   background: #0f172a;
   border-radius: 0 0 6px 6px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center submenu items */
 }
 
 .submenu li {
-  margin: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center; /* Center submenu button */
 }
 
 .submenu-link {
@@ -266,6 +272,8 @@
   transition: all 0.2s;
   margin: 0 10px;
   border-radius: 4px;
+  width: auto;
+  justify-content: center; /* Center content horizontally */
 }
 
 /* Desktop submenu */
@@ -276,7 +284,7 @@
   width: calc(100% - 20px);
 }
 
-/* Mobile and tablet submenu - icons only */
+/* Mobile/tablet submenu */
 .sidebar.mobile .submenu-link,
 .sidebar.tablet .submenu-link,
 .sidebar.collapsed .submenu-link {
@@ -304,7 +312,7 @@
   text-overflow: ellipsis;
 }
 
-/* Hide submenu text on mobile, tablet, and when collapsed */
+/* Hide submenu text on mobile/tablet/collapsed */
 .sidebar.mobile .submenu-text,
 .sidebar.tablet .submenu-text,
 .sidebar.collapsed .submenu-text {
@@ -344,6 +352,27 @@
   height: 100%;
   background: rgba(0, 0, 0, 0.5);
   z-index: 999;
+}
+
+/* ----------- Custom Scrollbar ----------- */
+/* Webkit (Chrome, Edge, Safari) */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background-color: #2563eb;
+  border-radius: 3px;
+}
+
+/* Firefox */
+.sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: #2563eb #0f172a;
 }
 
 /* Responsive */
@@ -399,15 +428,15 @@
     width: 250px;
     transform: translateX(0);
   }
-  
+
   .sidebar.mobile.collapsed {
     width: 80px;
   }
-  
+
   .sidebar-overlay {
     display: none !important;
   }
-  
+
   .sidebar-toggle {
     display: none;
   }

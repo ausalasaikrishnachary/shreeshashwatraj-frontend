@@ -286,43 +286,50 @@ const SalesItemsPage = ({ groupType = "Salescatalog", user }) => {
 
 const handleSubmit = async (e) => {
   e.preventDefault();
-  console.log("🚀 Submitting form...");
+  setIsLoading(true);
 
+  // ✅ Validate batch details if maintainBatch is true
   if (maintainBatch) {
-    const invalidBatches = batches.filter(batch =>
-      !batch.batchNumber || !batch.quantity || !batch.sellingPrice
+    const invalidBatches = batches.filter(
+      (batch) => !batch.batchNumber || !batch.quantity || !batch.sellingPrice
     );
 
     if (invalidBatches.length > 0) {
-      window.alert("Please fill all required fields in batch details (Batch Number, Quantity, and Selling Price)");
+      window.alert(
+        "Please fill all required fields in batch details (Batch Number, Quantity, and Selling Price)"
+      );
+      setIsLoading(false);
       return;
     }
   }
 
-  setIsLoading(true);
-
   try {
-    const batchesForBackend = maintainBatch ? batches.map(batch => ({
-      batch_number: batch.batchNumber,
-      mfg_date: batch.mfgDate || null,
-      exp_date: batch.expDate || null,
-      quantity: batch.quantity,
-      cost_price: batch.costPrice || 0,
-      selling_price: batch.sellingPrice,
-      purchase_price: batch.purchasePrice || 0,
-      mrp: batch.mrp || 0,
-      batch_price: batch.batchPrice || 0
-    })) : [];
+    // ✅ Use camelCase field names (as backend expects)
+    const batchesForBackend = maintainBatch
+      ? batches.map((batch) => ({
+          batchNumber: batch.batchNumber,
+          mfgDate: batch.mfgDate || null,
+          expDate: batch.expDate || null,
+          quantity: batch.quantity,
+          costPrice: batch.costPrice || 0,
+          sellingPrice: batch.sellingPrice,
+          purchasePrice: batch.purchasePrice || 0,
+          mrp: batch.mrp || 0,
+          batchPrice: batch.batchPrice || 0,
+        }))
+      : [];
 
     const dataToSend = {
       ...formData,
-      ...(maintainBatch && { batches: batchesForBackend })
+      ...(maintainBatch && { batches: batchesForBackend }),
     };
 
     console.log("📤 Sending data:", dataToSend);
 
-    if (productToEdit || productId) {
-      const idToUpdate = productToEdit?.id || productId;
+    // ✅ Determine product ID safely
+    const idToUpdate = productToEdit?.id || productId;
+
+    if (idToUpdate) {
       console.log(`🔄 Updating product ID: ${idToUpdate}`);
       await axios.put(`${baseurl}/products/${idToUpdate}`, dataToSend, {
         headers: { "Content-Type": "application/json" },
@@ -336,9 +343,8 @@ const handleSubmit = async (e) => {
       window.alert("New product added successfully!");
     }
 
-    // Navigate after alert
-    navigate('/sale_items');
-
+    // ✅ Navigate safely after alert
+    navigate("/sale_items");
   } catch (error) {
     console.error("❌ Failed to add/update product:", error);
     window.alert("Failed to add/update product.");

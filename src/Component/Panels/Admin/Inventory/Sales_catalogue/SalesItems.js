@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaEdit, FaTrash, FaPlusCircle, FaMinusCircle, FaEye, FaShoppingBag , FaSearch } from "react-icons/fa";
 import AdminSidebar from "./../../../../Shared/AdminSidebar/AdminSidebar";
-import Header from "./../../../../Shared/AdminSidebar/AdminHeader";
+import AdminHeader from "./../../../../Shared/AdminSidebar/AdminHeader";
 import ReusableTable from "./../../../../Layouts/TableLayout/ReusableTable"
 import AddServiceModal from "../PurchasedItems/AddServiceModal";
 import AddStockModal from "../PurchasedItems/AddStockModal";
@@ -9,7 +9,7 @@ import DeductStockModal from "../PurchasedItems/DeductStockModal";
 import StockDetailsModal from "../PurchasedItems/StockDetailsModal";
 import { baseurl } from "../../../../BaseURL/BaseURL";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import {Link, useNavigate } from "react-router-dom";
 import "./salesitems.css"; // reuse the same CSS
 
 const SalesItems = ({ user }) => {
@@ -131,7 +131,23 @@ const SalesItems = ({ user }) => {
 );
 
   const columns = [
-    { key: "name", title: "Product Name" },
+    {
+    key: "name",
+    title: "Product Name",
+    render: (item) => (
+      <div>
+        <FaShoppingBag className="me-2 text-info" />
+        <Link
+          to={`/salesitems_productdetails/${item.id}`}
+          className="text-primary text-decoration-none fw-semibold"
+        >
+          {item.name}
+        </Link>
+        <br />
+        <span className="text-muted">RS. {item.price}</span>
+      </div>
+    ),
+  },
     { key: "description", title: "Description" },
     { key: "gst_rate", title: "GST Rate" },
     { key: "updatedBy", title: "Updated By" },
@@ -154,7 +170,7 @@ const SalesItems = ({ user }) => {
     <div className="dashboard-container">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
       <div className={`main-content ${isCollapsed ? "collapsed" : ""}`}>
-        <Header user={user} toggleSidebar={() => setIsCollapsed(!isCollapsed)} />
+        <AdminHeader user={user} toggleSidebar={() => setIsCollapsed(!isCollapsed)} />
 
         <div className="container-fluid mt-3 sales-items-wrapper">
     <div className="d-flex justify-content-between  mb-3 flex-wrap">
