@@ -20,58 +20,80 @@ import {
   FaChartLine,
   FaBox,
   FaHandHoldingUsd,
+  FaReceipt,
+  FaFileInvoice,
+  FaFileContract,
+  FaTruck,
+  FaCreditCard,
+  FaFileInvoiceDollar,
+  FaFileInvoice as FaPurchaseInvoice,
+  FaClipboardCheck,
+  FaStickyNote,
+  FaFileExport,
 } from "react-icons/fa";
 import "./AdminSidebar.css";
 import UserCard from "../../Panels/UserCard/UserCard";
 
 function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [isTablet, setIsTablet] = useState(window.innerWidth <= 1024 && window.innerWidth > 768);
+  const [isTablet, setIsTablet] = useState(
+    window.innerWidth <= 1024 && window.innerWidth > 768
+  );
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Detect screen size changes
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
       const mobile = width <= 768;
       const tablet = width <= 1024 && width > 768;
-      
+
       setIsMobile(mobile);
       setIsTablet(tablet);
-      
-      if (!mobile && !tablet) {
-        setIsMobileOpen(false);
-      }
-      
-      // Auto-collapse on tablet
-      if (tablet && !isCollapsed) {
-        setIsCollapsed(true);
-      }
+
+      if (!mobile && !tablet) setIsMobileOpen(false);
+      if (tablet && isCollapsed === undefined) setIsCollapsed(true);
     };
-    
+
     window.addEventListener("resize", handleResize);
     handleResize();
-    
     return () => window.removeEventListener("resize", handleResize);
   }, [isCollapsed]);
 
-  // Handle mobile toggle from parent
+  // Handle mobile toggle
   useEffect(() => {
-    if (onToggleMobile !== undefined) {
-      setIsMobileOpen(onToggleMobile);
-    }
+    if (onToggleMobile !== undefined) setIsMobileOpen(onToggleMobile);
   }, [onToggleMobile]);
+
+  // Keep dropdown open when route matches
+  useEffect(() => {
+    const path = location.pathname;
+
+    if (path.startsWith("/sales/")) {
+      setOpenDropdown("Sales");
+    } else if (path.startsWith("/purchase/")) {
+      setOpenDropdown("Purchase");
+    } else if (
+      path.startsWith("/sale_items") ||
+      path.startsWith("/purchased_items")
+    ) {
+      setOpenDropdown("Inventory");
+    } else {
+      // Keep previous state for other pages
+      setOpenDropdown((prev) => prev);
+    }
+  }, [location.pathname]);
 
   const toggleDropdown = (menuName) => {
     setOpenDropdown(openDropdown === menuName ? null : menuName);
   };
 
   const handleLogoClick = () => {
-    if (isTablet) {
-      setIsCollapsed(!isCollapsed);
-    }
+    if (isTablet) setIsCollapsed((prev) => !prev);
+    else if (isMobile) setIsMobileOpen((prev) => !prev);
   };
 
   const menuItems = [
@@ -84,42 +106,52 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       icon: <FaHandHoldingUsd />,
       subMenu: [
         { path: "/sale_items", name: "Sales Catalogue", icon: <FaBookOpen /> },
-        { path: "/purchased_items", name: "Purchased Items", icon: <FaShoppingCart /> }
-      ]
+        { path: "/purchased_items", name: "Purchased Items", icon: <FaShoppingCart /> },
+      ],
     },
-    { path: "/sales", name: "Sales", icon: <FaChartLine /> },
-    { path: "/products", name: "Products", icon: <FaBox /> },
+    {
+      name: "Sales",
+      icon: <FaChartLine />,
+      subMenu: [
+        { path: "/sales/invoices", name: "Invoices", icon: <FaFileInvoice /> },
+        { path: "/sales/receipts", name: "Receipts", icon: <FaReceipt /> },
+        { path: "/sales/quotations", name: "Quotations", icon: <FaFileContract /> },
+        { path: "/sales/bill_of_supply", name: "Bill Of Supply", icon: <FaFileInvoiceDollar /> },
+        { path: "/sales/credit_note", name: "Credit Note", icon: <FaCreditCard /> },
+        { path: "/sales/delivery_challan", name: "Delivery Challan", icon: <FaTruck /> },
+        { path: "/sales/receivables", name: "Receivables", icon: <FaHandHoldingUsd /> },
+      ],
+    },
+    {
+      name: "Purchase",
+      icon: <FaBox />,
+      subMenu: [
+        { path: "/purchase/purchase_invoice", name: "Purchase Invoice", icon: <FaPurchaseInvoice /> },
+        { path: "/purchase/purchase_order", name: "Purchase Order", icon: <FaClipboardCheck /> },
+        { path: "/purchase/voucher", name: "Voucher", icon: <FaStickyNote /> },
+        { path: "/purchase/debit_note", name: "Debit Note", icon: <FaFileExport /> },
+        { path: "/purchase/payables", name: "Payables", icon: <FaHandHoldingUsd /> },
+      ],
+    },
     { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },
     { path: "/expenses", name: "Expenses", icon: <FaMoneyBill /> },
     { path: "/reports", name: "Reports", icon: <FaFileAlt /> },
     { path: "/roleaccess", name: "Role Access", icon: <FaKey /> },
   ];
 
-  const handleOverlayClick = () => {
-    setIsMobileOpen(false);
-  };
+  const handleOverlayClick = () => setIsMobileOpen(false);
+  const handleMobileToggle = () => setIsMobileOpen(!isMobileOpen);
 
-  const handleMobileToggle = () => {
-    setIsMobileOpen(!isMobileOpen);
-  };
-
-  // On mobile: show icons-only sidebar (80px) when open
-  // On tablet: always show icons-only sidebar, allow toggle by clicking RP
-  // On desktop: show full sidebar with collapse toggle
+  const isPurchaseActive = location.pathname.startsWith("/purchase/");
 
   return (
     <>
-      {/* Mobile toggle button - Only show on mobile */}
       {isMobile && (
-        <button
-          className="sidebar-toggle"
-          onClick={handleMobileToggle}
-        >
+        <button className="sidebar-toggle" onClick={handleMobileToggle}>
           {isMobileOpen ? <FaTimes /> : <FaBars />}
         </button>
       )}
 
-      {/* Overlay for mobile */}
       {isMobileOpen && isMobile && (
         <div className="sidebar-overlay" onClick={handleOverlayClick}></div>
       )}
@@ -130,15 +162,14 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
         } ${isMobile ? "mobile" : ""} ${isTablet ? "tablet" : ""}`}
       >
         <div className="sidebar-header">
-          <h2 
+          <h2
             className="logo"
             onClick={handleLogoClick}
-            style={{ cursor: isTablet ? 'pointer' : 'default' }}
+            style={{ cursor: isTablet ? "pointer" : "default" }}
           >
             {isCollapsed || isMobile || isTablet ? "RP" : "RetailPro"}
           </h2>
-          
-          {/* Show collapse button only on desktop */}
+
           {!isMobile && !isTablet && (
             <button
               className="sidebar-collapse-btn"
@@ -147,13 +178,9 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
               <FaBars />
             </button>
           )}
-          
-          {/* Show close button on mobile when sidebar is open */}
+
           {isMobile && isMobileOpen && (
-            <button
-              className="sidebar-close-btn"
-              onClick={handleMobileToggle}
-            >
+            <button className="sidebar-close-btn" onClick={handleMobileToggle}>
               <FaTimes />
             </button>
           )}
@@ -166,19 +193,30 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
                 {item.subMenu ? (
                   <>
                     <button
-                      className={`dropdown-btn-link ${openDropdown === item.name ? "open" : ""} ${
-                        location.pathname.startsWith("/sale_items") || 
-                        location.pathname.startsWith("/purchased_items") ? "active" : ""
+                      className={`dropdown-btn-link ${
+                        openDropdown === item.name ? "open" : ""
+                      } ${
+                        (item.name === "Inventory" &&
+                          (location.pathname.startsWith("/sale_items") ||
+                            location.pathname.startsWith("/purchased_items"))) ||
+                        (item.name === "Sales" &&
+                          location.pathname.startsWith("/sales/")) ||
+                        (item.name === "Purchase" && isPurchaseActive)
+                          ? "active"
+                          : ""
                       }`}
                       onClick={() => toggleDropdown(item.name)}
                     >
                       <span className="icon">{item.icon}</span>
-                      {/* Show text only on desktop when not collapsed */}
-                      {(!isMobile && !isTablet && !isCollapsed) && (
+                      {!isMobile && !isTablet && !isCollapsed && (
                         <>
                           <span className="link-text">{item.name}</span>
                           <span className="dropdown-arrow">
-                            {openDropdown === item.name ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
+                            {openDropdown === item.name ? (
+                              <FaChevronUp size={12} />
+                            ) : (
+                              <FaChevronDown size={12} />
+                            )}
                           </span>
                         </>
                       )}
@@ -189,19 +227,19 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
                         {item.subMenu.map((sub) => (
                           <li
                             key={sub.path}
-                            className={location.pathname === sub.path ? "active" : ""}
+                            className={
+                              location.pathname === sub.path ? "active" : ""
+                            }
                           >
-                            <NavLink 
-                              to={sub.path} 
+                            <NavLink
+                              to={sub.path}
                               className="submenu-link"
                               onClick={() => {
                                 if (isMobile) setIsMobileOpen(false);
-                                if (isTablet) setOpenDropdown(null);
                               }}
                             >
                               <span className="submenu-icon">{sub.icon}</span>
-                              {/* Show submenu text only on desktop when not collapsed */}
-                              {(!isMobile && !isTablet && !isCollapsed) && (
+                              {!isMobile && (!isCollapsed || !isTablet) && (
                                 <span className="submenu-text">{sub.name}</span>
                               )}
                             </NavLink>
@@ -213,14 +251,15 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
                 ) : (
                   <NavLink
                     to={item.path}
-                    className={({ isActive }) => (isActive ? "active" : undefined)}
+                    className={({ isActive }) =>
+                      isActive ? "active" : undefined
+                    }
                     onClick={() => {
                       if (isMobile) setIsMobileOpen(false);
                     }}
                   >
                     <span className="icon">{item.icon}</span>
-                    {/* Show text only on desktop when not collapsed */}
-                    {(!isMobile && !isTablet && !isCollapsed) && (
+                    {!isMobile && (!isCollapsed || !isTablet) && (
                       <span className="link-text">{item.name}</span>
                     )}
                   </NavLink>

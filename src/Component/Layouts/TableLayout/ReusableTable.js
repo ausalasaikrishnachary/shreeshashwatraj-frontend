@@ -25,72 +25,54 @@ const ReusableTable = ({
     });
   });
 
-  // Clear search term
-  const handleClearSearch = () => {
-    setSearchTerm('');
-  };
+  const handleClearSearch = () => setSearchTerm('');
 
-  // Pagination calculations
+  // Pagination
   const totalPages = Math.ceil(filteredData.length / entriesPerPage);
   const startIndex = (currentPage - 1) * entriesPerPage;
   const endIndex = startIndex + entriesPerPage;
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-  };
+  const handlePageChange = (page) => setCurrentPage(page);
 
-  // Reset to first page when search term or entries per page changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, entriesPerPage]);
 
-  // Generate pagination items with ellipsis
   const getPaginationItems = () => {
     const items = [];
-    const maxVisiblePages = 5; // Maximum pages to show without ellipsis
-    const ellipsis = <li key="ellipsis" className="rt-pagination__item rt-pagination__item--ellipsis">...</li>;
+    const maxVisiblePages = 5;
+    const ellipsis = (
+      <li key="ellipsis" className="rt-pagination__item rt-pagination__item--ellipsis">...</li>
+    );
 
-    // Always show first page
     items.push(
       <li 
-        key={1} 
+        key={1}
         className={`rt-pagination__item ${1 === currentPage ? 'rt-pagination__item--active' : ''}`}
       >
-        <button 
-          className="rt-pagination__link"
-          onClick={() => handlePageChange(1)}
-        >
-          1
-        </button>
+        <button className="rt-pagination__link" onClick={() => handlePageChange(1)}>1</button>
       </li>
     );
 
     if (totalPages <= maxVisiblePages) {
-      // Show all pages if total pages is less than maxVisiblePages
       for (let i = 2; i <= totalPages; i++) {
         items.push(
           <li 
             key={i} 
             className={`rt-pagination__item ${i === currentPage ? 'rt-pagination__item--active' : ''}`}
           >
-            <button 
-              className="rt-pagination__link"
-              onClick={() => handlePageChange(i)}
-            >
+            <button className="rt-pagination__link" onClick={() => handlePageChange(i)}>
               {i}
             </button>
           </li>
         );
       }
     } else {
-      // Show ellipsis and current page with neighbors
       const leftBound = Math.max(2, currentPage - 1);
       const rightBound = Math.min(totalPages - 1, currentPage + 1);
 
-      if (leftBound > 2) {
-        items.push(ellipsis);
-      }
+      if (leftBound > 2) items.push(ellipsis);
 
       for (let i = leftBound; i <= rightBound; i++) {
         items.push(
@@ -98,30 +80,21 @@ const ReusableTable = ({
             key={i} 
             className={`rt-pagination__item ${i === currentPage ? 'rt-pagination__item--active' : ''}`}
           >
-            <button 
-              className="rt-pagination__link"
-              onClick={() => handlePageChange(i)}
-            >
+            <button className="rt-pagination__link" onClick={() => handlePageChange(i)}>
               {i}
             </button>
           </li>
         );
       }
 
-      if (rightBound < totalPages - 1) {
-        items.push(ellipsis);
-      }
+      if (rightBound < totalPages - 1) items.push(ellipsis);
 
-      // Always show last page
       items.push(
         <li 
           key={totalPages} 
           className={`rt-pagination__item ${totalPages === currentPage ? 'rt-pagination__item--active' : ''}`}
         >
-          <button 
-            className="rt-pagination__link"
-            onClick={() => handlePageChange(totalPages)}
-          >
+          <button className="rt-pagination__link" onClick={() => handlePageChange(totalPages)}>
             {totalPages}
           </button>
         </li>
@@ -147,11 +120,7 @@ const ReusableTable = ({
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               {searchTerm && (
-                <button 
-                  className="rt-search__clear"
-                  onClick={handleClearSearch}
-                  aria-label="Clear search"
-                >
+                <button className="rt-search__clear" onClick={handleClearSearch}>
                   <i className="bi bi-x"></i>
                 </button>
               )}
@@ -175,11 +144,16 @@ const ReusableTable = ({
             {paginatedData.length > 0 ? (
               paginatedData.map((item, index) => (
                 <tr key={index} className="rt-table__row">
-                  {columns.map((column) => (
-                    <td key={column.key} className="rt-table__cell" style={column.style || {}}>
-                      {column.render ? column.render(item, startIndex + index) : item[column.key]}
-                    </td>
-                  ))}
+                  {columns.map((column) => {
+                    const cellValue = item[column.key];
+                    return (
+                      <td key={column.key} className="rt-table__cell" style={column.style || {}}>
+                        {column.render
+                          ? column.render(cellValue, item, startIndex + index)
+                          : cellValue}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             ) : (
@@ -196,7 +170,8 @@ const ReusableTable = ({
       {showPagination && totalPages > 1 && (
         <div className="rt-footer">
           <div className="rt-pagination-info">
-            Showing {Math.min(startIndex + 1, filteredData.length)} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} entries
+            Showing {Math.min(startIndex + 1, filteredData.length)} to{' '}
+            {Math.min(endIndex, filteredData.length)} of {filteredData.length} entries
           </div>
 
           <nav aria-label="Table pagination">
@@ -219,6 +194,7 @@ const ReusableTable = ({
                   <span>entries</span>
                 </div>
               )}
+
               <li className={`rt-pagination__item ${currentPage === 1 ? 'rt-pagination__item--disabled' : ''}`}>
                 <button 
                   className="rt-pagination__link"
@@ -228,9 +204,9 @@ const ReusableTable = ({
                   &laquo;
                 </button>
               </li>
-              
+
               {getPaginationItems()}
-              
+
               <li className={`rt-pagination__item ${currentPage === totalPages ? 'rt-pagination__item--disabled' : ''}`}>
                 <button 
                   className="rt-pagination__link"

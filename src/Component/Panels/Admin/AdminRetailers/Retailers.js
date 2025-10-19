@@ -513,17 +513,17 @@ import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import "./Retailers.css";
 import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
-import {  FaSearch} from "react-icons/fa";
-
+import { FaSearch } from "react-icons/fa";
 
 function Retailers() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false); // Add mobile state
   const navigate = useNavigate();
   const [retailersData, setRetailersData] = useState([]);
   const [filteredRetailersData, setFilteredRetailersData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-   const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Fetch retailers data from API
   useEffect(() => {
@@ -531,23 +531,22 @@ function Retailers() {
   }, []);
 
   // Filter retailers by role when data changes
-useEffect(() => {
-  if (retailersData.length > 0) {
-    const filteredData = retailersData
-      .filter(item => item.role === "retailer")
-      .filter(item =>
-        // Convert fields to lowercase for case-insensitive search
-        (item.business_name || item.name || "")
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        (item.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.mobile_number || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.group || "").toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    setFilteredRetailersData(filteredData);
-  }
-}, [retailersData, searchTerm]);
-
+  useEffect(() => {
+    if (retailersData.length > 0) {
+      const filteredData = retailersData
+        .filter(item => item.role === "retailer")
+        .filter(item =>
+          // Convert fields to lowercase for case-insensitive search
+          (item.business_name || item.name || "")
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          (item.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.mobile_number || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.group || "").toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      setFilteredRetailersData(filteredData);
+    }
+  }, [retailersData, searchTerm]);
 
   const fetchRetailers = async () => {
     try {
@@ -585,6 +584,11 @@ useEffect(() => {
   // Handle view retailer
   const handleView = (id) => {
     navigate(`/retailers/view/${id}`);
+  };
+
+  // Handle mobile toggle
+  const handleToggleMobile = () => {
+    setIsMobileOpen(!isMobileOpen);
   };
 
   // Custom renderers
@@ -689,7 +693,11 @@ useEffect(() => {
   if (loading) {
     return (
       <div className="retailers-wrapper">
-        <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <AdminSidebar 
+          isCollapsed={isCollapsed} 
+          setIsCollapsed={setIsCollapsed}
+          onToggleMobile={isMobileOpen}
+        />
         <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
           <div className="retailers-main-content">
             <div className="loading-spinner">Loading retailers...</div>
@@ -702,7 +710,11 @@ useEffect(() => {
   if (error) {
     return (
       <div className="retailers-wrapper">
-        <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <AdminSidebar 
+          isCollapsed={isCollapsed} 
+          setIsCollapsed={setIsCollapsed}
+          onToggleMobile={isMobileOpen}
+        />
         <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
           <div className="retailers-main-content">
             <div className="error-message">
@@ -719,10 +731,17 @@ useEffect(() => {
 
   return (
     <div className="retailers-wrapper">
-      <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+      <AdminSidebar 
+        isCollapsed={isCollapsed} 
+        setIsCollapsed={setIsCollapsed}
+        onToggleMobile={isMobileOpen}
+      />
       
       <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
-        <AdminHeader isCollapsed={isCollapsed} />
+        <AdminHeader 
+          isCollapsed={isCollapsed} 
+          onToggleSidebar={handleToggleMobile}
+        />
 
         <div className="retailers-main-content">
           <div className="retailers-content-section">
@@ -733,45 +752,30 @@ useEffect(() => {
                   Manage retailer relationships and track performance
                 </p>
               </div>
-          
             </div>
 
-<div className="d-flex justify-content-between">
-{/* <div className="retailers-search-container">
-  <div className="retailers-search-box">
-    <span className="retailers-search-icon">🔍</span>
-    <input
-      type="text"
-      placeholder="Search retailers ..."
-      className="retailers-search-input"
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-    />
-  </div>
-</div> */}
-
-      <div className="retailers-search-container">
+            <div className="d-flex justify-content-between align-items-center retailers-search-add-container">
+              <div className="retailers-search-container">
                 <div className="retailers-search-box">
                   <input
                     type="text"
-      placeholder="Search retailers ..."
-      className="retailers-search-input"
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-    />
-       <FaSearch className="retailers-search-icon" size={18} />
-  </div>
-</div>
+                    placeholder="Search retailers ..."
+                    className="retailers-search-input"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <FaSearch className="retailers-search-icon" size={18} />
+                </div>
+              </div>
 
-    <button
+              <button
                 className="retailers-add-button retailers-add-button--top"
                 onClick={handleAddRetailerClick}
               >
                 <span className="retailers-add-icon">+</span>
                 Add Retailer
               </button>
-
-</div>
+            </div>
 
             <div className="retailers-list-section">
               <div className="retailers-section-header">

@@ -1,80 +1,125 @@
+/* AdminHeader.css */
 .admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   background: #fff;
-  padding: 20px 30px;
   border-bottom: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
-  z-index: 1040; /* Lower than sidebar */
+  z-index: 990;
   height: 80px;
-  box-sizing: border-box;
-  /* margin-left: 250px; Default for expanded sidebar */
-  transition: margin-left 0.3s ease;
+  transition: all 0.3s ease;
 }
 
-/* .admin-header.collapsed {
-  margin-left: 80px; /* Adjusted for collapsed sidebar */
-/* } */ 
+.admin-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  padding: 0 30px;
+}
 
-.admin-header h3 {
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header-toggle-btn {
+  background: #2563eb;
+  border: none;
+  color: white;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.header-toggle-btn:hover {
+  background: #1d4ed8;
+}
+
+.page-title {
   font-size: 24px;
   font-weight: 700;
-  margin: 0;
   color: #1f2937;
+  margin: 0;
 }
 
-.admin-header .welcome {
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.welcome-text {
   font-size: 14px;
   color: #6b7280;
   font-weight: 500;
 }
 
-/* Mobile toggle button in header */
-.admin-header .btn.btn-primary.d-md-none {
-  background: #2563eb;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 4px;
-  color: white;
-  cursor: pointer;
-}
-
-/* ✅ Responsive for Tablets and Mobiles */
+/* Responsive Design */
 @media (max-width: 1024px) {
   .admin-header {
-    margin-left: 0px; 
-    padding: 15px 20px;
-    height: auto;
-    min-height: 70px;
+    height: 70px;
   }
-
-  .admin-header h3 {
+  
+  .admin-header-content {
+    padding: 0 20px;
+  }
+  
+  .page-title {
     font-size: 20px;
   }
-
-  .admin-header .welcome {
+  
+  .welcome-text {
     font-size: 13px;
+  }
+  
+  .header-toggle-btn {
+    padding: 8px 10px;
   }
 }
 
 @media (max-width: 768px) {
   .admin-header {
-    margin-left: 0; /* Full width on mobile */
-    padding: 15px 20px;
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
+    height: 60px;
   }
-
-  .admin-header h3 {
+  
+  .admin-header-content {
+    padding: 0 16px;
+  }
+  
+  .page-title {
     font-size: 18px;
   }
-
-  .admin-header .welcome {
+  
+  .welcome-text {
     font-size: 12px;
-    margin-right: auto;
+  }
+  
+  .header-left {
+    gap: 12px;
+  }
+  
+  .header-toggle-btn {
+    padding: 6px 8px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-header-content {
+    padding: 0 12px;
+  }
+  
+  .page-title {
+    font-size: 16px;
+  }
+  
+  .welcome-text {
+    display: none; /* Hide welcome text on very small screens */
   }
 }

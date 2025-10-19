@@ -71,8 +71,21 @@ import AddRetailerForm from "./Component/Panels/Admin/AdminRetailers/AddRetailer
 import AdminStaff from "./Component/Panels/Admin/AdminStaff/Staff";
 import AddStaff from "./Component/Panels/Admin/AdminStaff/AddStaff"
 import AdminSales from "./Component/Panels/Admin/AdminSales/Sales";
+import SalesInvoiceTable from "./Component/Panels/Admin/SalesInvoicePage/InvoiceTable"
+import SalesInvoiceForm from "./Component/Panels/Admin/SalesInvoicePage/SalesInvoiceForm";
+import AdminReceiptsTable from "./Component/Panels/Admin/Receipts/ReceiptsTable"
+import CreateReceiptForm from "./Component/Panels/Admin/Receipts/ReceiptsForm";
+import QuotationsTable from "./Component/Panels/Quotation/QuotationTable";
+import BillOfSupplyTable from "./Component/Panels/Admin/BillOfSupply/BillOfSupply";
+import CreditNoteTable from "./Component/Panels/Admin/CreditNote/CreditNoteTable";
+import DeliveryChallanTable from "./Component/Panels/Admin/DeliveryChallan/DeliveryChallanTable";
+import ReceivablesTable from "./Component/Panels/Receivables/ReceivablesTable";
 import AddSales from "./Component/Panels/Admin/AdminSales/AddSales"
 import AdminProducts from "./Component/Panels/Admin/AdminProducts/Products";
+import PurchaseInvoiceTable from "./Component/Panels/Admin/PurchaseInvoicePage/PurchaseInvoiceTable";
+import CreatePurchaseInvoiceForm from "./Component/Panels/Admin/PurchaseInvoicePage/PurchaseInvoiceForm";
+import PurchaseOrderTable from "./Component/Panels/Admin/PurchaseOrderTable/PurchaseOrderTable";
+import VoucherTable from "./Component/Panels/Admin/Vochur/VochurTable";
 import AddProduct from './Component/Panels/Admin/AdminProducts/AddProducts';
 import AdminMarketing from "./Component/Panels/Admin/AdminMarketing/Marketing";
 import AddMarketing from "./Component/Panels/Admin/AdminMarketing/AddMarketing";
@@ -142,10 +155,32 @@ function App() {
     
         <Route path="/staff" element={<AdminStaff />} />
         <Route path="/staff/add" element={<AddStaff />} />
-        <Route path="/sales" element={<AdminSales />} />
+        <Route path="/sale" element={<AdminSales />} />
+         <Route path="/sales/invoices" element={<SalesInvoiceTable />} />
+         <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
+  
+        <Route path="/sales/receipts" element={<AdminReceiptsTable />} />
+        {/* <Route path="/createreceipt" element={<CreateReceiptForm />} /> */}
+
+        <Route path="/sales/quotations" element={<QuotationsTable />} />
+
+        <Route path="/sales/bill_of_supply" element={<BillOfSupplyTable />} />
+
+        <Route path="/sales/credit_note" element={<CreditNoteTable />} />
+
+        <Route path="/sales/delivery_challan" element={<DeliveryChallanTable />} />
+
+        <Route path="/sales/receivables" element={<ReceivablesTable />} />
+
+
         <Route path="/sales/add" element={<AddSales />} />
         <Route path="/staff/edit/:id" element={<AddStaff />} />
-        <Route path="/products" element={<AdminProducts />} />
+        <Route path="/product" element={<AdminProducts />} />
+        <Route path="/purchase/purchase_invoice" element={<PurchaseInvoiceTable />} />
+        <Route path="/purchase/create-purchase-invoice" element={<CreatePurchaseInvoiceForm />} />
+        <Route path="/purchase/purchase_order" element={<PurchaseOrderTable />} />
+        <Route path="/purchase/voucher" element={<VoucherTable />} />
+
         <Route path="/add-product" element={<AddProduct />} />
         <Route path="/marketing" element={<AdminMarketing />} />
         <Route path="/add-marketing" element={<AddMarketing />} />

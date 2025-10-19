@@ -362,15 +362,36 @@
 }
 
 /* Tablet specific styles (768px - 1024px) */
+/* Tablet specific styles (769px - 1024px) */
 @media (min-width: 769px) and (max-width: 1024px) {
-  .sidebar {
-    width: 80px;
+  /* Only affect tablet mode */
+  .sidebar.tablet {
+    width: 80px; /* Default collapsed on tablet */
+    transform: translateX(0);
+    transition: width 0.3s ease-in-out;
   }
-  
+
+  /* Expanded on tablet when not collapsed */
+  .sidebar.tablet:not(.collapsed) {
+    width: 250px;
+  }
+
+  /* Hide hamburger icon on tablet */
   .sidebar-toggle {
     display: none;
   }
+
+  /* Ensure submenu works properly when expanded */
+  .sidebar.tablet:not(.collapsed) .submenu {
+    display: block;
+  }
+
+  /* Hide overlay on tablet */
+  .sidebar-overlay {
+    display: none;
+  }
 }
+
 
 /* Desktop styles */
 @media (min-width: 1025px) {
@@ -389,5 +410,31 @@
   
   .sidebar-toggle {
     display: none;
+  }
+}
+
+
+/* ✅ Tablet expanded state: show full text */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar.tablet:not(.collapsed) .link-text,
+  .sidebar.tablet:not(.collapsed) .submenu-text,
+  .sidebar.tablet:not(.collapsed) .dropdown-arrow {
+    display: inline-block !important;
+  }
+
+  .sidebar.tablet:not(.collapsed) nav ul li a,
+  .sidebar.tablet:not(.collapsed) .dropdown-btn-link,
+  .sidebar.tablet:not(.collapsed) .submenu-link {
+    justify-content: flex-start;
+    padding: 15px 20px;
+    gap: 12px;
+  }
+
+  /* Keep icons centered when collapsed */
+  .sidebar.tablet.collapsed nav ul li a,
+  .sidebar.tablet.collapsed .dropdown-btn-link,
+  .sidebar.tablet.collapsed .submenu-link {
+    justify-content: center;
+    padding: 15px;
   }
 }
