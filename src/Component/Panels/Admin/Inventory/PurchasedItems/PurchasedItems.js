@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FaEdit, FaTrash, FaPlusCircle, FaMinusCircle, FaEye, FaSearch ,FaShoppingBag} from "react-icons/fa";
-import {Link, useNavigate } from "react-router-dom";
-
+import { FaEdit, FaTrash, FaPlusCircle, FaMinusCircle, FaEye, FaSearch, FaShoppingBag } from "react-icons/fa";
+import { Link, useNavigate } from "react-router-dom";
 import AdminSidebar from "../../../../Shared/AdminSidebar/AdminSidebar";
 import ReusableTable from "../../../../Layouts/TableLayout/ReusableTable";
 import AddServiceModal from "./AddServiceModal";
@@ -10,7 +9,6 @@ import AddStockModal from "./AddStockModal";
 import DeductStockModal from "./DeductStockModal";
 import StockDetailsModal from "./StockDetailsModal";
 import { baseurl } from "../../../../BaseURL/BaseURL";
-
 import "./PurchasedItems.css";
 import AdminHeader from "../../../../Shared/AdminSidebar/AdminHeader";
 
@@ -43,7 +41,7 @@ const PurchasedItems = ({ user }) => {
       const formatted = response.data
         .filter((item) => item.group_by === "Purchaseditems")
         .map((item) => ({
-           id: item.id,
+          id: item.id,
           goods_name: item.goods_name,
           price: item.price,
           description: item.description,
@@ -89,53 +87,24 @@ const PurchasedItems = ({ user }) => {
   };
 
   const handleEditClick = (product) => {
-  const productData = {
-      id: product.id,
-      goods_name: product.name,
-      price: product.price,
-      description: product.description,
-      gst_rate: product.gst,
-      opening_stock: product.opening_stock,
-      category_id: product.category_id,
-      company_id: product.company_id,
-      inclusive_gst: product.inclusive_gst,
-      non_taxable: product.non_taxable,
-      net_price: product.net_price,
-      hsn_code: product.hsn_code,
-      unit: product.unit,
-      cess_rate: product.cess_rate,
-      cess_amount: product.cess_amount,
-      sku: product.sku,
-      opening_stock_date: product.opening_stock_date,
-      min_stock_alert: product.min_stock_alert,
-      max_stock_alert: product.max_stock_alert,
-      can_be_sold: product.can_be_sold,
-      group_by: 'Purchaseditems',
-      maintain_batch: product.maintain_batch,
-      batches: []
-    };
-    navigate("/AddProductPage", { state: { productToEdit: productData } });
+    navigate(`/AddProductPage/${product.id}`);
   };
 
-const handleAddStock = async ({ quantity, remark }) => {
-  try {
-    await axios.post(`${baseurl}/stock/${selectedProductId}`, {
-      stock_in: quantity,
-      stock_out: 0,
-      date: new Date().toISOString().split("T")[0],
-      remark,
-    });
-
-    fetchProducts();
-
-    // ✅ Simple success alert
-    window.alert("✅ New purchased item added successfully!");
-  } catch (error) {
-    console.error("❌ Failed to add stock:", error);
-    window.alert("❌ Failed to add stock. Please try again.");
-  }
-};
-
+  const handleAddStock = async ({ quantity, remark }) => {
+    try {
+      await axios.post(`${baseurl}/stock/${selectedProductId}`, {
+        stock_in: quantity,
+        stock_out: 0,
+        date: new Date().toISOString().split("T")[0],
+        remark,
+      });
+      fetchProducts();
+      window.alert("✅ New purchased item added successfully!");
+    } catch (error) {
+      console.error("❌ Failed to add stock:", error);
+      window.alert("❌ Failed to add stock. Please try again.");
+    }
+  };
 
   const handleDeductStock = async ({ quantity, remark }) => {
     try {
@@ -152,48 +121,81 @@ const handleAddStock = async ({ quantity, remark }) => {
     }
   };
 
-const filteredItems = items.filter((item) =>
-  item.goods_name?.toLowerCase().includes(search.toLowerCase()) ||
-  item.description?.toLowerCase().includes(search.toLowerCase()) ||
-  item.gst?.toString().toLowerCase().includes(search.toLowerCase()) ||
-  item.updatedBy?.toLowerCase().includes(search.toLowerCase()) ||
-  item.updatedOn?.toLowerCase().includes(search.toLowerCase())
-);
-
+  const filteredItems = items.filter((item) =>
+    item.goods_name?.toLowerCase().includes(search.toLowerCase()) ||
+    item.description?.toLowerCase().includes(search.toLowerCase()) ||
+    item.gst?.toString().toLowerCase().includes(search.toLowerCase()) ||
+    item.updatedBy?.toLowerCase().includes(search.toLowerCase()) ||
+    item.updatedOn?.toLowerCase().includes(search.toLowerCase())
+  );
 
   const columns = [
-  {
-  key: "goods_name",
-  title: "Product Name",
-  render: (_, item) => (
-    <div className="product-name-cell">
-      <FaShoppingBag className="me-2 text-info" />
-      <Link
-        to={`/salesitems_productdetails/${item?.id ?? 0}`}
-        className="product-name-link"
-      >
-        {item?.goods_name || "N/A"}
-      </Link>
-      <br />
-      <span className="text-muted">Rs. {item?.price ?? 0}</span>
-    </div>
-  ),
-},
-
-      { key: "description", title: "Description" },
+    {
+      key: "goods_name",
+      title: "Product Name",
+      render: (_, item) => (
+        <div className="product-name-cell">
+          <FaShoppingBag className="me-2 text-info" />
+          <Link
+            to={`/salesitems_productdetails/${item?.id ?? 0}`}
+            className="product-name-link"
+          >
+            {item?.goods_name || "N/A"}
+          </Link>
+          <br />
+          <span className="text-muted">Rs. {item?.price ?? 0}</span>
+        </div>
+      ),
+    },
+    { key: "description", title: "Description" },
     { key: "gst", title: "GST Rate" },
     { key: "updatedBy", title: "Updated By" },
     { key: "updatedOn", title: "Updated On" },
     {
       key: "action",
       title: "Action",
-      render: (item) => (
+      render: (_, item) => (
         <>
-          <FaEdit className="text-success me-2 action-icon" title="Edit" onClick={() => handleEditClick(item)} />
-          <FaTrash className="text-danger me-2 action-icon" title="Delete" onClick={() => handleDeleteProduct(item.id)} />
-          <FaPlusCircle className="text-warning me-2 action-icon" title="Add Stock" onClick={() => { setSelectedProductId(item.id); setCurrentStockData(item); setShowStockModal(true); }} />
-          <FaMinusCircle className="text-danger me-2 action-icon" title="Deduct Stock" onClick={() => { setSelectedProductId(item.id); setCurrentStockData(item); setShowDeductModal(true); }} />
-          <FaEye className="text-primary action-icon" title="View Details" onClick={() => { setSelectedItem(item); setShowViewModal(true); }} />
+          {item && (
+            <>
+              <FaEdit
+                className="text-success me-2 action-icon"
+                title="Edit"
+                onClick={() => handleEditClick(item)}
+              />
+              <FaTrash
+                className="text-danger me-2 action-icon"
+                title="Delete"
+                onClick={() => handleDeleteProduct(item.id)}
+              />
+              <FaPlusCircle
+                className="text-warning me-2 action-icon"
+                title="Add Stock"
+                onClick={() => {
+                  setSelectedProductId(item.id);
+                  setCurrentStockData(item);
+                  setShowStockModal(true);
+                }}
+              />
+              <FaMinusCircle
+                className="text-danger me-2 action-icon"
+                title="Deduct Stock"
+                onClick={() => {
+                  setSelectedProductId(item.id);
+                  setCurrentStockData(item);
+                  setShowDeductModal(true);
+                }}
+              />
+              <FaEye
+                className="text-primary action-icon"
+                title="View Details"
+                onClick={() => {
+                  setSelectedItem(item);
+                  setShowViewModal(true);
+                }}
+              />
+            </>
+          )}
         </>
       ),
     },
@@ -202,84 +204,73 @@ const filteredItems = items.filter((item) =>
   return (
     <div className="dashboard-container">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-
       <div className={`main-content ${isCollapsed ? "collapsed" : ""}`}>
         <AdminHeader toggleSidebar={() => setIsCollapsed(!isCollapsed)} />
-
         <div className="container-fluid mt-3 purchased-items-wrapper">
-     <div className="d-flex justify-content-between align-items-center flex-wrap mb-3">
-  {/* Left: Search Box */}
-  <div className="purchase-items-search-container flex-grow-1 me-3">
-    <div className="purchase-items-search-box position-relative">
-      <input
-        type="text"
-        placeholder="Search purchased items..."
-        className="purchase-items-search-input"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-      <FaSearch className="purchase-items-search-icon" size={18} />
-    </div>
-  </div>
-
-  {/* Right: Buttons */}
-  <div className="d-flex gap-2 flex-shrink-0 mt-2 mt-md-0">
-    {/* Purchased Items Dropdown */}
-    <div className="dropdown">
-      <button
-        className="btn btn-info dropdown-toggle d-flex align-items-center"
-        type="button"
-        data-bs-toggle="dropdown"
-      >
-        <i className="bi bi-list me-2"></i> Purchased Items
-      </button>
-      <ul className="dropdown-menu">
-        <li>
-          <a className="dropdown-item" href="/purchased_items">
-            Purchased Items
-          </a>
-        </li>
-        <li>
-          <a className="dropdown-item" href="/sale_items">
-            Sales Catalog
-          </a>
-        </li>
-      </ul>
-    </div>
-
-    {/* Add Dropdown */}
-    <div className="dropdown">
-      <button
-        className="btn btn-success dropdown-toggle d-flex align-items-center"
-        type="button"
-        data-bs-toggle="dropdown"
-      >
-        <i className="bi bi-plus-circle me-2"></i> ADD
-      </button>
-      <ul className="dropdown-menu">
-        <li>
-          <button
-            className="dropdown-item"
-            onClick={() => navigate("/AddProductPage")}
-          >
-            Products
-          </button>
-        </li>
-        <li>
-          <button
-            className="dropdown-item"
-            onClick={() => setShowServiceModal(true)}
-          >
-            Services
-          </button>
-        </li>
-      </ul>
-    </div>
-  </div>
-</div>
-
-
-          {/* Table */}
+          <div className="d-flex justify-content-between align-items-center flex-wrap mb-3">
+            <div className="purchase-items-search-container flex-grow-1 me-3">
+              <div className="purchase-items-search-box position-relative">
+                <input
+                  type="text"
+                  placeholder="Search purchased items..."
+                  className="purchase-items-search-input"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <FaSearch className="purchase-items-search-icon" size={18} />
+              </div>
+            </div>
+            <div className="d-flex gap-2 flex-shrink-0 mt-2 mt-md-0">
+              <div className="dropdown">
+                <button
+                  className="btn btn-info dropdown-toggle d-flex align-items-center"
+                  type="button"
+                  data-bs-toggle="dropdown"
+                >
+                  <i className="bi bi-list me-2"></i> Purchased Items
+                </button>
+                <ul className="dropdown-menu">
+                  <li>
+                    <a className="dropdown-item" href="/purchased_items">
+                      Purchased Items
+                    </a>
+                  </li>
+                  <li>
+                    <a className="dropdown-item" href="/sale_items">
+                      Sales Catalog
+                    </a>
+                  </li>
+                </ul>
+              </div>
+              <div className="dropdown">
+                <button
+                  className="btn btn-success dropdown-toggle d-flex align-items-center"
+                  type="button"
+                  data-bs-toggle="dropdown"
+                >
+                  <i className="bi bi-plus-circle me-2"></i> ADD
+                </button>
+                <ul className="dropdown-menu">
+                  <li>
+                    <button
+                      className="dropdown-item"
+                      onClick={() => navigate("/AddProductPage")}
+                    >
+                      Products
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      className="dropdown-item"
+                      onClick={() => setShowServiceModal(true)}
+                    >
+                      Services
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
           <ReusableTable
             data={filteredItems}
             columns={columns}
@@ -290,8 +281,6 @@ const filteredItems = items.filter((item) =>
           />
         </div>
       </div>
-
-      {/* Modals */}
       <AddServiceModal show={showServiceModal} onClose={() => setShowServiceModal(false)} groupType="Purchaseditems" />
       <AddStockModal show={showStockModal} onClose={() => setShowStockModal(false)} currentStock={currentStockData.balance_stock} onSave={handleAddStock} />
       <DeductStockModal show={showDeductModal} onClose={() => setShowDeductModal(false)} currentStock={currentStockData.balance_stock} onSave={handleDeductStock} />

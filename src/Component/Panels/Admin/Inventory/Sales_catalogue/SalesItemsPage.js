@@ -7,19 +7,12 @@ import axios from "axios";
 import { baseurl } from "./../../../../BaseURL/BaseURL";
 import AdminSidebar from "./../../../../Shared/AdminSidebar/AdminSidebar";
 import Header from "./../../../../Shared/AdminSidebar/AdminHeader";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import "./salesitems.css";
 
 const SalesItemsPage = ({ groupType = "Salescatalog", user }) => {
-  const location = useLocation();
   const navigate = useNavigate();
   const { productId } = useParams();
-  
-  const productToEdit = location.state?.productToEdit || null;
-  
-  console.log("🔍 Debug productToEdit:", productToEdit);
-  console.log("🔍 Debug location.state:", location.state);
-  console.log("🔍 Debug productId from URL:", productId);
 
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -39,51 +32,20 @@ const SalesItemsPage = ({ groupType = "Salescatalog", user }) => {
 
   useEffect(() => {
     const loadProductData = async () => {
-      if (!productToEdit && !productId) {
+      if (!productId) {
+        setBatches([createDefaultBatch()]);
         setIsDataLoaded(true);
         return;
       }
 
       console.log("🔄 Loading product data for editing...");
       setIsLoading(true);
-      
+
       try {
-        if (productToEdit) {
-          console.log("📝 Using product from location state:", productToEdit);
-          
-          setFormData({
-            group_by: productToEdit.group_by || groupType,
-            goods_name: productToEdit.goods_name || productToEdit.name || "",
-            category_id: productToEdit.category_id || "",
-            company_id: productToEdit.company_id || "",
-            price: productToEdit.price || "",
-            inclusive_gst: productToEdit.inclusive_gst || "",
-            gst_rate: productToEdit.gst_rate || "",
-            non_taxable: productToEdit.non_taxable || "",
-            net_price: productToEdit.net_price || "",
-            hsn_code: productToEdit.hsn_code || "",
-            unit: productToEdit.unit || "UNT-UNITS",
-            cess_rate: productToEdit.cess_rate || "",
-            cess_amount: productToEdit.cess_amount || "",
-            sku: productToEdit.sku || "",
-            opening_stock: productToEdit.opening_stock || "",
-            opening_stock_date: productToEdit.opening_stock_date ? productToEdit.opening_stock_date.split('T')[0] : new Date().toISOString().split('T')[0],
-            min_stock_alert: productToEdit.min_stock_alert || "",
-            max_stock_alert: productToEdit.max_stock_alert || "",
-            description: productToEdit.description || "",
-            maintain_batch: productToEdit.maintain_batch || false
-          });
-          
-          setMaintainBatch(productToEdit.maintain_batch || false);
-          await fetchBatches(productToEdit.id);
-        } else if (productId) {
-          console.log("🔄 Fetching product by ID:", productId);
-          await fetchProductById(productId);
-        }
-        
+        console.log("🔄 Fetching product by ID:", productId);
+        await fetchProductById(productId);
         console.log("✅ Form data set successfully");
         setIsDataLoaded(true);
-        
       } catch (error) {
         console.error("❌ Error loading product data:", error);
         showAlert("Error loading product data", "danger");
@@ -94,14 +56,14 @@ const SalesItemsPage = ({ groupType = "Salescatalog", user }) => {
     };
 
     loadProductData();
-  }, [productToEdit, productId, groupType]);
+  }, [productId, groupType]);
 
   const fetchProductById = async (id) => {
     try {
       const response = await axios.get(`${baseurl}/products/${id}`);
       const product = response.data;
       console.log("📦 Fetched product:", product);
-      
+
       setFormData({
         group_by: product.group_by || groupType,
         goods_name: product.goods_name || product.name || "",
@@ -124,10 +86,9 @@ const SalesItemsPage = ({ groupType = "Salescatalog", user }) => {
         description: product.description || "",
         maintain_batch: product.maintain_batch || false
       });
-      
+
       setMaintainBatch(product.maintain_batch || false);
       await fetchBatches(id);
-      
     } catch (error) {
       console.error("Error fetching product:", error);
       showAlert("Error fetching product data", "danger");
@@ -154,42 +115,37 @@ const SalesItemsPage = ({ groupType = "Salescatalog", user }) => {
     }
   };
 
-  const fetchBatches = async (productId = null) => {
-    try {
-      const idToUse = productId || productToEdit?.id;
-      console.log("🔄 Fetching batches for product ID:", idToUse);
-      
-      if (!idToUse) {
-        console.log("❌ No product ID provided for batches");
-        setBatches([createDefaultBatch()]);
-        return;
-      }
+const fetchBatches = async (id = productId) => {
+  if (!id) {
+    setBatches([createDefaultBatch()]);
+    return;
+  }
+  
+  try {
+    const response = await axios.get(`${baseurl}/products/${id}/batches`);
+    const mappedBatches = response.data?.length
+      ? response.data.map(batch => ({
+          id: batch.id || Date.now() + Math.random(),
+          batchNumber: batch.batch_number || "",
+          mfgDate: batch.mfg_date?.split('T')[0] || "",
+          expDate: batch.exp_date?.split('T')[0] || "",
+          quantity: batch.quantity || "",
+          costPrice: batch.cost_price || "",
+          sellingPrice: batch.selling_price || formData.price || "",
+          purchasePrice: batch.purchase_price || "",
+          mrp: batch.mrp || "",
+          batchPrice: batch.batch_price || ""
+        }))
+      : [createDefaultBatch()];
 
-      const response = await axios.get(`${baseurl}/products/${idToUse}/batches`);
-      console.log("📦 Batches response:", response.data);
+    setBatches(mappedBatches);
+  } catch (error) {
+    console.error("Error fetching batches:", error);
+    setBatches([createDefaultBatch()]);
+  }
+};
 
-      const mappedBatches = response.data && response.data.length > 0
-        ? response.data.map(batch => ({
-            id: batch.id || Date.now() + Math.random(),
-            batchNumber: batch.batch_number || "",
-            mfgDate: batch.mfg_date ? batch.mfg_date.split('T')[0] : "",
-            expDate: batch.exp_date ? batch.exp_date.split('T')[0] : "",
-            quantity: batch.quantity || "",
-            costPrice: batch.cost_price || "",
-            sellingPrice: batch.selling_price || formData.price || "",
-            purchasePrice: batch.purchase_price || "",
-            mrp: batch.mrp || "",
-            batchPrice: batch.batch_price || ""
-          }))
-        : [createDefaultBatch()];
 
-      setBatches(mappedBatches);
-      console.log("✅ Batches set:", mappedBatches);
-    } catch (error) {
-      console.error("Error fetching batches:", error);
-      setBatches([createDefaultBatch()]);
-    }
-  };
 
   const showAlert = (message, variant = "success") => {
     setAlert({ show: true, message, variant });
@@ -284,76 +240,73 @@ const SalesItemsPage = ({ groupType = "Salescatalog", user }) => {
     setBatches(updated);
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsLoading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
 
-  // ✅ Validate batch details if maintainBatch is true
-  if (maintainBatch) {
-    const invalidBatches = batches.filter(
-      (batch) => !batch.batchNumber || !batch.quantity || !batch.sellingPrice
-    );
-
-    if (invalidBatches.length > 0) {
-      window.alert(
-        "Please fill all required fields in batch details (Batch Number, Quantity, and Selling Price)"
+    // ✅ Validate batch details if maintainBatch is true
+    if (maintainBatch) {
+      const invalidBatches = batches.filter(
+        (batch) => !batch.batchNumber || !batch.quantity || !batch.sellingPrice
       );
+
+      if (invalidBatches.length > 0) {
+        window.alert(
+          "Please fill all required fields in batch details (Batch Number, Quantity, and Selling Price)"
+        );
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    try {
+      // ✅ Use camelCase field names (as backend expects)
+      const batchesForBackend = maintainBatch
+        ? batches.map((batch) => ({
+            batchNumber: batch.batchNumber,
+            mfgDate: batch.mfgDate || null,
+            expDate: batch.expDate || null,
+            quantity: batch.quantity,
+            costPrice: batch.costPrice || 0,
+            sellingPrice: batch.sellingPrice,
+            purchasePrice: batch.purchasePrice || 0,
+            mrp: batch.mrp || 0,
+            batchPrice: batch.batchPrice || 0,
+          }))
+        : [];
+
+      const dataToSend = {
+        ...formData,
+        ...(maintainBatch && { batches: batchesForBackend }),
+      };
+
+      console.log("📤 Sending data:", dataToSend);
+
+      if (productId) {
+        console.log(`🔄 Updating product ID: ${productId}`);
+        await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
+          headers: { "Content-Type": "application/json" },
+        });
+        window.alert(`Product "${formData.goods_name}" updated successfully!`);
+      } else {
+        console.log("➕ Creating new product");
+        await axios.post(`${baseurl}/products`, dataToSend, {
+          headers: { "Content-Type": "application/json" },
+        });
+        window.alert("New product added successfully!");
+      }
+
+      // ✅ Navigate safely after alert
+      navigate("/sale_items");
+    } catch (error) {
+      console.error("❌ Failed to add/update product:", error);
+      window.alert("Failed to add/update product.");
+    } finally {
       setIsLoading(false);
-      return;
     }
-  }
+  };
 
-  try {
-    // ✅ Use camelCase field names (as backend expects)
-    const batchesForBackend = maintainBatch
-      ? batches.map((batch) => ({
-          batchNumber: batch.batchNumber,
-          mfgDate: batch.mfgDate || null,
-          expDate: batch.expDate || null,
-          quantity: batch.quantity,
-          costPrice: batch.costPrice || 0,
-          sellingPrice: batch.sellingPrice,
-          purchasePrice: batch.purchasePrice || 0,
-          mrp: batch.mrp || 0,
-          batchPrice: batch.batchPrice || 0,
-        }))
-      : [];
-
-    const dataToSend = {
-      ...formData,
-      ...(maintainBatch && { batches: batchesForBackend }),
-    };
-
-    console.log("📤 Sending data:", dataToSend);
-
-    // ✅ Determine product ID safely
-    const idToUpdate = productToEdit?.id || productId;
-
-    if (idToUpdate) {
-      console.log(`🔄 Updating product ID: ${idToUpdate}`);
-      await axios.put(`${baseurl}/products/${idToUpdate}`, dataToSend, {
-        headers: { "Content-Type": "application/json" },
-      });
-      window.alert(`Product "${formData.goods_name}" updated successfully!`);
-    } else {
-      console.log("➕ Creating new product");
-      await axios.post(`${baseurl}/products`, dataToSend, {
-        headers: { "Content-Type": "application/json" },
-      });
-      window.alert("New product added successfully!");
-    }
-
-    // ✅ Navigate safely after alert
-    navigate("/sale_items");
-  } catch (error) {
-    console.error("❌ Failed to add/update product:", error);
-    window.alert("Failed to add/update product.");
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-  const pageTitle = (productToEdit || productId) 
+  const pageTitle = productId
     ? `Edit Product in Sales Catalog`
     : `Add Product to Sales Catalog`;
 
@@ -387,12 +340,10 @@ const handleSubmit = async (e) => {
               {alert.message}
             </Alert>
           )}
-          
+
           <div className="container-fluid mt-3 purchased-items-wrapper">
             <div className="container justify-content-center mt-4">
               <h3 className="mb-4 text-center">{pageTitle}</h3>
-              
-          
 
               <Form onSubmit={handleSubmit}>
                 <div className="row mb-3">
@@ -787,10 +738,10 @@ const handleSubmit = async (e) => {
                           aria-hidden="true"
                           className="me-2"
                         />
-                        {productToEdit || productId ? "Updating..." : "Adding..."}
+                        {productId ? "Updating..." : "Adding..."}
                       </>
                     ) : (
-                      productToEdit || productId ? "Update Product" : "Add Product"
+                      productId ? "Update Product" : "Add Product"
                     )}
                   </Button>
                 </div>

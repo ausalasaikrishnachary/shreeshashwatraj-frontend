@@ -210,7 +210,9 @@ function App() {
            <Route path="/purchased_items" element={<PurchasedItems />} />
            <Route path="/sale_items" element={<SalesItems />} />
              <Route path='/AddProductPage' element={<AddProductPage />} />
-            <Route path='/salesitemspage' element={<SalesItemsPage />} />
+<Route path="/AddProductPage/:productId" element={<AddProductPage />} />
+            <Route path='/salesitemspage/:productId' element={<SalesItemsPage />} />
+             <Route path='/salesitemspage' element={<SalesItemsPage />} />
             <Route path="/addcompanymodal " element={<AddCompanyModal />} />
             <Route path="/addcategorymodal" element={<AddCategoryModal />} />
             <Route path="/stockdetailsmodule" element={< StockDetailsModal />} />

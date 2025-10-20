@@ -6,7 +6,7 @@ const StockDetailsModal = ({ show, onClose, stockData, context = "purchase" }) =
 
   // Common fields for both contexts
   const {
-    name = "N/A",
+    goods_name = "N/A",
     opening_stock = "0",
     balance_stock = "0",
     price = "0",
@@ -40,11 +40,11 @@ const StockDetailsModal = ({ show, onClose, stockData, context = "purchase" }) =
   return (
     <Modal show={show} onHide={onClose} centered backdrop="static">
       <Modal.Header closeButton>
-        <Modal.Title>{contextDetails.title} - {name}</Modal.Title>
+        <Modal.Title>{contextDetails.title} - {goods_name}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <div className="stock-details-grid">
-          <div><strong>Product Name:</strong> {name}</div>
+          <div><strong>Product Name:</strong> {goods_name}</div>
           <div><strong>Price:</strong> ₹{price}</div>
           <div><strong>GST Rate:</strong> {gst}</div>
           <div><strong>Description:</strong> {description}</div>

@@ -1,16 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { FaEdit, FaTrash, FaPlusCircle, FaMinusCircle, FaEye, FaShoppingBag , FaSearch } from "react-icons/fa";
+import {
+  FaEdit,
+  FaTrash,
+  FaPlusCircle,
+  FaMinusCircle,
+  FaEye,
+  FaShoppingBag,
+  FaSearch,
+} from "react-icons/fa";
 import AdminSidebar from "./../../../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "./../../../../Shared/AdminSidebar/AdminHeader";
-import ReusableTable from "./../../../../Layouts/TableLayout/ReusableTable"
+import ReusableTable from "./../../../../Layouts/TableLayout/ReusableTable";
 import AddServiceModal from "../PurchasedItems/AddServiceModal";
 import AddStockModal from "../PurchasedItems/AddStockModal";
 import DeductStockModal from "../PurchasedItems/DeductStockModal";
 import StockDetailsModal from "../PurchasedItems/StockDetailsModal";
 import { baseurl } from "../../../../BaseURL/BaseURL";
 import axios from "axios";
-import {Link, useNavigate } from "react-router-dom";
-import "./salesitems.css"; // reuse the same CSS
+import { Link, useNavigate } from "react-router-dom";
+import "./salesitems.css";
 
 const SalesItems = ({ user }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -35,6 +43,7 @@ const SalesItems = ({ user }) => {
     fetchProducts();
   }, []);
 
+  // ✅ Fetch Products
   const fetchProducts = async () => {
     try {
       const response = await axios.get(`${baseurl}/products`);
@@ -45,7 +54,7 @@ const SalesItems = ({ user }) => {
           goods_name: item.goods_name,
           price: item.price,
           description: item.description,
-           gst_rate: item.gst_rate,
+          gst_rate: item.gst_rate,
           updatedBy: "System",
           updatedOn: new Date(item.updated_at).toLocaleDateString(),
           opening_stock: item.opening_stock || 0,
@@ -74,6 +83,7 @@ const SalesItems = ({ user }) => {
     }
   };
 
+  // ✅ Delete Product
   const handleDeleteProduct = async (productId) => {
     if (!window.confirm("Are you sure you want to delete this product?")) return;
     try {
@@ -86,6 +96,7 @@ const SalesItems = ({ user }) => {
     }
   };
 
+  // ✅ Add Stock
   const handleAddStock = async ({ quantity, remark }) => {
     try {
       await axios.post(`${baseurl}/stock/${selectedProductId}`, {
@@ -102,6 +113,7 @@ const SalesItems = ({ user }) => {
     }
   };
 
+  // ✅ Deduct Stock
   const handleDeductStock = async ({ quantity, remark }) => {
     try {
       await axios.post(`${baseurl}/stock/${selectedProductId}`, {
@@ -118,49 +130,78 @@ const SalesItems = ({ user }) => {
     }
   };
 
+  // ✅ Edit Product
   const handleEditClick = (product) => {
-    navigate("/salesitemspage", { state: { productToEdit: product } });
+    navigate(`/salesitemspage/${product.id}`);
   };
 
- const filteredItems = items.filter((item) =>
-  item.goods_name?.toLowerCase().includes(search.toLowerCase()) ||
-  item.description?.toLowerCase().includes(search.toLowerCase()) ||
-  item.gst_rate?.toString().toLowerCase().includes(search.toLowerCase()) ||
-  item.updatedBy?.toLowerCase().includes(search.toLowerCase()) 
- 
-);
+  // ✅ Search Filter
+  const filteredItems = items.filter(
+    (item) =>
+      item.goods_name?.toLowerCase().includes(search.toLowerCase()) ||
+      item.description?.toLowerCase().includes(search.toLowerCase()) ||
+      item.gst_rate?.toString().toLowerCase().includes(search.toLowerCase()) ||
+      item.updatedBy?.toLowerCase().includes(search.toLowerCase())
+  );
 
+  // ✅ Table Columns
   const columns = [
     {
-    key: "goods_name",
-    title: "Product Name",
-    render: (_, item) => (
-      <div>
-        <FaShoppingBag className="me-2 text-info" />
-        <Link
-          to={`/salesitems_productdetails/${item.id}`}
-          className="text-primary text-decoration-none fw-semibold"
-        >
-          {item.goods_name}
-        </Link>
-        <br />
-        <span className="text-muted">RS. {item.price}</span>
-      </div>
-    ),
-  },
+      key: "goods_name",
+      title: "Product Name",
+      render: (_, record) => (
+        <div>
+          <FaShoppingBag className="me-2 text-info" />
+          <Link
+            to={`/salesitems_productdetails/${record.id}`}
+            className="text-primary text-decoration-none fw-semibold"
+          >
+            {record.goods_name}
+          </Link>
+          <br />
+          <span className="text-muted">RS. {record.price}</span>
+        </div>
+      ),
+    },
     { key: "description", title: "Description" },
     { key: "gst_rate", title: "GST Rate" },
     { key: "updatedBy", title: "Updated By" },
     {
       key: "actions",
       title: "Action",
-      render: (item) => (
+      render: (_, record) => (
         <>
-          <FaEdit className="text-success me-2 action-icon" onClick={() => handleEditClick(item)} />
-          <FaTrash className="text-danger me-2 action-icon" onClick={() => handleDeleteProduct(item.id)} />
-          <FaPlusCircle className="text-warning me-2 action-icon" onClick={() => { setSelectedProductId(item.id); setCurrentStockData(item); setShowStockModal(true); }} />
-          <FaMinusCircle className="text-danger me-2 action-icon" onClick={() => { setSelectedProductId(item.id); setCurrentStockData(item); setShowDeductModal(true); }} />
-          <FaEye className="text-primary action-icon" onClick={() => { setStockData(item); setShowViewModal(true); }} />
+          <FaEdit
+            className="text-success me-2 action-icon"
+            onClick={() => handleEditClick(record)}
+          />
+          <FaTrash
+            className="text-danger me-2 action-icon"
+            onClick={() => handleDeleteProduct(record.id)}
+          />
+          <FaPlusCircle
+            className="text-warning me-2 action-icon"
+            onClick={() => {
+              setSelectedProductId(record.id);
+              setCurrentStockData(record);
+              setShowStockModal(true);
+            }}
+          />
+          <FaMinusCircle
+            className="text-danger me-2 action-icon"
+            onClick={() => {
+              setSelectedProductId(record.id);
+              setCurrentStockData(record);
+              setShowDeductModal(true);
+            }}
+          />
+          <FaEye
+            className="text-primary action-icon"
+            onClick={() => {
+              setStockData(record);
+              setShowViewModal(true);
+            }}
+          />
         </>
       ),
     },
@@ -170,83 +211,86 @@ const SalesItems = ({ user }) => {
     <div className="dashboard-container">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
       <div className={`main-content ${isCollapsed ? "collapsed" : ""}`}>
-        <AdminHeader user={user} toggleSidebar={() => setIsCollapsed(!isCollapsed)} />
+        <AdminHeader
+          user={user}
+          toggleSidebar={() => setIsCollapsed(!isCollapsed)}
+        />
 
         <div className="container-fluid mt-3 sales-items-wrapper">
-    <div className="d-flex justify-content-between  mb-3 flex-wrap">
-  {/* Left: Search Box */}
-  <div className="sales-items-search-container me-3 flex-grow-1">
-    <div className="sales-items-search-box position-relative">
-      <input
-        type="text"
-        placeholder="Search sales items..."
-        className="sales-items-search-input"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-      <FaSearch className="sales-items-search-icon" size={18} />
-    </div>
-  </div>
+          <div className="d-flex justify-content-between mb-3 flex-wrap">
+            {/* Left: Search Box */}
+            <div className="sales-items-search-container me-3 flex-grow-1">
+              <div className="sales-items-search-box position-relative">
+                <input
+                  type="text"
+                  placeholder="Search sales items..."
+                  className="sales-items-search-input"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <FaSearch className="sales-items-search-icon" size={18} />
+              </div>
+            </div>
 
-  {/* Right: Buttons */}
-  <div className="d-flex gap-2 flex-shrink-0 mt-0">
-    {/* Sales Catalogue Dropdown */}
-    <div className="dropdown">
-      <button
-        className="btn btn-info dropdown-toggle d-flex align-items-center"
-        type="button"
-        data-bs-toggle="dropdown"
-        aria-expanded="false"
-      >
-        <i className="bi bi-list me-2"></i> Sales Catalogue
-      </button>
-      <ul className="dropdown-menu">
-        <li>
-          <a className="dropdown-item" href="/sale_items">
-            Sales Catalogue
-          </a>
-        </li>
-        <li>
-          <a className="dropdown-item" href="/purchased_items">
-            Purchased Items
-          </a>
-        </li>
-      </ul>
-    </div>
+            {/* Right: Buttons */}
+            <div className="d-flex gap-2 flex-shrink-0 mt-0">
+              {/* Sales Catalogue Dropdown */}
+              <div className="dropdown">
+                <button
+                  className="btn btn-info dropdown-toggle d-flex align-items-center"
+                  type="button"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  <i className="bi bi-list me-2"></i> Sales Catalogue
+                </button>
+                <ul className="dropdown-menu">
+                  <li>
+                    <a className="dropdown-item" href="/sale_items">
+                      Sales Catalogue
+                    </a>
+                  </li>
+                  <li>
+                    <a className="dropdown-item" href="/purchased_items">
+                      Purchased Items
+                    </a>
+                  </li>
+                </ul>
+              </div>
 
-    {/* ADD Dropdown */}
-    <div className="dropdown">
-      <button
-        className="btn btn-success dropdown-toggle d-flex align-items-center"
-        type="button"
-        data-bs-toggle="dropdown"
-        aria-expanded="false"
-      >
-        <i className="bi bi-plus-circle me-2"></i> ADD
-      </button>
-      <ul className="dropdown-menu">
-        <li>
-          <button
-            className="dropdown-item"
-            onClick={() => navigate("/salesitemspage")}
-          >
-            Products
-          </button>
-        </li>
-        <li>
-          <button
-            className="dropdown-item"
-            onClick={() => setShowServiceModal(true)}
-          >
-            Services
-          </button>
-        </li>
-      </ul>
-    </div>
-  </div>
-</div>
+              {/* ADD Dropdown */}
+              <div className="dropdown">
+                <button
+                  className="btn btn-success dropdown-toggle d-flex align-items-center"
+                  type="button"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  <i className="bi bi-plus-circle me-2"></i> ADD
+                </button>
+                <ul className="dropdown-menu">
+                  <li>
+                    <button
+                      className="dropdown-item"
+                      onClick={() => navigate("/salesitemspage")}
+                    >
+                      Products
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      className="dropdown-item"
+                      onClick={() => setShowServiceModal(true)}
+                    >
+                      Services
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
-
+          {/* ✅ Table */}
           <ReusableTable
             data={filteredItems}
             columns={columns}
@@ -257,6 +301,7 @@ const SalesItems = ({ user }) => {
         </div>
       </div>
 
+      {/* ✅ Modals */}
       <AddServiceModal
         show={showServiceModal}
         onClose={() => setShowServiceModal(false)}
