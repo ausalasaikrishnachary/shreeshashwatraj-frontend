@@ -60,10 +60,11 @@
 
 .purchase-order-header-section {
   background: white;
+  margin-top: 10px;
   border-radius: 0 0 10px 10px;
   padding: 25px;
   margin-bottom: 24px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); */
 }
 
 .purchase-order-header-top {

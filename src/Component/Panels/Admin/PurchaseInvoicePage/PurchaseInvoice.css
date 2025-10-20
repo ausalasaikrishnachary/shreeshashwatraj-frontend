@@ -65,10 +65,11 @@
 
 .purchase-invoice-header-section {
   background: white;
-  border-radius: 0 0 10px 10px;
+  margin-top: 20px;
+  /* border-radius: 0 0 10px 10px; */
   padding: 25px;
   margin-bottom: 24px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); */
 }
 
 .purchase-invoice-header-top {
