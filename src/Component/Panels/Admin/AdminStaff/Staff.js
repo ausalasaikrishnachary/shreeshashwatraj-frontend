@@ -5,6 +5,7 @@ import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import "./Staff.css";
+import { baseurl } from "../../../BaseURL/BaseURL";
 
 function Staff() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -22,7 +23,7 @@ function Staff() {
   const fetchStaffData = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/staff");
+      const response = await fetch(`${baseurl}/api/staff`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -106,7 +107,7 @@ function Staff() {
   const handleDeleteStaff = async (staffId) => {
     if (window.confirm("Are you sure you want to delete this staff member?")) {
       try {
-        const response = await fetch(`http://localhost:5000/api/staff/${staffId}`, {
+        const response = await fetch(`${baseurl}/api/staff/${staffId}`, {
           method: "DELETE"
         });
 

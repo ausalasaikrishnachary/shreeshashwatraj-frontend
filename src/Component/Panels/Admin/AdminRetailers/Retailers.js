@@ -16,7 +16,7 @@
 //   useEffect(() => {
 //     const fetchRetailers = async () => {
 //       try {
-//         const response = await fetch('http://localhost:5000/accounts');
+//         const response = await fetch(`${baseurl}/accounts`);
 //         if (!response.ok) {
 //           throw new Error('Failed to fetch data');
 //         }
@@ -226,6 +226,7 @@
 // import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
 // import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 // import "./Retailers.css";
+// import {baseurl} from "../../"
 
 // function Retailers() {
 //   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -237,7 +238,7 @@
 //   // Fetch data from API
 //   const fetchRetailers = async () => {
 //     try {
-//       const response = await fetch('http://localhost:5000/accounts');
+//       const response = await fetch(`${baseurl}/accounts`);
 //       if (!response.ok) {
 //         throw new Error('Failed to fetch data');
 //       }
@@ -286,7 +287,7 @@
 //   const handleDelete = async (retailer) => {
 //     if (window.confirm(`Are you sure you want to delete ${retailer.retailer}?`)) {
 //       try {
-//         const response = await fetch(`http://localhost:5000/accounts/${retailer.id}`, {
+//         const response = await fetch(`${baseurl}/accounts/${retailer.id}`, {
 //           method: 'DELETE'
 //         });
 

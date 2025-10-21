@@ -8,6 +8,7 @@ import "./AddExpenses.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import { useLocation } from "react-router-dom";
+import { baseurl } from "../../../BaseURL/BaseURL";
 
 function AddExpenses() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -39,7 +40,7 @@ function AddExpenses() {
   useEffect(() => {
     const fetchAccountGroups = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/accountgroup");
+        const response = await axios.get(`${baseurl}/accountgroup`);
 
         // Filter groups that contain 'Expenses' in the name
         const filteredGroups = response.data.filter(group =>
@@ -91,11 +92,11 @@ function AddExpenses() {
 
       if (expenseToEdit) {
         // Update existing expense
-        await axios.put(`http://localhost:5000/accounts/${expenseToEdit.id}`, payload);
+        await axios.put(`${baseurl}/accounts/${expenseToEdit.id}`, payload);
         setSuccessMessage("Expense updated successfully!");
       } else {
         // Add new expense
-        await axios.post("http://localhost:5000/accounts", payload);
+        await axios.post(`${baseurl}/accounts`, payload);
         setSuccessMessage("Expense added successfully!");
       }
 

@@ -3,6 +3,7 @@ import axios from "axios";
 import StaffMobileLayout from "../StaffMobileLayout/StaffMobileLayout";
 import "./Staff_Add_expensive.css";
 import { useNavigate } from "react-router-dom";
+import { baseurl } from "../../../../BaseURL/BaseURL";
 
 const Staff_Add_expensive = () => {
   const storedData = localStorage.getItem("user");
@@ -28,7 +29,7 @@ const Staff_Add_expensive = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/accounts");
+        const response = await axios.get(`${baseurl}/accounts`);
         const expenseCategories = response.data.filter(
           (item) => item.group && item.group.includes("Expenses")
         );
@@ -63,7 +64,7 @@ const Staff_Add_expensive = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post("http://localhost:5000/expensive", formData);
+      const response = await axios.post(`${baseurl}/expensive`, formData);
       console.log("Expense saved:", response.data);
       alert("Expense added successfully!");
 

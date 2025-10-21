@@ -5,7 +5,8 @@ import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import "./Expenses.css";
-import { FaEdit, FaTrash } from "react-icons/fa"; 
+import { FaEdit, FaTrash } from "react-icons/fa";
+import { baseurl } from "../../../BaseURL/BaseURL"; 
 
 function Expenses() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -17,7 +18,7 @@ function Expenses() {
 
     const fetchExpenses = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/accounts");
+        const response = await axios.get(`${baseurl}/accounts`);
         console.log("Data=", response.data);
 
         // Filter data where group includes 'expenses' (case-insensitive)
@@ -85,7 +86,7 @@ const columns = [
 const handleDelete = async (expenseId) => {
   if (window.confirm("Are you sure you want to delete this expense?")) {
     try {
-      await axios.delete(`http://localhost:5000/accounts/${expenseId}`);
+      await axios.delete(`${baseurl}/accounts/${expenseId}`);
       // Refresh the expenses list after delete
       setExpensesData(expensesData.filter((item) => item.id !== expenseId));
     } catch (error) {

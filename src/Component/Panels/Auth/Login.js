@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa"; // 👁️ Eye icons
 import "./Login.css";
+import { baseurl } from "../../BaseURL/BaseURL";
 
 function Login() {
   const [username, setUsername] = useState("");
@@ -47,7 +48,7 @@ function Login() {
       }
 
       // ✅ Normal user login via API
-      const response = await fetch("http://localhost:5000/login", {
+      const response = await fetch(`${baseurl}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

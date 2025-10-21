@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./ForgotPassword.css";
+import { baseurl } from "../../BaseURL/BaseURL";
 
 function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -25,7 +26,7 @@ function ForgotPassword() {
     setMessage("");
 
     try {
-      const response = await fetch("http://localhost:5000/forgot-password", {
+      const response = await fetch(`${baseurl}/forgot-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

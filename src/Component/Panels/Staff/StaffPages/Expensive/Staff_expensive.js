@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import StaffMobileLayout from "../StaffMobileLayout/StaffMobileLayout";
 import axios from "axios";
 import "./Staff_expensive.css";
+import { baseurl } from "../../../../BaseURL/BaseURL";
 
 function Staff_expensive() {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ function Staff_expensive() {
   useEffect(() => {
     const fetchExpensiveData = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/expensive"); // your API endpoint
+        const response = await axios.get(`${baseurl}/expensive`); // your API endpoint
         // Filter by logged-in staff
         const filteredData = response.data.filter(
           (item) => item.staff_id === userId && item.staff_name === userName

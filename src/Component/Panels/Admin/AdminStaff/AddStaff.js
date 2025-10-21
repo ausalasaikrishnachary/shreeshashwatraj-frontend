@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
 import { useNavigate, useParams } from "react-router-dom";
 import "./AddStaff.css";
+import { baseurl } from "../../../BaseURL/BaseURL";
 
 function AddStaff() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -31,7 +32,7 @@ function AddStaff() {
   const fetchStaffData = async () => {
     try {
       setIsFetching(true);
-      const response = await fetch(`http://localhost:5000/api/staff/${id}`);
+      const response = await fetch(`${baseurl}/api/staff/${id}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -103,7 +104,7 @@ function AddStaff() {
     try {
       if (isEditMode) {
         // Update existing staff (PUT request)
-        const response = await fetch(`http://localhost:5000/api/staff/${id}`, {
+        const response = await fetch(`${baseurl}/api/staff/${id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -124,7 +125,7 @@ function AddStaff() {
         navigate("/staff");
       } else {
         // Create new staff (POST request)
-        const response = await fetch("http://localhost:5000/api/staff", {
+        const response = await fetch(`${baseurl}/api/staff`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

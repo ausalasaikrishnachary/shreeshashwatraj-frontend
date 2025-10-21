@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Button, Form, Table, Alert, Spinner, Card } from "react-bootstrap";
+import { Button, Form, Table, Alert, Spinner, Card, Row, Col } from "react-bootstrap";
 import { BsPlus } from "react-icons/bs";
 import AddCompanyModal from "./AddCompanyModal";
 import AddCategoryModal from "./AddCategoryModal";
