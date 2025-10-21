@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Button, Form, Table, Alert, Spinner } from "react-bootstrap";
+import React, { useState, useEffect, useRef } from "react";
+import { Button, Form, Table, Alert, Spinner, Card } from "react-bootstrap";
 import { BsPlus } from "react-icons/bs";
 import AddCompanyModal from "./AddCompanyModal";
 import AddCategoryModal from "./AddCategoryModal";
@@ -9,43 +9,283 @@ import Header from "../../../../Shared/AdminSidebar/AdminHeader";
 import AdminSidebar from "../../../../Shared/AdminSidebar/AdminSidebar";
 import { useNavigate, useParams } from "react-router-dom";
 
+// Barcode Component to generate visual barcode
+const BarcodeDisplay = ({ value, width = 2, height = 100, displayValue = true }) => {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (value && canvasRef.current) {
+      drawBarcode(value);
+    }
+  }, [value, width, height]);
+
+  const drawBarcode = (barcodeValue) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Set canvas background to white
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Validate barcode value (should be numeric for Code128 simulation)
+    const validBarcode = barcodeValue.replace(/[^0-9]/g, '');
+    if (!validBarcode) return;
+
+    // Simple Code128-like barcode generation
+    ctx.fillStyle = 'black';
+    let x = 10; // Starting position
+
+    // Start code
+    drawBars(ctx, [2, 1, 2, 2, 2, 2], x, height, width);
+    x += (2 + 1 + 2 + 2 + 2 + 2) * width;
+
+    // Draw each digit
+    for (let i = 0; i < validBarcode.length; i++) {
+      const digit = parseInt(validBarcode[i]);
+      const pattern = getCode128Pattern(digit);
+      drawBars(ctx, pattern, x, height, width);
+      x += (pattern.reduce((a, b) => a + b, 0)) * width;
+    }
+
+    // Stop code
+    drawBars(ctx, [2, 3, 3, 1, 1, 1, 2], x, height, width);
+
+    // Draw barcode value below
+    if (displayValue) {
+      ctx.fillStyle = 'black';
+      ctx.font = '14px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(barcodeValue, canvas.width / 2, height + 20);
+    }
+  };
+
+  const drawBars = (ctx, pattern, x, height, width) => {
+    let currentX = x;
+    pattern.forEach((barWidth, index) => {
+      if (index % 2 === 0) { // Draw bar (even indices are bars)
+        ctx.fillRect(currentX, 0, barWidth * width, height);
+      }
+      currentX += barWidth * width;
+    });
+  };
+
+  const getCode128Pattern = (digit) => {
+    // Simplified Code128 patterns for digits 0-9
+    const patterns = {
+      0: [2, 1, 2, 2, 2, 2],    // 11011001100
+      1: [2, 2, 2, 1, 2, 2],    // 11001101100
+      2: [2, 2, 2, 2, 2, 1],    // 11001100110
+      3: [1, 2, 1, 2, 2, 3],    // 10010011000
+      4: [1, 2, 1, 3, 2, 2],    // 10010001100
+      5: [1, 3, 1, 2, 2, 2],    // 10001001100
+      6: [1, 2, 2, 2, 1, 3],    // 10011001000
+      7: [1, 2, 2, 3, 1, 2],    // 10011000100
+      8: [1, 3, 2, 2, 1, 2],    // 10001100100
+      9: [2, 2, 1, 2, 1, 3]     // 11001001000
+    };
+    return patterns[digit] || [2, 1, 2, 2, 2, 2];
+  };
+
+  const canvasWidth = (value ? value.length * 12 * width + 40 : 200);
+
+  return (
+    <div className="barcode-display">
+      <canvas
+        ref={canvasRef}
+        width={canvasWidth}
+        height={displayValue ? height + 30 : height}
+        style={{ border: '1px solid #ddd', background: 'white' }}
+      />
+      <div className="text-muted small mt-1 text-center">Auto-generated</div>
+    </div>
+  );
+};
+
+// Batch Card Component for better organization
+const BatchCard = ({ batch, index, onBatchChange, onRemove, canRemove }) => {
+  return (
+    <Card className="mb-3 batch-card">
+      <Card.Header className="bg-light d-flex justify-content-between align-items-center">
+        <h6 className="mb-0">Batch #{index + 1}: {batch.batchNumber}</h6>
+        <Button
+          variant="outline-danger"
+          size="sm"
+          onClick={() => onRemove(batch.id)}
+          disabled={!canRemove}
+        >
+          Remove
+        </Button>
+      </Card.Header>
+      <Card.Body>
+        <div className="row">
+          {/* First Row: Basic Information */}
+          <div className="col-md-4 mb-3">
+            <Form.Group>
+              <Form.Label className="fw-bold">Batch Number</Form.Label>
+              <Form.Control
+                value={batch.batchNumber}
+                readOnly
+                className="bg-light"
+              />
+              <Form.Text className="text-muted">Auto-generated</Form.Text>
+            </Form.Group>
+          </div>
+          <div className="col-md-4 mb-3">
+            <Form.Group>
+              <Form.Label className="fw-bold">Manufacturing Date</Form.Label>
+              <Form.Control
+                type="date"
+                name="mfgDate"
+                value={batch.mfgDate}
+                onChange={(e) => onBatchChange(index, e)}
+              />
+            </Form.Group>
+          </div>
+          <div className="col-md-4 mb-3">
+            <Form.Group>
+              <Form.Label className="fw-bold">Expiry Date</Form.Label>
+              <Form.Control
+                type="date"
+                name="expDate"
+                value={batch.expDate}
+                onChange={(e) => onBatchChange(index, e)}
+              />
+            </Form.Group>
+          </div>
+        </div>
+
+        {/* Second Row: Pricing Information */}
+        <div className="row">
+          <div className="col-md-4 mb-3">
+            <Form.Group>
+              <Form.Label className="fw-bold">Sale Price *</Form.Label>
+              <Form.Control
+                type="number"
+                step="0.01"
+                name="sellingPrice"
+                value={batch.sellingPrice}
+                onChange={(e) => onBatchChange(index, e)}
+                required
+                placeholder="Enter sale price"
+              />
+            </Form.Group>
+          </div>
+          <div className="col-md-4 mb-3">
+            <Form.Group>
+              <Form.Label className="fw-bold">Purchase Price</Form.Label>
+              <Form.Control
+                type="number"
+                step="0.01"
+                name="purchasePrice"
+                value={batch.purchasePrice}
+                onChange={(e) => onBatchChange(index, e)}
+                placeholder="Enter purchase price"
+              />
+            </Form.Group>
+          </div>
+          <div className="col-md-4 mb-3">
+            <Form.Group>
+              <Form.Label className="fw-bold">Cost Price</Form.Label>
+              <Form.Control
+                type="number"
+                step="0.01"
+                name="costPrice"
+                value={batch.costPrice}
+                onChange={(e) => onBatchChange(index, e)}
+                placeholder="Enter cost price"
+              />
+            </Form.Group>
+          </div>
+        </div>
+
+        {/* Third Row: Additional Pricing & Stock */}
+        <div className="row">
+          <div className="col-md-4 mb-3">
+            <Form.Group>
+              <Form.Label className="fw-bold">M.R.P</Form.Label>
+              <Form.Control
+                type="number"
+                step="0.01"
+                name="mrp"
+                value={batch.mrp}
+                onChange={(e) => onBatchChange(index, e)}
+                placeholder="Enter MRP"
+              />
+            </Form.Group>
+          </div>
+          <div className="col-md-4 mb-3">
+            <Form.Group>
+              <Form.Label className="fw-bold">Batch Price</Form.Label>
+              <Form.Control
+                type="number"
+                step="0.01"
+                name="batchPrice"
+                value={batch.batchPrice}
+                onChange={(e) => onBatchChange(index, e)}
+                placeholder="Enter batch price"
+              />
+            </Form.Group>
+          </div>
+          <div className="col-md-4 mb-3">
+            <Form.Group>
+              <Form.Label className="fw-bold">Stock Quantity *</Form.Label>
+              <Form.Control
+                type="number"
+                name="quantity"
+                value={batch.quantity}
+                onChange={(e) => onBatchChange(index, e)}
+                required
+                placeholder="Enter stock quantity"
+              />
+            </Form.Group>
+          </div>
+        </div>
+
+        {/* Fourth Row: Barcode */}
+        <div className="row">
+          <div className="col-12">
+            <Form.Group>
+              <Form.Label className="fw-bold">Barcode</Form.Label>
+              <div className="text-center">
+                <BarcodeDisplay 
+                  value={batch.barcode} 
+                  width={1.5} 
+                  height={60} 
+                  displayValue={true}
+                />
+                <Form.Control
+                  type="hidden"
+                  name="barcode"
+                  value={batch.barcode}
+                  onChange={(e) => onBatchChange(index, e)}
+                />
+              </div>
+            </Form.Group>
+          </div>
+        </div>
+      </Card.Body>
+    </Card>
+  );
+};
+
 const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
   const navigate = useNavigate();
-const { productId } = useParams(); // works now
+  const { productId } = useParams();
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [companyOptions, setCompanyOptions] = useState([]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [maintainBatch, setMaintainBatch] = useState(false);
   const [batches, setBatches] = useState([]);
   const [alert, setAlert] = useState({ show: false, message: "", variant: "success" });
-  const [formData, setFormData] = useState({
-    group_by: groupType,
-    goods_name: "",
-    category_id: "",
-    company_id: "",
-    price: "",
-    inclusive_gst: "",
-    gst_rate: "",
-    non_taxable: "",
-    net_price: "",
-    hsn_code: "",
-    unit: "UNT-UNITS",
-    cess_rate: "",
-    cess_amount: "",
-    sku: "",
-    opening_stock: "",
-    opening_stock_date: new Date().toISOString().split("T")[0],
-    min_stock_alert: "",
-    max_stock_alert: "",
-    description: "",
-    maintain_batch: false,
-    can_be_sold: false
-  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [batchCounter, setBatchCounter] = useState(1001); // Start from 1001
 
   useEffect(() => {
     fetchCategories();
@@ -80,23 +320,57 @@ const { productId } = useParams(); // works now
     loadProductData();
   }, [productId, groupType]);
 
+  // Generate sequential batch number starting from Batch-1001
+  const generateBatchNumber = () => {
+    const batchNumber = `BATCH-${batchCounter}`;
+    setBatchCounter(prev => prev + 1); // Increment for next batch
+    return batchNumber;
+  };
+
+  // Generate barcode number
+  const generateBarcode = () => {
+    const timestamp = new Date().getTime();
+    const random = Math.floor(Math.random() * 10000);
+    return `BC${timestamp}${random}`.slice(0, 13);
+  };
+
+  // Calculate tax and net price based on GST type
+  const calculateTaxAndNetPrice = (price, gstRate, inclusiveGst) => {
+    if (!price || !gstRate) return { netPrice: price, taxAmount: 0 };
+
+    const numericPrice = parseFloat(price);
+    const numericGstRate = parseFloat(gstRate) / 100;
+
+    if (inclusiveGst === "Inclusive") {
+      const taxAmount = (numericPrice * numericGstRate) / (1 + numericGstRate);
+      const netPrice = numericPrice - taxAmount;
+      return {
+        netPrice: netPrice.toFixed(2),
+        taxAmount: taxAmount.toFixed(2)
+      };
+    } else {
+      const taxAmount = numericPrice * numericGstRate;
+      const netPrice = numericPrice + taxAmount;
+      return {
+        netPrice: netPrice.toFixed(2),
+        taxAmount: taxAmount.toFixed(2)
+      };
+    }
+  };
+
   const fetchProductById = async (id) => {
     try {
       const response = await axios.get(`${baseurl}/products/${id}`);
       const product = response.data;
-      if (!product || !product.id) {
-        throw new Error("Invalid product data received");
-      }
-      console.log("📦 Fetched product:", product);
 
-      const updatedFormData = {
+      setFormData({
         group_by: product.group_by || groupType,
         goods_name: product.goods_name || product.name || "",
         category_id: product.category_id || "",
         company_id: product.company_id || "",
         price: product.price || "",
         inclusive_gst: product.inclusive_gst || "Inclusive",
-        gst_rate: product.gst_rate || "18%",
+        gst_rate: product.gst_rate || "",
         non_taxable: product.non_taxable || "",
         net_price: product.net_price || "",
         hsn_code: product.hsn_code || "",
@@ -105,14 +379,15 @@ const { productId } = useParams(); // works now
         cess_amount: product.cess_amount || "",
         sku: product.sku || "",
         opening_stock: product.opening_stock || "",
+        balance_stock: product.balance_stock || product.opening_stock || "",
         opening_stock_date: product.opening_stock_date ? product.opening_stock_date.split('T')[0] : new Date().toISOString().split('T')[0],
         min_stock_alert: product.min_stock_alert || "",
         max_stock_alert: product.max_stock_alert || "",
         description: product.description || "",
         maintain_batch: product.maintain_batch || false,
         can_be_sold: product.can_be_sold || false
-      };
-      setFormData(updatedFormData);
+      });
+
       setMaintainBatch(product.maintain_batch || false);
       await fetchBatches(id);
     } catch (error) {
@@ -141,28 +416,41 @@ const { productId } = useParams(); // works now
     }
   };
 
-  const fetchBatches = async (productId) => {
+  const fetchBatches = async (id = productId) => {
+    if (!id) {
+      setBatches([createDefaultBatch()]);
+      return;
+    }
+    
     try {
-      console.log("🔄 Fetching batches for product ID:", productId);
-      const response = await axios.get(`${baseurl}/products/${productId}/batches`);
-
-      const mappedBatches = response.data && response.data.length > 0
+      const response = await axios.get(`${baseurl}/products/${id}/batches`);
+      const fetchedBatches = response.data?.length
         ? response.data.map(batch => ({
             id: batch.id || Date.now() + Math.random(),
-            batchNumber: batch.batch_number || "",
-            mfgDate: batch.mfg_date ? batch.mfg_date.split('T')[0] : "",
-            expDate: batch.exp_date ? batch.exp_date.split('T')[0] : "",
+            batchNumber: batch.batch_number || generateBatchNumber(),
+            mfgDate: batch.mfg_date?.split('T')[0] || "",
+            expDate: batch.exp_date?.split('T')[0] || "",
             quantity: batch.quantity || "",
             costPrice: batch.cost_price || "",
             sellingPrice: batch.selling_price || formData.price || "",
             purchasePrice: batch.purchase_price || "",
             mrp: batch.mrp || "",
-            batchPrice: batch.batch_price || ""
+            batchPrice: batch.batch_price || "",
+            barcode: batch.barcode || generateBarcode()
           }))
         : [createDefaultBatch()];
 
-      setBatches(mappedBatches);
-      console.log("✅ Batches set:", mappedBatches);
+      setBatches(fetchedBatches);
+      
+      // Set batch counter based on existing batches
+      if (fetchedBatches.length > 0) {
+        const batchNumbers = fetchedBatches.map(batch => {
+          const match = batch.batchNumber.match(/BATCH-(\d+)/);
+          return match ? parseInt(match[1]) : 0;
+        });
+        const maxBatchNumber = Math.max(...batchNumbers);
+        setBatchCounter(maxBatchNumber + 1);
+      }
     } catch (error) {
       console.error("Error fetching batches:", error);
       setBatches([createDefaultBatch()]);
@@ -171,13 +459,13 @@ const { productId } = useParams(); // works now
 
   const showAlert = (message, variant = "success") => {
     setAlert({ show: true, message, variant });
-    setTimeout(() => setAlert({ show: false, message: "", variant: "success" }), 3000);
+    setTimeout(() => setAlert({ show: false, message: "", variant: "success" }), 5000);
   };
 
   const createDefaultBatch = () => {
     return {
-      id: Date.now(),
-      batchNumber: "",
+      id: Date.now() + Math.random(),
+      batchNumber: generateBatchNumber(),
       mfgDate: "",
       expDate: "",
       quantity: "",
@@ -185,12 +473,72 @@ const { productId } = useParams(); // works now
       sellingPrice: formData.price || "",
       purchasePrice: "",
       mrp: "",
-      batchPrice: ""
+      batchPrice: "",
+      barcode: generateBarcode()
     };
   };
 
+  const [formData, setFormData] = useState({
+    group_by: groupType,
+    goods_name: "",
+    category_id: "",
+    company_id: "",
+    price: "",
+    inclusive_gst: "Inclusive",
+    gst_rate: "",
+    non_taxable: "",
+    net_price: "",
+    hsn_code: "",
+    unit: "UNT-UNITS",
+    cess_rate: "",
+    cess_amount: "",
+    sku: "",
+    opening_stock: "",
+    balance_stock: "",
+    opening_stock_date: new Date().toISOString().split('T')[0],
+    min_stock_alert: "",
+    max_stock_alert: "",
+    description: "",
+    maintain_batch: false,
+    can_be_sold: false
+  });
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    const newFormData = {
+      ...formData,
+      [name]: type === "checkbox" ? checked : value
+    };
+
+    // Recalculate tax and net price when price, GST rate, or GST type changes
+    if (name === "price" || name === "gst_rate" || name === "inclusive_gst") {
+      if (newFormData.price && newFormData.gst_rate) {
+        const { netPrice, taxAmount } = calculateTaxAndNetPrice(
+          newFormData.price,
+          newFormData.gst_rate,
+          newFormData.inclusive_gst
+        );
+        newFormData.net_price = netPrice;
+      }
+    }
+
+    // Calculate balance stock based only on opening_stock
+    if (name === "opening_stock") {
+      const openingStock = parseFloat(newFormData.opening_stock) || 0;
+      newFormData.balance_stock = openingStock.toString();
+    }
+
+    setFormData(newFormData);
+
+    // Update batch selling prices when main price changes
+    if (name === "price" && batches.length > 0) {
+      const updatedBatches = batches.map(batch => ({
+        ...batch,
+        sellingPrice: value || batch.sellingPrice
+      }));
+      setBatches(updatedBatches);
+    }
 
     if (name === "maintain_batch") {
       if (checked && batches.length === 0) {
@@ -198,13 +546,7 @@ const { productId } = useParams(); // works now
         const updatedBatches = [...batches, defaultBatch];
         setBatches(updatedBatches);
       }
-      setFormData(prev => ({ ...prev, maintain_batch: checked }));
       setMaintainBatch(checked);
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: type === "checkbox" ? checked : value
-      }));
     }
   };
 
@@ -234,53 +576,64 @@ const { productId } = useParams(); // works now
     e.preventDefault();
     setIsLoading(true);
 
+    // Validate batch details if maintainBatch is true
     if (maintainBatch) {
-      const invalidBatches = batches.filter(batch =>
-        !batch.batchNumber || !batch.quantity || !batch.sellingPrice
+      const invalidBatches = batches.filter(
+        (batch) => !batch.quantity || !batch.sellingPrice
       );
 
       if (invalidBatches.length > 0) {
-        window.alert("Please fill all required fields in batch details (Batch Number, Quantity, and Selling Price)");
+        window.alert(
+          "Please fill all required fields in batch details (Quantity and Selling Price)"
+        );
         setIsLoading(false);
         return;
       }
     }
 
     try {
-      const batchesForBackend = maintainBatch ? batches.map(batch => ({
-        batchNumber: batch.batchNumber,
-        mfgDate: batch.mfgDate || null,
-        expDate: batch.expDate || null,
-        quantity: batch.quantity,
-        costPrice: batch.costPrice || 0,
-        sellingPrice: batch.sellingPrice,
-        purchasePrice: batch.purchasePrice || 0,
-        mrp: batch.mrp || 0,
-        batchPrice: batch.batchPrice || 0
-      })) : [];
+      const batchesForBackend = maintainBatch
+        ? batches.map((batch) => ({
+            batchNumber: batch.batchNumber,
+            mfgDate: batch.mfgDate || null,
+            expDate: batch.expDate || null,
+            quantity: batch.quantity,
+            costPrice: batch.costPrice || 0,
+            sellingPrice: batch.sellingPrice,
+            purchasePrice: batch.purchasePrice || 0,
+            mrp: batch.mrp || 0,
+            batchPrice: batch.batchPrice || 0,
+            barcode: batch.barcode || generateBarcode()
+          }))
+        : [];
 
+      // Create dataToSend without the quantity field for products table
+      const { quantity, ...productDataWithoutQuantity } = formData;
+      
       const dataToSend = {
-        ...formData,
-        ...(maintainBatch && { batches: batchesForBackend })
+        ...productDataWithoutQuantity,
+        stock_in: "0",
+        stock_out: "0",
+        ...(maintainBatch && { batches: batchesForBackend }),
       };
 
+      console.log("📤 Sending data:", dataToSend);
+
       if (productId) {
-        console.log(`🔄 Updating product ID: ${productId}`);
         await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
           headers: { "Content-Type": "application/json" },
         });
         window.alert(`Product "${formData.goods_name}" updated successfully!`);
       } else {
-        console.log("➕ Creating new product");
         await axios.post(`${baseurl}/products`, dataToSend, {
           headers: { "Content-Type": "application/json" },
         });
         window.alert("New product added successfully!");
       }
 
-      navigate('/purchased_items');
+      navigate("/purchased_items");
     } catch (error) {
-      console.error("Failed to add/update product.", error);
+      console.error("❌ Failed to add/update product:", error);
       window.alert("Failed to add/update product.");
     } finally {
       setIsLoading(false);
@@ -288,8 +641,8 @@ const { productId } = useParams(); // works now
   };
 
   const pageTitle = productId
-    ? `Edit Product in Purchased Items`
-    : `Add Product to Purchased Items`;
+    ? `Edit Product in Purchase Catalog`
+    : `Add Product to Purchase Catalog`;
 
   if (isLoading && !isDataLoaded) {
     return (
@@ -321,11 +674,11 @@ const { productId } = useParams(); // works now
               {alert.message}
             </Alert>
           )}
-          
+
           <div className="container-fluid mt-3 purchased-items-wrapper">
             <div className="container justify-content-center mt-4">
-              <h3 className="mb-4">{pageTitle}</h3>
-         
+              <h3 className="mb-4 text-center">{pageTitle}</h3>
+
               <Form onSubmit={handleSubmit}>
                 <div className="row mb-3">
                   <div className="col">
@@ -427,10 +780,10 @@ const { productId } = useParams(); // works now
                       onChange={handleChange}
                     >
                       <option value="">Select GST Rate</option>
-                      <option value="18%">GST Rate 18%</option>
-                      <option value="12%">GST Rate 12%</option>
-                      <option value="5%">GST Rate 5%</option>
-                      <option value="0%">GST Rate 0%</option>
+                      <option value="18">GST Rate 18%</option>
+                      <option value="12">GST Rate 12%</option>
+                      <option value="5">GST Rate 5%</option>
+                      <option value="0">GST Rate 0%</option>
                     </Form.Select>
                   </div>
                   <div className="col">
@@ -452,6 +805,7 @@ const { productId } = useParams(); // works now
                       step="0.01"
                       value={formData.net_price}
                       onChange={handleChange}
+                      readOnly
                     />
                   </div>
                   <div className="col">
@@ -503,6 +857,7 @@ const { productId } = useParams(); // works now
                   </div>
                 </div>
 
+                {/* Stock Management Section */}
                 <div className="row mb-3">
                   <div className="col">
                     <Form.Label>SKU</Form.Label>
@@ -525,6 +880,20 @@ const { productId } = useParams(); // works now
                     />
                   </div>
                   <div className="col">
+                    <Form.Label>Balance Stock</Form.Label>
+                    <Form.Control
+                      placeholder="Balance Stock"
+                      name="balance_stock"
+                      type="number"
+                      value={formData.balance_stock}
+                      readOnly
+                      className="bg-light"
+                    />
+                  </div>
+                </div>
+
+                <div className="row mb-3">
+                  <div className="col">
                     <Form.Label>Opening Stock Date</Form.Label>
                     <Form.Control
                       type="date"
@@ -544,9 +913,6 @@ const { productId } = useParams(); // works now
                       onChange={handleChange}
                     />
                   </div>
-                </div>
-
-                <div className="row mb-3">
                   <div className="col">
                     <Form.Label>Max Stock Alert</Form.Label>
                     <Form.Control
@@ -557,7 +923,9 @@ const { productId } = useParams(); // works now
                       onChange={handleChange}
                     />
                   </div>
+                </div>
 
+                <div className="row mb-3">
                   {groupType !== "Salescatalog" && (
                     <div className="col d-flex align-items-center">
                       <Form.Check
@@ -570,7 +938,6 @@ const { productId } = useParams(); // works now
                       />
                     </div>
                   )}
-
                   <div className="col d-flex align-items-center">
                     <Form.Check
                       type="checkbox"
@@ -598,116 +965,36 @@ const { productId } = useParams(); // works now
                   />
                 </Form.Group>
 
+                {/* New Batch Section with Cards */}
                 {maintainBatch && (
                   <div className="border border-dark p-3 mb-3">
-                    <h5>Batch Details</h5>
-                    <Table striped bordered hover>
-                      <thead>
-                        <tr>
-                          <th>Batch No.*</th>
-                          <th>Exp. Date</th>
-                          <th>Mfg. Date</th>
-                          <th>Sale Price*</th>
-                          <th>Purchase Price</th>
-                          <th>M.R.P</th>
-                          <th>Batch Price</th>
-                          <th>Stock*</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {batches.map((batch, index) => (
-                          <tr key={batch.id}>
-                            <td>
-                              <Form.Control
-                                placeholder="Batch Number"
-                                name="batchNumber"
-                                value={batch.batchNumber}
-                                onChange={(e) => handleBatchChange(index, e)}
-                                required
-                              />
-                            </td>
-                            <td>
-                              <Form.Control
-                                type="date"
-                                name="expDate"
-                                value={batch.expDate}
-                                onChange={(e) => handleBatchChange(index, e)}
-                              />
-                            </td>
-                            <td>
-                              <Form.Control
-                                type="date"
-                                name="mfgDate"
-                                value={batch.mfgDate}
-                                onChange={(e) => handleBatchChange(index, e)}
-                              />
-                            </td>
-                            <td>
-                              <Form.Control
-                                type="number"
-                                step="0.01"
-                                name="sellingPrice"
-                                value={batch.sellingPrice}
-                                onChange={(e) => handleBatchChange(index, e)}
-                                required
-                              />
-                            </td>
-                            <td>
-                              <Form.Control
-                                type="number"
-                                step="0.01"
-                                name="purchasePrice"
-                                value={batch.purchasePrice}
-                                onChange={(e) => handleBatchChange(index, e)}
-                              />
-                            </td>
-                            <td>
-                              <Form.Control
-                                type="number"
-                                step="0.01"
-                                name="mrp"
-                                value={batch.mrp}
-                                onChange={(e) => handleBatchChange(index, e)}
-                              />
-                            </td>
-                            <td>
-                              <Form.Control
-                                type="number"
-                                step="0.01"
-                                name="batchPrice"
-                                value={batch.batchPrice}
-                                onChange={(e) => handleBatchChange(index, e)}
-                              />
-                            </td>
-                            <td>
-                              <Form.Control
-                                type="number"
-                                name="quantity"
-                                value={batch.quantity}
-                                onChange={(e) => handleBatchChange(index, e)}
-                                required
-                              />
-                            </td>
-                            <td>
-                              <Button
-                                variant="danger"
-                                size="sm"
-                                onClick={() => removeBatch(batch.id)}
-                                disabled={batches.length <= 1}
-                              >
-                                Remove
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
-                    <Button variant="primary" onClick={addNewBatch}>
-                      Add Batch
-                    </Button>
-                    <div className="mt-2 text-muted">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h5 className="mb-0">Batch Details</h5>
+                      <Button variant="primary" onClick={addNewBatch}>
+                        Add New Batch
+                      </Button>
+                    </div>
+                    
+                    <div className="batches-container">
+                      {batches.map((batch, index) => (
+                        <BatchCard
+                          key={batch.id}
+                          batch={batch}
+                          index={index}
+                          onBatchChange={handleBatchChange}
+                          onRemove={removeBatch}
+                          canRemove={batches.length > 1}
+                        />
+                      ))}
+                    </div>
+                    
+                    <div className="mt-3 text-muted">
                       <small>* indicates required fields</small>
+                    </div>
+                    <div className="mt-2">
+                      <small className="text-info">
+                        <strong>Note:</strong> Batch numbers start from BATCH-1001 and increment sequentially.
+                      </small>
                     </div>
                   </div>
                 )}
