@@ -6,10 +6,23 @@ import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import { FaEdit, FaTrash } from "react-icons/fa";
 import { baseurl } from '../../../BaseURL/BaseURL';
 
+import { useNavigate } from "react-router-dom";
+
+
 const CreateInvoice = ({ user }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [inputName, setInputName] = useState("");
   const [selected, setSelected] = useState(false);
+  const [selectedSupplierId, setSelectedSupplierId] = useState(null);
+  const [batches, setBatches] = useState([]);
+const [selectedBatch, setSelectedBatch] = useState("");
+
+  
+const [products, setProducts] = useState([]);
+
+
+  const [accounts, setAccounts] = useState([]);
+const navigate = useNavigate();
   const [invoiceData, setInvoiceData] = useState({
     invoiceNumber: "INV01",
     invoiceDate: "2025-07-26",
@@ -105,6 +118,35 @@ const CreateInvoice = ({ user }) => {
     }));
   };
 
+  useEffect(() => {
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch(`${baseurl}/products`);
+      const data = await res.json();
+      setProducts(data);
+    } catch (err) {
+      console.error("Failed to fetch products:", err);
+    }
+  };
+  fetchProducts();
+}, []);
+
+
+
+  
+useEffect(() => {
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch(`${baseurl}/accounts`);
+      const data = await res.json();
+      setAccounts(data);
+    } catch (err) {
+      console.error("Failed to fetch accounts:", err);
+    }
+  };
+  fetchAccounts();
+}, []);
+
   const calculateItemTotal = () => {
     const quantity = parseFloat(itemForm.quantity) || 0;
     const price = parseFloat(itemForm.price) || 0;
@@ -131,29 +173,34 @@ const CreateInvoice = ({ user }) => {
     };
   };
 
-  const addItem = () => {
-    const calculatedItem = calculateItemTotal();
-    
-    setInvoiceData(prev => ({
-      ...prev,
-      items: [...prev.items, calculatedItem]
-    }));
-    
-    // Reset item form
-    setItemForm({
-      product: "",
-      description: "",
-      quantity: 1,
-      price: 0,
-      discount: 0,
-      gst: 0,
-      cgst: 0,
-      sgst: 0,
-      igst: 0,
-      cess: 0,
-      total: 0
-    });
+ const addItem = () => {
+  const calculatedItem = {
+    ...calculateItemTotal(),
+    batch: selectedBatch,
   };
+
+  setInvoiceData(prev => ({
+    ...prev,
+    items: [...prev.items, calculatedItem]
+  }));
+
+  setItemForm({
+    product: "",
+    description: "",
+    quantity: 1,
+    price: 0,
+    discount: 0,
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0,
+    total: 0
+  });
+  setBatches([]);
+  setSelectedBatch("");
+};
+
 
   const removeItem = (index) => {
     setInvoiceData(prev => ({
@@ -316,133 +363,274 @@ const CreateInvoice = ({ user }) => {
               </Row>
 
               <div style={{ border: "1px solid #ccc" }}>
-                <Row noGutters>
-                  <Col md={4} style={{ borderRight: "1px solid #ccc", padding: "15px" }}>
-                    {!selected ? (
-                      // Initial Search Box Layout
-                      <>
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <strong>Supplier info</strong>
-                          <Button variant="info" size="sm">+ New</Button>
-                        </div>
-                        <Form.Control
-                          placeholder="Search by name"
-                          value={inputName}
-                          onChange={(e) => setInputName(e.target.value)}
-                          className="mb-2"
-                        />
-                        <Button variant="primary" size="sm" onClick={handleSearch}>
-                          Search
-                        </Button>
-                      </>
-                    ) : (
-                      // Supplier Info Details After Search
-                      <>
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <strong>Supplier/Customer Info</strong>
-                          <Button variant="info" size="sm">
-                            <FaEdit />
-                          </Button>
-                        </div>
-                        <div>
-                          <div>{invoiceData.supplierInfo.name}</div>
-                          <div>Business Name: {invoiceData.supplierInfo.businessName}</div>
-                          <div>{invoiceData.supplierInfo.state}</div>
-                          <div>GSTIN: {invoiceData.supplierInfo.gstin}</div>
-                        </div>
-                      </>
-                    )}
-                  </Col>
+             {/* Supplier Info Section */}
+<Row className="mb-3">
+  {/* Supplier Info */}
+ <Col md={4} style={{ borderRight: "1px solid #ccc", padding: "15px" }}>
+  {!selected ? (
+    <>
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <strong>Supplier Info</strong>
+        {/* Only show NEW button when dropdown is visible */}
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => navigate("/retailers/add")}
+        >
+          New
+        </Button>
+      </div>
 
-                  {/* Billing Address */}
-                  {selected && (
-                    <Col md={4} style={{ borderRight: "1px solid #ccc", padding: "15px" }}>
-                      <strong>Billing Address</strong>
-                      <div className="mt-2">
-                        <div>{invoiceData.billingAddress.addressLine1}</div>
-                        <div style={{ color: "red" }}>{invoiceData.billingAddress.addressLine2}</div>
-                        <div>{invoiceData.billingAddress.city}</div>
-                      </div>
-                    </Col>
-                  )}
+      {/* Dropdown for Retailers */}
+      <Form.Select
+        className="mb-2"
+        value={inputName}
+       onChange={(e) => {
+  const selectedName = e.target.value;
+  setInputName(selectedName);
+  const supplier = accounts.find(acc => acc.business_name === selectedName);
+  if (supplier) {
+    setSelectedSupplierId(supplier.id); // ✅ store supplier id
+    setSelected(true);
+    setInvoiceData(prev => ({
+      ...prev,
+      supplierInfo: {
+        name: supplier.display_name,
+        businessName: supplier.business_name,
+        state: supplier.billing_state,
+        gstin: supplier.gstin
+      },
+      billingAddress: {
+        addressLine1: supplier.billing_address_line1,
+        city: supplier.billing_city,
+        pincode: supplier.billing_pin_code,
+        state: supplier.billing_state
+      },
+      shippingAddress: {
+        addressLine1: supplier.shipping_address_line1,
+        city: supplier.shipping_city,
+        pincode: supplier.shipping_pin_code,
+        state: supplier.shipping_state
+      }
+    }));
+  }
+}}
 
-                  {/* Shipping Address */}
-                  {selected && (
-                    <Col md={4} style={{ padding: "15px" }}>
-                      <strong>Shipping Address</strong>
-                      <div className="mt-2">
-                        <div>{invoiceData.shippingAddress.addressLine1}</div>
-                        <div style={{ color: "red" }}>{invoiceData.shippingAddress.addressLine2}</div>
-                        <div>{invoiceData.shippingAddress.city}</div>
-                      </div>
-                    </Col>
-                  )}
-                </Row>
+      >
+        <option value="">Select Retailer</option>
+        {accounts
+          .filter(acc => acc.role === "retailer")
+          .map(acc => (
+            <option key={acc.id} value={acc.business_name}>
+              {acc.business_name} ({acc.mobile_number})
+            </option>
+          ))}
+      </Form.Select>
+    </>
+  ) : (
+    <>
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <strong>Supplier / Customer Info</strong>
+        {/* Only show EDIT button when supplier is selected */}
+     <Button
+  variant="info"
+  size="sm"
+  onClick={() => {
+    if (selectedSupplierId) {
+      navigate(`/retailers/edit/${selectedSupplierId}`);
+    } else {
+      alert("Please select a supplier first!");
+    }
+  }}
+>
+  <FaEdit /> Edit
+</Button>
+
+      </div>
+      <div>
+        <div>Display Name: {invoiceData.supplierInfo.name}</div>
+        <div>Business Name: {invoiceData.supplierInfo.businessName}</div>
+        <div>Customer GSTIN: {invoiceData.supplierInfo.gstin}</div>
+      </div>
+    </>
+  )}
+</Col>
+
+
+  {/* Billing Address */}
+  <Col md={4} style={{ borderRight: "1px solid #ccc", padding: "15px" }}>
+    <strong>Billing Address</strong>
+    <div>Address: {invoiceData.billingAddress?.addressLine1}</div>
+    <div>City: {invoiceData.billingAddress?.city}</div>
+    <div>Pincode: {invoiceData.billingAddress?.pincode}</div>
+    <div>State: {invoiceData.billingAddress?.state}</div>
+  </Col>
+
+  {/* Shipping Address */}
+  <Col md={4} style={{ padding: "15px" }}>
+    <strong>Shipping Address</strong>
+    <div>Address: {invoiceData.shippingAddress?.addressLine1}</div>
+    <div>City: {invoiceData.shippingAddress?.city}</div>
+    <div>Pincode: {invoiceData.shippingAddress?.pincode}</div>
+    <div>State: {invoiceData.shippingAddress?.state}</div>
+  </Col>
+</Row>
+
+
               </div>
 
-              <div className="item-section mb-3">
-                <Row className="align-items-end">
-                  <Col md={2}>
-                    <Form.Label>Item</Form.Label> 
-                    <div className="text-primary">+ New Item</div>
-                    <Form.Control 
-                      name="product"
-                      value={itemForm.product}
-                      onChange={handleItemChange}
-                      placeholder="Product name"
-                    />
-                  </Col>
-                  <Col md={1}>
-                    <Form.Label>Qty</Form.Label>
-                    <Form.Control 
-                      name="quantity"
-                      type="number"
-                      value={itemForm.quantity}
-                      onChange={handleItemChange}
-                    />
-                  </Col>
-                  <Col md={2}>
-                    <Form.Label>Price</Form.Label>
-                    <Form.Control 
-                      name="price"
-                      type="number"
-                      value={itemForm.price}
-                      onChange={handleItemChange}
-                    />
-                  </Col>
-                  <Col md={2}>
-                    <Form.Label>Discount (%)</Form.Label>
-                    <Form.Control 
-                      name="discount"
-                      type="number"
-                      value={itemForm.discount}
-                      onChange={handleItemChange}
-                    />
-                  </Col>
-                  <Col md={2}>
-                    <Form.Label>GST (%)</Form.Label>
-                    <Form.Control 
-                      name="gst"
-                      type="number"
-                      value={itemForm.gst}
-                      onChange={handleItemChange}
-                    />
-                  </Col>
-                  <Col md={1}>
-                    <Button variant="success" onClick={addItem}>Add</Button>
-                  </Col>
-                </Row>
-                <Row className="mt-2">
-                  <Col>
-                    <Form.Control 
-                      name="description"
-                      value={itemForm.description}
-                      onChange={handleItemChange}
-                      placeholder="Product description" 
-                    />
-                  </Col>
-                </Row>
-              </div>
+           {/* ✅ ITEM SECTION FIXED ✅ */}
+<div className="item-section mb-3 mt-3">
+ <Row className="align-items-end">
+<Col md={2}>
+  <div className="d-flex justify-content-between align-items-center">
+    <Form.Label className="mb-0">Item</Form.Label>
+    <button
+      type="button"
+      className="btn btn-link p-0 text-primary"
+      style={{ textDecoration: "none", fontSize: "14px" }}
+      onClick={() => navigate("/salesitemspage")}
+    >
+      + New Item
+    </button>
+  </div>
+
+<Form.Select
+  name="product"
+  value={itemForm.product}
+  onChange={async (e) => {
+    const selectedName = e.target.value;
+    setItemForm((prev) => ({ ...prev, product: selectedName }));
+
+    const selectedProduct = products.find(
+      (p) => p.goods_name === selectedName
+    );
+
+    if (selectedProduct) {
+      setItemForm((prev) => ({
+        ...prev,
+        product: selectedProduct.goods_name,
+        price: selectedProduct.net_price,
+        gst: parseFloat(selectedProduct.gst_rate)
+          ? selectedProduct.gst_rate.replace("%", "")
+          : 0,
+        description: selectedProduct.description || "",
+      }));
+
+      // ✅ Correct fetch using route param
+      try {
+        const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
+        const batchData = await res.json();
+        setBatches(batchData);
+        setSelectedBatch(""); // reset batch selection
+      } catch (err) {
+        console.error("Failed to fetch batches:", err);
+        setBatches([]);
+      }
+    } else {
+      setItemForm((prev) => ({
+        ...prev,
+        price: "",
+        gst: "",
+        description: "",
+      }));
+      setBatches([]);
+      setSelectedBatch("");
+    }
+  }}
+>
+  <option value="">Select Product</option>
+  {products
+    .filter((p) => p.group_by === "Salescatalog")
+    .map((p) => (
+      <option key={p.id} value={p.goods_name}>
+        {p.goods_name}
+      </option>
+    ))}
+</Form.Select>
+
+<Form.Select
+  className="mt-2"
+  name="batch"
+  value={selectedBatch}
+  onChange={(e) => setSelectedBatch(e.target.value)}
+>
+  <option value="">Select Batch</option>
+  {batches.map((batch) => (
+    <option key={batch.id} value={batch.batch_number}>
+      {batch.batch_number}
+    </option>
+  ))}
+</Form.Select>
+
+
+ 
+ 
+</Col>
+
+
+  <Col md={1}>
+    <Form.Label>Qty</Form.Label>
+    <Form.Control
+      name="quantity"
+      type="number"
+      value={itemForm.quantity}
+      onChange={handleItemChange}
+    />
+  </Col>
+
+  <Col md={2}>
+    <Form.Label>Price</Form.Label>
+    <Form.Control
+      name="price"
+      type="number"
+      value={itemForm.price}
+      readOnly
+    />
+  </Col>
+
+  <Col md={2}>
+    <Form.Label>Discount (%)</Form.Label>
+    <Form.Control
+      name="discount"
+      type="number"
+      value={itemForm.discount}
+      onChange={handleItemChange}
+    />
+  </Col>
+
+  <Col md={2}>
+    <Form.Label>GST (%)</Form.Label>
+    <Form.Control
+      name="gst"
+      type="number"
+      value={itemForm.gst}
+      readOnly
+    />
+  </Col>
+
+  <Col md={1}>
+    <Button variant="success" onClick={addItem}>
+      Add
+    </Button>
+  </Col>
+</Row>
+
+
+<Row className="mt-2">
+  <Col>
+    <Form.Control
+      name="description"
+      value={itemForm.description}
+      onChange={handleItemChange}
+      placeholder="Product description"
+      readOnly // optional: make it readonly if it comes from API
+    />
+  </Col>
+</Row>
+
+</div>
+
 
               <Table bordered responsive size="sm" className="mb-3">
                 <thead>
@@ -458,6 +646,7 @@ const CreateInvoice = ({ user }) => {
                     <th>IGST</th>
                     <th>CESS</th>
                     <th>TOTAL</th>
+                    <th>BATCH</th>
                     <th>ACTION</th>
                   </tr>
                 </thead>
@@ -478,6 +667,7 @@ const CreateInvoice = ({ user }) => {
                         <td>{item.igst}%</td>
                         <td>{item.cess}</td>
                         <td>{item.total}</td>
+                        <td>{item.batch}</td>
                         <td>
                           <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
                             <FaTrash />
@@ -489,29 +679,64 @@ const CreateInvoice = ({ user }) => {
                 </tbody>
               </Table>
 
-              <Row className="mb-3">
-                <Col md={8}>
-                  <Form.Group>
-                    <Form.Label>Note</Form.Label>
-                    <Form.Control 
-                      as="textarea" 
-                      rows={3} 
-                      name="note"
-                      value={invoiceData.note}
-                      onChange={handleInputChange}
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <div>Taxable Amount: ₹{invoiceData.taxableAmount}</div>
-                  <div>Total GST: ₹{invoiceData.totalGST}</div>
-                  <div>Total Cess: ₹{invoiceData.totalCess}</div>
-                  <Form.Select className="my-2">
-                    <option>Select Additional Charges</option>
-                  </Form.Select>
-                  <div className="fw-bold">Grand Total: ₹{invoiceData.grandTotal}</div>
-                </Col>
-              </Row>
+            <Row
+  className="mb-3 p-2"
+  style={{ border: "1px solid black", borderRadius: "6px" }}
+>
+  {/* Left Side: Note */}
+<Col md={7}>
+  <Form.Group controlId="invoiceNote">
+    <Form.Control
+      as="textarea"
+      rows={5}
+      name="note"
+      value={invoiceData.note}
+      onChange={handleInputChange}
+      placeholder="Enter your note here..."
+      style={{ resize: 'both' }} // allows dragging both horizontally and vertically
+    />
+  </Form.Group>
+</Col>
+
+
+
+  {/* Right Side: Totals and Dropdown */}
+  <Col md={5}>
+    <Row>
+      {/* Left sub-column: labels */}
+      <Col md={6} className="d-flex flex-column align-items-start">
+        <div>Taxable Amount</div>
+        <div>Total GST</div>
+        <div>Total Cess</div>
+        <div>Select Additional Charges</div>
+        <div>Grand Total</div>
+      </Col>
+
+      {/* Right sub-column: values */}
+      <Col md={6} className="d-flex flex-column align-items-end">
+        <div>₹{invoiceData.taxableAmount}</div>
+        <div>₹{invoiceData.totalGST}</div>
+        <div>₹{invoiceData.totalCess}</div>
+
+        {/* Dropdown */}
+        <Form.Select
+          className="mb-2"
+          style={{ width: "100%" }}
+          value={invoiceData.additionalCharge || ""}
+          onChange={handleInputChange}
+          name="additionalCharge"
+        >
+          <option value="">Select Additional Charges</option>
+          <option value="Packing">Packing Charges</option>
+          <option value="Transport">Transport Charges</option>
+          <option value="Service">Service Charges</option>
+        </Form.Select>
+
+        <div className="fw-bold">₹{invoiceData.grandTotal}</div>
+      </Col>
+    </Row>
+  </Col>
+</Row>
 
               <Row className="mb-3">
                 <Col md={6}>
@@ -542,7 +767,8 @@ const CreateInvoice = ({ user }) => {
                 >
                   {loading ? 'Submitting...' : 'Submit'}
                 </Button>
-                <Button variant="danger">Cancel</Button>
+                <Button variant="danger"  onClick={() => navigate("/sales/invoices")}
+                  >Cancel</Button>
               </div>
             </div>
           </Container>
