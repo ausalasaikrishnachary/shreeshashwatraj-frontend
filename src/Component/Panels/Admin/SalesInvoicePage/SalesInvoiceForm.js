@@ -14,6 +14,7 @@ const CreateInvoice = ({ user }) => {
   const [selectedSupplierId, setSelectedSupplierId] = useState(null);
   const [batches, setBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState("");
+  const [selectedBatchDetails, setSelectedBatchDetails] = useState(null);
   const [products, setProducts] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ const CreateInvoice = ({ user }) => {
         email: "sumukhusr7@gmail.com",
         phone: "3456549876543",
         gstin: "29AABCD0503B1ZG",
-        state: "Karnataka" // Added company state
+        state: "Karnataka"
       },
       supplierInfo: {
         name: "",
@@ -66,7 +67,8 @@ const CreateInvoice = ({ user }) => {
       additionalCharge: "",
       additionalChargeAmount: 0,
       otherDetails: "Authorized Signatory",
-      taxType: "CGST/SGST" // Added tax type tracking
+      taxType: "CGST/SGST",
+      batchDetails: [] // New field for batch details
     };
   });
 
@@ -81,7 +83,9 @@ const CreateInvoice = ({ user }) => {
     sgst: 0,
     igst: 0,
     cess: 0,
-    total: 0
+    total: 0,
+    batch: "",
+    batchDetails: null
   });
 
   const [loading, setLoading] = useState(false);
@@ -93,7 +97,6 @@ const CreateInvoice = ({ user }) => {
     const companyState = invoiceData.companyInfo.state;
     const supplierState = invoiceData.supplierInfo.state;
     
-    // If either state is not available, default to same state (CGST/SGST)
     if (!companyState || !supplierState) {
       return true;
     }
@@ -114,7 +117,6 @@ const CreateInvoice = ({ user }) => {
       taxType: taxType
     }));
     
-    // Recalculate all items with new tax type
     if (invoiceData.items.length > 0) {
       recalculateAllItems();
     }
@@ -134,10 +136,8 @@ const CreateInvoice = ({ user }) => {
       return;
     }
 
-    // Save current data to localStorage
     localStorage.setItem('previewInvoice', JSON.stringify(invoiceData));
     
-    // Open in new tab
     const newWindow = window.open('/sales/invoice-preview', '_blank');
     if (!newWindow) {
       setError("Please allow popups for this site to view PDF preview");
@@ -226,17 +226,14 @@ const CreateInvoice = ({ user }) => {
     const cessAmount = amountAfterDiscount * (cess / 100);
     const total = amountAfterDiscount + gstAmount + cessAmount;
     
-    // Calculate CGST/SGST or IGST based on state comparison
     const sameState = isSameState();
     let cgst, sgst, igst;
     
     if (sameState) {
-      // Same state: Split GST into CGST and SGST (50% each)
       cgst = gst / 2;
       sgst = gst / 2;
       igst = 0;
     } else {
-      // Different state: Use IGST
       cgst = 0;
       sgst = 0;
       igst = gst;
@@ -248,7 +245,8 @@ const CreateInvoice = ({ user }) => {
       cgst: cgst.toFixed(2),
       sgst: sgst.toFixed(2),
       igst: igst.toFixed(2),
-      cess: cess
+      cess: cess,
+      batchDetails: selectedBatchDetails
     };
   };
 
@@ -305,6 +303,7 @@ const CreateInvoice = ({ user }) => {
     const calculatedItem = {
       ...calculateItemTotal(),
       batch: selectedBatch,
+      batchDetails: selectedBatchDetails
     };
 
     setInvoiceData(prev => ({
@@ -323,10 +322,13 @@ const CreateInvoice = ({ user }) => {
       sgst: 0,
       igst: 0,
       cess: 0,
-      total: 0
+      total: 0,
+      batch: "",
+      batchDetails: null
     });
     setBatches([]);
     setSelectedBatch("");
+    setSelectedBatchDetails(null);
   };
 
   const removeItem = (index) => {
@@ -443,7 +445,8 @@ const CreateInvoice = ({ user }) => {
       additionalCharge: "",
       additionalChargeAmount: 0,
       otherDetails: "Authorized Signatory",
-      taxType: "CGST/SGST"
+      taxType: "CGST/SGST",
+      batchDetails: []
     });
     setSelected(false);
     setSelectedSupplierId(null);
@@ -451,89 +454,96 @@ const CreateInvoice = ({ user }) => {
     setTimeout(() => setSuccess(false), 3000);
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError(null);
-  setSuccess(false);
-  
-  if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-    setError("Please select a supplier/customer");
-    setLoading(false);
-    setTimeout(() => setError(null), 3000);
-    return;
-  }
-
-  if (invoiceData.items.length === 0) {
-    setError("Please add at least one item to the invoice");
-    setLoading(false);
-    setTimeout(() => setError(null), 3000);
-    return;
-  }
-
-  try {
-    // Calculate GST breakdown for backend
-    const sameState = isSameState();
-    let totalCGST = 0;
-    let totalSGST = 0;
-    let totalIGST = 0;
-
-    if (sameState) {
-      // For same state, GST is split equally between CGST and SGST
-      totalCGST = parseFloat(invoiceData.totalGST) / 2;
-      totalSGST = parseFloat(invoiceData.totalGST) / 2;
-      totalIGST = 0;
-    } else {
-      // For different states, all GST goes to IGST
-      totalCGST = 0;
-      totalSGST = 0;
-      totalIGST = parseFloat(invoiceData.totalGST);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+    
+    if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
+      setError("Please select a supplier/customer");
+      setLoading(false);
+      setTimeout(() => setError(null), 3000);
+      return;
     }
 
-    // Create payload with only necessary fields
-    const payload = {
-      ...invoiceData,
-      selectedSupplierId: selectedSupplierId,
-      type: 'sales',
-      // Remove companyState and supplierState as they're not in the table
-      totalCGST: totalCGST.toFixed(2),
-      totalSGST: totalSGST.toFixed(2),
-      totalIGST: totalIGST.toFixed(2),
-      taxType: sameState ? "CGST/SGST" : "IGST"
-    };
-
-    // Remove unused fields from the payload
-    delete payload.companyState;
-    delete payload.supplierState;
-
-    const response = await fetch(`${baseurl}/transaction`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload)
-    });
-    
-    const responseData = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(responseData.error || 'Failed to submit invoice');
+    if (invoiceData.items.length === 0) {
+      setError("Please add at least one item to the invoice");
+      setLoading(false);
+      setTimeout(() => setError(null), 3000);
+      return;
     }
-    
-    localStorage.removeItem('draftInvoice');
-    setSuccess('Invoice submitted successfully!');
-    
-    setTimeout(() => {
-      navigate("/sales/invoices");
-    }, 2000);
-    
-  } catch (err) {
-    setError(err.message);
-    setTimeout(() => setError(null), 5000);
-  } finally {
-    setLoading(false);
-  }
-};
+
+    try {
+      // Calculate GST breakdown for backend
+      const sameState = isSameState();
+      let totalCGST = 0;
+      let totalSGST = 0;
+      let totalIGST = 0;
+
+      if (sameState) {
+        totalCGST = parseFloat(invoiceData.totalGST) / 2;
+        totalSGST = parseFloat(invoiceData.totalGST) / 2;
+        totalIGST = 0;
+      } else {
+        totalCGST = 0;
+        totalSGST = 0;
+        totalIGST = parseFloat(invoiceData.totalGST);
+      }
+
+      // Extract batch details from items
+      const batchDetails = invoiceData.items.map(item => ({
+        product: item.product,
+        batch: item.batch,
+        quantity: item.quantity,
+        price: item.price,
+        batchDetails: item.batchDetails
+      }));
+
+      // Create payload with batch details
+      const payload = {
+        ...invoiceData,
+        selectedSupplierId: selectedSupplierId,
+        type: 'sales',
+        totalCGST: totalCGST.toFixed(2),
+        totalSGST: totalSGST.toFixed(2),
+        totalIGST: totalIGST.toFixed(2),
+        taxType: sameState ? "CGST/SGST" : "IGST",
+        batchDetails: JSON.stringify(batchDetails) // Store batch details as JSON string
+      };
+
+      // Remove unused fields from the payload
+      delete payload.companyState;
+      delete payload.supplierState;
+
+      const response = await fetch(`${baseurl}/transaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      const responseData = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(responseData.error || 'Failed to submit invoice');
+      }
+      
+      localStorage.removeItem('draftInvoice');
+      setSuccess('Invoice submitted successfully!');
+      
+      setTimeout(() => {
+        navigate("/sales/invoices");
+      }, 2000);
+      
+    } catch (err) {
+      setError(err.message);
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="admin-layout">
@@ -783,6 +793,7 @@ const CreateInvoice = ({ user }) => {
                             const batchData = await res.json();
                             setBatches(batchData);
                             setSelectedBatch("");
+                            setSelectedBatchDetails(null);
                           } catch (err) {
                             console.error("Failed to fetch batches:", err);
                             setBatches([]);
@@ -805,12 +816,17 @@ const CreateInvoice = ({ user }) => {
                       className="mt-2 border-primary"
                       name="batch"
                       value={selectedBatch}
-                      onChange={(e) => setSelectedBatch(e.target.value)}
+                      onChange={(e) => {
+                        const batchNumber = e.target.value;
+                        setSelectedBatch(batchNumber);
+                        const batch = batches.find(b => b.batch_number === batchNumber);
+                        setSelectedBatchDetails(batch || null);
+                      }}
                     >
                       <option value="">Select Batch</option>
                       {batches.map((batch) => (
                         <option key={batch.id} value={batch.batch_number}>
-                          {batch.batch_number}
+                          {batch.batch_number} (Qty: {batch.quantity})
                         </option>
                       ))}
                     </Form.Select>
@@ -882,6 +898,23 @@ const CreateInvoice = ({ user }) => {
                     />
                   </Col>
                 </Row>
+
+                {/* Batch Details Display */}
+                {selectedBatchDetails && (
+                  <Row className="mt-2">
+                    <Col>
+                      <div className="bg-info bg-opacity-10 p-2 rounded border">
+                        <small className="text-muted">Batch Details:</small>
+                        <div className="d-flex justify-content-between">
+                          <span><strong>Batch No:</strong> {selectedBatchDetails.batch_number}</span>
+                          <span><strong>MFG:</strong> {selectedBatchDetails.mfg_date || selectedBatchDetails.manufacturing_date}</span>
+                          <span><strong>EXP:</strong> {selectedBatchDetails.exp_date || selectedBatchDetails.expiry_date}</span>
+                          <span><strong>Available Qty:</strong> {selectedBatchDetails.quantity}</span>
+                        </div>
+                      </div>
+                    </Col>
+                  </Row>
+                )}
               </div>
 
               {/* Items Table */}
@@ -902,13 +935,14 @@ const CreateInvoice = ({ user }) => {
                       <th>CESS</th>
                       <th>TOTAL</th>
                       <th>BATCH</th>
+                      <th>BATCH DETAILS</th>
                       <th>ACTION</th>
                     </tr>
                   </thead>
                   <tbody>
                     {invoiceData.items.length === 0 ? (
                       <tr>
-                        <td colSpan={13} className="text-center text-muted py-3">
+                        <td colSpan={14} className="text-center text-muted py-3">
                           No items added. Please add items using the form above.
                         </td>
                       </tr>
@@ -927,6 +961,14 @@ const CreateInvoice = ({ user }) => {
                           <td className="text-center">{item.cess}</td>
                           <td className="text-end fw-bold">₹{item.total}</td>
                           <td>{item.batch}</td>
+                          <td>
+                            {item.batchDetails && (
+                              <small>
+                                MFG: {item.batchDetails.mfg_date || item.batchDetails.manufacturing_date}<br/>
+                                EXP: {item.batchDetails.exp_date || item.batchDetails.expiry_date}
+                              </small>
+                            )}
+                          </td>
                           <td className="text-center">
                             <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
                               <FaTrash />

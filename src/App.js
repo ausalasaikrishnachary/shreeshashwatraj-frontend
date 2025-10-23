@@ -124,6 +124,7 @@ import DebitNoteTable from "./Component/Panels/Admin/DebitTable/DebitTableNote";
 import PayablesTable from "./Component/Panels/Admin/Payables/Payables";
 
 import InvoicePDFPreview from './Component/Panels/Admin/SalesInvoicePage/InvoicePDFPreview';
+import PurchasePDFPreview from "./Component/Panels/Admin/PurchaseInvoicePage/PurchasePDFPreview";
 
 
 function App() {
@@ -167,6 +168,8 @@ function App() {
          <Route path="/sales/invoices" element={<SalesInvoiceTable />} />
          <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
          <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
+           <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
+ 
   
         <Route path="/sales/receipts" element={<AdminReceiptsTable />} />
         {/* <Route path="/createreceipt" element={<CreateReceiptForm />} /> */}
