@@ -123,6 +123,8 @@ import Salesitems_productsdetails from "./Component/Panels/Admin/Inventory/Purch
 import DebitNoteTable from "./Component/Panels/Admin/DebitTable/DebitTableNote";
 import PayablesTable from "./Component/Panels/Admin/Payables/Payables";
 
+import InvoicePDFPreview from './Component/Panels/Admin/SalesInvoicePage/InvoicePDFPreview';
+
 
 function App() {
   return (
@@ -164,6 +166,7 @@ function App() {
         <Route path="/sale" element={<AdminSales />} />
          <Route path="/sales/invoices" element={<SalesInvoiceTable />} />
          <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
+         <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
   
         <Route path="/sales/receipts" element={<AdminReceiptsTable />} />
         {/* <Route path="/createreceipt" element={<CreateReceiptForm />} /> */}

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Table, InputGroup, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, Table, Alert } from 'react-bootstrap';
 import './Invoices.css';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
-import { FaEdit, FaTrash } from "react-icons/fa";
+import { FaEdit, FaTrash, FaEye } from "react-icons/fa";
 import { baseurl } from '../../../BaseURL/BaseURL';
 import { useNavigate } from "react-router-dom";
 
@@ -17,7 +17,7 @@ const CreateInvoice = ({ user }) => {
   const [products, setProducts] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const navigate = useNavigate();
-  
+
   // Load from localStorage on component mount
   const [invoiceData, setInvoiceData] = useState(() => {
     const savedData = localStorage.getItem('draftInvoice');
@@ -25,7 +25,7 @@ const CreateInvoice = ({ user }) => {
       return JSON.parse(savedData);
     }
     return {
-      invoiceNumber: "INV01",
+      invoiceNumber: "INV" + Math.floor(Math.random() * 1000),
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
@@ -33,7 +33,8 @@ const CreateInvoice = ({ user }) => {
         address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
         email: "sumukhusr7@gmail.com",
         phone: "3456549876543",
-        gstin: "29AABCD0503B1ZG"
+        gstin: "29AABCD0503B1ZG",
+        state: "Karnataka" // Added company state
       },
       supplierInfo: {
         name: "",
@@ -45,13 +46,15 @@ const CreateInvoice = ({ user }) => {
         addressLine1: "",
         addressLine2: "",
         city: "",
-        pincode: ""
+        pincode: "",
+        state: ""
       },
       shippingAddress: {
         addressLine1: "",
         addressLine2: "",
         city: "",
-        pincode: ""
+        pincode: "",
+        state: ""
       },
       items: [],
       note: "",
@@ -60,7 +63,10 @@ const CreateInvoice = ({ user }) => {
       totalCess: 0,
       grandTotal: 0,
       transportDetails: "",
-      otherDetails: "Authorized Signatory"
+      additionalCharge: "",
+      additionalChargeAmount: 0,
+      otherDetails: "Authorized Signatory",
+      taxType: "CGST/SGST" // Added tax type tracking
     };
   });
 
@@ -82,10 +88,62 @@ const CreateInvoice = ({ user }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
+  // Check if states are same for GST calculation
+  const isSameState = () => {
+    const companyState = invoiceData.companyInfo.state;
+    const supplierState = invoiceData.supplierInfo.state;
+    
+    // If either state is not available, default to same state (CGST/SGST)
+    if (!companyState || !supplierState) {
+      return true;
+    }
+    
+    return companyState.toLowerCase() === supplierState.toLowerCase();
+  };
+
   // Save to localStorage whenever invoiceData changes
   useEffect(() => {
     localStorage.setItem('draftInvoice', JSON.stringify(invoiceData));
   }, [invoiceData]);
+
+  // Update tax type when supplier info changes
+  useEffect(() => {
+    const taxType = isSameState() ? "CGST/SGST" : "IGST";
+    setInvoiceData(prev => ({
+      ...prev,
+      taxType: taxType
+    }));
+    
+    // Recalculate all items with new tax type
+    if (invoiceData.items.length > 0) {
+      recalculateAllItems();
+    }
+  }, [invoiceData.supplierInfo.state, invoiceData.companyInfo.state]);
+
+  // Open PDF preview in new tab
+  const handlePreview = () => {
+    if (!invoiceData.supplierInfo.name) {
+      setError("Please select a supplier/customer before preview");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    if (invoiceData.items.length === 0) {
+      setError("Please add at least one item before preview");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    // Save current data to localStorage
+    localStorage.setItem('previewInvoice', JSON.stringify(invoiceData));
+    
+    // Open in new tab
+    const newWindow = window.open('/sales/invoice-preview', '_blank');
+    if (!newWindow) {
+      setError("Please allow popups for this site to view PDF preview");
+      setTimeout(() => setError(null), 5000);
+    }
+  };
 
   const handleSearch = () => {
     if (inputName.trim().toLowerCase() === "dummy") {
@@ -102,13 +160,15 @@ const CreateInvoice = ({ user }) => {
           addressLine1: "5-300001, Jyoti Nagar, chandrampet, Rajanna sircilla",
           addressLine2: "Address Line2",
           city: "Hyderabad-501505",
-          pincode: "501505"
+          pincode: "501505",
+          state: "Telangana"
         },
         shippingAddress: {
           addressLine1: "5-300001, Jyoti Nagar, chandrampet, Rajanna sircilla",
           addressLine2: "Address Line2",
           city: "Hyderabad-501505",
-          pincode: "501505"
+          pincode: "501505",
+          state: "Telangana"
         }
       }));
     } else {
@@ -157,27 +217,91 @@ const CreateInvoice = ({ user }) => {
     const price = parseFloat(itemForm.price) || 0;
     const discount = parseFloat(itemForm.discount) || 0;
     const gst = parseFloat(itemForm.gst) || 0;
+    const cess = parseFloat(itemForm.cess) || 0;
     
     const subtotal = quantity * price;
     const discountAmount = subtotal * (discount / 100);
     const amountAfterDiscount = subtotal - discountAmount;
     const gstAmount = amountAfterDiscount * (gst / 100);
-    const total = amountAfterDiscount + gstAmount;
+    const cessAmount = amountAfterDiscount * (cess / 100);
+    const total = amountAfterDiscount + gstAmount + cessAmount;
     
-    const cgst = gst / 2;
-    const sgst = gst / 2;
+    // Calculate CGST/SGST or IGST based on state comparison
+    const sameState = isSameState();
+    let cgst, sgst, igst;
+    
+    if (sameState) {
+      // Same state: Split GST into CGST and SGST (50% each)
+      cgst = gst / 2;
+      sgst = gst / 2;
+      igst = 0;
+    } else {
+      // Different state: Use IGST
+      cgst = 0;
+      sgst = 0;
+      igst = gst;
+    }
     
     return {
       ...itemForm,
       total: total.toFixed(2),
       cgst: cgst.toFixed(2),
       sgst: sgst.toFixed(2),
-      igst: 0,
-      cess: itemForm.cess || 0
+      igst: igst.toFixed(2),
+      cess: cess
     };
   };
 
+  const recalculateAllItems = () => {
+    const sameState = isSameState();
+    const updatedItems = invoiceData.items.map(item => {
+      const quantity = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.price) || 0;
+      const discount = parseFloat(item.discount) || 0;
+      const gst = parseFloat(item.gst) || 0;
+      const cess = parseFloat(item.cess) || 0;
+      
+      const subtotal = quantity * price;
+      const discountAmount = subtotal * (discount / 100);
+      const amountAfterDiscount = subtotal - discountAmount;
+      const gstAmount = amountAfterDiscount * (gst / 100);
+      const cessAmount = amountAfterDiscount * (cess / 100);
+      const total = amountAfterDiscount + gstAmount + cessAmount;
+      
+      let cgst, sgst, igst;
+      
+      if (sameState) {
+        cgst = gst / 2;
+        sgst = gst / 2;
+        igst = 0;
+      } else {
+        cgst = 0;
+        sgst = 0;
+        igst = gst;
+      }
+      
+      return {
+        ...item,
+        total: total.toFixed(2),
+        cgst: cgst.toFixed(2),
+        sgst: sgst.toFixed(2),
+        igst: igst.toFixed(2)
+      };
+    });
+    
+    setInvoiceData(prev => ({
+      ...prev,
+      items: updatedItems
+    }));
+  };
+
   const addItem = () => {
+    if (!itemForm.product) {
+      setError("Please select a product");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
     const calculatedItem = {
       ...calculateItemTotal(),
       batch: selectedBatch,
@@ -238,10 +362,21 @@ const CreateInvoice = ({ user }) => {
     }, 0);
     
     const totalCess = invoiceData.items.reduce((sum, item) => {
-      return sum + (parseFloat(item.cess) || 0)
+      const quantity = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.price) || 0;
+      const discount = parseFloat(item.discount) || 0;
+      const cess = parseFloat(item.cess) || 0;
+      
+      const subtotal = quantity * price;
+      const discountAmount = subtotal * (discount / 100);
+      const amountAfterDiscount = subtotal - discountAmount;
+      const cessAmount = amountAfterDiscount * (cess / 100);
+      
+      return sum + cessAmount;
     }, 0);
     
-    const grandTotal = taxableAmount + totalGST + totalCess;
+    const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
+    const grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
     
     setInvoiceData(prev => ({
       ...prev,
@@ -254,7 +389,7 @@ const CreateInvoice = ({ user }) => {
 
   useEffect(() => {
     calculateTotals();
-  }, [invoiceData.items]);
+  }, [invoiceData.items, invoiceData.additionalChargeAmount]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -264,20 +399,10 @@ const CreateInvoice = ({ user }) => {
     }));
   };
 
-  const handleNestedInputChange = (section, field, value) => {
-    setInvoiceData(prev => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value
-      }
-    }));
-  };
-
   const clearDraft = () => {
     localStorage.removeItem('draftInvoice');
     setInvoiceData({
-      invoiceNumber: "INV01",
+      invoiceNumber: "INV" + Math.floor(Math.random() * 1000),
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
@@ -285,7 +410,8 @@ const CreateInvoice = ({ user }) => {
         address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
         email: "sumukhusr7@gmail.com",
         phone: "3456549876543",
-        gstin: "29AABCD0503B1ZG"
+        gstin: "29AABCD0503B1ZG",
+        state: "Karnataka"
       },
       supplierInfo: {
         name: "",
@@ -297,13 +423,15 @@ const CreateInvoice = ({ user }) => {
         addressLine1: "",
         addressLine2: "",
         city: "",
-        pincode: ""
+        pincode: "",
+        state: ""
       },
       shippingAddress: {
         addressLine1: "",
         addressLine2: "",
         city: "",
-        pincode: ""
+        pincode: "",
+        state: ""
       },
       items: [],
       note: "",
@@ -312,18 +440,23 @@ const CreateInvoice = ({ user }) => {
       totalCess: 0,
       grandTotal: 0,
       transportDetails: "",
-      otherDetails: "Authorized Signatory"
+      additionalCharge: "",
+      additionalChargeAmount: 0,
+      otherDetails: "Authorized Signatory",
+      taxType: "CGST/SGST"
     });
+    setSelected(false);
+    setSelectedSupplierId(null);
     setSuccess("Draft cleared successfully!");
     setTimeout(() => setSuccess(false), 3000);
   };
-const handleSubmit = async (e) => {
+
+ const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
   setError(null);
   setSuccess(false);
   
-  // Validate required fields
   if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
     setError("Please select a supplier/customer");
     setLoading(false);
@@ -339,13 +472,39 @@ const handleSubmit = async (e) => {
   }
 
   try {
+    // Calculate GST breakdown for backend
+    const sameState = isSameState();
+    let totalCGST = 0;
+    let totalSGST = 0;
+    let totalIGST = 0;
+
+    if (sameState) {
+      // For same state, GST is split equally between CGST and SGST
+      totalCGST = parseFloat(invoiceData.totalGST) / 2;
+      totalSGST = parseFloat(invoiceData.totalGST) / 2;
+      totalIGST = 0;
+    } else {
+      // For different states, all GST goes to IGST
+      totalCGST = 0;
+      totalSGST = 0;
+      totalIGST = parseFloat(invoiceData.totalGST);
+    }
+
+    // Create payload with only necessary fields
     const payload = {
       ...invoiceData,
       selectedSupplierId: selectedSupplierId,
-      type: 'sales'
+      type: 'sales',
+      // Remove companyState and supplierState as they're not in the table
+      totalCGST: totalCGST.toFixed(2),
+      totalSGST: totalSGST.toFixed(2),
+      totalIGST: totalIGST.toFixed(2),
+      taxType: sameState ? "CGST/SGST" : "IGST"
     };
 
-    console.log('Submitting invoice:', payload);
+    // Remove unused fields from the payload
+    delete payload.companyState;
+    delete payload.supplierState;
 
     const response = await fetch(`${baseurl}/transaction`, {
       method: 'POST',
@@ -358,67 +517,17 @@ const handleSubmit = async (e) => {
     const responseData = await response.json();
     
     if (!response.ok) {
-      // Handle specific database errors
-      if (responseData.code === 'DUPLICATE_KEY_ERROR') {
-        throw new Error('System configuration error. Please contact administrator.');
-      }
-      throw new Error(responseData.error || responseData.details || 'Failed to submit invoice');
+      throw new Error(responseData.error || 'Failed to submit invoice');
     }
     
-    // Clear localStorage after successful submission
     localStorage.removeItem('draftInvoice');
-    
     setSuccess('Invoice submitted successfully!');
     
-    // Reset form
-    setInvoiceData({
-      invoiceNumber: "INV" + Math.floor(Math.random() * 1000),
-      invoiceDate: new Date().toISOString().split('T')[0],
-      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      companyInfo: {
-        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-        email: "sumukhusr7@gmail.com",
-        phone: "3456549876543",
-        gstin: "29AABCD0503B1ZG"
-      },
-      supplierInfo: {
-        name: "",
-        businessName: "",
-        state: "",
-        gstin: ""
-      },
-      billingAddress: {
-        addressLine1: "",
-        addressLine2: "",
-        city: "",
-        pincode: ""
-      },
-      shippingAddress: {
-        addressLine1: "",
-        addressLine2: "",
-        city: "",
-        pincode: ""
-      },
-      items: [],
-      note: "",
-      taxableAmount: 0,
-      totalGST: 0,
-      totalCess: 0,
-      grandTotal: 0,
-      transportDetails: "",
-      otherDetails: "Authorized Signatory"
-    });
-    setSelected(false);
-    setSelectedSupplierId(null);
-    
     setTimeout(() => {
-      setSuccess(false);
       navigate("/sales/invoices");
     }, 2000);
     
   } catch (err) {
-    console.error('Submission error:', err);
     setError(err.message);
     setTimeout(() => setError(null), 5000);
   } finally {
@@ -442,27 +551,50 @@ const handleSubmit = async (e) => {
         <div className="admin-content-wrapper">
           <Container fluid className="invoice-container">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h3>Create Invoice</h3>
-              <Button variant="warning" size="sm" onClick={clearDraft}>
-                Clear Draft
-              </Button>
+              <h3 className="text-primary">Create Invoice</h3>
+              <div>
+                <Button 
+                  variant="info" 
+                  size="sm" 
+                  onClick={handlePreview}
+                  className="me-2"
+                >
+                  <FaEye className="me-1" /> Preview PDF
+                </Button>
+                <Button variant="warning" size="sm" onClick={clearDraft}>
+                  Clear Draft
+                </Button>
+              </div>
             </div>
             
             {error && <Alert variant="danger">{error}</Alert>}
             {success && <Alert variant="success">{success}</Alert>}
             
-            <div className="invoice-box p-3">
-              <h5 className="section-title">Create Invoice</h5>
+            {/* Tax Type Indicator */}
+            {invoiceData.supplierInfo.state && (
+              <Alert variant={isSameState() ? "success" : "warning"} className="mb-3">
+                <strong>Tax Type: </strong>
+                {isSameState() ? (
+                  <>CGST & SGST (Same State - {invoiceData.companyInfo.state})</>
+                ) : (
+                  <>IGST (Inter-State: {invoiceData.companyInfo.state} to {invoiceData.supplierInfo.state})</>
+                )}
+              </Alert>
+            )}
+            
+            <div className="invoice-box p-3 bg-light rounded">
+              <h5 className="section-title text-primary mb-3">Create Invoice</h5>
 
-              {/* Rest of your existing JSX remains the same */}
-              <Row className="mb-3 company-info">
+              {/* Company Info Section */}
+              <Row className="mb-3 company-info bg-white p-3 rounded">
                 <Col md={8}>
                   <div>
-                    <strong>{invoiceData.companyInfo.name}</strong><br />
+                    <strong className="text-primary">{invoiceData.companyInfo.name}</strong><br />
                     {invoiceData.companyInfo.address}<br />
                     Email: {invoiceData.companyInfo.email}<br />
                     Phone: {invoiceData.companyInfo.phone}<br />
-                    GSTIN: {invoiceData.companyInfo.gstin}
+                    GSTIN: {invoiceData.companyInfo.gstin}<br />
+                    <strong>State: {invoiceData.companyInfo.state}</strong>
                   </div>
                 </Col>
                 <Col md={4}>
@@ -471,8 +603,9 @@ const handleSubmit = async (e) => {
                       name="invoiceNumber" 
                       value={invoiceData.invoiceNumber} 
                       onChange={handleInputChange}
+                      className="border-primary"
                     />
-                    <Form.Label>Invoice No</Form.Label>
+                    <Form.Label className="fw-bold">Invoice No</Form.Label>
                   </Form.Group>
                   <Form.Group className="mb-2">
                     <Form.Control 
@@ -480,8 +613,9 @@ const handleSubmit = async (e) => {
                       name="invoiceDate"
                       value={invoiceData.invoiceDate} 
                       onChange={handleInputChange}
+                      className="border-primary"
                     />
-                    <Form.Label>Invoice Date</Form.Label>
+                    <Form.Label className="fw-bold">Invoice Date</Form.Label>
                   </Form.Group>
                   <Form.Group>
                     <Form.Control 
@@ -489,20 +623,21 @@ const handleSubmit = async (e) => {
                       name="validityDate"
                       value={invoiceData.validityDate} 
                       onChange={handleInputChange}
+                      className="border-primary"
                     />
-                    <Form.Label>Validity Date</Form.Label>
+                    <Form.Label className="fw-bold">Validity Date</Form.Label>
                   </Form.Group>
                 </Col>
               </Row>
 
-              {/* Supplier Info Section - Your existing code */}
-              <div style={{ border: "1px solid #ccc" }}>
-                <Row className="mb-3">
-                  <Col md={4} style={{ borderRight: "1px solid #ccc", padding: "15px" }}>
+              {/* Supplier Info Section */}
+              <div className="bg-white rounded border">
+                <Row className="mb-0">
+                  <Col md={4} className="border-end p-3">
                     {!selected ? (
                       <>
                         <div className="d-flex justify-content-between align-items-center mb-2">
-                          <strong>Supplier Info</strong>
+                          <strong className="text-primary">Supplier Info</strong>
                           <Button
                             variant="primary"
                             size="sm"
@@ -512,7 +647,7 @@ const handleSubmit = async (e) => {
                           </Button>
                         </div>
                         <Form.Select
-                          className="mb-2"
+                          className="mb-2 border-primary"
                           value={inputName}
                           onChange={(e) => {
                             const selectedName = e.target.value;
@@ -531,12 +666,14 @@ const handleSubmit = async (e) => {
                                 },
                                 billingAddress: {
                                   addressLine1: supplier.billing_address_line1,
+                                  addressLine2: supplier.billing_address_line2 || "",
                                   city: supplier.billing_city,
                                   pincode: supplier.billing_pin_code,
                                   state: supplier.billing_state
                                 },
                                 shippingAddress: {
                                   addressLine1: supplier.shipping_address_line1,
+                                  addressLine2: supplier.shipping_address_line2 || "",
                                   city: supplier.shipping_city,
                                   pincode: supplier.shipping_pin_code,
                                   state: supplier.shipping_state
@@ -558,54 +695,58 @@ const handleSubmit = async (e) => {
                     ) : (
                       <>
                         <div className="d-flex justify-content-between align-items-center mb-2">
-                          <strong>Supplier / Customer Info</strong>
+                          <strong className="text-primary">Supplier Info</strong>
                           <Button
                             variant="info"
                             size="sm"
                             onClick={() => {
                               if (selectedSupplierId) {
                                 navigate(`/retailers/edit/${selectedSupplierId}`);
-                              } else {
-                                alert("Please select a supplier first!");
                               }
                             }}
                           >
                             <FaEdit /> Edit
                           </Button>
                         </div>
-                        <div>
-                          <div>Display Name: {invoiceData.supplierInfo.name}</div>
-                          <div>Business Name: {invoiceData.supplierInfo.businessName}</div>
-                          <div>Customer GSTIN: {invoiceData.supplierInfo.gstin}</div>
+                        <div className="bg-light p-2 rounded">
+                          <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
+                          <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
+                          <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
+                          <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
                         </div>
                       </>
                     )}
                   </Col>
 
-                  <Col md={4} style={{ borderRight: "1px solid #ccc", padding: "15px" }}>
-                    <strong>Billing Address</strong>
-                    <div>Address: {invoiceData.billingAddress?.addressLine1}</div>
-                    <div>City: {invoiceData.billingAddress?.city}</div>
-                    <div>Pincode: {invoiceData.billingAddress?.pincode}</div>
-                    <div>State: {invoiceData.billingAddress?.state}</div>
+                  <Col md={4} className="border-end p-3">
+                    <strong className="text-primary">Billing Address</strong>
+                    <div className="bg-light p-2 rounded mt-1">
+                      <div><strong>Address:</strong> {invoiceData.billingAddress?.addressLine1}</div>
+                      <div><strong>City:</strong> {invoiceData.billingAddress?.city}</div>
+                      <div><strong>Pincode:</strong> {invoiceData.billingAddress?.pincode}</div>
+                      <div><strong>State:</strong> {invoiceData.billingAddress?.state}</div>
+                    </div>
                   </Col>
 
-                  <Col md={4} style={{ padding: "15px" }}>
-                    <strong>Shipping Address</strong>
-                    <div>Address: {invoiceData.shippingAddress?.addressLine1}</div>
-                    <div>City: {invoiceData.shippingAddress?.city}</div>
-                    <div>Pincode: {invoiceData.shippingAddress?.pincode}</div>
-                    <div>State: {invoiceData.shippingAddress?.state}</div>
+                  <Col md={4} className="p-3">
+                    <strong className="text-primary">Shipping Address</strong>
+                    <div className="bg-light p-2 rounded mt-1">
+                      <div><strong>Address:</strong> {invoiceData.shippingAddress?.addressLine1}</div>
+                      <div><strong>City:</strong> {invoiceData.shippingAddress?.city}</div>
+                      <div><strong>Pincode:</strong> {invoiceData.shippingAddress?.pincode}</div>
+                      <div><strong>State:</strong> {invoiceData.shippingAddress?.state}</div>
+                    </div>
                   </Col>
                 </Row>
               </div>
 
-              {/* Item Section - Your existing code */}
-              <div className="item-section mb-3 mt-3">
+              {/* Item Section */}
+              <div className="item-section mb-3 mt-3 bg-white p-3 rounded">
+                <h6 className="text-primary mb-3">Add Items</h6>
                 <Row className="align-items-end">
                   <Col md={2}>
-                    <div className="d-flex justify-content-between align-items-center">
-                      <Form.Label className="mb-0">Item</Form.Label>
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <Form.Label className="mb-0 fw-bold">Item</Form.Label>
                       <button
                         type="button"
                         className="btn btn-link p-0 text-primary"
@@ -646,17 +787,9 @@ const handleSubmit = async (e) => {
                             console.error("Failed to fetch batches:", err);
                             setBatches([]);
                           }
-                        } else {
-                          setItemForm((prev) => ({
-                            ...prev,
-                            price: "",
-                            gst: "",
-                            description: "",
-                          }));
-                          setBatches([]);
-                          setSelectedBatch("");
                         }
                       }}
+                      className="border-primary"
                     >
                       <option value="">Select Product</option>
                       {products
@@ -669,7 +802,7 @@ const handleSubmit = async (e) => {
                     </Form.Select>
 
                     <Form.Select
-                      className="mt-2"
+                      className="mt-2 border-primary"
                       name="batch"
                       value={selectedBatch}
                       onChange={(e) => setSelectedBatch(e.target.value)}
@@ -684,47 +817,54 @@ const handleSubmit = async (e) => {
                   </Col>
 
                   <Col md={1}>
-                    <Form.Label>Qty</Form.Label>
+                    <Form.Label className="fw-bold">Qty</Form.Label>
                     <Form.Control
                       name="quantity"
                       type="number"
                       value={itemForm.quantity}
                       onChange={handleItemChange}
+                      min="1"
+                      className="border-primary"
                     />
                   </Col>
 
                   <Col md={2}>
-                    <Form.Label>Price</Form.Label>
+                    <Form.Label className="fw-bold">Price (₹)</Form.Label>
                     <Form.Control
                       name="price"
                       type="number"
                       value={itemForm.price}
                       readOnly
+                      className="border-primary bg-light"
                     />
                   </Col>
 
                   <Col md={2}>
-                    <Form.Label>Discount (%)</Form.Label>
+                    <Form.Label className="fw-bold">Discount (%)</Form.Label>
                     <Form.Control
                       name="discount"
                       type="number"
                       value={itemForm.discount}
                       onChange={handleItemChange}
+                      min="0"
+                      max="100"
+                      className="border-primary"
                     />
                   </Col>
 
                   <Col md={2}>
-                    <Form.Label>GST (%)</Form.Label>
+                    <Form.Label className="fw-bold">GST (%)</Form.Label>
                     <Form.Control
                       name="gst"
                       type="number"
                       value={itemForm.gst}
                       readOnly
+                      className="border-primary bg-light"
                     />
                   </Col>
 
                   <Col md={1}>
-                    <Button variant="success" onClick={addItem}>
+                    <Button variant="success" onClick={addItem} className="w-100">
                       Add
                     </Button>
                   </Col>
@@ -738,61 +878,72 @@ const handleSubmit = async (e) => {
                       onChange={handleItemChange}
                       placeholder="Product description"
                       readOnly
+                      className="border-primary bg-light"
                     />
                   </Col>
                 </Row>
               </div>
 
-              <Table bordered responsive size="sm" className="mb-3">
-                <thead>
-                  <tr>
-                    <th>PRODUCT</th>
-                    <th>PRODUCT DESC</th>
-                    <th>QUANTITY</th>
-                    <th>PRICE</th>
-                    <th>DISCOUNT</th>
-                    <th>GST</th>
-                    <th>CGST</th>
-                    <th>SGST</th>
-                    <th>IGST</th>
-                    <th>CESS</th>
-                    <th>TOTAL</th>
-                    <th>BATCH</th>
-                    <th>ACTION</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoiceData.items.length === 0 ? (
-                    <tr><td colSpan={13} className="text-center">No items added</td></tr>
-                  ) : (
-                    invoiceData.items.map((item, index) => (
-                      <tr key={index}>
-                        <td>{item.product}</td>
-                        <td>{item.description}</td>
-                        <td>{item.quantity}</td>
-                        <td>{item.price}</td>
-                        <td>{item.discount}%</td>
-                        <td>{item.gst}%</td>
-                        <td>{item.cgst}%</td>
-                        <td>{item.sgst}%</td>
-                        <td>{item.igst}%</td>
-                        <td>{item.cess}</td>
-                        <td>{item.total}</td>
-                        <td>{item.batch}</td>
-                        <td>
-                          <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
-                            <FaTrash />
-                          </Button>
+              {/* Items Table */}
+              <div className="bg-white p-3 rounded">
+                <h6 className="text-primary mb-3">Items List</h6>
+                <Table bordered responsive size="sm" className="mb-3">
+                  <thead className="table-dark">
+                    <tr>
+                      <th>PRODUCT</th>
+                      <th>DESCRIPTION</th>
+                      <th>QTY</th>
+                      <th>PRICE</th>
+                      <th>DISCOUNT</th>
+                      <th>GST</th>
+                      <th>CGST</th>
+                      <th>SGST</th>
+                      <th>IGST</th>
+                      <th>CESS</th>
+                      <th>TOTAL</th>
+                      <th>BATCH</th>
+                      <th>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoiceData.items.length === 0 ? (
+                      <tr>
+                        <td colSpan={13} className="text-center text-muted py-3">
+                          No items added. Please add items using the form above.
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </Table>
+                    ) : (
+                      invoiceData.items.map((item, index) => (
+                        <tr key={index}>
+                          <td>{item.product}</td>
+                          <td>{item.description}</td>
+                          <td className="text-center">{item.quantity}</td>
+                          <td className="text-end">₹{item.price}</td>
+                          <td className="text-center">{item.discount}%</td>
+                          <td className="text-center">{item.gst}%</td>
+                          <td className="text-center">{item.cgst}%</td>
+                          <td className="text-center">{item.sgst}%</td>
+                          <td className="text-center">{item.igst}%</td>
+                          <td className="text-center">{item.cess}</td>
+                          <td className="text-end fw-bold">₹{item.total}</td>
+                          <td>{item.batch}</td>
+                          <td className="text-center">
+                            <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
+                              <FaTrash />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </Table>
+              </div>
 
-              <Row className="mb-3 p-2" style={{ border: "1px solid black", borderRadius: "6px" }}>
+              {/* Totals and Notes Section */}
+              <Row className="mb-3 p-3 bg-white rounded border">
                 <Col md={7}>
                   <Form.Group controlId="invoiceNote">
+                    <Form.Label className="fw-bold text-primary">Notes</Form.Label>
                     <Form.Control
                       as="textarea"
                       rows={5}
@@ -800,31 +951,38 @@ const handleSubmit = async (e) => {
                       value={invoiceData.note}
                       onChange={handleInputChange}
                       placeholder="Enter your note here..."
-                      style={{ resize: 'both' }}
+                      className="border-primary"
                     />
                   </Form.Group>
                 </Col>
 
                 <Col md={5}>
+                  <h6 className="text-primary mb-3">Amount Summary</h6>
                   <Row>
                     <Col md={6} className="d-flex flex-column align-items-start">
-                      <div>Taxable Amount</div>
-                      <div>Total GST</div>
-                      <div>Total Cess</div>
-                      <div>Select Additional Charges</div>
-                      <div>Grand Total</div>
+                      <div className="mb-2 fw-bold">Taxable Amount</div>
+                      <div className="mb-2 fw-bold">Total GST</div>
+                      <div className="mb-2 fw-bold">Total Cess</div>
+                      <div className="mb-2 fw-bold">Additional Charges</div>
+                      <div className="mb-2 fw-bold text-success">Grand Total</div>
                     </Col>
 
                     <Col md={6} className="d-flex flex-column align-items-end">
-                      <div>₹{invoiceData.taxableAmount}</div>
-                      <div>₹{invoiceData.totalGST}</div>
-                      <div>₹{invoiceData.totalCess}</div>
+                      <div className="mb-2">₹{invoiceData.taxableAmount}</div>
+                      <div className="mb-2">₹{invoiceData.totalGST}</div>
+                      <div className="mb-2">₹{invoiceData.totalCess}</div>
 
                       <Form.Select
-                        className="mb-2"
+                        className="mb-2 border-primary"
                         style={{ width: "100%" }}
                         value={invoiceData.additionalCharge || ""}
-                        onChange={handleInputChange}
+                        onChange={(e) => {
+                          handleInputChange(e);
+                          setInvoiceData(prev => ({
+                            ...prev,
+                            additionalChargeAmount: e.target.value ? 100 : 0
+                          }));
+                        }}
                         name="additionalCharge"
                       >
                         <option value="">Select Additional Charges</option>
@@ -833,40 +991,53 @@ const handleSubmit = async (e) => {
                         <option value="Service">Service Charges</option>
                       </Form.Select>
 
-                      <div className="fw-bold">₹{invoiceData.grandTotal}</div>
+                      <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
                     </Col>
                   </Row>
                 </Col>
               </Row>
 
-              <Row className="mb-3">
+              {/* Footer Section */}
+              <Row className="mb-3 bg-white p-3 rounded">
                 <Col md={6}>
-                  <h6>Transportation Details</h6>
+                  <h6 className="text-primary">Transportation Details</h6>
                   <Form.Control 
                     as="textarea" 
-                    placeholder="Terms and Conditions" 
+                    placeholder="Enter transportation details..." 
                     rows={2} 
                     name="transportDetails"
                     value={invoiceData.transportDetails}
                     onChange={handleInputChange}
+                    className="border-primary"
                   />
                 </Col>
                 <Col md={6}>
-                  <h6>Other Details</h6>
-                  <p>For</p>
-                  <p>{invoiceData.companyInfo.name}</p>
-                  <p>{invoiceData.otherDetails}</p>
+                  <h6 className="text-primary">Other Details</h6>
+                  <div className="bg-light p-2 rounded">
+                    <p className="mb-1">For</p>
+                    <p className="mb-1 fw-bold">{invoiceData.companyInfo.name}</p>
+                    <p className="mb-0 text-muted">{invoiceData.otherDetails}</p>
+                  </div>
                 </Col>
               </Row>
 
-              <div className="text-center">
+              {/* Action Buttons */}
+              <div className="text-center bg-white p-3 rounded">
                 <Button 
                   variant="primary" 
-                  className="me-3"
+                  className="me-3 px-4"
                   onClick={handleSubmit}
                   disabled={loading}
                 >
-                  {loading ? 'Submitting...' : 'Submit'}
+                  {loading ? 'Submitting...' : 'Submit Invoice'}
+                </Button>
+                <Button 
+                  variant="info" 
+                  className="me-3 px-4"
+                  onClick={handlePreview}
+                  disabled={invoiceData.items.length === 0}
+                >
+                  Preview PDF in New Tab
                 </Button>
                 <Button variant="danger" onClick={() => navigate("/sales/invoices")}>
                   Cancel
