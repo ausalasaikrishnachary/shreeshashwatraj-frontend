@@ -31,12 +31,12 @@ const CreditNoteTable = () => {
   ];
 
   // Credit Note stats data
-  const creditNoteStats = [
-    { label: "Total Credit Notes", value: "₹ 75,000", change: "+8%", type: "total" },
-    { label: "Active Credit Notes", value: "₹ 50,000", change: "+12%", type: "active" },
-    { label: "Used Credit Notes", value: "₹ 20,000", change: "+5%", type: "used" },
-    { label: "Expired Credit Notes", value: "₹ 5,000", change: "-3%", type: "expired" }
-  ];
+  // const creditNoteStats = [
+  //   { label: "Total Credit Notes", value: "₹ 75,000", change: "+8%", type: "total" },
+  //   { label: "Active Credit Notes", value: "₹ 50,000", change: "+12%", type: "active" },
+  //   { label: "Used Credit Notes", value: "₹ 20,000", change: "+5%", type: "used" },
+  //   { label: "Expired Credit Notes", value: "₹ 5,000", change: "-3%", type: "expired" }
+  // ];
 
   // Define tabs with their corresponding routes
   const tabs = [
@@ -189,7 +189,7 @@ const CreditNoteTable = () => {
           </div>
 
           {/* Credit Note Stats */}
-          <div className="credit-note-stats-grid">
+          {/* <div className="credit-note-stats-grid">
             {creditNoteStats.map((stat, index) => (
               <div key={index} className={`credit-note-stat-card credit-note-stat-card--${stat.type}`}>
                 <h3 className="credit-note-stat-label">{stat.label}</h3>
@@ -199,7 +199,7 @@ const CreditNoteTable = () => {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
 
           {/* Filters and Actions Section */}
           <div className="credit-note-actions-section">

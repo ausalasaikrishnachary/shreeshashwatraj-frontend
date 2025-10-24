@@ -161,7 +161,7 @@ const DebitNoteTable = () => {
           </div>
 
           {/* Debit Note Stats */}
-          <div className="debit-note-stats-grid">
+          {/* <div className="debit-note-stats-grid">
             {debitNoteStats.map((stat, index) => (
               <div key={index} className={`debit-note-stat-card debit-note-stat-card--${stat.type}`}>
                 <h3 className="debit-note-stat-label">{stat.label}</h3>
@@ -171,7 +171,7 @@ const DebitNoteTable = () => {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
 
           {/* Filters and Actions Section */}
           <div className="debit-note-actions-section">

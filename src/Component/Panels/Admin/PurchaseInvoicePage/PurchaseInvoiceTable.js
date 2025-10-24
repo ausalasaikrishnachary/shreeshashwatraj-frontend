@@ -310,7 +310,7 @@ const PurchaseInvoiceTable = () => {
             </div>
 
             {/* Purchase Invoice Stats */}
-            <div className="purchase-invoice-stats-grid">
+            {/* <div className="purchase-invoice-stats-grid">
               {purchaseInvoiceStats.map((stat, index) => (
                 <div key={index} className={`purchase-invoice-stat-card purchase-invoice-stat-card--${stat.type}`}>
                   <h3 className="purchase-invoice-stat-label">{stat.label}</h3>
@@ -320,7 +320,7 @@ const PurchaseInvoiceTable = () => {
                   </div>
                 </div>
               ))}
-            </div>
+            </div> */}
 
             {/* Filters and Actions Section */}
             <div className="purchase-invoice-actions-section">

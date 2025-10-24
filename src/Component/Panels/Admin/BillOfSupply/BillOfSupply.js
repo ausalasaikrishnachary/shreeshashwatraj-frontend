@@ -30,12 +30,12 @@ const BillOfSupplyTable = () => {
   ];
 
   // Bill of Supply stats data
-  const billOfSupplyStats = [
-    { label: "Total Bills", value: "₹ 1,80,000", change: "+12%", type: "total" },
-    { label: "Active Bills", value: "₹ 1,20,000", change: "+8%", type: "active" },
-    { label: "Completed Bills", value: "₹ 50,000", change: "+15%", type: "completed" },
-    { label: "Pending Bills", value: "₹ 10,000", change: "-5%", type: "pending" }
-  ];
+  // const billOfSupplyStats = [
+  //   { label: "Total Bills", value: "₹ 1,80,000", change: "+12%", type: "total" },
+  //   { label: "Active Bills", value: "₹ 1,20,000", change: "+8%", type: "active" },
+  //   { label: "Completed Bills", value: "₹ 50,000", change: "+15%", type: "completed" },
+  //   { label: "Pending Bills", value: "₹ 10,000", change: "-5%", type: "pending" }
+  // ];
 
   // Define tabs with their corresponding routes
   const tabs = [
@@ -165,7 +165,7 @@ const BillOfSupplyTable = () => {
           </div>
 
           {/* Bill of Supply Stats */}
-          <div className="billofsupply-stats-grid">
+          {/* <div className="billofsupply-stats-grid">
             {billOfSupplyStats.map((stat, index) => (
               <div key={index} className={`billofsupply-stat-card billofsupply-stat-card--${stat.type}`}>
                 <h3 className="billofsupply-stat-label">{stat.label}</h3>
@@ -175,7 +175,7 @@ const BillOfSupplyTable = () => {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
 
           {/* Filters and Actions Section */}
           <div className="billofsupply-actions-section">

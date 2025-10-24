@@ -41,15 +41,15 @@ const InvoicesTable = () => {
       );
       
       // Transform the data to match your table structure
-      const transformedInvoices = salesInvoices.map(invoice => ({
-        id: invoice.VoucherID,
-        customerName: invoice.PartyName || 'N/A',
-        number: `INV-${invoice.VchNo || invoice.VoucherID}`,
-        totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-        payment: getPaymentStatus(invoice),
-        created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
-        originalData: invoice // Keep original data for reference
-      }));
+const transformedInvoices = salesInvoices.map(invoice => ({
+  id: invoice.VoucherID,
+  customerName: invoice.PartyName || 'N/A',
+  number: invoice.InvoiceNumber || `INV-${invoice.VoucherID}`, // Use the new InvoiceNumber field
+  totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+  payment: getPaymentStatus(invoice),
+  created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
+  originalData: invoice
+}));
       
       setInvoices(transformedInvoices);
       setLoading(false);
@@ -78,61 +78,6 @@ const InvoicesTable = () => {
     
     return 'Pending';
   };
-
-  // Calculate stats from actual data
-  const calculateStats = () => {
-    const totalInvoices = invoices.reduce((sum, invoice) => {
-      const amount = parseFloat(invoice.originalData?.TotalAmount || 0);
-      return sum + amount;
-    }, 0);
-
-    const paidInvoices = invoices.filter(inv => inv.payment === 'Paid')
-      .reduce((sum, invoice) => {
-        const amount = parseFloat(invoice.originalData?.TotalAmount || 0);
-        return sum + amount;
-      }, 0);
-
-    const pendingInvoices = invoices.filter(inv => inv.payment === 'Pending')
-      .reduce((sum, invoice) => {
-        const amount = parseFloat(invoice.originalData?.TotalAmount || 0);
-        return sum + amount;
-      }, 0);
-
-    const overdueInvoices = invoices.filter(inv => inv.payment === 'Overdue')
-      .reduce((sum, invoice) => {
-        const amount = parseFloat(invoice.originalData?.TotalAmount || 0);
-        return sum + amount;
-      }, 0);
-
-    return [
-      { 
-        label: "Total Invoices", 
-        value: `₹ ${totalInvoices.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 
-        change: "+15%", 
-        type: "total" 
-      },
-      { 
-        label: "Paid Invoices", 
-        value: `₹ ${paidInvoices.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 
-        change: "+12%", 
-        type: "paid" 
-      },
-      { 
-        label: "Pending Invoices", 
-        value: `₹ ${pendingInvoices.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 
-        change: "+5%", 
-        type: "pending" 
-      },
-      { 
-        label: "Overdue Invoices", 
-        value: `₹ ${overdueInvoices.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 
-        change: "-3%", 
-        type: "overdue" 
-      }
-    ];
-  };
-
-  const invoiceStats = calculateStats();
 
   // Table columns configuration
   const columns = [
@@ -256,7 +201,7 @@ const InvoicesTable = () => {
         <div className="admin-content-wrapper-sales">
           <div className="invoices-content-area">
             
-            {/* ✅ Tabs Section */}
+           
             <div className="invoices-tabs-section">
               <div className="invoices-tabs-container">
                 {tabs.map((tab) => (
@@ -274,19 +219,6 @@ const InvoicesTable = () => {
             <div className="invoices-header-section">
               <h1 className="invoices-main-title">Sales Invoice Management</h1>
               <p className="invoices-subtitle">Create, manage and track all your sales invoices</p>
-            </div>
-
-            {/* ✅ Stats Section */}
-            <div className="invoices-stats-grid">
-              {invoiceStats.map((stat, index) => (
-                <div key={index} className={`invoices-stat-card invoices-stat-card--${stat.type}`}>
-                  <h3 className="invoices-stat-label">{stat.label}</h3>
-                  <div className="invoices-stat-value">{stat.value}</div>
-                  <div className={`invoices-stat-change ${stat.change.startsWith("+") ? "invoices-stat-change--positive" : "invoices-stat-change--negative"}`}>
-                    {stat.change} from last month
-                  </div>
-                </div>
-              ))}
             </div>
 
             {/* ✅ Filters and Actions */}

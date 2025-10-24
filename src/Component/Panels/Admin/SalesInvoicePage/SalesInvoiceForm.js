@@ -17,16 +17,20 @@ const CreateInvoice = ({ user }) => {
   const [selectedBatchDetails, setSelectedBatchDetails] = useState(null);
   const [products, setProducts] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [nextInvoiceNumber, setNextInvoiceNumber] = useState("INV001");
+  const [isPreviewReady, setIsPreviewReady] = useState(false);
+  const [hasFetchedInvoiceNumber, setHasFetchedInvoiceNumber] = useState(false);
   const navigate = useNavigate();
 
   // Load from localStorage on component mount
   const [invoiceData, setInvoiceData] = useState(() => {
     const savedData = localStorage.getItem('draftInvoice');
     if (savedData) {
-      return JSON.parse(savedData);
+      const parsedData = JSON.parse(savedData);
+      return parsedData;
     }
     return {
-      invoiceNumber: "INV" + Math.floor(Math.random() * 1000),
+      invoiceNumber: "INV001", // Default, will be updated after fetch
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
@@ -68,7 +72,7 @@ const CreateInvoice = ({ user }) => {
       additionalChargeAmount: 0,
       otherDetails: "Authorized Signatory",
       taxType: "CGST/SGST",
-      batchDetails: [] // New field for batch details
+      batchDetails: []
     };
   });
 
@@ -92,6 +96,101 @@ const CreateInvoice = ({ user }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
+  // Fetch next invoice number on component mount - FIXED
+  useEffect(() => {
+    fetchNextInvoiceNumber();
+  }, []);
+
+  const fetchNextInvoiceNumber = async () => {
+    try {
+      console.log('Fetching next invoice number...');
+      const response = await fetch(`${baseurl}/next-invoice-number`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Received next invoice number:', data.nextInvoiceNumber);
+        setNextInvoiceNumber(data.nextInvoiceNumber);
+        
+        // Update invoice data with the new invoice number - FIXED: This now happens immediately
+        setInvoiceData(prev => ({
+          ...prev,
+          invoiceNumber: data.nextInvoiceNumber
+        }));
+        
+        setHasFetchedInvoiceNumber(true);
+        
+        // Also update localStorage
+        const currentDraft = localStorage.getItem('draftInvoice');
+        if (currentDraft) {
+          const draftData = JSON.parse(currentDraft);
+          draftData.invoiceNumber = data.nextInvoiceNumber;
+          localStorage.setItem('draftInvoice', JSON.stringify(draftData));
+        }
+      } else {
+        console.error('Failed to fetch next invoice number');
+        // Use fallback invoice number generation
+        generateFallbackInvoiceNumber();
+      }
+    } catch (err) {
+      console.error('Error fetching next invoice number:', err);
+      // Use fallback invoice number generation
+      generateFallbackInvoiceNumber();
+    }
+  };
+
+  const generateFallbackInvoiceNumber = async () => {
+    try {
+      // Try to get the last invoice number from backend
+      const response = await fetch(`${baseurl}/last-invoice`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.lastInvoiceNumber) {
+          // Extract number and increment
+          const lastNumber = data.lastInvoiceNumber;
+          const numberMatch = lastNumber.match(/INV(\d+)/);
+          if (numberMatch) {
+            const nextNum = parseInt(numberMatch[1]) + 1;
+            const fallbackInvoiceNumber = `INV${nextNum.toString().padStart(3, '0')}`;
+            setNextInvoiceNumber(fallbackInvoiceNumber);
+            setInvoiceData(prev => ({
+              ...prev,
+              invoiceNumber: fallbackInvoiceNumber
+            }));
+            setHasFetchedInvoiceNumber(true);
+            return;
+          }
+        }
+      }
+      
+      // Final fallback - use current draft or default
+      const currentDraft = localStorage.getItem('draftInvoice');
+      if (currentDraft) {
+        const draftData = JSON.parse(currentDraft);
+        if (draftData.invoiceNumber && draftData.invoiceNumber !== 'INV001') {
+          setNextInvoiceNumber(draftData.invoiceNumber);
+          setHasFetchedInvoiceNumber(true);
+          return;
+        }
+      }
+      
+      // Ultimate fallback
+      setNextInvoiceNumber('INV001');
+      setInvoiceData(prev => ({
+        ...prev,
+        invoiceNumber: 'INV001'
+      }));
+      setHasFetchedInvoiceNumber(true);
+      
+    } catch (err) {
+      console.error('Error in fallback invoice number generation:', err);
+      setNextInvoiceNumber('INV001');
+      setInvoiceData(prev => ({
+        ...prev,
+        invoiceNumber: 'INV001'
+      }));
+      setHasFetchedInvoiceNumber(true);
+    }
+  };
+
   // Check if states are same for GST calculation
   const isSameState = () => {
     const companyState = invoiceData.companyInfo.state;
@@ -106,8 +205,10 @@ const CreateInvoice = ({ user }) => {
 
   // Save to localStorage whenever invoiceData changes
   useEffect(() => {
-    localStorage.setItem('draftInvoice', JSON.stringify(invoiceData));
-  }, [invoiceData]);
+    if (hasFetchedInvoiceNumber) {
+      localStorage.setItem('draftInvoice', JSON.stringify(invoiceData));
+    }
+  }, [invoiceData, hasFetchedInvoiceNumber]);
 
   // Update tax type when supplier info changes
   useEffect(() => {
@@ -122,27 +223,24 @@ const CreateInvoice = ({ user }) => {
     }
   }, [invoiceData.supplierInfo.state, invoiceData.companyInfo.state]);
 
-  // Open PDF preview in new tab
+  // Open PDF preview - ONLY after form is submitted
   const handlePreview = () => {
-    if (!invoiceData.supplierInfo.name) {
-      setError("Please select a supplier/customer before preview");
+    if (!isPreviewReady) {
+      setError("Please submit the invoice first to generate preview");
       setTimeout(() => setError(null), 3000);
       return;
     }
 
-    if (invoiceData.items.length === 0) {
-      setError("Please add at least one item before preview");
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    localStorage.setItem('previewInvoice', JSON.stringify(invoiceData));
+    // Ensure we have the latest invoice number
+    const previewData = {
+      ...invoiceData,
+      invoiceNumber: invoiceData.invoiceNumber || nextInvoiceNumber
+    };
     
-    const newWindow = window.open('/sales/invoice-preview', '_blank');
-    if (!newWindow) {
-      setError("Please allow popups for this site to view PDF preview");
-      setTimeout(() => setError(null), 5000);
-    }
+    localStorage.setItem('previewInvoice', JSON.stringify(previewData));
+    
+    // Navigate to invoice preview page
+    navigate("/sales/invoice-preview");
   };
 
   const handleSearch = () => {
@@ -403,8 +501,10 @@ const CreateInvoice = ({ user }) => {
 
   const clearDraft = () => {
     localStorage.removeItem('draftInvoice');
-    setInvoiceData({
-      invoiceNumber: "INV" + Math.floor(Math.random() * 1000),
+    
+    // Reset to new invoice number after clearing
+    const resetData = {
+      invoiceNumber: nextInvoiceNumber,
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
@@ -447,9 +547,14 @@ const CreateInvoice = ({ user }) => {
       otherDetails: "Authorized Signatory",
       taxType: "CGST/SGST",
       batchDetails: []
-    });
+    };
+    
+    setInvoiceData(resetData);
+    localStorage.setItem('draftInvoice', JSON.stringify(resetData));
+    
     setSelected(false);
     setSelectedSupplierId(null);
+    setIsPreviewReady(false);
     setSuccess("Draft cleared successfully!");
     setTimeout(() => setSuccess(false), 3000);
   };
@@ -475,6 +580,10 @@ const CreateInvoice = ({ user }) => {
     }
 
     try {
+      // Ensure we have the correct invoice number
+      const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
+      console.log('Submitting invoice with number:', finalInvoiceNumber);
+
       // Calculate GST breakdown for backend
       const sameState = isSameState();
       let totalCGST = 0;
@@ -500,21 +609,24 @@ const CreateInvoice = ({ user }) => {
         batchDetails: item.batchDetails
       }));
 
-      // Create payload with batch details
+      // Create payload with batch details and ensure invoice number is included
       const payload = {
         ...invoiceData,
+        invoiceNumber: finalInvoiceNumber, // Ensure invoice number is explicitly set
         selectedSupplierId: selectedSupplierId,
         type: 'sales',
         totalCGST: totalCGST.toFixed(2),
         totalSGST: totalSGST.toFixed(2),
         totalIGST: totalIGST.toFixed(2),
         taxType: sameState ? "CGST/SGST" : "IGST",
-        batchDetails: JSON.stringify(batchDetails) // Store batch details as JSON string
+        batchDetails: JSON.stringify(batchDetails)
       };
 
       // Remove unused fields from the payload
       delete payload.companyState;
       delete payload.supplierState;
+
+      console.log('Submitting payload with invoice number:', payload.invoiceNumber);
 
       const response = await fetch(`${baseurl}/transaction`, {
         method: 'POST',
@@ -532,9 +644,18 @@ const CreateInvoice = ({ user }) => {
       
       localStorage.removeItem('draftInvoice');
       setSuccess('Invoice submitted successfully!');
+      setIsPreviewReady(true); // Enable preview after successful submission
       
+      // Update preview data with the submitted invoice number
+      const previewData = {
+        ...invoiceData,
+        invoiceNumber: finalInvoiceNumber
+      };
+      localStorage.setItem('previewInvoice', JSON.stringify(previewData));
+      
+      // Navigate to preview page after 2 seconds
       setTimeout(() => {
-        navigate("/sales/invoices");
+        navigate("/sales/invoice-preview");
       }, 2000);
       
     } catch (err) {
@@ -568,8 +689,9 @@ const CreateInvoice = ({ user }) => {
                   size="sm" 
                   onClick={handlePreview}
                   className="me-2"
+                  disabled={!isPreviewReady}
                 >
-                  <FaEye className="me-1" /> Preview PDF
+                  <FaEye className="me-1" /> {isPreviewReady ? "View Invoice Preview" : "Submit to Enable Preview"}
                 </Button>
                 <Button variant="warning" size="sm" onClick={clearDraft}>
                   Clear Draft
@@ -611,11 +733,15 @@ const CreateInvoice = ({ user }) => {
                   <Form.Group className="mb-2">
                     <Form.Control 
                       name="invoiceNumber" 
-                      value={invoiceData.invoiceNumber} 
+                      value={invoiceData.invoiceNumber || nextInvoiceNumber} 
                       onChange={handleInputChange}
                       className="border-primary"
+                      readOnly
                     />
                     <Form.Label className="fw-bold">Invoice No</Form.Label>
+                    {!hasFetchedInvoiceNumber && (
+                      <small className="text-muted">Loading invoice number...</small>
+                    )}
                   </Form.Group>
                   <Form.Group className="mb-2">
                     <Form.Control 
@@ -640,6 +766,7 @@ const CreateInvoice = ({ user }) => {
                 </Col>
               </Row>
 
+              {/* Rest of your component remains the same */}
               {/* Supplier Info Section */}
               <div className="bg-white rounded border">
                 <Row className="mb-0">
@@ -647,7 +774,7 @@ const CreateInvoice = ({ user }) => {
                     {!selected ? (
                       <>
                         <div className="d-flex justify-content-between align-items-center mb-2">
-                          <strong className="text-primary">Supplier Info</strong>
+                          <strong className="text-primary">Retailer Info</strong>
                           <Button
                             variant="primary"
                             size="sm"
@@ -1077,9 +1204,9 @@ const CreateInvoice = ({ user }) => {
                   variant="info" 
                   className="me-3 px-4"
                   onClick={handlePreview}
-                  disabled={invoiceData.items.length === 0}
+                  disabled={!isPreviewReady}
                 >
-                  Preview PDF in New Tab
+                  {isPreviewReady ? 'View Invoice Preview' : 'Submit to Enable Preview'}
                 </Button>
                 <Button variant="danger" onClick={() => navigate("/sales/invoices")}>
                   Cancel

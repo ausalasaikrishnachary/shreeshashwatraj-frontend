@@ -30,12 +30,12 @@ const ReceivablesTable = () => {
   };
 
   // Receivables stats data
-  const receivablesStats = [
-    { label: "Total Receivables", value: "₹ 5,00,000", change: "+12%", type: "total" },
-    { label: "Overdue Amount", value: "₹ 1,50,000", change: "+8%", type: "overdue" },
-    { label: "Due This Week", value: "₹ 75,000", change: "+15%", type: "due" },
-    { label: "Aging > 90 Days", value: "₹ 50,000", change: "-5%", type: "aging" }
-  ];
+  // const receivablesStats = [
+  //   { label: "Total Receivables", value: "₹ 5,00,000", change: "+12%", type: "total" },
+  //   { label: "Overdue Amount", value: "₹ 1,50,000", change: "+8%", type: "overdue" },
+  //   { label: "Due This Week", value: "₹ 75,000", change: "+15%", type: "due" },
+  //   { label: "Aging > 90 Days", value: "₹ 50,000", change: "-5%", type: "aging" }
+  // ];
 
   // Sample data for different tabs
   const ageingData = [
@@ -335,7 +335,7 @@ const ReceivablesTable = () => {
           </div>
 
           {/* Receivables Stats */}
-          <div className="receivables-stats-grid">
+          {/* <div className="receivables-stats-grid">
             {receivablesStats.map((stat, index) => (
               <div key={index} className={`receivables-stat-card receivables-stat-card--${stat.type}`}>
                 <h3 className="receivables-stat-label">{stat.label}</h3>
@@ -345,7 +345,7 @@ const ReceivablesTable = () => {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
 
           {/* Sub Tabs */}
           <div className="receivables-sub-tabs-container">

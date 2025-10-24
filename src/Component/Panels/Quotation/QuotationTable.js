@@ -30,12 +30,12 @@ const QuotationsTable = () => {
   ];
 
   // Quotation stats data
-  const quotationStats = [
-    { label: "Total Quotations", value: "₹ 5,00,000", change: "+12%", type: "total" },
-    { label: "Sent Quotations", value: "₹ 3,50,000", change: "+15%", type: "sent" },
-    { label: "Approved Quotations", value: "₹ 1,20,000", change: "+8%", type: "approved" },
-    { label: "Pending Quotations", value: "₹ 30,000", change: "-5%", type: "pending" }
-  ];
+  // const quotationStats = [
+  //   { label: "Total Quotations", value: "₹ 5,00,000", change: "+12%", type: "total" },
+  //   { label: "Sent Quotations", value: "₹ 3,50,000", change: "+15%", type: "sent" },
+  //   { label: "Approved Quotations", value: "₹ 1,20,000", change: "+8%", type: "approved" },
+  //   { label: "Pending Quotations", value: "₹ 30,000", change: "-5%", type: "pending" }
+  // ];
 
   // Define tabs with their corresponding routes
   const tabs = [
@@ -200,7 +200,7 @@ const QuotationsTable = () => {
           </div>
 
           {/* Quotation Stats */}
-          <div className="quotations-stats-grid">
+          {/* <div className="quotations-stats-grid">
             {quotationStats.map((stat, index) => (
               <div key={index} className={`quotations-stat-card quotations-stat-card--${stat.type}`}>
                 <h3 className="quotations-stat-label">{stat.label}</h3>
@@ -210,7 +210,7 @@ const QuotationsTable = () => {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
 
           {/* Filters and Actions Section */}
           <div className="quotations-actions-section">
