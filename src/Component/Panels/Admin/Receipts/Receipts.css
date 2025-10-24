@@ -319,3 +319,43 @@
     font-size: 13px;
   }
 }
+
+
+
+.custom-amount-receipts-table {
+  display: flex;
+}
+
+.currency-select-receipts-table {
+  width: 30% !important;
+  border-radius: 6px 0 0 6px !important;
+  border-right: none !important;
+}
+
+.amount-input-receipts-table {
+  width: 70% !important;
+  border-radius: 0 6px 6px 0 !important;
+  border-left: none !important;
+}
+
+
+.company-info-recepits-table {
+  display: flex;
+  flex-direction: column; /* Stack vertically */
+  align-items: start;    /* Center horizontally */
+  justify-content: start; /* Center vertically if container has height */
+  text-align: center;     /* Center text */
+  gap: 3px;               /* Small gap between lines */
+}
+
+.company-info-recepits-table label {
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.company-info-recepits-table p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5; /* reduce spacing between lines */
+}

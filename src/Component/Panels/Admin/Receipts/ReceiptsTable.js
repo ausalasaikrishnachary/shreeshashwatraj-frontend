@@ -1,14 +1,17 @@
-// ReceiptsTable.js
-import React, { useState } from 'react';
+import React, { useState , useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
+import { baseurl } from '../../../BaseURL/BaseURL';
 import './Receipts.css';
 
 const ReceiptsTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [accounts, setAccounts] = useState([]);
+
 
   const [month, setMonth] = useState('July');
   const [year, setYear] = useState('2025');
@@ -16,20 +19,7 @@ const ReceiptsTable = () => {
   const [endDate, setEndDate] = useState('2025-07-08');
   const [activeTab, setActiveTab] = useState('Receipts');
 
-  // Sample receipt data
-  const receiptData = [
-    // Add your receipt data here
-    // Example:
-    // {
-    //   payee: "John Doe",
-    //   number: "RCP-001",
-    //   amount: "$1,000.00",
-    //   accounting: "Cash",
-    //   date: "2025-07-01"
-    // }
-  ];
-
-  // Receipt stats data
+  const receiptData = [];
   const receiptStats = [
     { label: "Total Receipts", value: "₹ 2,50,000", change: "+18%", type: "total" },
     { label: "Cash Receipts", value: "₹ 1,50,000", change: "+15%", type: "cash" },
@@ -38,34 +28,13 @@ const ReceiptsTable = () => {
   ];
 
   const columns = [
-    {
-      key: 'payee',
-      title: 'PAYEE',
-      style: { textAlign: 'left' }
-    },
-    {
-      key: 'number',
-      title: 'RECEIPT NUMBER',
-      style: { textAlign: 'center' }
-    },
-    {
-      key: 'amount',
-      title: 'AMOUNT',
-      style: { textAlign: 'right' }
-    },
-    {
-      key: 'accounting',
-      title: 'ACCOUNTING',
-      style: { textAlign: 'center' }
-    },
-    {
-      key: 'date',
-      title: 'DATE',
-      style: { textAlign: 'center' }
-    }
+    { key: 'payee', title: 'PAYEE', style: { textAlign: 'left' } },
+    { key: 'number', title: 'RECEIPT NUMBER', style: { textAlign: 'center' } },
+    { key: 'amount', title: 'AMOUNT', style: { textAlign: 'right' } },
+    { key: 'accounting', title: 'ACCOUNTING', style: { textAlign: 'center' } },
+    { key: 'date', title: 'DATE', style: { textAlign: 'center' } }
   ];
 
-  // Define tabs with their corresponding routes
   const tabs = [
     { name: 'Invoices', path: '/sales/invoices' },
     { name: 'Receipts', path: '/sales/receipts' },
@@ -76,15 +45,33 @@ const ReceiptsTable = () => {
     { name: 'Receivables', path: '/sales/receivables' }
   ];
 
-  // Handle tab click - navigate to corresponding route
   const handleTabClick = (tab) => {
     setActiveTab(tab.name);
     navigate(tab.path);
   };
 
-//   const handleCreateClick = () => {
-//     navigate("/createreceipt");
-//   };
+  const handleCreateClick = () => {
+    setIsModalOpen(true);
+  };
+
+  useEffect(() => {
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch(`${baseurl}/accounts`);
+      const data = await res.json();
+      setAccounts(data);
+    } catch (err) {
+      console.error("Failed to fetch accounts:", err);
+    }
+  };
+
+  fetchAccounts();
+}, []);
+
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
 
   return (
     <div className="receipts-wrapper">
@@ -93,7 +80,6 @@ const ReceiptsTable = () => {
         <AdminHeader isCollapsed={isCollapsed} />
         
         <div className="receipts-content-area">
-          {/* ✅ Tabs Section */}
           <div className="receipts-tabs-section">
             <div className="receipts-tabs-container">
               {tabs.map((tab) => (
@@ -117,7 +103,6 @@ const ReceiptsTable = () => {
             </div>
           </div>
 
-          {/* Receipt Stats */}
           <div className="receipts-stats-grid">
             {receiptStats.map((stat, index) => (
               <div key={index} className={`receipts-stat-card receipts-stat-card--${stat.type}`}>
@@ -130,12 +115,10 @@ const ReceiptsTable = () => {
             ))}
           </div>
 
-          {/* Filters and Actions Section */}
           <div className="receipts-actions-section">
             <div className="quotation-container p-3">
               <h5 className="mb-3 fw-bold">View Receipts</h5>
 
-              {/* Filters Section */}
               <div className="row align-items-end g-3 mb-3">
                 <div className="col-md-auto">
                   <label className="form-label mb-1">Select Month and Year Data:</label>
@@ -195,14 +178,13 @@ const ReceiptsTable = () => {
                 <div className="col-md-auto">
                   <button 
                     className="btn btn-info text-white mt-4"
-                    // onClick={handleCreateClick}
+                    onClick={handleCreateClick}
                   >
                     Create Receipt
                   </button>
                 </div>
               </div>
 
-              {/* Table Section */}
               <ReusableTable
                 title="Receipts"
                 data={receiptData}
@@ -216,6 +198,148 @@ const ReceiptsTable = () => {
             </div>
           </div>
         </div>
+
+        {/* Modal Popup */}
+        {isModalOpen && (
+          <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <div className="modal-dialog" style={{ maxWidth: '800px' }}>
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">Create Receipt</h5>
+                  <button type="button" className="btn-close" onClick={handleCloseModal}></button>
+                </div>
+                <div className="modal-body">
+                  <div className="row">
+                    <div className="col-md-6">
+                     <div className="company-info-recepits-table text-center">
+  <label className="form-label-recepits-table">Navkar Exports</label>
+  <p>NO.63/603 AND 64/604, NEAR JAIN TEMPLE</p>
+  <p>1ST MAIN ROAD, T DASARAHALLI</p>
+  <p>GST : 29AAAMPC7994B1ZE</p>
+  <p>Email: akshay555.ak@gmail.com</p>
+  <p>Phone: 09880990431</p>
+</div>
+
+                    </div>
+                    <div className="col-md-6">
+                  <div className="mb-3">
+  <input
+    type="text"
+    className="form-control"
+    placeholder="REC0001"
+  />
+</div>
+          
+                      <div className="mb-3 ">
+                        
+                         
+                       <input
+  type="date"
+  className="form-control"
+  placeholder="dd-mm-yyyy"
+/>
+
+                        <select className="form-select mt-2">
+                          <option>Direct Deposit</option>
+                          <option>online payment</option>
+                                <option>Credit/Debit Card</option>
+                                      <option>Demand Draft</option>
+                                            <option>Cheque</option>
+                                                  <option>Cash</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="row">
+                    <div className="col-md-6">
+                    <div className="mb-3">
+  <label className="form-label">Retailer</label>
+  <select className="form-select" required>
+    <option value="">Select Retailer</option>
+
+    {accounts.map((acc) => (
+      <option key={acc.id} value={acc.id}>
+        {acc.name}
+      </option>
+    ))}
+  </select>
+</div>
+
+                    </div>
+<div class="col-md-6">
+  <label class="form-label">Amount</label>
+
+  <div class="input-group custom-amount-receipts-table">
+    <select class="form-select currency-select-receipts-table">
+      <option selected>INR</option>
+      <option>GHS</option>
+      <option>GIP</option>
+      <option>GMD</option>
+      <option>GNF</option>
+      <option>GTQ</option>
+      <option>GYD</option>
+      <option>HKD</option>
+      <option>HNL</option>
+      <option>HRK</option>
+      <option>HTG</option>
+      <option>HUF</option>
+      <option>IDR</option>
+      <option>IMP</option>
+      <option>ILS</option>
+    </select>
+
+    <input type="number" class="form-control amount-input-receipts-table" placeholder="Amount" />
+  </div>
+</div>
+
+
+                  </div>
+                  <div className="row">
+                    <div className="col-md-6">
+                      <div className="mb-3">
+                        <label className="form-label">Note</label>
+                        <textarea className="form-control" rows="3"></textarea>
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <div className="mb-3">
+                        <label className="form-label">For</label>
+                        <p>Authorised Signatory</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="row">
+                    <div className="col-md-6">
+                      <div className="mb-3">
+                        <label className="form-label">Bank Name</label>
+                        <input type="text" className="form-control" placeholder="Bank Name" />
+                        <label className="form-label mt-2">Transaction Proof Document</label>
+                        <input type="file" className="form-control" />
+                        <p>No file chosen</p>
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <div className="mb-3">
+                        <label className="form-label">Transaction Date</label>
+                        <input type="text" className="form-control" placeholder="dd-mm-yyyy" />
+                        <label className="form-label mt-2">Reconciliation Option</label>
+                        <select className="form-select">
+                          <option>Do Not Reconcile</option>
+                             <option>Customer Reconcile</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Close</button>
+                  <button type="button" className="btn btn-primary">Create</button>
+                 
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
