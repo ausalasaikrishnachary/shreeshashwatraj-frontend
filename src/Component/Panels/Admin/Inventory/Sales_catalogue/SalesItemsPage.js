@@ -189,22 +189,35 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     return newBarcode;
   };
 
-  const createDefaultBatch = async () => {
-    const newBarcode = await generateUniqueBarcode();
-    return {
-      id: Date.now() + Math.random(),
-      batchNumber: '', // Set by backend
-      mfgDate: '',
-      expDate: '',
-      quantity: '',
-      costPrice: '',
-      sellingPrice: formData?.price || '',
-      purchasePrice: '',
-      mrp: '',
-      batchPrice: '',
-      barcode: newBarcode
-    };
+  const fetchNextBatchNumber = async () => {
+    try {
+      const response = await axios.get(`${baseurl}/batches/next-batch-number`, {
+        params: { group_by: formData.group_by }
+      });
+      return response.data.batch_number;
+    } catch (error) {
+      console.error('Error fetching next batch number:', error);
+      return String(Date.now()).padStart(5, '0'); // Fallback
+    }
   };
+
+const createDefaultBatch = async () => {
+  const newBarcode = await generateUniqueBarcode();
+  const batchNumber = await fetchNextBatchNumber();
+  return {
+    id: Date.now() + Math.random(), // Temporary ID for frontend rendering only
+    batchNumber,
+    mfgDate: '',
+    expDate: '',
+    quantity: '',
+    costPrice: '',
+    sellingPrice: formData?.price || '',
+    purchasePrice: '',
+    mrp: '',
+    batchPrice: '',
+    barcode: newBarcode
+  };
+};
 
   const [formData, setFormData] = useState({
     group_by: groupType,
@@ -294,73 +307,86 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     setAlert({ show: true, message, variant });
     setTimeout(() => setAlert({ show: false, message: '', variant: 'success' }), 5000);
   };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsLoading(true);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  if (maintainBatch) {
+    const invalidBatches = batches.filter(
+      (batch) => !batch.quantity || !batch.sellingPrice || !batch.barcode
+    );
 
-    if (maintainBatch) {
-      const invalidBatches = batches.filter(
-        (batch) => !batch.quantity || !batch.sellingPrice || !batch.barcode
+    if (invalidBatches.length > 0) {
+      showAlert(
+        'Please fill all required fields in batch details (Quantity, Selling Price, and Barcode)',
+        'danger'
       );
-
-      if (invalidBatches.length > 0) {
-        showAlert(
-          'Please fill all required fields in batch details (Quantity, Selling Price, and Barcode)',
-          'danger'
-        );
-        setIsLoading(false);
-        return;
-      }
-    }
-
-    try {
-      const batchesForBackend = maintainBatch
-        ? batches.map((batch) => ({
-            batch_number: batch.batchNumber,
-            mfgDate: batch.mfgDate || null,
-            expDate: batch.expDate || null,
-            quantity: parseFloat(batch.quantity) || 0,
-            costPrice: parseFloat(batch.costPrice) || 0,
-            sellingPrice: parseFloat(batch.sellingPrice) || 0,
-            purchasePrice: parseFloat(batch.purchasePrice) || 0,
-            mrp: parseFloat(batch.mrp) || 0,
-            batchPrice: parseFloat(batch.batchPrice) || 0,
-            barcode: batch.barcode
-          }))
-        : [];
-
-      const dataToSend = {
-        ...formData,
-        batches: batchesForBackend
-      };
-
-      console.log('📤 Sending data:', JSON.stringify(dataToSend, null, 2));
-
-      if (productId) {
-        console.log(`🔄 Updating product ID: ${productId}`);
-        const response = await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
-          headers: { 'Content-Type': 'application/json' }
-        });
-        showAlert('Product updated successfully!', 'success');
-      } else {
-        console.log('➕ Creating new product');
-        const response = await axios.post(`${baseurl}/products`, dataToSend, {
-          headers: { 'Content-Type': 'application/json' }
-        });
-        showAlert('New product added successfully!', 'success');
-      }
-
-      setTimeout(() => navigate('/sale_items'), 1500);
-    } catch (error) {
-      console.error('❌ Failed to add/update product:', error);
-      console.error('❌ Error response:', error.response?.data);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to add/update product';
-      showAlert(errorMessage, 'danger');
-    } finally {
       setIsLoading(false);
+      return;
     }
-  };
+  }
+
+  try {
+    const batchesForBackend = maintainBatch
+      ? batches.map((batch) => {
+          // Check if this is a new batch (has temporary ID) or existing batch
+          const isNewBatch = !batch.id || isNaN(batch.id) || batch.id.toString().includes('.');
+          
+          const batchData = {
+            batch_number: batch.batchNumber,
+            mfg_date: batch.mfgDate || null,
+            exp_date: batch.expDate || null,
+            quantity: parseFloat(batch.quantity) || 0,
+            cost_price: parseFloat(batch.costPrice) || 0,
+            selling_price: parseFloat(batch.sellingPrice) || 0,
+            purchase_price: parseFloat(batch.purchasePrice) || 0,
+            mrp: parseFloat(batch.mrp) || 0,
+            batch_price: parseFloat(batch.batchPrice) || 0,
+            barcode: batch.barcode,
+            group_by: formData.group_by || 'Salescatalog'
+          };
+
+          // Only include ID for existing batches in the database
+          if (!isNewBatch) {
+            batchData.id = batch.id;
+          }
+
+          return batchData;
+        })
+      : [];
+
+    const dataToSend = {
+      ...formData,
+      group_by: groupType,
+      batches: batchesForBackend
+    };
+
+    console.log('📤 Sending data:', JSON.stringify(dataToSend, null, 2));
+
+    if (productId) {
+      console.log(`🔄 Updating product ID: ${productId}`);
+      const response = await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      showAlert('Product updated successfully!', 'success');
+    } else {
+      console.log('➕ Creating new product');
+      const response = await axios.post(`${baseurl}/products`, dataToSend, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      showAlert('New product added successfully!', 'success');
+    }
+
+    setTimeout(() => navigate('/sale_items'), 1500);
+  } catch (error) {
+    console.error('❌ Failed to add/update product:', error);
+    console.error('❌ Error response:', error.response?.data);
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to add/update product';
+    showAlert(errorMessage, 'danger');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const pageTitle = productId
     ? `Edit Product in Sales Catalog`
@@ -667,7 +693,7 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
                           <div className="col-md-4">
                             <Form.Label>Batch No.*</Form.Label>
                             <Form.Control
-                              placeholder="Batch Number (set by server)"
+                              placeholder="Batch Number"
                               name="batchNumber"
                               value={batch.batchNumber}
                               readOnly

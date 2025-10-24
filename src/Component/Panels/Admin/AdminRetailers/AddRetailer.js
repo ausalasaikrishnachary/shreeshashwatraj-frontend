@@ -1605,6 +1605,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     entity_type: "",
     name: "",
     role: "retailer",
+    status:"Active",
     group: "",
     mobile_number: "",
     email: "",
@@ -1708,60 +1709,58 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     }
   }, [formData.staffid, staffList]);
 
-  const handleGstinChange = async (e) => {
-    if (isViewing) return;
-    
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+const handleGstinChange = async (e) => {
+  const { name, value } = e.target;
+  const gstin = value.toUpperCase();
 
-    if (name === 'gstin' && value.length === 15) {
-      try {
-        setIsLoadingGstin(true);
-        setGstinError(null);
-        
-        const response = await axios.post(`${baseurl}/gstin-details`, { gstin: value });
-        
-        if (response.data.success && response.data.result) {
-          const result = response.data.result;
-          const addr = result.pradr?.addr || {};
-          
-          const addressLine1 = `${addr.bno || ''}${addr.bno && addr.flno ? ', ' : ''}${addr.flno || ''}`.trim();
-          const addressLine2 = `${addr.st || ''}${addr.st && addr.bnm ? ', ' : ''}${addr.bnm || ''}${(addr.st || addr.bnm) && addr.loc ? ', ' : ''}${addr.loc || ''}`.trim();
-          
-          setFormData(prev => ({
-            ...prev,
-            gst_registered_name: result.lgnm || '',
-            business_name: result.tradeNam || '',
-            additional_business_name: result.tradeNam || '',
-            display_name: result.lgnm || '',
-            shipping_address_line1: addressLine1,
-            shipping_address_line2: addressLine2,
-            shipping_city: result.ctj || '',
-            shipping_pin_code: addr.pncd || '',
-            shipping_state: addr.stcd || '',
-            shipping_country: 'India',
-            billing_address_line1: addressLine1,
-            billing_address_line2: addressLine2,
-            billing_city: result.ctj || '',
-            billing_pin_code: addr.pncd || '',
-            billing_state: addr.stcd || '',
-            billing_country: 'India'
-          }));
-          
-          setSameAsShipping(true);
-        }
-      } catch (error) {
-        setGstinError('Failed to fetch GSTIN details. Please enter manually.');
-        console.error('Error fetching GSTIN details:', error);
-      } finally {
-        setIsLoadingGstin(false);
+  setFormData(prev => ({ ...prev, [name]: gstin })); // Always store uppercase
+
+  if (gstin.length === 15) { // Trigger only on full GSTIN
+    setIsLoadingGstin(true);
+    setGstinError(null);
+
+    try {
+      const response = await axios.post(`${baseurl}/gstin-details`, { gstin });
+
+      if (response.data.success && response.data.result) {
+        const result = response.data.result;
+
+        setFormData(prev => ({
+          ...prev,
+          gst_registered_name: result.gst_registered_name || '',
+          business_name: result.business_name || '',
+          additional_business_name: result.additional_business_name || '',
+          display_name: result.display_name || '',
+          shipping_address_line1: result.shipping_address_line1 || '',
+          shipping_address_line2: result.shipping_address_line2 || '',
+          shipping_city: result.shipping_city || '',
+          shipping_pin_code: result.shipping_pin_code || '',
+          shipping_state: result.shipping_state || '',
+          shipping_country: 'India',
+          billing_address_line1: result.billing_address_line1 || '',
+          billing_address_line2: result.billing_address_line2 || '',
+          billing_city: result.billing_city || '',
+          billing_pin_code: result.billing_pin_code || '',
+          billing_state: result.billing_state || '',
+          billing_country: 'India'
+        }));
+
+        setSameAsShipping(true); // auto-copy shipping to billing
+      } else {
+        setGstinError(response.data.message || "GSTIN details not found. Enter manually.");
       }
+    } catch (err) {
+      console.error("Error fetching GSTIN details:", err);
+      setGstinError("Failed to fetch GSTIN details. Enter manually.");
+    } finally {
+      setIsLoadingGstin(false);
     }
-  };
+  } else {
+    setGstinError(null); // Clear error if GSTIN is incomplete
+  }
+};
+
+
 
   const tabs = [
     { id: 'information', label: 'Information' },
@@ -2106,16 +2105,20 @@ useEffect(() => {
         }))
       })}
     </div>
-    <div className="col-md-6">
-      {renderField({
-        name: 'gstin',
-        label: 'Customer GSTIN',
-        maxLength: 15,
-        onChange: handleGstinChange
-      })}
-      {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
-      {gstinError && <div className="text-danger small">{gstinError}</div>}
-    </div>
+   <div className="col-md-6">
+  {renderField({
+    name: 'gstin',
+    label: 'Customer GSTIN',
+    type: 'text',
+    maxLength: 15,          // GSTIN is always 15 characters
+    pattern: "^[0-9A-Z]{15}$",
+    title: "GSTIN must be exactly 15 characters (A-Z, 0-9 only)",
+    onChange: handleGstinChange
+  })}
+  {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
+  {gstinError && <div className="text-danger small">{gstinError}</div>}
+</div>
+
   </div>
 
   <div className="row">
@@ -2220,11 +2223,13 @@ useEffect(() => {
               <h3 className="customer-subsection-title">Account Information</h3>
               <div className="row">
                 <div className="col-md-4">
-                  {renderField({
-                    name: 'account_number',
-                    label: 'Account Number'
-                  })}
-                </div>
+  {renderField({
+    name: 'account_number',
+    label: 'Account Number',
+    type: 'text',
+    maxLength: 18, // ✅ limit to 18 digits
+  })}
+</div>
                 <div className="col-md-4">
                   {renderField({
                     name: 'account_name',
@@ -2247,12 +2252,17 @@ useEffect(() => {
               </div>
 
               <div className="row">
-                <div className="col-md-4">
-                  {renderField({
-                    name: 'ifsc_code',
-                    label: 'IFSC Code'
-                  })}
-                </div>
+               
+<div className="col-md-4">
+  {renderField({
+    name: 'ifsc_code',
+    label: 'IFSC Code',
+    type: 'text',
+    maxLength: 11, // ✅ IFSC always 11 characters
+    pattern: "^[A-Z]{4}0[0-9A-Z]{6}$",
+    title: "IFSC Code format: 4 letters, 0, then 6 alphanumeric (e.g. SBIN0000123)",
+  })}
+</div>
                 <div className="col-md-4">
                   {renderField({
                     type: 'select',
@@ -2277,11 +2287,15 @@ useEffect(() => {
               <h3 className="customer-subsection-title">Tax Information</h3>
               <div className="row">
                 <div className="col-md-4">
-                  {renderField({
-                    name: 'pan',
-                    label: 'PAN'
-                  })}
-                </div>
+  {renderField({
+    name: 'pan',
+    label: 'PAN',
+    type: 'text',
+    maxLength: 10, // ✅ PAN has 10 characters
+    pattern: "^[A-Z]{5}[0-9]{4}[A-Z]{1}$",
+    title: "PAN format: 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)",
+  })}
+</div>
                 <div className="col-md-4">
                   {renderField({
                     name: 'tan',
@@ -2437,12 +2451,18 @@ useEffect(() => {
                   label: 'Branch Name'
                 })}
               </div>
-              <div className="col-md-6">
-                {renderField({
-                  name: 'shipping_gstin',
-                  label: 'GSTIN'
-                })}
-              </div>
+              
+<div className="col-md-6">
+  {renderField({
+    name: 'shipping_gstin',
+    label: 'GSTIN',
+    type: 'text',
+    maxLength: 15, // ✅ GSTIN is always 15 characters
+    pattern: "^[0-9A-Z]{15}$",
+    title: "GSTIN must be exactly 15 characters long (A-Z, 0-9 only)",
+    required: true
+  })}
+</div>
             </div>
           </FormSection>
         );
@@ -2549,7 +2569,12 @@ useEffect(() => {
                   <div className="col-md-6">
                     {renderField({
                       name: 'billing_gstin',
-                      label: 'GSTIN'
+                      label: 'GSTIN',
+                       type: 'text',
+    maxLength: 15, // ✅ GSTIN is always 15 characters
+    pattern: "^[0-9A-Z]{15}$",
+    title: "GSTIN must be exactly 15 characters long (A-Z, 0-9 only)",
+    required: true
                     })}
                   </div>
                 </div>
