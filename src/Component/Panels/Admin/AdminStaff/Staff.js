@@ -171,13 +171,13 @@ function Staff() {
       title: "Actions",
       render: (item) => (
        <div className="staff-actions">
-          <button 
+          {/* <button 
             className="staff-action-btn staff-view-btn" 
             title="View"
             onClick={() => handleViewStaff(item.id)}
           >
             <FaEye size={16} />
-          </button>
+          </button> */}
           <button 
             className="staff-action-btn staff-edit-btn" 
             title="Edit"

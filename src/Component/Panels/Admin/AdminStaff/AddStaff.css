@@ -439,3 +439,19 @@
     padding: 0.75rem 1.5rem;
   }
 }
+
+
+
+
+.adminform-group input,
+.adminform-group select,
+.adminform-group textarea {
+  width: 100%;
+  padding: 8px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  background-color: white;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}

@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
+import {baseurl} from "../../../BaseURL/BaseURL"
 import './Invoices.css';
 
 const InvoicesTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [month, setMonth] = useState('July');
   const [year, setYear] = useState('2025');
@@ -15,46 +19,122 @@ const InvoicesTable = () => {
   const [endDate, setEndDate] = useState('2025-07-08');
   const [activeTab, setActiveTab] = useState('Invoices');
 
-  // ✅ Simple flat data (no nested objects)
-  const invoiceData = [
-    { 
-      customerName: "Rajesh Kumar", 
-      number: "INV-001", 
-      totalAmount: "₹ 15,000.00", 
-      payment: "Paid", 
-      created: "2025-07-01" 
-    },
-    { 
-      customerName: "Priya Sharma", 
-      number: "INV-002", 
-      totalAmount: "₹ 25,000.00", 
-      payment: "Pending", 
-      created: "2025-07-02" 
-    },
-    { 
-      customerName: "Amit Patel", 
-      number: "INV-003", 
-      totalAmount: "₹ 18,500.00", 
-      payment: "Paid", 
-      created: "2025-07-03" 
-    },
-    { 
-      customerName: "Sneha Reddy", 
-      number: "INV-004", 
-      totalAmount: "₹ 32,000.00", 
-      payment: "Overdue", 
-      created: "2025-07-04" 
+  // Fetch invoices from API
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
+
+  const fetchInvoices = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${baseurl}/transactions`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch invoices');
+      }
+      
+      const data = await response.json();
+      
+      // Filter transactions where TransactionType is 'Sales'
+      const salesInvoices = data.filter(transaction => 
+        transaction.TransactionType === 'Sales'
+      );
+      
+      // Transform the data to match your table structure
+      const transformedInvoices = salesInvoices.map(invoice => ({
+        id: invoice.VoucherID,
+        customerName: invoice.PartyName || 'N/A',
+        number: `INV-${invoice.VchNo || invoice.VoucherID}`,
+        totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+        payment: getPaymentStatus(invoice),
+        created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
+        originalData: invoice // Keep original data for reference
+      }));
+      
+      setInvoices(transformedInvoices);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching invoices:', err);
+      setError(err.message);
+      setLoading(false);
     }
-  ];
+  };
 
-  const invoiceStats = [
-    { label: "Total Invoices", value: "₹ 1,50,000", change: "+15%", type: "total" },
-    { label: "Paid Invoices", value: "₹ 1,20,000", change: "+12%", type: "paid" },
-    { label: "Pending Invoices", value: "₹ 25,000", change: "+5%", type: "pending" },
-    { label: "Overdue Invoices", value: "₹ 5,000", change: "-3%", type: "overdue" }
-  ];
+  // Helper function to determine payment status
+  const getPaymentStatus = (invoice) => {
+    // You can customize this logic based on your business rules
+    // For now, let's assume if ChequeNo is NULL, it's pending
+    if (invoice.ChequeNo && invoice.ChequeNo !== 'NULL') {
+      return 'Paid';
+    }
+    
+    const invoiceDate = new Date(invoice.Date || invoice.EntryDate);
+    const today = new Date();
+    const daysDiff = Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff > 30) {
+      return 'Overdue';
+    }
+    
+    return 'Pending';
+  };
 
-  // ✅ Columns must map directly to string values, not objects
+  // Calculate stats from actual data
+  const calculateStats = () => {
+    const totalInvoices = invoices.reduce((sum, invoice) => {
+      const amount = parseFloat(invoice.originalData?.TotalAmount || 0);
+      return sum + amount;
+    }, 0);
+
+    const paidInvoices = invoices.filter(inv => inv.payment === 'Paid')
+      .reduce((sum, invoice) => {
+        const amount = parseFloat(invoice.originalData?.TotalAmount || 0);
+        return sum + amount;
+      }, 0);
+
+    const pendingInvoices = invoices.filter(inv => inv.payment === 'Pending')
+      .reduce((sum, invoice) => {
+        const amount = parseFloat(invoice.originalData?.TotalAmount || 0);
+        return sum + amount;
+      }, 0);
+
+    const overdueInvoices = invoices.filter(inv => inv.payment === 'Overdue')
+      .reduce((sum, invoice) => {
+        const amount = parseFloat(invoice.originalData?.TotalAmount || 0);
+        return sum + amount;
+      }, 0);
+
+    return [
+      { 
+        label: "Total Invoices", 
+        value: `₹ ${totalInvoices.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 
+        change: "+15%", 
+        type: "total" 
+      },
+      { 
+        label: "Paid Invoices", 
+        value: `₹ ${paidInvoices.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 
+        change: "+12%", 
+        type: "paid" 
+      },
+      { 
+        label: "Pending Invoices", 
+        value: `₹ ${pendingInvoices.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 
+        change: "+5%", 
+        type: "pending" 
+      },
+      { 
+        label: "Overdue Invoices", 
+        value: `₹ ${overdueInvoices.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 
+        change: "-3%", 
+        type: "overdue" 
+      }
+    ];
+  };
+
+  const invoiceStats = calculateStats();
+
+  // Table columns configuration
   const columns = [
     { key: 'customerName', title: 'CUSTOMER NAME', style: { textAlign: 'left' } },
     { key: 'number', title: 'INVOICE NUMBER', style: { textAlign: 'center' } },
@@ -64,7 +144,7 @@ const InvoicesTable = () => {
       title: 'PAYMENT STATUS',
       style: { textAlign: 'center' },
       render: (value) => {
-        if (typeof value !== 'string') return ''; // ✅ Prevent object rendering
+        if (typeof value !== 'string') return '';
         let badgeClass = '';
         if (value === 'Paid') badgeClass = 'status-badge status-paid';
         else if (value === 'Pending') badgeClass = 'status-badge status-pending';
@@ -93,6 +173,75 @@ const InvoicesTable = () => {
     setActiveTab(tab.name);
     navigate(tab.path);
   };
+
+  // Handle download functionality
+  const handleDownload = async () => {
+    try {
+      // You can implement download logic here
+      console.log('Downloading invoices for:', month, year);
+      // Add your download API call here
+    } catch (err) {
+      console.error('Download error:', err);
+    }
+  };
+
+  // Handle date range download
+  const handleDownloadRange = async () => {
+    try {
+      console.log('Downloading invoices for date range:', startDate, 'to', endDate);
+      // Add your date range download API call here
+    } catch (err) {
+      console.error('Download range error:', err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="admin-layout">
+        <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <div className={`admin-main-content ${isCollapsed ? "collapsed" : ""}`}>
+          <AdminHeader 
+            isCollapsed={isCollapsed} 
+            onToggleSidebar={() => setIsCollapsed(!isCollapsed)}
+            isMobile={window.innerWidth <= 768}
+          />
+          <div className="admin-content-wrapper-sales">
+            <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="admin-layout">
+        <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <div className={`admin-main-content ${isCollapsed ? "collapsed" : ""}`}>
+          <AdminHeader 
+            isCollapsed={isCollapsed} 
+            onToggleSidebar={() => setIsCollapsed(!isCollapsed)}
+            isMobile={window.innerWidth <= 768}
+          />
+          <div className="admin-content-wrapper-sales">
+            <div className="alert alert-danger m-3" role="alert">
+              Error loading invoices: {error}
+              <button 
+                className="btn btn-sm btn-outline-danger ms-3"
+                onClick={fetchInvoices}
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-layout">
@@ -159,7 +308,9 @@ const InvoicesTable = () => {
                   </div>
 
                   <div className="col-md-auto">
-                    <button className="btn btn-success mt-4"><i className="bi bi-download me-1"></i> Download</button>
+                    <button className="btn btn-success mt-4" onClick={handleDownload}>
+                      <i className="bi bi-download me-1"></i> Download
+                    </button>
                   </div>
 
                   <div className="col-md-auto">
@@ -171,7 +322,9 @@ const InvoicesTable = () => {
                   </div>
 
                   <div className="col-md-auto">
-                    <button className="btn btn-success mt-4"><i className="bi bi-download me-1"></i> Download Range</button>
+                    <button className="btn btn-success mt-4" onClick={handleDownloadRange}>
+                      <i className="bi bi-download me-1"></i> Download Range
+                    </button>
                   </div>
 
                   <div className="col-md-auto">
@@ -184,7 +337,7 @@ const InvoicesTable = () => {
                 {/* ✅ Table */}
                 <ReusableTable
                   title="Sales Invoices"
-                  data={invoiceData}
+                  data={invoices}
                   columns={columns}
                   initialEntriesPerPage={10}
                   searchPlaceholder="Search invoices by customer name or number..."
