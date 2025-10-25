@@ -395,7 +395,8 @@ const InvoicePDFPreview = () => {
     // Save current edits back to draft
     localStorage.setItem('draftInvoice', JSON.stringify(editedData));
     // Close this tab and return to create invoice
-    window.close();
+    // window.close();
+    navigate("/sales/invoices")
   };
 
   // Calculate CGST and SGST totals from items
@@ -487,9 +488,9 @@ const InvoicePDFPreview = () => {
                   <Button variant="warning" onClick={handleEditToggle} className="me-2">
                     <FaEdit className="me-1" /> Edit Invoice
                   </Button>
-                  <Button variant="success" onClick={handlePrint} className="me-2">
+                  {/* <Button variant="success" onClick={handlePrint} className="me-2">
                     <FaPrint className="me-1" /> Print
-                  </Button>
+                  </Button> */}
                   <Button 
                     variant="danger" 
                     onClick={handleDownloadPDF} 
