@@ -78,7 +78,8 @@ const InvoicesTable = () => {
   };
 
   // Handle invoice number click to show preview
- const handleInvoiceNumberClick = async (invoice) => {
+ // Handle invoice number click to show preview
+const handleInvoiceNumberClick = async (invoice) => {
   console.log('Opening preview for invoice:', invoice);
   
   try {
@@ -89,7 +90,7 @@ const InvoicesTable = () => {
     }
     
     const invoiceDetails = await response.json();
-    console.log('Invoice details:', invoiceDetails);
+    console.log('Complete invoice details:', invoiceDetails);
 
     // Parse batch details if they exist
     let items = [];
@@ -102,93 +103,57 @@ const InvoicesTable = () => {
         batchDetails = invoiceDetails.batch_details;
       }
       
-      // Transform batch details into items format for the preview with proper GST calculations
-      items = batchDetails.map((batch, index) => {
-        const quantity = parseFloat(batch.quantity) || 1;
-        const price = parseFloat(batch.price) || 0;
-        const subtotal = quantity * price;
-        
-        // Calculate GST breakdown based on the transaction data
-        const gstPercentage = 18; // Default 18% as per your image
-        const gstAmount = subtotal * (gstPercentage / 100);
-        
-        // Determine if same state (CGST/SGST) or different state (IGST)
-        const isSameState = invoiceDetails.IGSTAmount === 0 || !invoiceDetails.IGSTAmount;
-        
-        let cgst, sgst, igst;
-        if (isSameState) {
-          cgst = 9; // 9% each for CGST and SGST
-          sgst = 9;
-          igst = 0;
-        } else {
-          cgst = 0;
-          sgst = 0;
-          igst = 18; // 18% for IGST
-        }
-        
-        return {
-          id: index + 1,
-          product: batch.product || 'Unknown Product',
-          description: batch.description || '',
-          quantity: quantity,
-          price: price,
-          discount: 0,
-          gst: gstPercentage,
-          cgst: cgst,
-          sgst: sgst,
-          igst: igst,
-          cess: 0,
-          total: subtotal + gstAmount,
-          batch: batch.batch || '',
-          batchDetails: batch.batchDetails || null
-        };
-      });
+      // Transform batch details into items format for the preview
+      items = batchDetails.map((batch, index) => ({
+        id: index + 1,
+        product: batch.product || 'Unknown Product',
+        description: batch.description || '',
+        quantity: parseFloat(batch.quantity) || 1,
+        price: parseFloat(batch.price) || 0,
+        discount: 0,
+        gst: 18, // Default GST, you might want to get this from the product
+        cgst: invoiceDetails.taxType === "CGST/SGST" ? 9 : 0,
+        sgst: invoiceDetails.taxType === "CGST/SGST" ? 9 : 0,
+        igst: invoiceDetails.taxType === "IGST" ? 18 : 0,
+        cess: 0,
+        total: (parseFloat(batch.quantity) || 1) * (parseFloat(batch.price) || 0),
+        batch: batch.batch || '',
+        batchDetails: batch.batchDetails || null
+      }));
     } catch (parseError) {
       console.error('Error parsing batch details:', parseError);
-      // Create a fallback item with proper GST calculations
-      const subtotal = invoiceDetails.TotalAmount || 0;
-      const gstPercentage = 18;
-      const gstAmount = subtotal * (gstPercentage / 100);
-      
+      // Create a fallback item from the main invoice data
       items = [{
         id: 1,
         product: 'Product',
-        description: 'Description',
+        description: 'Description not available',
         quantity: 1,
-        price: subtotal,
+        price: invoiceDetails.TotalAmount || 0,
         discount: 0,
-        gst: gstPercentage,
-        cgst: 9,
-        sgst: 9,
-        igst: 0,
+        gst: 18,
+        cgst: invoiceDetails.taxType === "CGST/SGST" ? 9 : 0,
+        sgst: invoiceDetails.taxType === "CGST/SGST" ? 9 : 0,
+        igst: invoiceDetails.taxType === "IGST" ? 18 : 0,
         cess: 0,
-        total: subtotal + gstAmount,
+        total: invoiceDetails.TotalAmount || 0,
         batch: '',
         batchDetails: null
       }];
     }
 
-    // Calculate totals properly
-    const taxableAmount = items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      return sum + (quantity * price);
-    }, 0);
-    
-    const totalGST = items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const subtotal = quantity * price;
-      return sum + (subtotal * (parseFloat(item.gst) / 100));
-    }, 0);
-    
-    const grandTotal = taxableAmount + totalGST;
+    // Calculate GST breakdown
+    const totalCGST = parseFloat(invoiceDetails.CGSTAmount) || 0;
+    const totalSGST = parseFloat(invoiceDetails.SGSTAmount) || 0;
+    const totalIGST = parseFloat(invoiceDetails.IGSTAmount) || 0;
+    const totalGST = totalCGST + totalSGST + totalIGST;
+    const taxableAmount = parseFloat(invoiceDetails.BasicAmount) || parseFloat(invoiceDetails.Subtotal) || 0;
+    const grandTotal = parseFloat(invoiceDetails.TotalAmount) || 0;
 
     // Prepare the data for preview in the same format as CreateInvoice
     const previewData = {
-      invoiceNumber: invoice.number,
-      invoiceDate: invoice.created,
-      dueDate: new Date(new Date(invoice.created).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      invoiceNumber: invoiceDetails.InvoiceNumber || invoiceDetails.VchNo || invoice.number,
+      invoiceDate: invoiceDetails.Date || invoice.created,
+      validityDate: new Date(new Date(invoiceDetails.Date || invoice.created).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
         name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
         address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
@@ -198,56 +163,41 @@ const InvoicesTable = () => {
         state: "Karnataka"
       },
       supplierInfo: {
-        name: invoice.originalData.PartyName || 'John A',
-        businessName: invoice.originalData.AccountName || 'John Traders',
-        state: invoice.originalData.BillingState || invoice.originalData.billing_state || 'Karnataka',
-        gstin: invoice.originalData.GSTIN || invoice.originalData.gstin || 'ZAAACDE1234F225'
+        name: invoiceDetails.PartyName || 'N/A',
+        businessName: invoiceDetails.AccountName || 'N/A',
+        state: invoiceDetails.BillingState || invoiceDetails.billing_state || 'Karnataka',
+        gstin: invoiceDetails.GSTIN || invoiceDetails.gstin || 'ZAAACDE1234F225'
       },
       billingAddress: {
-        addressLine1: invoice.originalData.BillingAddress || invoice.originalData.billing_address_line1 || 'N/A',
-        addressLine2: invoice.originalData.billing_address_line2 || '',
-        city: invoice.originalData.BillingCity || invoice.originalData.billing_city || 'Bangalore',
-        pincode: invoice.originalData.BillingPincode || invoice.originalData.billing_pin_code || '560001',
-        state: invoice.originalData.BillingState || invoice.originalData.billing_state || 'Karnataka'
+        addressLine1: invoiceDetails.BillingAddress || invoiceDetails.billing_address_line1 || '12/A Church Street',
+        addressLine2: invoiceDetails.billing_address_line2 || 'Near Main Square',
+        city: invoiceDetails.BillingCity || invoiceDetails.billing_city || 'Bangalore',
+        pincode: invoiceDetails.BillingPincode || invoiceDetails.billing_pin_code || '560001',
+        state: invoiceDetails.BillingState || invoiceDetails.billing_state || 'Karnataka'
       },
       shippingAddress: {
-        addressLine1: "12/A Church Street",
-        addressLine2: "Near Main Square",
-        city: "Bangalore",
-        pincode: "560001",
-        state: "Karnataka"
+        addressLine1: invoiceDetails.ShippingAddress || invoiceDetails.shipping_address_line1 || invoiceDetails.BillingAddress || invoiceDetails.billing_address_line1 || '12/A Church Street',
+        addressLine2: invoiceDetails.shipping_address_line2 || invoiceDetails.billing_address_line2 || 'Near Main Square',
+        city: invoiceDetails.ShippingCity || invoiceDetails.shipping_city || invoiceDetails.BillingCity || invoiceDetails.billing_city || 'Bangalore',
+        pincode: invoiceDetails.ShippingPincode || invoiceDetails.shipping_pin_code || invoiceDetails.BillingPincode || invoiceDetails.billing_pin_code || '560001',
+        state: invoiceDetails.ShippingState || invoiceDetails.shipping_state || invoiceDetails.BillingState || invoiceDetails.billing_state || 'Karnataka'
       },
       items: items,
-      note: invoice.originalData.Notes || invoice.originalData.notes || 'Thank you for your business! We appreciate your timely payment.',
+      note: invoiceDetails.Notes || invoiceDetails.notes || 'Thank you for your business! We appreciate your timely payment.',
       taxableAmount: taxableAmount,
       totalGST: totalGST,
-      totalCess: invoice.originalData.TotalCess || 0,
+      totalCess: invoiceDetails.TotalCess || 0,
       grandTotal: grandTotal,
-      transportDetails: invoice.originalData.TransportDetails || invoice.originalData.transport_details || 'Standard delivery. Contact us for tracking information.',
-      additionalCharge: invoice.originalData.AdditionalCharge || '',
-      additionalChargeAmount: invoice.originalData.AdditionalChargeAmount || 0,
+      transportDetails: invoiceDetails.TransportDetails || invoiceDetails.transport_details || 'Standard delivery. Contact us for tracking information.',
+      additionalCharge: invoiceDetails.AdditionalCharge || '',
+      additionalChargeAmount: invoiceDetails.AdditionalChargeAmount || 0,
       otherDetails: "Authorized Signatory",
-      taxType: invoice.originalData.IGSTAmount > 0 ? "IGST" : "CGST/SGST",
+      taxType: totalIGST > 0 ? "IGST" : "CGST/SGST",
       batchDetails: batchDetails,
-      // GST Breakdown - Calculate from items or use database values
-      totalCGST: invoice.originalData.CGSTAmount || items.reduce((sum, item) => {
-        const quantity = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.price) || 0;
-        const subtotal = quantity * price;
-        return sum + (subtotal * (parseFloat(item.cgst) / 100));
-      }, 0),
-      totalSGST: invoice.originalData.SGSTAmount || items.reduce((sum, item) => {
-        const quantity = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.price) || 0;
-        const subtotal = quantity * price;
-        return sum + (subtotal * (parseFloat(item.sgst) / 100));
-      }, 0),
-      totalIGST: invoice.originalData.IGSTAmount || items.reduce((sum, item) => {
-        const quantity = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.price) || 0;
-        const subtotal = quantity * price;
-        return sum + (subtotal * (parseFloat(item.igst) / 100));
-      }, 0)
+      // GST Breakdown
+      totalCGST: totalCGST,
+      totalSGST: totalSGST,
+      totalIGST: totalIGST
     };
 
     console.log('Preview data prepared:', previewData);
@@ -260,11 +210,11 @@ const InvoicesTable = () => {
     
   } catch (error) {
     console.error('Error fetching invoice details:', error);
-    // Enhanced fallback with proper structure
+    // Fallback: Create basic preview data with available information
     const fallbackPreviewData = {
       invoiceNumber: invoice.number,
       invoiceDate: invoice.created,
-      dueDate: new Date(new Date(invoice.created).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      validityDate: new Date(new Date(invoice.created).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
         name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
         address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
@@ -280,8 +230,8 @@ const InvoicesTable = () => {
         gstin: 'ZAAACDE1234F225'
       },
       billingAddress: {
-        addressLine1: 'Address not available',
-        addressLine2: '',
+        addressLine1: '12/A Church Street',
+        addressLine2: 'Near Main Square',
         city: 'Bangalore',
         pincode: '560001',
         state: 'Karnataka'
