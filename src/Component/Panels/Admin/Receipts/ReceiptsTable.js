@@ -103,7 +103,7 @@ const ReceiptsTable = () => {
             </div>
           </div>
 
-          <div className="receipts-stats-grid">
+          {/* <div className="receipts-stats-grid">
             {receiptStats.map((stat, index) => (
               <div key={index} className={`receipts-stat-card receipts-stat-card--${stat.type}`}>
                 <h3 className="receipts-stat-label">{stat.label}</h3>
@@ -113,7 +113,7 @@ const ReceiptsTable = () => {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
 
           <div className="receipts-actions-section">
             <div className="quotation-container p-3">

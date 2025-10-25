@@ -149,7 +149,8 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
       const response = await axios.get(`${baseurl}/products/${id}/batches`);
       const mappedBatches = response.data?.length
         ? response.data.map(batch => ({
-            id: batch.id || Date.now() + Math.random(),
+            id: batch.id, // Keep the database ID
+            dbId: batch.id, // Store original DB ID separately
             batchNumber: batch.batch_number || '',
             mfgDate: batch.mfg_date?.split('T')[0] || '',
             expDate: batch.exp_date?.split('T')[0] || '',
@@ -159,9 +160,11 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
             purchasePrice: batch.purchase_price || '',
             mrp: batch.mrp || '',
             batchPrice: batch.batch_price || '',
-            barcode: batch.barcode || ''
+            barcode: batch.barcode || '',
+            isExisting: true // Mark as existing batch
           }))
         : [];
+      console.log('📦 Fetched batches:', mappedBatches);
       setBatches(mappedBatches);
     } catch (error) {
       console.error('Error fetching batches:', error);
@@ -183,7 +186,7 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
         }
       } catch (error) {
         console.error('Error checking barcode:', error);
-        return newBarcode; // Fallback
+        return newBarcode;
       }
     }
     return newBarcode;
@@ -197,27 +200,29 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
       return response.data.batch_number;
     } catch (error) {
       console.error('Error fetching next batch number:', error);
-      return String(Date.now()).padStart(5, '0'); // Fallback
+      return String(Date.now()).padStart(5, '0');
     }
   };
 
-const createDefaultBatch = async () => {
-  const newBarcode = await generateUniqueBarcode();
-  const batchNumber = await fetchNextBatchNumber();
-  return {
-    id: Date.now() + Math.random(), // Temporary ID for frontend rendering only
-    batchNumber,
-    mfgDate: '',
-    expDate: '',
-    quantity: '',
-    costPrice: '',
-    sellingPrice: formData?.price || '',
-    purchasePrice: '',
-    mrp: '',
-    batchPrice: '',
-    barcode: newBarcode
+  const createDefaultBatch = async () => {
+    const newBarcode = await generateUniqueBarcode();
+    const batchNumber = await fetchNextBatchNumber();
+    return {
+      id: `temp_${Date.now()}_${Math.random()}`, // Temporary ID with 'temp_' prefix
+      dbId: null, // No database ID yet
+      batchNumber,
+      mfgDate: '',
+      expDate: '',
+      quantity: '',
+      costPrice: '',
+      sellingPrice: formData?.price || '',
+      purchasePrice: '',
+      mrp: '',
+      batchPrice: '',
+      barcode: newBarcode,
+      isExisting: false // Mark as new batch
+    };
   };
-};
 
   const [formData, setFormData] = useState({
     group_by: groupType,
@@ -291,6 +296,7 @@ const createDefaultBatch = async () => {
 
   const addNewBatch = async () => {
     const newBatch = await createDefaultBatch();
+    console.log('➕ Adding new batch:', newBatch);
     setBatches(prev => [...prev, newBatch]);
   };
 
@@ -307,6 +313,7 @@ const createDefaultBatch = async () => {
     setAlert({ show: true, message, variant });
     setTimeout(() => setAlert({ show: false, message: '', variant: 'success' }), 5000);
   };
+
 const handleSubmit = async (e) => {
   e.preventDefault();
   setIsLoading(true);
@@ -329,9 +336,6 @@ const handleSubmit = async (e) => {
   try {
     const batchesForBackend = maintainBatch
       ? batches.map((batch) => {
-          // Check if this is a new batch (has temporary ID) or existing batch
-          const isNewBatch = !batch.id || isNaN(batch.id) || batch.id.toString().includes('.');
-          
           const batchData = {
             batch_number: batch.batchNumber,
             mfg_date: batch.mfgDate || null,
@@ -343,14 +347,16 @@ const handleSubmit = async (e) => {
             mrp: parseFloat(batch.mrp) || 0,
             batch_price: parseFloat(batch.batchPrice) || 0,
             barcode: batch.barcode,
-            group_by: formData.group_by || 'Salescatalog'
+            group_by: formData.group_by || 'Salescatalog',
+            isExisting: batch.isExisting || false
           };
 
-          // Only include ID for existing batches in the database
-          if (!isNewBatch) {
-            batchData.id = batch.id;
+          // Only include ID for existing batches (not temp IDs)
+          if (batch.isExisting && batch.dbId && !batch.dbId.toString().includes('temp_')) {
+            batchData.id = batch.dbId;
           }
 
+          console.log(`📦 Batch data - ID: ${batch.id}, isExisting: ${batch.isExisting}, sending ID: ${batchData.id}`);
           return batchData;
         })
       : [];
@@ -361,14 +367,18 @@ const handleSubmit = async (e) => {
       batches: batchesForBackend
     };
 
-    console.log('📤 Sending data:', JSON.stringify(dataToSend, null, 2));
+    console.log('📤 Sending data to backend:', JSON.stringify(dataToSend, null, 2));
 
     if (productId) {
       console.log(`🔄 Updating product ID: ${productId}`);
       const response = await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
         headers: { 'Content-Type': 'application/json' }
       });
+      console.log('✅ Update response:', response.data);
       showAlert('Product updated successfully!', 'success');
+      
+      // Refresh the batches after successful update to get real database IDs
+      await fetchBatches(productId);
     } else {
       console.log('➕ Creating new product');
       const response = await axios.post(`${baseurl}/products`, dataToSend, {
@@ -387,6 +397,7 @@ const handleSubmit = async (e) => {
     setIsLoading(false);
   }
 };
+
 
   const pageTitle = productId
     ? `Edit Product in Sales Catalog`
