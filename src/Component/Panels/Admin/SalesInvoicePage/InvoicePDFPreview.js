@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, Row, Col, Button, Form, Table } from 'react-bootstrap';
+import { Container, Row, Col, Button, Form, Table, Alert } from 'react-bootstrap';
 import './InvoicePDFPreview.css';
 import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -22,11 +22,9 @@ const InvoicePDFPreview = () => {
       setInvoiceData(data);
       setEditedData(data);
       
-      // Extract invoice number from the data
       if (data.invoiceNumber) {
         setInvoiceNumber(data.invoiceNumber);
       } else {
-        // Fallback: try to get from localStorage or generate default
         const draftData = localStorage.getItem('draftInvoice');
         if (draftData) {
           const draft = JSON.parse(draftData);
@@ -36,17 +34,14 @@ const InvoicePDFPreview = () => {
         }
       }
     } else {
-      // If no data, try to load from draft
       const draftData = localStorage.getItem('draftInvoice');
       if (draftData) {
         const draft = JSON.parse(draftData);
         setInvoiceData(draft);
         setEditedData(draft);
         setInvoiceNumber(draft.invoiceNumber || 'INV001');
-        // Also save to preview for consistency
         localStorage.setItem('previewInvoice', draftData);
       } else {
-        // If no data, redirect back to create invoice
         window.location.href = '/sales/create-invoice';
       }
     }
@@ -68,7 +63,115 @@ const InvoicePDFPreview = () => {
       const element = invoiceRef.current;
       const filename = `Invoice_${displayInvoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
       
-      // PDF configuration
+      // Create a clone for PDF generation
+      const clone = element.cloneNode(true);
+      
+      // Remove all non-printable elements
+      const nonPrintableElements = clone.querySelectorAll(
+        '.d-print-none, .btn, .alert, .action-bar, .tax-indicator, .no-print, .edit-control'
+      );
+      nonPrintableElements.forEach(el => el.remove());
+      
+      // Ensure all content is visible
+      const hiddenElements = clone.querySelectorAll('[style*="display: none"], .d-none');
+      hiddenElements.forEach(el => {
+        el.style.display = 'block';
+      });
+
+      // Add PDF-specific styles
+      const style = document.createElement('style');
+      style.innerHTML = `
+        @media all {
+          * {
+            -webkit-print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background: white !important;
+            color: black !important;
+          }
+          .invoice-pdf-preview {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 15px !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: white !important;
+          }
+          .table-dark {
+            background-color: #343a40 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact;
+          }
+          .bg-light {
+            background-color: #f8f9fa !important;
+            -webkit-print-color-adjust: exact;
+          }
+          .text-primary { color: #000000 !important; font-weight: bold; }
+          .text-danger { color: #000000 !important; font-weight: bold; }
+          .text-success { color: #000000 !important; font-weight: bold; }
+          .border { border: 1px solid #000000 !important; }
+          .border-bottom { border-bottom: 1px solid #000000 !important; }
+          .border-top { border-top: 1px solid #000000 !important; }
+          .shadow-sm { box-shadow: none !important; }
+          .rounded { border-radius: 0 !important; }
+          
+          /* Ensure table borders are visible */
+          table { 
+            border-collapse: collapse !important;
+            width: 100% !important;
+          }
+          th, td {
+            border: 1px solid #000000 !important;
+            padding: 6px 8px !important;
+          }
+          th {
+            background-color: #343a40 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact;
+          }
+        }
+        
+        @page {
+          margin: 10mm;
+          size: A4 portrait;
+        }
+        
+        @media print {
+          body { 
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+          .invoice-preview-page {
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .invoice-preview-container {
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .invoice-pdf-preview {
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: white !important;
+          }
+          .no-print, .action-bar, .tax-indicator, .btn {
+            display: none !important;
+          }
+        }
+      `;
+      clone.appendChild(style);
+
+      // PDF configuration optimized for better output
       const opt = {
         margin: [10, 10, 10, 10],
         filename: filename,
@@ -79,81 +182,27 @@ const InvoicePDFPreview = () => {
           logging: false,
           letterRendering: true,
           width: element.scrollWidth,
-          height: element.scrollHeight
+          height: element.scrollHeight,
+          backgroundColor: '#FFFFFF',
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: element.scrollWidth,
+          windowHeight: element.scrollHeight
         },
         jsPDF: { 
           unit: 'mm', 
           format: 'a4', 
           orientation: 'portrait',
-          compress: true
+          compress: true,
+          hotfixes: ["px_scaling"]
         },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        pagebreak: { 
+          mode: ['avoid-all', 'css', 'legacy'],
+          before: '.page-break-before',
+          after: '.page-break-after',
+          avoid: '.no-break'
+        }
       };
-
-      // Create a clone of the element to avoid affecting the original
-      const clone = element.cloneNode(true);
-      
-      // Remove edit mode elements and action buttons from clone
-      const editElements = clone.querySelectorAll('.d-print-none, .btn, .alert, .action-bar, .tax-indicator');
-      editElements.forEach(el => el.remove());
-      
-      // Ensure all content is visible for PDF
-      const hiddenElements = clone.querySelectorAll('[style*="display: none"], .d-none');
-      hiddenElements.forEach(el => {
-        el.style.display = 'block';
-      });
-      
-      // Add print-specific styles
-      const style = document.createElement('style');
-      style.innerHTML = `
-        @media print {
-          .invoice-pdf-preview {
-            box-shadow: none !important;
-            border: 1px solid #ddd !important;
-          }
-          .table-dark {
-            background-color: #343a40 !important;
-            color: white !important;
-          }
-          .bg-light {
-            background-color: #f8f9fa !important;
-          }
-          .text-primary {
-            color: #007bff !important;
-          }
-          .text-danger {
-            color: #dc3545 !important;
-          }
-          .text-success {
-            color: #28a745 !important;
-          }
-          .border {
-            border: 1px solid #dee2e6 !important;
-          }
-        }
-        body {
-          font-family: Arial, sans-serif;
-        }
-        .invoice-pdf-preview {
-          width: 100%;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-        th, td {
-          border: 1px solid #ddd;
-          padding: 8px;
-          text-align: left;
-        }
-        .text-end {
-          text-align: right;
-        }
-        .text-center {
-          text-align: center;
-        }
-      `;
-      clone.appendChild(style);
 
       // Generate PDF
       await html2pdf().set(opt).from(clone).save();
@@ -161,135 +210,147 @@ const InvoicePDFPreview = () => {
       setDownloading(false);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Error generating PDF. Please try again or use the Print option.');
-      setDownloading(false);
+      // Fallback to print method
+      handlePrintFallback();
     }
   };
 
-  // Alternative PDF download method using window.print for fallback
-  const handleDownloadPDFFallback = () => {
+  const handlePrintFallback = () => {
+    const originalContent = document.getElementById('invoice-pdf-content').innerHTML;
     const printWindow = window.open('', '_blank');
-    const element = invoiceRef.current;
     
-    if (!element) {
-      alert("Invoice content not found.");
-      return;
-    }
-
-    const clone = element.cloneNode(true);
-    
-    // Remove edit mode elements
-    const editElements = clone.querySelectorAll('.d-print-none, .btn, .alert, .action-bar, .tax-indicator');
-    editElements.forEach(el => el.remove());
-    
-    printWindow.document.write(`
+    const printContent = `
       <!DOCTYPE html>
       <html>
       <head>
         <title>Invoice ${displayInvoiceNumber}</title>
+        <meta charset="utf-8">
         <style>
           body { 
             font-family: Arial, sans-serif; 
-            margin: 20px; 
+            margin: 15px; 
             color: #000;
+            background: white;
+            font-size: 12px;
+            line-height: 1.4;
           }
           .invoice-pdf-preview {
+            width: 100%;
             max-width: 100%;
           }
           .header { 
             border-bottom: 2px solid #333; 
-            padding-bottom: 20px; 
-            margin-bottom: 20px; 
+            padding-bottom: 15px; 
+            margin-bottom: 15px; 
           }
           .company-name { 
-            color: #007bff; 
+            color: #000; 
+            font-weight: bold;
+            font-size: 18px;
             margin-bottom: 5px; 
           }
           .invoice-title { 
-            color: #dc3545; 
+            color: #000; 
+            font-weight: bold;
+            font-size: 20px;
             margin-bottom: 10px; 
           }
           .invoice-meta { 
-            background-color: #f8f9fa; 
-            padding: 15px; 
-            border-radius: 5px; 
+            background-color: #f5f5f5; 
+            padding: 10px; 
+            border: 1px solid #ddd;
           }
           .bg-light { 
-            background-color: #f8f9fa !important; 
+            background-color: #f5f5f5 !important; 
           }
           .table { 
             width: 100%; 
             border-collapse: collapse; 
-            margin-bottom: 20px; 
+            margin-bottom: 15px; 
+            font-size: 11px;
           }
           .table th, .table td { 
-            border: 1px solid #ddd; 
-            padding: 8px; 
+            border: 1px solid #000; 
+            padding: 6px 8px; 
             text-align: left; 
           }
           .table th { 
-            background-color: #343a40 !important; 
+            background-color: #333 !important; 
             color: white; 
+            font-weight: bold;
           }
           .table-dark th {
-            background-color: #343a40 !important;
+            background-color: #333 !important;
             color: white;
           }
           .text-end { text-align: right; }
           .text-center { text-align: center; }
-          .border { border: 1px solid #dee2e6; }
-          .rounded { border-radius: 5px; }
-          .p-2 { padding: 10px; }
-          .p-3 { padding: 15px; }
-          .p-4 { padding: 20px; }
+          .border { border: 1px solid #000; }
+          .p-2 { padding: 8px; }
+          .p-3 { padding: 12px; }
+          .p-4 { padding: 16px; }
           .mb-1 { margin-bottom: 5px; }
-          .mb-2 { margin-bottom: 10px; }
-          .mb-3 { margin-bottom: 15px; }
-          .mb-4 { margin-bottom: 20px; }
-          .mt-2 { margin-top: 10px; }
-          .mt-3 { margin-top: 15px; }
-          .pb-2 { padding-bottom: 10px; }
-          .pt-2 { padding-top: 10px; }
-          .pt-3 { padding-top: 15px; }
-          .border-top { border-top: 1px solid #dee2e6; }
-          .border-bottom { border-bottom: 1px solid #dee2e6; }
+          .mb-2 { margin-bottom: 8px; }
+          .mb-3 { margin-bottom: 12px; }
+          .mb-4 { margin-bottom: 16px; }
+          .mt-2 { margin-top: 8px; }
+          .mt-3 { margin-top: 12px; }
+          .pb-2 { padding-bottom: 8px; }
+          .pt-2 { padding-top: 8px; }
+          .pt-3 { padding-top: 12px; }
+          .border-top { border-top: 1px solid #000; }
+          .border-bottom { border-bottom: 1px solid #000; }
           .fw-bold { font-weight: bold; }
-          .text-primary { color: #007bff; }
-          .text-danger { color: #dc3545; }
-          .text-success { color: #28a745; }
-          .text-muted { color: #6c757d; }
-          .small { font-size: 0.875em; }
-          .row { display: flex; flex-wrap: wrap; margin-right: -15px; margin-left: -15px; }
-          .col-md-6 { flex: 0 0 50%; max-width: 50%; padding: 0 15px; }
-          .col-md-7 { flex: 0 0 58.333333%; max-width: 58.333333%; padding: 0 15px; }
-          .col-md-5 { flex: 0 0 41.666667%; max-width: 41.666667%; padding: 0 15px; }
-          .col-md-8 { flex: 0 0 66.666667%; max-width: 66.666667%; padding: 0 15px; }
-          .col-md-4 { flex: 0 0 33.333333%; max-width: 33.333333%; padding: 0 15px; }
+          .text-primary { color: #000; font-weight: bold; }
+          .text-danger { color: #000; font-weight: bold; }
+          .text-success { color: #000; font-weight: bold; }
+          .text-muted { color: #666; }
+          .small { font-size: 10px; }
+          .row { display: flex; flex-wrap: wrap; margin-right: -10px; margin-left: -10px; }
+          .col-md-6 { flex: 0 0 50%; max-width: 50%; padding: 0 10px; }
+          .col-md-7 { flex: 0 0 58.333333%; max-width: 58.333333%; padding: 0 10px; }
+          .col-md-5 { flex: 0 0 41.666667%; max-width: 41.666667%; padding: 0 10px; }
+          .col-md-8 { flex: 0 0 66.666667%; max-width: 66.666667%; padding: 0 10px; }
+          .col-md-4 { flex: 0 0 33.333333%; max-width: 33.333333%; padding: 0 10px; }
+          .no-print { display: none !important; }
           @media print {
-            body { margin: 0; }
-            .invoice-pdf-preview { box-shadow: none; }
+            body { margin: 0; padding: 0; }
+            .invoice-pdf-preview { box-shadow: none; border: none; }
+            .table th { background-color: #333 !important; -webkit-print-color-adjust: exact; }
+            .bg-light { background-color: #f5f5f5 !important; -webkit-print-color-adjust: exact; }
           }
         </style>
       </head>
       <body>
-        ${clone.outerHTML}
+        <div class="invoice-pdf-preview">
+          ${originalContent
+            .replace(/<div[^>]*class="[^"]*d-print-none[^"]*"[^>]*>.*?<\/div>/gs, '')
+            .replace(/<div[^>]*class="[^"]*action-bar[^"]*"[^>]*>.*?<\/div>/gs, '')
+            .replace(/<div[^>]*class="[^"]*tax-indicator[^"]*"[^>]*>.*?<\/div>/gs, '')
+            .replace(/<button[^>]*>.*?<\/button>/gs, '')
+            .replace(/<input[^>]*>/gs, '')
+            .replace(/<textarea[^>]*>.*?<\/textarea>/gs, '')
+            .replace(/<form[^>]*>.*?<\/form>/gs, '')
+          }
+        </div>
         <script>
           window.onload = function() {
             window.print();
             setTimeout(() => {
               window.close();
-            }, 500);
+            }, 1000);
           };
         </script>
       </body>
       </html>
-    `);
+    `;
+    
+    printWindow.document.write(printContent);
     printWindow.document.close();
   };
 
   const handleEditToggle = () => {
     if (isEditMode) {
-      // Save changes
       setInvoiceData(editedData);
       localStorage.setItem('previewInvoice', JSON.stringify(editedData));
       localStorage.setItem('draftInvoice', JSON.stringify(editedData));
@@ -308,7 +369,6 @@ const InvoicePDFPreview = () => {
       [field]: value
     }));
     
-    // Update invoice number separately if it's being changed
     if (field === 'invoiceNumber') {
       setInvoiceNumber(value);
     }
@@ -331,7 +391,6 @@ const InvoicePDFPreview = () => {
       [field]: value
     };
     
-    // Recalculate item total
     const item = newItems[index];
     const quantity = parseFloat(item.quantity) || 0;
     const price = parseFloat(item.price) || 0;
@@ -351,7 +410,6 @@ const InvoicePDFPreview = () => {
       items: newItems
     }));
     
-    // Recalculate totals
     recalculateTotals(newItems);
   };
 
@@ -392,14 +450,10 @@ const InvoicePDFPreview = () => {
   };
 
   const handleBackToCreate = () => {
-    // Save current edits back to draft
     localStorage.setItem('draftInvoice', JSON.stringify(editedData));
-    // Close this tab and return to create invoice
-    // window.close();
-    navigate("/sales/invoices")
+    window.close();
   };
 
-  // Calculate CGST and SGST totals from items
   const calculateGSTBreakdown = () => {
     if (!currentData || !currentData.items) return { totalCGST: 0, totalSGST: 0, totalIGST: 0 };
     
@@ -471,14 +525,12 @@ const InvoicePDFPreview = () => {
   const currentData = isEditMode ? editedData : invoiceData;
   const gstBreakdown = calculateGSTBreakdown();
   const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
-
-  // Get the current invoice number to display
   const displayInvoiceNumber = currentData.invoiceNumber || invoiceNumber || 'INV001';
 
   return (
     <div className="invoice-preview-page">
       {/* Action Bar */}
-      <div className="action-bar bg-white shadow-sm p-3 mb-3 sticky-top d-print-none">
+      <div className="action-bar bg-white shadow-sm p-3 mb-3 sticky-top d-print-none no-print">
         <Container fluid>
           <div className="d-flex justify-content-between align-items-center">
             <h4 className="mb-0">Invoice Preview - {displayInvoiceNumber}</h4>
@@ -488,9 +540,9 @@ const InvoicePDFPreview = () => {
                   <Button variant="warning" onClick={handleEditToggle} className="me-2">
                     <FaEdit className="me-1" /> Edit Invoice
                   </Button>
-                  {/* <Button variant="success" onClick={handlePrint} className="me-2">
+                  <Button variant="success" onClick={handlePrint} className="me-2">
                     <FaPrint className="me-1" /> Print
-                  </Button> */}
+                  </Button>
                   <Button 
                     variant="danger" 
                     onClick={handleDownloadPDF} 
@@ -531,16 +583,16 @@ const InvoicePDFPreview = () => {
 
       {/* Tax Type Indicator */}
       {currentData.supplierInfo?.state && (
-        <div className="tax-indicator mb-3 d-print-none">
+        <div className="tax-indicator mb-3 d-print-none no-print">
           <Container fluid>
-            <div className={`alert ${isSameState ? 'alert-success' : 'alert-warning'} mb-0`}>
+            <Alert variant={isSameState ? 'success' : 'warning'} className="mb-0">
               <strong>Tax Type: </strong>
               {isSameState ? (
                 <>CGST & SGST (Same State - {currentData.companyInfo.state} to {currentData.supplierInfo.state})</>
               ) : (
                 <>IGST (Inter-State: {currentData.companyInfo.state} to {currentData.supplierInfo.state})</>
               )}
-            </div>
+            </Alert>
           </Container>
         </div>
       )}
@@ -557,7 +609,7 @@ const InvoicePDFPreview = () => {
             <Row>
               <Col md={8}>
                 {isEditMode ? (
-                  <>
+                  <div className="edit-control">
                     <Form.Control 
                       className="mb-2 fw-bold fs-4"
                       value={currentData.companyInfo.name}
@@ -585,7 +637,7 @@ const InvoicePDFPreview = () => {
                       value={currentData.companyInfo.gstin}
                       onChange={(e) => handleNestedChange('companyInfo', 'gstin', e.target.value)}
                     />
-                  </>
+                  </div>
                 ) : (
                   <>
                     <h2 className="company-name text-primary mb-1">{currentData.companyInfo.name}</h2>
@@ -602,7 +654,7 @@ const InvoicePDFPreview = () => {
                 <h3 className="invoice-title text-danger mb-2">TAX INVOICE</h3>
                 <div className="invoice-meta bg-light p-2 rounded">
                   {isEditMode ? (
-                    <>
+                    <div className="edit-control">
                       <div className="mb-1">
                         <strong>Invoice No:</strong>
                         <Form.Control 
@@ -629,7 +681,7 @@ const InvoicePDFPreview = () => {
                           onChange={(e) => handleInputChange('validityDate', e.target.value)}
                         />
                       </div>
-                    </>
+                    </div>
                   ) : (
                     <>
                       <p className="mb-1"><strong>Invoice No:</strong> {displayInvoiceNumber}</p>
@@ -642,7 +694,6 @@ const InvoicePDFPreview = () => {
             </Row>
           </div>
 
-          {/* Rest of your invoice content remains exactly the same */}
           {/* Supplier and Address Details */}
           <div className="address-section mb-4">
             <Row>
@@ -650,7 +701,7 @@ const InvoicePDFPreview = () => {
                 <div className="billing-address bg-light p-3 rounded">
                   <h5 className="text-primary mb-2">Bill To:</h5>
                   {isEditMode ? (
-                    <>
+                    <div className="edit-control">
                       <Form.Control 
                         className="mb-2"
                         value={currentData.supplierInfo.name}
@@ -672,7 +723,7 @@ const InvoicePDFPreview = () => {
                         value={currentData.supplierInfo.state || ''}
                         onChange={(e) => handleNestedChange('supplierInfo', 'state', e.target.value)}
                       />
-                    </>
+                    </div>
                   ) : (
                     <>
                       <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p>
@@ -687,7 +738,7 @@ const InvoicePDFPreview = () => {
                 <div className="shipping-address bg-light p-3 rounded">
                   <h5 className="text-primary mb-2">Ship To:</h5>
                   {isEditMode ? (
-                    <>
+                    <div className="edit-control">
                       <Form.Control 
                         className="mb-2"
                         placeholder="Address Line 1"
@@ -717,7 +768,7 @@ const InvoicePDFPreview = () => {
                         value={currentData.shippingAddress.state || ''}
                         onChange={(e) => handleNestedChange('shippingAddress', 'state', e.target.value)}
                       />
-                    </>
+                    </div>
                   ) : (
                     <>
                       <p className="mb-1">{currentData.shippingAddress.addressLine1 || 'N/A'}</p>
@@ -735,7 +786,7 @@ const InvoicePDFPreview = () => {
           <div className="items-section mb-4">
             <h6 className="text-primary mb-2">Items Details</h6>
             {isEditMode ? (
-              <Table bordered responsive size="sm">
+              <Table bordered responsive size="sm" className="edit-control">
                 <thead className="table-dark">
                   <tr>
                     <th width="5%">#</th>
@@ -887,6 +938,7 @@ const InvoicePDFPreview = () => {
                       rows={3}
                       value={currentData.note || ''}
                       onChange={(e) => handleInputChange('note', e.target.value)}
+                      className="edit-control"
                     />
                   ) : (
                     <p className="bg-light p-2 rounded min-h-100">
@@ -901,6 +953,7 @@ const InvoicePDFPreview = () => {
                       rows={2}
                       value={currentData.transportDetails || ''}
                       onChange={(e) => handleInputChange('transportDetails', e.target.value)}
+                      className="edit-control"
                     />
                   ) : (
                     <p className="bg-light p-2 rounded">
@@ -919,7 +972,6 @@ const InvoicePDFPreview = () => {
                         <td className="text-end pb-2">₹{parseFloat(currentData.taxableAmount || 0).toFixed(2)}</td>
                       </tr>
                       
-                      {/* Show CGST/SGST for same state, IGST for different state */}
                       {isSameState ? (
                         <>
                           <tr>
@@ -962,7 +1014,6 @@ const InvoicePDFPreview = () => {
                     </tbody>
                   </table>
                   
-                  {/* Tax Type Summary */}
                   <div className="mt-3 p-2 border rounded">
                     <small className="text-muted">
                       <strong>Tax Summary: </strong>
