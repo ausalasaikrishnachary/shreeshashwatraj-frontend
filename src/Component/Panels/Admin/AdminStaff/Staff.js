@@ -126,77 +126,77 @@ function Staff() {
   };
 
   // Columns configuration for reusable table
-  const columns = [
-    {
-      key: "serial",
-      title: "#",
-      style: { width: "60px", textAlign: "center" }
-    },
-    {
-      key: "name",
-      title: "Name",
-      render: (item) => <div className="staff-name">{item.name}</div>
-    },
-    {
-      key: "email",
-      title: "Email",
-      render: (item) => <div className="staff-email">{item.email}</div>
-    },
-    {
-      key: "mobile",
-      title: "Mobile",
-      render: (item) => <div className="staff-mobile">{item.mobile}</div>
-    },
-    {
-      key: "role",
-      title: "Role",
-      render: (item) => <span className="role-badge">{item.role}</span>
-    },
-    {
-      key: "status",
-      title: "Status",
-      render: (item) => (
-        <span className={`status-badge status-${item.status.toLowerCase()}`}>
-          {item.status}
+const columns = [
+  {
+    key: "serial",
+    title: "#",
+    style: { width: "60px", textAlign: "center" }
+  },
+  {
+    key: "name",
+    title: "Name",
+    render: (value, row) => <div className="staff-name">{row?.name || "N/A"}</div>
+  },
+  {
+    key: "email",
+    title: "Email",
+    render: (value, row) => <div className="staff-email">{row?.email || "N/A"}</div>
+  },
+  {
+    key: "mobile",
+    title: "Mobile",
+    render: (value, row) => <div className="staff-mobile">{row?.mobile || "N/A"}</div>
+  },
+  {
+    key: "role",
+    title: "Role",
+    render: (value, row) => <span className="role-badge">{row?.role || "Staff"}</span>
+  },
+  {
+    key: "status",
+    title: "Status",
+    render: (value, row) => {
+      const status = row?.status || "Active";
+      return (
+        <span className={`status-badge status-${status.toLowerCase()}`}>
+          {status}
         </span>
-      )
-    },
-    {
-      key: "lastLogin",
-      title: "Last Login",
-      render: (item) => <div className="last-login">{item.lastLogin}</div>
-    },
-    {
-      key: "actions",
-      title: "Actions",
-      render: (item) => (
-       <div className="staff-actions">
-          {/* <button 
-            className="staff-action-btn staff-view-btn" 
-            title="View"
-            onClick={() => handleViewStaff(item.id)}
-          >
-            <FaEye size={16} />
-          </button> */}
+      );
+    }
+  },
+  {
+    key: "lastLogin",
+    title: "Last Login",
+    render: (value, row) => <div className="last-login">{row?.lastLogin || "Never"}</div>
+  },
+  {
+    key: "actions",
+    title: "Actions",
+    render: (value, row) => {
+      if (!row) return null;
+      return (
+        <div className="staff-actions">
           <button 
             className="staff-action-btn staff-edit-btn" 
             title="Edit"
-            onClick={() => handleEditStaff(item.id)}
+            onClick={() => handleEditStaff(row.id)}
           >
             <FaEdit size={16} />
           </button>
           <button 
             className="staff-action-btn staff-delete-btn" 
             title="Delete"
-            onClick={() => handleDeleteStaff(item.id)}
+            onClick={() => handleDeleteStaff(row.id)}
           >
             <FaTrash size={16} />
           </button>
         </div>
-      ),
-      style: { width: "150px", textAlign: "center" }
-    }
-  ];
+      );
+    },
+    style: { width: "150px", textAlign: "center" }
+  }
+];
+
 
   if (loading) {
     return (

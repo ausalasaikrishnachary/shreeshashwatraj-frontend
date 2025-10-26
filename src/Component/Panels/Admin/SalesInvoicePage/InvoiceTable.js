@@ -282,7 +282,7 @@ const handleInvoiceNumberClick = async (invoice) => {
 
   // Table columns configuration
   const columns = [
-    { key: 'customerName', title: 'CUSTOMER NAME', style: { textAlign: 'left' } },
+    { key: 'customerName', title: 'RETAILER NAME', style: { textAlign: 'left' } },
     { 
       key: 'number', 
       title: 'INVOICE NUMBER', 
@@ -311,7 +311,20 @@ const handleInvoiceNumberClick = async (invoice) => {
         return <span className={badgeClass}>{value}</span>;
       }
     },
-    { key: 'created', title: 'CREATED DATE', style: { textAlign: 'center' } }
+{
+  key: 'created',
+  title: 'CREATED DATE',
+  style: { textAlign: 'center' },
+  render: (value, row) => {
+    if (!row?.created) return "-"; // fallback if no date
+    const date = new Date(row.created);
+    return date.toLocaleDateString("en-GB", { 
+      day: "2-digit", 
+      month: "2-digit", 
+      year: "numeric" 
+    });
+  }
+}
   ];
 
   const handleCreateClick = () => navigate("/sales/createinvoice");

@@ -145,35 +145,39 @@ useEffect(() => {
     { title: "Transaction Type", key: "transaction_type" },
     { title: "Description", key: "description" },
     { title: "Date", key: "created_at" },
-    {
-      title: "Actions",
-      key: "actions",
-      render: (item) => (
-        <div className="retailers-table__actions">
-          <button
-            className="retailers-table__action-btn retailers-table__action-btn--view"
-            onClick={() => handleView(item.id)}
-            title="View"
-          >
-            👁️
-          </button>
-          <button
-            className="retailers-table__action-btn retailers-table__action-btn--edit"
-            onClick={() => handleEdit(item.id)}
-            title="Edit"
-          >
-            ✏️
-          </button>
-          <button
-            className="retailers-table__action-btn retailers-table__action-btn--delete"
-            onClick={() => handleDelete(item.id, item.retailer_name || item.staff_name)}
-            title="Delete"
-          >
-            🗑️
-          </button>
-        </div>
-      ),
-    },
+ {
+  title: "Actions",
+  key: "actions",
+  render: (value, row) => {
+    if (!row) return null; // safeguard
+    return (
+      <div className="retailers-table__actions">
+        <button
+          className="retailers-table__action-btn retailers-table__action-btn--view"
+          onClick={() => handleView(row.id)}
+          title="View"
+        >
+          👁️
+        </button>
+        <button
+          className="retailers-table__action-btn retailers-table__action-btn--edit"
+          onClick={() => handleEdit(row.id)}
+          title="Edit"
+        >
+          ✏️
+        </button>
+        <button
+          className="retailers-table__action-btn retailers-table__action-btn--delete"
+          onClick={() => handleDelete(row.id, row.retailer_name || row.staff_name)}
+          title="Delete"
+        >
+          🗑️
+        </button>
+      </div>
+    );
+  },
+}
+
   ];
 
   const renderViewMode = () => (

@@ -22,6 +22,11 @@ const ReceiptsTable = () => {
   const [endDate, setEndDate] = useState('2025-07-08');
   const [activeTab, setActiveTab] = useState('Receipts');
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+
   const [formData, setFormData] = useState({
     receiptNumber: 'REC001',
     retailerId: '',
@@ -42,28 +47,56 @@ const ReceiptsTable = () => {
     { label: 'Digital Receipts', value: '₹ 20,000', change: '+25%', type: 'digital' }
   ];
 
-  const columns = [
-    { key: 'payee', title: 'PAYEE', style: { textAlign: 'left' } },
-    { key: 'receipt_number', title: 'RECEIPT NUMBER', style: { textAlign: 'center' } },
-    { key: 'amount', title: 'AMOUNT', style: { textAlign: 'right' } },
-    { key: 'payment_method', title: 'PAYMENT METHOD', style: { textAlign: 'center' } },
-    { key: 'receipt_date', title: 'DATE', style: { textAlign: 'center' } },
-    {
-      key: 'actions',
-      title: 'ACTIONS',
-      style: { textAlign: 'center' },
-      render: (item) => (
-        <div>
-          <button className="btn btn-sm btn-outline-primary me-1" onClick={() => handleViewReceipt(item.id)}>
-            View
-          </button>
-          <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteReceipt(item.id)}>
-            Delete
-          </button>
-        </div>
-      )
-    }
-  ];
+const columns = [
+  { 
+    key: 'payee', 
+    title: 'Retailer Name', 
+    style: { textAlign: 'left' },
+   render: (value, row) => {
+  const businessName =
+    row?.retailer?.business_name ||
+    row?.payee_name ||
+    row?.retailer_name ||
+    'N/A';
+
+  return businessName;
+}
+
+  },
+  { 
+    key: 'receipt_number', 
+    title: 'RECEIPT NUMBER', 
+    style: { textAlign: 'center' },
+    render: (value, row) => (
+      <button
+        className="btn btn-link p-0 text-primary text-decoration-none"
+        onClick={() => handleViewReceipt(row.id)}
+        title="Click to view receipt"
+      >
+        {value || 'N/A'}
+      </button>
+    )
+  },
+  { 
+    key: 'amount', 
+    title: 'AMOUNT', 
+    style: { textAlign: 'right' },
+    render: (value) => value || '₹ 0.00'
+  },
+  { 
+    key: 'payment_method', 
+    title: 'PAYMENT METHOD', 
+    style: { textAlign: 'center' },
+    render: (value) => value || 'N/A'
+  },
+  { 
+    key: 'receipt_date', 
+    title: 'DATE', 
+    style: { textAlign: 'center' },
+    render: (value) => value || 'N/A'
+  }
+];
+
 
   const tabs = [
     { name: 'Invoices', path: '/sales/invoices' },
@@ -74,6 +107,11 @@ const ReceiptsTable = () => {
     { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
     { name: 'Receivables', path: '/sales/receivables' }
   ];
+
+  // Calculate pagination values
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
 
   // Fetch next receipt number
   const fetchNextReceiptNumber = async () => {
@@ -141,7 +179,7 @@ const ReceiptsTable = () => {
     }
   };
 
-  // Fetch all receipts
+  // Fetch all receipts with pagination
   const fetchReceipts = async () => {
     try {
       setIsLoading(true);
@@ -150,15 +188,33 @@ const ReceiptsTable = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('Received receipts data:', data);
-        const transformedData = data.map(receipt => ({
+        
+        // Sort data in descending order by receipt_date or id
+        const sortedData = data.sort((a, b) => {
+          // Sort by receipt_date descending, then by id descending
+          const dateA = new Date(a.receipt_date || a.created_at);
+          const dateB = new Date(b.receipt_date || b.created_at);
+          return dateB - dateA || b.id - a.id;
+        });
+
+        // Transform data with proper retailer object handling
+        const transformedData = sortedData.map(receipt => ({
           ...receipt,
-          id: receipt.id,
-          payee: receipt.payee_name || receipt.retailer_name || 'N/A',
+          id: receipt.id || '',
+          // Ensure retailer object exists and has business_name
+          retailer: receipt.retailer || { 
+            business_name: receipt.payee_name || receipt.retailer_name || 'N/A' 
+          },
+          payee: receipt.retailer?.business_name || receipt.payee_name || receipt.retailer_name || 'N/A',
           amount: `₹ ${parseFloat(receipt.amount || 0).toLocaleString('en-IN')}`,
           receipt_date: receipt.receipt_date ? new Date(receipt.receipt_date).toLocaleDateString('en-IN') : 'N/A',
           payment_method: receipt.payment_method || 'N/A'
         }));
+
+        console.log('Transformed receipts data:', transformedData);
+        
         setReceiptData(transformedData);
+        setTotalItems(transformedData.length);
       } else {
         console.error('Failed to fetch receipts. Status:', response.status);
         alert('Failed to load receipts. Please try again later.');
@@ -169,6 +225,11 @@ const ReceiptsTable = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Get current page data
+  const getCurrentPageData = () => {
+    return receiptData.slice(startIndex, endIndex);
   };
 
   // Fetch accounts for retailer dropdown
@@ -192,8 +253,19 @@ const ReceiptsTable = () => {
     console.log('Component mounted, fetching initial data...');
     fetchAccounts();
     fetchReceipts();
-    fetchNextReceiptNumber(); // Fetch receipt number on mount
+    fetchNextReceiptNumber();
   }, []);
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Handle items per page change
+  const handleItemsPerPageChange = (items) => {
+    setItemsPerPage(items);
+    setCurrentPage(1); // Reset to first page when items per page changes
+  };
 
   // Tab navigation
   const handleTabClick = (tab) => {
@@ -241,90 +313,100 @@ const ReceiptsTable = () => {
   };
 
   // Create new receipt
-  const handleCreateReceipt = async () => {
-    // Validation
-    if (!formData.retailerId) {
-      alert('Please select a retailer');
-      return;
-    }
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      alert('Please enter a valid amount');
-      return;
-    }
-    if (!formData.receiptDate) {
-      alert('Please select a receipt date');
-      return;
-    }
+ // Create new receipt
+const handleCreateReceipt = async () => {
+  // Validation
+  if (!formData.retailerId) {
+    alert('Please select a retailer');
+    return;
+  }
+  if (!formData.amount || parseFloat(formData.amount) <= 0) {
+    alert('Please enter a valid amount');
+    return;
+  }
+  if (!formData.receiptDate) {
+    alert('Please select a receipt date');
+    return;
+  }
 
-    try {
-      setIsLoading(true);
-      const receiptPayload = {
-        receipt_number: formData.receiptNumber,
-        retailer_id: formData.retailerId,
-        amount: parseFloat(formData.amount),
-        currency: formData.currency,
-        payment_method: formData.paymentMethod,
-        receipt_date: formData.receiptDate,
-        note: formData.note,
-        bank_name: formData.bankName,
-        transaction_date: formData.transactionDate || null,
-        reconciliation_option: formData.reconciliationOption,
-     
-      };
+  try {
+    setIsLoading(true);
+    const receiptPayload = {
+      receipt_number: formData.receiptNumber,
+      retailer_id: formData.retailerId,
+      amount: parseFloat(formData.amount),
+      currency: formData.currency,
+      payment_method: formData.paymentMethod,
+      receipt_date: formData.receiptDate,
+      note: formData.note,
+      bank_name: formData.bankName,
+      transaction_date: formData.transactionDate || null,
+      reconciliation_option: formData.reconciliationOption,
+    };
 
-      console.log('Sending receipt data:', receiptPayload);
-      console.log('API endpoint:', `${baseurl}/api/receipts`);
+    console.log('Sending receipt data:', receiptPayload);
+    console.log('API endpoint:', `${baseurl}/api/receipts`);
 
-      const response = await fetch(`${baseurl}/api/receipts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(receiptPayload),
-      });
+    const response = await fetch(`${baseurl}/api/receipts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(receiptPayload),
+    });
 
-      console.log('Response status:', response.status);
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Receipt created successfully:', result);
-        await fetchReceipts(); // Refresh the receipts list
-        handleCloseModal(); // Close modal
-        alert('Receipt created successfully!');
-        await fetchNextReceiptNumber(); // Fetch the next receipt number
+    console.log('Response status:', response.status);
+    if (response.ok) {
+      const result = await response.json();
+      console.log('Receipt created successfully:', result);
+      await fetchReceipts(); // Refresh the receipts list
+      handleCloseModal(); // Close modal
+      alert('Receipt created successfully!');
+      
+      // Navigate to the ReceiptView page with the new receipt's ID
+      if (result.id) {
+        navigate(`/receipts_view/${result.id}`);
       } else {
-        const errorText = await response.text();
-        console.error('Failed to create receipt. Status:', response.status);
-        console.error('Error response:', errorText);
-        let errorMessage = 'Failed to create receipt. ';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage += errorData.error || 'Please try again.';
-          if (errorData.error.includes('already exists')) {
-            // Handle duplicate receipt number
-            console.log('Duplicate receipt number detected, fetching new number...');
-            await fetchNextReceiptNumber();
-            errorMessage += ' A new receipt number has been generated. Please try again.';
-          }
-        } catch {
-          errorMessage += 'Please try again.';
-        }
-        alert(errorMessage);
+        console.error('No ID returned in response');
+        alert('Receipt created, but unable to view details. Please check the receipt list.');
       }
-    } catch (err) {
-      console.error('Error creating receipt:', err);
-      alert('Network error. Please check your connection and try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  // View receipt details
-// In ReceiptsTable.js, replace the handleViewReceipt function:
-const handleViewReceipt = (receiptId) => {
-  console.log('View receipt:', receiptId);
-  navigate(`/receipts_view/${receiptId}`);
+      await fetchNextReceiptNumber(); // Fetch the next receipt number
+      setCurrentPage(1); // Go to first page to see the new receipt
+    } else {
+      const errorText = await response.text();
+      console.error('Failed to create receipt. Status:', response.status);
+      console.error('Error response:', errorText);
+      let errorMessage = 'Failed to create receipt. ';
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage += errorData.error || 'Please try again.';
+        if (errorData.error.includes('already exists')) {
+          // Handle duplicate receipt number
+          console.log('Duplicate receipt number detected, fetching new number...');
+          await fetchNextReceiptNumber();
+          errorMessage += ' A new receipt number has been generated. Please try again.';
+        }
+      } catch {
+        errorMessage += 'Please try again.';
+      }
+      alert(errorMessage);
+    }
+  } catch (err) {
+    console.error('Error creating receipt:', err);
+    alert('Network error. Please check your connection and try again.');
+  } finally {
+    setIsLoading(false);
+  }
 };
 
+  // View receipt details
+  const handleViewReceipt = (receiptId) => {
+    console.log('View receipt:', receiptId);
+    navigate(`/receipts_view/${receiptId}`);
+  };
+
+  
   // Delete receipt
   const handleDeleteReceipt = async (receiptId) => {
     if (window.confirm('Are you sure you want to delete this receipt?')) {
@@ -336,6 +418,10 @@ const handleViewReceipt = (receiptId) => {
           alert('Receipt deleted successfully!');
           await fetchReceipts(); // Refresh the list
           await fetchNextReceiptNumber(); // Re-fetch in case deletion affects sequence
+          // If current page becomes empty after deletion, go to previous page
+          if (getCurrentPageData().length === 0 && currentPage > 1) {
+            setCurrentPage(currentPage - 1);
+          }
         } else {
           alert('Failed to delete receipt. Please try again.');
         }
@@ -356,6 +442,97 @@ const handleViewReceipt = (receiptId) => {
   const handleDownloadRange = () => {
     alert(`Downloading receipts from ${startDate} to ${endDate}`);
     // Implement download logic here
+  };
+
+  // Custom Pagination Component
+  const Pagination = () => {
+    const pageNumbers = [];
+    const maxPageNumbers = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxPageNumbers / 2));
+    let endPage = Math.min(totalPages, startPage + maxPageNumbers - 1);
+    
+    if (endPage - startPage + 1 < maxPageNumbers) {
+      startPage = Math.max(1, endPage - maxPageNumbers + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    return (
+      <div className="d-flex justify-content-between align-items-center mt-3">
+        <div className="text-muted">
+          Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} entries
+        </div>
+        <div className="d-flex align-items-center">
+          <select
+            className="form-select form-select-sm me-2"
+            style={{ width: 'auto' }}
+            value={itemsPerPage}
+            onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+
+          <nav>
+            <ul className="pagination pagination-sm mb-0">
+              <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                <button
+                  className="page-link"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+              </li>
+
+              {startPage > 1 && (
+                <>
+                  <li className="page-item">
+                    <button className="page-link" onClick={() => handlePageChange(1)}>1</button>
+                  </li>
+                  {startPage > 2 && <li className="page-item disabled"><span className="page-link">...</span></li>}
+                </>
+              )}
+
+              {pageNumbers.map(number => (
+                <li key={number} className={`page-item ${currentPage === number ? 'active' : ''}`}>
+                  <button className="page-link" onClick={() => handlePageChange(number)}>
+                    {number}
+                  </button>
+                </li>
+              ))}
+
+              {endPage < totalPages && (
+                <>
+                  {endPage < totalPages - 1 && <li className="page-item disabled"><span className="page-link">...</span></li>}
+                  <li className="page-item">
+                    <button className="page-link" onClick={() => handlePageChange(totalPages)}>
+                      {totalPages}
+                    </button>
+                  </li>
+                </>
+              )}
+
+              <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                <button
+                  className="page-link"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -489,15 +666,18 @@ const handleViewReceipt = (receiptId) => {
               {/* Receipts Table */}
               <ReusableTable
                 title="Receipts"
-                data={receiptData}
+                data={getCurrentPageData()} // Use paginated data
                 columns={columns}
-                initialEntriesPerPage={10}
+                initialEntriesPerPage={itemsPerPage}
                 searchPlaceholder="Search receipts..."
                 showSearch={true}
-                showEntriesSelector={true}
-                showPagination={true}
+                showEntriesSelector={false} // We'll use our custom selector
+                showPagination={false} // We'll use our custom pagination
                 isLoading={isLoading}
               />
+
+              {/* Custom Pagination */}
+              {receiptData.length > 0 && <Pagination />}
             </div>
           </div>
 
@@ -580,11 +760,13 @@ const handleViewReceipt = (receiptId) => {
                             required
                           >
                             <option value="">Select Retailer</option>
-                            {accounts.map((acc) => (
-                              <option key={acc.id} value={acc.id}>
-                                {acc.name}
-                              </option>
-                            ))}
+                            {accounts
+                              .filter(acc => acc.role === "retailer" && acc.business_name)
+                              .map((acc) => (
+                                <option key={acc.id} value={acc.id}>
+                                  {acc.business_name}
+                                </option>
+                              ))}
                           </select>
                         </div>
                       </div>
