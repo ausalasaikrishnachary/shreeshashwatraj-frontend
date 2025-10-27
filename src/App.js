@@ -126,6 +126,7 @@ import PayablesTable from "./Component/Panels/Admin/Payables/Payables";
 import InvoicePDFPreview from './Component/Panels/Admin/SalesInvoicePage/InvoicePDFPreview';
 import PurchasePDFPreview from "./Component/Panels/Admin/PurchaseInvoicePage/PurchasePDFPreview";
 import ReceiptView from "./Component/Panels/Admin/Receipts/Receiptsview";
+import AddUnitModal from "./Component/Panels/Admin/Inventory/Sales_catalogue/AddUnitsModal";
 
 
 function App() {
@@ -234,6 +235,7 @@ function App() {
 <Route path="/admin_expensive/edit/:id" element={<AdminExpensiveRequest mode="edit"/>} />
 <Route path="/salesitems_productdetails/:id" element={<Salesitems_productsdetails />} />
 <Route path="/receipts_view/:id" element={<ReceiptView />} />
+<Route path="/addunitsmodal" element={<AddUnitModal />} />
 
 
 

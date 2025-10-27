@@ -3,6 +3,7 @@ import { Button, Form, Alert, Spinner } from 'react-bootstrap';
 import { BsPlus } from 'react-icons/bs';
 import AddCompanyModal from './AddCompanyModal';
 import AddCategoryModal from '../PurchasedItems/AddCategoryModal';
+import AddUnitModal from './AddUnitsModal';
 import axios from 'axios';
 import { baseurl } from './../../../../BaseURL/BaseURL';
 import AdminSidebar from './../../../../Shared/AdminSidebar/AdminSidebar';
@@ -25,6 +26,8 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+const [unitOptions, setUnitOptions] = useState([]);
+const [showUnitModal, setShowUnitModal] = useState(false);
 
   // Tax calculation function
   const calculateTaxAndNetPrice = (price, gstRate, inclusiveGst) => {
@@ -50,9 +53,22 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     }
   };
 
+const fetchUnits = async () => {
+  try {
+    const response = await axios.get(`${baseurl}/units`);
+    setUnitOptions(response.data);
+  } catch (error) {
+    console.error('Error fetching units:', error);
+    showAlert('Error fetching units', 'danger');
+  }
+};
+
+
+
   useEffect(() => {
     fetchCategories();
     fetchCompanies();
+     fetchUnits(); // <-- fetch units dynamically
   }, []);
 
   useEffect(() => {
@@ -579,19 +595,33 @@ const handleSubmit = async (e) => {
                 </div>
 
                 <div className="row mb-3">
-                  <div className="col">
-                    <Form.Label>Unit</Form.Label>
-                    <Form.Select
-                      name="unit"
-                      value={formData.unit}
-                      onChange={handleChange}
-                    >
-                      <option value="UNT-UNITS">UNT-UNITS</option>
-                      <option value="KG-Kilograms">KG-Kilograms</option>
-                      <option value="L-Liters">L-Liters</option>
-                      <option value="M-Meters">M-Meters</option>
-                    </Form.Select>
-                  </div>
+  <div className="col">
+  <Form.Label>Unit *</Form.Label>
+  <div className="d-flex">
+    <Form.Select
+      className="me-1"
+      name="unit"
+      value={formData.unit}
+      onChange={handleChange}
+      required
+    >
+      <option value="">Select Unit</option>
+      {unitOptions.map((unit) => (
+        <option key={unit.id} value={unit.name}>
+          {unit.name}
+        </option>
+      ))}
+    </Form.Select>
+    <Button
+      variant="outline-primary"
+      size="sm"
+      onClick={() => setShowUnitModal(true)}
+    >
+      <BsPlus />
+    </Button>
+  </div>
+</div>
+
                   <div className="col">
                     <Form.Label>CESS Rate %</Form.Label>
                     <Form.Control
@@ -880,6 +910,17 @@ const handleSubmit = async (e) => {
                   setShowCategoryModal(false);
                 }}
               />
+
+              <AddUnitModal
+  show={showUnitModal}
+  onClose={() => setShowUnitModal(false)}
+  onSave={(newUnit) => {
+    fetchUnits(); // reload units
+    setFormData((prev) => ({ ...prev, unit: newUnit.name }));
+    setShowUnitModal(false);
+  }}
+/>
+
             </div>
           </div>
         </div>

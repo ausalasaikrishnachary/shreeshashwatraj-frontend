@@ -10,6 +10,7 @@ const ReceiptView = () => {
   const [receipt, setReceipt] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [retailerDetails, setRetailerDetails] = useState(null);
 
   useEffect(() => {
     fetchReceipt();
@@ -41,6 +42,25 @@ const ReceiptView = () => {
   const handleBack = () => {
     navigate('/sales/receipts');
   };
+
+
+  useEffect(() => {
+  if (receipt && receipt.retailer_id) {
+    fetchRetailerDetails(receipt.retailer_id);
+  }
+}, [receipt]);
+
+  const fetchRetailerDetails = async (retailerId) => {
+  try {
+    const response = await fetch(`${baseurl}/accounts/${retailerId}`);
+    if (response.ok) {
+      const retailerData = await response.json();
+      setRetailerDetails(retailerData);
+    }
+  } catch (err) {
+    console.error('Error fetching retailer details:', err);
+  }
+};
 
   if (isLoading) {
     return (
@@ -114,14 +134,17 @@ const ReceiptView = () => {
           </div>
 
           {/* Company Information */}
-          <div className="receipt-company-info">
-            <h3 className="company-name">Market Experts</h3>
-            <div className="company-details">
-              <p><strong>Phone:</strong> 91 7360705070</p>
-              <p><strong>Email:</strong> sales.taa@apache.com</p>
-              <p><strong>GST:</strong> 29A4JCC420501ZX</p>
-            </div>
-          </div>
+         {/* Company Information */}
+<div className="receipt-company-info">
+  <h3 className="company-name">
+    {retailerDetails?.business_name || receipt.retailer_business_name || 'Market Experts'}
+  </h3>
+  <div className="company-details">
+    <p><strong>Phone:</strong> {retailerDetails?.mobile_number || receipt.retailer_mobile || '91 7360705070'}</p>
+    <p><strong>Email:</strong> {retailerDetails?.email || receipt.retailer_email || 'sales.taa@apache.com'}</p>
+    <p><strong>GST:</strong> {retailerDetails?.gstin || receipt.retailer_gstin || '29A4JCC420501ZX'}</p>
+  </div>
+</div>
 
           {/* Payment Information */}
           <div className="receipt-payment-info">
