@@ -193,6 +193,8 @@ function App() {
 
         <Route path="/purchase/purchase-invoice" element={<PurchaseInvoiceTable />} />
         <Route path="/purchase/create-purchase-invoice" element={<CreatePurchaseInvoiceForm />} />
+          <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
+
         <Route path="/purchase/purchase-order" element={<PurchaseOrderTable />} />
         <Route path="/purchase/voucher" element={<VoucherTable />} />
         <Route path="/purchase/debit-note" element={<DebitNoteTable />} />

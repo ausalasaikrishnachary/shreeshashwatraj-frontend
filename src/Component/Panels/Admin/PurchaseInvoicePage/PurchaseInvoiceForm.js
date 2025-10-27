@@ -7,7 +7,7 @@ import { FaEdit, FaTrash, FaEye } from "react-icons/fa";
 import { baseurl } from '../../../BaseURL/BaseURL';
 import { useNavigate } from "react-router-dom";
 
-const CreatePurchaseInvoice = ({ user }) => {
+const CreateProductInvoice = ({ user }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [inputName, setInputName] = useState("");
   const [selected, setSelected] = useState(false);
@@ -17,16 +17,20 @@ const CreatePurchaseInvoice = ({ user }) => {
   const [selectedBatchDetails, setSelectedBatchDetails] = useState(null);
   const [products, setProducts] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [nextInvoiceNumber, setNextInvoiceNumber] = useState("PINV001");
+  const [isPreviewReady, setIsPreviewReady] = useState(false);
+  const [hasFetchedInvoiceNumber, setHasFetchedInvoiceNumber] = useState(false);
   const navigate = useNavigate();
 
   // Load from localStorage on component mount
   const [invoiceData, setInvoiceData] = useState(() => {
     const savedData = localStorage.getItem('draftPurchaseInvoice');
     if (savedData) {
-      return JSON.parse(savedData);
+      const parsedData = JSON.parse(savedData);
+      return parsedData;
     }
     return {
-      invoiceNumber: "PUR" + Math.floor(Math.random() * 1000),
+      invoiceNumber: "PINV001",
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
@@ -92,6 +96,93 @@ const CreatePurchaseInvoice = ({ user }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
+  // Fetch next invoice number on component mount
+  useEffect(() => {
+    fetchNextInvoiceNumber();
+  }, []);
+
+  const fetchNextInvoiceNumber = async () => {
+    try {
+      console.log('Fetching next purchase invoice number...');
+      const response = await fetch(`${baseurl}/next-purchase-invoice-number`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Received next purchase invoice number:', data.nextInvoiceNumber);
+        setNextInvoiceNumber(data.nextInvoiceNumber);
+        
+        setInvoiceData(prev => ({
+          ...prev,
+          invoiceNumber: data.nextInvoiceNumber
+        }));
+        
+        setHasFetchedInvoiceNumber(true);
+        
+        const currentDraft = localStorage.getItem('draftPurchaseInvoice');
+        if (currentDraft) {
+          const draftData = JSON.parse(currentDraft);
+          draftData.invoiceNumber = data.nextInvoiceNumber;
+          localStorage.setItem('draftPurchaseInvoice', JSON.stringify(draftData));
+        }
+      } else {
+        console.error('Failed to fetch next purchase invoice number');
+        generateFallbackInvoiceNumber();
+      }
+    } catch (err) {
+      console.error('Error fetching next purchase invoice number:', err);
+      generateFallbackInvoiceNumber();
+    }
+  };
+
+  const generateFallbackInvoiceNumber = async () => {
+    try {
+      const response = await fetch(`${baseurl}/last-purchase-invoice`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.lastInvoiceNumber) {
+          const lastNumber = data.lastInvoiceNumber;
+          const numberMatch = lastNumber.match(/PINV(\d+)/);
+          if (numberMatch) {
+            const nextNum = parseInt(numberMatch[1]) + 1;
+            const fallbackInvoiceNumber = `PINV${nextNum.toString().padStart(3, '0')}`;
+            setNextInvoiceNumber(fallbackInvoiceNumber);
+            setInvoiceData(prev => ({
+              ...prev,
+              invoiceNumber: fallbackInvoiceNumber
+            }));
+            setHasFetchedInvoiceNumber(true);
+            return;
+          }
+        }
+      }
+      
+      const currentDraft = localStorage.getItem('draftPurchaseInvoice');
+      if (currentDraft) {
+        const draftData = JSON.parse(currentDraft);
+        if (draftData.invoiceNumber && draftData.invoiceNumber !== 'PINV001') {
+          setNextInvoiceNumber(draftData.invoiceNumber);
+          setHasFetchedInvoiceNumber(true);
+          return;
+        }
+      }
+      
+      setNextInvoiceNumber('PINV001');
+      setInvoiceData(prev => ({
+        ...prev,
+        invoiceNumber: 'PINV001'
+      }));
+      setHasFetchedInvoiceNumber(true);
+      
+    } catch (err) {
+      console.error('Error in fallback purchase invoice number generation:', err);
+      setNextInvoiceNumber('PINV001');
+      setInvoiceData(prev => ({
+        ...prev,
+        invoiceNumber: 'PINV001'
+      }));
+      setHasFetchedInvoiceNumber(true);
+    }
+  };
+
   // Check if states are same for GST calculation
   const isSameState = () => {
     const companyState = invoiceData.companyInfo.state;
@@ -106,8 +197,10 @@ const CreatePurchaseInvoice = ({ user }) => {
 
   // Save to localStorage whenever invoiceData changes
   useEffect(() => {
-    localStorage.setItem('draftPurchaseInvoice', JSON.stringify(invoiceData));
-  }, [invoiceData]);
+    if (hasFetchedInvoiceNumber) {
+      localStorage.setItem('draftPurchaseInvoice', JSON.stringify(invoiceData));
+    }
+  }, [invoiceData, hasFetchedInvoiceNumber]);
 
   // Update tax type when supplier info changes
   useEffect(() => {
@@ -122,27 +215,22 @@ const CreatePurchaseInvoice = ({ user }) => {
     }
   }, [invoiceData.supplierInfo.state, invoiceData.companyInfo.state]);
 
-  // Open PDF preview in new tab
+  // Open PDF preview - ONLY after form is submitted
   const handlePreview = () => {
-    if (!invoiceData.supplierInfo.name) {
-      setError("Please select a supplier before preview");
+    if (!isPreviewReady) {
+      setError("Please submit the purchase invoice first to generate preview");
       setTimeout(() => setError(null), 3000);
       return;
     }
 
-    if (invoiceData.items.length === 0) {
-      setError("Please add at least one item before preview");
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    localStorage.setItem('previewPurchaseInvoice', JSON.stringify(invoiceData));
+    const previewData = {
+      ...invoiceData,
+      invoiceNumber: invoiceData.invoiceNumber || nextInvoiceNumber
+    };
     
-    const newWindow = window.open('/purchase/invoice-preview', '_blank');
-    if (!newWindow) {
-      setError("Please allow popups for this site to view PDF preview");
-      setTimeout(() => setError(null), 5000);
-    }
+    localStorage.setItem('previewPurchaseInvoice', JSON.stringify(previewData));
+    
+    navigate("/purchase/invoice-preview");
   };
 
   const handleItemChange = (e) => {
@@ -153,27 +241,45 @@ const CreatePurchaseInvoice = ({ user }) => {
     }));
   };
 
+  // Fetch products - Filter by Purchaseditems
   useEffect(() => {
     const fetchProducts = async () => {
       try {
+        console.log('Fetching products for purchase invoice...');
         const res = await fetch(`${baseurl}/products`);
-        const data = await res.json();
-        setProducts(data);
+        if (res.ok) {
+          const data = await res.json();
+          console.log('All products fetched:', data);
+          setProducts(data);
+        } else {
+          console.error('Failed to fetch products');
+          setError('Failed to load products');
+        }
       } catch (err) {
         console.error("Failed to fetch products:", err);
+        setError('Failed to load products');
       }
     };
     fetchProducts();
   }, []);
 
+  // Fetch suppliers
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
+        console.log('Fetching suppliers for purchase invoice...');
         const res = await fetch(`${baseurl}/accounts`);
-        const data = await res.json();
-        setAccounts(data);
+        if (res.ok) {
+          const data = await res.json();
+          console.log('All accounts fetched:', data);
+          setAccounts(data);
+        } else {
+          console.error('Failed to fetch accounts');
+          setError('Failed to load suppliers');
+        }
       } catch (err) {
         console.error("Failed to fetch accounts:", err);
+        setError('Failed to load suppliers');
       }
     };
     fetchAccounts();
@@ -368,143 +474,203 @@ const CreatePurchaseInvoice = ({ user }) => {
     }));
   };
 
-  const clearDraft = () => {
+ const clearDraft = async () => {
+  localStorage.removeItem('draftPurchaseInvoice');
+  
+  // Fetch the latest invoice number
+  await fetchNextInvoiceNumber();
+  
+  const resetData = {
+    invoiceNumber: nextInvoiceNumber, // This will now be the latest number
+    invoiceDate: new Date().toISOString().split('T')[0],
+    validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    companyInfo: {
+      name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+      address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+      email: "sumukhusr7@gmail.com",
+      phone: "3456549876543",
+      gstin: "29AABCD0503B1ZG",
+      state: "Karnataka"
+    },
+    supplierInfo: {
+      name: "",
+      businessName: "",
+      state: "",
+      gstin: ""
+    },
+    billingAddress: {
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      pincode: "",
+      state: ""
+    },
+    shippingAddress: {
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      pincode: "",
+      state: ""
+    },
+    items: [],
+    note: "",
+    taxableAmount: 0,
+    totalGST: 0,
+    totalCess: 0,
+    grandTotal: 0,
+    transportDetails: "",
+    additionalCharge: "",
+    additionalChargeAmount: 0,
+    otherDetails: "Authorized Signatory",
+    taxType: "CGST/SGST",
+    batchDetails: []
+  };
+  
+  setInvoiceData(resetData);
+  localStorage.setItem('draftPurchaseInvoice', JSON.stringify(resetData));
+  
+  setSelected(false);
+  setSelectedSupplierId(null);
+  setIsPreviewReady(false);
+  setSuccess("Draft cleared successfully!");
+  setTimeout(() => setSuccess(false), 3000);
+};
+
+
+const incrementInvoiceNumber = (currentNumber) => {
+  const numberMatch = currentNumber.match(/PINV(\d+)/);
+  if (numberMatch) {
+    const nextNum = parseInt(numberMatch[1]) + 1;
+    return `PINV${nextNum.toString().padStart(3, '0')}`;
+  }
+  return 'PINV001'; // fallback
+};
+
+
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError(null);
+  setSuccess(false);
+  
+  if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
+    setError("Please select a supplier");
+    setLoading(false);
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
+
+  if (invoiceData.items.length === 0) {
+    setError("Please add at least one item to the purchase invoice");
+    setLoading(false);
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
+
+  try {
+    const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
+    console.log('Submitting purchase invoice with number:', finalInvoiceNumber);
+
+    const sameState = isSameState();
+    let totalCGST = 0;
+    let totalSGST = 0;
+    let totalIGST = 0;
+
+    if (sameState) {
+      totalCGST = parseFloat(invoiceData.totalGST) / 2;
+      totalSGST = parseFloat(invoiceData.totalGST) / 2;
+      totalIGST = 0;
+    } else {
+      totalCGST = 0;
+      totalSGST = 0;
+      totalIGST = parseFloat(invoiceData.totalGST);
+    }
+
+    const batchDetails = invoiceData.items.map(item => ({
+      product: item.product,
+      batch: item.batch,
+      quantity: item.quantity,
+      price: item.price,
+      batchDetails: item.batchDetails
+    }));
+
+    const payload = {
+      ...invoiceData,
+      invoiceNumber: finalInvoiceNumber,
+      selectedSupplierId: selectedSupplierId,
+      type: 'purchase',
+      totalCGST: totalCGST.toFixed(2),
+      totalSGST: totalSGST.toFixed(2),
+      totalIGST: totalIGST.toFixed(2),
+      taxType: sameState ? "CGST/SGST" : "IGST",
+      batchDetails: JSON.stringify(batchDetails)
+    };
+
+    delete payload.companyState;
+    delete payload.supplierState;
+
+    console.log('Submitting purchase invoice payload with invoice number:', payload.invoiceNumber);
+
+    const response = await fetch(`${baseurl}/purchase-transaction`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(responseData.error || 'Failed to submit purchase invoice');
+    }
+    
+    // Clear localStorage and set success
     localStorage.removeItem('draftPurchaseInvoice');
-    setInvoiceData({
-      invoiceNumber: "PUR" + Math.floor(Math.random() * 1000),
-      invoiceDate: new Date().toISOString().split('T')[0],
-      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      companyInfo: {
-        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-        email: "sumukhusr7@gmail.com",
-        phone: "3456549876543",
-        gstin: "29AABCD0503B1ZG",
-        state: "Karnataka"
-      },
-      supplierInfo: {
-        name: "",
-        businessName: "",
-        state: "",
-        gstin: ""
-      },
-      billingAddress: {
-        addressLine1: "",
-        addressLine2: "",
-        city: "",
-        pincode: "",
-        state: ""
-      },
-      shippingAddress: {
-        addressLine1: "",
-        addressLine2: "",
-        city: "",
-        pincode: "",
-        state: ""
-      },
+    setSuccess('Purchase invoice submitted successfully!');
+    setIsPreviewReady(true);
+    
+    // IMPORTANT: Manually increment the invoice number for immediate feedback
+    const newInvoiceNumber = incrementInvoiceNumber(finalInvoiceNumber);
+    setNextInvoiceNumber(newInvoiceNumber);
+    
+    // Also update invoiceData with the new number
+    setInvoiceData(prev => ({
+      ...prev,
+      invoiceNumber: newInvoiceNumber
+    }));
+    
+    // Save the new invoice number to localStorage for next time
+    const newDraftData = {
+      ...invoiceData,
+      invoiceNumber: newInvoiceNumber,
       items: [],
-      note: "",
       taxableAmount: 0,
       totalGST: 0,
       totalCess: 0,
-      grandTotal: 0,
-      transportDetails: "",
-      additionalCharge: "",
-      additionalChargeAmount: 0,
-      otherDetails: "Authorized Signatory",
-      taxType: "CGST/SGST",
-      batchDetails: []
-    });
-    setSelected(false);
-    setSelectedSupplierId(null);
-    setSuccess("Draft cleared successfully!");
-    setTimeout(() => setSuccess(false), 3000);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
+      grandTotal: 0
+    };
+    localStorage.setItem('draftPurchaseInvoice', JSON.stringify(newDraftData));
     
-    if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-      setError("Please select a supplier");
-      setLoading(false);
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
+    const previewData = {
+      ...invoiceData,
+      invoiceNumber: finalInvoiceNumber
+    };
+    localStorage.setItem('previewPurchaseInvoice', JSON.stringify(previewData));
+    
+    setTimeout(() => {
+      navigate("/purchase/invoice-preview");
+    }, 2000);
+    
+  } catch (err) {
+    setError(err.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setLoading(false);
+  }
+};
 
-    if (invoiceData.items.length === 0) {
-      setError("Please add at least one item to the purchase invoice");
-      setLoading(false);
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    try {
-      const sameState = isSameState();
-      let totalCGST = 0;
-      let totalSGST = 0;
-      let totalIGST = 0;
-
-      if (sameState) {
-        totalCGST = parseFloat(invoiceData.totalGST) / 2;
-        totalSGST = parseFloat(invoiceData.totalGST) / 2;
-        totalIGST = 0;
-      } else {
-        totalCGST = 0;
-        totalSGST = 0;
-        totalIGST = parseFloat(invoiceData.totalGST);
-      }
-
-      // Extract batch details from items
-      const batchDetails = invoiceData.items.map(item => ({
-        product: item.product,
-        batch: item.batch,
-        quantity: item.quantity,
-        price: item.price,
-        batchDetails: item.batchDetails
-      }));
-
-      const payload = {
-        ...invoiceData,
-        selectedSupplierId: selectedSupplierId,
-        type: 'purchase',
-        totalCGST: totalCGST.toFixed(2),
-        totalSGST: totalSGST.toFixed(2),
-        totalIGST: totalIGST.toFixed(2),
-        taxType: sameState ? "CGST/SGST" : "IGST",
-        batchDetails: JSON.stringify(batchDetails)
-      };
-
-      const response = await fetch(`${baseurl}/purchase-transaction`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(responseData.error || 'Failed to submit purchase invoice');
-      }
-      
-      localStorage.removeItem('draftPurchaseInvoice');
-      setSuccess('Purchase invoice submitted successfully!');
-      
-      setTimeout(() => {
-        navigate("/purchase/purchase-invoice");
-      }, 2000);
-      
-    } catch (err) {
-      setError(err.message);
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="admin-layout">
@@ -529,8 +695,9 @@ const CreatePurchaseInvoice = ({ user }) => {
                   size="sm" 
                   onClick={handlePreview}
                   className="me-2"
+                  disabled={!isPreviewReady}
                 >
-                  <FaEye className="me-1" /> Preview PDF
+                  <FaEye className="me-1" /> {isPreviewReady ? "View Invoice Preview" : "Submit to Enable Preview"}
                 </Button>
                 <Button variant="warning" size="sm" onClick={clearDraft}>
                   Clear Draft
@@ -541,13 +708,14 @@ const CreatePurchaseInvoice = ({ user }) => {
             {error && <Alert variant="danger">{error}</Alert>}
             {success && <Alert variant="success">{success}</Alert>}
             
+            {/* Tax Type Indicator */}
             {invoiceData.supplierInfo.state && (
               <Alert variant={isSameState() ? "success" : "warning"} className="mb-3">
                 <strong>Tax Type: </strong>
                 {isSameState() ? (
                   <>CGST & SGST (Same State - {invoiceData.companyInfo.state})</>
                 ) : (
-                  <>IGST (Inter-State: {invoiceData.supplierInfo.state} to {invoiceData.companyInfo.state})</>
+                  <>IGST (Inter-State: {invoiceData.companyInfo.state} to {invoiceData.supplierInfo.state})</>
                 )}
               </Alert>
             )}
@@ -571,11 +739,15 @@ const CreatePurchaseInvoice = ({ user }) => {
                   <Form.Group className="mb-2">
                     <Form.Control 
                       name="invoiceNumber" 
-                      value={invoiceData.invoiceNumber} 
+                      value={invoiceData.invoiceNumber || nextInvoiceNumber} 
                       onChange={handleInputChange}
                       className="border-primary"
+                      readOnly
                     />
                     <Form.Label className="fw-bold">Purchase Invoice No</Form.Label>
+                    {!hasFetchedInvoiceNumber && (
+                      <small className="text-muted">Loading invoice number...</small>
+                    )}
                   </Form.Group>
                   <Form.Group className="mb-2">
                     <Form.Control 
@@ -585,7 +757,7 @@ const CreatePurchaseInvoice = ({ user }) => {
                       onChange={handleInputChange}
                       className="border-primary"
                     />
-                    <Form.Label className="fw-bold">Purchase Date</Form.Label>
+                    <Form.Label className="fw-bold">Invoice Date</Form.Label>
                   </Form.Group>
                   <Form.Group>
                     <Form.Control 
@@ -622,7 +794,6 @@ const CreatePurchaseInvoice = ({ user }) => {
                           onChange={(e) => {
                             const selectedName = e.target.value;
                             setInputName(selectedName);
-                            // FIXED: Filter by retailer role instead of supplier
                             const supplier = accounts.find(acc => acc.business_name === selectedName);
                             if (supplier) {
                               setSelectedSupplierId(supplier.id);
@@ -653,8 +824,7 @@ const CreatePurchaseInvoice = ({ user }) => {
                             }
                           }}
                         >
-                          <option value="">Select Supplier</option>
-                          {/* FIXED: Filter by retailer role for purchase */}
+                          <option value="">Select Customer</option>
                           {accounts
                             .filter(acc => acc.role === "retailer")
                             .map(acc => (
@@ -712,7 +882,7 @@ const CreatePurchaseInvoice = ({ user }) => {
                 </Row>
               </div>
 
-              {/* Item Section */}
+              {/* Item Section - Filter products by Purchaseditems */}
               <div className="item-section mb-3 mt-3 bg-white p-3 rounded">
                 <h6 className="text-primary mb-3">Add Items</h6>
                 <Row className="align-items-end">
@@ -743,8 +913,7 @@ const CreatePurchaseInvoice = ({ user }) => {
                           setItemForm((prev) => ({
                             ...prev,
                             product: selectedProduct.goods_name,
-                            // FIXED: Use purchase price or net price as fallback
-                            price: selectedProduct.purchase_price || selectedProduct.net_price,
+                            price: selectedProduct.net_price,
                             gst: parseFloat(selectedProduct.gst_rate)
                               ? selectedProduct.gst_rate.replace("%", "")
                               : 0,
@@ -766,7 +935,6 @@ const CreatePurchaseInvoice = ({ user }) => {
                       className="border-primary"
                     >
                       <option value="">Select Product</option>
-                      {/* FIXED: Filter by Purchaseditems for purchase */}
                       {products
                         .filter((p) => p.group_by === "Purchaseditems")
                         .map((p) => (
@@ -814,8 +982,8 @@ const CreatePurchaseInvoice = ({ user }) => {
                       name="price"
                       type="number"
                       value={itemForm.price}
-                      onChange={handleItemChange}
-                      className="border-primary"
+                      readOnly
+                      className="border-primary bg-light"
                     />
                   </Col>
 
@@ -838,8 +1006,8 @@ const CreatePurchaseInvoice = ({ user }) => {
                       name="gst"
                       type="number"
                       value={itemForm.gst}
-                      onChange={handleItemChange}
-                      className="border-primary"
+                      readOnly
+                      className="border-primary bg-light"
                     />
                   </Col>
 
@@ -857,7 +1025,8 @@ const CreatePurchaseInvoice = ({ user }) => {
                       value={itemForm.description}
                       onChange={handleItemChange}
                       placeholder="Product description"
-                      className="border-primary"
+                      readOnly
+                      className="border-primary bg-light"
                     />
                   </Col>
                 </Row>
@@ -1019,7 +1188,7 @@ const CreatePurchaseInvoice = ({ user }) => {
                 <Col md={6}>
                   <h6 className="text-primary">Other Details</h6>
                   <div className="bg-light p-2 rounded">
-                    <p className="mb-1">Received By</p>
+                    <p className="mb-1">For</p>
                     <p className="mb-1 fw-bold">{invoiceData.companyInfo.name}</p>
                     <p className="mb-0 text-muted">{invoiceData.otherDetails}</p>
                   </div>
@@ -1040,9 +1209,9 @@ const CreatePurchaseInvoice = ({ user }) => {
                   variant="info" 
                   className="me-3 px-4"
                   onClick={handlePreview}
-                  disabled={invoiceData.items.length === 0}
+                  disabled={!isPreviewReady}
                 >
-                  Preview PDF in New Tab
+                  {isPreviewReady ? 'View Invoice Preview' : 'Submit to Enable Preview'}
                 </Button>
                 <Button variant="danger" onClick={() => navigate("/purchase/invoices")}>
                   Cancel
@@ -1056,4 +1225,4 @@ const CreatePurchaseInvoice = ({ user }) => {
   );
 };
 
-export default CreatePurchaseInvoice;
+export default CreateProductInvoice;
