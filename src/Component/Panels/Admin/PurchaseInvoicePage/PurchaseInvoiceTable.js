@@ -25,41 +25,57 @@ const PurchaseInvoiceTable = () => {
     fetchPurchaseInvoices();
   }, []);
 
-  const fetchPurchaseInvoices = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${baseurl}/transactions`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch purchase invoices');
-      }
-      
-      const data = await response.json();
-      
-      // Filter transactions where TransactionType is 'Purchase'
-      const purchaseInvoicesData = data.filter(transaction => 
-        transaction.TransactionType === 'Purchase'
-      );
-      
-      // Transform the data to match your table structure
-      const transformedInvoices = purchaseInvoicesData.map(invoice => ({
-        id: invoice.VoucherID,
-        supplier: invoice.PartyName || invoice.AccountName || 'N/A',
-        pinvoice: `PUR-${invoice.VchNo || invoice.VoucherID}`,
-        totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-        payment: getPaymentStatus(invoice),
-        created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
-        originalData: invoice // Keep original data for reference
-      }));
-      
-      setPurchaseInvoices(transformedInvoices);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching purchase invoices:', err);
-      setError(err.message);
-      setLoading(false);
+  // Enhanced fetch function with better error handling and filtering
+const fetchPurchaseInvoices = async () => {
+  try {
+    setLoading(true);
+    const response = await fetch(`${baseurl}/transactions`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch purchase invoices: ${response.status}`);
     }
-  };
+    
+    const data = await response.json();
+    
+    // Filter transactions where TransactionType is 'Purchase'
+    const purchaseInvoicesData = data.filter(transaction => 
+      transaction.TransactionType === 'Purchase'
+    );
+    
+    console.log('Raw purchase data:', purchaseInvoicesData);
+    
+    // Transform the data to match your table structure
+    const transformedInvoices = purchaseInvoicesData.map(invoice => ({
+      id: invoice.VoucherID,
+      supplier: invoice.PartyName || invoice.AccountName || 'N/A',
+      pinvoice: invoice.InvoiceNumber || `PUR-${invoice.VchNo || invoice.VoucherID}`,
+      totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+      payment: getPaymentStatus(invoice),
+      created: formatDate(invoice.Date || invoice.EntryDate),
+      originalData: invoice // Keep original data for reference
+    }));
+    
+    setPurchaseInvoices(transformedInvoices);
+    setLoading(false);
+  } catch (err) {
+    console.error('Error fetching purchase invoices:', err);
+    setError(err.message);
+    setLoading(false);
+  }
+};
+
+// Helper function to format date
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  
+  try {
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'N/A';
+  }
+};
 
   // Helper function to determine payment status for purchase invoices
   const getPaymentStatus = (invoice) => {
