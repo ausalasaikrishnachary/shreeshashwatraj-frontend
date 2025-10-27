@@ -439,10 +439,14 @@ const handleInvoiceNumberClick = async (invoice) => {
               </div>
             </div>
 
-            <div className="invoices-header-section">
-              <h1 className="invoices-main-title">Sales Invoice Management</h1>
-              <p className="invoices-subtitle">Create, manage and track all your sales invoices</p>
+          <div className="receipts-header-section">
+            <div className="receipts-header-top">
+              <div className="receipts-title-section">
+                <h1 className="receipts-main-title">Sales Invoice Management</h1>
+                <p className="receipts-subtitle">Create, manage and track all your sales invoices</p>
+              </div>
             </div>
+          </div>
 
             {/* ✅ Filters and Actions */}
             <div className="invoices-actions-section">
@@ -494,7 +498,7 @@ const handleInvoiceNumberClick = async (invoice) => {
                   title="Sales Invoices"
                   data={invoices}
                   columns={columns}
-                  initialEntriesPerPage={10}
+                  initialEntriesPerPage={5}
                   searchPlaceholder="Search invoices by customer name or number..."
                   showSearch={true}
                   showEntriesSelector={true}
