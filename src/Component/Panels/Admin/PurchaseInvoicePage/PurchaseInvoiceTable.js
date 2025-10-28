@@ -198,10 +198,19 @@ const formatDate = (dateString) => {
       }
     },
     {
-      key: 'created',
-      title: 'CREATED DATE',
-      style: { textAlign: 'center' }
-    },
+  key: 'created',
+  title: 'CREATED DATE',
+  style: { textAlign: 'center' },
+  render: (value, row) => {
+    if (!row?.created) return "-"; // fallback if no date
+    const date = new Date(row.created);
+    return date.toLocaleDateString("en-GB", { 
+      day: "2-digit", 
+      month: "2-digit", 
+      year: "numeric" 
+    });
+  }
+}
     // {
     //   key: 'action',
     //   title: 'ACTION',

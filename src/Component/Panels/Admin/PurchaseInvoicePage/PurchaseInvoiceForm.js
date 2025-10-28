@@ -783,7 +783,7 @@ const handleSubmit = async (e) => {
                           <Button
                             variant="primary"
                             size="sm"
-                            onClick={() => navigate("/suppliers/add")}
+                            onClick={() => navigate("/salesitemspage")}
                           >
                             New
                           </Button>
@@ -843,7 +843,7 @@ const handleSubmit = async (e) => {
                             size="sm"
                             onClick={() => {
                               if (selectedSupplierId) {
-                                navigate(`/suppliers/edit/${selectedSupplierId}`);
+                                navigate(`/retailers/edit/${selectedSupplierId}`);
                               }
                             }}
                           >
@@ -1213,7 +1213,7 @@ const handleSubmit = async (e) => {
                 >
                   {isPreviewReady ? 'View Invoice Preview' : 'Submit to Enable Preview'}
                 </Button>
-                <Button variant="danger" onClick={() => navigate("/purchase/invoices")}>
+                <Button variant="danger" onClick={() => navigate("/purchase/purchase-invoice")}>
                   Cancel
                 </Button>
               </div>

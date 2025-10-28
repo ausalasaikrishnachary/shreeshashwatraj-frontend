@@ -156,7 +156,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
             mfgDate: batch.mfg_date?.split('T')[0] || '',
             expDate: batch.exp_date?.split('T')[0] || '',
             quantity: batch.quantity || '',
-            costPrice: batch.cost_price || '',
+           
             sellingPrice: batch.selling_price || formData.price || '',
             purchasePrice: batch.purchase_price || '',
             mrp: batch.mrp || '',
@@ -351,7 +351,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
           mfg_date: batch.mfgDate || null,
           exp_date: batch.expDate || null,
           quantity: parseFloat(batch.quantity) || 0,
-          cost_price: parseFloat(batch.costPrice) || 0,
+        
           selling_price: parseFloat(batch.sellingPrice) || 0,
           purchase_price: parseFloat(batch.purchasePrice) || 0,
           mrp: parseFloat(batch.mrp) || 0,
@@ -776,16 +776,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                         </div>
 
                         <div className="row g-2 mb-2">
-                          <div className="col-md-4">
-                            <Form.Label>Cost Price</Form.Label>
-                            <Form.Control
-                              type="number"
-                              step="0.01"
-                              name="costPrice"
-                              value={batch.costPrice}
-                              onChange={(e) => handleBatchChange(index, e)}
-                            />
-                          </div>
+                     
                           <div className="col-md-4">
                             <Form.Label>M.R.P</Form.Label>
                             <Form.Control
@@ -806,10 +797,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                               onChange={(e) => handleBatchChange(index, e)}
                             />
                           </div>
-                        </div>
-
-                        <div className="row g-2 mb-2">
-                          <div className="col-md-8">
+                             <div className="col-md-4">
                             <Form.Label>Barcode *</Form.Label>
                             <Form.Control
                               type="text"
@@ -824,7 +812,11 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                               </div>
                             )}
                           </div>
-                          <div className="col-md-4 text-end">
+                        </div>
+
+                        <div className="row g-2 mb-2">
+                       
+                          <div className="text-end">
                             <Button
                               variant="danger"
                               size="sm"
@@ -842,15 +834,8 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                     <Button variant="primary" onClick={addNewBatch} className="mb-2">
                       Add Batch
                     </Button>
-                    <div className="mt-2 text-muted">
-                      <small>* indicates required fields</small>
-                    </div>
-                    <div className="mt-2 text-info">
-                      <small>
-                        <strong>Note:</strong> Batches are created only for Purchase catalog. 
-                        Sales catalog entries will have separate batch management.
-                      </small>
-                    </div>
+                 
+                 
                   </div>
                 )}
 

@@ -158,8 +158,13 @@ const Salesitems_productsdetails = ({ user }) => {
                             <td>{productData.description}</td>
                             <td>₹{productData.price}</td>
                             <td>{productData.opening_stock}</td>
-                            <td>{productData.stock_in || 0}</td>
-                            <td>{productData.stock_out || 0}</td>
+                          <td style={{ color: 'green', fontWeight: '600' }}>
+  {productData.stock_in || 0}
+</td>
+<td style={{ color: 'red', fontWeight: '600' }}>
+  {productData.stock_out || 0}
+</td>
+
                             <td>{productData.balance_stock || "N/A"}</td>
                           </tr>
                         </tbody>
