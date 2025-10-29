@@ -285,7 +285,6 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
   const [alert, setAlert] = useState({ show: false, message: "", variant: "success" });
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [batchCounter, setBatchCounter] = useState(1001); // Start from 1001
 
   useEffect(() => {
     fetchCategories();
@@ -295,7 +294,6 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
   useEffect(() => {
     const loadProductData = async () => {
       if (!productId) {
-        setBatches([createDefaultBatch()]);
         setIsDataLoaded(true);
         return;
       }
@@ -320,18 +318,38 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
     loadProductData();
   }, [productId, groupType]);
 
-  // Generate sequential batch number starting from Batch-1001
-  const generateBatchNumber = () => {
-    const batchNumber = `BATCH-${batchCounter}`;
-    setBatchCounter(prev => prev + 1); // Increment for next batch
-    return batchNumber;
+  // Generate barcode number
+  const generateBarcode = async () => {
+    let isUnique = false;
+    let newBarcode;
+
+    while (!isUnique) {
+      const timestamp = Date.now();
+      newBarcode = `BC${timestamp}${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+      try {
+        const response = await axios.get(`${baseurl}/batches/check-barcode/${newBarcode}`);
+        if (response.data.available) {
+          isUnique = true;
+        }
+      } catch (error) {
+        console.error('Error checking barcode:', error);
+        return newBarcode; // Fallback
+      }
+    }
+    return newBarcode;
   };
 
-  // Generate barcode number
-  const generateBarcode = () => {
-    const timestamp = new Date().getTime();
-    const random = Math.floor(Math.random() * 10000);
-    return `BC${timestamp}${random}`.slice(0, 13);
+  // Fetch next batch number from server
+  const fetchNextBatchNumber = async () => {
+    try {
+      const response = await axios.get(`${baseurl}/batches/next-batch-number`, {
+        params: { group_by: formData.group_by }
+      });
+      return response.data.batch_number;
+    } catch (error) {
+      console.error('Error fetching next batch number:', error);
+      return String(Date.now()).padStart(5, '0'); // Fallback
+    }
   };
 
   // Calculate tax and net price based on GST type
@@ -418,7 +436,7 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
 
   const fetchBatches = async (id = productId) => {
     if (!id) {
-      setBatches([createDefaultBatch()]);
+      setBatches([]);
       return;
     }
     
@@ -427,7 +445,7 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
       const fetchedBatches = response.data?.length
         ? response.data.map(batch => ({
             id: batch.id || Date.now() + Math.random(),
-            batchNumber: batch.batch_number || generateBatchNumber(),
+            batchNumber: batch.batch_number || '',
             mfgDate: batch.mfg_date?.split('T')[0] || "",
             expDate: batch.exp_date?.split('T')[0] || "",
             quantity: batch.quantity || "",
@@ -436,24 +454,13 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
             purchasePrice: batch.purchase_price || "",
             mrp: batch.mrp || "",
             batchPrice: batch.batch_price || "",
-            barcode: batch.barcode || generateBarcode()
+            barcode: batch.barcode || ''
           }))
-        : [createDefaultBatch()];
-
+        : [];
       setBatches(fetchedBatches);
-      
-      // Set batch counter based on existing batches
-      if (fetchedBatches.length > 0) {
-        const batchNumbers = fetchedBatches.map(batch => {
-          const match = batch.batchNumber.match(/BATCH-(\d+)/);
-          return match ? parseInt(match[1]) : 0;
-        });
-        const maxBatchNumber = Math.max(...batchNumbers);
-        setBatchCounter(maxBatchNumber + 1);
-      }
     } catch (error) {
       console.error("Error fetching batches:", error);
-      setBatches([createDefaultBatch()]);
+      setBatches([]);
     }
   };
 
@@ -462,10 +469,12 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
     setTimeout(() => setAlert({ show: false, message: "", variant: "success" }), 5000);
   };
 
-  const createDefaultBatch = () => {
+  const createDefaultBatch = async () => {
+    const batchNumber = await fetchNextBatchNumber();
+    const barcode = await generateBarcode();
     return {
       id: Date.now() + Math.random(),
-      batchNumber: generateBatchNumber(),
+      batchNumber,
       mfgDate: "",
       expDate: "",
       quantity: "",
@@ -474,7 +483,7 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
       purchasePrice: "",
       mrp: "",
       batchPrice: "",
-      barcode: generateBarcode()
+      barcode
     };
   };
 
@@ -503,7 +512,7 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
     can_be_sold: false
   });
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const { name, value, type, checked } = e.target;
 
     const newFormData = {
@@ -542,9 +551,10 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
 
     if (name === "maintain_batch") {
       if (checked && batches.length === 0) {
-        const defaultBatch = createDefaultBatch();
-        const updatedBatches = [...batches, defaultBatch];
-        setBatches(updatedBatches);
+        const defaultBatch = await createDefaultBatch();
+        setBatches([defaultBatch]);
+      } else if (!checked) {
+        setBatches([]);
       }
       setMaintainBatch(checked);
     }
@@ -557,10 +567,9 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
     setBatches(updated);
   };
 
-  const addNewBatch = () => {
-    const newBatch = createDefaultBatch();
-    const updated = [...batches, newBatch];
-    setBatches(updated);
+  const addNewBatch = async () => {
+    const newBatch = await createDefaultBatch();
+    setBatches(prev => [...prev, newBatch]);
   };
 
   const removeBatch = (id) => {
@@ -594,16 +603,17 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
     try {
       const batchesForBackend = maintainBatch
         ? batches.map((batch) => ({
-            batchNumber: batch.batchNumber,
+            id: batch.id || null,
+            batch_number: batch.batchNumber,
             mfgDate: batch.mfgDate || null,
             expDate: batch.expDate || null,
-            quantity: batch.quantity,
-            costPrice: batch.costPrice || 0,
-            sellingPrice: batch.sellingPrice,
-            purchasePrice: batch.purchasePrice || 0,
-            mrp: batch.mrp || 0,
-            batchPrice: batch.batchPrice || 0,
-            barcode: batch.barcode || generateBarcode()
+            quantity: parseFloat(batch.quantity) || 0,
+            costPrice: parseFloat(batch.costPrice) || 0,
+            sellingPrice: parseFloat(batch.sellingPrice) || 0,
+            purchasePrice: parseFloat(batch.purchasePrice) || 0,
+            mrp: parseFloat(batch.mrp) || 0,
+            batchPrice: parseFloat(batch.batchPrice) || 0,
+            barcode: batch.barcode
           }))
         : [];
 
@@ -944,10 +954,7 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
                       label="Maintain Batch"
                       name="maintain_batch"
                       checked={formData.maintain_batch}
-                      onChange={(e) => {
-                        setMaintainBatch(e.target.checked);
-                        handleChange(e);
-                      }}
+                      onChange={handleChange}
                       className="mt-4"
                     />
                   </div>
@@ -993,7 +1000,7 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
                     </div>
                     <div className="mt-2">
                       <small className="text-info">
-                        <strong>Note:</strong> Batch numbers start from BATCH-1001 and increment sequentially.
+                        <strong>Note:</strong> Batch numbers are generated by the server based on group type.
                       </small>
                     </div>
                   </div>
@@ -1060,4 +1067,4 @@ const AddProductPage = ({ groupType = "Purchaseditems", user }) => {
   );
 };
 
-export default AddProductPage;
+export default AddProductPage;  

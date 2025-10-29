@@ -120,68 +120,75 @@ const AdminExpensiveRequest = ({ mode = "list" }) => {
     }
   };
 
-  // ✅ Table Columns
-  const columns = [
-    { key: "id", title: "ID", width: "8%" },
-    { key: "category", title: "Category", width: "20%" },
-    {
-      key: "amount",
-      title: "Amount",
-      width: "12%",
-      render: (item) => `${parseFloat(item.amount || 0).toFixed(2)}`,
+// ✅ Table Columns
+const columns = [
+  { key: "id", title: "ID", width: "8%" },
+  { key: "category", title: "Category", width: "20%" },
+  {
+    key: "amount",
+    title: "Amount",
+    width: "12%",
+    render: (value, row) => {
+      const item = row || value;
+      if (!item) return "-";
+      return parseFloat(item.amount || 0).toFixed(2);
     },
-    {
-      key: "date",
-      title: "Date",
-      width: "15%",
-      render: (item) =>
-        item.date
-          ? new Date(item.date).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-          : "-",
+  },
+  {
+    key: "date",
+    title: "Date",
+    width: "15%",
+    render: (value, row) => {
+      const item = row || value;
+      if (!item || !item.date) return "-";
+      return new Date(item.date).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
     },
-    { key: "note", title: "Note", width: "25%" },
-{
-  key: "status",
-  title: "Status",
-  width: "10%",
-  render: (item) => (
-    <select
-      className="AdminExpensiveRequest__status-select"
-      value={item.status || "pending"}
-      onChange={(e) => handleStatusChange(item.id, e.target.value)}
-      style={{
-        color: item.status === "approved" ? "green" : "red",
-        fontWeight: "bold",
-        border: "1px solid #ccc",
-        borderRadius: "5px",
-        padding: "4px 8px",
-      }}
-    >
-      <option
-        value="pending"
-        style={{ color: "red", fontWeight: "bold" }}
-      >
-        Pending
-      </option>
-      <option
-        value="approved"
-        style={{ color: "green", fontWeight: "bold" }}
-      >
-        Approved
-      </option>
-    </select>
-  ),
-}
-,
-    {
-      key: "actions",
-      title: "Actions",
-      width: "10%",
-      render: (item) => (
+  },
+  { key: "note", title: "Note", width: "25%" },
+  {
+    key: "status",
+    title: "Status",
+    width: "10%",
+    render: (value, row) => {
+      const item = row || value;
+      if (!item) return null;
+
+      return (
+        <select
+          className="AdminExpensiveRequest__status-select"
+          value={item.status || "pending"}
+          onChange={(e) => handleStatusChange(item.id, e.target.value)}
+          style={{
+            color: item.status === "approved" ? "green" : "red",
+            fontWeight: "bold",
+            border: "1px solid #ccc",
+            borderRadius: "5px",
+            padding: "4px 8px",
+          }}
+        >
+          <option value="pending" style={{ color: "red", fontWeight: "bold" }}>
+            Pending
+          </option>
+          <option value="approved" style={{ color: "green", fontWeight: "bold" }}>
+            Approved
+          </option>
+        </select>
+      );
+    },
+  },
+  {
+    key: "actions",
+    title: "Actions",
+    width: "10%",
+    render: (value, row) => {
+      const item = row || value;
+      if (!item) return null;
+
+      return (
         <div className="AdminExpensiveRequest__actions">
           <button
             className="AdminExpensiveRequest__btn AdminExpensiveRequest__btn--view"
@@ -199,15 +206,16 @@ const AdminExpensiveRequest = ({ mode = "list" }) => {
           </button>
           <button
             className="AdminExpensiveRequest__btn AdminExpensiveRequest__btn--delete"
-            onClick={() => handleDelete(item.id)}
+            onClick={() => handleDelete(item.id, item.retailer_name || item.staff_name)}
             title="Delete"
           >
             🗑️
           </button>
         </div>
-      ),
+      );
     },
-  ];
+  },
+];
 
   // ✅ Action Handlers
   const handleView = (id) => navigate(`/admin_expensive/view/${id}`);

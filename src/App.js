@@ -123,6 +123,10 @@ import Salesitems_productsdetails from "./Component/Panels/Admin/Inventory/Purch
 import DebitNoteTable from "./Component/Panels/Admin/DebitTable/DebitTableNote";
 import PayablesTable from "./Component/Panels/Admin/Payables/Payables";
 
+import InvoicePDFPreview from './Component/Panels/Admin/SalesInvoicePage/InvoicePDFPreview';
+import PurchasePDFPreview from "./Component/Panels/Admin/PurchaseInvoicePage/PurchasePDFPreview";
+import ReceiptView from "./Component/Panels/Admin/Receipts/Receiptsview";
+
 
 function App() {
   return (
@@ -164,6 +168,9 @@ function App() {
         <Route path="/sale" element={<AdminSales />} />
          <Route path="/sales/invoices" element={<SalesInvoiceTable />} />
          <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
+         <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
+           <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
+ 
   
         <Route path="/sales/receipts" element={<AdminReceiptsTable />} />
         {/* <Route path="/createreceipt" element={<CreateReceiptForm />} /> */}
@@ -226,7 +233,7 @@ function App() {
 <Route path="/admin_expensive/view/:id" element={<AdminExpensiveRequest mode="view"/>} />
 <Route path="/admin_expensive/edit/:id" element={<AdminExpensiveRequest mode="edit"/>} />
 <Route path="/salesitems_productdetails/:id" element={<Salesitems_productsdetails />} />
-
+<Route path="/receipts_view/:id" element={<ReceiptView />} />
 
 
 

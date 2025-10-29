@@ -139,7 +139,7 @@ const VoucherTable = () => {
           </div>
 
           {/* Voucher Stats */}
-          <div className="voucher-stats-grid">
+          {/* <div className="voucher-stats-grid">
             {voucherStats.map((stat, index) => (
               <div key={index} className={`voucher-stat-card voucher-stat-card--${stat.type}`}>
                 <h3 className="voucher-stat-label">{stat.label}</h3>
@@ -149,7 +149,7 @@ const VoucherTable = () => {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
 
           {/* Filters and Actions Section */}
           <div className="voucher-actions-section">

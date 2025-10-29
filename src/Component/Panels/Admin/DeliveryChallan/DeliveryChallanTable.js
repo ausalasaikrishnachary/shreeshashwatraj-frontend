@@ -31,12 +31,12 @@ const DeliveryChallanTable = () => {
   ];
 
   // Delivery Challan stats data
-  const deliveryStats = [
-    { label: "Total Challans", value: "150", change: "+12%", type: "total" },
-    { label: "Dispatched", value: "120", change: "+15%", type: "dispatched" },
-    { label: "In Transit", value: "20", change: "+5%", type: "transit" },
-    { label: "Delivered", value: "10", change: "+8%", type: "delivered" }
-  ];
+  // const deliveryStats = [
+  //   { label: "Total Challans", value: "150", change: "+12%", type: "total" },
+  //   { label: "Dispatched", value: "120", change: "+15%", type: "dispatched" },
+  //   { label: "In Transit", value: "20", change: "+5%", type: "transit" },
+  //   { label: "Delivered", value: "10", change: "+8%", type: "delivered" }
+  // ];
 
   // Define tabs with their corresponding routes
   const tabs = [
@@ -201,7 +201,7 @@ const DeliveryChallanTable = () => {
           </div>
 
           {/* Delivery Challan Stats */}
-          <div className="delivery-challan-stats-grid">
+          {/* <div className="delivery-challan-stats-grid">
             {deliveryStats.map((stat, index) => (
               <div key={index} className={`delivery-challan-stat-card delivery-challan-stat-card--${stat.type}`}>
                 <h3 className="delivery-challan-stat-label">{stat.label}</h3>
@@ -211,7 +211,7 @@ const DeliveryChallanTable = () => {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
 
           {/* Filters and Actions Section */}
           <div className="delivery-challan-actions-section">

@@ -208,7 +208,7 @@ function AddStaff() {
               
               {/* Full Name */}
               <div className="form-row">
-                <div className="form-group half-width">
+                <div className="adminform-group half-width">
                   <label htmlFor="fullName" className="form-label">
                     Full Name <span className="required">*</span>
                   </label>
@@ -224,7 +224,7 @@ function AddStaff() {
                   />
                 </div>
 
-                 <div className="form-group half-width">
+                 <div className="adminform-group half-width">
                   <label htmlFor="mobileNumber" className="form-label">
                     Mobile Number <span className="required">*</span>
                   </label>
@@ -253,7 +253,7 @@ function AddStaff() {
               {/* Email and Status */}
               <div className="form-row">
                 
-                <div className="form-group half-width">
+                <div className="adminform-group half-width">
                   <label htmlFor="email" className="form-label">
                     Email <span className="required">*</span>
                   </label>
@@ -269,7 +269,7 @@ function AddStaff() {
                   />
                 </div>
 
-                <div className="form-group half-width">
+                <div className="adminform-group half-width">
                   <label htmlFor="status" className="form-label">
                     Status
                   </label>

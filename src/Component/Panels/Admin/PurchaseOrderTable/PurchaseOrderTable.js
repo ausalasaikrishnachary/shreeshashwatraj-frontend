@@ -139,7 +139,7 @@ const PurchaseOrderTable = () => {
           </div>
 
           {/* Purchase Order Stats */}
-          <div className="purchase-order-stats-grid">
+          {/* <div className="purchase-order-stats-grid">
             {purchaseOrderStats.map((stat, index) => (
               <div key={index} className={`purchase-order-stat-card purchase-order-stat-card--${stat.type}`}>
                 <h3 className="purchase-order-stat-label">{stat.label}</h3>
@@ -149,7 +149,7 @@ const PurchaseOrderTable = () => {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
 
           {/* Filters and Actions Section */}
           <div className="purchase-order-actions-section">

@@ -177,7 +177,7 @@ const ReusableTable = ({
                 <tr key={index} className="rt-table__row">
                   {columns.map((column) => (
                     <td key={column.key} className="rt-table__cell" style={column.style || {}}>
-                      {column.render ? column.render(item, startIndex + index) : item[column.key]}
+                      {column.render ? column.render(item[column.key], item, index) : item[column.key]}
                     </td>
                   ))}
                 </tr>

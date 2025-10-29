@@ -52,24 +52,28 @@ const columns = [
   { key: "name", title: "Name" },
   { key: "group", title: "Group" },
   { key: "opening_balance", title: "Opening Balance" },
-  {
-    key: "actions",
-    title: "Actions",
-    render: (item) => (
+ {
+  key: "actions",
+  title: "Actions",
+  render: (value, row) => {
+    if (!row) return null; // safeguard
+    return (
       <div className="table-actions">
         <FaEdit
           className="edit-icon"
-          style={{ cursor: "pointer", marginRight: "10px", color:'blue' }}
-          onClick={() => handleEdit(item)}
+          style={{ cursor: "pointer", marginRight: "10px", color: 'blue' }}
+          onClick={() => handleEdit(row)}
         />
         <FaTrash
           className="delete-icon"
           style={{ cursor: "pointer", color: "red" }}
-          onClick={() => handleDelete(item.id)}
+          onClick={() => handleDelete(row.id)}
         />
       </div>
-    ),
+    );
   },
+}
+,
 ];
 
 

@@ -333,7 +333,7 @@ const PayablesTable = () => {
           </div>
 
           {/* Payables Stats */}
-          <div className="payables-stats-grid">
+          {/* <div className="payables-stats-grid">
             {payablesStats.map((stat, index) => (
               <div key={index} className={`payables-stat-card payables-stat-card--${stat.type}`}>
                 <h3 className="payables-stat-label">{stat.label}</h3>
@@ -343,7 +343,7 @@ const PayablesTable = () => {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
 
           {/* Sub Tabs */}
           <div className="payables-sub-tabs-container">

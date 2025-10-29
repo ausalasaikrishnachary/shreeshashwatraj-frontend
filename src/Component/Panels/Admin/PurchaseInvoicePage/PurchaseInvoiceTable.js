@@ -1,19 +1,140 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
+import { baseurl } from "../../../BaseURL/BaseURL";
 import './PurchaseInvoice.css';
 
 const PurchaseInvoiceTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('Purchase Invoice');
   const navigate = useNavigate();
+  
+  const [purchaseInvoices, setPurchaseInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [month, setMonth] = useState('July');
   const [year, setYear] = useState('2025');
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
+
+  // Fetch purchase invoices from API
+  useEffect(() => {
+    fetchPurchaseInvoices();
+  }, []);
+
+  const fetchPurchaseInvoices = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${baseurl}/transactions`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch purchase invoices');
+      }
+      
+      const data = await response.json();
+      
+      // Filter transactions where TransactionType is 'Purchase'
+      const purchaseInvoicesData = data.filter(transaction => 
+        transaction.TransactionType === 'Purchase'
+      );
+      
+      // Transform the data to match your table structure
+      const transformedInvoices = purchaseInvoicesData.map(invoice => ({
+        id: invoice.VoucherID,
+        supplier: invoice.PartyName || invoice.AccountName || 'N/A',
+        pinvoice: `PUR-${invoice.VchNo || invoice.VoucherID}`,
+        totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+        payment: getPaymentStatus(invoice),
+        created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
+        originalData: invoice // Keep original data for reference
+      }));
+      
+      setPurchaseInvoices(transformedInvoices);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching purchase invoices:', err);
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  // Helper function to determine payment status for purchase invoices
+  const getPaymentStatus = (invoice) => {
+    // For purchase invoices, you might have different logic
+    // For now, let's assume if ChequeNo is provided, it's paid
+    if (invoice.ChequeNo && invoice.ChequeNo !== 'NULL') {
+      return 'Paid';
+    }
+    
+    const invoiceDate = new Date(invoice.Date || invoice.EntryDate);
+    const today = new Date();
+    const daysDiff = Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24));
+    
+    // For purchase, overdue might be different criteria
+    if (daysDiff > 45) { // 45 days credit period for purchases
+      return 'Overdue';
+    }
+    
+    return 'Pending';
+  };
+
+  // Calculate stats from actual purchase data
+  const calculatePurchaseStats = () => {
+    const totalInvoices = purchaseInvoices.reduce((sum, invoice) => {
+      const amount = parseFloat(invoice.originalData?.TotalAmount || 0);
+      return sum + amount;
+    }, 0);
+
+    const paidInvoices = purchaseInvoices.filter(inv => inv.payment === 'Paid')
+      .reduce((sum, invoice) => {
+        const amount = parseFloat(invoice.originalData?.TotalAmount || 0);
+        return sum + amount;
+      }, 0);
+
+    const pendingInvoices = purchaseInvoices.filter(inv => inv.payment === 'Pending')
+      .reduce((sum, invoice) => {
+        const amount = parseFloat(invoice.originalData?.TotalAmount || 0);
+        return sum + amount;
+      }, 0);
+
+    const overdueInvoices = purchaseInvoices.filter(inv => inv.payment === 'Overdue')
+      .reduce((sum, invoice) => {
+        const amount = parseFloat(invoice.originalData?.TotalAmount || 0);
+        return sum + amount;
+      }, 0);
+
+    return [
+      { 
+        label: "Total Purchase Invoices", 
+        value: `₹ ${totalInvoices.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 
+        change: "+18%", 
+        type: "total" 
+      },
+      { 
+        label: "Paid Invoices", 
+        value: `₹ ${paidInvoices.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 
+        change: "+15%", 
+        type: "paid" 
+      },
+      { 
+        label: "Pending Invoices", 
+        value: `₹ ${pendingInvoices.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 
+        change: "+8%", 
+        type: "pending" 
+      },
+      { 
+        label: "Overdue Payments", 
+        value: `₹ ${overdueInvoices.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 
+        change: "-5%", 
+        type: "overdue" 
+      }
+    ];
+  };
+
+  const purchaseInvoiceStats = calculatePurchaseStats();
 
   // Define tabs with their corresponding routes
   const tabs = [
@@ -30,19 +151,7 @@ const PurchaseInvoiceTable = () => {
     navigate(tab.path);
   };
 
-  // Sample purchase invoice data
-  const purchaseInvoiceData = [
-    // Add your purchase invoice data here
-  ];
-
-  // Purchase invoice stats data
-  const purchaseInvoiceStats = [
-    { label: "Total Purchase Invoices", value: "₹ 2,50,000", change: "+18%", type: "total" },
-    { label: "Paid Invoices", value: "₹ 1,80,000", change: "+15%", type: "paid" },
-    { label: "Pending Invoices", value: "₹ 45,000", change: "+8%", type: "pending" },
-    { label: "Overdue Payments", value: "₹ 25,000", change: "-5%", type: "overdue" }
-  ];
-
+  // Table columns configuration for purchase invoices
   const columns = [
     {
       key: 'supplier',
@@ -62,26 +171,34 @@ const PurchaseInvoiceTable = () => {
     {
       key: 'payment',
       title: 'PAYMENT STATUS',
-      style: { textAlign: 'center' }
+      style: { textAlign: 'center' },
+      render: (value) => {
+        if (typeof value !== 'string') return '';
+        let badgeClass = '';
+        if (value === 'Paid') badgeClass = 'status-badge status-paid';
+        else if (value === 'Pending') badgeClass = 'status-badge status-pending';
+        else if (value === 'Overdue') badgeClass = 'status-badge status-overdue';
+        return <span className={badgeClass}>{value}</span>;
+      }
     },
     {
       key: 'created',
       title: 'CREATED DATE',
       style: { textAlign: 'center' }
     },
-    {
-      key: 'action',
-      title: 'ACTION',
-      style: { textAlign: 'center' },
-      render: (item, index) => (
-        <button 
-          className="btn btn-primary btn-sm"
-          onClick={() => handleViewClick(item)}
-        >
-          View
-        </button>
-      )
-    }
+    // {
+    //   key: 'action',
+    //   title: 'ACTION',
+    //   style: { textAlign: 'center' },
+    //   render: (item, index) => (
+    //     <button 
+    //       className="btn btn-primary btn-sm"
+    //       onClick={() => handleViewClick(item)}
+    //     >
+    //       View
+    //     </button>
+    //   )
+    // }
   ];
 
   const handleCreateClick = () => {
@@ -89,7 +206,7 @@ const PurchaseInvoiceTable = () => {
   };
 
   const handleViewClick = (invoice) => {
-    // Handle view action
+    // Handle view action - you can navigate to detailed view
     console.log('View purchase invoice:', invoice);
     // navigate(`/purchase/purchase-invoice/${invoice.id}`);
   };
@@ -97,12 +214,64 @@ const PurchaseInvoiceTable = () => {
   const handleDownloadMonth = () => {
     // Handle month download
     console.log('Download month data:', month, year);
+    // Implement download logic here
   };
 
   const handleDownloadRange = () => {
     // Handle date range download
     console.log('Download range data:', startDate, endDate);
+    // Implement download logic here
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="admin-layout">
+        <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <div className={`admin-main-content ${isCollapsed ? "collapsed" : ""}`}>
+          <AdminHeader 
+            isCollapsed={isCollapsed} 
+            onToggleSidebar={() => setIsCollapsed(!isCollapsed)}
+            isMobile={window.innerWidth <= 768}
+          />
+          <div className="admin-content-wrapper">
+            <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="admin-layout">
+        <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <div className={`admin-main-content ${isCollapsed ? "collapsed" : ""}`}>
+          <AdminHeader 
+            isCollapsed={isCollapsed} 
+            onToggleSidebar={() => setIsCollapsed(!isCollapsed)}
+            isMobile={window.innerWidth <= 768}
+          />
+          <div className="admin-content-wrapper">
+            <div className="alert alert-danger m-3" role="alert">
+              Error loading purchase invoices: {error}
+              <button 
+                className="btn btn-sm btn-outline-danger ms-3"
+                onClick={fetchPurchaseInvoices}
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-layout">
@@ -141,7 +310,7 @@ const PurchaseInvoiceTable = () => {
             </div>
 
             {/* Purchase Invoice Stats */}
-            <div className="purchase-invoice-stats-grid">
+            {/* <div className="purchase-invoice-stats-grid">
               {purchaseInvoiceStats.map((stat, index) => (
                 <div key={index} className={`purchase-invoice-stat-card purchase-invoice-stat-card--${stat.type}`}>
                   <h3 className="purchase-invoice-stat-label">{stat.label}</h3>
@@ -151,7 +320,7 @@ const PurchaseInvoiceTable = () => {
                   </div>
                 </div>
               ))}
-            </div>
+            </div> */}
 
             {/* Filters and Actions Section */}
             <div className="purchase-invoice-actions-section">
@@ -164,23 +333,14 @@ const PurchaseInvoiceTable = () => {
                     <label className="form-label mb-1">Select Month and Year Data:</label>
                     <div className="d-flex">
                       <select className="form-select me-2" value={month} onChange={(e) => setMonth(e.target.value)}>
-                        <option>January</option>
-                        <option>February</option>
-                        <option>March</option>
-                        <option>April</option>
-                        <option>May</option>
-                        <option>June</option>
-                        <option>July</option>
-                        <option>August</option>
-                        <option>September</option>
-                        <option>October</option>
-                        <option>November</option>
-                        <option>December</option>
+                        {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => 
+                          <option key={m}>{m}</option>
+                        )}
                       </select>
                       <select className="form-select" value={year} onChange={(e) => setYear(e.target.value)}>
-                        <option>2025</option>
-                        <option>2024</option>
-                        <option>2023</option>
+                        {['2025','2024','2023'].map(y => 
+                          <option key={y}>{y}</option>
+                        )}
                       </select>
                     </div>
                   </div>
@@ -228,10 +388,10 @@ const PurchaseInvoiceTable = () => {
                 {/* Table Section */}
                 <ReusableTable
                   title="Purchase Invoices"
-                  data={purchaseInvoiceData}
+                  data={purchaseInvoices}
                   columns={columns}
                   initialEntriesPerPage={10}
-                  searchPlaceholder="Search purchase invoices..."
+                  searchPlaceholder="Search purchase invoices by supplier or invoice number..."
                   showSearch={true}
                   showEntriesSelector={true}
                   showPagination={true}

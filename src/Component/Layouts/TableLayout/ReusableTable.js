@@ -20,7 +20,7 @@ const ReusableTable = ({
     return Object.keys(item).some(key => {
       if (typeof item[key] === 'string') {
         return item[key].toLowerCase().includes(searchTerm.toLowerCase());
-      }
+      } 
       return false;
     });
   });

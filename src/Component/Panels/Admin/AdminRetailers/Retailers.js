@@ -676,16 +676,17 @@ function Retailers() {
     </div>
   );
 
-  const columns = [
-    { key: "retailer", title: "Retailer", render: renderRetailerCell },
-    { key: "contact", title: "Contact", render: renderContactCell },
-    { key: "typeLocation", title: "Type & Location", render: renderTypeLocationCell },
-    { key: "display_name", title: "Display Name" },
-    { key: "group", title: "Group Type", render: renderGroupTypeCell },
-    { key: "performance", title: "Performance", render: renderPerformanceCell },
-    { key: "status", title: "Status", render: renderStatusCell },
-    { key: "actions", title: "Actions", render: renderActionsCell }
-  ];
+const columns = [
+  { key: "__item", title: "Retailer", render: (value, item) => renderRetailerCell(item) },
+  { key: "__item", title: "Contact", render: (value, item) => renderContactCell(item) },
+  { key: "__item", title: "Type & Location", render: (value, item) => renderTypeLocationCell(item) },
+  { key: "display_name", title: "Display Name" },
+  { key: "__item", title: "Group Type", render: (value, item) => renderGroupTypeCell(item) },
+  { key: "__item", title: "Performance", render: (value, item) => renderPerformanceCell(item) },
+  { key: "__item", title: "Status", render: (value, item) => renderStatusCell(item) },
+  { key: "__item", title: "Actions", render: (value, item) => renderActionsCell(item) }
+];
+;
 
   const handleAddRetailerClick = () => {
     navigate("/retailers/add");
