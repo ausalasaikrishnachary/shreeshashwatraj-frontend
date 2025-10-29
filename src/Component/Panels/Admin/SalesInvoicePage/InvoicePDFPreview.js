@@ -1,83 +1,259 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, Row, Col, Button, Form, Table, Alert, Card } from 'react-bootstrap';
+import { Container, Row, Col, Button, Form, Table, Alert, Card, ProgressBar, Modal } from 'react-bootstrap';
 import './InvoicePDFPreview.css';
-import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, FaCalendar, FaReceipt } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, FaCalendar, FaReceipt, FaRegFileAlt  } from "react-icons/fa";
+import { useNavigate, useParams } from "react-router-dom";
 import html2pdf from 'html2pdf.js';
+import { baseurl } from "../../../BaseURL/BaseURL";
 
 const InvoicePDFPreview = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const [isEditMode, setIsEditMode] = useState(false);
   const [invoiceData, setInvoiceData] = useState(null);
   const [editedData, setEditedData] = useState(null);
-  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [downloading, setDownloading] = useState(false);
-  const [paymentData, setPaymentData] = useState(null);
-  const [loadingPayment, setLoadingPayment] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptFormData, setReceiptFormData] = useState({
+    receiptNumber: '',
+    retailerId: '',
+    amount: '',
+    currency: 'INR',
+    paymentMethod: 'Direct Deposit',
+    receiptDate: new Date().toISOString().split('T')[0],
+    note: '',
+    bankName: '',
+    transactionDate: '',
+    reconciliationOption: 'Do Not Reconcile',
+    retailerMobile: '',
+    retailerEmail: '',
+    retailerGstin: '',
+    retailerBusinessName: '',
+    invoiceNumber: ''
+  });
+  const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
 
   useEffect(() => {
-    // Load invoice data from localStorage
-    const savedData = localStorage.getItem('previewInvoice');
-    if (savedData) {
-      const data = JSON.parse(savedData);
-      setInvoiceData(data);
-      setEditedData(data);
-      
-      if (data.invoiceNumber) {
-        setInvoiceNumber(data.invoiceNumber);
-        fetchPaymentData(data.invoiceNumber);
-      } else {
-        const draftData = localStorage.getItem('draftInvoice');
-        if (draftData) {
-          const draft = JSON.parse(draftData);
-          const invNumber = draft.invoiceNumber || 'INV001';
-          setInvoiceNumber(invNumber);
-          fetchPaymentData(invNumber);
-        } else {
-          setInvoiceNumber('INV001');
-        }
-      }
-    } else {
-      const draftData = localStorage.getItem('draftInvoice');
-      if (draftData) {
-        const draft = JSON.parse(draftData);
-        const invNumber = draft.invoiceNumber || 'INV001';
-        setInvoiceData(draft);
-        setEditedData(draft);
-        setInvoiceNumber(invNumber);
-        fetchPaymentData(invNumber);
-        localStorage.setItem('previewInvoice', draftData);
-      } else {
-        window.location.href = '/sales/create-invoice';
-      }
-    }
-  }, [navigate]);
+    fetchTransactionData();
+  }, [id]);
 
-  // Fetch payment data from API
-  const fetchPaymentData = async (invNumber) => {
-    if (!invNumber) return;
-    
+  const fetchNextReceiptNumber = async () => {
     try {
-      setLoadingPayment(true);
-      const response = await fetch(`http://localhost:5000/api/invoices/${invNumber}`);
-      
+      const response = await fetch(`${baseurl}/api/next-receipt-number`);
       if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setPaymentData(result.data);
-        } else {
-          setPaymentData(null);
-        }
+        const data = await response.json();
+        setReceiptFormData(prev => ({
+          ...prev,
+          receiptNumber: data.nextReceiptNumber
+        }));
       } else {
-        setPaymentData(null);
+        await generateFallbackReceiptNumber();
+      }
+    } catch (err) {
+      console.error('Error fetching next receipt number:', err);
+      await generateFallbackReceiptNumber();
+    }
+  };
+
+  const generateFallbackReceiptNumber = async () => {
+    try {
+      const response = await fetch(`${baseurl}/api/last-receipt`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.lastReceiptNumber) {
+          const lastNumber = data.lastReceiptNumber;
+          const numberMatch = lastNumber.match(/REC(\d+)/);
+          if (numberMatch) {
+            const nextNum = parseInt(numberMatch[1], 10) + 1;
+            const fallbackReceiptNumber = `REC${nextNum.toString().padStart(3, '0')}`;
+            setReceiptFormData(prev => ({
+              ...prev,
+              receiptNumber: fallbackReceiptNumber
+            }));
+            return;
+          }
+        }
+      }
+      setReceiptFormData(prev => ({
+        ...prev,
+        receiptNumber: 'REC001'
+      }));
+    } catch (err) {
+      setReceiptFormData(prev => ({
+        ...prev,
+        receiptNumber: 'REC001'
+      }));
+    }
+  };
+
+  const fetchTransactionData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('Fetching transaction data for ID:', id);
+      const apiUrl = `${baseurl}/transactions/${id}`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        timeout: 10000
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const apiData = result.data;
+        const transformedData = transformApiDataToInvoiceFormat(apiData);
+        setInvoiceData(transformedData);
+        setEditedData(transformedData);
+      } else if (result.VoucherID) {
+        const transformedData = transformApiDataToInvoiceFormat(result);
+        setInvoiceData(transformedData);
+        setEditedData(transformedData);
+      } else {
+        throw new Error(result.message || 'No valid data received from API');
       }
     } catch (error) {
-      console.error('Error fetching payment data:', error);
-      setPaymentData(null);
+      console.error('Error fetching transaction:', error);
+      setError(`API Error: ${error.message}`);
+      
+      const savedData = localStorage.getItem('previewInvoice');
+      if (savedData) {
+        try {
+          const data = JSON.parse(savedData);
+          setInvoiceData(data);
+          setEditedData(data);
+          setError(null);
+        } catch (parseError) {
+          console.error('Error parsing localStorage data:', parseError);
+        }
+      }
     } finally {
-      setLoadingPayment(false);
+      setLoading(false);
     }
+  };
+
+  const transformApiDataToInvoiceFormat = (apiData) => {
+    console.log('Transforming API data:', apiData);
+    
+    let batchDetails = [];
+    try {
+      if (apiData.batch_details && typeof apiData.batch_details === 'string') {
+        batchDetails = JSON.parse(apiData.batch_details);
+      } else if (Array.isArray(apiData.batch_details)) {
+        batchDetails = apiData.batch_details;
+      } else if (apiData.BatchDetails && typeof apiData.BatchDetails === 'string') {
+        batchDetails = JSON.parse(apiData.BatchDetails);
+      }
+    } catch (error) {
+      console.error('Error parsing batch details:', error);
+    }
+
+    const items = batchDetails.map((batch, index) => ({
+      id: index + 1,
+      product: batch.product || 'Product',
+      description: `Batch: ${batch.batch}`,
+      quantity: parseFloat(batch.quantity) || 0,
+      price: parseFloat(batch.price) || 0,
+      discount: 0,
+      gst: parseFloat(apiData.IGSTPercentage) || 0,
+      cgst: parseFloat(apiData.CGSTPercentage) || 0,
+      sgst: parseFloat(apiData.SGSTPercentage) || 0,
+      igst: parseFloat(apiData.IGSTPercentage) || 0,
+      total: (parseFloat(batch.quantity) * parseFloat(batch.price)).toFixed(2)
+    })) || [];
+
+    const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
+    const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
+    const grandTotal = parseFloat(apiData.TotalAmount) || 0;
+
+    return {
+      invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
+      invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      
+      companyInfo: {
+        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+        email: "sumukhuri7@gmail.com",
+        phone: "3456548878543",
+        gstin: "ZAAABCD0508B1ZG",
+        state: "Karnataka"
+      },
+      
+      supplierInfo: {
+        name: apiData.PartyName || 'Customer',
+        businessName: apiData.AccountName || 'Business',
+        gstin: apiData.gstin || '',
+        state: apiData.billing_state || apiData.BillingState || '',
+        id: apiData.PartyID || null
+      },
+      
+      billingAddress: {
+        addressLine1: apiData.billing_address_line1 || apiData.BillingAddress || '',
+        addressLine2: apiData.billing_address_line2 || '',
+        city: apiData.billing_city || apiData.BillingCity || '',
+        pincode: apiData.billing_pin_code || apiData.BillingPincode || '',
+        state: apiData.billing_state || apiData.BillingState || ''
+      },
+      
+      shippingAddress: {
+        addressLine1: apiData.shipping_address_line1 || apiData.ShippingAddress || apiData.billing_address_line1 || apiData.BillingAddress || '',
+        addressLine2: apiData.shipping_address_line2 || apiData.billing_address_line2 || '',
+        city: apiData.shipping_city || apiData.ShippingCity || apiData.billing_city || apiData.BillingCity || '',
+        pincode: apiData.shipping_pin_code || apiData.ShippingPincode || apiData.billing_pin_code || apiData.BillingPincode || '',
+        state: apiData.shipping_state || apiData.ShippingState || apiData.billing_state || apiData.BillingState || ''
+      },
+      
+      items: items.length > 0 ? items : [{
+        id: 1,
+        product: 'Product',
+        description: 'No batch details available',
+        quantity: 1,
+        price: grandTotal,
+        discount: 0,
+        gst: parseFloat(apiData.IGSTPercentage) || 0,
+        cgst: parseFloat(apiData.CGSTPercentage) || 0,
+        sgst: parseFloat(apiData.SGSTPercentage) || 0,
+        igst: parseFloat(apiData.IGSTPercentage) || 0,
+        total: grandTotal.toFixed(2)
+      }],
+      
+      taxableAmount: taxableAmount.toFixed(2),
+      totalGST: totalGST.toFixed(2),
+      grandTotal: grandTotal.toFixed(2),
+      totalCess: "0.00",
+      
+      note: "Thank you for your business!",
+      transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
+      additionalCharge: "",
+      additionalChargeAmount: "0.00",
+      
+      paymentData: {
+        status: apiData.status || 'Pending',
+        paid_amount: parseFloat(apiData.paid_amount) || 0,
+        balance_amount: parseFloat(apiData.balance_amount) || grandTotal,
+        total_amount: grandTotal,
+        paid_date: apiData.paid_date,
+        receipt_number: apiData.receipt_number
+      },
+      
+      totalCGST: parseFloat(apiData.CGSTAmount) || 0,
+      totalSGST: parseFloat(apiData.SGSTAmount) || 0,
+      totalIGST: parseFloat(apiData.IGSTAmount) || 0,
+      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST"
+    };
   };
 
   const handlePrint = () => {
@@ -96,115 +272,18 @@ const InvoicePDFPreview = () => {
       const element = invoiceRef.current;
       const filename = `Invoice_${displayInvoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
       
-      // Create a clone for PDF generation
       const clone = element.cloneNode(true);
       
-      // Remove all non-printable elements
       const nonPrintableElements = clone.querySelectorAll(
         '.d-print-none, .btn, .alert, .action-bar, .tax-indicator, .no-print, .edit-control, .payment-sidebar'
       );
       nonPrintableElements.forEach(el => el.remove());
       
-      // Ensure all content is visible
       const hiddenElements = clone.querySelectorAll('[style*="display: none"], .d-none');
       hiddenElements.forEach(el => {
         el.style.display = 'block';
       });
 
-      // Add PDF-specific styles
-      const style = document.createElement('style');
-      style.innerHTML = `
-        @media all {
-          * {
-            -webkit-print-color-adjust: exact !important;
-            color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Arial', sans-serif;
-            background: white !important;
-            color: black !important;
-          }
-          .invoice-pdf-preview {
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 15px !important;
-            box-shadow: none !important;
-            border: none !important;
-            background: white !important;
-          }
-          .table-dark {
-            background-color: #343a40 !important;
-            color: white !important;
-            -webkit-print-color-adjust: exact;
-          }
-          .bg-light {
-            background-color: #f8f9fa !important;
-            -webkit-print-color-adjust: exact;
-          }
-          .text-primary { color: #000000 !important; font-weight: bold; }
-          .text-danger { color: #000000 !important; font-weight: bold; }
-          .text-success { color: #000000 !important; font-weight: bold; }
-          .border { border: 1px solid #000000 !important; }
-          .border-bottom { border-bottom: 1px solid #000000 !important; }
-          .border-top { border-top: 1px solid #000000 !important; }
-          .shadow-sm { box-shadow: none !important; }
-          .rounded { border-radius: 0 !important; }
-          
-          /* Ensure table borders are visible */
-          table { 
-            border-collapse: collapse !important;
-            width: 100% !important;
-          }
-          th, td {
-            border: 1px solid #000000 !important;
-            padding: 6px 8px !important;
-          }
-          th {
-            background-color: #343a40 !important;
-            color: white !important;
-            -webkit-print-color-adjust: exact;
-          }
-        }
-        
-        @page {
-          margin: 10mm;
-          size: A4 portrait;
-        }
-        
-        @media print {
-          body { 
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
-          .invoice-preview-page {
-            background: white !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          .invoice-preview-container {
-            max-width: 100% !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          .invoice-pdf-preview {
-            box-shadow: none !important;
-            border: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            background: white !important;
-          }
-          .no-print, .action-bar, .tax-indicator, .btn, .payment-sidebar {
-            display: none !important;
-          }
-        }
-      `;
-      clone.appendChild(style);
-
-      // PDF configuration optimized for better output
       const opt = {
         margin: [10, 10, 10, 10],
         filename: filename,
@@ -213,182 +292,31 @@ const InvoicePDFPreview = () => {
           scale: 2,
           useCORS: true,
           logging: false,
-          letterRendering: true,
-          width: element.scrollWidth,
-          height: element.scrollHeight,
-          backgroundColor: '#FFFFFF',
-          scrollX: 0,
-          scrollY: 0,
-          windowWidth: element.scrollWidth,
-          windowHeight: element.scrollHeight
+          backgroundColor: '#FFFFFF'
         },
         jsPDF: { 
           unit: 'mm', 
           format: 'a4', 
-          orientation: 'portrait',
-          compress: true,
-          hotfixes: ["px_scaling"]
-        },
-        pagebreak: { 
-          mode: ['avoid-all', 'css', 'legacy'],
-          before: '.page-break-before',
-          after: '.page-break-after',
-          avoid: '.no-break'
+          orientation: 'portrait'
         }
       };
 
-      // Generate PDF
       await html2pdf().set(opt).from(clone).save();
-      
       setDownloading(false);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      // Fallback to print method
       handlePrintFallback();
     }
   };
 
   const handlePrintFallback = () => {
-    const originalContent = document.getElementById('invoice-pdf-content').innerHTML;
-    const printWindow = window.open('', '_blank');
-    
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Invoice ${displayInvoiceNumber}</title>
-        <meta charset="utf-8">
-        <style>
-          body { 
-            font-family: Arial, sans-serif; 
-            margin: 15px; 
-            color: #000;
-            background: white;
-            font-size: 12px;
-            line-height: 1.4;
-          }
-          .invoice-pdf-preview {
-            width: 100%;
-            max-width: 100%;
-          }
-          .header { 
-            border-bottom: 2px solid #333; 
-            padding-bottom: 15px; 
-            margin-bottom: 15px; 
-          }
-          .company-name { 
-            color: #000; 
-            font-weight: bold;
-            font-size: 18px;
-            margin-bottom: 5px; 
-          }
-          .invoice-title { 
-            color: #000; 
-            font-weight: bold;
-            font-size: 20px;
-            margin-bottom: 10px; 
-          }
-          .invoice-meta { 
-            background-color: #f5f5f5; 
-            padding: 10px; 
-            border: 1px solid #ddd;
-          }
-          .bg-light { 
-            background-color: #f5f5f5 !important; 
-          }
-          .table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-bottom: 15px; 
-            font-size: 11px;
-          }
-          .table th, .table td { 
-            border: 1px solid #000; 
-            padding: 6px 8px; 
-            text-align: left; 
-          }
-          .table th { 
-            background-color: #333 !important; 
-            color: white; 
-            font-weight: bold;
-          }
-          .table-dark th {
-            background-color: #333 !important;
-            color: white;
-          }
-          .text-end { text-align: right; }
-          .text-center { text-align: center; }
-          .border { border: 1px solid #000; }
-          .p-2 { padding: 8px; }
-          .p-3 { padding: 12px; }
-          .p-4 { padding: 16px; }
-          .mb-1 { margin-bottom: 5px; }
-          .mb-2 { margin-bottom: 8px; }
-          .mb-3 { margin-bottom: 12px; }
-          .mb-4 { margin-bottom: 16px; }
-          .mt-2 { margin-top: 8px; }
-          .mt-3 { margin-top: 12px; }
-          .pb-2 { padding-bottom: 8px; }
-          .pt-2 { padding-top: 8px; }
-          .pt-3 { padding-top: 12px; }
-          .border-top { border-top: 1px solid #000; }
-          .border-bottom { border-bottom: 1px solid #000; }
-          .fw-bold { font-weight: bold; }
-          .text-primary { color: #000; font-weight: bold; }
-          .text-danger { color: #000; font-weight: bold; }
-          .text-success { color: #000; font-weight: bold; }
-          .text-muted { color: #666; }
-          .small { font-size: 10px; }
-          .row { display: flex; flex-wrap: wrap; margin-right: -10px; margin-left: -10px; }
-          .col-md-6 { flex: 0 0 50%; max-width: 50%; padding: 0 10px; }
-          .col-md-7 { flex: 0 0 58.333333%; max-width: 58.333333%; padding: 0 10px; }
-          .col-md-5 { flex: 0 0 41.666667%; max-width: 41.666667%; padding: 0 10px; }
-          .col-md-8 { flex: 0 0 66.666667%; max-width: 66.666667%; padding: 0 10px; }
-          .col-md-4 { flex: 0 0 33.333333%; max-width: 33.333333%; padding: 0 10px; }
-          .no-print { display: none !important; }
-          .payment-sidebar { display: none !important; }
-          @media print {
-            body { margin: 0; padding: 0; }
-            .invoice-pdf-preview { box-shadow: none; border: none; }
-            .table th { background-color: #333 !important; -webkit-print-color-adjust: exact; }
-            .bg-light { background-color: #f5f5f5 !important; -webkit-print-color-adjust: exact; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="invoice-pdf-preview">
-          ${originalContent
-            .replace(/<div[^>]*class="[^"]*d-print-none[^"]*"[^>]*>.*?<\/div>/gs, '')
-            .replace(/<div[^>]*class="[^"]*action-bar[^"]*"[^>]*>.*?<\/div>/gs, '')
-            .replace(/<div[^>]*class="[^"]*tax-indicator[^"]*"[^>]*>.*?<\/div>/gs, '')
-            .replace(/<div[^>]*class="[^"]*payment-sidebar[^"]*"[^>]*>.*?<\/div>/gs, '')
-            .replace(/<button[^>]*>.*?<\/button>/gs, '')
-            .replace(/<input[^>]*>/gs, '')
-            .replace(/<textarea[^>]*>.*?<\/textarea>/gs, '')
-            .replace(/<form[^>]*>.*?<\/form>/gs, '')
-          }
-        </div>
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(() => {
-              window.close();
-            }, 1000);
-          };
-        </script>
-      </body>
-      </html>
-    `;
-    
-    printWindow.document.write(printContent);
-    printWindow.document.close();
+    window.print();
   };
 
   const handleEditToggle = () => {
     if (isEditMode) {
       setInvoiceData(editedData);
       localStorage.setItem('previewInvoice', JSON.stringify(editedData));
-      localStorage.setItem('draftInvoice', JSON.stringify(editedData));
     }
     setIsEditMode(!isEditMode);
   };
@@ -403,11 +331,6 @@ const InvoicePDFPreview = () => {
       ...prev,
       [field]: value
     }));
-    
-    if (field === 'invoiceNumber') {
-      setInvoiceNumber(value);
-      fetchPaymentData(value);
-    }
   };
 
   const handleNestedChange = (section, field, value) => {
@@ -485,11 +408,6 @@ const InvoicePDFPreview = () => {
     }));
   };
 
-  const handleBackToCreate = () => {
-    localStorage.setItem('draftInvoice', JSON.stringify(editedData));
-    window.close();
-  };
-
   const calculateGSTBreakdown = () => {
     if (!currentData || !currentData.items) return { totalCGST: 0, totalSGST: 0, totalIGST: 0 };
     
@@ -542,7 +460,103 @@ const InvoicePDFPreview = () => {
     };
   };
 
-  if (!invoiceData) {
+  const handleOpenReceiptModal = () => {
+    if (!invoiceData) return;
+    
+    setReceiptFormData(prev => ({
+      ...prev,
+      retailerBusinessName: invoiceData.supplierInfo.businessName,
+      retailerId: invoiceData.supplierInfo.id || '',
+      amount: invoiceData.grandTotal,
+      invoiceNumber: invoiceData.invoiceNumber
+    }));
+    
+    fetchNextReceiptNumber();
+    setShowReceiptModal(true);
+  };
+
+  const handleCloseReceiptModal = () => {
+    setShowReceiptModal(false);
+    setIsCreatingReceipt(false);
+  };
+
+  const handleReceiptInputChange = (e) => {
+    const { name, value } = e.target;
+    setReceiptFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleCreateReceiptFromInvoice = async () => {
+    if (!receiptFormData.amount || parseFloat(receiptFormData.amount) <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+
+    try {
+      setIsCreatingReceipt(true);
+
+      const receiptPayload = {
+        receipt_number: receiptFormData.receiptNumber,
+        retailer_id: receiptFormData.retailerId,
+        retailer_name: receiptFormData.retailerBusinessName,
+        amount: parseFloat(receiptFormData.amount),
+        currency: receiptFormData.currency,
+        payment_method: receiptFormData.paymentMethod,
+        receipt_date: receiptFormData.receiptDate,
+        note: receiptFormData.note,
+        bank_name: receiptFormData.bankName,
+        transaction_date: receiptFormData.transactionDate || null,
+        reconciliation_option: receiptFormData.reconciliationOption,
+        invoice_number: receiptFormData.invoiceNumber,
+        retailer_mobile: receiptFormData.retailerMobile,
+        retailer_email: receiptFormData.retailerEmail,
+        retailer_gstin: receiptFormData.retailerGstin,
+        retailer_business_name: receiptFormData.retailerBusinessName,
+        from_invoice: true
+      };
+
+      console.log('Creating receipt from invoice:', receiptPayload);
+
+      const response = await fetch(`${baseurl}/api/receipts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(receiptPayload),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Receipt created successfully:', result);
+        handleCloseReceiptModal();
+        alert('Receipt created successfully!');
+        
+        if (result.id) {
+          navigate(`/receipts_view/${result.id}`);
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to create receipt:', errorText);
+        let errorMessage = 'Failed to create receipt. ';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage += errorData.error || 'Please try again.';
+        } catch {
+          errorMessage += 'Please try again.';
+        }
+        alert(errorMessage);
+      }
+    } catch (err) {
+      console.error('Error creating receipt:', err);
+      alert('Network error. Please check your connection and try again.');
+    } finally {
+      setIsCreatingReceipt(false);
+    }
+  };
+
+  if (loading) {
     return (
       <div className="invoice-preview-page">
         <div className="text-center p-5">
@@ -550,10 +564,30 @@ const InvoicePDFPreview = () => {
             <span className="visually-hidden">Loading...</span>
           </div>
           <p className="mt-3">Loading invoice data...</p>
-          <Button variant="primary" onClick={() => window.close()}>
-            Close Window
-          </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (error && !invoiceData) {
+    return (
+      <div className="invoice-preview-page">
+        <Container>
+          <div className="text-center p-5">
+            <Alert variant="danger">
+              <h5>Error Loading Invoice</h5>
+              <p>{error}</p>
+              <div className="mt-3">
+                <Button variant="primary" onClick={fetchTransactionData} className="me-2">
+                  Try Again
+                </Button>
+                <Button variant="secondary" onClick={() => window.history.back()}>
+                  Go Back
+                </Button>
+              </div>
+            </Alert>
+          </div>
+        </Container>
       </div>
     );
   }
@@ -561,10 +595,10 @@ const InvoicePDFPreview = () => {
   const currentData = isEditMode ? editedData : invoiceData;
   const gstBreakdown = calculateGSTBreakdown();
   const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
-  const displayInvoiceNumber = currentData.invoiceNumber || invoiceNumber || 'INV001';
+  const displayInvoiceNumber = currentData.invoiceNumber || 'INV001';
 
-  // Calculate payment progress
-  const totalAmount = paymentData ? parseFloat(paymentData.TotalAmount) : 0;
+  const paymentData = currentData.paymentData;
+  const totalAmount = paymentData ? parseFloat(paymentData.total_amount) : 0;
   const paidAmount = paymentData ? parseFloat(paymentData.paid_amount) : 0;
   const balanceAmount = paymentData ? parseFloat(paymentData.balance_amount) : 0;
   const paymentProgress = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
@@ -579,6 +613,13 @@ const InvoicePDFPreview = () => {
             <div>
               {!isEditMode ? (
                 <>
+                  <Button
+                    variant="info"
+                    className="me-2 text-white"
+                    onClick={handleOpenReceiptModal}
+                  >
+                    <FaRegFileAlt className="me-1" /> Create Receipt
+                  </Button>
                   <Button variant="warning" onClick={handleEditToggle} className="me-2">
                     <FaEdit className="me-1" /> Edit Invoice
                   </Button>
@@ -604,8 +645,8 @@ const InvoicePDFPreview = () => {
                       </>
                     )}
                   </Button>
-                  <Button variant="secondary" onClick={handleBackToCreate}>
-                    <FaArrowLeft className="me-1" /> Back to Create
+                  <Button variant="secondary" onClick={() => window.history.back()}>
+                    <FaArrowLeft className="me-1" /> Go Back
                   </Button>
                 </>
               ) : (
@@ -623,26 +664,207 @@ const InvoicePDFPreview = () => {
         </Container>
       </div>
 
-      {/* Tax Type Indicator */}
-      {currentData.supplierInfo?.state && (
-        <div className="tax-indicator mb-3 d-print-none no-print">
+      {/* Error Alert */}
+      {error && invoiceData && (
+        <div className="d-print-none no-print">
           <Container fluid>
-            <Alert variant={isSameState ? 'success' : 'warning'} className="mb-0">
-              <strong>Tax Type: </strong>
-              {isSameState ? (
-                <>CGST & SGST (Same State - {currentData.companyInfo.state} to {currentData.supplierInfo.state})</>
-              ) : (
-                <>IGST (Inter-State: {currentData.companyInfo.state} to {currentData.supplierInfo.state})</>
-              )}
+            <Alert variant="warning" className="mb-3">
+              <Alert.Heading>Using Local Data</Alert.Heading>
+              <p className="mb-0">{error}</p>
+              <Button variant="outline-warning" size="sm" onClick={fetchTransactionData} className="mt-2">
+                Retry API Connection
+              </Button>
             </Alert>
           </Container>
         </div>
       )}
 
-      {/* Main Content with Sidebar */}
+      {/* Receipt Creation Modal */}
+      <Modal show={showReceiptModal} onHide={handleCloseReceiptModal} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Create Receipt from Invoice</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="row mb-4">
+            <div className="col-md-6">
+              <div className="company-info-recepits-table text-center">
+                <label className="form-label-recepits-table">Navkar Exports</label>
+                <p>NO.63/603 AND 64/604, NEAR JAIN TEMPLE</p>
+                <p>1ST MAIN ROAD, T DASARAHALLI</p>
+                <p>GST : 29AAAMPC7994B1ZE</p>
+                <p>Email: akshay555.ak@gmail.com</p>
+                <p>Phone: 09880990431</p>
+              </div>
+            </div>
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Receipt Number</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="receiptNumber"
+                  value={receiptFormData.receiptNumber}
+                  onChange={handleReceiptInputChange}
+                  placeholder="REC0001"
+                  readOnly
+                />
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Receipt Date</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  name="receiptDate"
+                  value={receiptFormData.receiptDate}
+                  onChange={handleReceiptInputChange}
+                />
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Payment Method</label>
+                <select
+                  className="form-select"
+                  name="paymentMethod"
+                  value={receiptFormData.paymentMethod}
+                  onChange={handleReceiptInputChange}
+                >
+                  <option>Direct Deposit</option>
+                  <option>Online Payment</option>
+                  <option>Credit/Debit Card</option>
+                  <option>Demand Draft</option>
+                  <option>Cheque</option>
+                  <option>Cash</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="row mb-4">
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Retailer *</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={receiptFormData.retailerBusinessName || 'Auto-filled from invoice'}
+                  readOnly
+                  disabled
+                />
+                <small className="text-muted">Auto-filled from invoice</small>
+              </div>
+            </div>
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Amount *</label>
+                <div className="input-group custom-amount-receipts-table">
+                  <select
+                    className="form-select currency-select-receipts-table"
+                    name="currency"
+                    value={receiptFormData.currency}
+                    onChange={handleReceiptInputChange}
+                  >
+                    <option>INR</option>
+                    <option>USD</option>
+                    <option>EUR</option>
+                    <option>GBP</option>
+                  </select>
+                  <input
+                    type="number"
+                    className="form-control amount-input-receipts-table"
+                    name="amount"
+                    value={receiptFormData.amount}
+                    onChange={handleReceiptInputChange}
+                    placeholder="Amount"
+                    min="0"
+                    step="0.01"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="row mb-4">
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Note</label>
+                <textarea
+                  className="form-control"
+                  rows="3"
+                  name="note"
+                  value={receiptFormData.note}
+                  onChange={handleReceiptInputChange}
+                  placeholder="Additional notes..."
+                ></textarea>
+              </div>
+            </div>
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">For</label>
+                <p className="mt-2">Authorised Signatory</p>
+              </div>
+            </div>
+          </div>
+          <div className="row">
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Bank Name</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="bankName"
+                  value={receiptFormData.bankName}
+                  onChange={handleReceiptInputChange}
+                  placeholder="Bank Name"
+                />
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Transaction Proof Document</label>
+                <input type="file" className="form-control" />
+                <small className="text-muted">No file chosen</small>
+              </div>
+            </div>
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Transaction Date</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  name="transactionDate"
+                  value={receiptFormData.transactionDate}
+                  onChange={handleReceiptInputChange}
+                />
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Reconciliation Option</label>
+                <select
+                  className="form-select"
+                  name="reconciliationOption"
+                  value={receiptFormData.reconciliationOption}
+                  onChange={handleReceiptInputChange}
+                >
+                  <option>Do Not Reconcile</option>
+                  <option>Customer Reconcile</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseReceiptModal}>
+            Close
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleCreateReceiptFromInvoice}
+            disabled={isCreatingReceipt}
+          >
+            {isCreatingReceipt ? 'Creating...' : 'Create Receipt'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Main Content */}
       <Container fluid className="invoice-preview-container">
         <Row>
-          {/* Invoice Content - 8 columns */}
+          {/* Invoice Content */}
           <Col lg={8}>
             <div 
               className="invoice-pdf-preview bg-white p-4 shadow-sm" 
@@ -739,7 +961,7 @@ const InvoicePDFPreview = () => {
                 </Row>
               </div>
 
-              {/* Supplier and Address Details */}
+              {/* Customer and Address Details */}
               <div className="address-section mb-4">
                 <Row>
                   <Col md={6}>
@@ -835,16 +1057,12 @@ const InvoicePDFPreview = () => {
                     <thead className="table-dark">
                       <tr>
                         <th width="5%">#</th>
-                        <th width="15%">Product</th>
+                        <th width="25%">Product</th>
                         <th width="20%">Description</th>
-                        <th width="8%">Qty</th>
-                        <th width="10%">Price</th>
-                        <th width="8%">Discount %</th>
-                        <th width="8%">GST %</th>
-                        <th width="8%">CGST %</th>
-                        <th width="8%">SGST %</th>
-                        <th width="8%">IGST %</th>
-                        <th width="12%">Amount (₹)</th>
+                        <th width="10%">Qty</th>
+                        <th width="15%">Price</th>
+                        <th width="10%">GST %</th>
+                        <th width="15%">Amount (₹)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -885,40 +1103,8 @@ const InvoicePDFPreview = () => {
                             <Form.Control 
                               type="number"
                               size="sm"
-                              value={item.discount}
-                              onChange={(e) => handleItemChange(index, 'discount', e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <Form.Control 
-                              type="number"
-                              size="sm"
                               value={item.gst}
                               onChange={(e) => handleItemChange(index, 'gst', e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <Form.Control 
-                              type="number"
-                              size="sm"
-                              value={item.cgst}
-                              onChange={(e) => handleItemChange(index, 'cgst', e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <Form.Control 
-                              type="number"
-                              size="sm"
-                              value={item.sgst}
-                              onChange={(e) => handleItemChange(index, 'sgst', e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <Form.Control 
-                              type="number"
-                              size="sm"
-                              value={item.igst}
-                              onChange={(e) => handleItemChange(index, 'igst', e.target.value)}
                             />
                           </td>
                           <td className="text-end">₹{parseFloat(item.total).toFixed(2)}</td>
@@ -931,16 +1117,12 @@ const InvoicePDFPreview = () => {
                     <thead className="table-dark">
                       <tr>
                         <th width="5%">#</th>
-                        <th width="15%">Product</th>
-                        <th width="20%">Description</th>
-                        <th width="6%">Qty</th>
-                        <th width="10%">Price</th>
-                        <th width="6%">Discount %</th>
-                        <th width="6%">GST %</th>
-                        <th width="6%">CGST %</th>
-                        <th width="6%">SGST %</th>
-                        <th width="6%">IGST %</th>
-                        <th width="14%">Amount (₹)</th>
+                        <th width="25%">Product</th>
+                        <th width="25%">Description</th>
+                        <th width="10%">Qty</th>
+                        <th width="15%">Price</th>
+                        <th width="10%">GST %</th>
+                        <th width="10%">Amount (₹)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -951,21 +1133,10 @@ const InvoicePDFPreview = () => {
                           <td>{item.description}</td>
                           <td className="text-center">{item.quantity}</td>
                           <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
-                          <td className="text-center">{item.discount}%</td>
                           <td className="text-center">{item.gst}%</td>
-                          <td className="text-center">{item.cgst}%</td>
-                          <td className="text-center">{item.sgst}%</td>
-                          <td className="text-center">{item.igst}%</td>
                           <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
                         </tr>
                       ))}
-                      {currentData.items.length === 0 && (
-                        <tr>
-                          <td colSpan="11" className="text-center text-muted py-3">
-                            No items added
-                          </td>
-                        </tr>
-                      )}
                     </tbody>
                   </table>
                 )}
@@ -987,11 +1158,10 @@ const InvoicePDFPreview = () => {
                         />
                       ) : (
                         <p className="bg-light p-2 rounded min-h-100">
-                          {currentData.note || 'Thank you for your business! We appreciate your timely payment.'}
+                          {currentData.note}
                         </p>
                       )}
                       
-                      <h6 className="text-primary mt-3">Transportation Details:</h6>
                       {isEditMode ? (
                         <Form.Control 
                           as="textarea"
@@ -1002,7 +1172,7 @@ const InvoicePDFPreview = () => {
                         />
                       ) : (
                         <p className="bg-light p-2 rounded">
-                          {currentData.transportDetails || 'Standard delivery. Contact us for tracking information.'}
+                          {currentData.transportDetails}
                         </p>
                       )}
                     </div>
@@ -1014,60 +1184,38 @@ const InvoicePDFPreview = () => {
                         <tbody>
                           <tr>
                             <td className="pb-2">Taxable Amount:</td>
-                            <td className="text-end pb-2">₹{parseFloat(currentData.taxableAmount || 0).toFixed(2)}</td>
+                            <td className="text-end pb-2">₹{currentData.taxableAmount}</td>
                           </tr>
                           
                           {isSameState ? (
                             <>
                               <tr>
-                                <td className="pb-2">CGST ({gstBreakdown.totalCGST > 0 ? '9%' : '0%'}):</td>
+                                <td className="pb-2">CGST:</td>
                                 <td className="text-end pb-2">₹{gstBreakdown.totalCGST}</td>
                               </tr>
                               <tr>
-                                <td className="pb-2">SGST ({gstBreakdown.totalSGST > 0 ? '9%' : '0%'}):</td>
+                                <td className="pb-2">SGST:</td>
                                 <td className="text-end pb-2">₹{gstBreakdown.totalSGST}</td>
                               </tr>
                             </>
                           ) : (
                             <tr>
-                              <td className="pb-2">IGST ({gstBreakdown.totalIGST > 0 ? '18%' : '0%'}):</td>
+                              <td className="pb-2">IGST:</td>
                               <td className="text-end pb-2">₹{gstBreakdown.totalIGST}</td>
                             </tr>
                           )}
                           
                           <tr>
                             <td className="pb-2">Total GST:</td>
-                            <td className="text-end pb-2">₹{parseFloat(currentData.totalGST || 0).toFixed(2)}</td>
+                            <td className="text-end pb-2">₹{currentData.totalGST}</td>
                           </tr>
-                          
-                          <tr>
-                            <td className="pb-2">Total Cess:</td>
-                            <td className="text-end pb-2">₹{parseFloat(currentData.totalCess || 0).toFixed(2)}</td>
-                          </tr>
-                          
-                          {currentData.additionalCharge && (
-                            <tr>
-                              <td className="pb-2">{currentData.additionalCharge}:</td>
-                              <td className="text-end pb-2">₹{parseFloat(currentData.additionalChargeAmount || 0).toFixed(2)}</td>
-                            </tr>
-                          )}
                           
                           <tr className="grand-total border-top pt-2">
                             <td><strong>Grand Total:</strong></td>
-                            <td className="text-end"><strong className="text-success">₹{parseFloat(currentData.grandTotal || 0).toFixed(2)}</strong></td>
+                            <td className="text-end"><strong className="text-success">₹{currentData.grandTotal}</strong></td>
                           </tr>
                         </tbody>
                       </table>
-                      
-                      <div className="mt-3 p-2 border rounded">
-                        <small className="text-muted">
-                          <strong>Tax Summary: </strong>
-                          {isSameState 
-                            ? `CGST (${gstBreakdown.totalCGST > 0 ? '9%' : '0%'}) + SGST (${gstBreakdown.totalSGST > 0 ? '9%' : '0%'}) = ${parseFloat(currentData.totalGST || 0).toFixed(2)}`
-                            : `IGST (${gstBreakdown.totalIGST > 0 ? '18%' : '0%'}) = ${parseFloat(currentData.totalGST || 0).toFixed(2)}`
-                          }
-                        </small>
-                      </div>
                     </div>
                   </Col>
                 </Row>
@@ -1095,23 +1243,14 @@ const InvoicePDFPreview = () => {
                     </div>
                   </Col>
                 </Row>
-                <div className="terms-section mt-3 pt-2 border-top">
-                  <p><strong className="text-primary">Terms & Conditions:</strong></p>
-                  <ul className="small text-muted mb-0">
-                    <li>Payment due within 30 days of invoice date</li>
-                    <li>Late payment interest @ 1.5% per month</li>
-                    <li>Goods once sold will not be taken back</li>
-                    <li>All disputes subject to local jurisdiction</li>
-                  </ul>
-                </div>
               </div>
             </div>
           </Col>
 
-          {/* Payment Sidebar - 4 columns */}
+          {/* Payment Sidebar */}
           <Col lg={4} className="d-print-none no-print">
             <div className="payment-sidebar">
-              <Card className="shadow-sm">
+              <Card className="shadow-sm mb-3">
                 <Card.Header className="bg-primary text-white">
                   <h5 className="mb-0">
                     <FaReceipt className="me-2" />
@@ -1119,18 +1258,8 @@ const InvoicePDFPreview = () => {
                   </h5>
                 </Card.Header>
                 <Card.Body>
-                  {loadingPayment ? (
-                    <div className="text-center py-3">
-                      <div className="spinner-border text-primary" role="status">
-                        <span className="visually-hidden">Loading...</span>
-                      </div>
-                      <p className="mt-2 mb-0">Loading payment data...</p>
-                    </div>
-                  ) : paymentData ? (
+                  {paymentData ? (
                     <>
-                      {/* Payment Progress Bar */}
-                     
-                      {/* Payment Details */}
                       <div className="payment-details">
                         <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
                           <span className="fw-bold">Status:</span>
@@ -1168,46 +1297,35 @@ const InvoicePDFPreview = () => {
                           </div>
                         </div>
 
-                        {/* Payment Dates */}
                         {paymentData.paid_date && (
                           <div className="payment-dates border-top pt-3">
                             <div className="d-flex justify-content-between align-items-center mb-2">
                               <span>
                                 <FaCalendar className="text-muted me-1" />
-                                Invoice Date:
-                              </span>
-                              <small className="text-muted">
-                                {new Date(paymentData.Date).toLocaleDateString()}
-                              </small>
-                            </div>
-                            <div className="d-flex justify-content-between align-items-center">
-                              <span>
-                                <FaCalendar className="text-success me-1" />
                                 Last Payment:
                               </span>
                               <small className="text-muted">
                                 {new Date(paymentData.paid_date).toLocaleDateString()}
                               </small>
                             </div>
+                            {paymentData.receipt_number && (
+                              <div className="d-flex justify-content-between align-items-center">
+                                <span>Receipt No:</span>
+                                <small className="text-muted">{paymentData.receipt_number}</small>
+                              </div>
+                            )}
                           </div>
                         )}
-
-                      
                       </div>
                     </>
                   ) : (
                     <div className="text-center py-4">
                       <FaReceipt className="text-muted mb-3" size={48} />
-                      <h6 className="text-muted">No Payment Data Found</h6>
-                      <p className="small text-muted mb-0">
-                        Payment information will appear here when invoice is saved to the system.
-                      </p>
+                      <h6 className="text-muted">No Payment Data</h6>
                     </div>
                   )}
                 </Card.Body>
               </Card>
-
-        
             </div>
           </Col>
         </Row>

@@ -25,6 +25,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+   const [batchCounter, setBatchCounter] = useState(1);
 
   // Tax calculation function
   const calculateTaxAndNetPrice = (price, gstRate, inclusiveGst) => {
@@ -194,42 +195,47 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
   };
 
   // FIXED: Proper batch number fetching with different prefixes
-  const fetchNextBatchNumber = async (groupBy = 'Purchaseditems') => {
-    try {
-      const response = await axios.get(`${baseurl}/batches/next-batch-number`, {
-        params: { group_by: groupBy }
-      });
-      console.log('📦 Next batch number for', groupBy, ':', response.data.batch_number);
-      return response.data.batch_number;
-    } catch (error) {
-      console.error('Error fetching next batch number:', error);
-      // Fallback: generate sequential number with prefix
-      const prefix = groupBy === 'Purchaseditems' ? 'P' : 'S';
-      const fallbackNumber = `${prefix}${String(batches.length + 1).padStart(4, '0')}`;
-      console.log('📦 Using fallback batch number:', fallbackNumber);
-      return fallbackNumber;
-    }
-  };
+ // FIXED: Proper batch number fetching with different prefixes and current count
+const fetchNextBatchNumber = async (groupBy = 'Purchaseditems', currentCount = 0) => {
+  try {
+    console.log('🔄 Fetching next batch number for group:', groupBy, 'currentCount:', currentCount);
+    const response = await axios.get(`${baseurl}/batches/next-batch-number`, {
+      params: { 
+        group_by: groupBy,
+        current_count: currentCount // ADD THIS PARAMETER
+      }
+    });
+    console.log('📦 Next batch number for', groupBy, ':', response.data.batch_number);
+    return response.data.batch_number;
+  } catch (error) {
+    console.error('Error fetching next batch number:', error);
+    // Fallback: generate sequential number with prefix considering current count
+    const prefix = groupBy === 'Purchaseditems' ? 'P' : 'S';
+    const fallbackNumber = `${prefix}${String(parseInt(currentCount) + 1).padStart(4, '0')}`;
+    console.log('📦 Using fallback batch number:', fallbackNumber);
+    return fallbackNumber;
+  }
+};
 
-  const createDefaultBatch = async () => {
-    const newBarcode = await generateUniqueBarcode();
-    const batchNumber = await fetchNextBatchNumber(formData.group_by);
-    return {
-      id: `temp_${Date.now()}_${Math.random()}`,
-      dbId: null,
-      batchNumber,
-      mfgDate: '',
-      expDate: '',
-      quantity: '',
-      costPrice: '',
-      sellingPrice: formData?.price || '',
-      purchasePrice: '',
-      mrp: '',
-      batchPrice: '',
-      barcode: newBarcode,
-      isExisting: false
-    };
+const createDefaultBatch = async (currentBatchCount = 0) => {
+  const newBarcode = await generateUniqueBarcode();
+  const batchNumber = await fetchNextBatchNumber(formData.group_by, currentBatchCount);
+  return {
+    id: `temp_${Date.now()}_${Math.random()}`,
+    dbId: null,
+    batchNumber,
+    mfgDate: '',
+    expDate: '',
+    quantity: '',
+    costPrice: '',
+    sellingPrice: formData?.price || '',
+    purchasePrice: '',
+    mrp: '',
+    batchPrice: '',
+    barcode: newBarcode,
+    isExisting: false
   };
+};
 
   const [formData, setFormData] = useState({
     group_by: groupType,
@@ -255,45 +261,47 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     can_be_sold: false
   });
 
-  const handleChange = async (e) => {
-    const { name, value, type, checked } = e.target;
-    console.log(`🔄 Handling change: ${name} = ${type === 'checkbox' ? checked : value}`);
+const handleChange = async (e) => {
+  const { name, value, type, checked } = e.target;
+  console.log(`🔄 Handling change: ${name} = ${type === 'checkbox' ? checked : value}`);
 
-    const updatedFormData = {
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value
-    };
-
-    if ((name === 'price' || name === 'gst_rate' || name === 'inclusive_gst') &&
-        updatedFormData.price && updatedFormData.gst_rate) {
-      const { netPrice } = calculateTaxAndNetPrice(
-        updatedFormData.price,
-        updatedFormData.gst_rate,
-        updatedFormData.inclusive_gst
-      );
-      updatedFormData.net_price = netPrice;
-    }
-
-    if (name === 'price' && batches.length > 0) {
-      const updatedBatches = batches.map(batch => ({
-        ...batch,
-        sellingPrice: value || batch.sellingPrice
-      }));
-      setBatches(updatedBatches);
-    }
-
-    if (name === 'maintain_batch') {
-      if (checked && batches.length === 0) {
-        const defaultBatch = await createDefaultBatch();
-        setBatches([defaultBatch]);
-      } else if (!checked) {
-        setBatches([]);
-      }
-      setMaintainBatch(checked);
-    }
-
-    setFormData(updatedFormData);
+  const updatedFormData = {
+    ...formData,
+    [name]: type === 'checkbox' ? checked : value
   };
+
+  if ((name === 'price' || name === 'gst_rate' || name === 'inclusive_gst') &&
+      updatedFormData.price && updatedFormData.gst_rate) {
+    const { netPrice } = calculateTaxAndNetPrice(
+      updatedFormData.price,
+      updatedFormData.gst_rate,
+      updatedFormData.inclusive_gst
+    );
+    updatedFormData.net_price = netPrice;
+  }
+
+  if (name === 'price' && batches.length > 0) {
+    const updatedBatches = batches.map(batch => ({
+      ...batch,
+      sellingPrice: value || batch.sellingPrice
+    }));
+    setBatches(updatedBatches);
+  }
+
+  if (name === 'maintain_batch') {
+    if (checked && batches.length === 0) {
+      setBatchCounter(1); // Start from 1
+      const defaultBatch = await createDefaultBatch(0); // Pass 0 for first batch
+      setBatches([defaultBatch]);
+    } else if (!checked) {
+      setBatches([]);
+      setBatchCounter(1); // Reset counter when batch is disabled
+    }
+    setMaintainBatch(checked);
+  }
+
+  setFormData(updatedFormData);
+};
 
   const handleBatchChange = (index, e) => {
     const { name, value } = e.target;
@@ -302,11 +310,53 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     setBatches(updated);
   };
 
-  const addNewBatch = async () => {
-    const newBatch = await createDefaultBatch();
-    console.log('➕ Adding new batch:', newBatch);
-    setBatches(prev => [...prev, newBatch]);
-  };
+  // Add these useEffects with your other useEffects
+
+// Reset counter when batch maintenance is turned off
+useEffect(() => {
+  if (!maintainBatch) {
+    setBatchCounter(1); // Reset to 1 when batch maintenance is turned off
+  }
+}, [maintainBatch]);
+
+// Reset counter when editing existing product
+useEffect(() => {
+  if (productId && batches.length > 0) {
+    // When editing existing product, set counter to current batch count + 1
+    setBatchCounter(batches.length + 1);
+    console.log('🔄 Setting batch counter to:', batches.length + 1, 'for editing existing product');
+  }
+}, [productId, batches.length]);
+
+
+
+
+
+
+
+ const addNewBatch = async () => {
+  try {
+    console.log('➕ Starting to add new batch...');
+    console.log('📊 Current batch count:', batchCounter);
+    
+    const newBatch = await createDefaultBatch(batchCounter);
+    console.log('✅ New batch created:', newBatch);
+    
+    setBatches(prev => {
+      const updated = [...prev, newBatch];
+      console.log('📦 Batches after add:', updated);
+      return updated;
+    });
+    
+    // Increment the batch counter for next time
+    setBatchCounter(prev => prev + 1);
+    console.log('🔢 Batch counter incremented to:', batchCounter + 1);
+    
+  } catch (error) {
+    console.error('❌ Error adding new batch:', error);
+    showAlert('Error adding new batch. Please try again.', 'danger');
+  }
+};
 
   const removeBatch = (id) => {
     if (batches.length <= 1 && maintainBatch) {
@@ -342,63 +392,56 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     }
 
     try {
-      // Prepare purchase data
-      const purchaseData = {
-        ...formData,
-        group_by: 'Purchaseditems',
-        batches: maintainBatch ? batches.map(batch => ({
-          batch_number: batch.batchNumber,
-          mfg_date: batch.mfgDate || null,
-          exp_date: batch.expDate || null,
-          quantity: parseFloat(batch.quantity) || 0,
-        
-          selling_price: parseFloat(batch.sellingPrice) || 0,
-          purchase_price: parseFloat(batch.purchasePrice) || 0,
-          mrp: parseFloat(batch.mrp) || 0,
-          batch_price: parseFloat(batch.batchPrice) || 0,
-          barcode: batch.barcode,
-          group_by: 'Purchaseditems'
-        })) : [],
-        stock_in: "0",
-        stock_out: "0",
-        balance_stock: formData.opening_stock || "0",
-        can_be_sold: formData.can_be_sold
-      };
+    // Prepare purchase data
+    const purchaseData = {
+      ...formData,
+      group_by: 'Purchaseditems',
+      batches: maintainBatch ? batches.map(batch => ({
+        batch_number: batch.batchNumber,
+        mfg_date: batch.mfgDate || null,
+        exp_date: batch.expDate || null,
+        quantity: parseFloat(batch.quantity) || 0,
+        selling_price: parseFloat(batch.sellingPrice) || 0,
+        purchase_price: parseFloat(batch.purchasePrice) || 0,
+        mrp: parseFloat(batch.mrp) || 0,
+        batch_price: parseFloat(batch.batchPrice) || 0,
+        barcode: batch.barcode,
+        group_by: 'Purchaseditems'
+      })) : [],
+      stock_in: "0",
+      stock_out: "0",
+      balance_stock: formData.opening_stock || "0",
+      can_be_sold: formData.can_be_sold
+    };
 
-      console.log('📤 Sending purchase data to backend:', JSON.stringify(purchaseData, null, 2));
+    console.log('📤 Sending purchase data to backend:', JSON.stringify(purchaseData, null, 2));
 
-      // Use the new backend endpoint for dual product creation
-      const response = await axios.post(`${baseurl}/products/purchase-with-sales`, {
-        ...purchaseData,
-        create_sales_catalog: formData.can_be_sold
-      }, {
-        headers: { 'Content-Type': 'application/json' }
-      });
+    // Use the new backend endpoint for dual product creation
+    const response = await axios.post(`${baseurl}/products/purchase-with-sales`, {
+      ...purchaseData,
+      create_sales_catalog: formData.can_be_sold
+    }, {
+      headers: { 'Content-Type': 'application/json' }
+    });
 
-      console.log('✅ Backend response:', response.data);
+    console.log('✅ Backend response:', response.data);
 
-      if (response.data.success) {
-        if (formData.can_be_sold && response.data.sales_catalog_created) {
-          showAlert('Product added to both Purchase and Sales catalogs successfully!', 'success');
-        } else {
-          showAlert('Product added to Purchase catalog successfully!', 'success');
-        }
-        
-        setTimeout(() => navigate('/purchased_items'), 1500);
-      } else {
-        throw new Error(response.data.message || 'Failed to add product');
-      }
-
-    } catch (error) {
-      console.error('❌ Failed to add product:', error);
-      console.error('❌ Error response:', error.response?.data);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to add product';
-      showAlert(errorMessage, 'danger');
-    } finally {
-      setIsLoading(false);
+    if (response.data.success) {
+      showAlert(response.data.message || 'Product added successfully!', 'success');
+      
+      setTimeout(() => navigate('/purchased_items'), 1500);
+    } else {
+      throw new Error(response.data.message || 'Failed to add product');
     }
-  };
 
+  } catch (error) {
+    console.error('❌ Failed to add product:', error);
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to add product';
+    showAlert(errorMessage, 'danger');
+  } finally {
+    setIsLoading(false);
+  }
+};
   const pageTitle = productId
     ? `Edit Product in Purchase Catalog`
     : `Add Product to Purchase Catalog`;
@@ -704,23 +747,26 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                   />
                 </Form.Group>
 
-                {maintainBatch && (
-                  <div className="border border-dark p-3 mb-3">
-                    <h5>Batch Details (Purchase Only)</h5>
+       {maintainBatch && (
+  <div className="border border-dark p-3 mb-3">
+    <h5>Batch Details (Purchase Only)</h5>
 
-                    {batches.map((batch, index) => (
-                      <div key={batch.id} className="mb-3 border p-2">
-                        <div className="row g-2 mb-2">
-                          <div className="col-md-4">
-                            <Form.Label>Batch No.*</Form.Label>
-                            <Form.Control
-                              placeholder="Batch Number"
-                              name="batchNumber"
-                              value={batch.batchNumber}
-                              readOnly
-                              required
-                            />
-                          </div>
+    {batches.map((batch, index) => (
+      <div key={batch.id} className="mb-3 border p-2">
+        <div className="row g-2 mb-2">
+          <div className="col-md-4">
+            <Form.Label>Batch No.*</Form.Label>
+            <Form.Control
+              placeholder="Batch Number"
+              name="batchNumber"
+              value={batch.batchNumber}
+              readOnly
+              required
+            />
+            <Form.Text className="text-muted">
+              Sequential: {batch.batchNumber}
+            </Form.Text>
+          </div>
                           <div className="col-md-4">
                             <Form.Label>Stock*</Form.Label>
                             <Form.Control
