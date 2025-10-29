@@ -5,7 +5,7 @@ import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, 
 import { useNavigate } from "react-router-dom";
 import html2pdf from 'html2pdf.js';
 
-const PurchasePDFPreview = () => {
+const InvoicePDFPreview = () => {
   const navigate = useNavigate();
   const [isEditMode, setIsEditMode] = useState(false);
   const [invoiceData, setInvoiceData] = useState(null);
@@ -17,8 +17,8 @@ const PurchasePDFPreview = () => {
   const invoiceRef = useRef(null);
 
   useEffect(() => {
-    // Load purchase invoice data from localStorage
-    const savedData = localStorage.getItem('previewPurchaseInvoice');
+    // Load invoice data from localStorage
+    const savedData = localStorage.getItem('previewInvoice');
     if (savedData) {
       const data = JSON.parse(savedData);
       setInvoiceData(data);
@@ -28,28 +28,28 @@ const PurchasePDFPreview = () => {
         setInvoiceNumber(data.invoiceNumber);
         fetchPaymentData(data.invoiceNumber);
       } else {
-        const draftData = localStorage.getItem('draftPurchaseInvoice');
+        const draftData = localStorage.getItem('draftInvoice');
         if (draftData) {
           const draft = JSON.parse(draftData);
-          const invNumber = draft.invoiceNumber || 'PINV001';
+          const invNumber = draft.invoiceNumber || 'INV001';
           setInvoiceNumber(invNumber);
           fetchPaymentData(invNumber);
         } else {
-          setInvoiceNumber('PINV001');
+          setInvoiceNumber('INV001');
         }
       }
     } else {
-      const draftData = localStorage.getItem('draftPurchaseInvoice');
+      const draftData = localStorage.getItem('draftInvoice');
       if (draftData) {
         const draft = JSON.parse(draftData);
-        const invNumber = draft.invoiceNumber || 'PINV001';
+        const invNumber = draft.invoiceNumber || 'INV001';
         setInvoiceData(draft);
         setEditedData(draft);
         setInvoiceNumber(invNumber);
         fetchPaymentData(invNumber);
-        localStorage.setItem('previewPurchaseInvoice', draftData);
+        localStorage.setItem('previewInvoice', draftData);
       } else {
-        window.location.href = '/purchase/create-invoice';
+        window.location.href = '/sales/create-invoice';
       }
     }
   }, [navigate]);
@@ -60,7 +60,7 @@ const PurchasePDFPreview = () => {
     
     try {
       setLoadingPayment(true);
-      const response = await fetch(`http://localhost:5000/api/purchase-invoices/${invNumber}`);
+      const response = await fetch(`http://localhost:5000/api/invoices/${invNumber}`);
       
       if (response.ok) {
         const result = await response.json();
@@ -94,7 +94,7 @@ const PurchasePDFPreview = () => {
       setDownloading(true);
       
       const element = invoiceRef.current;
-      const filename = `Purchase_Invoice_${displayInvoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+      const filename = `Invoice_${displayInvoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
       
       // Create a clone for PDF generation
       const clone = element.cloneNode(true);
@@ -256,7 +256,7 @@ const PurchasePDFPreview = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Purchase Invoice ${displayInvoiceNumber}</title>
+        <title>Invoice ${displayInvoiceNumber}</title>
         <meta charset="utf-8">
         <style>
           body { 
@@ -387,8 +387,8 @@ const PurchasePDFPreview = () => {
   const handleEditToggle = () => {
     if (isEditMode) {
       setInvoiceData(editedData);
-      localStorage.setItem('previewPurchaseInvoice', JSON.stringify(editedData));
-      localStorage.setItem('draftPurchaseInvoice', JSON.stringify(editedData));
+      localStorage.setItem('previewInvoice', JSON.stringify(editedData));
+      localStorage.setItem('draftInvoice', JSON.stringify(editedData));
     }
     setIsEditMode(!isEditMode);
   };
@@ -486,7 +486,7 @@ const PurchasePDFPreview = () => {
   };
 
   const handleBackToCreate = () => {
-    localStorage.setItem('draftPurchaseInvoice', JSON.stringify(editedData));
+    localStorage.setItem('draftInvoice', JSON.stringify(editedData));
     window.close();
   };
 
@@ -549,7 +549,7 @@ const PurchasePDFPreview = () => {
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
-          <p className="mt-3">Loading purchase invoice data...</p>
+          <p className="mt-3">Loading invoice data...</p>
           <Button variant="primary" onClick={() => window.close()}>
             Close Window
           </Button>
@@ -561,7 +561,7 @@ const PurchasePDFPreview = () => {
   const currentData = isEditMode ? editedData : invoiceData;
   const gstBreakdown = calculateGSTBreakdown();
   const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
-  const displayInvoiceNumber = currentData.invoiceNumber || invoiceNumber || 'PINV001';
+  const displayInvoiceNumber = currentData.invoiceNumber || invoiceNumber || 'INV001';
 
   // Calculate payment progress
   const totalAmount = paymentData ? parseFloat(paymentData.TotalAmount) : 0;
@@ -575,7 +575,7 @@ const PurchasePDFPreview = () => {
       <div className="action-bar bg-white shadow-sm p-3 mb-3 sticky-top d-print-none no-print">
         <Container fluid>
           <div className="d-flex justify-content-between align-items-center">
-            <h4 className="mb-0">Purchase Invoice Preview - {displayInvoiceNumber}</h4>
+            <h4 className="mb-0">Invoice Preview - {displayInvoiceNumber}</h4>
             <div>
               {!isEditMode ? (
                 <>
@@ -696,7 +696,7 @@ const PurchasePDFPreview = () => {
                     )}
                   </Col>
                   <Col md={4} className="text-end">
-                    <h3 className="invoice-title text-danger mb-2">PURCHASE INVOICE</h3>
+                    <h3 className="invoice-title text-danger mb-2">TAX INVOICE</h3>
                     <div className="invoice-meta bg-light p-2 rounded">
                       {isEditMode ? (
                         <div className="edit-control">
@@ -709,7 +709,7 @@ const PurchasePDFPreview = () => {
                             />
                           </div>
                           <div className="mb-1">
-                            <strong>Purchase Date:</strong>
+                            <strong>Invoice Date:</strong>
                             <Form.Control 
                               type="date"
                               size="sm"
@@ -730,7 +730,7 @@ const PurchasePDFPreview = () => {
                       ) : (
                         <>
                           <p className="mb-1"><strong>Invoice No:</strong> {displayInvoiceNumber}</p>
-                          <p className="mb-1"><strong>Purchase Date:</strong> {new Date(currentData.invoiceDate).toLocaleDateString()}</p>
+                          <p className="mb-1"><strong>Invoice Date:</strong> {new Date(currentData.invoiceDate).toLocaleDateString()}</p>
                           <p className="mb-0"><strong>Due Date:</strong> {new Date(currentData.validityDate).toLocaleDateString()}</p>
                         </>
                       )}
@@ -744,7 +744,7 @@ const PurchasePDFPreview = () => {
                 <Row>
                   <Col md={6}>
                     <div className="billing-address bg-light p-3 rounded">
-                      <h5 className="text-primary mb-2">Supplier:</h5>
+                      <h5 className="text-primary mb-2">Bill To:</h5>
                       {isEditMode ? (
                         <div className="edit-control">
                           <Form.Control 
@@ -781,7 +781,7 @@ const PurchasePDFPreview = () => {
                   </Col>
                   <Col md={6}>
                     <div className="shipping-address bg-light p-3 rounded">
-                      <h5 className="text-primary mb-2">Delivery Address:</h5>
+                      <h5 className="text-primary mb-2">Ship To:</h5>
                       {isEditMode ? (
                         <div className="edit-control">
                           <Form.Control 
@@ -829,7 +829,7 @@ const PurchasePDFPreview = () => {
 
               {/* Items Table */}
               <div className="items-section mb-4">
-                <h6 className="text-primary mb-2">Purchase Items Details</h6>
+                <h6 className="text-primary mb-2">Items Details</h6>
                 {isEditMode ? (
                   <Table bordered responsive size="sm" className="edit-control">
                     <thead className="table-dark">
@@ -987,7 +987,7 @@ const PurchasePDFPreview = () => {
                         />
                       ) : (
                         <p className="bg-light p-2 rounded min-h-100">
-                          {currentData.note || 'Purchase order details and special instructions.'}
+                          {currentData.note || 'Thank you for your business! We appreciate your timely payment.'}
                         </p>
                       )}
                       
@@ -1002,14 +1002,14 @@ const PurchasePDFPreview = () => {
                         />
                       ) : (
                         <p className="bg-light p-2 rounded">
-                          {currentData.transportDetails || 'Standard delivery. Contact supplier for tracking information.'}
+                          {currentData.transportDetails || 'Standard delivery. Contact us for tracking information.'}
                         </p>
                       )}
                     </div>
                   </Col>
                   <Col md={5}>
                     <div className="amount-breakdown bg-light p-3 rounded">
-                      <h6 className="text-primary mb-3">Purchase Amount Summary</h6>
+                      <h6 className="text-primary mb-3">Amount Summary</h6>
                       <table className="amount-table w-100">
                         <tbody>
                           <tr>
@@ -1078,28 +1078,29 @@ const PurchasePDFPreview = () => {
                 <Row>
                   <Col md={6}>
                     <div className="bank-details">
-                      <h6 className="text-primary">Payment Details:</h6>
+                      <h6 className="text-primary">Bank Details:</h6>
                       <div className="bg-light p-2 rounded">
-                        <p className="mb-1">Payment Terms: Net 30 Days</p>
-                        <p className="mb-1">Payment Method: Bank Transfer</p>
-                        <p className="mb-0">Account: As per supplier details</p>
+                        <p className="mb-1">Account Name: {currentData.companyInfo.name}</p>
+                        <p className="mb-1">Account Number: XXXX XXXX XXXX</p>
+                        <p className="mb-1">IFSC Code: XXXX0123456</p>
+                        <p className="mb-0">Bank Name: Sample Bank</p>
                       </div>
                     </div>
                   </Col>
                   <Col md={6} className="text-end">
                     <div className="signature-section">
-                      <p className="mb-2">Received By: {currentData.companyInfo.name}</p>
+                      <p className="mb-2">For {currentData.companyInfo.name}</p>
                       <div className="signature-space border-bottom mx-auto" style={{width: '200px', height: '40px'}}></div>
                       <p className="mt-2">Authorized Signatory</p>
                     </div>
                   </Col>
                 </Row>
                 <div className="terms-section mt-3 pt-2 border-top">
-                  <p><strong className="text-primary">Purchase Terms & Conditions:</strong></p>
+                  <p><strong className="text-primary">Terms & Conditions:</strong></p>
                   <ul className="small text-muted mb-0">
-                    <li>Goods received are subject to quality inspection</li>
                     <li>Payment due within 30 days of invoice date</li>
-                    <li>Defective goods will be returned at supplier's cost</li>
+                    <li>Late payment interest @ 1.5% per month</li>
+                    <li>Goods once sold will not be taken back</li>
                     <li>All disputes subject to local jurisdiction</li>
                   </ul>
                 </div>
@@ -1127,6 +1128,8 @@ const PurchasePDFPreview = () => {
                     </div>
                   ) : paymentData ? (
                     <>
+                      {/* Payment Progress Bar */}
+                     
                       {/* Payment Details */}
                       <div className="payment-details">
                         <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
@@ -1188,6 +1191,8 @@ const PurchasePDFPreview = () => {
                             </div>
                           </div>
                         )}
+
+                      
                       </div>
                     </>
                   ) : (
@@ -1195,12 +1200,14 @@ const PurchasePDFPreview = () => {
                       <FaReceipt className="text-muted mb-3" size={48} />
                       <h6 className="text-muted">No Payment Data Found</h6>
                       <p className="small text-muted mb-0">
-                        Payment information will appear here when purchase invoice is saved to the system.
+                        Payment information will appear here when invoice is saved to the system.
                       </p>
                     </div>
                   )}
                 </Card.Body>
               </Card>
+
+        
             </div>
           </Col>
         </Row>
@@ -1209,4 +1216,4 @@ const PurchasePDFPreview = () => {
   );
 };
 
-export default PurchasePDFPreview;
+export default InvoicePDFPreview;

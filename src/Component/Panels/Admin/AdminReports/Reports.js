@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
-import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
+// import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
 import DashboardCharts from "../../../Panels/Admin/AdminDashboard/DashboardCard";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import SalesReport from "./SalesReport";
@@ -136,7 +136,7 @@ function Reports() {
   return (
     <div className="admin-layout">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-      <AdminHeader isCollapsed={isCollapsed} />
+      {/* <AdminHeader isCollapsed={isCollapsed} /> */}
       <div className={`main-content ${isCollapsed ? "collapsed" : ""}`}>
         <div className="reports-container">
           {/* Header Section with Controls */}

@@ -21,19 +21,23 @@ const ReceiptsTable = () => {
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
   const [activeTab, setActiveTab] = useState('Receipts');
-
-  const [formData, setFormData] = useState({
-    receiptNumber: 'REC001',
-    retailerId: '',
-    amount: '',
-    currency: 'INR',
-    paymentMethod: 'Direct Deposit',
-    receiptDate: new Date().toISOString().split('T')[0],
-    note: '',
-    bankName: '',
-    transactionDate: '',
-    reconciliationOption: 'Do Not Reconcile'
-  });
+const [formData, setFormData] = useState({
+  receiptNumber: 'REC001',
+  retailerId: '',
+  amount: '',
+  currency: 'INR',
+  paymentMethod: 'Direct Deposit',
+  receiptDate: new Date().toISOString().split('T')[0],
+  note: '',
+  bankName: '',
+  transactionDate: '',
+  reconciliationOption: 'Do Not Reconcile',
+  // Add retailer details fields
+  retailerMobile: '',
+  retailerEmail: '',
+  retailerGstin: '',
+  retailerBusinessName: ''
+});
 
   const receiptStats = [
     { label: 'Total Receipts', value: '₹ 2,50,000', change: '+18%', type: 'total' },
@@ -282,6 +286,20 @@ const ReceiptsTable = () => {
       [name]: value
     }));
   };
+  // Handle retailer selection change
+const handleRetailerChange = (e) => {
+  const selectedRetailerId = e.target.value;
+  const selectedRetailer = accounts.find(acc => acc.id == selectedRetailerId);
+  
+  setFormData(prev => ({
+    ...prev,
+    retailerId: selectedRetailerId,
+    retailerMobile: selectedRetailer?.mobile_number || '',
+    retailerEmail: selectedRetailer?.email || '',
+    retailerGstin: selectedRetailer?.gstin || '',
+    retailerBusinessName: selectedRetailer?.business_name || ''
+  }));
+};
 
   // Create new receipt
   const handleCreateReceipt = async () => {
@@ -301,18 +319,23 @@ const ReceiptsTable = () => {
 
     try {
       setIsLoading(true);
-      const receiptPayload = {
-        receipt_number: formData.receiptNumber,
-        retailer_id: formData.retailerId,
-        amount: parseFloat(formData.amount),
-        currency: formData.currency,
-        payment_method: formData.paymentMethod,
-        receipt_date: formData.receiptDate,
-        note: formData.note,
-        bank_name: formData.bankName,
-        transaction_date: formData.transactionDate || null,
-        reconciliation_option: formData.reconciliationOption,
-      };
+    const receiptPayload = {
+  receipt_number: formData.receiptNumber,
+  retailer_id: formData.retailerId,
+  amount: parseFloat(formData.amount),
+  currency: formData.currency,
+  payment_method: formData.paymentMethod,
+  receipt_date: formData.receiptDate,
+  note: formData.note,
+  bank_name: formData.bankName,
+  transaction_date: formData.transactionDate || null,
+  reconciliation_option: formData.reconciliationOption,
+  // Include retailer details
+  retailer_mobile: formData.retailerMobile,
+  retailer_email: formData.retailerEmail,
+  retailer_gstin: formData.retailerGstin,
+  retailer_business_name: formData.retailerBusinessName
+};
 
       console.log('Sending receipt data:', receiptPayload);
       console.log('API endpoint:', `${baseurl}/api/receipts`);
@@ -623,21 +646,21 @@ const ReceiptsTable = () => {
                         <div className="mb-3">
                           <label className="form-label">Retailer *</label>
                           <select
-                            className="form-select"
-                            name="retailerId"
-                            value={formData.retailerId}
-                            onChange={handleInputChange}
-                            required
-                          >
-                            <option value="">Select Retailer</option>
-                            {accounts
-                              .filter(acc => acc.role === "retailer" && acc.business_name)
-                              .map((acc) => (
-                                <option key={acc.id} value={acc.id}>
-                                  {acc.business_name}
-                                </option>
-                              ))}
-                          </select>
+  className="form-select"
+  name="retailerId"
+  value={formData.retailerId}
+  onChange={handleRetailerChange} // Use the new handler
+  required
+>
+  <option value="">Select Retailer</option>
+  {accounts
+    .filter(acc => acc.role === "retailer" && acc.business_name)
+    .map((acc) => (
+      <option key={acc.id} value={acc.id}>
+        {acc.business_name}
+      </option>
+    ))}
+</select>
                         </div>
                       </div>
                       <div className="col-md-6">
