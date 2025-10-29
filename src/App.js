@@ -127,6 +127,14 @@ import InvoicePDFPreview from './Component/Panels/Admin/SalesInvoicePage/Invoice
 import PurchasePDFPreview from "./Component/Panels/Admin/PurchaseInvoicePage/PurchasePDFPreview";
 import ReceiptView from "./Component/Panels/Admin/Receipts/Receiptsview";
 import AddUnitModal from "./Component/Panels/Admin/Inventory/Sales_catalogue/AddUnitsModal";
+// Add this import
+import InvoicePDFDownload from './Component/Panels/Admin/SalesInvoicePage/InvoicePDFDocument';
+
+import Category from "./Component/Panels/Admin/Category/CategoryTable"
+import Company from "./Component/Panels/Admin/Company/CompanyTable"
+import Units from "./Component/Panels/Admin/Units/UnitsTable"
+
+
 
 
 function App() {
@@ -222,6 +230,8 @@ function App() {
              <Route path='/AddProductPage' element={<AddProductPage />} />
 <Route path="/AddProductPage/:productId" element={<AddProductPage />} />
             <Route path='/salesitemspage/:productId' element={<SalesItemsPage />} />
+        
+              <Route path="/sales/invoice-download" element={<InvoicePDFDownload />} />
              <Route path='/salesitemspage' element={<SalesItemsPage />} />
             <Route path="/addcompanymodal " element={<AddCompanyModal />} />
             <Route path="/addcategorymodal" element={<AddCategoryModal />} />
@@ -232,12 +242,23 @@ function App() {
 
             <Route path="/staff_expensive" element={<Staff_expensive />} />
             <Route path="/staff_add_expensive" element={<Staff_Add_expensive />} />
-<Route path="/admin_expensive" element={<AdminExpensiveRequest />} />
-<Route path="/admin_expensive/view/:id" element={<AdminExpensiveRequest mode="view"/>} />
-<Route path="/admin_expensive/edit/:id" element={<AdminExpensiveRequest mode="edit"/>} />
-<Route path="/salesitems_productdetails/:id" element={<Salesitems_productsdetails />} />
-<Route path="/receipts_view/:id" element={<ReceiptView />} />
-<Route path="/addunitsmodal" element={<AddUnitModal />} />
+            <Route path="/admin_expensive" element={<AdminExpensiveRequest />} />
+            <Route path="/admin_expensive/view/:id" element={<AdminExpensiveRequest mode="view"/>} />
+            <Route path="/admin_expensive/edit/:id" element={<AdminExpensiveRequest mode="edit"/>} />
+            <Route path="/salesitems_productdetails/:id" element={<Salesitems_productsdetails />} />
+            <Route path="/receipts_view/:id" element={<ReceiptView />} />
+            <Route path="/addunitsmodal" element={<AddUnitModal />} />
+
+
+
+            <Route path="/category" element={<Category />} />
+            <Route path="/company" element={<Company />} />
+            <Route path="/units" element={<Units />} />
+
+
+
+
+
 
 
 

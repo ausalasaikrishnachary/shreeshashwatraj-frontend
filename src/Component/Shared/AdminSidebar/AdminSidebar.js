@@ -30,14 +30,11 @@ import {
   FaClipboardCheck,
   FaStickyNote,
   FaFileExport,
-  FaMoneyBillWave
-
-
-
+  FaMoneyBillWave,
+  FaRuler
 } from "react-icons/fa";
 import "./AdminSidebar.css";
 import UserCard from "../../Panels/UserCard/UserCard";
-
 
 function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -83,7 +80,10 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       setOpenDropdown("Purchase");
     } else if (
       path.startsWith("/sale_items") ||
-      path.startsWith("/purchased_items")
+      path.startsWith("/purchased_items") ||
+      path.startsWith("/category") ||
+      path.startsWith("/company") ||
+      path.startsWith("/units")
     ) {
       setOpenDropdown("Inventory");
     } else {
@@ -112,6 +112,9 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       subMenu: [
         { path: "/sale_items", name: "Sales Catalogue", icon: <FaBookOpen /> },
         { path: "/purchased_items", name: "Purchased Items", icon: <FaShoppingCart /> },
+        { path: "/category", name: "Category", icon: <FaTags /> },
+        { path: "/company", name: "Company", icon: <FaBoxes /> },
+        { path: "/units", name: "Units", icon: <FaRuler /> },
       ],
     },
     {
@@ -138,9 +141,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
         { path: "/purchase/payables", name: "Payables", icon: <FaHandHoldingUsd /> },
       ],
     },
-    // { path: "/sales", name: "Sales", icon: <FaChartLine /> },
-     { path: "/admin_expensive", name: "Expensive Request", icon: <FaMoneyBillWave /> },
-    // { path: "/products", name: "Products", icon: <FaBox /> },
+    { path: "/admin_expensive", name: "Expensive Request", icon: <FaMoneyBillWave /> },
     { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },
     { path: "/expenses", name: "Expenses", icon: <FaMoneyBill /> },
     { path: "/reports", name: "Reports", icon: <FaFileAlt /> },
@@ -206,7 +207,10 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
                       } ${
                         (item.name === "Inventory" &&
                           (location.pathname.startsWith("/sale_items") ||
-                            location.pathname.startsWith("/purchased_items"))) ||
+                            location.pathname.startsWith("/purchased_items") ||
+                            location.pathname.startsWith("/category") ||
+                            location.pathname.startsWith("/company") ||
+                            location.pathname.startsWith("/units"))) ||
                         (item.name === "Sales" &&
                           location.pathname.startsWith("/sales/")) ||
                         (item.name === "Purchase" && isPurchaseActive)
