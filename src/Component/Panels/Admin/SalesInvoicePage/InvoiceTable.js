@@ -77,14 +77,22 @@ const InvoicesTable = () => {
     return 'Pending';
   };
 
-  // Handle invoice number click to show preview
- // Handle invoice number click to show preview
+  
 const handleInvoiceNumberClick = async (invoice) => {
   console.log('Opening preview for invoice:', invoice);
   
   try {
+    // Get the VoucherID from the correct location
+    const voucherId = invoice.originalData?.VoucherID || invoice.VoucherID;
+    
+    if (!voucherId) {
+      throw new Error('VoucherID not found in invoice data');
+    }
+    
+    console.log('Fetching details for VoucherID:', voucherId);
+    
     // Fetch complete invoice data including batch details
-    const response = await fetch(`${baseurl}/transactions/${invoice.originalData.VoucherID}`);
+    const response = await fetch(`${baseurl}/transactions/${voucherId}`);
     if (!response.ok) {
       throw new Error('Failed to fetch invoice details');
     }
@@ -197,7 +205,9 @@ const handleInvoiceNumberClick = async (invoice) => {
       // GST Breakdown
       totalCGST: totalCGST,
       totalSGST: totalSGST,
-      totalIGST: totalIGST
+      totalIGST: totalIGST,
+      // Store the VoucherID for the preview page
+      voucherId: voucherId
     };
 
     console.log('Preview data prepared:', previewData);
@@ -205,8 +215,8 @@ const handleInvoiceNumberClick = async (invoice) => {
     // Save to localStorage for the preview component
     localStorage.setItem('previewInvoice', JSON.stringify(previewData));
     
-    // Navigate to preview page
-    navigate("/sales/invoice-preview");
+    // Navigate to preview page WITH the ID
+    navigate(`/sales/invoice-preview/${voucherId}`);
     
   } catch (error) {
     console.error('Error fetching invoice details:', error);
@@ -224,8 +234,8 @@ const handleInvoiceNumberClick = async (invoice) => {
         state: "Karnataka"
       },
       supplierInfo: {
-        name: invoice.originalData.PartyName || 'John A',
-        businessName: invoice.originalData.AccountName || 'John Traders',
+        name: invoice.originalData?.PartyName || 'John A',
+        businessName: invoice.originalData?.AccountName || 'John Traders',
         state: 'Karnataka',
         gstin: 'ZAAACDE1234F225'
       },
@@ -272,29 +282,33 @@ const handleInvoiceNumberClick = async (invoice) => {
       batchDetails: [],
       totalCGST: 8496.00,
       totalSGST: 8496.00,
-      totalIGST: 0
+      totalIGST: 0,
+      voucherId: invoice.originalData?.VoucherID || 'fallback'
     };
 
     localStorage.setItem('previewInvoice', JSON.stringify(fallbackPreviewData));
-    navigate("/sales/invoice-preview");
+    
+    // Navigate with fallback ID or to generic preview
+    const fallbackId = invoice.originalData?.VoucherID || 'fallback';
+    navigate(`/sales/invoice-preview/${fallbackId}`);
   }
 };
 
   // Table columns configuration
   const columns = [
     { key: 'customerName', title: 'RETAILER NAME', style: { textAlign: 'left' } },
-    { 
-      key: 'number', 
-      title: 'INVOICE NUMBER', 
-      style: { textAlign: 'center' },
-      render: (value, row) => (
-        <button 
-          className="btn btn-link p-0 text-primary text-decoration-none"
-          onClick={() => handleInvoiceNumberClick(row)}
-          title="Click to view invoice preview"
-        >
-          {value}
-        </button>
+   { 
+    key: 'number', 
+    title: 'INVOICE NUMBER', 
+    style: { textAlign: 'center' },
+    render: (value, row) => (
+      <button 
+        className="btn btn-link p-0 text-primary text-decoration-none"
+        onClick={() => handleInvoiceNumberClick(row)}
+        title="Click to view invoice preview"
+      >
+        {value}
+      </button>
       )
     },
     { key: 'totalAmount', title: 'TOTAL AMOUNT', style: { textAlign: 'right' } },

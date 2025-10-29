@@ -169,7 +169,7 @@ function App() {
         <Route path="/sale" element={<AdminSales />} />
          <Route path="/sales/invoices" element={<SalesInvoiceTable />} />
          <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
-         <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
+<Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
            <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
  
   
