@@ -89,6 +89,13 @@ import VoucherTable from "./Component/Panels/Admin/Vochur/VochurTable";
 import AddProduct from './Component/Panels/Admin/AdminProducts/AddProducts';
 import AdminMarketing from "./Component/Panels/Admin/AdminMarketing/Marketing";
 import AddMarketing from "./Component/Panels/Admin/AdminMarketing/AddMarketing";
+
+import GlobalOffers from "./Component/Panels/Admin/AdminMarketing/OffersModule/GlobalOffers";
+import CategorySpecificOffers from "./Component/Panels/Admin/AdminMarketing/OffersModule/Category-Specific-Offers";
+import FlashSales from "./Component/Panels/Admin/AdminMarketing/OffersModule/Flash-Sales";
+import OffersPostings from "./Component/Panels/Admin/AdminMarketing/OffersModule/OffersPostings/OffersPostings";
+
+
 import AdminExpenses from "./Component/Panels/Admin/AdminExpenses/Expenses";
 import AddExpenses from "./Component/Panels/Admin/AdminExpenses/AddExpenses";
 import AdminReports from "./Component/Panels/Admin/AdminReports/Reports";
@@ -211,6 +218,12 @@ function App() {
         <Route path="/add-product" element={<AddProduct />} />
         <Route path="/marketing" element={<AdminMarketing />} />
         <Route path="/add-marketing" element={<AddMarketing />} />
+        <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} />
+<Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} />
+<Route path="/admin/marketing/flash-sales" element={<FlashSales />} />|
+<Route path="/admin/marketing/offers-postings" element={<OffersPostings />} />
+
+
  
         <Route path="/retailers" element={<AdminRetailers />} />
         <Route path="/retailers/add" element={<AddRetailerForm mode="add" />} />

@@ -279,6 +279,12 @@ function Marketing() {
         <AdminHeader isCollapsed={isCollapsed} />
 
         <div className="marketing-buttons-container">
+            <button
+            className="marketing-btn"
+            onClick={() => handleNavigation("/admin/marketing/offers-postings")}
+          >
+            Offers Postings
+          </button>
           <button
             className="marketing-btn"
             onClick={() => handleNavigation("/admin/marketing/global-offers")}
