@@ -77,14 +77,22 @@ const InvoicesTable = () => {
     return 'Pending';
   };
 
-  // Handle invoice number click to show preview
- // Handle invoice number click to show preview
+  
 const handleInvoiceNumberClick = async (invoice) => {
   console.log('Opening preview for invoice:', invoice);
   
   try {
+    // Get the VoucherID from the correct location
+    const voucherId = invoice.originalData?.VoucherID || invoice.VoucherID;
+    
+    if (!voucherId) {
+      throw new Error('VoucherID not found in invoice data');
+    }
+    
+    console.log('Fetching details for VoucherID:', voucherId);
+    
     // Fetch complete invoice data including batch details
-    const response = await fetch(`${baseurl}/transactions/${invoice.originalData.VoucherID}`);
+    const response = await fetch(`${baseurl}/transactions/${voucherId}`);
     if (!response.ok) {
       throw new Error('Failed to fetch invoice details');
     }
@@ -96,50 +104,52 @@ const handleInvoiceNumberClick = async (invoice) => {
     let items = [];
     let batchDetails = [];
     
+  // Function to get invoice by invoice number
+  const getInvoiceByNumber = async (invoiceNumber) => {
     try {
-      if (invoiceDetails.batch_details && typeof invoiceDetails.batch_details === 'string') {
-        batchDetails = JSON.parse(invoiceDetails.batch_details);
-      } else if (Array.isArray(invoiceDetails.batch_details)) {
-        batchDetails = invoiceDetails.batch_details;
+      console.log('Fetching invoice by number:', invoiceNumber);
+      
+      // Get all transactions to find the one with matching invoice number
+      const response = await fetch(`${baseurl}/transactions`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch transactions');
       }
       
-      // Transform batch details into items format for the preview
-      items = batchDetails.map((batch, index) => ({
-        id: index + 1,
-        product: batch.product || 'Unknown Product',
-        description: batch.description || '',
-        quantity: parseFloat(batch.quantity) || 1,
-        price: parseFloat(batch.price) || 0,
-        discount: 0,
-        gst: 18, // Default GST, you might want to get this from the product
-        cgst: invoiceDetails.taxType === "CGST/SGST" ? 9 : 0,
-        sgst: invoiceDetails.taxType === "CGST/SGST" ? 9 : 0,
-        igst: invoiceDetails.taxType === "IGST" ? 18 : 0,
-        cess: 0,
-        total: (parseFloat(batch.quantity) || 1) * (parseFloat(batch.price) || 0),
-        batch: batch.batch || '',
-        batchDetails: batch.batchDetails || null
-      }));
-    } catch (parseError) {
-      console.error('Error parsing batch details:', parseError);
-      // Create a fallback item from the main invoice data
-      items = [{
-        id: 1,
-        product: 'Product',
-        description: 'Description not available',
-        quantity: 1,
-        price: invoiceDetails.TotalAmount || 0,
-        discount: 0,
-        gst: 18,
-        cgst: invoiceDetails.taxType === "CGST/SGST" ? 9 : 0,
-        sgst: invoiceDetails.taxType === "CGST/SGST" ? 9 : 0,
-        igst: invoiceDetails.taxType === "IGST" ? 18 : 0,
-        cess: 0,
-        total: invoiceDetails.TotalAmount || 0,
-        batch: '',
-        batchDetails: null
-      }];
+      const allTransactions = await response.json();
+      
+      // Find the transaction with matching invoice number
+      const targetTransaction = allTransactions.find(transaction => 
+        transaction.InvoiceNumber === invoiceNumber || 
+        transaction.VchNo === invoiceNumber
+      );
+      
+      if (!targetTransaction) {
+        throw new Error(`Invoice with number ${invoiceNumber} not found`);
+      }
+      
+      console.log('Found transaction by invoice number:', targetTransaction);
+      
+      // Now fetch the complete details using the VoucherID
+      const detailResponse = await fetch(`${baseurl}/transactions/${targetTransaction.VoucherID}`);
+      
+      if (!detailResponse.ok) {
+        throw new Error('Failed to fetch invoice details');
+      }
+      
+      const invoiceDetails = await detailResponse.json();
+      
+      if (!invoiceDetails.success) {
+        throw new Error('Failed to fetch invoice details');
+      }
+      
+      return invoiceDetails.data;
+      
+    } catch (error) {
+      console.error('Error fetching invoice by number:', error);
+      throw error;
     }
+  };
 
     // Calculate GST breakdown
     const totalCGST = parseFloat(invoiceDetails.CGSTAmount) || 0;
@@ -197,7 +207,9 @@ const handleInvoiceNumberClick = async (invoice) => {
       // GST Breakdown
       totalCGST: totalCGST,
       totalSGST: totalSGST,
-      totalIGST: totalIGST
+      totalIGST: totalIGST,
+      // Store the VoucherID for the preview page
+      voucherId: voucherId
     };
 
     console.log('Preview data prepared:', previewData);
@@ -205,8 +217,8 @@ const handleInvoiceNumberClick = async (invoice) => {
     // Save to localStorage for the preview component
     localStorage.setItem('previewInvoice', JSON.stringify(previewData));
     
-    // Navigate to preview page
-    navigate("/sales/invoice-preview");
+    // Navigate to preview page WITH the ID
+    navigate(`/sales/invoice-preview/${voucherId}`);
     
   } catch (error) {
     console.error('Error fetching invoice details:', error);
@@ -224,8 +236,8 @@ const handleInvoiceNumberClick = async (invoice) => {
         state: "Karnataka"
       },
       supplierInfo: {
-        name: invoice.originalData.PartyName || 'John A',
-        businessName: invoice.originalData.AccountName || 'John Traders',
+        name: invoice.originalData?.PartyName || 'John A',
+        businessName: invoice.originalData?.AccountName || 'John Traders',
         state: 'Karnataka',
         gstin: 'ZAAACDE1234F225'
       },
@@ -272,29 +284,323 @@ const handleInvoiceNumberClick = async (invoice) => {
       batchDetails: [],
       totalCGST: 8496.00,
       totalSGST: 8496.00,
-      totalIGST: 0
+      totalIGST: 0,
+      voucherId: invoice.originalData?.VoucherID || 'fallback'
     };
 
     localStorage.setItem('previewInvoice', JSON.stringify(fallbackPreviewData));
-    navigate("/sales/invoice-preview");
+    
+    // Navigate with fallback ID or to generic preview
+    const fallbackId = invoice.originalData?.VoucherID || 'fallback';
+    navigate(`/sales/invoice-preview/${fallbackId}`);
   }
 };
+  // Enhanced function to handle invoice number click with proper GST calculations
+  // const handleInvoiceNumberClick = async (invoice) => {
+  //   console.log('Opening preview for invoice:', invoice);
+    
+  //   try {
+  //     let invoiceDetails;
+      
+  //     try {
+  //       invoiceDetails = await getInvoiceByNumber(invoice.number);
+  //       console.log('Complete invoice details fetched by number:', invoiceDetails);
+  //     } catch (fetchError) {
+  //       console.warn('Failed to fetch by invoice number, trying by VoucherID:', fetchError);
+        
+  //       // Fallback: fetch by VoucherID
+  //       const response = await fetch(`${baseurl}/transactions/${invoice.originalData.VoucherID}`);
+  //       if (!response.ok) {
+  //         throw new Error('Failed to fetch invoice details');
+  //       }
+        
+  //       const result = await response.json();
+  //       invoiceDetails = result.success ? result.data : result;
+  //     }
+
+  //     console.log('Processing invoice details for preview:', invoiceDetails);
+
+  //     let items = [];
+  //     let batchDetails = [];
+      
+  //     try {
+  //       if (invoiceDetails.batch_details && typeof invoiceDetails.batch_details === 'string') {
+  //         batchDetails = JSON.parse(invoiceDetails.batch_details);
+  //       } else if (Array.isArray(invoiceDetails.batch_details)) {
+  //         batchDetails = invoiceDetails.batch_details;
+  //       } else if (invoiceDetails.BatchDetails) {
+  //         try {
+  //           batchDetails = typeof invoiceDetails.BatchDetails === 'string' 
+  //             ? JSON.parse(invoiceDetails.BatchDetails) 
+  //             : invoiceDetails.BatchDetails;
+  //         } catch (e) {
+  //           console.warn('Failed to parse BatchDetails:', e);
+  //         }
+  //       }
+        
+  //       if (batchDetails && batchDetails.length > 0) {
+  //         items = batchDetails.map((batch, index) => {
+  //           const cgstPercentage = parseFloat(invoiceDetails.CGSTPercentage) || 0;
+  //           const sgstPercentage = parseFloat(invoiceDetails.SGSTPercentage) || 0;
+  //           const igstPercentage = parseFloat(invoiceDetails.IGSTPercentage) || 0;
+  //           const totalGSTPercentage = cgstPercentage + sgstPercentage + igstPercentage;
+            
+  //           const quantity = parseFloat(batch.quantity) || 1;
+  //           const price = parseFloat(batch.price) || 0;
+  //           const itemTotal = quantity * price;
+  //           const gstAmount = itemTotal * (totalGSTPercentage / 100);
+            
+  //           return {
+  //             id: index + 1,
+  //             product: batch.product || batch.goods_name || 'Unknown Product',
+  //             description: batch.description || '',
+  //             quantity: quantity,
+  //             price: price,
+  //             discount: 0,
+  //             gst: totalGSTPercentage,
+  //             cgst: cgstPercentage,
+  //             sgst: sgstPercentage,
+  //             igst: igstPercentage,
+  //             cess: 0,
+  //             total: itemTotal + gstAmount,
+  //             batch: batch.batch || batch.batch_number || '',
+  //             batchDetails: batch.batchDetails || null
+  //           };
+  //         });
+  //       } else {
+  //         const cgstPercentage = parseFloat(invoiceDetails.CGSTPercentage) || 0;
+  //         const sgstPercentage = parseFloat(invoiceDetails.SGSTPercentage) || 0;
+  //         const igstPercentage = parseFloat(invoiceDetails.IGSTPercentage) || 0;
+  //         const totalGSTPercentage = cgstPercentage + sgstPercentage + igstPercentage;
+          
+  //         items = [{
+  //           id: 1,
+  //           product: 'Product',
+  //           description: 'Description not available',
+  //           quantity: 1,
+  //           price: invoiceDetails.BasicAmount || invoiceDetails.TotalAmount || 0,
+  //           discount: 0,
+  //           gst: totalGSTPercentage,
+  //           cgst: cgstPercentage,
+  //           sgst: sgstPercentage,
+  //           igst: igstPercentage,
+  //           cess: 0,
+  //           total: invoiceDetails.TotalAmount || 0,
+  //           batch: '',
+  //           batchDetails: null
+  //         }];
+  //       }
+  //     } catch (parseError) {
+  //       console.error('Error parsing batch details:', parseError);
+  //       // Create a fallback item from the main invoice data with proper GST
+  //       const cgstPercentage = parseFloat(invoiceDetails.CGSTPercentage) || 0;
+  //       const sgstPercentage = parseFloat(invoiceDetails.SGSTPercentage) || 0;
+  //       const igstPercentage = parseFloat(invoiceDetails.IGSTPercentage) || 0;
+  //       const totalGSTPercentage = cgstPercentage + sgstPercentage + igstPercentage;
+        
+  //       items = [{
+  //         id: 1,
+  //         product: 'Product',
+  //         description: 'Description not available',
+  //         quantity: 1,
+  //         price: invoiceDetails.BasicAmount || invoiceDetails.TotalAmount || 0,
+  //         discount: 0,
+  //         gst: totalGSTPercentage,
+  //         cgst: cgstPercentage,
+  //         sgst: sgstPercentage,
+  //         igst: igstPercentage,
+  //         cess: 0,
+  //         total: invoiceDetails.TotalAmount || 0,
+  //         batch: '',
+  //         batchDetails: null
+  //       }];
+  //     }
+
+  //     // Calculate GST breakdown with proper percentages
+  //     const totalCGST = parseFloat(invoiceDetails.CGSTAmount) || 0;
+  //     const totalSGST = parseFloat(invoiceDetails.SGSTAmount) || 0;
+  //     const totalIGST = parseFloat(invoiceDetails.IGSTAmount) || 0;
+  //     const totalGST = totalCGST + totalSGST + totalIGST;
+      
+  //     const cgstPercentage = parseFloat(invoiceDetails.CGSTPercentage) || 0;
+  //     const sgstPercentage = parseFloat(invoiceDetails.SGSTPercentage) || 0;
+  //     const igstPercentage = parseFloat(invoiceDetails.IGSTPercentage) || 0;
+      
+  //     const taxableAmount = parseFloat(invoiceDetails.BasicAmount) || parseFloat(invoiceDetails.Subtotal) || 
+  //                          parseFloat(invoiceDetails.ValueOfGoods) || 0;
+  //     const grandTotal = parseFloat(invoiceDetails.TotalAmount) || 0;
+
+  //     // Determine tax type based on percentages and amounts
+  //     let taxType = "CGST/SGST";
+  //     if (igstPercentage > 0 || totalIGST > 0) {
+  //       taxType = "IGST";
+  //     }
+
+  //     console.log('GST Breakdown:', {
+  //       cgstPercentage,
+  //       sgstPercentage,
+  //       igstPercentage,
+  //       totalCGST,
+  //       totalSGST,
+  //       totalIGST,
+  //       taxableAmount,
+  //       grandTotal
+  //     });
+
+  //     // Prepare the data for preview in the same format as CreateInvoice
+  //     const previewData = {
+  //       invoiceNumber: invoiceDetails.InvoiceNumber || invoiceDetails.VchNo || invoice.number,
+  //       invoiceDate: invoiceDetails.Date || invoice.created,
+  //       validityDate: new Date(new Date(invoiceDetails.Date || invoice.created).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+  //       companyInfo: {
+  //         name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+  //         address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+  //         email: "sumukhuri7@gmail.com",
+  //         phone: "3456548878543",
+  //         gstin: "ZAAABCD0508B1ZG",
+  //         state: "Karnataka"
+  //       },
+  //       supplierInfo: {
+  //         name: invoiceDetails.PartyName || 'N/A',
+  //         businessName: invoiceDetails.AccountName || 'N/A',
+  //         state: invoiceDetails.BillingState || invoiceDetails.billing_state || 'Karnataka',
+  //         gstin: invoiceDetails.GSTIN || invoiceDetails.gstin || 'ZAAACDE1234F225'
+  //       },
+  //       billingAddress: {
+  //         addressLine1: invoiceDetails.BillingAddress || invoiceDetails.billing_address_line1 || '12/A Church Street',
+  //         addressLine2: invoiceDetails.billing_address_line2 || 'Near Main Square',
+  //         city: invoiceDetails.BillingCity || invoiceDetails.billing_city || 'Bangalore',
+  //         pincode: invoiceDetails.BillingPincode || invoiceDetails.billing_pin_code || '560001',
+  //         state: invoiceDetails.BillingState || invoiceDetails.billing_state || 'Karnataka'
+  //       },
+  //       shippingAddress: {
+  //         addressLine1: invoiceDetails.ShippingAddress || invoiceDetails.shipping_address_line1 || invoiceDetails.BillingAddress || invoiceDetails.billing_address_line1 || '12/A Church Street',
+  //         addressLine2: invoiceDetails.shipping_address_line2 || invoiceDetails.billing_address_line2 || 'Near Main Square',
+  //         city: invoiceDetails.ShippingCity || invoiceDetails.shipping_city || invoiceDetails.BillingCity || invoiceDetails.billing_city || 'Bangalore',
+  //         pincode: invoiceDetails.ShippingPincode || invoiceDetails.shipping_pin_code || invoiceDetails.BillingPincode || invoiceDetails.billing_pin_code || '560001',
+  //         state: invoiceDetails.ShippingState || invoiceDetails.shipping_state || invoiceDetails.BillingState || invoiceDetails.billing_state || 'Karnataka'
+  //       },
+  //       items: items,
+  //       note: invoiceDetails.Notes || invoiceDetails.notes || 'Thank you for your business! We appreciate your timely payment.',
+  //       taxableAmount: taxableAmount,
+  //       totalGST: totalGST,
+  //       totalCess: invoiceDetails.TotalCess || 0,
+  //       grandTotal: grandTotal,
+  //       transportDetails: invoiceDetails.TransportDetails || invoiceDetails.transport_details || 'Standard delivery. Contact us for tracking information.',
+  //       additionalCharge: invoiceDetails.AdditionalCharge || '',
+  //       additionalChargeAmount: invoiceDetails.AdditionalChargeAmount || 0,
+  //       otherDetails: "Authorized Signatory",
+  //       taxType: taxType,
+  //       batchDetails: batchDetails,
+  //       // GST Breakdown with percentages
+  //       totalCGST: totalCGST,
+  //       totalSGST: totalSGST,
+  //       totalIGST: totalIGST,
+  //       cgstPercentage: cgstPercentage,
+  //       sgstPercentage: sgstPercentage,
+  //       igstPercentage: igstPercentage,
+  //       // Original data for reference
+  //       originalInvoiceData: invoiceDetails
+  //     };
+
+  //     console.log('Preview data prepared with GST:', previewData);
+
+  //     // Save to localStorage for the preview component
+  //     localStorage.setItem('previewInvoice', JSON.stringify(previewData));
+      
+  //     // Navigate to preview page
+  //     navigate("/sales/invoice-preview");
+      
+  //   } catch (error) {
+  //     console.error('Error fetching invoice details:', error);
+  //     // Enhanced fallback: Create basic preview data with proper GST calculations
+  //     const fallbackPreviewData = {
+  //       invoiceNumber: invoice.number,
+  //       invoiceDate: invoice.created,
+  //       validityDate: new Date(new Date(invoice.created).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+  //       companyInfo: {
+  //         name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+  //         address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+  //         email: "sumukhuri7@gmail.com",
+  //         phone: "3456548878543",
+  //         gstin: "ZAAABCD0508B1ZG",
+  //         state: "Karnataka"
+  //       },
+  //       supplierInfo: {
+  //         name: invoice.originalData.PartyName || 'John A',
+  //         businessName: invoice.originalData.AccountName || 'John Traders',
+  //         state: 'Karnataka',
+  //         gstin: 'ZAAACDE1234F225'
+  //       },
+  //       billingAddress: {
+  //         addressLine1: '12/A Church Street',
+  //         addressLine2: 'Near Main Square',
+  //         city: 'Bangalore',
+  //         pincode: '560001',
+  //         state: 'Karnataka'
+  //       },
+  //       shippingAddress: {
+  //         addressLine1: '12/A Church Street',
+  //         addressLine2: 'Near Main Square',
+  //         city: 'Bangalore',
+  //         pincode: '560001',
+  //         state: 'Karnataka'
+  //       },
+  //       items: [{
+  //         id: 1,
+  //         product: 'Product',
+  //         description: '',
+  //         quantity: 1,
+  //         price: parseFloat(invoice.originalData.BasicAmount) || parseFloat(invoice.originalData.TotalAmount) || 0,
+  //         discount: 0,
+  //         gst: 18, // Default GST
+  //         cgst: 9, // Default CGST
+  //         sgst: 9, // Default SGST
+  //         igst: 0,
+  //         cess: 0,
+  //         total: parseFloat(invoice.originalData.TotalAmount) || 0,
+  //         batch: '',
+  //         batchDetails: null
+  //       }],
+  //       note: 'Thank you for your business! We appreciate your timely payment.',
+  //       taxableAmount: parseFloat(invoice.originalData.BasicAmount) || parseFloat(invoice.originalData.TotalAmount) || 0,
+  //       totalGST: parseFloat(invoice.originalData.TaxAmount) || 0,
+  //       totalCess: 0,
+  //       grandTotal: parseFloat(invoice.originalData.TotalAmount) || 0,
+  //       transportDetails: 'Standard delivery. Contact us for tracking information.',
+  //       additionalCharge: '',
+  //       additionalChargeAmount: 0,
+  //       otherDetails: "Authorized Signatory",
+  //       taxType: "CGST/SGST",
+  //       batchDetails: [],
+  //       totalCGST: parseFloat(invoice.originalData.CGSTAmount) || 0,
+  //       totalSGST: parseFloat(invoice.originalData.SGSTAmount) || 0,
+  //       totalIGST: parseFloat(invoice.originalData.IGSTAmount) || 0,
+  //       cgstPercentage: parseFloat(invoice.originalData.CGSTPercentage) || 9,
+  //       sgstPercentage: parseFloat(invoice.originalData.SGSTPercentage) || 9,
+  //       igstPercentage: parseFloat(invoice.originalData.IGSTPercentage) || 0
+  //     };
+
+  //     localStorage.setItem('previewInvoice', JSON.stringify(fallbackPreviewData));
+  //     navigate("/sales/invoice-preview");
+  //   }
+  // };
 
   // Table columns configuration
   const columns = [
     { key: 'customerName', title: 'RETAILER NAME', style: { textAlign: 'left' } },
-    { 
-      key: 'number', 
-      title: 'INVOICE NUMBER', 
-      style: { textAlign: 'center' },
-      render: (value, row) => (
-        <button 
-          className="btn btn-link p-0 text-primary text-decoration-none"
-          onClick={() => handleInvoiceNumberClick(row)}
-          title="Click to view invoice preview"
-        >
-          {value}
-        </button>
+   { 
+    key: 'number', 
+    title: 'INVOICE NUMBER', 
+    style: { textAlign: 'center' },
+    render: (value, row) => (
+      <button 
+        className="btn btn-link p-0 text-primary text-decoration-none"
+        onClick={() => handleInvoiceNumberClick(row)}
+        title="Click to view invoice preview"
+      >
+        {value}
+      </button>
       )
     },
     { key: 'totalAmount', title: 'TOTAL AMOUNT', style: { textAlign: 'right' } },
@@ -311,20 +617,20 @@ const handleInvoiceNumberClick = async (invoice) => {
         return <span className={badgeClass}>{value}</span>;
       }
     },
-{
-  key: 'created',
-  title: 'CREATED DATE',
-  style: { textAlign: 'center' },
-  render: (value, row) => {
-    if (!row?.created) return "-"; // fallback if no date
-    const date = new Date(row.created);
-    return date.toLocaleDateString("en-GB", { 
-      day: "2-digit", 
-      month: "2-digit", 
-      year: "numeric" 
-    });
-  }
-}
+    {
+      key: 'created',
+      title: 'CREATED DATE',
+      style: { textAlign: 'center' },
+      render: (value, row) => {
+        if (!row?.created) return "-"; // fallback if no date
+        const date = new Date(row.created);
+        return date.toLocaleDateString("en-GB", { 
+          day: "2-digit", 
+          month: "2-digit", 
+          year: "numeric" 
+        });
+      }
+    }
   ];
 
   const handleCreateClick = () => navigate("/sales/createinvoice");

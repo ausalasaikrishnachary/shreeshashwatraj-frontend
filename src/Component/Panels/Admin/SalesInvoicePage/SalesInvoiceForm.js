@@ -559,112 +559,127 @@ const CreateInvoice = ({ user }) => {
     setTimeout(() => setSuccess(false), 3000);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError(null);
+  setSuccess(false);
+  
+  if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
+    setError("Please select a supplier/customer");
+    setLoading(false);
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
+
+  if (invoiceData.items.length === 0) {
+    setError("Please add at least one item to the invoice");
+    setLoading(false);
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
+
+  try {
+    // Ensure we have the correct invoice number
+    const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
+    console.log('Submitting invoice with number:', finalInvoiceNumber);
+
+    // Calculate GST breakdown for backend
+    const sameState = isSameState();
+    let totalCGST = 0;
+    let totalSGST = 0;
+    let totalIGST = 0;
+
+    if (sameState) {
+      totalCGST = parseFloat(invoiceData.totalGST) / 2;
+      totalSGST = parseFloat(invoiceData.totalGST) / 2;
+      totalIGST = 0;
+    } else {
+      totalCGST = 0;
+      totalSGST = 0;
+      totalIGST = parseFloat(invoiceData.totalGST);
+    }
+
+    // Extract batch details from items
+    const batchDetails = invoiceData.items.map(item => ({
+      product: item.product,
+      batch: item.batch,
+      quantity: item.quantity,
+      price: item.price,
+      batchDetails: item.batchDetails
+    }));
+
+    // Create payload with batch details and ensure invoice number is included
+    const payload = {
+      ...invoiceData,
+      invoiceNumber: finalInvoiceNumber,
+      selectedSupplierId: selectedSupplierId,
+      type: 'sales',
+      totalCGST: totalCGST.toFixed(2),
+      totalSGST: totalSGST.toFixed(2),
+      totalIGST: totalIGST.toFixed(2),
+      taxType: sameState ? "CGST/SGST" : "IGST",
+      batchDetails: JSON.stringify(batchDetails)
+    };
+
+    // Remove unused fields from the payload
+    delete payload.companyState;
+    delete payload.supplierState;
+
+    console.log('Submitting payload with invoice number:', payload.invoiceNumber);
+
+    const response = await fetch(`${baseurl}/transaction`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
     
-    if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-      setError("Please select a supplier/customer");
-      setLoading(false);
-      setTimeout(() => setError(null), 3000);
-      return;
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(responseData.error || 'Failed to submit invoice');
     }
+    
+    localStorage.removeItem('draftInvoice');
+    setSuccess('Invoice submitted successfully!');
+    setIsPreviewReady(true);
 
-    if (invoiceData.items.length === 0) {
-      setError("Please add at least one item to the invoice");
-      setLoading(false);
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
+    // Update preview data with the submitted invoice data
+    const previewData = {
+      ...invoiceData,
+      invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
+      voucherId: responseData.voucherId
+    };
+    localStorage.setItem('previewInvoice', JSON.stringify(previewData));
+    
+    // Navigate to preview page WITH THE ID from backend response
+    // Use voucherId (primary key) or invoiceNumber based on your preference
+    const previewId = responseData.voucherId || responseData.invoiceNumber;
+    
+    setTimeout(() => {
+      navigate(`/sales/invoice-preview/${previewId}`);
+    }, 2000);
+    
+  } catch (err) {
+    setError(err.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setLoading(false);
+  }
+};
+  const calculateTotalPrice = () => {
+  const price = parseFloat(itemForm.price) || 0;
+  const gst = parseFloat(itemForm.gst) || 0;
+  const discount = parseFloat(itemForm.discount) || 0;
+  const quantity = parseInt(itemForm.quantity) || 0;
 
-    try {
-      // Ensure we have the correct invoice number
-      const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
-      console.log('Submitting invoice with number:', finalInvoiceNumber);
+  const priceAfterDiscount = price - (price * discount) / 100;
+  const priceWithGst = priceAfterDiscount + (priceAfterDiscount * gst) / 100;
+  return (priceWithGst * quantity).toFixed(2);
+};
 
-      // Calculate GST breakdown for backend
-      const sameState = isSameState();
-      let totalCGST = 0;
-      let totalSGST = 0;
-      let totalIGST = 0;
-
-      if (sameState) {
-        totalCGST = parseFloat(invoiceData.totalGST) / 2;
-        totalSGST = parseFloat(invoiceData.totalGST) / 2;
-        totalIGST = 0;
-      } else {
-        totalCGST = 0;
-        totalSGST = 0;
-        totalIGST = parseFloat(invoiceData.totalGST);
-      }
-
-      // Extract batch details from items
-      const batchDetails = invoiceData.items.map(item => ({
-        product: item.product,
-        batch: item.batch,
-        quantity: item.quantity,
-        price: item.price,
-        batchDetails: item.batchDetails
-      }));
-
-      // Create payload with batch details and ensure invoice number is included
-      const payload = {
-        ...invoiceData,
-        invoiceNumber: finalInvoiceNumber, // Ensure invoice number is explicitly set
-        selectedSupplierId: selectedSupplierId,
-        type: 'sales',
-        totalCGST: totalCGST.toFixed(2),
-        totalSGST: totalSGST.toFixed(2),
-        totalIGST: totalIGST.toFixed(2),
-        taxType: sameState ? "CGST/SGST" : "IGST",
-        batchDetails: JSON.stringify(batchDetails)
-      };
-
-      // Remove unused fields from the payload
-      delete payload.companyState;
-      delete payload.supplierState;
-
-      console.log('Submitting payload with invoice number:', payload.invoiceNumber);
-
-      const response = await fetch(`${baseurl}/transaction`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(responseData.error || 'Failed to submit invoice');
-      }
-      
-      localStorage.removeItem('draftInvoice');
-      setSuccess('Invoice submitted successfully!');
-      setIsPreviewReady(true); // Enable preview after successful submission
-      
-      // Update preview data with the submitted invoice number
-      const previewData = {
-        ...invoiceData,
-        invoiceNumber: finalInvoiceNumber
-      };
-      localStorage.setItem('previewInvoice', JSON.stringify(previewData));
-      
-      // Navigate to preview page after 2 seconds
-      setTimeout(() => {
-        navigate("/sales/invoice-preview");
-      }, 2000);
-      
-    } catch (err) {
-      setError(err.message);
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="admin-layout">
@@ -960,52 +975,61 @@ const CreateInvoice = ({ user }) => {
                   </Col>
 
                   <Col md={1}>
-                    <Form.Label className="fw-bold">Qty</Form.Label>
-                    <Form.Control
-                      name="quantity"
-                      type="number"
-                      value={itemForm.quantity}
-                      onChange={handleItemChange}
-                      min="1"
-                      className="border-primary"
-                    />
-                  </Col>
+    <Form.Label className="fw-bold">Qty</Form.Label>
+    <Form.Control
+      name="quantity"
+      type="number"
+      value={itemForm.quantity}
+      onChange={handleItemChange}
+      min="1"
+      className="border-primary"
+    />
+  </Col>
 
-                  <Col md={2}>
-                    <Form.Label className="fw-bold">Price (₹)</Form.Label>
-                    <Form.Control
-                      name="price"
-                      type="number"
-                      value={itemForm.price}
-                      readOnly
-                      className="border-primary bg-light"
-                    />
-                  </Col>
+  <Col md={2}>
+    <Form.Label className="fw-bold">Price (₹)</Form.Label>
+    <Form.Control
+      name="price"
+      type="number"
+      value={itemForm.price}
+      readOnly
+      className="border-primary bg-light"
+    />
+  </Col>
 
-                  <Col md={2}>
-                    <Form.Label className="fw-bold">Discount (%)</Form.Label>
-                    <Form.Control
-                      name="discount"
-                      type="number"
-                      value={itemForm.discount}
-                      onChange={handleItemChange}
-                      min="0"
-                      max="100"
-                      className="border-primary"
-                    />
-                  </Col>
+  <Col md={2}>
+    <Form.Label className="fw-bold">Discount (%)</Form.Label>
+    <Form.Control
+      name="discount"
+      type="number"
+      value={itemForm.discount}
+      onChange={handleItemChange}
+      min="0"
+      max="100"
+      className="border-primary"
+    />
+  </Col>
 
-                  <Col md={2}>
-                    <Form.Label className="fw-bold">GST (%)</Form.Label>
-                    <Form.Control
-                      name="gst"
-                      type="number"
-                      value={itemForm.gst}
-                      readOnly
-                      className="border-primary bg-light"
-                    />
-                  </Col>
+  <Col md={2}>
+    <Form.Label className="fw-bold">GST (%)</Form.Label>
+    <Form.Control
+      name="gst"
+      type="number"
+      value={itemForm.gst}
+      readOnly
+      className="border-primary bg-light"
+    />
+  </Col>
 
+  <Col md={2}>
+    <Form.Label className="fw-bold">Total Price (₹)</Form.Label>
+    <Form.Control
+      type="text"
+      value={calculateTotalPrice()}
+      readOnly
+      className="border-primary bg-light"
+    />
+  </Col>
                   <Col md={1}>
                     <Button variant="success" onClick={addItem} className="w-100">
                       Add
@@ -1027,7 +1051,7 @@ const CreateInvoice = ({ user }) => {
                 </Row>
 
                 {/* Batch Details Display */}
-                {selectedBatchDetails && (
+                {/* {selectedBatchDetails && (
                   <Row className="mt-2">
                     <Col>
                       <div className="bg-info bg-opacity-10 p-2 rounded border">
@@ -1041,7 +1065,7 @@ const CreateInvoice = ({ user }) => {
                       </div>
                     </Col>
                   </Row>
-                )}
+                )} */}
               </div>
 
               {/* Items Table */}
