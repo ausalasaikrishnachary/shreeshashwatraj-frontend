@@ -62,7 +62,7 @@ import RetailerHome from "./Component/Panels/Retailer/RetailerHome/RetailerHomeW
 import RetailerHistory from "./Component/Panels/Retailer/RetailerHistory/RetailerHistoryWrapper";
 import RetailerOffers from "./Component/Panels/Retailer/RetailerOffers/RetailerOffersWrapper";
 import RetailerProfile from "./Component/Panels/Retailer/RetailerProfile/RetailerProfileWrapper";
-
+import RetailerReportPage from "./Component/Panels/Admin/AdminReports/RetailerReportPage";
 
 
 // Admin Pages
@@ -149,7 +149,7 @@ function App() {
         <Route path="/retailer-history" element={<RetailerHistory />} />
         <Route path="/retailer-offers" element={<RetailerOffers />} />
         <Route path="/retailer-profile" element={<RetailerProfile />} />
-
+         <Route path="/reports/retailer-report-page" element={<RetailerReportPage />} />
 
 
 

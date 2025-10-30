@@ -7,6 +7,8 @@ import SalesReport from "./SalesReport";
 import ExpenseReport from "./ExpenseReport";
 import OfferReport from "./OfferReports";
 import "./Reports.css";
+import { FaChartBar } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
 function Reports() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -15,46 +17,46 @@ function Reports() {
 
   // Top Performing Retailers data
   const topRetailersData = [
-    { 
-      retailer: "Khan Textiles", 
-      performance: "8.1/10", 
-      sales: "₹156,000", 
+    {
+      retailer: "Khan Textiles",
+      performance: "8.1/10",
+      sales: "₹156,000",
       rating: "★★★★☆",
       region: "Mumbai",
-      category: "Textiles"
+      category: "Textiles",
     },
-    { 
-      retailer: "Sharma Electronics", 
-      performance: "8.5/10", 
-      sales: "₹125,000", 
+    {
+      retailer: "Sharma Electronics",
+      performance: "8.5/10",
+      sales: "₹125,000",
       rating: "★★★★☆",
       region: "Delhi",
-      category: "Electronics"
+      category: "Electronics",
     },
-    { 
-      retailer: "Gupta General Store", 
-      performance: "7.2/10", 
-      sales: "₹89,000", 
+    {
+      retailer: "Gupta General Store",
+      performance: "7.2/10",
+      sales: "₹89,000",
       rating: "★★★★☆",
       region: "Bangalore",
-      category: "General Store"
+      category: "General Store",
     },
-    { 
-      retailer: "Patel Medicals", 
-      performance: "7.8/10", 
-      sales: "₹112,000", 
+    {
+      retailer: "Patel Medicals",
+      performance: "7.8/10",
+      sales: "₹112,000",
       rating: "★★★★☆",
       region: "Chennai",
-      category: "Medical"
+      category: "Medical",
     },
-    { 
-      retailer: "Singh Groceries", 
-      performance: "7.5/10", 
-      sales: "₹95,000", 
+    {
+      retailer: "Singh Groceries",
+      performance: "7.5/10",
+      sales: "₹95,000",
       rating: "★★★☆☆",
       region: "Delhi",
-      category: "Groceries"
-    }
+      category: "Groceries",
+    },
   ];
 
   const topRetailersColumns = [
@@ -108,6 +110,12 @@ function Reports() {
                 <h4>Growth Rate</h4>
                 <div className="stat-number positive">+5.1%</div>
               </div>
+             <Link to="/reports/retailer-report-page" className="stat-card">
+      <div className="icon-container">
+        <FaChartBar className="icon" />
+      </div>
+      <h4 className="mt-3">View Retailer Report</h4>
+    </Link>
             </div>
 
             {/* Charts Section */}
@@ -148,8 +156,8 @@ function Reports() {
               </div>
               <div className="header-controls">
                 <div className="time-filter">
-                  <select 
-                    value={timeFilter} 
+                  <select
+                    value={timeFilter}
                     onChange={(e) => setTimeFilter(e.target.value)}
                     className="time-select"
                   >
@@ -160,10 +168,16 @@ function Reports() {
                   </select>
                 </div>
                 <div className="export-buttons">
-                  <button className="export-btn csv-btn" onClick={handleCSVExport}>
+                  <button
+                    className="export-btn csv-btn"
+                    onClick={handleCSVExport}
+                  >
                     CSV
                   </button>
-                  <button className="export-btn excel-btn" onClick={handleExcelExport}>
+                  <button
+                    className="export-btn excel-btn"
+                    onClick={handleExcelExport}
+                  >
                     Excel
                   </button>
                 </div>
@@ -174,29 +188,56 @@ function Reports() {
           {/* Reports Navigation */}
           <div className="reports-nav-section">
             <div className="reports-nav-content">
-             <div className="report-links-grid">
-  <div className="report-link-item" onClick={() => setActiveReport("retailers")}>
-    <span className={`report-link-text ${activeReport === "retailers" ? "active" : ""}`}>
-      Retailers Reports
-    </span>
-  </div>
-  <div className="report-link-item" onClick={() => setActiveReport("sales")}>
-    <span className={`report-link-text ${activeReport === "sales" ? "active" : ""}`}>
-      Sales Reports
-    </span>
-  </div>
-  <div className="report-link-item" onClick={() => setActiveReport("expense")}>
-    <span className={`report-link-text ${activeReport === "expense" ? "active" : ""}`}>
-      Expense Reports
-    </span>
-  </div>
-  <div className="report-link-item" onClick={() => setActiveReport("offer")}>
-    <span className={`report-link-text ${activeReport === "offer" ? "active" : ""}`}>
-      Offer Reports
-    </span>
-  </div>
-</div>
-
+              <div className="report-links-grid">
+                <div
+                  className="report-link-item"
+                  onClick={() => setActiveReport("retailers")}
+                >
+                  <span
+                    className={`report-link-text ${
+                      activeReport === "retailers" ? "active" : ""
+                    }`}
+                  >
+                    Retailers Reports
+                  </span>
+                </div>
+                <div
+                  className="report-link-item"
+                  onClick={() => setActiveReport("sales")}
+                >
+                  <span
+                    className={`report-link-text ${
+                      activeReport === "sales" ? "active" : ""
+                    }`}
+                  >
+                    Sales Reports
+                  </span>
+                </div>
+                <div
+                  className="report-link-item"
+                  onClick={() => setActiveReport("expense")}
+                >
+                  <span
+                    className={`report-link-text ${
+                      activeReport === "expense" ? "active" : ""
+                    }`}
+                  >
+                    Expense Reports
+                  </span>
+                </div>
+                <div
+                  className="report-link-item"
+                  onClick={() => setActiveReport("offer")}
+                >
+                  <span
+                    className={`report-link-text ${
+                      activeReport === "offer" ? "active" : ""
+                    }`}
+                  >
+                    Offer Reports
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
