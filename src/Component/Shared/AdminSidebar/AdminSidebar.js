@@ -142,7 +142,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       ],
     },
     { path: "/admin_expensive", name: "Expensive Request", icon: <FaMoneyBillWave /> },
-    { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },
+    { path: "/admin/marketing/offers-postings", name: "Offers & Marketing", icon: <FaTags /> },
     { path: "/expenses", name: "Expenses", icon: <FaMoneyBill /> },
     { path: "/reports", name: "Reports", icon: <FaFileAlt /> },
     { path: "/roleaccess", name: "Role Access", icon: <FaKey /> },
