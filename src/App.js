@@ -265,8 +265,11 @@ function App() {
 
 
             <Route path="/category" element={<Category />} />
+            <Route path="/category/:id" element={<Category />} />
             <Route path="/company" element={<Company />} />
+            <Route path="/company/:id" element={<Company />} />
             <Route path="/units" element={<Units />} />
+            <Route path="/units/:id" element={<Units />} />
 
 
 
