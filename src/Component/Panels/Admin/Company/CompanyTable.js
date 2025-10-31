@@ -26,51 +26,75 @@ function CompanyTable() {
   const [companyDiscount, setCompanyDiscount] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Normalize company data to ensure consistent field names
+  const normalizeCompany = (company) => {
+    return {
+      id: company.id,
+      company_name: company.company_name || company.name || "Unnamed Company",
+      name: company.company_name || company.name || "Unnamed Company",
+      email: company.email || "",
+      status: company.status || "Active",
+      discount: company.discount || 0,
+      created_at: company.created_at || new Date().toISOString()
+    };
+  };
+
+  // Sort companies by created_at in descending order (newest first)
+  const sortCompaniesByCreatedAt = (companies) => {
+    return companies.sort((a, b) => {
+      const dateA = new Date(a.created_at || a.id);
+      const dateB = new Date(b.created_at || b.id);
+      return dateB - dateA; // Descending order (newest first)
+    });
+  };
+
   // Fetch companies data from API
   useEffect(() => {
     fetchCompanies();
   }, []);
 
- const fetchCompanies = async () => {
-  try {
-    setLoading(true);
-    const response = await axios.get(`${baseurl}/companies`);
-    
-    // Sort companies by ID descending (newest first)
-    const sortedData = response.data.sort((a, b) => b.id - a.id);
-    setCompaniesData(sortedData);
-    setError(null);
-  } catch (err) {
-    console.error('Failed to fetch companies:', err);
-    setError('Failed to load companies data');
-    
-    const staticCompaniesData = [
-      {
-        id: 1,
-        company_name: "Tech Solutions Inc",
-        name: "Tech Solutions Inc",
-        email: "contact@techsolutions.com",
-        status: "Active",
-        discount: 5.00
-      },
-      {
-        id: 2,
-        company_name: "Global Manufacturing Ltd",
-        name: "Global Manufacturing Ltd",
-        email: "info@globalmfg.com",
-        status: "Active",
-        discount: 10.00
-      }
-    ];
-    
-    // Sort static data as well
-    const sortedStaticData = staticCompaniesData.sort((a, b) => b.id - a.id);
-    setCompaniesData(sortedStaticData);
-  } finally {
-    setLoading(false);
-  }
-};
-
+  const fetchCompanies = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${baseurl}/companies`);
+      
+      const normalizedData = response.data.map(normalizeCompany);
+      // Sort companies by created_at (newest first)
+      const sortedData = sortCompaniesByCreatedAt(normalizedData);
+      setCompaniesData(sortedData);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch companies:', err);
+      setError('Failed to load companies data');
+      
+      const staticCompaniesData = [
+        {
+          id: 1,
+          company_name: "Tech Solutions Inc",
+          name: "Tech Solutions Inc",
+          email: "contact@techsolutions.com",
+          status: "Active",
+          discount: 5.00,
+          created_at: "2024-01-15T10:00:00Z"
+        },
+        {
+          id: 2,
+          company_name: "Global Manufacturing Ltd",
+          name: "Global Manufacturing Ltd",
+          email: "info@globalmfg.com",
+          status: "Active",
+          discount: 10.00,
+          created_at: "2024-01-16T11:30:00Z"
+        }
+      ];
+      
+      // Sort static data as well
+      const sortedStaticData = sortCompaniesByCreatedAt(staticCompaniesData);
+      setCompaniesData(sortedStaticData);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter companies when search term changes
   useEffect(() => {
@@ -118,23 +142,13 @@ function CompanyTable() {
     
     setIsSaving(true);
     try {
-      const response = await axios.put(`${baseurl}/companies/${editingCompany.id}`, {
+      await axios.put(`${baseurl}/companies/${editingCompany.id}`, {
         company_name: companyName,
         discount: parseFloat(companyDiscount) || 0
       });
       
-      // Update the company in local state
-      const updatedCompanies = companiesData.map(company =>
-        company.id === editingCompany.id 
-          ? { 
-              ...company, 
-              company_name: companyName, 
-              name: companyName,
-              discount: parseFloat(companyDiscount) || 0 
-            }
-          : company
-      );
-      setCompaniesData(updatedCompanies);
+      // Refetch companies to get proper sorting with updated data
+      await fetchCompanies();
       
       setCompanyName("");
       setCompanyDiscount(0);
@@ -151,7 +165,7 @@ function CompanyTable() {
 
   // Handle add new company from modal
   const handleAddCompany = (newCompany) => {
-    fetchCompanies();
+    fetchCompanies(); // This will refetch and sort with newest first
     setShowAddModal(false);
   };
 
@@ -161,15 +175,16 @@ function CompanyTable() {
   };
 
   // Custom renderers for company data
+  const renderSerialNumberCell = (item, index) => (
+    <div className="companies-table__sno-cell">
+      <span className="companies-table__sno">{index + 1}</span>
+    </div>
+  );
+
   const renderCompanyCell = (item) => (
     <div className="companies-table__company-cell">
       <div className="companies-table__header-row">
         <strong className="companies-table__company-name">{item.company_name || item.name}</strong>
-        {/* {(item.discount && item.discount > 0) && (
-          <span className="companies-table__discount-badge">
-            {item.discount}% OFF
-          </span>
-        )} */}
       </div>
       <span className="companies-table__company-email">{item.email}</span>
     </div>
@@ -212,7 +227,11 @@ function CompanyTable() {
   );
 
   const columns = [
-    { key: "id", title: "ID" },
+    { 
+      key: "__item", 
+      title: "S.No", 
+      render: (value, item, index) => renderSerialNumberCell(item, index) 
+    },
     { key: "__item", title: "Company", render: (value, item) => renderCompanyCell(item) },
     { key: "__item", title: "Discount", render: (value, item) => renderDiscountCell(item) },
     { key: "__item", title: "Actions", render: (value, item) => renderActionsCell(item) }

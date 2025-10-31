@@ -219,9 +219,9 @@ function App() {
         <Route path="/marketing" element={<AdminMarketing />} />
         <Route path="/add-marketing" element={<AddMarketing />} />
         <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} />
-<Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} />
-<Route path="/admin/marketing/flash-sales" element={<FlashSales />} />|
-<Route path="/admin/marketing/offers-postings" element={<OffersPostings />} />
+        <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} />
+        <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />|
+        <Route path="/admin/marketing/offers-postings" element={<OffersPostings />} />
 
 
  

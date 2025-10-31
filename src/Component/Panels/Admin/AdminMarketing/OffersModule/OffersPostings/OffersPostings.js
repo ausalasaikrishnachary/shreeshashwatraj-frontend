@@ -8,7 +8,7 @@ function OffersPostings() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState("regular"); // "regular" or "flash"
+  const [activeTab, setActiveTab] = useState("regular");
   const [offers, setOffers] = useState([]);
   const [flashSales, setFlashSales] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -20,22 +20,25 @@ function OffersPostings() {
   const [editingFlashSale, setEditingFlashSale] = useState(null);
   const [offerType, setOfferType] = useState("global");
   const [flashSaleType, setFlashSaleType] = useState("bogo");
+  const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const offersPerPage = 5;
+
+  const API_BASE = "http://localhost:5000/api";
+  const API_BASE_CAT = "http://localhost:5000";
 
   // Regular Offers Form State
   const [formData, setFormData] = useState({
     title: "",
-    description: "",
-    discountType: "percentage",
-    discountValue: "",
+    discountPercentage: "",
+    minimumAmount: "0",
     validFrom: "",
     validUntil: "",
+    description: "",
     image: null,
     category: "",
-    productName: "",
-    minimumPurchase: "",
-    maxDiscount: "",
-    termsConditions: ""
+    productName: ""
   });
 
   // Flash Sales Form State
@@ -58,11 +61,6 @@ function OffersPostings() {
     termsConditions: ""
   });
 
-  const categories = [
-    "Electronics", "Clothing", "Groceries", "Home & Kitchen", 
-    "Beauty", "Sports", "Books", "Automotive"
-  ];
-
   const flashSaleTypes = [
     { value: "bogo", label: "Buy One Get One", description: "Buy X get Y free" },
     { value: "expiry", label: "Near Expiry", description: "Discounts on expiring products" },
@@ -72,7 +70,7 @@ function OffersPostings() {
     { value: "limited_stock", label: "Limited Stock", description: "Limited quantity offers" }
   ];
 
-  // Sample products data
+  // Sample products data for flash sales
   const sampleProducts = [
     { id: 1, name: "Premium Olive Oil", category: "Groceries", expiryDate: "2024-12-31", currentStock: 150 },
     { id: 2, name: "Organic Milk", category: "Groceries", expiryDate: "2024-06-15", currentStock: 45 },
@@ -81,81 +79,181 @@ function OffersPostings() {
     { id: 5, name: "Face Cream", category: "Beauty", expiryDate: "2024-08-20", currentStock: 120 }
   ];
 
+  // API Functions
+  const fetchCategories = async () => {
+    console.log("Fetching categories..."); // Debug log
+    setCategoriesLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_CAT}/categories`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log("Categories fetched:", data); // Debug log
+      setCategories(data);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  const fetchOffers = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE}/offers?page=${currentPage}&limit=${offersPerPage}&search=${searchTerm}&offer_type=${filterType === 'All' ? '' : filterType}`
+      );
+      const data = await response.json();
+      if (data.offers) {
+        setOffers(data.offers);
+      }
+    } catch (error) {
+      console.error('Error fetching offers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createOffer = async (offerData) => {
+    const formDataToSend = new FormData();
+    
+    // Append all form data
+    formDataToSend.append('title', offerData.title);
+    formDataToSend.append('description', offerData.description);
+    formDataToSend.append('discountPercentage', offerData.discountPercentage);
+    formDataToSend.append('minimumAmount', offerData.minimumAmount);
+    formDataToSend.append('validFrom', offerData.validFrom);
+    formDataToSend.append('validUntil', offerData.validUntil);
+    formDataToSend.append('offerType', offerData.offerType);
+    
+    if (offerData.category) {
+      formDataToSend.append('category', offerData.category);
+    }
+    if (offerData.productName) {
+      formDataToSend.append('productName', offerData.productName);
+    }
+    if (offerData.image) {
+      formDataToSend.append('image', offerData.image);
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/offers`, {
+        method: 'POST',
+        body: formDataToSend,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating offer:', error);
+      throw error;
+    }
+  };
+
+  const updateOffer = async (id, offerData) => {
+    const formDataToSend = new FormData();
+    
+    // Append all form data
+    formDataToSend.append('title', offerData.title);
+    formDataToSend.append('description', offerData.description);
+    formDataToSend.append('discountPercentage', offerData.discountPercentage);
+    formDataToSend.append('minimumAmount', offerData.minimumAmount);
+    formDataToSend.append('validFrom', offerData.validFrom);
+    formDataToSend.append('validUntil', offerData.validUntil);
+    formDataToSend.append('offerType', offerData.offerType);
+    formDataToSend.append('status', offerData.status);
+    
+    if (offerData.category) {
+      formDataToSend.append('category', offerData.category);
+    }
+    if (offerData.productName) {
+      formDataToSend.append('productName', offerData.productName);
+    }
+    if (offerData.image) {
+      formDataToSend.append('image', offerData.image);
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/offers/${id}`, {
+        method: 'PUT',
+        body: formDataToSend,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating offer:', error);
+      throw error;
+    }
+  };
+
+  const deleteOffer = async (id) => {
+    try {
+      const response = await fetch(`${API_BASE}/offers/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error deleting offer:', error);
+      throw error;
+    }
+  };
+
+  const toggleOfferStatus = async (id, currentStatus) => {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    try {
+      const response = await fetch(`${API_BASE}/offers/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating offer status:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
-    // Sample regular offers
-    const sampleOffers = [
-      {
-        id: 1,
-        title: "Summer Sale",
-        description: "Get amazing discounts on all products",
-        discountType: "percentage",
-        discountValue: 15,
-        validFrom: "2024-06-01",
-        validUntil: "2024-06-30",
-        image: "summer-sale.jpg",
-        offerType: "global",
-        status: "active",
-        createdAt: "2024-05-20"
-      },
-      {
-        id: 2,
-        title: "Electronics Special",
-        description: "Special discount on electronics category",
-        discountType: "fixed",
-        discountValue: 500,
-        validFrom: "2024-06-01",
-        validUntil: "2024-06-15",
-        image: "electronics-offer.jpg",
-        offerType: "category",
-        category: "Electronics",
-        productName: "All Electronics",
-        minimumPurchase: 1000,
-        maxDiscount: 1000,
-        termsConditions: "Valid on purchases above ₹1000",
-        status: "active",
-        createdAt: "2024-05-25"
-      }
-    ];
+    if (activeTab === "regular") {
+      fetchOffers();
+    }
+  }, [currentPage, searchTerm, filterType, activeTab]);
 
-    // Sample flash sales
-    const sampleFlashSales = [
-      {
-        id: 1,
-        title: "Buy 1 Get 1 Free - Dairy",
-        description: "Get free dairy products on purchase",
-        flashSaleType: "bogo",
-        products: [2],
-        validFrom: "2024-06-01",
-        validUntil: "2024-06-03",
-        startTime: "09:00",
-        endTime: "18:00",
-        discountValue: "100",
-        buyQuantity: 1,
-        getQuantity: 1,
-        status: "active",
-        purchaseLimit: 2,
-        createdAt: "2024-05-25"
-      },
-      {
-        id: 2,
-        title: "Near Expiry Discounts",
-        description: "Special discounts on products expiring soon",
-        flashSaleType: "expiry",
-        products: [2, 5],
-        validFrom: "2024-06-01",
-        validUntil: "2024-06-05",
-        startTime: "00:00",
-        endTime: "23:59",
-        discountValue: "30",
-        expiryThreshold: 30,
-        status: "active",
-        createdAt: "2024-05-26"
-      }
-    ];
+  // Fetch categories when modal opens for category specific offers - FIXED
+  useEffect(() => {
+    if (showModal && offerType === 'category') {
+      console.log("Modal opened for category offer, fetching categories..."); // Debug log
+      fetchCategories();
+    }
+  }, [showModal, offerType]);
 
-    setOffers(sampleOffers);
-    setFlashSales(sampleFlashSales);
-  }, []);
+  // Fetch categories when offer type changes to category in the modal
+  useEffect(() => {
+    if (showModal && offerType === 'category' && categories.length === 0) {
+      console.log("Offer type changed to category, fetching categories..."); // Debug log
+      fetchCategories();
+    }
+  }, [offerType, showModal]);
 
   // Regular Offers Handlers
   const handleInputChange = (e) => {
@@ -167,49 +265,96 @@ function OffersPostings() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleCategoryChange = (e) => {
+    const selectedCategoryId = e.target.value;
+    console.log("Selected category ID:", selectedCategoryId); // Debug log
+    console.log("Available categories:", categories); // Debug log
+    
+    setFormData(prev => ({ ...prev, category: selectedCategoryId }));
+    
+    // Auto-fill discount percentage if category has current discount
+    if (selectedCategoryId) {
+      const selectedCategory = categories.find(cat => cat.id == selectedCategoryId);
+      console.log("Selected category:", selectedCategory); // Debug log
+      
+      if (selectedCategory && selectedCategory.current_discount_from_history) {
+        console.log("Setting discount to:", selectedCategory.current_discount_from_history); // Debug log
+        setFormData(prev => ({ 
+          ...prev, 
+          discountPercentage: selectedCategory.current_discount_from_history.toString()
+        }));
+      } else {
+        console.log("No current discount found for this category"); // Debug log
+        // Reset discount percentage if no current discount
+        setFormData(prev => ({ 
+          ...prev, 
+          discountPercentage: ""
+        }));
+      }
+    } else {
+      // Reset discount percentage if no category selected
+      setFormData(prev => ({ 
+        ...prev, 
+        discountPercentage: ""
+      }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    const newOffer = {
-      id: editingOffer ? editingOffer.id : Date.now(),
+    const offerData = {
       ...formData,
+      discountPercentage: parseFloat(formData.discountPercentage),
+      minimumAmount: parseFloat(formData.minimumAmount) || 0,
       offerType,
-      status: "active",
-      createdAt: editingOffer ? editingOffer.createdAt : new Date().toISOString().split('T')[0]
+      status: "active"
     };
 
-    if (editingOffer) {
-      setOffers(offers.map(offer => offer.id === editingOffer.id ? newOffer : offer));
-    } else {
-      setOffers([...offers, newOffer]);
+    try {
+      if (editingOffer) {
+        await updateOffer(editingOffer.id, offerData);
+      } else {
+        await createOffer(offerData);
+      }
+      fetchOffers();
+      handleCloseModal();
+    } catch (error) {
+      alert('Error saving offer. Please try again.');
     }
-
-    handleCloseModal();
   };
 
   const handleEdit = (offer) => {
     setEditingOffer(offer);
-    setOfferType(offer.offerType);
+    setOfferType(offer.offer_type);
     setFormData({
       title: offer.title,
+      discountPercentage: offer.discount_percentage,
+      minimumAmount: offer.minimum_amount?.toString() || "0",
+      validFrom: offer.valid_from,
+      validUntil: offer.valid_until,
       description: offer.description,
-      discountType: offer.discountType,
-      discountValue: offer.discountValue,
-      validFrom: offer.validFrom,
-      validUntil: offer.validUntil,
-      image: offer.image,
-      category: offer.category || "",
-      productName: offer.productName || "",
-      minimumPurchase: offer.minimumPurchase || "",
-      maxDiscount: offer.maxDiscount || "",
-      termsConditions: offer.termsConditions || ""
+      image: null, // Reset image file input
+      category: offer.category_id || "",
+      productName: offer.product_name || ""
     });
     setShowModal(true);
+    
+    // Fetch categories if editing a category offer
+    if (offer.offer_type === 'category') {
+      console.log("Editing category offer, fetching categories..."); // Debug log
+      fetchCategories();
+    }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this offer?")) {
-      setOffers(offers.filter(offer => offer.id !== id));
+      try {
+        await deleteOffer(id);
+        fetchOffers();
+      } catch (error) {
+        alert('Error deleting offer. Please try again.');
+      }
     }
   };
 
@@ -218,29 +363,27 @@ function OffersPostings() {
     setEditingOffer(null);
     setFormData({
       title: "",
-      description: "",
-      discountType: "percentage",
-      discountValue: "",
+      discountPercentage: "",
+      minimumAmount: "0",
       validFrom: "",
       validUntil: "",
+      description: "",
       image: null,
       category: "",
-      productName: "",
-      minimumPurchase: "",
-      maxDiscount: "",
-      termsConditions: ""
+      productName: ""
     });
   };
 
-  const toggleOfferStatus = (id) => {
-    setOffers(offers.map(offer => 
-      offer.id === id 
-        ? { ...offer, status: offer.status === "active" ? "inactive" : "active" }
-        : offer
-    ));
+  const handleToggleStatus = async (id, currentStatus) => {
+    try {
+      await toggleOfferStatus(id, currentStatus);
+      fetchOffers();
+    } catch (error) {
+      alert('Error updating offer status. Please try again.');
+    }
   };
 
-  // Flash Sales Handlers
+  // Flash Sales Handlers (using local state as before)
   const handleFlashSaleInputChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "image") {
@@ -350,7 +493,7 @@ function OffersPostings() {
   const filteredOffers = offers.filter((offer) => {
     const matchesSearch = offer.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          offer.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterType === "All" || offer.offerType === filterType;
+    const matchesFilter = filterType === "All" || offer.offer_type === filterType;
     return matchesSearch && matchesFilter;
   });
 
@@ -705,7 +848,14 @@ function OffersPostings() {
           <button
             type="button"
             className={`offers-type-btn ${offerType === 'category' ? 'offers-type-active' : ''}`}
-            onClick={() => setOfferType('category')}
+            onClick={() => {
+              setOfferType('category');
+              // Fetch categories immediately when category type is selected
+              if (categories.length === 0) {
+                console.log("Category type selected, fetching categories..."); // Debug log
+                fetchCategories();
+              }
+            }}
           >
             Category Specific
           </button>
@@ -713,113 +863,96 @@ function OffersPostings() {
       </div>
 
       {/* Basic Information */}
+      <div className="offers-form-group">
+        <label className="offers-form-label">Offer Title *</label>
+        <input
+          type="text"
+          name="title"
+          value={formData.title}
+          onChange={handleInputChange}
+          className="offers-form-input"
+          required
+          placeholder="Enter offer title"
+        />
+      </div>
+
       <div className="offers-form-row">
         <div className="offers-form-group">
-          <label className="offers-form-label">Offer Title *</label>
+          <label className="offers-form-label">Discount Percentage *</label>
           <input
-            type="text"
-            name="title"
-            value={formData.title}
+            type="number"
+            name="discountPercentage"
+            value={formData.discountPercentage}
             onChange={handleInputChange}
             className="offers-form-input"
+            min="0"
+            max="100"
+            step="0.01"
             required
+            placeholder="e.g., 15.5"
           />
         </div>
         
         <div className="offers-form-group">
-          <label className="offers-form-label">Discount Type *</label>
-          <select
-            name="discountType"
-            value={formData.discountType}
-            onChange={handleInputChange}
-            className="offers-form-select"
-            required
-          >
-            <option value="percentage">Percentage (%)</option>
-            <option value="fixed">Fixed Amount (₹)</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="offers-form-row">
-        <div className="offers-form-group">
-          <label className="offers-form-label">
-            {formData.discountType === 'percentage' 
-              ? 'Discount Percentage *' 
-              : 'Discount Amount (₹) *'}
-          </label>
+          <label className="offers-form-label">Minimum Amount (₹)</label>
           <input
             type="number"
-            name="discountValue"
-            value={formData.discountValue}
+            name="minimumAmount"
+            value={formData.minimumAmount}
             onChange={handleInputChange}
             className="offers-form-input"
             min="0"
-            max={formData.discountType === 'percentage' ? '100' : ''}
-            required
+            step="0.01"
+            placeholder="Default: 0"
           />
         </div>
-
-        {formData.discountType === 'percentage' && (
-          <div className="offers-form-group">
-            <label className="offers-form-label">Maximum Discount (₹)</label>
-            <input
-              type="number"
-              name="maxDiscount"
-              value={formData.maxDiscount}
-              onChange={handleInputChange}
-              className="offers-form-input"
-              min="0"
-            />
-          </div>
-        )}
       </div>
 
       {/* Category Specific Fields */}
       {offerType === 'category' && (
-        <>
-          <div className="offers-form-row">
-            <div className="offers-form-group">
-              <label className="offers-form-label">Category *</label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                className="offers-form-select"
-                required
-              >
-                <option value="">Select Category</option>
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="offers-form-group">
-              <label className="offers-form-label">Product Name</label>
-              <input
-                type="text"
-                name="productName"
-                value={formData.productName}
-                onChange={handleInputChange}
-                className="offers-form-input"
-                placeholder="Specific product or 'All products in category'"
-              />
-            </div>
-          </div>
-
+        <div className="offers-form-row">
           <div className="offers-form-group">
-            <label className="offers-form-label">Minimum Purchase Amount (₹)</label>
+            <label className="offers-form-label">Category *</label>
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleCategoryChange}
+              className="offers-form-select"
+              required
+              disabled={categoriesLoading}
+            >
+              <option value="">Select Category</option>
+              {categoriesLoading ? (
+                <option value="" disabled>Loading categories...</option>
+              ) : (
+                categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.category_name} 
+                    {cat.current_discount_from_history ? 
+                      ` (Current Discount: ${cat.current_discount_from_history}%)` : 
+                      ' (No active discount)'
+                    }
+                  </option>
+                ))
+              )}
+            </select>
+            {categoriesLoading && (
+              <div className="offers-loading-small">Loading categories...</div>
+            )}
+          </div>
+          
+          <div className="offers-form-group">
+            <label className="offers-form-label">Product Name</label>
             <input
-              type="number"
-              name="minimumPurchase"
-              value={formData.minimumPurchase}
+              type="text"
+              name="productName"
+              value={formData.productName}
               onChange={handleInputChange}
               className="offers-form-input"
-              min="0"
+              placeholder="Specific product or leave empty for all category products"
             />
           </div>
-        </>
+        </div>
       )}
 
       {/* Validity Period */}
@@ -859,18 +992,7 @@ function OffersPostings() {
           className="offers-form-textarea"
           rows="3"
           required
-        />
-      </div>
-
-      <div className="offers-form-group">
-        <label className="offers-form-label">Terms & Conditions</label>
-        <textarea
-          name="termsConditions"
-          value={formData.termsConditions}
-          onChange={handleInputChange}
-          className="offers-form-textarea"
-          rows="2"
-          placeholder="Enter terms and conditions for this offer..."
+          placeholder="Describe the offer details..."
         />
       </div>
 
@@ -883,14 +1005,24 @@ function OffersPostings() {
           className="offers-form-file"
           accept="image/*"
         />
+        {editingOffer && editingOffer.image_url && (
+          <div className="offers-current-image">
+            <p>Current Image:</p>
+            <img 
+              src={`http://localhost:5000${editingOffer.image_url}`} 
+              alt="Current offer" 
+              className="offers-image-preview"
+            />
+          </div>
+        )}
       </div>
 
       <div className="offers-form-actions">
         <button type="button" onClick={handleCloseModal} className="offers-btn-cancel">
           Cancel
         </button>
-        <button type="submit" className="offers-btn-submit">
-          {editingOffer ? 'Update Offer' : 'Create Offer'}
+        <button type="submit" className="offers-btn-submit" disabled={loading}>
+          {loading ? 'Saving...' : (editingOffer ? 'Update Offer' : 'Create Offer')}
         </button>
       </div>
     </form>
@@ -992,8 +1124,8 @@ function OffersPostings() {
   const renderRegularOfferCard = (offer) => (
     <div key={offer.id} className={`offers-card-item ${offer.status}`}>
       <div className="offers-card-image">
-        {offer.image ? (
-          <img src={offer.image} alt={offer.title} />
+        {offer.image_url ? (
+          <img src={`http://localhost:5000${offer.image_url}`} alt={offer.title} />
         ) : (
           <div className="offers-no-image">No Image</div>
         )}
@@ -1011,27 +1143,28 @@ function OffersPostings() {
         
         <div className="offers-details-list">
           <div className="offers-detail-item">
-            <strong>Discount:</strong> 
-            {offer.discountType === 'percentage' 
-              ? `${offer.discountValue}%` 
-              : `₹${offer.discountValue}`}
+            <strong>Discount:</strong> {offer.discount_percentage}%
           </div>
           
-          {offer.offerType === 'category' && (
+          <div className="offers-detail-item">
+            <strong>Min. Amount:</strong> ₹{offer.minimum_amount || 0}
+          </div>
+          
+          {offer.offer_type === 'category' && (
             <>
               <div className="offers-detail-item">
-                <strong>Category:</strong> {offer.category}
+                <strong>Category:</strong> {offer.category_name}
               </div>
-              {offer.minimumPurchase && (
+              {offer.product_name && (
                 <div className="offers-detail-item">
-                  <strong>Min Purchase:</strong> ₹{offer.minimumPurchase}
+                  <strong>Product:</strong> {offer.product_name}
                 </div>
               )}
             </>
           )}
           
           <div className="offers-detail-item">
-            <strong>Valid:</strong> {offer.validFrom} to {offer.validUntil}
+            <strong>Valid:</strong> {offer.valid_from} to {offer.valid_until}
           </div>
         </div>
 
@@ -1050,7 +1183,7 @@ function OffersPostings() {
           </button>
           <button 
             className={`offers-btn-status ${offer.status}`}
-            onClick={() => toggleOfferStatus(offer.id)}
+            onClick={() => handleToggleStatus(offer.id, offer.status)}
           >
             {offer.status === 'active' ? 'Deactivate' : 'Activate'}
           </button>
@@ -1069,14 +1202,20 @@ function OffersPostings() {
           {/* Header Section */}
           <div className="offers-postings-header">
             <div className="offers-header-left">
-              {/* <button className="offers-back-btn" onClick={() => navigate(-1)}>
-                ← Back
-              </button> */}
               <h1 className="offers-main-title">Offers & Flash Sales</h1>
             </div>
             <button 
               className="offers-add-btn"
-              onClick={() => activeTab === "regular" ? setShowModal(true) : setShowFlashSaleModal(true)}
+              onClick={() => {
+                if (activeTab === "regular") {
+                  setShowModal(true);
+                  // Pre-fetch categories when opening modal for regular offers
+                  console.log("Opening modal, pre-fetching categories..."); // Debug log
+                  fetchCategories();
+                } else {
+                  setShowFlashSaleModal(true);
+                }
+              }}
             >
               + Add {activeTab === "regular" ? "Offer" : "Flash Sale"}
             </button>
@@ -1124,6 +1263,10 @@ function OffersPostings() {
             )}
           </div>
 
+          {loading && (
+            <div className="offers-loading">Loading offers...</div>
+          )}
+
           {/* Content based on active tab */}
           <div className="offers-cards-grid">
             {currentItemsPage.length > 0 ? (
@@ -1144,7 +1287,16 @@ function OffersPostings() {
                 </p>
                 <button 
                   className="offers-add-btn"
-                  onClick={() => activeTab === "regular" ? setShowModal(true) : setShowFlashSaleModal(true)}
+                  onClick={() => {
+                    if (activeTab === "regular") {
+                      setShowModal(true);
+                      // Pre-fetch categories when opening modal from empty state
+                      console.log("Opening modal from empty state, fetching categories..."); // Debug log
+                      fetchCategories();
+                    } else {
+                      setShowFlashSaleModal(true);
+                    }
+                  }}
                 >
                   + Add {activeTab === "regular" ? "Offer" : "Flash Sale"}
                 </button>
