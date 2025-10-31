@@ -62,7 +62,7 @@ import RetailerHome from "./Component/Panels/Retailer/RetailerHome/RetailerHomeW
 import RetailerHistory from "./Component/Panels/Retailer/RetailerHistory/RetailerHistoryWrapper";
 import RetailerOffers from "./Component/Panels/Retailer/RetailerOffers/RetailerOffersWrapper";
 import RetailerProfile from "./Component/Panels/Retailer/RetailerProfile/RetailerProfileWrapper";
-
+import RetailerReportPage from "./Component/Panels/Admin/AdminReports/RetailerReportPage";
 
 
 // Admin Pages
@@ -149,7 +149,7 @@ function App() {
         <Route path="/retailer-history" element={<RetailerHistory />} />
         <Route path="/retailer-offers" element={<RetailerOffers />} />
         <Route path="/retailer-profile" element={<RetailerProfile />} />
-
+         <Route path="/reports/retailer-report-page" element={<RetailerReportPage />} />
 
 
 
@@ -203,6 +203,12 @@ function App() {
         <Route path="/add-product" element={<AddProduct />} />
         <Route path="/marketing" element={<AdminMarketing />} />
         <Route path="/add-marketing" element={<AddMarketing />} />
+        <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} />
+        <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} />
+        <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />|
+        <Route path="/admin/marketing/offers-postings" element={<OffersPostings />} />
+
+
  
         <Route path="/retailers" element={<AdminRetailers />} />
         <Route path="/retailers/add" element={<AddRetailerForm mode="add" />} />
