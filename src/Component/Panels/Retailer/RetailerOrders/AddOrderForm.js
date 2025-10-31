@@ -426,7 +426,7 @@ function AddOrderForm({ onAddOrder, onCancel }) {
               {products.map(product => (
                 <option key={product.id} value={product.id}>
                   {product.goods_name} 
-                  {product.price_display && ` - $${product.price_display}`}
+                  {product.price_display && ` - ₹${product.price_display}`}
                   {product.balance_stock !== null && ` (Stock: ${product.balance_stock} ${product.unit || 'pcs'})`}
                   {product.inclusive_gst === 1 && ` [GST Inclusive]`}
                   {product.non_taxable === 1 && ` [Non-Taxable]`}
@@ -454,7 +454,7 @@ function AddOrderForm({ onAddOrder, onCancel }) {
             </div>
 
             <div className="form-group">
-              <label>Unit Price ($):</label>
+              <label>Unit Price (₹):</label>
               <input
                 type="number"
                 name="price"
@@ -493,7 +493,7 @@ function AddOrderForm({ onAddOrder, onCancel }) {
               <label>Base Amount:</label>
               <input
                 type="text"
-                value={`$${formData.basePrice}`}
+                value={`₹${formData.basePrice}`}
                 disabled
                 className="base-price-input"
               />
@@ -503,7 +503,7 @@ function AddOrderForm({ onAddOrder, onCancel }) {
               <label>GST Amount:</label>
               <input
                 type="text"
-                value={`$${formData.gstAmount}`}
+                value={`₹${formData.gstAmount}`}
                 disabled
                 className="gst-amount-input"
               />
@@ -513,7 +513,7 @@ function AddOrderForm({ onAddOrder, onCancel }) {
               <label>Total Price:</label>
               <input
                 type="text"
-                value={`$${formData.totalPrice}`}
+                value={`₹${formData.totalPrice}`}
                 disabled
                 className="total-price-input"
               />

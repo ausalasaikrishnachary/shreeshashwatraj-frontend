@@ -171,7 +171,7 @@ function RetailerOrders() {
               <div key={order.id} className="order-item">
                 <div className="order-header">
                   <h3 className="product-name">{order.product}</h3>
-                  <span className={`status ${order.status}`}>
+                  <span className={`status ₹{order.status}`}>
                     {order.status}
                   </span>
                 </div>
@@ -183,16 +183,16 @@ function RetailerOrders() {
                 <div className="order-details">
                   <div className="detail">
                     <span>Qty: {order.quantity}</span>
-                    <span>${parseFloat(order.price).toFixed(2)} each</span>
+                    <span>₹{parseFloat(order.price).toFixed(2)} each</span>
                   </div>
                   <div className="detail">
                     <span>Total:</span>
-                    <span className="total-price">${parseFloat(order.totalPrice).toFixed(2)}</span>
+                    <span className="total-price">₹{parseFloat(order.totalPrice).toFixed(2)}</span>
                   </div>
                   <div className="detail">
-                    <span>Date: {order.date}</span>
-                    <span className="order-id">#{order.id}</span>
-                  </div>
+  <span>Date: {new Date(order.date).toLocaleDateString('en-IN')}</span>
+  <span className="order-id">#{order.id}</span>
+</div>
                 </div>
                 
                 <div className="order-actions">
