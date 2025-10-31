@@ -5,7 +5,8 @@ import {
   FaHistory,
   FaTags,
   FaUser,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaShoppingCart
 } from "react-icons/fa";
 import "./RetailerMobileLayout.css";
 
@@ -15,7 +16,8 @@ function RetailerMobileLayout({ children }) {
 
   const menuItems = [
     { path: "/retailer-home", icon: <FaHome />, label: "Home" },
-        { path: "/retailer-offers", icon: <FaTags />, label: "Offers" },
+    { path: "/retailer-offers", icon: <FaTags />, label: "Offers" },
+    { path: "/retailer-orders", icon: <FaShoppingCart />, label: "Orders" },
     { path: "/retailer-history", icon: <FaHistory />, label: "History" },
     { path: "/retailer-profile", icon: <FaUser />, label: "Profile" },
   ];
@@ -25,7 +27,7 @@ function RetailerMobileLayout({ children }) {
   const handleLogout = () => {
     // Add your logout logic here
     console.log("Logout clicked");
- navigate("/");
+    navigate("/");
   };
 
   return (
