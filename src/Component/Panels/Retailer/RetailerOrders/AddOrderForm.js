@@ -308,22 +308,22 @@ function AddOrderForm({ onAddOrder, onCancel }) {
       const selectedProduct = products.find(prod => prod.id.toString() === formData.product);
       const selectedCategory = categories.find(cat => cat.id.toString() === formData.category);
 
-      const newOrder = {
-        category: selectedCategory ? selectedCategory.category_name : formData.category,
-        category_id: formData.category,
-        product: selectedProduct ? selectedProduct.goods_name : formData.product,
-        product_id: selectedProduct ? selectedProduct.id : null,
-        quantity: parseInt(formData.quantity),
-        price: parseFloat(formData.price),
-        basePrice: parseFloat(formData.basePrice),
-        gstAmount: parseFloat(formData.gstAmount),
-        totalPrice: parseFloat(formData.totalPrice),
-        gstRate: parseFloat(formData.gstRate),
-        taxType: formData.taxType,
-        date: new Date().toISOString().split('T')[0],
-        unit: selectedProduct ? selectedProduct.unit : null,
-        group_by: selectedProduct ? selectedProduct.group_by : 'salescatalog'
-      };
+     const newOrder = {
+  category: selectedCategory ? selectedCategory.category_name : formData.category,
+  category_id: formData.category,  // This is the category ID
+  product: selectedProduct ? selectedProduct.goods_name : formData.product,
+  product_id: selectedProduct ? selectedProduct.id : null,  // This is the product ID
+  quantity: parseInt(formData.quantity),
+  price: parseFloat(formData.price),
+  basePrice: parseFloat(formData.basePrice),
+  gstAmount: parseFloat(formData.gstAmount),
+  totalPrice: parseFloat(formData.totalPrice),
+  gstRate: parseFloat(formData.gstRate),
+  taxType: formData.taxType,
+  date: new Date().toISOString().split('T')[0],
+  unit: selectedProduct ? selectedProduct.unit : null,
+  group_by: selectedProduct ? selectedProduct.group_by : 'salescatalog'
+};
 
       const savedOrder = await saveOrderToDatabase(newOrder);
       onAddOrder(savedOrder);

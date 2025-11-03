@@ -268,73 +268,75 @@ function EditOrderForm({ order, onUpdateOrder, onCancel }) {
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError("");
 
-    try {
-      // Validate form data
-      if (!formData.category || !formData.product || !formData.quantity || !formData.price) {
-        throw new Error("Please fill in all required fields");
-      }
-
-      if (parseFloat(formData.quantity) <= 0 || parseFloat(formData.price) <= 0) {
-        throw new Error("Quantity and price must be greater than 0");
-      }
-
-      // Find the selected category and product
-      const selectedCategory = categories.find(cat => cat.id.toString() === formData.category);
-      const selectedProduct = products.find(prod => prod.id.toString() === formData.product);
-
-      const updateData = {
-        category: selectedCategory ? selectedCategory.category_name : formData.category,
-        product: selectedProduct ? selectedProduct.goods_name : formData.product,
-        quantity: parseInt(formData.quantity),
-        price: parseFloat(formData.price),
-        basePrice: parseFloat(formData.basePrice),
-        gstAmount: parseFloat(formData.gstAmount),
-        totalPrice: parseFloat(formData.totalPrice),
-        gstRate: parseFloat(formData.gstRate),
-        taxType: formData.taxType,
-        status: formData.status,
-        category_id: selectedCategory ? selectedCategory.id : null,
-        product_id: selectedProduct ? selectedProduct.id : null
-      };
-
-      console.log('Sending update request:', {
-        url: `${baseurl}/api/orders/${order.id}`,
-        data: updateData
-      });
-
-      const response = await fetch(`${baseurl}/api/orders/${order.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData)
-      });
-
-      // Handle response once
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || data.details || `HTTP ${response.status}: Failed to update order`);
-      }
-
-      console.log('Update successful:', data);
-      
-      // Call the parent callback with the updated order
-      onUpdateOrder(data);
-      alert('Order updated successfully!');
-
-    } catch (error) {
-      console.error('Error updating order:', error);
-      setError(`Failed to update order: ${error.message}`);
-    } finally {
-      setLoading(false);
+  try {
+    // Validate form data
+    if (!formData.category || !formData.product || !formData.quantity || !formData.price) {
+      throw new Error("Please fill in all required fields");
     }
-  };
+
+    if (parseFloat(formData.quantity) <= 0 || parseFloat(formData.price) <= 0) {
+      throw new Error("Quantity and price must be greater than 0");
+    }
+
+    // Find the selected category and product
+    const selectedCategory = categories.find(cat => cat.id.toString() === formData.category);
+    const selectedProduct = products.find(prod => prod.id.toString() === formData.product);
+
+    // Prepare update data with correct field names
+    const updateData = {
+      category: selectedCategory ? selectedCategory.category_name : formData.category,
+      product: selectedProduct ? selectedProduct.goods_name : formData.product,
+      quantity: parseInt(formData.quantity),
+      price: parseFloat(formData.price),
+      totalPrice: parseFloat(formData.totalPrice),
+      status: formData.status,
+      // GST and ID fields
+      basePrice: parseFloat(formData.basePrice),
+      gstAmount: parseFloat(formData.gstAmount),
+      gstRate: parseFloat(formData.gstRate),
+      taxType: formData.taxType, // Make sure this matches backend
+      category_id: selectedCategory ? selectedCategory.id : null,
+      product_id: selectedProduct ? selectedProduct.id : null
+    };
+
+    console.log('Sending update request:', {
+      url: `${baseurl}/api/orders/${order.id}`,
+      data: updateData
+    });
+
+    const response = await fetch(`${baseurl}/api/orders/${order.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updateData)
+    });
+
+    // Handle response once
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || data.details || `HTTP ${response.status}: Failed to update order`);
+    }
+
+    console.log('Update successful:', data);
+    
+    // Call the parent callback with the updated order
+    onUpdateOrder(data);
+    alert('Order updated successfully!');
+
+  } catch (error) {
+    console.error('Error updating order:', error);
+    setError(`Failed to update order: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const statusOptions = ["pending", "processing", "completed", "cancelled"];
 
