@@ -127,8 +127,10 @@ import InvoicePDFPreview from './Component/Panels/Admin/SalesInvoicePage/Invoice
 import PurchasePDFPreview from "./Component/Panels/Admin/PurchaseInvoicePage/PurchasePDFPreview";
 import ReceiptView from "./Component/Panels/Admin/Receipts/Receiptsview";
 import AddUnitModal from "./Component/Panels/Admin/Inventory/Sales_catalogue/AddUnitsModal";
-
-
+import OffersPostings from './Component/Panels/Admin/AdminMarketing/OffersModule/OffersPostings/OffersPostings'
+import Category from "./Component/Panels/Admin/Category/CategoryTable"
+import Company from "./Component/Panels/Admin/Company/CompanyTable"
+import Units from "./Component/Panels/Admin/Units/UnitsTable"
 function App() {
   return (
     <Router>
@@ -203,9 +205,9 @@ function App() {
         <Route path="/add-product" element={<AddProduct />} />
         <Route path="/marketing" element={<AdminMarketing />} />
         <Route path="/add-marketing" element={<AddMarketing />} />
-        <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} />
-        <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} />
-        <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />|
+        {/* <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} /> */}
+        {/* <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} /> */}
+        {/* <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />| */}
         <Route path="/admin/marketing/offers-postings" element={<OffersPostings />} />
 
 
@@ -245,7 +247,12 @@ function App() {
 <Route path="/receipts_view/:id" element={<ReceiptView />} />
 <Route path="/addunitsmodal" element={<AddUnitModal />} />
 
-
+<Route path="/category" element={<Category />} />
+            <Route path="/category/:id" element={<Category />} />
+            <Route path="/company" element={<Company />} />
+            <Route path="/company/:id" element={<Company />} />
+            <Route path="/units" element={<Units />} />
+            <Route path="/units/:id" element={<Units />} />
 
       </Routes>
     </Router>
