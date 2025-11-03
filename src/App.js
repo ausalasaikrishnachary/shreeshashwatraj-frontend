@@ -131,6 +131,18 @@ import OffersPostings from './Component/Panels/Admin/AdminMarketing/OffersModule
 import Category from "./Component/Panels/Admin/Category/CategoryTable"
 import Company from "./Component/Panels/Admin/Company/CompanyTable"
 import Units from "./Component/Panels/Admin/Units/UnitsTable"
+// Add this import
+import InvoicePDFDownload from './Component/Panels/Admin/SalesInvoicePage/InvoicePDFDocument';
+
+// import Category from "./Component/Panels/Admin/Category/CategoryTable"
+// import Company from "./Component/Panels/Admin/Company/CompanyTable"
+// import Units from "./Component/Panels/Admin/Units/UnitsTable"
+import Profile from "./Component/Panels/Retailer/RetailerProfile/Profile";
+import RetailerOrders from "./Component/Panels/Retailer/RetailerOrders/RetailerOrders";
+
+
+
+
 function App() {
   return (
     <Router>
@@ -151,6 +163,10 @@ function App() {
         <Route path="/retailer-history" element={<RetailerHistory />} />
         <Route path="/retailer-offers" element={<RetailerOffers />} />
         <Route path="/retailer-profile" element={<RetailerProfile />} />
+        <Route path="/profile/:id" element={<Profile />} />
+        <Route path="/retailer-orders" element={<RetailerOrders />} />
+{/* <Route path="/retailer-profile/:id?" element={<RetailerProfile />} /> */}
+
          <Route path="/reports/retailer-report-page" element={<RetailerReportPage />} />
 
 
@@ -209,6 +225,10 @@ function App() {
         {/* <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} /> */}
         {/* <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />| */}
         <Route path="/admin/marketing/offers-postings" element={<OffersPostings />} />
+        {/* <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} />
+        <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} />
+        <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />|
+        <Route path="/admin/marketing/offers-postings" element={<OffersPostings />} /> */}
 
 
  
