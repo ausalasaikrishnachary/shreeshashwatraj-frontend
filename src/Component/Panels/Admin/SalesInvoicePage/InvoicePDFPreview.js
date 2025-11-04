@@ -160,22 +160,46 @@ const InvoicePDFPreview = () => {
       console.error('Error parsing batch details:', error);
     }
 
-    const items = batchDetails.map((batch, index) => ({
-      id: index + 1,
-      product: batch.product || 'Product',
-      description: `Batch: ${batch.batch}`,
-      quantity: parseFloat(batch.quantity) || 0,
-      price: parseFloat(batch.price) || 0,
-      discount: 0,
-      gst: parseFloat(apiData.IGSTPercentage) || 0,
-      cgst: parseFloat(apiData.CGSTPercentage) || 0,
-      sgst: parseFloat(apiData.SGSTPercentage) || 0,
-      igst: parseFloat(apiData.IGSTPercentage) || 0,
-      total: (parseFloat(batch.quantity) * parseFloat(batch.price)).toFixed(2)
-    })) || [];
+    // Create items from batch details with complete information
+    const items = batchDetails.map((batch, index) => {
+      const quantity = parseFloat(batch.quantity) || 0;
+      const price = parseFloat(batch.price) || 0;
+      const discount = parseFloat(batch.discount) || 0;
+      const gst = parseFloat(batch.gst) || parseFloat(apiData.IGSTPercentage) || 0;
+      const cgst = parseFloat(batch.cgst) || parseFloat(apiData.CGSTPercentage) || 0;
+      const sgst = parseFloat(batch.sgst) || parseFloat(apiData.SGSTPercentage) || 0;
+      const igst = parseFloat(batch.igst) || parseFloat(apiData.IGSTPercentage) || 0;
+      const cess = parseFloat(batch.cess) || 0;
+      
+      const subtotal = quantity * price;
+      const discountAmount = subtotal * (discount / 100);
+      const amountAfterDiscount = subtotal - discountAmount;
+      const gstAmount = amountAfterDiscount * (gst / 100);
+      const cessAmount = amountAfterDiscount * (cess / 100);
+      const total = amountAfterDiscount + gstAmount + cessAmount;
+
+      return {
+        id: index + 1,
+        product: batch.product || 'Product',
+        description: batch.description || `Batch: ${batch.batch}`,
+        quantity: quantity,
+        price: price,
+        discount: discount,
+        gst: gst,
+        cgst: cgst,
+        sgst: sgst,
+        igst: igst,
+        cess: cess,
+        total: total.toFixed(2),
+        batch: batch.batch || '',
+        batchDetails: batch.batchDetails || null,
+        product_id: batch.product_id || null
+      };
+    }) || [];
 
     const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
     const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
+    const totalCess = items.reduce((sum, item) => sum + (parseFloat(item.cess) || 0), 0);
     const grandTotal = parseFloat(apiData.TotalAmount) || 0;
 
     return {
@@ -233,9 +257,9 @@ const InvoicePDFPreview = () => {
       taxableAmount: taxableAmount.toFixed(2),
       totalGST: totalGST.toFixed(2),
       grandTotal: grandTotal.toFixed(2),
-      totalCess: "0.00",
+      totalCess: totalCess.toFixed(2),
       
-      note: "Thank you for your business!",
+      note: apiData.note || "Thank you for your business!",
       transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
       additionalCharge: "",
       additionalChargeAmount: "0.00",
@@ -355,12 +379,14 @@ const InvoicePDFPreview = () => {
     const price = parseFloat(item.price) || 0;
     const discount = parseFloat(item.discount) || 0;
     const gst = parseFloat(item.gst) || 0;
+    const cess = parseFloat(item.cess) || 0;
     
     const subtotal = quantity * price;
     const discountAmount = subtotal * (discount / 100);
     const amountAfterDiscount = subtotal - discountAmount;
     const gstAmount = amountAfterDiscount * (gst / 100);
-    const total = amountAfterDiscount + gstAmount;
+    const cessAmount = amountAfterDiscount * (cess / 100);
+    const total = amountAfterDiscount + gstAmount + cessAmount;
     
     newItems[index].total = total.toFixed(2);
     
@@ -397,13 +423,28 @@ const InvoicePDFPreview = () => {
       return sum + gstAmount;
     }, 0);
     
+    const totalCess = items.reduce((sum, item) => {
+      const quantity = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.price) || 0;
+      const discount = parseFloat(item.discount) || 0;
+      const cess = parseFloat(item.cess) || 0;
+      
+      const subtotal = quantity * price;
+      const discountAmount = subtotal * (discount / 100);
+      const amountAfterDiscount = subtotal - discountAmount;
+      const cessAmount = amountAfterDiscount * (cess / 100);
+      
+      return sum + cessAmount;
+    }, 0);
+    
     const additionalChargeAmount = parseFloat(editedData.additionalChargeAmount) || 0;
-    const grandTotal = taxableAmount + totalGST + additionalChargeAmount;
+    const grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
     
     setEditedData(prev => ({
       ...prev,
       taxableAmount: taxableAmount.toFixed(2),
       totalGST: totalGST.toFixed(2),
+      totalCess: totalCess.toFixed(2),
       grandTotal: grandTotal.toFixed(2)
     }));
   };
@@ -468,7 +509,8 @@ const InvoicePDFPreview = () => {
       retailerBusinessName: invoiceData.supplierInfo.businessName,
       retailerId: invoiceData.supplierInfo.id || '',
       amount: invoiceData.grandTotal,
-      invoiceNumber: invoiceData.invoiceNumber
+      invoiceNumber: invoiceData.invoiceNumber,
+      retailerGstin: invoiceData.supplierInfo.gstin || ''
     }));
     
     fetchNextReceiptNumber();
@@ -1208,6 +1250,11 @@ const InvoicePDFPreview = () => {
                           <tr>
                             <td className="pb-2">Total GST:</td>
                             <td className="text-end pb-2">₹{currentData.totalGST}</td>
+                          </tr>
+                          
+                          <tr>
+                            <td className="pb-2">Total Cess:</td>
+                            <td className="text-end pb-2">₹{currentData.totalCess}</td>
                           </tr>
                           
                           <tr className="grand-total border-top pt-2">

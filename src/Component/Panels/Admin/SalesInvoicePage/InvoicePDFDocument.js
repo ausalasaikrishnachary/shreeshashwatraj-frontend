@@ -75,9 +75,8 @@ const styles = StyleSheet.create({
     margin: 'auto',
     flexDirection: 'row',
   },
-  // Fixed column widths to match exactly
   tableColHeader: {
-    width: '7%',  // For #, Qty, Disc %, GST %
+    width: '7%',
     borderStyle: 'solid',
     borderWidth: 1,
     borderLeftWidth: 0,
@@ -86,7 +85,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   tableCol: {
-    width: '7%',  // For #, Qty, Disc %, GST %
+    width: '7%',
     borderStyle: 'solid',
     borderWidth: 1,
     borderLeftWidth: 0,
@@ -94,7 +93,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   tableColHeaderProduct: {
-    width: '18%',  // For Product column
+    width: '18%',
     borderStyle: 'solid',
     borderWidth: 1,
     borderLeftWidth: 0,
@@ -103,7 +102,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   tableColProduct: {
-    width: '18%',  // For Product column
+    width: '18%',
     borderStyle: 'solid',
     borderWidth: 1,
     borderLeftWidth: 0,
@@ -111,7 +110,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   tableColHeaderDesc: {
-    width: '25%',  // For Description column
+    width: '25%',
     borderStyle: 'solid',
     borderWidth: 1,
     borderLeftWidth: 0,
@@ -120,7 +119,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   tableColDesc: {
-    width: '25%',  // For Description column
+    width: '25%',
     borderStyle: 'solid',
     borderWidth: 1,
     borderLeftWidth: 0,
@@ -128,7 +127,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   tableColHeaderPrice: {
-    width: '12%',  // For Price column
+    width: '12%',
     borderStyle: 'solid',
     borderWidth: 1,
     borderLeftWidth: 0,
@@ -137,7 +136,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   tableColPrice: {
-    width: '12%',  // For Price column
+    width: '12%',
     borderStyle: 'solid',
     borderWidth: 1,
     borderLeftWidth: 0,
@@ -145,7 +144,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   tableColHeaderAmount: {
-    width: '13%',  // For Amount column
+    width: '13%',
     borderStyle: 'solid',
     borderWidth: 1,
     borderLeftWidth: 0,
@@ -154,7 +153,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   tableColAmount: {
-    width: '13%',  // For Amount column
+    width: '13%',
     borderStyle: 'solid',
     borderWidth: 1,
     borderLeftWidth: 0,
@@ -262,10 +261,11 @@ const InvoicePDFDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
   const invoiceDate = currentData.invoiceDate ? new Date(currentData.invoiceDate).toLocaleDateString() : 'N/A';
   const dueDate = currentData.validityDate ? new Date(currentData.validityDate).toLocaleDateString() : 'N/A';
 
-  // Calculate totals
+  // Calculate totals from items
   const calculateTotals = () => {
     let taxableAmount = 0;
     let totalGST = 0;
+    let totalCess = 0;
     let grandTotal = 0;
 
     items.forEach(item => {
@@ -273,21 +273,28 @@ const InvoicePDFDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
       const price = parseFloat(item.price || 0);
       const discountPercent = parseFloat(item.discount || 0);
       const gstPercent = parseFloat(item.gst || 0);
+      const cessPercent = parseFloat(item.cess || 0);
       
       const itemTotal = quantity * price;
       const discountAmount = itemTotal * (discountPercent / 100);
       const taxableValue = itemTotal - discountAmount;
       const gstAmount = taxableValue * (gstPercent / 100);
+      const cessAmount = taxableValue * (cessPercent / 100);
       
       taxableAmount += taxableValue;
       totalGST += gstAmount;
-      grandTotal += taxableValue + gstAmount;
+      totalCess += cessAmount;
+      grandTotal += taxableValue + gstAmount + cessAmount;
     });
 
-    return { taxableAmount, totalGST, grandTotal };
+    // Add additional charges if any
+    const additionalChargeAmount = parseFloat(currentData.additionalChargeAmount || 0);
+    grandTotal += additionalChargeAmount;
+
+    return { taxableAmount, totalGST, totalCess, grandTotal };
   };
 
-  const { taxableAmount, totalGST, grandTotal } = calculateTotals();
+  const { taxableAmount, totalGST, totalCess, grandTotal } = calculateTotals();
 
   return (
     <Document>
@@ -348,21 +355,23 @@ const InvoicePDFDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             const price = parseFloat(item.price || 0);
             const discountPercent = parseFloat(item.discount || 0);
             const gstPercent = parseFloat(item.gst || 0);
+            const cessPercent = parseFloat(item.cess || 0);
             
             const itemTotal = quantity * price;
             const discountAmount = itemTotal * (discountPercent / 100);
             const taxableValue = itemTotal - discountAmount;
             const gstAmount = taxableValue * (gstPercent / 100);
-            const itemGrandTotal = taxableValue + gstAmount;
+            const cessAmount = taxableValue * (cessPercent / 100);
+            const itemGrandTotal = taxableValue + gstAmount + cessAmount;
 
             return (
               <View style={styles.tableRow} key={index}>
                 <View style={styles.tableCol}><Text style={styles.tableCellCenter}>{index + 1}</Text></View>
                 <View style={styles.tableColProduct}>
                   <Text style={styles.tableCellProduct}>{item.product || 'Product'}</Text>
-                  {item.icon && (
+                  {item.batch && (
                     <Text style={[styles.tableCellProduct, { fontSize: 7, color: '#666' }]}>
-                      {item.icon}
+                      Batch: {item.batch}
                     </Text>
                   )}
                 </View>
@@ -402,17 +411,17 @@ const InvoicePDFDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             {isSameState ? (
               <>
                 <View style={styles.amountRow}>
-                  <Text>CGST ({parseFloat(gstBreakdown?.totalCGST || 0) > 0 ? '9%' : '0%'}):</Text>
+                  <Text>CGST:</Text>
                   <Text>₹{(totalGST / 2).toFixed(2)}</Text>
                 </View>
                 <View style={styles.amountRow}>
-                  <Text>SGST ({parseFloat(gstBreakdown?.totalSGST || 0) > 0 ? '9%' : '0%'}):</Text>
+                  <Text>SGST:</Text>
                   <Text>₹{(totalGST / 2).toFixed(2)}</Text>
                 </View>
               </>
             ) : (
               <View style={styles.amountRow}>
-                <Text>IGST ({parseFloat(gstBreakdown?.totalIGST || 0) > 0 ? '18%' : '0%'}):</Text>
+                <Text>IGST:</Text>
                 <Text>₹{totalGST.toFixed(2)}</Text>
               </View>
             )}
@@ -424,7 +433,7 @@ const InvoicePDFDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             
             <View style={styles.amountRow}>
               <Text>Total Cess:</Text>
-              <Text>₹{parseFloat(currentData.totalCess || 0).toFixed(2)}</Text>
+              <Text>₹{totalCess.toFixed(2)}</Text>
             </View>
             
             {currentData.additionalCharge && (
@@ -445,9 +454,10 @@ const InvoicePDFDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
               <Text style={{ fontSize: 7 }}>
                 <Text style={styles.textBold}>Tax Summary: </Text>
                 {isSameState 
-                  ? `CGST (${parseFloat(gstBreakdown?.totalCGST || 0) > 0 ? '9%' : '0%'}) + SGST (${parseFloat(gstBreakdown?.totalSGST || 0) > 0 ? '9%' : '0%'}) = ₹${totalGST.toFixed(2)}`
-                  : `IGST (${parseFloat(gstBreakdown?.totalIGST || 0) > 0 ? '18%' : '0%'}) = ₹${totalGST.toFixed(2)}`
+                  ? `CGST + SGST = ₹${totalGST.toFixed(2)}`
+                  : `IGST = ₹${totalGST.toFixed(2)}`
                 }
+                {totalCess > 0 ? `, Cess = ₹${totalCess.toFixed(2)}` : ''}
               </Text>
             </View>
           </View>

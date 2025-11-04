@@ -30,7 +30,7 @@ const CreateInvoice = ({ user }) => {
       return parsedData;
     }
     return {
-      invoiceNumber: "INV001", // Default, will be updated after fetch
+      invoiceNumber: "INV001",
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
@@ -96,7 +96,7 @@ const CreateInvoice = ({ user }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
-  // Fetch next invoice number on component mount - FIXED
+  // Fetch next invoice number on component mount
   useEffect(() => {
     fetchNextInvoiceNumber();
   }, []);
@@ -110,7 +110,6 @@ const CreateInvoice = ({ user }) => {
         console.log('Received next invoice number:', data.nextInvoiceNumber);
         setNextInvoiceNumber(data.nextInvoiceNumber);
         
-        // Update invoice data with the new invoice number - FIXED: This now happens immediately
         setInvoiceData(prev => ({
           ...prev,
           invoiceNumber: data.nextInvoiceNumber
@@ -118,7 +117,6 @@ const CreateInvoice = ({ user }) => {
         
         setHasFetchedInvoiceNumber(true);
         
-        // Also update localStorage
         const currentDraft = localStorage.getItem('draftInvoice');
         if (currentDraft) {
           const draftData = JSON.parse(currentDraft);
@@ -127,24 +125,46 @@ const CreateInvoice = ({ user }) => {
         }
       } else {
         console.error('Failed to fetch next invoice number');
-        // Use fallback invoice number generation
         generateFallbackInvoiceNumber();
       }
     } catch (err) {
       console.error('Error fetching next invoice number:', err);
-      // Use fallback invoice number generation
       generateFallbackInvoiceNumber();
     }
   };
 
+
+  // In your CreateInvoice component, update the batch selection logic
+const fetchBatchesForProduct = async (productName) => {
+  try {
+    const product = products.find(p => p.goods_name === productName);
+    if (product) {
+      const res = await fetch(`${baseurl}/products/${product.id}/batches`);
+      const batchData = await res.json();
+      
+      // Filter only batches with available stock
+      const availableBatches = batchData.filter(batch => 
+        parseFloat(batch.quantity) > 0
+      );
+      
+      setBatches(availableBatches);
+      setSelectedBatch("");
+      setSelectedBatchDetails(null);
+      
+      console.log(`📦 Available batches for ${productName}:`, availableBatches);
+    }
+  } catch (err) {
+    console.error("Failed to fetch batches:", err);
+    setBatches([]);
+  }
+};
+
   const generateFallbackInvoiceNumber = async () => {
     try {
-      // Try to get the last invoice number from backend
       const response = await fetch(`${baseurl}/last-invoice`);
       if (response.ok) {
         const data = await response.json();
         if (data.lastInvoiceNumber) {
-          // Extract number and increment
           const lastNumber = data.lastInvoiceNumber;
           const numberMatch = lastNumber.match(/INV(\d+)/);
           if (numberMatch) {
@@ -161,7 +181,6 @@ const CreateInvoice = ({ user }) => {
         }
       }
       
-      // Final fallback - use current draft or default
       const currentDraft = localStorage.getItem('draftInvoice');
       if (currentDraft) {
         const draftData = JSON.parse(currentDraft);
@@ -172,7 +191,6 @@ const CreateInvoice = ({ user }) => {
         }
       }
       
-      // Ultimate fallback
       setNextInvoiceNumber('INV001');
       setInvoiceData(prev => ({
         ...prev,
@@ -223,7 +241,7 @@ const CreateInvoice = ({ user }) => {
     }
   }, [invoiceData.supplierInfo.state, invoiceData.companyInfo.state]);
 
-  // Open PDF preview - ONLY after form is submitted
+  // Open PDF preview
   const handlePreview = () => {
     if (!isPreviewReady) {
       setError("Please submit the invoice first to generate preview");
@@ -231,15 +249,12 @@ const CreateInvoice = ({ user }) => {
       return;
     }
 
-    // Ensure we have the latest invoice number
     const previewData = {
       ...invoiceData,
       invoiceNumber: invoiceData.invoiceNumber || nextInvoiceNumber
     };
     
     localStorage.setItem('previewInvoice', JSON.stringify(previewData));
-    
-    // Navigate to invoice preview page
     navigate("/sales/invoice-preview");
   };
 
@@ -502,7 +517,6 @@ const CreateInvoice = ({ user }) => {
   const clearDraft = () => {
     localStorage.removeItem('draftInvoice');
     
-    // Reset to new invoice number after clearing
     const resetData = {
       invoiceNumber: nextInvoiceNumber,
       invoiceDate: new Date().toISOString().split('T')[0],
@@ -579,10 +593,103 @@ const handleSubmit = async (e) => {
     return;
   }
 
+  // Validate batch availability for all items and get product IDs
+  const validatedItems = [];
+  for (const item of invoiceData.items) {
+    const product = products.find(p => p.goods_name === item.product);
+    if (!product) {
+      setError(`Product "${item.product}" not found in database`);
+      setLoading(false);
+      setTimeout(() => setError(null), 5000);
+      return;
+    }
+
+    // Store the product_id for backend processing
+    const validatedItem = {
+      ...item,
+      product_id: product.id, // Include product_id
+      product_maintain_batch: product.maintain_batch
+    };
+
+    // If product maintains batches, validate batch selection and availability
+    if (product.maintain_batch === 1) {
+      if (!item.batch) {
+        setError(`Batch selection is required for product "${item.product}" (batch-managed product)`);
+        setLoading(false);
+        setTimeout(() => setError(null), 5000);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${baseurl}/products/${product.id}/batches`);
+        if (!res.ok) {
+          throw new Error(`Failed to fetch batches for ${item.product}`);
+        }
+        
+        const batches = await res.json();
+        const selectedBatch = batches.find(b => b.batch_number === item.batch);
+        
+        if (!selectedBatch) {
+          const availableBatches = batches.map(b => b.batch_number).join(', ');
+          setError(`Batch "${item.batch}" not found for product "${item.product}". Available batches: ${availableBatches}`);
+          setLoading(false);
+          setTimeout(() => setError(null), 5000);
+          return;
+        }
+        
+        const availableQuantity = parseFloat(selectedBatch.quantity) || 0;
+        const requestedQuantity = parseFloat(item.quantity) || 0;
+        
+        if (availableQuantity < requestedQuantity) {
+          setError(`Insufficient stock in batch "${item.batch}" for product "${item.product}". Available: ${availableQuantity}, Requested: ${requestedQuantity}`);
+          setLoading(false);
+          setTimeout(() => setError(null), 5000);
+          return;
+        }
+
+        // Include batch details for backend
+        validatedItem.batchDetails = selectedBatch;
+
+        console.log(`✅ Batch validation passed for ${item.product}:`, {
+          product_id: product.id,
+          batch: item.batch,
+          available: availableQuantity,
+          requested: requestedQuantity
+        });
+
+      } catch (err) {
+        console.error("Error validating batch:", err);
+        setError(`Error validating batch for "${item.product}": ${err.message}`);
+        setLoading(false);
+        setTimeout(() => setError(null), 5000);
+        return;
+      }
+    } else {
+      // For non-batch products, validate overall stock availability
+      const availableStock = parseFloat(product.balance_stock) || 0;
+      const requestedQuantity = parseFloat(item.quantity) || 0;
+      
+      if (availableStock < requestedQuantity) {
+        setError(`Insufficient stock for product "${item.product}". Available: ${availableStock}, Requested: ${requestedQuantity}`);
+        setLoading(false);
+        setTimeout(() => setError(null), 5000);
+        return;
+      }
+
+      console.log(`✅ Stock validation passed for ${item.product}:`, {
+        product_id: product.id,
+        available: availableStock,
+        requested: requestedQuantity
+      });
+    }
+
+    validatedItems.push(validatedItem);
+  }
+
+  // All validations passed, proceed with invoice submission
   try {
-    // Ensure we have the correct invoice number
     const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
-    console.log('Submitting invoice with number:', finalInvoiceNumber);
+    console.log('✅ All validations passed. Submitting invoice with number:', finalInvoiceNumber);
 
     // Calculate GST breakdown for backend
     const sameState = isSameState();
@@ -600,18 +707,35 @@ const handleSubmit = async (e) => {
       totalIGST = parseFloat(invoiceData.totalGST);
     }
 
-    // Extract batch details from items
-    const batchDetails = invoiceData.items.map(item => ({
-      product: item.product,
-      batch: item.batch,
-      quantity: item.quantity,
-      price: item.price,
-      batchDetails: item.batchDetails
-    }));
+    // Prepare enhanced batch details with real-time product information
+    const enhancedBatchDetails = validatedItems.map(item => {
+      const product = products.find(p => p.goods_name === item.product);
+      
+      return {
+        product: item.product,
+        product_id: item.product_id, // This is now guaranteed to be present
+        description: item.description,
+        quantity: item.quantity,
+        price: item.price,
+        discount: item.discount,
+        gst: item.gst,
+        cgst: item.cgst,
+        sgst: item.sgst,
+        igst: item.igst,
+        cess: item.cess,
+        total: item.total,
+        batch: item.batch || '',
+        batchDetails: item.batchDetails || null,
+        // Include product info for backend processing
+        product_maintain_batch: product?.maintain_batch || 0,
+        product_balance_stock: product?.balance_stock || 0
+      };
+    });
 
-    // Create payload with batch details and ensure invoice number is included
+    // Create payload with complete data - USE VALIDATED ITEMS
     const payload = {
       ...invoiceData,
+      items: validatedItems, // Use the validated items with product_ids
       invoiceNumber: finalInvoiceNumber,
       selectedSupplierId: selectedSupplierId,
       type: 'sales',
@@ -619,14 +743,29 @@ const handleSubmit = async (e) => {
       totalSGST: totalSGST.toFixed(2),
       totalIGST: totalIGST.toFixed(2),
       taxType: sameState ? "CGST/SGST" : "IGST",
-      batchDetails: JSON.stringify(batchDetails)
+      batchDetails: enhancedBatchDetails,
+      // Include addresses for backend storage
+      billing_address_line1: invoiceData.billingAddress.addressLine1,
+      billing_address_line2: invoiceData.billingAddress.addressLine2,
+      billing_city: invoiceData.billingAddress.city,
+      billing_pin_code: invoiceData.billingAddress.pincode,
+      billing_state: invoiceData.billingAddress.state,
+      shipping_address_line1: invoiceData.shippingAddress.addressLine1,
+      shipping_address_line2: invoiceData.shippingAddress.addressLine2,
+      shipping_city: invoiceData.shippingAddress.city,
+      shipping_pin_code: invoiceData.shippingAddress.pincode,
+      shipping_state: invoiceData.shippingAddress.state,
+      // Include validation timestamp
+      validated_at: new Date().toISOString()
     };
 
-    // Remove unused fields from the payload
-    delete payload.companyState;
-    delete payload.supplierState;
-
-    console.log('Submitting payload with invoice number:', payload.invoiceNumber);
+    console.log('📤 Submitting validated payload:', {
+      invoiceNumber: payload.invoiceNumber,
+      itemsCount: payload.items.length,
+      itemsWithProductIds: payload.items.map(i => ({ product: i.product, product_id: i.product_id })),
+      batchDetailsCount: payload.batchDetails.length,
+      totalAmount: payload.grandTotal
+    });
 
     const response = await fetch(`${baseurl}/transaction`, {
       method: 'POST',
@@ -643,43 +782,46 @@ const handleSubmit = async (e) => {
     }
     
     localStorage.removeItem('draftInvoice');
-    setSuccess('Invoice submitted successfully!');
+    setSuccess('Invoice submitted successfully! Stock updated automatically.');
     setIsPreviewReady(true);
 
     // Update preview data with the submitted invoice data
     const previewData = {
       ...invoiceData,
       invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
-      voucherId: responseData.voucherId
+      voucherId: responseData.voucherId,
+      submittedAt: new Date().toISOString()
     };
     localStorage.setItem('previewInvoice', JSON.stringify(previewData));
     
     // Navigate to preview page WITH THE ID from backend response
-    // Use voucherId (primary key) or invoiceNumber based on your preference
     const previewId = responseData.voucherId || responseData.invoiceNumber;
+    
+    console.log('✅ Invoice submitted successfully. Navigating to preview:', previewId);
     
     setTimeout(() => {
       navigate(`/sales/invoice-preview/${previewId}`);
     }, 2000);
     
   } catch (err) {
-    setError(err.message);
+    console.error('❌ Invoice submission error:', err);
+    setError(`Failed to submit invoice: ${err.message}`);
     setTimeout(() => setError(null), 5000);
   } finally {
     setLoading(false);
   }
 };
+
   const calculateTotalPrice = () => {
-  const price = parseFloat(itemForm.price) || 0;
-  const gst = parseFloat(itemForm.gst) || 0;
-  const discount = parseFloat(itemForm.discount) || 0;
-  const quantity = parseInt(itemForm.quantity) || 0;
+    const price = parseFloat(itemForm.price) || 0;
+    const gst = parseFloat(itemForm.gst) || 0;
+    const discount = parseFloat(itemForm.discount) || 0;
+    const quantity = parseInt(itemForm.quantity) || 0;
 
-  const priceAfterDiscount = price - (price * discount) / 100;
-  const priceWithGst = priceAfterDiscount + (priceAfterDiscount * gst) / 100;
-  return (priceWithGst * quantity).toFixed(2);
-};
-
+    const priceAfterDiscount = price - (price * discount) / 100;
+    const priceWithGst = priceAfterDiscount + (priceAfterDiscount * gst) / 100;
+    return (priceWithGst * quantity).toFixed(2);
+  };
 
   return (
     <div className="admin-layout">
@@ -781,7 +923,6 @@ const handleSubmit = async (e) => {
                 </Col>
               </Row>
 
-              {/* Rest of your component remains the same */}
               {/* Supplier Info Section */}
               <div className="bg-white rounded border">
                 <Row className="mb-0">
@@ -908,128 +1049,124 @@ const handleSubmit = async (e) => {
                         + New Item
                       </button>
                     </div>
-                    <Form.Select
-                      name="product"
-                      value={itemForm.product}
-                      onChange={async (e) => {
-                        const selectedName = e.target.value;
-                        setItemForm((prev) => ({ ...prev, product: selectedName }));
 
-                        const selectedProduct = products.find(
-                          (p) => p.goods_name === selectedName
-                        );
+                      
+                      <Form.Select
+                        name="product"
+                        value={itemForm.product}
+                        onChange={async (e) => {
+                          const selectedName = e.target.value;
+                          setItemForm((prev) => ({ ...prev, product: selectedName }));
 
-                        if (selectedProduct) {
-                          setItemForm((prev) => ({
-                            ...prev,
-                            product: selectedProduct.goods_name,
-                            price: selectedProduct.net_price,
-                            gst: parseFloat(selectedProduct.gst_rate)
-                              ? selectedProduct.gst_rate.replace("%", "")
-                              : 0,
-                            description: selectedProduct.description || "",
-                          }));
+                          const selectedProduct = products.find(
+                            (p) => p.goods_name === selectedName
+                          );
 
-                          try {
-                            const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
-                            const batchData = await res.json();
-                            setBatches(batchData);
-                            setSelectedBatch("");
-                            setSelectedBatchDetails(null);
-                          } catch (err) {
-                            console.error("Failed to fetch batches:", err);
-                            setBatches([]);
+                          if (selectedProduct) {
+                            setItemForm((prev) => ({
+                              ...prev,
+                              product: selectedProduct.goods_name,
+                              price: selectedProduct.net_price,
+                              gst: parseFloat(selectedProduct.gst_rate)
+                                ? selectedProduct.gst_rate.replace("%", "")
+                                : 0,
+                              description: selectedProduct.description || "",
+                            }));
+
+                            // Fetch available batches for this product
+                            await fetchBatchesForProduct(selectedName);
                           }
-                        }
-                      }}
-                      className="border-primary"
-                    >
-                      <option value="">Select Product</option>
-                      {products
-                        .filter((p) => p.group_by === "Salescatalog")
-                        .map((p) => (
-                          <option key={p.id} value={p.goods_name}>
-                            {p.goods_name}
+                        }}
+                        className="border-primary"
+                      >
+                        <option value="">Select Product</option>
+                        {products
+                          .filter((p) => p.group_by === "Salescatalog")
+                          .map((p) => (
+                            <option key={p.id} value={p.goods_name}>
+                              {p.goods_name} {p.maintain_batch ? '(Batch Managed)' : ''}
+                            </option>
+                          ))}
+                      </Form.Select>
+
+                      
+                      <Form.Select
+                        className="mt-2 border-primary"
+                        name="batch"
+                        value={selectedBatch}
+                        onChange={(e) => {
+                          const batchNumber = e.target.value;
+                          setSelectedBatch(batchNumber);
+                          const batch = batches.find(b => b.batch_number === batchNumber);
+                          setSelectedBatchDetails(batch || null);
+                        }}
+                        disabled={batches.length === 0}
+                      >
+                        <option value="">Select Batch</option>
+                        {batches.map((batch) => (
+                          <option key={batch.id} value={batch.batch_number}>
+                            {batch.batch_number} (Available: {batch.quantity})
                           </option>
                         ))}
-                    </Form.Select>
-
-                    <Form.Select
-                      className="mt-2 border-primary"
-                      name="batch"
-                      value={selectedBatch}
-                      onChange={(e) => {
-                        const batchNumber = e.target.value;
-                        setSelectedBatch(batchNumber);
-                        const batch = batches.find(b => b.batch_number === batchNumber);
-                        setSelectedBatchDetails(batch || null);
-                      }}
-                    >
-                      <option value="">Select Batch</option>
-                      {batches.map((batch) => (
-                        <option key={batch.id} value={batch.batch_number}>
-                          {batch.batch_number} (Qty: {batch.quantity})
-                        </option>
-                      ))}
-                    </Form.Select>
+                      </Form.Select>
                   </Col>
 
                   <Col md={1}>
-    <Form.Label className="fw-bold">Qty</Form.Label>
-    <Form.Control
-      name="quantity"
-      type="number"
-      value={itemForm.quantity}
-      onChange={handleItemChange}
-      min="1"
-      className="border-primary"
-    />
-  </Col>
+                    <Form.Label className="fw-bold">Qty</Form.Label>
+                    <Form.Control
+                      name="quantity"
+                      type="number"
+                      value={itemForm.quantity}
+                      onChange={handleItemChange}
+                      min="1"
+                      className="border-primary"
+                    />
+                  </Col>
 
-  <Col md={2}>
-    <Form.Label className="fw-bold">Price (₹)</Form.Label>
-    <Form.Control
-      name="price"
-      type="number"
-      value={itemForm.price}
-      readOnly
-      className="border-primary bg-light"
-    />
-  </Col>
+                  <Col md={2}>
+                    <Form.Label className="fw-bold">Price (₹)</Form.Label>
+                    <Form.Control
+                      name="price"
+                      type="number"
+                      value={itemForm.price}
+                      readOnly
+                      className="border-primary bg-light"
+                    />
+                  </Col>
 
-  <Col md={2}>
-    <Form.Label className="fw-bold">Discount (%)</Form.Label>
-    <Form.Control
-      name="discount"
-      type="number"
-      value={itemForm.discount}
-      onChange={handleItemChange}
-      min="0"
-      max="100"
-      className="border-primary"
-    />
-  </Col>
+                  <Col md={2}>
+                    <Form.Label className="fw-bold">Discount (%)</Form.Label>
+                    <Form.Control
+                      name="discount"
+                      type="number"
+                      value={itemForm.discount}
+                      onChange={handleItemChange}
+                      min="0"
+                      max="100"
+                      className="border-primary"
+                    />
+                  </Col>
 
-  <Col md={2}>
-    <Form.Label className="fw-bold">GST (%)</Form.Label>
-    <Form.Control
-      name="gst"
-      type="number"
-      value={itemForm.gst}
-      readOnly
-      className="border-primary bg-light"
-    />
-  </Col>
+                  <Col md={2}>
+                    <Form.Label className="fw-bold">GST (%)</Form.Label>
+                    <Form.Control
+                      name="gst"
+                      type="number"
+                      value={itemForm.gst}
+                      readOnly
+                      className="border-primary bg-light"
+                    />
+                  </Col>
 
-  <Col md={2}>
-    <Form.Label className="fw-bold">Total Price (₹)</Form.Label>
-    <Form.Control
-      type="text"
-      value={calculateTotalPrice()}
-      readOnly
-      className="border-primary bg-light"
-    />
-  </Col>
+                  <Col md={2}>
+                    <Form.Label className="fw-bold">Total Price (₹)</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={calculateTotalPrice()}
+                      readOnly
+                      className="border-primary bg-light"
+                    />
+                  </Col>
                   <Col md={1}>
                     <Button variant="success" onClick={addItem} className="w-100">
                       Add
@@ -1049,23 +1186,6 @@ const handleSubmit = async (e) => {
                     />
                   </Col>
                 </Row>
-
-                {/* Batch Details Display */}
-                {/* {selectedBatchDetails && (
-                  <Row className="mt-2">
-                    <Col>
-                      <div className="bg-info bg-opacity-10 p-2 rounded border">
-                        <small className="text-muted">Batch Details:</small>
-                        <div className="d-flex justify-content-between">
-                          <span><strong>Batch No:</strong> {selectedBatchDetails.batch_number}</span>
-                          <span><strong>MFG:</strong> {selectedBatchDetails.mfg_date || selectedBatchDetails.manufacturing_date}</span>
-                          <span><strong>EXP:</strong> {selectedBatchDetails.exp_date || selectedBatchDetails.expiry_date}</span>
-                          <span><strong>Available Qty:</strong> {selectedBatchDetails.quantity}</span>
-                        </div>
-                      </div>
-                    </Col>
-                  </Row>
-                )} */}
               </div>
 
               {/* Items Table */}

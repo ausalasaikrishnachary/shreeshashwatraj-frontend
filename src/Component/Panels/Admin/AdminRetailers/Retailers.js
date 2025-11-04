@@ -518,7 +518,7 @@ import { FaSearch } from "react-icons/fa";
 
 function Retailers() {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false); // Add mobile state
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const navigate = useNavigate();
   const [retailersData, setRetailersData] = useState([]);
   const [filteredRetailersData, setFilteredRetailersData] = useState([]);
@@ -537,7 +537,6 @@ function Retailers() {
       const filteredData = retailersData
         .filter(item => item.role === "retailer")
         .filter(item =>
-          // Convert fields to lowercase for case-insensitive search
           (item.business_name || item.name || "")
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
@@ -628,10 +627,10 @@ function Retailers() {
     <div className="retailers-table__performance-cell">
       <div className="retailers-table__rating">
         <span className="retailers-table__rating-icon">⭐</span>
-        {item.tds_slab_rate || "N/A"}
+        Discount: {item.discount || 0}%
       </div>
       <div className="retailers-table__revenue">
-        ₹ {item.opening_balance ? parseInt(item.opening_balance).toLocaleString() : "0"}
+        Target: ₹ {item.Target ? parseInt(item.Target).toLocaleString() : "100,000"}
       </div>
     </div>
   );
@@ -676,17 +675,16 @@ function Retailers() {
     </div>
   );
 
-const columns = [
-  { key: "__item", title: "Retailer", render: (value, item) => renderRetailerCell(item) },
-  { key: "__item", title: "Contact", render: (value, item) => renderContactCell(item) },
-  { key: "__item", title: "Type & Location", render: (value, item) => renderTypeLocationCell(item) },
-  { key: "display_name", title: "Display Name" },
-  { key: "__item", title: "Group Type", render: (value, item) => renderGroupTypeCell(item) },
-  { key: "__item", title: "Performance", render: (value, item) => renderPerformanceCell(item) },
-  { key: "__item", title: "Status", render: (value, item) => renderStatusCell(item) },
-  { key: "__item", title: "Actions", render: (value, item) => renderActionsCell(item) }
-];
-;
+  const columns = [
+    { key: "__item", title: "Retailer", render: (value, item) => renderRetailerCell(item) },
+    { key: "__item", title: "Contact", render: (value, item) => renderContactCell(item) },
+    { key: "__item", title: "Type & Location", render: (value, item) => renderTypeLocationCell(item) },
+    { key: "display_name", title: "Display Name" },
+    { key: "__item", title: "Group Type", render: (value, item) => renderGroupTypeCell(item) },
+    { key: "__item", title: "Performance", render: (value, item) => renderPerformanceCell(item) },
+    { key: "__item", title: "Status", render: (value, item) => renderStatusCell(item) },
+    { key: "__item", title: "Actions", render: (value, item) => renderActionsCell(item) }
+  ];
 
   const handleAddRetailerClick = () => {
     navigate("/retailers/add");

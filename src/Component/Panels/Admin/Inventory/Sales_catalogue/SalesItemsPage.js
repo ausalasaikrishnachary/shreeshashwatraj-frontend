@@ -26,9 +26,8 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-const [unitOptions, setUnitOptions] = useState([]);
-const [showUnitModal, setShowUnitModal] = useState(false);
-const [batchCounter, setBatchCounter] = useState(1);
+  const [unitOptions, setUnitOptions] = useState([]);
+  const [showUnitModal, setShowUnitModal] = useState(false);
 
   // Tax calculation function
   const calculateTaxAndNetPrice = (price, gstRate, inclusiveGst) => {
@@ -54,22 +53,26 @@ const [batchCounter, setBatchCounter] = useState(1);
     }
   };
 
-const fetchUnits = async () => {
-  try {
-    const response = await axios.get(`${baseurl}/units`);
-    setUnitOptions(response.data);
-  } catch (error) {
-    console.error('Error fetching units:', error);
-    showAlert('Error fetching units', 'danger');
-  }
-};
+  // Calculate total stock from batches
+  const calculateTotalStockFromBatches = () => {
+    if (!batches || batches.length === 0) return 0;
+    return batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
+  };
 
-
+  const fetchUnits = async () => {
+    try {
+      const response = await axios.get(`${baseurl}/units`);
+      setUnitOptions(response.data);
+    } catch (error) {
+      console.error('Error fetching units:', error);
+      showAlert('Error fetching units', 'danger');
+    }
+  };
 
   useEffect(() => {
     fetchCategories();
     fetchCompanies();
-     fetchUnits(); // <-- fetch units dynamically
+    fetchUnits();
   }, []);
 
   useEffect(() => {
@@ -166,8 +169,8 @@ const fetchUnits = async () => {
       const response = await axios.get(`${baseurl}/products/${id}/batches`);
       const mappedBatches = response.data?.length
         ? response.data.map(batch => ({
-            id: batch.id, // Keep the database ID
-            dbId: batch.id, // Store original DB ID separately
+            id: batch.id,
+            dbId: batch.id,
             batchNumber: batch.batch_number || '',
             mfgDate: batch.mfg_date?.split('T')[0] || '',
             expDate: batch.exp_date?.split('T')[0] || '',
@@ -178,7 +181,7 @@ const fetchUnits = async () => {
             mrp: batch.mrp || '',
             batchPrice: batch.batch_price || '',
             barcode: batch.barcode || '',
-            isExisting: true // Mark as existing batch
+            isExisting: true
           }))
         : [];
       console.log('📦 Fetched batches:', mappedBatches);
@@ -189,78 +192,104 @@ const fetchUnits = async () => {
     }
   };
 
-const generateUniqueBarcode = async () => {
-  let isUnique = false;
-  let newBarcode;
-  let attempts = 0;
-  const maxAttempts = 5;
+  const generateUniqueBarcode = async () => {
+    let isUnique = false;
+    let newBarcode;
+    let attempts = 0;
+    const maxAttempts = 5;
 
-  while (!isUnique && attempts < maxAttempts) {
-    attempts++;
-    
-    // Generate more unique barcode with timestamp and random
-    const timestamp = Date.now();
-    const randomPart = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-    newBarcode = `B${timestamp}${randomPart}`;
-    
-    try {
-      const response = await axios.get(`${baseurl}/batches/check-barcode/${newBarcode}`);
-      if (response.data.available) {
+    while (!isUnique && attempts < maxAttempts) {
+      attempts++;
+      const timestamp = Date.now();
+      const randomPart = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+      newBarcode = `B${timestamp}${randomPart}`;
+      
+      try {
+        const response = await axios.get(`${baseurl}/batches/check-barcode/${newBarcode}`);
+        if (response.data.available) {
+          isUnique = true;
+          console.log('✅ Generated unique barcode:', newBarcode);
+        } else {
+          console.log('🔄 Barcode exists, generating new one...');
+        }
+      } catch (error) {
+        console.error('Error checking barcode:', error);
         isUnique = true;
-        console.log('✅ Generated unique barcode:', newBarcode);
-      } else {
-        console.log('🔄 Barcode exists, generating new one...');
       }
+    }
+
+    if (!isUnique) {
+      newBarcode = `B${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
+      console.log('⚠️ Using fallback barcode:', newBarcode);
+    }
+
+    return newBarcode;
+  };
+
+  // FIXED: Get batch number from backend to ensure uniqueness across all products
+  // In your createDefaultBatch function, update the fetchNextBatchNumber call:
+ const fetchNextBatchNumber = async () => {
+    try {
+      console.log('🔄 Generating next batch number...');
+      console.log('📦 Available productId:', productId);
+      console.log('📦 Current batches:', batches.map(b => b.batchNumber));
+      
+      // METHOD 1: Use existing batches to determine next number
+      if (batches.length > 0) {
+        const existingNumbers = batches.map(batch => {
+          const num = batch.batchNumber.replace('S', '');
+          return parseInt(num) || 0;
+        }).filter(num => !isNaN(num));
+        
+        if (existingNumbers.length > 0) {
+          const highestNumber = Math.max(...existingNumbers);
+          const nextNumber = highestNumber + 1;
+          const batchNumber = `S${String(nextNumber).padStart(4, '0')}`;
+          console.log('✅ Generated from existing batches:', batchNumber);
+          return batchNumber;
+        }
+      }
+      
+      // METHOD 2: Try backend with productId if available
+      if (productId) {
+        console.log('🔄 Trying backend with productId:', productId);
+        try {
+          const response = await axios.get(`${baseurl}/batches/next-batch-number`, {
+            params: { 
+              group_by: formData.group_by || 'Salescatalog',
+              product_id: productId
+            }
+          });
+          
+          if (response.data.success) {
+            console.log('✅ Received from backend:', response.data.batch_number);
+            return response.data.batch_number;
+          }
+        } catch (backendError) {
+          console.log('⚠️ Backend failed, using fallback');
+        }
+      }
+      
+      // METHOD 3: Simple increment based on batch count
+      const fallbackNumber = `S${String(batches.length + 1).padStart(4, '0')}`;
+      console.log('✅ Using fallback batch number:', fallbackNumber);
+      return fallbackNumber;
+      
     } catch (error) {
-      console.error('Error checking barcode:', error);
-      // If check fails, use the generated barcode anyway
-      isUnique = true;
+      console.error('❌ Error in fetchNextBatchNumber:', error);
+      // Ultimate fallback
+      const timestamp = Date.now();
+      const ultimateFallback = `S${String(timestamp).slice(-4)}`;
+      console.log('🆘 Using ultimate fallback:', ultimateFallback);
+      return ultimateFallback;
     }
-  }
+  };
 
-  if (!isUnique) {
-    // Final fallback
-    newBarcode = `B${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
-    console.log('⚠️ Using fallback barcode:', newBarcode);
-  }
-
-  return newBarcode;
-};
-
-const fetchNextBatchNumber = async (currentCount = 0) => {
-  try {
-    console.log('🔄 Fetching next batch number for group:', formData.group_by, 'currentCount:', currentCount);
-    const response = await axios.get(`${baseurl}/batches/next-batch-number`, {
-      params: { 
-        group_by: formData.group_by || 'Salescatalog',
-        current_count: currentCount // ADD THIS PARAMETER
-      }
-    });
+  const createDefaultBatch = async () => {
+    const newBarcode = await generateUniqueBarcode();
+    const batchNumber = await fetchNextBatchNumber();
     
-    if (response.data.success) {
-      console.log('✅ Received batch number:', response.data.batch_number);
-      return response.data.batch_number;
-    } else {
-      throw new Error(response.data.message || 'Failed to get batch number');
-    }
-  } catch (error) {
-    console.error('❌ Error fetching next batch number:', error);
-    // Enhanced fallback that considers current count
-    const prefix = formData.group_by === 'Purchaseditems' ? 'P' : 'S';
-    const fallbackNumber = `${prefix}${String(parseInt(currentCount) + 1).padStart(4, '0')}`;
-    console.log('⚠️ Using fallback batch number:', fallbackNumber);
-    return fallbackNumber;
-  }
-};
-
-
-const createDefaultBatch = async (currentBatchCount = 0) => {
-  const newBarcode = await generateUniqueBarcode();
-  
-  try {
-    // Fetch next batch number from backend with current count
-    const batchNumber = await fetchNextBatchNumber(currentBatchCount);
-    console.log('📦 Generated batch number:', batchNumber);
+    console.log('📦 Generated batch number from backend:', batchNumber);
     
     return {
       id: `temp_${Date.now()}_${Math.random()}`,
@@ -277,28 +306,7 @@ const createDefaultBatch = async (currentBatchCount = 0) => {
       barcode: newBarcode,
       isExisting: false
     };
-  } catch (error) {
-    console.error('Error creating default batch:', error);
-    // Fallback batch number that considers current count
-    const prefix = formData.group_by === 'Purchaseditems' ? 'P' : 'S';
-    const fallbackBatch = `${prefix}${String(parseInt(currentBatchCount) + 1).padStart(4, '0')}`;
-    return {
-      id: `temp_${Date.now()}_${Math.random()}`,
-      dbId: null,
-      batchNumber: fallbackBatch,
-      mfgDate: '',
-      expDate: '',
-      quantity: formData.opening_stock || '',
-      costPrice: '',
-      sellingPrice: formData?.price || '',
-      purchasePrice: '',
-      mrp: '',
-      batchPrice: '',
-      barcode: newBarcode,
-      isExisting: false
-    };
-  }
-};
+  };
 
   const [formData, setFormData] = useState({
     group_by: groupType,
@@ -370,23 +378,26 @@ const createDefaultBatch = async (currentBatchCount = 0) => {
     setBatches(updated);
   };
 
+  // FIXED: Add new batch function with backend batch number generation
+// FIXED: Add new batch function with backend batch number generation
 const addNewBatch = async () => {
   try {
     console.log('➕ Starting to add new batch...');
-    console.log('📊 Current batch count:', batchCounter);
+    console.log('📊 Current batches count:', batches.length);
+    console.log('📦 Current product ID:', productId);
+    console.log('🏷️ Current batch numbers:', batches.map(b => b.batchNumber));
     
-    const newBatch = await createDefaultBatch(batchCounter);
-    console.log('✅ New batch created:', newBatch);
+    const newBatch = await createDefaultBatch();
+    console.log('✅ New batch created:', {
+      batchNumber: newBatch.batchNumber,
+      id: newBatch.id
+    });
     
     setBatches(prev => {
       const updated = [...prev, newBatch];
-      console.log('📦 Batches after add:', updated);
+      console.log('📦 Batches after add:', updated.map(b => b.batchNumber));
       return updated;
     });
-    
-    // Increment the batch counter for next time
-    setBatchCounter(prev => prev + 1);
-    console.log('🔢 Batch counter incremented to:', batchCounter + 1);
     
   } catch (error) {
     console.error('❌ Error adding new batch:', error);
@@ -408,91 +419,128 @@ const addNewBatch = async () => {
     setTimeout(() => setAlert({ show: false, message: '', variant: 'success' }), 5000);
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsLoading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
 
-  if (maintainBatch) {
-    const invalidBatches = batches.filter(
-      (batch) => !batch.quantity || !batch.sellingPrice || !batch.barcode
-    );
-
-    if (invalidBatches.length > 0) {
-      showAlert(
-        'Please fill all required fields in batch details (Quantity, Selling Price, and Barcode)',
-        'danger'
-      );
-      setIsLoading(false);
-      return;
-    }
-  }
-
-  try {
-    const batchesForBackend = maintainBatch
-      ? batches.map((batch) => {
-          const batchData = {
-            batch_number: batch.batchNumber,
-            mfg_date: batch.mfgDate || null,
-            exp_date: batch.expDate || null,
-            quantity: parseFloat(batch.quantity) || 0,
-            cost_price: parseFloat(batch.costPrice) || 0,
-            selling_price: parseFloat(batch.sellingPrice) || 0,
-            purchase_price: parseFloat(batch.purchasePrice) || 0,
-            mrp: parseFloat(batch.mrp) || 0,
-            batch_price: parseFloat(batch.batchPrice) || 0,
-            barcode: batch.barcode,
-            group_by: formData.group_by || 'Salescatalog',
-            isExisting: batch.isExisting || false
-          };
-
-          // Only include ID for existing batches (not temp IDs)
-          if (batch.isExisting && batch.dbId && !batch.dbId.toString().includes('temp_')) {
-            batchData.id = batch.dbId;
-          }
-
-          console.log(`📦 Batch data - ID: ${batch.id}, isExisting: ${batch.isExisting}, sending ID: ${batchData.id}`);
-          return batchData;
-        })
-      : [];
-
-    const dataToSend = {
-      ...formData,
-      group_by: groupType,
-      batches: batchesForBackend
+    // Calculate total stock for batch-managed products
+    const calculateTotalStockFromBatches = () => {
+      if (!batches || batches.length === 0) return 0;
+      const total = batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
+      console.log('📊 Calculated total stock from batches:', total);
+      return total;
     };
 
-    console.log('📤 Sending data to backend:', JSON.stringify(dataToSend, null, 2));
+    // Validate batches if maintainBatch is enabled
+    if (maintainBatch) {
+      const invalidBatches = batches.filter(
+        (batch) => !batch.quantity || !batch.sellingPrice || !batch.barcode
+      );
 
-    if (productId) {
-      console.log(`🔄 Updating product ID: ${productId}`);
-      
-      const response = await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
-        headers: { 'Content-Type': 'application/json' }
-      });
-      console.log('✅ Update response:', response.data);
-      showAlert('Product updated successfully!', 'success');
-      
-      // Refresh the batches after successful update to get real database IDs
-      await fetchBatches(productId);
-    } else {
-      console.log('➕ Creating new product');
-      const response = await axios.post(`${baseurl}/products`, dataToSend, {
-        headers: { 'Content-Type': 'application/json' }
-      });
-      showAlert('New product added successfully!', 'success');
+      if (invalidBatches.length > 0) {
+        showAlert(
+          'Please fill all required fields in batch details (Quantity, Selling Price, and Barcode)',
+          'danger'
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // Validate unique batch numbers
+      const batchNumbers = batches.map(b => b.batchNumber);
+      const uniqueBatchNumbers = new Set(batchNumbers);
+      if (batchNumbers.length !== uniqueBatchNumbers.size) {
+        showAlert('Batch numbers must be unique. Please check your batch numbers.', 'danger');
+        setIsLoading(false);
+        return;
+      }
     }
 
-    setTimeout(() => navigate('/sale_items'), 1500);
-  } catch (error) {
-    console.error('❌ Failed to add/update product:', error);
-    console.error('❌ Error response:', error.response?.data);
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to add/update product';
-    showAlert(errorMessage, 'danger');
-  } finally {
-    setIsLoading(false);
-  }
-};
+    try {
+      // Calculate final opening stock
+      let finalOpeningStock = parseFloat(formData.opening_stock) || 0;
+      if (maintainBatch && batches.length > 0) {
+        finalOpeningStock = calculateTotalStockFromBatches();
+        console.log('🔄 Using batch-based opening stock:', finalOpeningStock);
+      }
 
+      // Prepare batches for backend
+      const batchesForBackend = maintainBatch
+        ? batches.map((batch) => {
+            const batchData = {
+              batch_number: batch.batchNumber,
+              mfg_date: batch.mfgDate || null,
+              exp_date: batch.expDate || null,
+              quantity: parseFloat(batch.quantity) || 0,
+              cost_price: parseFloat(batch.costPrice) || 0,
+              selling_price: parseFloat(batch.sellingPrice) || 0,
+              purchase_price: parseFloat(batch.purchasePrice) || 0,
+              mrp: parseFloat(batch.mrp) || 0,
+              batch_price: parseFloat(batch.batchPrice) || 0,
+              barcode: batch.barcode,
+              group_by: formData.group_by || 'Salescatalog',
+              isExisting: batch.isExisting || false
+            };
+
+            if (batch.isExisting && batch.dbId && !batch.dbId.toString().includes('temp_')) {
+              batchData.id = batch.dbId;
+            }
+
+            console.log(`📦 Batch data - ID: ${batch.id}, isExisting: ${batch.isExisting}, sending ID: ${batchData.id}`);
+            return batchData;
+          })
+        : [];
+
+      // Prepare data for backend with proper stock initialization
+      const dataToSend = {
+        ...formData,
+        group_by: groupType,
+        opening_stock: finalOpeningStock,
+        // Ensure proper stock initialization based on batch management
+        stock_in: maintainBatch ? finalOpeningStock : finalOpeningStock,
+        stock_out: 0,
+        balance_stock: finalOpeningStock,
+        batches: batchesForBackend
+      };
+
+      console.log('📤 Sending data to backend:', {
+        opening_stock: dataToSend.opening_stock,
+        stock_in: dataToSend.stock_in,
+        stock_out: dataToSend.stock_out,
+        balance_stock: dataToSend.balance_stock,
+        maintain_batch: dataToSend.maintain_batch,
+        batch_count: batchesForBackend.length,
+        batch_numbers: batchesForBackend.map(b => b.batch_number)
+      });
+
+      if (productId) {
+        console.log(`🔄 Updating product ID: ${productId}`);
+        
+        const response = await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        console.log('✅ Update response:', response.data);
+        showAlert('Product updated successfully!', 'success');
+        
+        await fetchBatches(productId);
+      } else {
+        console.log('➕ Creating new product');
+        const response = await axios.post(`${baseurl}/products`, dataToSend, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        showAlert('New product added successfully!', 'success');
+      }
+
+      setTimeout(() => navigate('/sale_items'), 1500);
+    } catch (error) {
+      console.error('❌ Failed to add/update product:', error);
+      console.error('❌ Error response:', error.response?.data);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to add/update product';
+      showAlert(errorMessage, 'danger');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const pageTitle = productId
     ? `Edit Product in Sales Catalog`
@@ -674,32 +722,32 @@ const handleSubmit = async (e) => {
                 </div>
 
                 <div className="row mb-3">
-  <div className="col">
-  <Form.Label>Unit *</Form.Label>
-  <div className="d-flex">
-    <Form.Select
-      className="me-1"
-      name="unit"
-      value={formData.unit}
-      onChange={handleChange}
-      required
-    >
-      <option value="">Select Unit</option>
-      {unitOptions.map((unit) => (
-        <option key={unit.id} value={unit.name}>
-          {unit.name}
-        </option>
-      ))}
-    </Form.Select>
-    <Button
-      variant="outline-primary"
-      size="sm"
-      onClick={() => setShowUnitModal(true)}
-    >
-      <BsPlus />
-    </Button>
-  </div>
-</div>
+                  <div className="col">
+                    <Form.Label>Unit *</Form.Label>
+                    <div className="d-flex">
+                      <Form.Select
+                        className="me-1"
+                        name="unit"
+                        value={formData.unit}
+                        onChange={handleChange}
+                        required
+                      >
+                        <option value="">Select Unit</option>
+                        {unitOptions.map((unit) => (
+                          <option key={unit.id} value={unit.name}>
+                            {unit.name}
+                          </option>
+                        ))}
+                      </Form.Select>
+                      <Button
+                        variant="outline-primary"
+                        size="sm"
+                        onClick={() => setShowUnitModal(true)}
+                      >
+                        <BsPlus />
+                      </Button>
+                    </div>
+                  </div>
 
                   <div className="col">
                     <Form.Label>CESS Rate %</Form.Label>
@@ -735,17 +783,38 @@ const handleSubmit = async (e) => {
                       onChange={handleChange}
                     />
                   </div>
-                  <div className="col">
-                    <Form.Label>Opening Stock *</Form.Label>
-                    <Form.Control
-                      placeholder="Opening Stock"
-                      name="opening_stock"
-                      type="number"
-                      value={formData.opening_stock}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
+                  
+                  {/* Conditionally show Opening Stock field */}
+                  {!maintainBatch && (
+                    <div className="col">
+                      <Form.Label>Opening Stock *</Form.Label>
+                      <Form.Control
+                        placeholder="Opening Stock"
+                        name="opening_stock"
+                        type="number"
+                        value={formData.opening_stock}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Show calculated stock when batches exist */}
+                  {maintainBatch && batches.length > 0 && (
+                    <div className="col">
+                      <Form.Label>Total Stock (from batches)</Form.Label>
+                      <Form.Control
+                        type="number"
+                        value={calculateTotalStockFromBatches()}
+                        readOnly
+                        className="bg-light"
+                      />
+                      <Form.Text className="text-muted">
+                        Calculated from batch quantities
+                      </Form.Text>
+                    </div>
+                  )}
+
                   <div className="col">
                     <Form.Label>Opening Stock Date</Form.Label>
                     <Form.Control
@@ -803,25 +872,27 @@ const handleSubmit = async (e) => {
                   />
                 </Form.Group>
 
-          {maintainBatch && (
-  <div className="border border-dark p-3 mb-3">
-    <h5>Batch Details</h5>
-    {batches.map((batch, index) => (
-      <div key={batch.id} className="mb-3 border p-2">
-        <div className="row g-2 mb-2">
-          <div className="col-md-4">
-            <Form.Label>Batch No.*</Form.Label>
-            <Form.Control
-              placeholder="Batch Number"
-              name="batchNumber"
-              value={batch.batchNumber}
-              onChange={(e) => handleBatchChange(index, e)}
-              required
-            />
-            <Form.Text className="text-muted">
-              Current: {batch.batchNumber}
-            </Form.Text>
-          </div>
+                {maintainBatch && (
+                  <div className="border border-dark p-3 mb-3">
+                    <h5>Batch Details</h5>
+                    {batches.map((batch, index) => (
+                      <div key={batch.id} className="mb-3 border p-2">
+                        <div className="row g-2 mb-2">
+                          <div className="col-md-4">
+                            <Form.Label>Batch No.*</Form.Label>
+                            <Form.Control
+                              placeholder="Batch Number"
+                              name="batchNumber"
+                              value={batch.batchNumber}
+                              onChange={(e) => handleBatchChange(index, e)}
+                              required
+                              readOnly
+                              className="bg-light"
+                            />
+                            <Form.Text className="text-muted">
+                              Auto-generated unique batch number
+                            </Form.Text>
+                          </div>
                           <div className="col-md-4">
                             <Form.Label>Stock*</Form.Label>
                             <Form.Control
@@ -933,7 +1004,7 @@ const handleSubmit = async (e) => {
                       Add Batch
                     </Button>
                     <div className="mt-2 text-muted">
-                      <small>* indicates required fields</small>
+                      <small>* Batch numbers are auto-generated and unique across all products</small>
                     </div>
                   </div>
                 )}
@@ -993,14 +1064,14 @@ const handleSubmit = async (e) => {
               />
 
               <AddUnitModal
-  show={showUnitModal}
-  onClose={() => setShowUnitModal(false)}
-  onSave={(newUnit) => {
-    fetchUnits(); // reload units
-    setFormData((prev) => ({ ...prev, unit: newUnit.name }));
-    setShowUnitModal(false);
-  }}
-/>
+                show={showUnitModal}
+                onClose={() => setShowUnitModal(false)}
+                onSave={(newUnit) => {
+                  fetchUnits();
+                  setFormData((prev) => ({ ...prev, unit: newUnit.name }));
+                  setShowUnitModal(false);
+                }}
+              />
 
             </div>
           </div>
