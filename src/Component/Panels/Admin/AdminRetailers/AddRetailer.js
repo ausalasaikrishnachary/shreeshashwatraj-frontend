@@ -2627,9 +2627,9 @@ const RetailerForm = ({ user, mode = 'add' }) => {
 
   const getTitle = () => {
     switch (mode) {
-      case 'add': return "Add Retailer";
-      case 'edit': return "Edit Retailer";
-      case 'view': return "View Retailer";
+      case 'add': return "Add Contact";
+      case 'edit': return "Edit Contact";
+      case 'view': return "View Contact";
       default: return "Retailer";
     }
   };
