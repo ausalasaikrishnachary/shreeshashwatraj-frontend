@@ -62,7 +62,7 @@ import RetailerHome from "./Component/Panels/Retailer/RetailerHome/RetailerHomeW
 import RetailerHistory from "./Component/Panels/Retailer/RetailerHistory/RetailerHistoryWrapper";
 import RetailerOffers from "./Component/Panels/Retailer/RetailerOffers/RetailerOffersWrapper";
 import RetailerProfile from "./Component/Panels/Retailer/RetailerProfile/RetailerProfileWrapper";
-
+import RetailerReportPage from "./Component/Panels/Admin/AdminReports/RetailerReportPage";
 
 
 // Admin Pages
@@ -127,14 +127,20 @@ import InvoicePDFPreview from './Component/Panels/Admin/SalesInvoicePage/Invoice
 import PurchasePDFPreview from "./Component/Panels/Admin/PurchaseInvoicePage/PurchasePDFPreview";
 import ReceiptView from "./Component/Panels/Admin/Receipts/Receiptsview";
 import AddUnitModal from "./Component/Panels/Admin/Inventory/Sales_catalogue/AddUnitsModal";
-// Add this import
-import InvoicePDFDownload from './Component/Panels/Admin/SalesInvoicePage/InvoicePDFDocument';
-
+import OffersPostings from './Component/Panels/Admin/AdminMarketing/OffersModule/OffersPostings/OffersPostings'
 import Category from "./Component/Panels/Admin/Category/CategoryTable"
 import Company from "./Component/Panels/Admin/Company/CompanyTable"
 import Units from "./Component/Panels/Admin/Units/UnitsTable"
 import Ledger from "./Component/Panels/Admin/Ledger/Ledger";
 import CreateNote from "./Component/Panels/Admin/CreditNote/CreateNote";
+// Add this import
+import InvoicePDFDownload from './Component/Panels/Admin/SalesInvoicePage/InvoicePDFDocument';
+
+// import Category from "./Component/Panels/Admin/Category/CategoryTable"
+// import Company from "./Component/Panels/Admin/Company/CompanyTable"
+// import Units from "./Component/Panels/Admin/Units/UnitsTable"
+import Profile from "./Component/Panels/Retailer/RetailerProfile/Profile";
+import RetailerOrders from "./Component/Panels/Retailer/RetailerOrders/RetailerOrders";
 
 
 
@@ -159,7 +165,11 @@ function App() {
         <Route path="/retailer-history" element={<RetailerHistory />} />
         <Route path="/retailer-offers" element={<RetailerOffers />} />
         <Route path="/retailer-profile" element={<RetailerProfile />} />
+        <Route path="/profile/:id" element={<Profile />} />
+        <Route path="/retailer-orders" element={<RetailerOrders />} />
+{/* <Route path="/retailer-profile/:id?" element={<RetailerProfile />} /> */}
 
+         <Route path="/reports/retailer-report-page" element={<RetailerReportPage />} />
 
 
 
@@ -181,6 +191,8 @@ function App() {
          <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
 <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
            <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
+         <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
+           <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
  
   
         <Route path="/sales/receipts" element={<AdminReceiptsTable />} />
@@ -213,6 +225,16 @@ function App() {
         <Route path="/add-product" element={<AddProduct />} />
         <Route path="/marketing" element={<AdminMarketing />} />
         <Route path="/add-marketing" element={<AddMarketing />} />
+        {/* <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} /> */}
+        {/* <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} /> */}
+        {/* <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />| */}
+        <Route path="/admin/marketing/offers-postings" element={<OffersPostings />} />
+        {/* <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} />
+        <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} />
+        <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />|
+        <Route path="/admin/marketing/offers-postings" element={<OffersPostings />} /> */}
+
+
  
         <Route path="/retailers" element={<AdminRetailers />} />
         <Route path="/retailers/add" element={<AddRetailerForm mode="add" />} />
@@ -232,8 +254,6 @@ function App() {
              <Route path='/AddProductPage' element={<AddProductPage />} />
 <Route path="/AddProductPage/:productId" element={<AddProductPage />} />
             <Route path='/salesitemspage/:productId' element={<SalesItemsPage />} />
-        
-              <Route path="/sales/invoice-download" element={<InvoicePDFDownload />} />
              <Route path='/salesitemspage' element={<SalesItemsPage />} />
             <Route path="/addcompanymodal " element={<AddCompanyModal />} />
             <Route path="/addcategorymodal" element={<AddCategoryModal />} />
@@ -244,17 +264,17 @@ function App() {
 
             <Route path="/staff_expensive" element={<Staff_expensive />} />
             <Route path="/staff_add_expensive" element={<Staff_Add_expensive />} />
-            <Route path="/admin_expensive" element={<AdminExpensiveRequest />} />
-            <Route path="/admin_expensive/view/:id" element={<AdminExpensiveRequest mode="view"/>} />
-            <Route path="/admin_expensive/edit/:id" element={<AdminExpensiveRequest mode="edit"/>} />
-            <Route path="/salesitems_productdetails/:id" element={<Salesitems_productsdetails />} />
-            <Route path="/receipts_view/:id" element={<ReceiptView />} />
-            <Route path="/addunitsmodal" element={<AddUnitModal />} />
+<Route path="/admin_expensive" element={<AdminExpensiveRequest />} />
+<Route path="/admin_expensive/view/:id" element={<AdminExpensiveRequest mode="view"/>} />
+<Route path="/admin_expensive/edit/:id" element={<AdminExpensiveRequest mode="edit"/>} />
+<Route path="/salesitems_productdetails/:id" element={<Salesitems_productsdetails />} />
+<Route path="/receipts_view/:id" element={<ReceiptView />} />
+<Route path="/addunitsmodal" element={<AddUnitModal />} />
 
-
-
-            <Route path="/category" element={<Category />} />
+<Route path="/category" element={<Category />} />
+            <Route path="/category/:id" element={<Category />} />
             <Route path="/company" element={<Company />} />
+            <Route path="/company/:id" element={<Company />} />
             <Route path="/units" element={<Units />} />
             <Route path="/ledger" element={<Ledger />} />
 
@@ -266,6 +286,7 @@ function App() {
 
 
 
+            <Route path="/units/:id" element={<Units />} />
 
       </Routes>
     </Router>

@@ -638,7 +638,6 @@ function Retailers() {
       </div>
     </div>
   );
-
   const renderPerformanceCell = (item) => (
     <div className="retailers-table__performance-cell">
       <div className="retailers-table__rating">

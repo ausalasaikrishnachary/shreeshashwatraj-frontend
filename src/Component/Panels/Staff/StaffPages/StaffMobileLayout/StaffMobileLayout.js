@@ -19,9 +19,9 @@ function StaffMobileLayout({ children }) {
     { path: "/staffdashboard", icon: <FaTachometerAlt />, label: "Dashboard" },
     { path: "/staff/retailers", icon: <FaBullseye />, label: "Retailers" },
     { path: "/staff/sales-visits", icon: <FaClipboardList />, label: "Sales Visits" },
-    { path: "/staff/expences", icon: <FaChartLine />, label: "Expenses" },
+    // { path: "/staff/expences", icon: <FaChartLine />, label: "Expenses" },
     { path: "/staff/offers", icon: <FaUser />, label: "Offers" },
-    { path: "/staff_expensive", icon: <FaMoneyBillWave />, label: "Expensive" },
+    { path: "/staff_expensive", icon: <FaMoneyBillWave />, label: "Expenses" },
   ];
 
   const isActive = (path) => location.pathname === path;

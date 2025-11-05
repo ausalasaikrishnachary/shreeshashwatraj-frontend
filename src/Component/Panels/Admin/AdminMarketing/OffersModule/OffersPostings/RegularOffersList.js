@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from "react";
-import StaffMobileLayout from "../StaffMobileLayout/StaffMobileLayout";
-import "./StaffOffers.css";
 
-function StaffOffers() {
+function RegularOffersList({ searchTerm, filterType, onSearchChange, onFilterChange, onAddNew, onEditItem }) {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const offersPerPage = 5;
 
@@ -126,18 +122,8 @@ function StaffOffers() {
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
-  const handleAddNew = () => {
-    // Implement add new offer functionality
-    alert("Add new offer functionality to be implemented");
-  };
-
-  const handleEditItem = (offer) => {
-    // Implement edit offer functionality
-    alert(`Edit offer: ${offer.title}`);
-  };
-
   const renderRegularOfferCard = (offer) => (
-    <div key={offer.id} className={`offers-card-item mobile ${offer.status}`}>
+    <div key={offer.id} className={`offers-card-item ${offer.status}`}>
       <div className="offers-card-image">
         {offer.image_url ? (
           <img src={`http://localhost:5000${offer.image_url}`} alt={offer.title} />
@@ -183,10 +169,10 @@ function StaffOffers() {
           </div>
         </div>
 
-        {/* <div className="offers-card-actions mobile">
+        <div className="offers-card-actions">
           <button 
             className="offers-btn-edit"
-            onClick={() => handleEditItem(offer)}
+            onClick={() => onEditItem(offer)}
           >
             Edit
           </button>
@@ -202,93 +188,89 @@ function StaffOffers() {
           >
             {offer.status === 'active' ? 'Deactivate' : 'Activate'}
           </button>
-        </div> */}
+        </div>
       </div>
     </div>
   );
 
   return (
-    <StaffMobileLayout>
-      <div className="staff-offers-mobile">
-        <h1>Offers Module</h1>
-
-        {/* Filters Section */}
-        <div className="offers-filters-section mobile">
-          <div className="offers-search-box mobile">
-            <input
-              type="text"
-              placeholder="Search offers..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="offers-search-input mobile"
-            />
-            <span className="offers-search-icon">🔍</span>
-          </div>
-          
-          <select 
-            value={filterType} 
-            onChange={(e) => setFilterType(e.target.value)}
-            className="offers-filter-select mobile"
-          >
-            <option value="All">All Offers</option>
-            <option value="global">Global Offers</option>
-            <option value="category">Category Specific</option>
-          </select>
+    <div className="offers-list-container">
+      {/* Filters Section */}
+      <div className="offers-filters-section">
+        <div className="offers-search-box">
+          <input
+            type="text"
+            placeholder="Search offers..."
+            value={searchTerm}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="offers-search-input"
+          />
+          <span className="offers-search-icon">🔍</span>
         </div>
+        
+        <select 
+          value={filterType} 
+          onChange={(e) => onFilterChange(e.target.value)}
+          className="offers-filter-select"
+        >
+          <option value="All">All Offers</option>
+          <option value="global">Global Offers</option>
+          <option value="category">Category Specific</option>
+        </select>
+      </div>
 
-        {loading && (
-          <div className="offers-loading mobile">Loading offers...</div>
-        )}
+      {loading && (
+        <div className="offers-loading">Loading offers...</div>
+      )}
 
-        {/* Offers Grid */}
-        <div className="offers-cards-grid mobile">
-          {currentItemsPage.length > 0 ? (
-            currentItemsPage.map(renderRegularOfferCard)
-          ) : (
-            <div className="offers-empty-state mobile">
-              <div className="offers-empty-icon">📋</div>
-              <h3>No offers found</h3>
-              <p>
-                {searchTerm 
-                  ? "No offers match your search criteria."
-                  : "Get started by creating your first offer."
-                }
-              </p>
-              <button 
-                className="offers-add-btn mobile"
-                onClick={handleAddNew}
-              >
-                + Add Offer
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && filteredOffers.length > 0 && (
-          <div className="offers-pagination mobile">
+      {/* Offers Grid */}
+      <div className="offers-cards-grid">
+        {currentItemsPage.length > 0 ? (
+          currentItemsPage.map(renderRegularOfferCard)
+        ) : (
+          <div className="offers-empty-state">
+            <div className="offers-empty-icon">📋</div>
+            <h3>No offers found</h3>
+            <p>
+              {searchTerm 
+                ? "No offers match your search criteria."
+                : "Get started by creating your first offer."
+              }
+            </p>
             <button 
-              onClick={handlePrevPage} 
-              disabled={currentPage === 1}
-              className="offers-pagination-btn mobile"
+              className="offers-add-btn"
+              onClick={onAddNew}
             >
-              Previous
-            </button>
-            <span className="offers-pagination-info mobile">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button 
-              onClick={handleNextPage} 
-              disabled={currentPage === totalPages}
-              className="offers-pagination-btn mobile"
-            >
-              Next
+              + Add Offer
             </button>
           </div>
         )}
       </div>
-    </StaffMobileLayout>
+
+      {/* Pagination */}
+      {totalPages > 1 && filteredOffers.length > 0 && (
+        <div className="offers-pagination">
+          <button 
+            onClick={handlePrevPage} 
+            disabled={currentPage === 1}
+            className="offers-pagination-btn"
+          >
+            Previous
+          </button>
+          <span className="offers-pagination-info">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button 
+            onClick={handleNextPage} 
+            disabled={currentPage === totalPages}
+            className="offers-pagination-btn"
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
-export default StaffOffers;
+export default RegularOffersList;

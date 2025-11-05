@@ -1611,6 +1611,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     assigned_staff: "",
     staffid: "",
     password: "",
+     discount: 0, // Added discount field
+    Target: 100000, // Added Target field
     gstin: "",
     gst_registered_name: "",
     business_name: "",
@@ -2208,6 +2210,29 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                   label: 'Password',
                   value: formData.password,
                   disabled: true
+                })}
+              </div>
+            </div>
+
+
+              <div className="row">
+              <div className="col-md-6">
+                {renderField({
+                  type: 'number',
+                  name: 'discount',
+                  label: 'Discount (%)',
+                  min: 0,
+                  max: 100,
+                  step: 0.1
+                })}
+              </div>
+              <div className="col-md-6">
+                {renderField({
+                  type: 'number',
+                  name: 'Target',
+                  label: 'Target (₹)',
+                  min: 0,
+                  step: 1000
                 })}
               </div>
             </div>
