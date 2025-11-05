@@ -537,6 +537,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Profile.css';
 import { baseurl } from "../../../BaseURL/BaseURL";
+import RetailerMobileLayout from '../RetailerMobileLayout';
 
 const Profile = () => {
   const [account, setAccount] = useState(null);
@@ -665,8 +666,12 @@ const Profile = () => {
   }
 
   return (
+    <>
+    <RetailerMobileLayout>
+    
+   
     <div className="profile-container">
-      <div className="profile-header">
+      <div className="profile-header" >
         <h1 className="profile-title">My Profile</h1>
         <p className="profile-description">Manage your account information and settings</p>
         
@@ -1095,6 +1100,8 @@ const Profile = () => {
         </div>
       </div>
     </div>
+    </RetailerMobileLayout>
+     </>
   );
 };
 
