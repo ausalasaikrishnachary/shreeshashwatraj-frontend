@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, Row, Col, Button, Form, Table, Alert, Card } from 'react-bootstrap';
+import { Container, Row, Col, Button, Form, Table, Alert, Card , Modal, Badge} from 'react-bootstrap';
 import './InvoicePDFPreview.css';
-import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, FaCalendar, FaReceipt } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, FaCalendar, FaReceipt , FaRegFileAlt,FaExclamationTriangle, FaCheckCircle} from "react-icons/fa";
+import { data, useNavigate } from "react-router-dom";
 import html2pdf from 'html2pdf.js';
+import { baseurl } from '../../../BaseURL/BaseURL';
 
 const PurchasePDFPreview = () => {
   const navigate = useNavigate();
@@ -12,9 +13,30 @@ const PurchasePDFPreview = () => {
   const [editedData, setEditedData] = useState(null);
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [downloading, setDownloading] = useState(false);
+    const [paymentLoading, setPaymentLoading] = useState(true);
   const [paymentData, setPaymentData] = useState(null);
   const [loadingPayment, setLoadingPayment] = useState(false);
   const invoiceRef = useRef(null);
+const [showVoucherModal, setShowVoucherModal] = useState(false);
+const [voucherFormData, setVoucherFormData] = useState({
+  voucherNumber: '',
+  supplierId: '',
+  amount: '',
+  currency: 'INR',
+  paymentMethod: 'Direct Deposit',
+  voucherDate: new Date().toISOString().split('T')[0],
+  note: '',
+  bankName: '',
+  transactionDate: '',
+  reconciliationOption: 'Do Not Reconcile',
+  supplierMobile: '',
+  supplierEmail: '',
+  supplierGstin: '',
+  supplierBusinessName: '',
+  invoiceNumber: ''
+});
+const [isCreatingVoucher, setIsCreatingVoucher] = useState(false);
+  
 
   useEffect(() => {
     // Load purchase invoice data from localStorage
@@ -53,33 +75,90 @@ const PurchasePDFPreview = () => {
       }
     }
   }, [navigate]);
-
-  // Fetch payment data from API
-  const fetchPaymentData = async (invNumber) => {
-    if (!invNumber) return;
+const fetchPaymentData = async (invNumber) => {
+  if (!invNumber) {
+    console.log('❌ fetchPaymentData: No invoice number provided');
+    return;
+  }
+  
+  console.log(`🔍 fetchPaymentData: Fetching payment data for invoice: ${invNumber}`);
+  
+  try {
+    setLoadingPayment(true);
+    const response = await fetch(`${baseurl}/api/invoice/${invNumber}`);
     
-    try {
-      setLoadingPayment(true);
-      const response = await fetch(`http://localhost:5000/api/purchase-invoices/${invNumber}`);
+    console.log(`📡 fetchPaymentData: API Response status: ${response.status} ${response.statusText}`);
+    
+    if (response.ok) {
+      const result = await response.json();
+      console.log('✅ fetchPaymentData: API Response data:', result);
       
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setPaymentData(result.data);
-        } else {
-          setPaymentData(null);
+      if (result.success) {
+        console.log('💰 fetchPaymentData: Setting payment data:', result.data);
+        setPaymentData(result.data);
+        
+        // Log detailed payment information
+        if (result.data && result.data.allEntries) {
+          console.log('📊 fetchPaymentData: All entries found:', result.data.allEntries.length);
+          
+          result.data.allEntries.forEach((entry, index) => {
+            console.log(`   Entry ${index + 1}:`, {
+              TransactionType: entry.TransactionType,
+              InvoiceNumber: entry.InvoiceNumber,
+              TotalAmount: entry.TotalAmount,
+              paid_amount: entry.paid_amount,
+              balance_amount: entry.balance_amount,
+              status: entry.status,
+              Date: entry.Date
+            });
+          });
+          
+          // Calculate and log payment summary
+          const purchaseEntry = result.data.allEntries.find(entry => 
+            entry.TransactionType === 'Purchase'
+          );
+          const voucherEntries = result.data.allEntries.filter(entry => 
+            entry.TransactionType === 'Voucher'
+          );
+          
+          if (purchaseEntry) {
+            const totalAmount = parseFloat(purchaseEntry.TotalAmount) || 0;
+            const totalPaid = voucherEntries.reduce((sum, entry) => 
+              sum + (parseFloat(entry.paid_amount) || 0), 0
+            );
+            const balanceDue = totalAmount - totalPaid;
+            
+            console.log('🧮 fetchPaymentData: Payment Summary:', {
+              totalAmount,
+              totalPaid,
+              balanceDue,
+              purchaseEntries: result.data.allEntries.filter(e => e.TransactionType === 'Purchase').length,
+              voucherEntries: voucherEntries.length
+            });
+          }
         }
       } else {
+        console.warn('⚠️ fetchPaymentData: API returned success: false', result);
         setPaymentData(null);
       }
-    } catch (error) {
-      console.error('Error fetching payment data:', error);
+    } else {
+      console.error('❌ fetchPaymentData: API request failed with status:', response.status);
+      const errorText = await response.text();
+      console.error('❌ fetchPaymentData: Error response:', errorText);
       setPaymentData(null);
-    } finally {
-      setLoadingPayment(false);
     }
-  };
-
+  } catch (error) {
+    console.error('💥 fetchPaymentData: Network error:', error);
+    console.error('💥 fetchPaymentData: Error details:', {
+      message: error.message,
+      stack: error.stack
+    });
+    setPaymentData(null);
+  } finally {
+    console.log('🔚 fetchPaymentData: Setting loading to false');
+    setLoadingPayment(false);
+  }
+};
   const handlePrint = () => {
     window.print();
   };
@@ -247,6 +326,229 @@ const PurchasePDFPreview = () => {
       handlePrintFallback();
     }
   };
+const PaymentStatus = () => {
+  console.log('🎯 PaymentStatus: Rendering with paymentData:', paymentData);
+  
+  if (loadingPayment) {
+    return (
+      <Card className="shadow-sm mb-3">
+        <Card.Header className="bg-primary text-white">
+          <h5 className="mb-0">
+            <FaReceipt className="me-2" />
+            Payment Status
+          </h5>
+        </Card.Header>
+        <Card.Body>
+          <div className="text-center">
+            <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            Loading payment status...
+          </div>
+        </Card.Body>
+      </Card>
+    );
+  }
+
+  if (!paymentData || !paymentData.allEntries || paymentData.allEntries.length === 0) {
+    console.log('📭 PaymentStatus: No payment data available');
+    return (
+      <Card className="shadow-sm mb-3">
+        <Card.Header className="bg-primary text-white">
+          <h5 className="mb-0">
+            <FaReceipt className="me-2" />
+            Payment Status
+          </h5>
+        </Card.Header>
+        <Card.Body>
+          <div className="text-center text-muted">
+            <FaExclamationTriangle className="mb-2" />
+            <p>No payment data available</p>
+          </div>
+        </Card.Body>
+      </Card>
+    );
+  }
+
+  // Find the main purchase entry - it should be the one with TransactionType 'Purchase'
+  const purchaseEntry = paymentData.allEntries.find(entry => 
+    entry.TransactionType === 'Purchase'
+  );
+
+  console.log('🔍 PaymentStatus: Purchase entry:', purchaseEntry);
+
+  // Find all voucher entries - changed from 'Purchase Voucher Payment' to 'Voucher'
+  const voucherEntries = paymentData.allEntries.filter(entry => 
+    entry.TransactionType === 'Voucher'
+  );
+
+  console.log('🔍 PaymentStatus: Voucher entries found:', voucherEntries.length, voucherEntries);
+
+  // If no purchase entry found, but we have voucher entries, let's check if we can calculate from vouchers
+  if (!purchaseEntry) {
+    console.log('⚠️ PaymentStatus: No purchase entry found, checking if we can calculate from vouchers');
+    
+    // Try to find the original purchase amount from voucher entries
+    if (voucherEntries.length > 0) {
+      // Get the invoice number from the first voucher entry
+      const invoiceNumber = voucherEntries[0].InvoiceNumber;
+      console.log('📄 PaymentStatus: Invoice number from vouchers:', invoiceNumber);
+      
+      return (
+        <Card className="shadow-sm mb-3">
+          <Card.Header className="bg-primary text-white">
+            <h5 className="mb-0">
+              <FaReceipt className="me-2" />
+              Payment Status
+            </h5>
+          </Card.Header>
+          <Card.Body>
+            <div className="text-center text-warning">
+              <FaExclamationTriangle className="mb-2" />
+              <p>Original purchase data not found</p>
+              <small>Showing payment entries only</small>
+            </div>
+            
+            {/* Show voucher payments anyway */}
+            <div className="payment-amounts mb-3 mt-3">
+              {voucherEntries.map((payment, index) => (
+                <div key={index} className="d-flex justify-content-between align-items-center mb-2 ps-3 border-start border-success">
+                  <span className="text-success">
+                    <FaCheckCircle className="me-1" />
+                    Payment:
+                  </span>
+                  <div className="d-flex align-items-center">
+                    <small className="text-muted ms-1">
+                      (On {new Date(payment.Date).toLocaleDateString()}) – {payment.VchNo}
+                    </small>
+                    <span className="fw-bold text-success ms-2">
+                      ₹{(parseFloat(payment.paid_amount) || 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card.Body>
+        </Card>
+      );
+    }
+    
+    return (
+      <Card className="shadow-sm mb-3">
+        <Card.Header className="bg-primary text-white">
+          <h5 className="mb-0">
+            <FaReceipt className="me-2" />
+            Payment Status
+          </h5>
+        </Card.Header>
+        <Card.Body>
+          <div className="text-center text-muted">
+            <FaExclamationTriangle className="mb-2" />
+            <p>No purchase data found</p>
+          </div>
+        </Card.Body>
+      </Card>
+    );
+  }
+
+  // Calculate totals
+  const totalAmount = parseFloat(purchaseEntry.TotalAmount) || 0;
+  const totalPaid = voucherEntries.reduce((sum, entry) => 
+    sum + (parseFloat(entry.paid_amount) || 0), 0
+  );
+  const balanceDue = totalAmount - totalPaid;
+
+  console.log('🧮 PaymentStatus: Calculated amounts:', {
+    totalAmount,
+    totalPaid,
+    balanceDue
+  });
+
+  // Determine status
+  let status = 'Pending';
+  let statusVariant = 'danger';
+  
+  if (totalPaid >= totalAmount) {
+    status = 'Paid';
+    statusVariant = 'success';
+  } else if (totalPaid > 0) {
+    status = 'Partial';
+    statusVariant = 'warning';
+  }
+
+  const progressPercentage = totalAmount > 0 ? (totalPaid / totalAmount) * 100 : 0;
+
+  return (
+    <Card className="shadow-sm mb-3">
+      <Card.Header className="bg-primary text-white">
+        <h5 className="mb-0">
+          <FaReceipt className="me-2" />
+          Payment Status
+        </h5>
+      </Card.Header>
+      <Card.Body>
+        {/* Status Badge */}
+        <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+          <span className="fw-bold">Status:</span>
+          <Badge bg={statusVariant}>
+            {status}
+          </Badge>
+        </div>
+
+        {/* Amount Summary */}
+        <div className="payment-amounts mb-3">
+          {/* Invoiced Amount */}
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="text-muted">
+              <FaRupeeSign className="me-1" />
+              Invoiced:
+            </span>
+            <div className="d-flex align-items-center">
+              <small className="text-muted ms-1">
+                (On {new Date(purchaseEntry.Date).toLocaleDateString()})
+              </small>
+              <span className="fw-bold text-primary ms-2">
+                ₹{totalAmount.toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          {/* Payment Entries - Now using voucherEntries instead of paymentEntries */}
+          {voucherEntries.map((payment, index) => (
+            <div key={index} className="d-flex justify-content-between align-items-center mb-2 ps-3 border-start border-success">
+              <span className="text-success">
+                <FaCheckCircle className="me-1" />
+                Paid:
+              </span>
+              <div className="d-flex align-items-center">
+                <small className="text-muted ms-1">
+                  (On {new Date(payment.Date || payment.paid_date).toLocaleDateString()}) – {payment.VchNo || payment.receipt_number}
+                </small>
+                <span className="fw-bold text-success ms-2">
+                  ₹{(parseFloat(payment.paid_amount) || 0).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {/* Balance Due */}
+          <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
+            <span className="text-danger">
+              <FaExclamationTriangle className="me-1" />
+              Balance Due:
+            </span>
+            <span className="fw-bold text-danger">
+              ₹{balanceDue.toFixed(2)}
+            </span>
+          </div>
+        </div>
+
+
+    
+      </Card.Body>
+    </Card>
+  );
+};
 
   const handlePrintFallback = () => {
     const originalContent = document.getElementById('invoice-pdf-content').innerHTML;
@@ -485,10 +787,10 @@ const PurchasePDFPreview = () => {
     }));
   };
 
-  const handleBackToCreate = () => {
-    localStorage.setItem('draftPurchaseInvoice', JSON.stringify(editedData));
-    window.close();
-  };
+  // const handleBackToCreate = () => {
+  //   localStorage.setItem('draftPurchaseInvoice', JSON.stringify(editedData));
+  //   window.close();
+  // };
 
   const calculateGSTBreakdown = () => {
     if (!currentData || !currentData.items) return { totalCGST: 0, totalSGST: 0, totalIGST: 0 };
@@ -569,6 +871,182 @@ const PurchasePDFPreview = () => {
   const balanceAmount = paymentData ? parseFloat(paymentData.balance_amount) : 0;
   const paymentProgress = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
 
+
+const handleOpenVoucherModal = () => {
+  if (!invoiceData) return;
+  
+  // Calculate balance from payment data
+  let balanceDue = 0;
+  if (paymentData && paymentData.allEntries) {
+    const purchaseEntry = paymentData.allEntries.find(entry => 
+      entry.TransactionType === 'Purchase'
+    );
+    const paymentEntries = paymentData.allEntries.filter(entry => 
+      entry.TransactionType === 'Purchase Voucher Payment'
+    );
+    
+    const totalAmount = parseFloat(purchaseEntry?.TotalAmount) || 0;
+    const totalPaid = paymentEntries.reduce((sum, entry) => 
+      sum + (parseFloat(entry.paid_amount) || 0), 0
+    );
+    balanceDue = totalAmount - totalPaid;
+  } else {
+    // Fallback to invoice grand total if no payment data
+    balanceDue = parseFloat(invoiceData.grandTotal) || 0;
+  }
+  
+  setVoucherFormData(prev => ({
+    ...prev,
+    supplierBusinessName: invoiceData.supplierInfo.businessName,
+    supplierId: invoiceData.supplierInfo.id || '',
+    amount: balanceDue,
+    invoiceNumber: invoiceData.invoiceNumber
+  }));
+  
+  fetchNextVoucherNumber();
+  setShowVoucherModal(true);
+};
+  // NEW:
+const handleCloseVoucherModal = () => {
+  setShowVoucherModal(false);
+  setIsCreatingVoucher(false);
+};
+  
+    const handleVoucherInputChange = (e) => {
+  const { name, value } = e.target;
+  setVoucherFormData(prev => ({
+    ...prev,
+    [name]: value
+  }));
+};
+  
+const fetchNextVoucherNumber = async () => {
+  try {
+    const response = await fetch(`${baseurl}/api/next-purchase-voucher-number`);
+    if (response.ok) {
+      const data = await response.json();
+      setVoucherFormData(prev => ({
+        ...prev,
+        voucherNumber: data.nextVoucherNumber
+      }));
+    } else {
+      await generateFallbackVoucherNumber();
+    }
+  } catch (err) {
+    console.error('Error fetching next voucher number:', err);
+    await generateFallbackVoucherNumber();
+  }
+};
+
+
+
+
+// REPLACE WITH THIS:
+const generateFallbackVoucherNumber = async () => {
+  try {
+    const response = await fetch(`${baseurl}/api/last-purchase-voucher`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.lastVoucherNumber) {
+        const lastNumber = data.lastVoucherNumber;
+        const numberMatch = lastNumber.match(/PV(\d+)/);
+        if (numberMatch) {
+          const nextNum = parseInt(numberMatch[1], 10) + 1;
+          const fallbackVoucherNumber = `PV${nextNum.toString().padStart(3, '0')}`;
+          setVoucherFormData(prev => ({
+            ...prev,
+            voucherNumber: fallbackVoucherNumber
+          }));
+          return;
+        }
+      }
+    }
+    setVoucherFormData(prev => ({
+      ...prev,
+      voucherNumber: 'PV001'
+    }));
+  } catch (err) {
+    setVoucherFormData(prev => ({
+      ...prev,
+      voucherNumber: 'PV001'
+    }));
+  }
+};
+
+const handleCreateVoucherFromInvoice = async () => {
+  if (!voucherFormData.amount || parseFloat(voucherFormData.amount) <= 0) {
+    alert('Please enter a valid amount');
+    return;
+  }
+
+  try {
+    setIsCreatingVoucher(true);
+
+    const voucherPayload = {
+      voucher_number: voucherFormData.voucherNumber,
+      supplier_id: voucherFormData.supplierId,
+      supplier_name: voucherFormData.supplierBusinessName,
+      amount: parseFloat(voucherFormData.amount),
+      currency: voucherFormData.currency,
+      payment_method: voucherFormData.paymentMethod,
+      voucher_date: voucherFormData.voucherDate,
+      note: voucherFormData.note,
+      bank_name: voucherFormData.bankName,
+      transaction_date: voucherFormData.transactionDate || null,
+      reconciliation_option: voucherFormData.reconciliationOption,
+      invoice_number: voucherFormData.invoiceNumber,
+      supplier_mobile: voucherFormData.supplierMobile,
+      supplier_email: voucherFormData.supplierEmail,
+      supplier_gstin: voucherFormData.supplierGstin,
+      supplier_business_name: voucherFormData.supplierBusinessName,
+      from_invoice: true
+    };
+
+    console.log('Creating purchase voucher from invoice:', voucherPayload);
+
+    const response = await fetch(`${baseurl}/api/purchase-vouchers`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(voucherPayload),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('Purchase voucher created successfully:', result);
+      handleCloseVoucherModal();
+      alert('Purchase voucher created successfully!');
+      
+      // Refresh payment data
+      if (invoiceData && invoiceData.invoiceNumber) {
+        fetchPaymentData(invoiceData.invoiceNumber);
+      }
+      
+      if (result.id) {
+        navigate(`/purchase-vouchers/${result.id}`);
+      }
+    } else {
+      const errorText = await response.text();
+      console.error('Failed to create purchase voucher:', errorText);
+      let errorMessage = 'Failed to create purchase voucher. ';
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage += errorData.error || 'Please try again.';
+      } catch {
+        errorMessage += 'Please try again.';
+      }
+      alert(errorMessage);
+    }
+  } catch (err) {
+    console.error('Error creating purchase voucher:', err);
+    alert('Network error. Please check your connection and try again.');
+  } finally {
+    setIsCreatingVoucher(false);
+  }
+};
+
+
   return (
     <div className="invoice-preview-page">
       {/* Action Bar */}
@@ -579,6 +1057,13 @@ const PurchasePDFPreview = () => {
             <div>
               {!isEditMode ? (
                 <>
+                  <Button
+                    variant="info"
+                    className="me-2 text-white"
+                 onClick={handleOpenVoucherModal}
+                  >
+                    <FaRegFileAlt className="me-1" /> Create Voucher
+                  </Button>
                   <Button variant="warning" onClick={handleEditToggle} className="me-2">
                     <FaEdit className="me-1" /> Edit Invoice
                   </Button>
@@ -604,9 +1089,9 @@ const PurchasePDFPreview = () => {
                       </>
                     )}
                   </Button>
-                  <Button variant="secondary" onClick={handleBackToCreate}>
-                    <FaArrowLeft className="me-1" /> Back to Create
-                  </Button>
+                 <Button variant="secondary" onClick={() => window.history.back()}>
+                                  Go Back
+                                </Button>
                 </>
               ) : (
                 <>
@@ -1073,6 +1558,187 @@ const PurchasePDFPreview = () => {
                 </Row>
               </div>
 
+<Modal show={showVoucherModal} onHide={handleCloseVoucherModal} size="lg">
+  <Modal.Header closeButton>
+    <Modal.Title>Create Purchase Voucher</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>  
+    <div className="row mb-4">
+      <div className="col-md-6">
+        <div className="company-info-recepits-table text-center">
+          <label className="form-label-recepits-table">Navkar Exports</label>
+          <p>NO.63/603 AND 64/604, NEAR JAIN TEMPLE</p>
+          <p>1ST MAIN ROAD, T DASARAHALLI</p>
+          <p>GST : 29AAAMPC7994B1ZE</p>
+          <p>Email: akshay555.ak@gmail.com</p>
+          <p>Phone: 9880990431</p>
+        </div>
+      </div>
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">Voucher Number</label>
+          <input
+            type="text"
+            className="form-control"
+            name="voucherNumber"
+            value={voucherFormData.voucherNumber}
+            onChange={handleVoucherInputChange}
+            placeholder="PV001"
+            readOnly
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Voucher Date</label>
+          <input
+            type="date"
+            className="form-control"
+            name="voucherDate"
+            value={voucherFormData.voucherDate}
+            onChange={handleVoucherInputChange}
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Payment Method</label>
+          <select
+            className="form-select"
+            name="paymentMethod"
+            value={voucherFormData.paymentMethod}
+            onChange={handleVoucherInputChange}
+          >
+            <option>Direct Deposit</option>
+            <option>Online Payment</option>
+            <option>Credit/Debit Card</option>
+            <option>Demand Draft</option>
+            <option>Cheque</option>
+            <option>Cash</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div className="row mb-4">
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">Supplier *</label>
+          <input
+            type="text"
+            className="form-control"
+            value={voucherFormData.supplierBusinessName || 'Auto-filled from invoice'}
+            readOnly
+            disabled
+          />
+          <small className="text-muted">Auto-filled from invoice</small>
+        </div>
+      </div>
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">Amount *</label>
+          <div className="input-group custom-amount-receipts-table">
+            <select
+              className="form-select currency-select-receipts-table"
+              name="currency"
+              value={voucherFormData.currency}
+              onChange={handleVoucherInputChange}
+            >
+              <option>INR</option>
+              <option>USD</option>
+              <option>EUR</option>
+              <option>GBP</option>
+            </select>
+            <input
+              type="number"
+              className="form-control amount-input-receipts-table"
+              name="amount"
+              value={voucherFormData.amount}
+              onChange={handleVoucherInputChange}
+              placeholder="Amount"
+              min="0"
+              step="0.01"
+              required
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+    <div className="row mb-4">
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">Note</label>
+          <textarea
+            className="form-control"
+            rows="3"
+            name="note"
+            value={voucherFormData.note}
+            onChange={handleVoucherInputChange}
+            placeholder="Additional notes..."
+          ></textarea>
+        </div>
+      </div>
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">For</label>
+          <p className="mt-2">Authorised Signatory</p>
+        </div>
+      </div>
+    </div>
+    <div className="row">
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">Bank Name</label>
+          <input
+            type="text"
+            className="form-control"
+            name="bankName"
+            value={voucherFormData.bankName}
+            onChange={handleVoucherInputChange}
+            placeholder="Bank Name"
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Transaction Proof Document</label>
+          <input type="file" className="form-control" />
+          <small className="text-muted">No file chosen</small>
+        </div>
+      </div>
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">Transaction Date</label>
+          <input
+            type="date"
+            className="form-control"
+            name="transactionDate"
+            value={voucherFormData.transactionDate}
+            onChange={handleVoucherInputChange}
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Reconciliation Option</label>
+          <select
+            className="form-select"
+            name="reconciliationOption"
+            value={voucherFormData.reconciliationOption}
+            onChange={handleVoucherInputChange}
+          >
+            <option>Do Not Reconcile</option>
+            <option>Customer Reconcile</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </Modal.Body>
+  <Modal.Footer>
+    <Button variant="secondary" onClick={handleCloseVoucherModal}>
+      Close
+    </Button>
+    <Button 
+      variant="primary" 
+      onClick={handleCreateVoucherFromInvoice}
+      disabled={isCreatingVoucher}
+    >
+      {isCreatingVoucher ? 'Creating...' : 'Create Voucher'}
+    </Button>
+  </Modal.Footer>
+</Modal>
+
               {/* Footer */}
               <div className="invoice-footer border-top pt-3">
                 <Row>
@@ -1107,102 +1773,10 @@ const PurchasePDFPreview = () => {
             </div>
           </Col>
 
-          {/* Payment Sidebar - 4 columns */}
-          <Col lg={4} className="d-print-none no-print">
-            <div className="payment-sidebar">
-              <Card className="shadow-sm">
-                <Card.Header className="bg-primary text-white">
-                  <h5 className="mb-0">
-                    <FaReceipt className="me-2" />
-                    Payment Status
-                  </h5>
-                </Card.Header>
-                <Card.Body>
-                  {loadingPayment ? (
-                    <div className="text-center py-3">
-                      <div className="spinner-border text-primary" role="status">
-                        <span className="visually-hidden">Loading...</span>
-                      </div>
-                      <p className="mt-2 mb-0">Loading payment data...</p>
-                    </div>
-                  ) : paymentData ? (
-                    <>
-                      {/* Payment Details */}
-                      <div className="payment-details">
-                        <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
-                          <span className="fw-bold">Status:</span>
-                          <span className={`badge ${
-                            paymentData.status === 'Paid' ? 'bg-success' :
-                            paymentData.status === 'Partial' ? 'bg-warning' : 'bg-danger'
-                          }`}>
-                            {paymentData.status}
-                          </span>
-                        </div>
-
-                        <div className="payment-amounts">
-                          <div className="d-flex justify-content-between align-items-center mb-2">
-                            <span>
-                              <FaRupeeSign className="text-muted me-1" />
-                              Total Amount:
-                            </span>
-                            <span className="fw-bold text-primary">₹{totalAmount.toFixed(2)}</span>
-                          </div>
-
-                          <div className="d-flex justify-content-between align-items-center mb-2">
-                            <span>
-                              <FaRupeeSign className="text-success me-1" />
-                              Paid Amount:
-                            </span>
-                            <span className="fw-bold text-success">₹{paidAmount.toFixed(2)}</span>
-                          </div>
-
-                          <div className="d-flex justify-content-between align-items-center mb-3">
-                            <span>
-                              <FaRupeeSign className="text-danger me-1" />
-                              Balance Due:
-                            </span>
-                            <span className="fw-bold text-danger">₹{balanceAmount.toFixed(2)}</span>
-                          </div>
-                        </div>
-
-                        {/* Payment Dates */}
-                        {paymentData.paid_date && (
-                          <div className="payment-dates border-top pt-3">
-                            <div className="d-flex justify-content-between align-items-center mb-2">
-                              <span>
-                                <FaCalendar className="text-muted me-1" />
-                                Invoice Date:
-                              </span>
-                              <small className="text-muted">
-                                {new Date(paymentData.Date).toLocaleDateString()}
-                              </small>
-                            </div>
-                            <div className="d-flex justify-content-between align-items-center">
-                              <span>
-                                <FaCalendar className="text-success me-1" />
-                                Last Payment:
-                              </span>
-                              <small className="text-muted">
-                                {new Date(paymentData.paid_date).toLocaleDateString()}
-                              </small>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-4">
-                      <FaReceipt className="text-muted mb-3" size={48} />
-                      <h6 className="text-muted">No Payment Data Found</h6>
-                      <p className="small text-muted mb-0">
-                        Payment information will appear here when purchase invoice is saved to the system.
-                      </p>
-                    </div>
-                  )}
-                </Card.Body>
-              </Card>
-            </div>
-          </Col>
+       
+           <Col lg={4} className="d-print-none no-print">
+                      <PaymentStatus />
+                    </Col>
         </Row>
       </Container>
     </div>

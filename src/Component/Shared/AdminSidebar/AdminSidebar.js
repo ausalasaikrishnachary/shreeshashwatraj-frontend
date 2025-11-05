@@ -31,8 +31,11 @@ import {
   FaStickyNote,
   FaFileExport,
   FaMoneyBillWave,
-  FaRuler
+  FaRuler,
+  
 } from "react-icons/fa";
+import { FiHome } from 'react-icons/fi'; // ✅ Feather icons
+
 import "./AdminSidebar.css";
 import UserCard from "../../Panels/UserCard/UserCard";
 
@@ -103,7 +106,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
 
   const menuItems = [
     { path: "/admindashboard", name: "Dashboard", icon: <FaTachometerAlt /> },
-    { path: "/retailers", name: "Retailers", icon: <FaUsers /> },
+    { path: "/retailers", name: "Contacts", icon: <FaUsers /> },
     { path: "/staff", name: "Staff", icon: <FaUserTie /> },
     { path: "/sales_visit", name: "Sales Visit", icon: <FaClipboardList /> },
     {
@@ -142,8 +145,11 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       ],
     },
     { path: "/admin_expensive", name: "Expense Requests", icon: <FaMoneyBillWave /> },
+        { path: "/ledger", name: "Ledger", icon: <FiHome /> },
+
+    { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },
+    { path: "/expenses", name: "Expenses", icon: <FaMoneyBill /> },
     { path: "/admin/marketing/offers-postings", name: "Offers & Marketing", icon: <FaTags /> },
-    { path: "/expenses", name: "Expense Head", icon: <FaMoneyBill /> },
     { path: "/reports", name: "Reports", icon: <FaFileAlt /> },
     { path: "/roleaccess", name: "Role Access", icon: <FaKey /> },
   ];

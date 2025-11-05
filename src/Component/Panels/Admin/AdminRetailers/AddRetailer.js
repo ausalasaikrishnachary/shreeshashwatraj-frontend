@@ -1600,7 +1600,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
   const [staffList, setStaffList] = useState([]);
   
   const [formData, setFormData] = useState({
-    group: "customer",
     title: "",
     entity_type: "",
     name: "",
@@ -1612,7 +1611,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     assigned_staff: "",
     staffid: "",
     password: "",
-    discount: 0, // Added discount field
+     discount: 0, // Added discount field
     Target: 100000, // Added Target field
     gstin: "",
     gst_registered_name: "",
@@ -1801,8 +1800,15 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     
     switch (activeTab) {
       case 'information':
-        const infoFields = ['title', 'name', 'role', 'entity_type', 'group', 'mobile_number', 'email', 'assigned_staff', 'display_name', 'password'];
-        infoFields.forEach(field => {
+        // Base required fields for all groups
+        const baseInfoFields = ['title', 'name', 'group', 'mobile_number', 'email', 'display_name', 'password'];
+        
+        // Additional fields only for non-SUPPLIERS groups
+        if (formData.group !== 'SUPPLIERS') {
+          baseInfoFields.push('role', 'entity_type', 'assigned_staff');
+        }
+        
+        baseInfoFields.forEach(field => {
           if (!formData[field]) {
             newErrors[field] = 'This field is required';
           }
@@ -1904,6 +1910,14 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       password: `${formData.name}@123` 
     };
 
+    // Conditionally remove fields for SUPPLIERS group
+    if (formData.group === 'SUPPLIERS') {
+      const fieldsToRemove = ['assigned_staff', 'staffid', 'role', 'entity_type'];
+      fieldsToRemove.forEach(field => {
+        delete finalData[field];
+      });
+    }
+
     if (sameAsShipping) {
       finalData = {
         ...finalData,
@@ -1988,6 +2002,11 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       );
     }
 
+    // Conditionally hide fields for SUPPLIERS group
+    if (formData.group === 'SUPPLIERS' && ['role', 'entity_type', 'assigned_staff', 'staffid'].includes(name)) {
+      return null;
+    }
+
     if (type === 'select') {
       return (
         <div className="mb-3">
@@ -2047,7 +2066,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
             isViewing={isViewing}
             onCancel={handleCancel}
           >
-            {/* First row - Title, Name, Entity Type */}
             <div className="row">
               <div className="col-md-6">
                 <div className="row">
@@ -2086,7 +2104,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               </div>
             </div>
 
-            {/* Second row - Group Type, GSTIN */}
             <div className="row">
               <div className="col-md-6">
                 {renderField({
@@ -2114,7 +2131,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               </div>
             </div>
 
-            {/* Third row - Email, Assign Staff */}
             <div className="row">
               <div className="col-md-6">
                 {renderField({
@@ -2133,7 +2149,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               </div>
             </div>
 
-            {/* Fourth row - Business Name, Display Name */}
             <div className="row">
               <div className="col-md-6">
                 {renderField({
@@ -2149,7 +2164,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               </div>
             </div>
 
-            {/* Fifth row - GST Registered Name, Additional Business Name */}
             <div className="row">
               <div className="col-md-6">
                 {renderField({
@@ -2165,7 +2179,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               </div>
             </div>
 
-            {/* Sixth row - Phone Number, Fax */}
             <div className="row">
               <div className="col-md-6">
                 {renderField({
@@ -2182,7 +2195,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               </div>
             </div>
 
-            {/* Seventh row - Mobile Number, Password */}
             <div className="row">
               <div className="col-md-6">
                 {renderField({
@@ -2202,8 +2214,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               </div>
             </div>
 
-            {/* Eighth row - Discount, Target */}
-            <div className="row">
+
+              <div className="row">
               <div className="col-md-6">
                 {renderField({
                   type: 'number',
@@ -2470,6 +2482,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                   label: 'Branch Name'
                 })}
               </div>
+              
               <div className="col-md-6">
                 {renderField({
                   name: 'shipping_gstin',

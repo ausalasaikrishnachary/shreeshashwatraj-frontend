@@ -64,23 +64,234 @@ const fetchPurchaseInvoices = async () => {
   }
 };
 
-// Helper function to format date
+const handleInvoiceNumberClick = async (invoice) => {
+  console.log('Opening preview for invoice:', invoice);
+  
+  try {
+    // Get the VoucherID from the correct location
+    const voucherId = invoice.originalData?.VoucherID || invoice.VoucherID;
+    
+    if (!voucherId) {
+      throw new Error('VoucherID not found in invoice data');
+    }
+    
+    console.log('Fetching details for VoucherID:', voucherId);
+    
+    // Fetch complete invoice data including batch details
+    const response = await fetch(`${baseurl}/transactions/${voucherId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch invoice details');
+    }
+    
+    const invoiceDetails = await response.json();
+    console.log('Complete invoice details:', invoiceDetails);
+
+    // Parse batch details if they exist
+    let items = [];
+    let batchDetails = [];
+    
+  // Function to get invoice by invoice number
+  const getInvoiceByNumber = async (invoiceNumber) => {
+    try {
+      console.log('Fetching invoice by number:', invoiceNumber);
+      
+      // Get all transactions to find the one with matching invoice number
+      const response = await fetch(`${baseurl}/transactions`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch transactions');
+      }
+      
+      const allTransactions = await response.json();
+      
+      // Find the transaction with matching invoice number
+      const targetTransaction = allTransactions.find(transaction => 
+        transaction.InvoiceNumber === invoiceNumber || 
+        transaction.VchNo === invoiceNumber
+      );
+      
+      if (!targetTransaction) {
+        throw new Error(`Invoice with number ${invoiceNumber} not found`);
+      }
+      
+      console.log('Found transaction by invoice number:', targetTransaction);
+      
+      // Now fetch the complete details using the VoucherID
+      const detailResponse = await fetch(`${baseurl}/transactions/${targetTransaction.VoucherID}`);
+      
+      if (!detailResponse.ok) {
+        throw new Error('Failed to fetch invoice details');
+      }
+      
+      const invoiceDetails = await detailResponse.json();
+      
+      if (!invoiceDetails.success) {
+        throw new Error('Failed to fetch invoice details');
+      }
+      
+      return invoiceDetails.data;
+      
+    } catch (error) {
+      console.error('Error fetching invoice by number:', error);
+      throw error;
+    }
+  };
+
+    // Calculate GST breakdown
+    const totalCGST = parseFloat(invoiceDetails.CGSTAmount) || 0;
+    const totalSGST = parseFloat(invoiceDetails.SGSTAmount) || 0;
+    const totalIGST = parseFloat(invoiceDetails.IGSTAmount) || 0;
+    const totalGST = totalCGST + totalSGST + totalIGST;
+    const taxableAmount = parseFloat(invoiceDetails.BasicAmount) || parseFloat(invoiceDetails.Subtotal) || 0;
+    const grandTotal = parseFloat(invoiceDetails.TotalAmount) || 0;
+
+    // Prepare the data for preview in the same format as CreateInvoice
+    const previewData = {
+      invoiceNumber: invoiceDetails.InvoiceNumber || invoiceDetails.VchNo || invoice.number,
+      invoiceDate: invoiceDetails.Date || invoice.created,
+      validityDate: new Date(new Date(invoiceDetails.Date || invoice.created).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      companyInfo: {
+        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+        email: "sumukhuri7@gmail.com",
+        phone: "3456548878543",
+        gstin: "ZAAABCD0508B1ZG",
+        state: "Karnataka"
+      },
+      supplierInfo: {
+        name: invoiceDetails.PartyName || 'N/A',
+        businessName: invoiceDetails.AccountName || 'N/A',
+        state: invoiceDetails.BillingState || invoiceDetails.billing_state || 'Karnataka',
+        gstin: invoiceDetails.GSTIN || invoiceDetails.gstin || 'ZAAACDE1234F225'
+      },
+      billingAddress: {
+        addressLine1: invoiceDetails.BillingAddress || invoiceDetails.billing_address_line1 || '12/A Church Street',
+        addressLine2: invoiceDetails.billing_address_line2 || 'Near Main Square',
+        city: invoiceDetails.BillingCity || invoiceDetails.billing_city || 'Bangalore',
+        pincode: invoiceDetails.BillingPincode || invoiceDetails.billing_pin_code || '560001',
+        state: invoiceDetails.BillingState || invoiceDetails.billing_state || 'Karnataka'
+      },
+      shippingAddress: {
+        addressLine1: invoiceDetails.ShippingAddress || invoiceDetails.shipping_address_line1 || invoiceDetails.BillingAddress || invoiceDetails.billing_address_line1 || '12/A Church Street',
+        addressLine2: invoiceDetails.shipping_address_line2 || invoiceDetails.billing_address_line2 || 'Near Main Square',
+        city: invoiceDetails.ShippingCity || invoiceDetails.shipping_city || invoiceDetails.BillingCity || invoiceDetails.billing_city || 'Bangalore',
+        pincode: invoiceDetails.ShippingPincode || invoiceDetails.shipping_pin_code || invoiceDetails.BillingPincode || invoiceDetails.billing_pin_code || '560001',
+        state: invoiceDetails.ShippingState || invoiceDetails.shipping_state || invoiceDetails.BillingState || invoiceDetails.billing_state || 'Karnataka'
+      },
+      items: items,
+      note: invoiceDetails.Notes || invoiceDetails.notes || 'Thank you for your business! We appreciate your timely payment.',
+      taxableAmount: taxableAmount,
+      totalGST: totalGST,
+      totalCess: invoiceDetails.TotalCess || 0,
+      grandTotal: grandTotal,
+      transportDetails: invoiceDetails.TransportDetails || invoiceDetails.transport_details || 'Standard delivery. Contact us for tracking information.',
+      additionalCharge: invoiceDetails.AdditionalCharge || '',
+      additionalChargeAmount: invoiceDetails.AdditionalChargeAmount || 0,
+      otherDetails: "Authorized Signatory",
+      taxType: totalIGST > 0 ? "IGST" : "CGST/SGST",
+      batchDetails: batchDetails,
+      // GST Breakdown
+      totalCGST: totalCGST,
+      totalSGST: totalSGST,
+      totalIGST: totalIGST,
+      // Store the VoucherID for the preview page
+      voucherId: voucherId
+    };
+
+    console.log('Preview data prepared:', previewData);
+
+    localStorage.setItem('previewInvoice', JSON.stringify(previewData));
+    
+    // Navigate to preview page WITH the ID
+    navigate(`/purchase/invoice-preview/${voucherId}`);
+    
+  } catch (error) {
+    console.error('Error fetching invoice details:', error);
+    const fallbackPreviewData = {
+      invoiceNumber: invoice.number,
+      invoiceDate: invoice.created,
+      validityDate: new Date(new Date(invoice.created).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      companyInfo: {
+        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+        email: "sumukhuri7@gmail.com",
+        phone: "3456548878543",
+        gstin: "ZAAABCD0508B1ZG",
+        state: "Karnataka"
+      },
+      supplierInfo: {
+        name: invoice.originalData?.PartyName || 'John A',
+        businessName: invoice.originalData?.AccountName || 'John Traders',
+        state: 'Karnataka',
+        gstin: 'ZAAACDE1234F225'
+      },
+      billingAddress: {
+        addressLine1: '12/A Church Street',
+        addressLine2: 'Near Main Square',
+        city: 'Bangalore',
+        pincode: '560001',
+        state: 'Karnataka'
+      },
+      shippingAddress: {
+        addressLine1: '12/A Church Street',
+        addressLine2: 'Near Main Square',
+        city: 'Bangalore',
+        pincode: '560001',
+        state: 'Karnataka'
+      },
+      items: [{
+        id: 1,
+        product: 'Oppo',
+        description: '',
+        quantity: 2,
+        price: 47200.00,
+        discount: 0,
+        gst: 18,
+        cgst: 9,
+        sgst: 9,
+        igst: 0,
+        cess: 0,
+        total: 111392.00,
+        batch: '',
+        batchDetails: null
+      }],
+      note: 'Thank you for your business! We appreciate your timely payment.',
+      taxableAmount: 94400.00,
+      totalGST: 16992.00,
+      totalCess: 0,
+      grandTotal: 111392.00,
+      transportDetails: 'Standard delivery. Contact us for tracking information.',
+      additionalCharge: '',
+      additionalChargeAmount: 0,
+      otherDetails: "Authorized Signatory",
+      taxType: "CGST/SGST",
+      batchDetails: [],
+      totalCGST: 8496.00,
+      totalSGST: 8496.00,
+      totalIGST: 0,
+      voucherId: invoice.originalData?.VoucherID || 'fallback'
+    };
+
+    localStorage.setItem('previewInvoice', JSON.stringify(fallbackPreviewData));
+    
+    const fallbackId = invoice.originalData?.VoucherID || 'fallback';
+    navigate(`/purchase/invoice-preview/${fallbackId}`);
+  }
+};
+
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
   
   try {
     const date = new Date(dateString);
-    return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
+    return date.toISOString().split('T')[0]; 
   } catch (error) {
     console.error('Error formatting date:', error);
     return 'N/A';
   }
 };
 
-  // Helper function to determine payment status for purchase invoices
   const getPaymentStatus = (invoice) => {
-    // For purchase invoices, you might have different logic
-    // For now, let's assume if ChequeNo is provided, it's paid
     if (invoice.ChequeNo && invoice.ChequeNo !== 'NULL') {
       return 'Paid';
     }
@@ -89,15 +300,13 @@ const formatDate = (dateString) => {
     const today = new Date();
     const daysDiff = Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24));
     
-    // For purchase, overdue might be different criteria
-    if (daysDiff > 45) { // 45 days credit period for purchases
+    if (daysDiff > 45) { 
       return 'Overdue';
     }
     
     return 'Pending';
   };
 
-  // Calculate stats from actual purchase data
   const calculatePurchaseStats = () => {
     const totalInvoices = purchaseInvoices.reduce((sum, invoice) => {
       const amount = parseFloat(invoice.originalData?.TotalAmount || 0);
@@ -152,7 +361,6 @@ const formatDate = (dateString) => {
 
   const purchaseInvoiceStats = calculatePurchaseStats();
 
-  // Define tabs with their corresponding routes
   const tabs = [
     { name: 'Purchase Invoice', path: '/purchase/purchase-invoice' },
     { name: 'Purchase Order', path: '/purchase/purchase-order' },
@@ -161,24 +369,32 @@ const formatDate = (dateString) => {
     { name: 'Payables', path: '/purchase/payables' }
   ];
 
-  // Handle tab click - navigate to corresponding route
   const handleTabClick = (tab) => {
     setActiveTab(tab.name);
     navigate(tab.path);
   };
 
-  // Table columns configuration for purchase invoices
   const columns = [
     {
       key: 'supplier',
       title: 'SUPPLIER',
       style: { textAlign: 'left' }
     },
-    {
-      key: 'pinvoice',
-      title: 'PURCHASE INVOICE',
-      style: { textAlign: 'center' }
-    },
+  {
+  key: 'pinvoice',
+  title: 'PURCHASE INVOICE',
+  style: { textAlign: 'center' },
+  render: (value, row) => (
+    <button 
+      className="btn btn-link p-0 text-primary text-decoration-none"
+      onClick={() => handleInvoiceNumberClick(row)}
+      title="Click to view invoice preview"
+    >
+      {value}
+    </button>
+  )
+}
+,
     {
       key: 'totalAmount',
       title: 'TOTAL AMOUNT',
@@ -202,7 +418,7 @@ const formatDate = (dateString) => {
   title: 'CREATED DATE',
   style: { textAlign: 'center' },
   render: (value, row) => {
-    if (!row?.created) return "-"; // fallback if no date
+    if (!row?.created) return "-"; 
     const date = new Date(row.created);
     return date.toLocaleDateString("en-GB", { 
       day: "2-digit", 

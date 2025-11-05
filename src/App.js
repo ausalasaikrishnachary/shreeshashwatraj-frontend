@@ -65,6 +65,9 @@ import RetailerProfile from "./Component/Panels/Retailer/RetailerProfile/Retaile
 import RetailerReportPage from "./Component/Panels/Admin/AdminReports/RetailerReportPage";
 
 
+//sales 
+import SalesReportPage from "./Component/Panels/Admin/AdminReports/SalesReportPage";
+
 // Admin Pages
 import AdminRetailers from "./Component/Panels/Admin/AdminRetailers/Retailers";
 import AddRetailerForm from "./Component/Panels/Admin/AdminRetailers/AddRetailer"
@@ -94,6 +97,8 @@ import AddExpenses from "./Component/Panels/Admin/AdminExpenses/AddExpenses";
 import AdminReports from "./Component/Panels/Admin/AdminReports/Reports";
 import AdminRoleAccess from "./Component/Panels/Admin/AdminRoleAccess/RoleAccess";
 import DashboardCard from "./Component/Panels/Admin/AdminDashboard/DashboardCard"
+import ExpenseReportPage from "./Component/Panels/Admin/AdminReports/ExpenseReportPage";
+
 
 // Staff Pages (Mobile Only)
 import MyRetailers from "./Component/Panels/Staff/StaffPages/Staff_MyRetailers/MyRetailers";
@@ -131,6 +136,8 @@ import OffersPostings from './Component/Panels/Admin/AdminMarketing/OffersModule
 import Category from "./Component/Panels/Admin/Category/CategoryTable"
 import Company from "./Component/Panels/Admin/Company/CompanyTable"
 import Units from "./Component/Panels/Admin/Units/UnitsTable"
+import Ledger from "./Component/Panels/Admin/Ledger/Ledger";
+import CreateNote from "./Component/Panels/Admin/CreditNote/CreateNote";
 // Add this import
 import InvoicePDFDownload from './Component/Panels/Admin/SalesInvoicePage/InvoicePDFDocument';
 
@@ -188,6 +195,9 @@ function App() {
          <Route path="/sales/invoices" element={<SalesInvoiceTable />} />
          <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
          <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
+<Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
+           <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
+         <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
            <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
  
   
@@ -211,7 +221,7 @@ function App() {
 
         <Route path="/purchase/purchase-invoice" element={<PurchaseInvoiceTable />} />
         <Route path="/purchase/create-purchase-invoice" element={<CreatePurchaseInvoiceForm />} />
-          <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
+          <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
 
         <Route path="/purchase/purchase-order" element={<PurchaseOrderTable />} />
         <Route path="/purchase/voucher" element={<VoucherTable />} />
@@ -239,6 +249,7 @@ function App() {
 
         <Route path="/expenses" element={<AdminExpenses />} />
         <Route path="/expenses/add" element={<AddExpenses />} />
+            <Route path="/reports/expense-report-page" element={<ExpenseReportPage />} />
         <Route path="/reports" element={<AdminReports />} />
         <Route path="/roleaccess" element={<AdminRoleAccess />} />
         <Route path="/sales_visit" element={<SalesVisit />} />
@@ -272,7 +283,19 @@ function App() {
             <Route path="/company" element={<Company />} />
             <Route path="/company/:id" element={<Company />} />
             <Route path="/units" element={<Units />} />
+            <Route path="/ledger" element={<Ledger />} />
+
+            <Route path="sales/create_note" element={<CreateNote />} />
+
+
+
+
             <Route path="/units/:id" element={<Units />} />
+
+
+     <Route path="/reports/sales-report-page" element={<SalesReportPage />} />
+
+
 
       </Routes>
     </Router>

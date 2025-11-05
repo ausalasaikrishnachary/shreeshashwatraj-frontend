@@ -525,18 +525,27 @@ function Retailers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRole, setSelectedRole] = useState("retailer"); // Default to retailer
 
   // Fetch retailers data from API
   useEffect(() => {
     fetchRetailers();
   }, []);
 
-  // Filter retailers by role when data changes
+  // Filter retailers by role when data changes or role selection changes
   useEffect(() => {
     if (retailersData.length > 0) {
       const filteredData = retailersData
-        .filter(item => item.role === "retailer")
+        .filter(item => {
+          if (selectedRole === "retailer") {
+            return item.role === "retailer";
+          } else if (selectedRole === "supplier") {
+            return item.role === "supplier";
+          }
+          return false;
+        })
         .filter(item =>
+          // Convert fields to lowercase for case-insensitive search
           (item.business_name || item.name || "")
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
@@ -546,7 +555,7 @@ function Retailers() {
         );
       setFilteredRetailersData(filteredData);
     }
-  }, [retailersData, searchTerm]);
+  }, [retailersData, searchTerm, selectedRole]);
 
   const fetchRetailers = async () => {
     try {
@@ -562,26 +571,26 @@ function Retailers() {
     }
   };
 
-  // Handle delete retailer
-  const handleDelete = async (id, retailerName) => {
-    if (window.confirm(`Are you sure you want to delete ${retailerName}?`)) {
+  // Handle delete retailer/supplier
+  const handleDelete = async (id, name) => {
+    if (window.confirm(`Are you sure you want to delete ${name}?`)) {
       try {
         await axios.delete(`${baseurl}/accounts/${id}`);
-        alert('Retailer deleted successfully!');
+        alert(`${selectedRole === 'retailer' ? 'Retailer' : 'Supplier'} deleted successfully!`);
         fetchRetailers(); // Refresh the list
       } catch (err) {
-        console.error('Failed to delete retailer:', err);
-        alert('Failed to delete retailer');
+        console.error('Failed to delete:', err);
+        alert(`Failed to delete ${selectedRole === 'retailer' ? 'retailer' : 'supplier'}`);
       }
     }
   };
 
-  // Handle edit retailer
+  // Handle edit retailer/supplier
   const handleEdit = (id) => {
     navigate(`/retailers/edit/${id}`);
   };
 
-  // Handle view retailer
+  // Handle view retailer/supplier
   const handleView = (id) => {
     navigate(`/retailers/view/${id}`);
   };
@@ -590,6 +599,13 @@ function Retailers() {
   const handleToggleMobile = () => {
     setIsMobileOpen(!isMobileOpen);
   };
+
+  // Handle add retailer
+  const handleAddRetailer = () => {
+    navigate("/retailers/add");
+  };
+
+  // Handle add supplier
 
   // Custom renderers
   const renderRetailerCell = (item) => (
@@ -622,7 +638,6 @@ function Retailers() {
       </div>
     </div>
   );
-
   const renderPerformanceCell = (item) => (
     <div className="retailers-table__performance-cell">
       <div className="retailers-table__rating">
@@ -676,7 +691,7 @@ function Retailers() {
   );
 
   const columns = [
-    { key: "__item", title: "Retailer", render: (value, item) => renderRetailerCell(item) },
+    { key: "__item", title: selectedRole === "retailer" ? "Retailer" : "Supplier", render: (value, item) => renderRetailerCell(item) },
     { key: "__item", title: "Contact", render: (value, item) => renderContactCell(item) },
     { key: "__item", title: "Type & Location", render: (value, item) => renderTypeLocationCell(item) },
     { key: "display_name", title: "Display Name" },
@@ -686,8 +701,24 @@ function Retailers() {
     { key: "__item", title: "Actions", render: (value, item) => renderActionsCell(item) }
   ];
 
-  const handleAddRetailerClick = () => {
-    navigate("/retailers/add");
+  const getTitle = () => {
+    return selectedRole === "retailer" ? "All Contacts" : "All Suppliers";
+  };
+
+  const getSubtitle = () => {
+    return selectedRole === "retailer" 
+      ? "" 
+      : "";
+  };
+
+  const getSectionTitle = () => {
+    return selectedRole === "retailer" ? "Retailers" : "Suppliers";
+  };
+
+  const getSectionDescription = () => {
+    return selectedRole === "retailer" 
+      ? ""
+      : "";
   };
 
   if (loading) {
@@ -700,7 +731,7 @@ function Retailers() {
         />
         <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
           <div className="retailers-main-content">
-            <div className="loading-spinner">Loading retailers...</div>
+            <div className="loading-spinner">Loading {selectedRole === 'retailer' ? 'retailers' : 'suppliers'}...</div>
           </div>
         </div>
       </div>
@@ -747,9 +778,9 @@ function Retailers() {
           <div className="retailers-content-section">
             <div className="retailers-header-top">
               <div className="retailers-title-section">
-                <h1 className="retailers-main-title">All Retailers</h1>
+                <h1 className="retailers-main-title">{getTitle()}</h1>
                 <p className="retailers-subtitle">
-                  Manage retailer relationships and track performance
+                  {getSubtitle()}
                 </p>
               </div>
             </div>
@@ -759,7 +790,7 @@ function Retailers() {
                 <div className="retailers-search-box">
                   <input
                     type="text"
-                    placeholder="Search retailers ..."
+                    placeholder={`Search ${selectedRole === 'retailer' ? 'retailers' : 'suppliers'}...`}
                     className="retailers-search-input"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -767,23 +798,42 @@ function Retailers() {
                   <FaSearch className="retailers-search-icon" size={18} />
                 </div>
               </div>
+<div className="retailers-buttons-container">
+  {/* Role Selection Dropdown */}
+  <div className="retailers-role-selector">
+    <select 
+      className="retailers-role-dropdown"
+      value={selectedRole}
+      onChange={(e) => setSelectedRole(e.target.value)}
+    >
+      <option value="retailer">Retailers</option>
+      <option value="supplier">Suppliers</option>
+    </select>
+  </div>
 
-              <button
-                className="retailers-add-button retailers-add-button--top"
-                onClick={handleAddRetailerClick}
-              >
-                <span className="retailers-add-icon">+</span>
-                Add Retailer
-              </button>
+  {/* Add Buttons */}
+  <div className="retailers-add-buttons">
+    <button
+      className="retailers-add-button retailers-add-button--retailer"
+      onClick={handleAddRetailer}
+    >
+      <span className="retailers-add-icon">+</span>
+      Add Contact
+    </button>
+
+   
+  </div>
+</div>
+
             </div>
 
             <div className="retailers-list-section">
               <div className="retailers-section-header">
                 <h2 className="retailers-section-title">
-                  Retailers ({filteredRetailersData.length})
+                  {getSectionTitle()} ({filteredRetailersData.length})
                 </h2>
                 <p className="retailers-section-description">
-                  Track retailer performance and manage relationships
+                  {getSectionDescription()}
                 </p>
               </div>
 
@@ -792,7 +842,7 @@ function Retailers() {
                   data={filteredRetailersData}
                   columns={columns}
                   initialEntriesPerPage={10}
-                  searchPlaceholder="Search retailers..."
+                  searchPlaceholder={`Search ${selectedRole === 'retailer' ? 'retailers' : 'suppliers'}...`}
                   showSearch={true}
                   showEntriesSelector={true}
                   showPagination={true}

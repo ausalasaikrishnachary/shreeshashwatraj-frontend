@@ -16,6 +16,12 @@ const CreditNoteTable = () => {
   const [endDate, setEndDate] = useState('2025-07-08');
   const [activeTab, setActiveTab] = useState('CreditNote');
 
+
+
+
+    const handleCreateClick = () => navigate("/sales/create_note");
+
+
   // Sample credit note data
   const creditNoteData = [
     // Add your credit note data here
@@ -266,7 +272,7 @@ const CreditNoteTable = () => {
                 <div className="col-md-auto">
                   <button 
                     className="btn btn-info text-white mt-4"
-                    // onClick={handleCreateClick}
+                    onClick={handleCreateClick}
                   >
                     Create Credit Note
                   </button>

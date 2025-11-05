@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, Row, Col, Button, Form, Table, Alert, Card, ProgressBar, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Button, Form, Table, Alert, Card, ProgressBar, Modal, Badge } from 'react-bootstrap';
 import './InvoicePDFPreview.css';
-import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, FaCalendar, FaReceipt, FaRegFileAlt  } from "react-icons/fa";
+import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, FaCalendar, FaReceipt, FaRegFileAlt, FaExclamationTriangle, FaCheckCircle } from "react-icons/fa";
 import { useNavigate, useParams } from "react-router-dom";
 import html2pdf from 'html2pdf.js';
 import { baseurl } from "../../../BaseURL/BaseURL";
@@ -12,8 +12,11 @@ const InvoicePDFPreview = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [invoiceData, setInvoiceData] = useState(null);
   const [editedData, setEditedData] = useState(null);
+  const [paymentData, setPaymentData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [paymentLoading, setPaymentLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [paymentError, setPaymentError] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptFormData, setReceiptFormData] = useState({
@@ -39,6 +42,106 @@ const InvoicePDFPreview = () => {
   useEffect(() => {
     fetchTransactionData();
   }, [id]);
+
+  useEffect(() => {
+    if (invoiceData && invoiceData.invoiceNumber) {
+      fetchPaymentData(invoiceData.invoiceNumber);
+    }
+  }, [invoiceData]);
+
+  const fetchPaymentData = async (invoiceNumber) => {
+  try {
+    setPaymentLoading(true);
+    setPaymentError(null);
+    
+    console.log('Fetching payment data for invoice:', invoiceNumber);
+    const response = await fetch(`${baseurl}/invoices/${invoiceNumber}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log("Payment API result:", result);
+    
+    if (result.success && result.data) {
+      // Transform the API data to match the expected format
+      const transformedData = transformPaymentData(result.data);
+      setPaymentData(transformedData);
+    } else {
+      throw new Error(result.message || 'No payment data received');
+    }
+  } catch (error) {
+    console.error('Error fetching payment data:', error);
+    setPaymentError(error.message);
+    // Create fallback payment data from invoice data
+    if (invoiceData) {
+      const fallbackPaymentData = {
+        invoice: {
+          invoiceNumber: invoiceData.invoiceNumber,
+          invoiceDate: invoiceData.invoiceDate,
+          totalAmount: parseFloat(invoiceData.grandTotal) || 0,
+          overdueDays: 0
+        },
+        receipts: [],
+        summary: {
+          totalPaid: 0,
+          balanceDue: parseFloat(invoiceData.grandTotal) || 0,
+          status: 'Pending'
+        }
+      };
+      setPaymentData(fallbackPaymentData);
+    }
+  } finally {
+    setPaymentLoading(false);
+  }
+};
+
+const transformPaymentData = (apiData) => {
+  const salesEntry = apiData.sales;
+  const receiptEntries = apiData.receipts || [];
+  
+  const totalAmount = parseFloat(salesEntry.TotalAmount) || 0;
+  const totalPaid = receiptEntries.reduce((sum, receipt) => {
+    return sum + parseFloat(receipt.paid_amount || 0);
+  }, 0);
+  
+  const balanceDue = totalAmount - totalPaid;
+  
+  const invoiceDate = new Date(salesEntry.Date);
+  const today = new Date();
+  const overdueDays = Math.max(0, Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24)));
+  
+  const receipts = receiptEntries.map(receipt => ({
+    receiptNumber: receipt.receipt_number,
+    paidAmount: parseFloat(receipt.paid_amount || 0),
+    paidDate: receipt.paid_date,
+    status: receipt.status
+  }));
+  
+  // Determine overall status
+  let status = 'Pending';
+  if (balanceDue === 0) {
+    status = 'Paid';
+  } else if (totalPaid > 0) {
+    status = 'Partial';
+  }
+  
+  return {
+    invoice: {
+      invoiceNumber: salesEntry.InvoiceNumber,
+      invoiceDate: salesEntry.Date,
+      totalAmount: totalAmount,
+      overdueDays: overdueDays
+    },
+    receipts: receipts,
+    summary: {
+      totalPaid: totalPaid,
+      balanceDue: balanceDue,
+      status: status
+    }
+  };
+};
 
   const fetchNextReceiptNumber = async () => {
     try {
@@ -160,46 +263,22 @@ const InvoicePDFPreview = () => {
       console.error('Error parsing batch details:', error);
     }
 
-    // Create items from batch details with complete information
-    const items = batchDetails.map((batch, index) => {
-      const quantity = parseFloat(batch.quantity) || 0;
-      const price = parseFloat(batch.price) || 0;
-      const discount = parseFloat(batch.discount) || 0;
-      const gst = parseFloat(batch.gst) || parseFloat(apiData.IGSTPercentage) || 0;
-      const cgst = parseFloat(batch.cgst) || parseFloat(apiData.CGSTPercentage) || 0;
-      const sgst = parseFloat(batch.sgst) || parseFloat(apiData.SGSTPercentage) || 0;
-      const igst = parseFloat(batch.igst) || parseFloat(apiData.IGSTPercentage) || 0;
-      const cess = parseFloat(batch.cess) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const gstAmount = amountAfterDiscount * (gst / 100);
-      const cessAmount = amountAfterDiscount * (cess / 100);
-      const total = amountAfterDiscount + gstAmount + cessAmount;
-
-      return {
-        id: index + 1,
-        product: batch.product || 'Product',
-        description: batch.description || `Batch: ${batch.batch}`,
-        quantity: quantity,
-        price: price,
-        discount: discount,
-        gst: gst,
-        cgst: cgst,
-        sgst: sgst,
-        igst: igst,
-        cess: cess,
-        total: total.toFixed(2),
-        batch: batch.batch || '',
-        batchDetails: batch.batchDetails || null,
-        product_id: batch.product_id || null
-      };
-    }) || [];
+    const items = batchDetails.map((batch, index) => ({
+      id: index + 1,
+      product: batch.product || 'Product',
+      description: `Batch: ${batch.batch}`,
+      quantity: parseFloat(batch.quantity) || 0,
+      price: parseFloat(batch.price) || 0,
+      discount: 0,
+      gst: parseFloat(apiData.IGSTPercentage) || 0,
+      cgst: parseFloat(apiData.CGSTPercentage) || 0,
+      sgst: parseFloat(apiData.SGSTPercentage) || 0,
+      igst: parseFloat(apiData.IGSTPercentage) || 0,
+      total: (parseFloat(batch.quantity) * parseFloat(batch.price)).toFixed(2)
+    })) || [];
 
     const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
     const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
-    const totalCess = items.reduce((sum, item) => sum + (parseFloat(item.cess) || 0), 0);
     const grandTotal = parseFloat(apiData.TotalAmount) || 0;
 
     return {
@@ -257,21 +336,12 @@ const InvoicePDFPreview = () => {
       taxableAmount: taxableAmount.toFixed(2),
       totalGST: totalGST.toFixed(2),
       grandTotal: grandTotal.toFixed(2),
-      totalCess: totalCess.toFixed(2),
+      totalCess: "0.00",
       
-      note: apiData.note || "Thank you for your business!",
+      note: "Thank you for your business!",
       transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
       additionalCharge: "",
       additionalChargeAmount: "0.00",
-      
-      paymentData: {
-        status: apiData.status || 'Pending',
-        paid_amount: parseFloat(apiData.paid_amount) || 0,
-        balance_amount: parseFloat(apiData.balance_amount) || grandTotal,
-        total_amount: grandTotal,
-        paid_date: apiData.paid_date,
-        receipt_number: apiData.receipt_number
-      },
       
       totalCGST: parseFloat(apiData.CGSTAmount) || 0,
       totalSGST: parseFloat(apiData.SGSTAmount) || 0,
@@ -280,6 +350,153 @@ const InvoicePDFPreview = () => {
     };
   };
 
+const PaymentStatus = () => {
+  if (paymentLoading) {
+    return (
+      <Card className="shadow-sm mb-3">
+        <Card.Header className="bg-primary text-white">
+          <h5 className="mb-0">
+            <FaReceipt className="me-2" />
+            Payment Status
+          </h5>
+        </Card.Header>
+        <Card.Body>
+          <div className="text-center">
+            <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            Loading payment status...
+          </div>
+        </Card.Body>
+      </Card>
+    );
+  }
+
+  if (!paymentData) {
+    return (
+      <Card className="shadow-sm mb-3">
+        <Card.Header className="bg-primary text-white">
+          <h5 className="mb-0">
+            <FaReceipt className="me-2" />
+            Payment Status
+          </h5>
+        </Card.Header>
+        <Card.Body>
+          <div className="text-center text-muted">
+            <FaExclamationTriangle className="mb-2" />
+            <p>No payment data available</p>
+          </div>
+        </Card.Body>
+      </Card>
+    );
+  }
+
+  const { invoice, receipts, summary } = paymentData;
+  const progressPercentage = invoice.totalAmount > 0 ? (summary.totalPaid / invoice.totalAmount) * 100 : 0;
+
+  return (
+    <Card className="shadow-sm mb-3">
+      <Card.Header className="bg-primary text-white">
+        <h5 className="mb-0">
+          <FaReceipt className="me-2" />
+          Payment Status
+        </h5>
+      </Card.Header>
+      <Card.Body>
+        {/* Status Badge */}
+        <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+          <span className="fw-bold">Status:</span>
+          <Badge bg={
+            summary.status === 'Paid' ? 'success' :
+            summary.status === 'Partial' ? 'warning' : 'danger'
+          }>
+            {summary.status}
+          </Badge>
+        </div>
+
+        {/* Progress Bar */}
+        {/* <div className="mb-3">
+          <div className="d-flex justify-content-between mb-1">
+            <small>Payment Progress</small>
+            <small>{progressPercentage.toFixed(1)}%</small>
+          </div>
+          <ProgressBar 
+            variant={
+              summary.status === 'Paid' ? 'success' :
+              summary.status === 'Partial' ? 'warning' : 'danger'
+            }
+            now={progressPercentage}
+          />
+        </div> */}
+
+        {/* Amount Summary */}
+        <div className="payment-amounts mb-3">
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="text-muted">
+              <FaRupeeSign className="me-1" />
+              Invoiced:
+            </span>
+            <small className="text-muted ms-1">
+                (On {new Date(invoice.invoiceDate).toLocaleDateString()})
+              </small>
+            <span className="fw-bold text-primary">
+              ₹{invoice.totalAmount.toFixed(2)}
+              
+            </span>
+          </div>
+
+          {/* Receipt-wise Payments */}
+          {receipts.map((receipt, index) => (
+            <div key={index} className="d-flex justify-content-between align-items-center mb-2 ps-3 border-start border-success">
+              <span className="text-success">
+                <FaCheckCircle className="me-1" />
+                Paid:
+              </span>
+               <small className="text-muted ms-1">
+                  (On {new Date(receipt.paidDate).toLocaleDateString()}) – {receipt.receiptNumber}
+                </small>
+              <span className="fw-bold text-success">
+                ₹{receipt.paidAmount.toFixed(2)}
+               
+              </span>
+            </div>
+          ))}
+
+          {/* Balance Due */}
+          <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
+            <span className="text-danger">
+              <FaExclamationTriangle className="me-1" />
+              Balance Due:
+            </span>
+            <span className="fw-bold text-danger">
+              ₹{summary.balanceDue.toFixed(2)}
+              {summary.balanceDue > 0 && invoice.overdueDays > 0 && (
+                <small className="text-danger ms-1">
+                  {/* (Overdue {invoice.overdueDays} day{invoice.overdueDays !== 1 ? 's' : ''}) */}
+                </small>
+              )}
+            </span>
+          </div>
+        </div>
+
+        {/* Create Receipt Button */}
+        {/* {summary.balanceDue > 0 && (
+          <Button 
+            variant="success" 
+            size="sm" 
+            className="w-100"
+            onClick={handleOpenReceiptModal}
+          >
+            <FaRegFileAlt className="me-1" />
+            Create Receipt
+          </Button>
+        )} */}
+      </Card.Body>
+    </Card>
+  );
+};
+
+  // Rest of the component remains the same (handlePrint, handleDownloadPDF, etc.)
   const handlePrint = () => {
     window.print();
   };
@@ -379,14 +596,12 @@ const InvoicePDFPreview = () => {
     const price = parseFloat(item.price) || 0;
     const discount = parseFloat(item.discount) || 0;
     const gst = parseFloat(item.gst) || 0;
-    const cess = parseFloat(item.cess) || 0;
     
     const subtotal = quantity * price;
     const discountAmount = subtotal * (discount / 100);
     const amountAfterDiscount = subtotal - discountAmount;
     const gstAmount = amountAfterDiscount * (gst / 100);
-    const cessAmount = amountAfterDiscount * (cess / 100);
-    const total = amountAfterDiscount + gstAmount + cessAmount;
+    const total = amountAfterDiscount + gstAmount;
     
     newItems[index].total = total.toFixed(2);
     
@@ -423,28 +638,13 @@ const InvoicePDFPreview = () => {
       return sum + gstAmount;
     }, 0);
     
-    const totalCess = items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      const cess = parseFloat(item.cess) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const cessAmount = amountAfterDiscount * (cess / 100);
-      
-      return sum + cessAmount;
-    }, 0);
-    
     const additionalChargeAmount = parseFloat(editedData.additionalChargeAmount) || 0;
-    const grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
+    const grandTotal = taxableAmount + totalGST + additionalChargeAmount;
     
     setEditedData(prev => ({
       ...prev,
       taxableAmount: taxableAmount.toFixed(2),
       totalGST: totalGST.toFixed(2),
-      totalCess: totalCess.toFixed(2),
       grandTotal: grandTotal.toFixed(2)
     }));
   };
@@ -504,13 +704,14 @@ const InvoicePDFPreview = () => {
   const handleOpenReceiptModal = () => {
     if (!invoiceData) return;
     
+    const balanceDue = paymentData ? paymentData.summary.balanceDue : parseFloat(invoiceData.grandTotal);
+    
     setReceiptFormData(prev => ({
       ...prev,
       retailerBusinessName: invoiceData.supplierInfo.businessName,
       retailerId: invoiceData.supplierInfo.id || '',
-      amount: invoiceData.grandTotal,
-      invoiceNumber: invoiceData.invoiceNumber,
-      retailerGstin: invoiceData.supplierInfo.gstin || ''
+      amount: balanceDue,
+      invoiceNumber: invoiceData.invoiceNumber
     }));
     
     fetchNextReceiptNumber();
@@ -574,6 +775,11 @@ const InvoicePDFPreview = () => {
         console.log('Receipt created successfully:', result);
         handleCloseReceiptModal();
         alert('Receipt created successfully!');
+        
+        // Refresh payment data
+        if (invoiceData && invoiceData.invoiceNumber) {
+          fetchPaymentData(invoiceData.invoiceNumber);
+        }
         
         if (result.id) {
           navigate(`/receipts_view/${result.id}`);
@@ -639,12 +845,6 @@ const InvoicePDFPreview = () => {
   const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
   const displayInvoiceNumber = currentData.invoiceNumber || 'INV001';
 
-  const paymentData = currentData.paymentData;
-  const totalAmount = paymentData ? parseFloat(paymentData.total_amount) : 0;
-  const paidAmount = paymentData ? parseFloat(paymentData.paid_amount) : 0;
-  const balanceAmount = paymentData ? parseFloat(paymentData.balance_amount) : 0;
-  const paymentProgress = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
-
   return (
     <div className="invoice-preview-page">
       {/* Action Bar */}
@@ -655,13 +855,13 @@ const InvoicePDFPreview = () => {
             <div>
               {!isEditMode ? (
                 <>
-                  <Button
-                    variant="info"
-                    className="me-2 text-white"
-                    onClick={handleOpenReceiptModal}
-                  >
-                    <FaRegFileAlt className="me-1" /> Create Receipt
-                  </Button>
+                 <Button
+                                    variant="info"
+                                    className="me-2 text-white"
+                                    onClick={handleOpenReceiptModal}
+                                  >
+                                    <FaRegFileAlt className="me-1" /> Create Receipt
+                                  </Button>
                   <Button variant="warning" onClick={handleEditToggle} className="me-2">
                     <FaEdit className="me-1" /> Edit Invoice
                   </Button>
@@ -721,12 +921,12 @@ const InvoicePDFPreview = () => {
         </div>
       )}
 
-      {/* Receipt Creation Modal */}
+      
       <Modal show={showReceiptModal} onHide={handleCloseReceiptModal} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>Create Receipt from Invoice</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body>  
           <div className="row mb-4">
             <div className="col-md-6">
               <div className="company-info-recepits-table text-center">
@@ -1204,6 +1404,7 @@ const InvoicePDFPreview = () => {
                         </p>
                       )}
                       
+                      <h6 className="text-primary mt-3">Transportation Details:</h6>
                       {isEditMode ? (
                         <Form.Control 
                           as="textarea"
@@ -1252,11 +1453,6 @@ const InvoicePDFPreview = () => {
                             <td className="text-end pb-2">₹{currentData.totalGST}</td>
                           </tr>
                           
-                          <tr>
-                            <td className="pb-2">Total Cess:</td>
-                            <td className="text-end pb-2">₹{currentData.totalCess}</td>
-                          </tr>
-                          
                           <tr className="grand-total border-top pt-2">
                             <td><strong>Grand Total:</strong></td>
                             <td className="text-end"><strong className="text-success">₹{currentData.grandTotal}</strong></td>
@@ -1296,84 +1492,7 @@ const InvoicePDFPreview = () => {
 
           {/* Payment Sidebar */}
           <Col lg={4} className="d-print-none no-print">
-            <div className="payment-sidebar">
-              <Card className="shadow-sm mb-3">
-                <Card.Header className="bg-primary text-white">
-                  <h5 className="mb-0">
-                    <FaReceipt className="me-2" />
-                    Payment Status
-                  </h5>
-                </Card.Header>
-                <Card.Body>
-                  {paymentData ? (
-                    <>
-                      <div className="payment-details">
-                        <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
-                          <span className="fw-bold">Status:</span>
-                          <span className={`badge ${
-                            paymentData.status === 'Paid' ? 'bg-success' :
-                            paymentData.status === 'Partial' ? 'bg-warning' : 'bg-danger'
-                          }`}>
-                            {paymentData.status}
-                          </span>
-                        </div>
-
-                        <div className="payment-amounts">
-                          <div className="d-flex justify-content-between align-items-center mb-2">
-                            <span>
-                              <FaRupeeSign className="text-muted me-1" />
-                              Total Amount:
-                            </span>
-                            <span className="fw-bold text-primary">₹{totalAmount.toFixed(2)}</span>
-                          </div>
-
-                          <div className="d-flex justify-content-between align-items-center mb-2">
-                            <span>
-                              <FaRupeeSign className="text-success me-1" />
-                              Paid Amount:
-                            </span>
-                            <span className="fw-bold text-success">₹{paidAmount.toFixed(2)}</span>
-                          </div>
-
-                          <div className="d-flex justify-content-between align-items-center mb-3">
-                            <span>
-                              <FaRupeeSign className="text-danger me-1" />
-                              Balance Due:
-                            </span>
-                            <span className="fw-bold text-danger">₹{balanceAmount.toFixed(2)}</span>
-                          </div>
-                        </div>
-
-                        {paymentData.paid_date && (
-                          <div className="payment-dates border-top pt-3">
-                            <div className="d-flex justify-content-between align-items-center mb-2">
-                              <span>
-                                <FaCalendar className="text-muted me-1" />
-                                Last Payment:
-                              </span>
-                              <small className="text-muted">
-                                {new Date(paymentData.paid_date).toLocaleDateString()}
-                              </small>
-                            </div>
-                            {paymentData.receipt_number && (
-                              <div className="d-flex justify-content-between align-items-center">
-                                <span>Receipt No:</span>
-                                <small className="text-muted">{paymentData.receipt_number}</small>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-4">
-                      <FaReceipt className="text-muted mb-3" size={48} />
-                      <h6 className="text-muted">No Payment Data</h6>
-                    </div>
-                  )}
-                </Card.Body>
-              </Card>
-            </div>
+            <PaymentStatus />
           </Col>
         </Row>
       </Container>

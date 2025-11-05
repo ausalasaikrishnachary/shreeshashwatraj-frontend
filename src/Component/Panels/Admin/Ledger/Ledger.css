@@ -1,0 +1,89 @@
+.ledger-wrapper {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+/* Main content area */
+.ledger-main-content {
+  flex: 1;
+  transition: margin-left 0.3s ease, width 0.3s ease;
+  margin-left: 240px;
+  background-color: #f8f9fa;
+}
+.ledger-container{
+    margin-top: 10px;
+    background: #fff;
+    padding: 10px;
+    margin-left:20px;
+}
+
+.ledger-main-content.collapsed {
+  margin-left: 80px;
+}
+
+/* Filter */
+.ledger-filter {
+    width: 500px;
+    border: transparent;
+  margin-bottom: 20px;
+}
+
+.ledger-filter label {
+  margin-right: 10px;
+  font-weight: 500;
+}
+
+.ledger-filter select {
+  padding: 5px 10px;
+  font-size: 14px;
+}
+
+/* Ledger sections */
+.ledger-section {
+  margin-bottom: 30px;
+}
+
+.ledger-header {
+  background-color: #c8e6e3;
+  padding: 10px;
+  font-weight: bold;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+/* Ledger table */
+.ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ledger-table th,
+.ledger-table td {
+  border: 1px solid #dee2e6;
+  padding: 8px;
+  text-align: left;
+}
+
+.ledger-table th {
+  background-color: #f1f1f1;
+}
+
+.ledger-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ledger-main-content {
+    margin-left: 0;
+    padding: 10px;
+  }
+  .ledger-main-content.collapsed {
+    margin-left: 0;
+  }
+  .ledger-table th, .ledger-table td {
+    font-size: 12px;
+    padding: 6px;
+  }
+}
