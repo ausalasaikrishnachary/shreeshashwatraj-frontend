@@ -76,21 +76,23 @@ const CreateInvoice = ({ user }) => {
     };
   });
 
-  const [itemForm, setItemForm] = useState({
-    product: "",
-    description: "",
-    quantity: 1,
-    price: 0,
-    discount: 0,
-    gst: 0,
-    cgst: 0,
-    sgst: 0,
-    igst: 0,
-    cess: 0,
-    total: 0,
-    batch: "",
-    batchDetails: null
-  });
+const [itemForm, setItemForm] = useState({
+  product: "",
+  product_id: "", // Add this
+  description: "",
+  quantity: 1,
+  price: 0,
+  discount: 0,
+  gst: 0,
+  cgst: 0,
+  sgst: 0,
+  igst: 0,
+  cess: 0,
+  total: 0,
+  batch: "",
+  batch_id: "", // Add this
+  batchDetails: null
+});
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -391,43 +393,48 @@ const CreateInvoice = ({ user }) => {
     }));
   };
 
-  const addItem = () => {
-    if (!itemForm.product) {
-      setError("Please select a product");
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
+const addItem = () => {
+  if (!itemForm.product) {
+    setError("Please select a product");
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
 
-    const calculatedItem = {
-      ...calculateItemTotal(),
-      batch: selectedBatch,
-      batchDetails: selectedBatchDetails
-    };
-
-    setInvoiceData(prev => ({
-      ...prev,
-      items: [...prev.items, calculatedItem]
-    }));
-
-    setItemForm({
-      product: "",
-      description: "",
-      quantity: 1,
-      price: 0,
-      discount: 0,
-      gst: 0,
-      cgst: 0,
-      sgst: 0,
-      igst: 0,
-      cess: 0,
-      total: 0,
-      batch: "",
-      batchDetails: null
-    });
-    setBatches([]);
-    setSelectedBatch("");
-    setSelectedBatchDetails(null);
+  const calculatedItem = {
+    ...calculateItemTotal(),
+    batch: selectedBatch,
+    batch_id: itemForm.batch_id, // Include batch_id
+    product_id: itemForm.product_id, // Include product_id
+    batchDetails: selectedBatchDetails
   };
+
+  setInvoiceData(prev => ({
+    ...prev,
+    items: [...prev.items, calculatedItem]
+  }));
+
+  // Reset form including IDs
+  setItemForm({
+    product: "",
+    product_id: "",
+    description: "",
+    quantity: 1,
+    price: 0,
+    discount: 0,
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0,
+    total: 0,
+    batch: "",
+    batch_id: "",
+    batchDetails: null
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+};
 
   const removeItem = (index) => {
     setInvoiceData(prev => ({
@@ -580,7 +587,6 @@ const handleSubmit = async (e) => {
   }
 
   try {
-    // Ensure we have the correct invoice number
     const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
     console.log('Submitting invoice with number:', finalInvoiceNumber);
 
@@ -600,16 +606,23 @@ const handleSubmit = async (e) => {
       totalIGST = parseFloat(invoiceData.totalGST);
     }
 
-    // Extract batch details from items
+    // Extract batch details from items with IDs
     const batchDetails = invoiceData.items.map(item => ({
       product: item.product,
+      product_id: item.product_id, // Include product_id
       batch: item.batch,
+      batch_id: item.batch_id, // Include batch_id
       quantity: item.quantity,
       price: item.price,
       batchDetails: item.batchDetails
     }));
 
-    // Create payload with batch details and ensure invoice number is included
+    // Get the first item's product_id and batch_id for the main voucher record
+    const firstItem = invoiceData.items[0];
+    const product_id = firstItem?.product_id || null;
+    const batch_id = firstItem?.batch_id || null;
+
+    // Create payload with IDs
     const payload = {
       ...invoiceData,
       invoiceNumber: finalInvoiceNumber,
@@ -619,14 +632,20 @@ const handleSubmit = async (e) => {
       totalSGST: totalSGST.toFixed(2),
       totalIGST: totalIGST.toFixed(2),
       taxType: sameState ? "CGST/SGST" : "IGST",
-      batchDetails: JSON.stringify(batchDetails)
+      batchDetails: JSON.stringify(batchDetails),
+      product_id: product_id, // Add product_id to main payload
+      batch_id: batch_id // Add batch_id to main payload
     };
 
     // Remove unused fields from the payload
     delete payload.companyState;
     delete payload.supplierState;
 
-    console.log('Submitting payload with invoice number:', payload.invoiceNumber);
+    console.log('Submitting payload with IDs:', {
+      product_id: payload.product_id,
+      batch_id: payload.batch_id,
+      invoiceNumber: payload.invoiceNumber
+    });
 
     const response = await fetch(`${baseurl}/transaction`, {
       method: 'POST',
@@ -646,7 +665,6 @@ const handleSubmit = async (e) => {
     setSuccess('Invoice submitted successfully!');
     setIsPreviewReady(true);
 
-    // Update preview data with the submitted invoice data
     const previewData = {
       ...invoiceData,
       invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
@@ -654,8 +672,6 @@ const handleSubmit = async (e) => {
     };
     localStorage.setItem('previewInvoice', JSON.stringify(previewData));
     
-    // Navigate to preview page WITH THE ID from backend response
-    // Use voucherId (primary key) or invoiceNumber based on your preference
     const previewId = responseData.voucherId || responseData.invoiceNumber;
     
     setTimeout(() => {
@@ -908,70 +924,78 @@ const handleSubmit = async (e) => {
                         + New Item
                       </button>
                     </div>
-                    <Form.Select
-                      name="product"
-                      value={itemForm.product}
-                      onChange={async (e) => {
-                        const selectedName = e.target.value;
-                        setItemForm((prev) => ({ ...prev, product: selectedName }));
+<Form.Select
+  name="product"
+  value={itemForm.product}
+  onChange={async (e) => {
+    const selectedName = e.target.value;
+    const selectedProduct = products.find(
+      (p) => p.goods_name === selectedName
+    );
 
-                        const selectedProduct = products.find(
-                          (p) => p.goods_name === selectedName
-                        );
+    if (selectedProduct) {
+      setItemForm((prev) => ({
+        ...prev,
+        product: selectedProduct.goods_name,
+        product_id: selectedProduct.id, // still store internally
+        price: selectedProduct.net_price,
+        gst: parseFloat(selectedProduct.gst_rate)
+          ? selectedProduct.gst_rate.replace("%", "")
+          : 0,
+        description: selectedProduct.description || "",
+      }));
 
-                        if (selectedProduct) {
-                          setItemForm((prev) => ({
-                            ...prev,
-                            product: selectedProduct.goods_name,
-                            price: selectedProduct.net_price,
-                            gst: parseFloat(selectedProduct.gst_rate)
-                              ? selectedProduct.gst_rate.replace("%", "")
-                              : 0,
-                            description: selectedProduct.description || "",
-                          }));
+      try {
+        const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
+        const batchData = await res.json();
+        setBatches(batchData);
+        setSelectedBatch("");
+        setSelectedBatchDetails(null);
+      } catch (err) {
+        console.error("Failed to fetch batches:", err);
+        setBatches([]);
+      }
+    }
+  }}
+  className="border-primary"
+>
+  <option value="">Select Product</option>
+  {products
+    .filter((p) => p.group_by === "Salescatalog")
+    .map((p) => (
+      <option key={p.id} value={p.goods_name}>
+        {p.goods_name}
+      </option>
+    ))}
+</Form.Select>
 
-                          try {
-                            const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
-                            const batchData = await res.json();
-                            setBatches(batchData);
-                            setSelectedBatch("");
-                            setSelectedBatchDetails(null);
-                          } catch (err) {
-                            console.error("Failed to fetch batches:", err);
-                            setBatches([]);
-                          }
-                        }
-                      }}
-                      className="border-primary"
-                    >
-                      <option value="">Select Product</option>
-                      {products
-                        .filter((p) => p.group_by === "Salescatalog")
-                        .map((p) => (
-                          <option key={p.id} value={p.goods_name}>
-                            {p.goods_name}
-                          </option>
-                        ))}
-                    </Form.Select>
+<Form.Select
+  className="mt-2 border-primary"
+  name="batch"
+  value={selectedBatch}
+  onChange={(e) => {
+    const batchNumber = e.target.value;
+    setSelectedBatch(batchNumber);
+    const batch = batches.find(b => b.batch_number === batchNumber);
+    setSelectedBatchDetails(batch || null);
 
-                    <Form.Select
-                      className="mt-2 border-primary"
-                      name="batch"
-                      value={selectedBatch}
-                      onChange={(e) => {
-                        const batchNumber = e.target.value;
-                        setSelectedBatch(batchNumber);
-                        const batch = batches.find(b => b.batch_number === batchNumber);
-                        setSelectedBatchDetails(batch || null);
-                      }}
-                    >
-                      <option value="">Select Batch</option>
-                      {batches.map((batch) => (
-                        <option key={batch.id} value={batch.batch_number}>
-                          {batch.batch_number} (Qty: {batch.quantity})
-                        </option>
-                      ))}
-                    </Form.Select>
+    // Store batch_id internally
+    if (batch) {
+      setItemForm(prev => ({
+        ...prev,
+        batch_id: batch.id
+      }));
+    }
+  }}
+>
+  <option value="">Select Batch</option>
+  {batches.map((batch) => (
+    <option key={batch.id} value={batch.batch_number}>
+      {batch.batch_number} (Qty: {batch.quantity})
+    </option>
+  ))}
+</Form.Select>
+
                   </Col>
 
                   <Col md={1}>

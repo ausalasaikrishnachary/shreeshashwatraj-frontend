@@ -1600,16 +1600,15 @@ const RetailerForm = ({ user, mode = 'add' }) => {
   const [staffList, setStaffList] = useState([]);
   
   const [formData, setFormData] = useState({
-    group: "customer",
     title: "",
     entity_type: "",
     name: "",
     role: "retailer",
-    status:"Active",
+    status: "Active",
     group: "",
     mobile_number: "",
     email: "",
-   assigned_staff: "",
+    assigned_staff: "",
     staffid: "",
     password: "",
     gstin: "",
@@ -1709,58 +1708,56 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     }
   }, [formData.staffid, staffList]);
 
-const handleGstinChange = async (e) => {
-  const { name, value } = e.target;
-  const gstin = value.toUpperCase();
+  const handleGstinChange = async (e) => {
+    const { name, value } = e.target;
+    const gstin = value.toUpperCase();
 
-  setFormData(prev => ({ ...prev, [name]: gstin })); // Always store uppercase
+    setFormData(prev => ({ ...prev, [name]: gstin }));
 
-  if (gstin.length === 15) { // Trigger only on full GSTIN
-    setIsLoadingGstin(true);
-    setGstinError(null);
+    if (gstin.length === 15) {
+      setIsLoadingGstin(true);
+      setGstinError(null);
 
-    try {
-      const response = await axios.post(`${baseurl}/gstin-details`, { gstin });
+      try {
+        const response = await axios.post(`${baseurl}/gstin-details`, { gstin });
 
-      if (response.data.success && response.data.result) {
-        const result = response.data.result;
+        if (response.data.success && response.data.result) {
+          const result = response.data.result;
 
-        setFormData(prev => ({
-          ...prev,
-          gst_registered_name: result.gst_registered_name || '',
-          business_name: result.business_name || '',
-          additional_business_name: result.additional_business_name || '',
-          display_name: result.display_name || '',
-          shipping_address_line1: result.shipping_address_line1 || '',
-          shipping_address_line2: result.shipping_address_line2 || '',
-          shipping_city: result.shipping_city || '',
-          shipping_pin_code: result.shipping_pin_code || '',
-          shipping_state: result.shipping_state || '',
-          shipping_country: 'India',
-          billing_address_line1: result.billing_address_line1 || '',
-          billing_address_line2: result.billing_address_line2 || '',
-          billing_city: result.billing_city || '',
-          billing_pin_code: result.billing_pin_code || '',
-          billing_state: result.billing_state || '',
-          billing_country: 'India'
-        }));
+          setFormData(prev => ({
+            ...prev,
+            gst_registered_name: result.gst_registered_name || '',
+            business_name: result.business_name || '',
+            additional_business_name: result.additional_business_name || '',
+            display_name: result.display_name || '',
+            shipping_address_line1: result.shipping_address_line1 || '',
+            shipping_address_line2: result.shipping_address_line2 || '',
+            shipping_city: result.shipping_city || '',
+            shipping_pin_code: result.shipping_pin_code || '',
+            shipping_state: result.shipping_state || '',
+            shipping_country: 'India',
+            billing_address_line1: result.billing_address_line1 || '',
+            billing_address_line2: result.billing_address_line2 || '',
+            billing_city: result.billing_city || '',
+            billing_pin_code: result.billing_pin_code || '',
+            billing_state: result.billing_state || '',
+            billing_country: 'India'
+          }));
 
-        setSameAsShipping(true); // auto-copy shipping to billing
-      } else {
-        setGstinError(response.data.message || "GSTIN details not found. Enter manually.");
+          setSameAsShipping(true);
+        } else {
+          setGstinError(response.data.message || "GSTIN details not found. Enter manually.");
+        }
+      } catch (err) {
+        console.error("Error fetching GSTIN details:", err);
+        setGstinError("Failed to fetch GSTIN details. Enter manually.");
+      } finally {
+        setIsLoadingGstin(false);
       }
-    } catch (err) {
-      console.error("Error fetching GSTIN details:", err);
-      setGstinError("Failed to fetch GSTIN details. Enter manually.");
-    } finally {
-      setIsLoadingGstin(false);
+    } else {
+      setGstinError(null);
     }
-  } else {
-    setGstinError(null); // Clear error if GSTIN is incomplete
-  }
-};
-
-
+  };
 
   const tabs = [
     { id: 'information', label: 'Information' },
@@ -1801,8 +1798,15 @@ const handleGstinChange = async (e) => {
     
     switch (activeTab) {
       case 'information':
-        const infoFields = ['title', 'name', 'role', 'entity_type', 'group', 'mobile_number', 'email', 'assigned_staff', 'display_name', 'password'];
-        infoFields.forEach(field => {
+        // Base required fields for all groups
+        const baseInfoFields = ['title', 'name', 'group', 'mobile_number', 'email', 'display_name', 'password'];
+        
+        // Additional fields only for non-SUPPLIERS groups
+        if (formData.group !== 'SUPPLIERS') {
+          baseInfoFields.push('role', 'entity_type', 'assigned_staff');
+        }
+        
+        baseInfoFields.forEach(field => {
           if (!formData[field]) {
             newErrors[field] = 'This field is required';
           }
@@ -1879,84 +1883,87 @@ const handleGstinChange = async (e) => {
   };
 
   useEffect(() => {
-  // Auto-fill password when name changes
-  setFormData(prev => ({
-    ...prev,
-    password: prev.name ? `${prev.name}@123` : ''
-  }));
-}, [formData.name]);
+    // Auto-fill password when name changes
+    setFormData(prev => ({
+      ...prev,
+      password: prev.name ? `${prev.name}@123` : ''
+    }));
+  }, [formData.name]);
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  if (isViewing) {
-    navigate('/retailers');
-    return;
-  }
-  
-  if (!validateCurrentTab()) {
-    return;
-  }
+    if (isViewing) {
+      navigate('/retailers');
+      return;
+    }
+    
+    if (!validateCurrentTab()) {
+      return;
+    }
 
-  // Auto-generate password as Name@123
-  let finalData = { 
-    ...formData, 
-    password: `${formData.name}@123` 
-  };
-
-  if (sameAsShipping) {
-    finalData = {
-      ...finalData,
-      billing_address_line1: formData.shipping_address_line1,
-      billing_address_line2: formData.shipping_address_line2,
-      billing_city: formData.shipping_city,
-      billing_pin_code: formData.shipping_pin_code,
-      billing_state: formData.shipping_state,
-      billing_country: formData.shipping_country,
-      billing_branch_name: formData.shipping_branch_name,
-      billing_gstin: formData.shipping_gstin
+    // Auto-generate password as Name@123
+    let finalData = { 
+      ...formData, 
+      password: `${formData.name}@123` 
     };
-  }
 
-  try {
-    if (isEditing) {
-      await axios.put(`${baseurl}/accounts/${id}`, finalData);
-      alert('Retailer updated successfully!');
-    } else {
-      await axios.post(`${baseurl}/accounts`, finalData);
-      alert('Retailer added successfully!');
+    // Conditionally remove fields for SUPPLIERS group
+    if (formData.group === 'SUPPLIERS') {
+      const fieldsToRemove = ['assigned_staff', 'staffid', 'role', 'entity_type'];
+      fieldsToRemove.forEach(field => {
+        delete finalData[field];
+      });
     }
-    navigate('/retailers');
-  } catch (err) {
-    console.error(err);
-    alert(`Failed to ${isEditing ? 'update' : 'add'} retailer`);
-  }
-};
 
+    if (sameAsShipping) {
+      finalData = {
+        ...finalData,
+        billing_address_line1: formData.shipping_address_line1,
+        billing_address_line2: formData.shipping_address_line2,
+        billing_city: formData.shipping_city,
+        billing_pin_code: formData.shipping_pin_code,
+        billing_state: formData.shipping_state,
+        billing_country: formData.shipping_country,
+        billing_branch_name: formData.shipping_branch_name,
+        billing_gstin: formData.shipping_gstin
+      };
+    }
 
-
-useEffect(() => {
-  const fetchStaff = async () => {
     try {
-      const res = await axios.get(`${baseurl}/api/account`);
-      if (res.data.success) {
-        // Map results into { value, label } format
-        const options = res.data.staff.map((staff) => ({
-          value: staff.id,
-          label: staff.name,
-        }));
-        setStaffList(options);
+      if (isEditing) {
+        await axios.put(`${baseurl}/accounts/${id}`, finalData);
+        alert('Retailer updated successfully!');
+      } else {
+        await axios.post(`${baseurl}/accounts`, finalData);
+        alert('Retailer added successfully!');
       }
+      navigate('/retailers');
     } catch (err) {
-      console.error("Failed to fetch staff data:", err);
+      console.error(err);
+      alert(`Failed to ${isEditing ? 'update' : 'add'} retailer`);
     }
   };
 
-  fetchStaff();
-}, []);
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        const res = await axios.get(`${baseurl}/api/account`);
+        if (res.data.success) {
+          const options = res.data.staff.map((staff) => ({
+            value: staff.id,
+            label: staff.name,
+          }));
+          setStaffList(options);
+        }
+      } catch (err) {
+        console.error("Failed to fetch staff data:", err);
+      }
+    };
 
+    fetchStaff();
+  }, []);
 
-  
   const handleCancel = () => {
     navigate('/retailers');
   };
@@ -1965,7 +1972,7 @@ useEffect(() => {
     return errors[fieldName] ? (
       <div className="invalid-feedback" style={{ display: 'block' }}>
         {errors[fieldName]}
-    </div>
+      </div>
     ) : null;
   };
 
@@ -1980,19 +1987,23 @@ useEffect(() => {
   const renderField = (fieldConfig) => {
     const { type = 'text', name, label, required = true, options, onChange: customOnChange, ...props } = fieldConfig;
     
- if (isViewing) {
-  // Special handling for staffid: show assigned_staff name instead of ID
-  const displayValue = (name === 'staffid' && formData.assigned_staff) 
-    ? formData.assigned_staff 
-    : (formData[name] || 'N/A');
-  
-  return (
-    <div className="mb-3">
-      <label className="customer-form-label view-mode-label">{label}</label>
-      <div className="view-mode-value">{displayValue}</div>
-    </div>
-  );
-}
+    if (isViewing) {
+      const displayValue = (name === 'staffid' && formData.assigned_staff) 
+        ? formData.assigned_staff 
+        : (formData[name] || 'N/A');
+      
+      return (
+        <div className="mb-3">
+          <label className="customer-form-label view-mode-label">{label}</label>
+          <div className="view-mode-value">{displayValue}</div>
+        </div>
+      );
+    }
+
+    // Conditionally hide fields for SUPPLIERS group
+    if (formData.group === 'SUPPLIERS' && ['role', 'entity_type', 'assigned_staff', 'staffid'].includes(name)) {
+      return null;
+    }
 
     if (type === 'select') {
       return (
@@ -2043,168 +2054,164 @@ useEffect(() => {
     switch (activeTab) {
       case 'information':
         return (
-      <FormSection
-  id="information"
-  activeTab={activeTab}
-  title="Information"
-  onBack={null}
-  onNext={handleNext}
-  nextLabel="Banking & Taxes"
-  isViewing={isViewing}
-  onCancel={handleCancel}
->
-  {/* First row - Title, Name, Entity Type (unchanged col-md structure) */}
-  <div className="row">
-    <div className="col-md-6">
-      <div className="row">
-        <div className="col-md-4">
-          {renderField({
-            type: 'select',
-            name: 'title',
-            label: 'Title',
-            options: [
-              { value: 'Mr.', label: 'Mr.' },
-              { value: 'Mrs.', label: 'Mrs.' },
-              { value: 'Ms.', label: 'Ms.' },
-              { value: 'Dr.', label: 'Dr.' }
-            ]
-          })}
-        </div>
-        <div className="col-md-8">
-          {renderField({
-            name: 'name',
-            label: 'Name'
-          })}
-        </div>
-      </div>
-    </div>
-    <div className="col-md-6">
-      {renderField({
-        type: 'select',
-        name: 'entity_type',
-        label: 'Entity Type',
-        options: [
-          { value: 'Individual', label: 'Individual' },
-          { value: 'Company', label: 'Company' },
-          { value: 'Partnership', label: 'Partnership' }
-        ]
-      })}
-    </div>
-  </div>
+          <FormSection
+            id="information"
+            activeTab={activeTab}
+            title="Information"
+            onBack={null}
+            onNext={handleNext}
+            nextLabel="Banking & Taxes"
+            isViewing={isViewing}
+            onCancel={handleCancel}
+          >
+            <div className="row">
+              <div className="col-md-6">
+                <div className="row">
+                  <div className="col-md-4">
+                    {renderField({
+                      type: 'select',
+                      name: 'title',
+                      label: 'Title',
+                      options: [
+                        { value: 'Mr.', label: 'Mr.' },
+                        { value: 'Mrs.', label: 'Mrs.' },
+                        { value: 'Ms.', label: 'Ms.' },
+                        { value: 'Dr.', label: 'Dr.' }
+                      ]
+                    })}
+                  </div>
+                  <div className="col-md-8">
+                    {renderField({
+                      name: 'name',
+                      label: 'Name'
+                    })}
+                  </div>
+                </div>
+              </div>
+              <div className="col-md-6">
+                {renderField({
+                  type: 'select',
+                  name: 'entity_type',
+                  label: 'Entity Type',
+                  options: [
+                    { value: 'Individual', label: 'Individual' },
+                    { value: 'Company', label: 'Company' },
+                    { value: 'Partnership', label: 'Partnership' }
+                  ]
+                })}
+              </div>
+            </div>
 
-  {/* Second row onwards - two fields per row */}
-  <div className="row">
-    <div className="col-md-6">
-      {renderField({
-        type: 'select',
-        name: 'group',
-        label: 'Group Type',
-        options: accountGroups.map(group => ({
-          value: group.AccountsGroupName,
-          label: group.AccountsGroupName
-        }))
-      })}
-    </div>
-   <div className="col-md-6">
-  {renderField({
-    name: 'gstin',
-    label: 'Customer GSTIN',
-    type: 'text',
-    maxLength: 15,          // GSTIN is always 15 characters
-    pattern: "^[0-9A-Z]{15}$",
-    title: "GSTIN must be exactly 15 characters (A-Z, 0-9 only)",
-    onChange: handleGstinChange
-  })}
-  {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
-  {gstinError && <div className="text-danger small">{gstinError}</div>}
-</div>
+            <div className="row">
+              <div className="col-md-6">
+                {renderField({
+                  type: 'select',
+                  name: 'group',
+                  label: 'Group Type',
+                  options: accountGroups.map(group => ({
+                    value: group.AccountsGroupName,
+                    label: group.AccountsGroupName
+                  }))
+                })}
+              </div>
+              <div className="col-md-6">
+                {renderField({
+                  name: 'gstin',
+                  label: 'Customer GSTIN',
+                  type: 'text',
+                  maxLength: 15,
+                  pattern: "^[0-9A-Z]{15}$",
+                  title: "GSTIN must be exactly 15 characters (A-Z, 0-9 only)",
+                  onChange: handleGstinChange
+                })}
+                {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
+                {gstinError && <div className="text-danger small">{gstinError}</div>}
+              </div>
+            </div>
 
-  </div>
+            <div className="row">
+              <div className="col-md-6">
+                {renderField({
+                  type: 'email',
+                  name: 'email',
+                  label: 'Email'
+                })}
+              </div>
+              <div className="col-md-6">
+                {renderField({
+                  type: 'select',
+                  name: 'staffid',
+                  label: 'Assign staff',
+                  options: staffList
+                })}
+              </div>
+            </div>
 
-  <div className="row">
-    <div className="col-md-6">
-      {renderField({
-        type: 'email',
-        name: 'email',
-        label: 'Email'
-      })}
-    </div>
-    <div className="col-md-6">
-      {renderField({
-        type: 'select',
-        name: 'staffid',
-        label: 'Assign staff',
-        options: staffList
-      })}
-    </div>
-  </div>
+            <div className="row">
+              <div className="col-md-6">
+                {renderField({
+                  name: 'business_name',
+                  label: 'Business Name'
+                })}
+              </div>
+              <div className="col-md-6">
+                {renderField({
+                  name: 'display_name',
+                  label: 'Display Name'
+                })}
+              </div>
+            </div>
 
-  <div className="row">
-    <div className="col-md-6">
-      {renderField({
-        name: 'business_name',
-        label: 'Business Name'
-      })}
-    </div>
-    <div className="col-md-6">
-      {renderField({
-        name: 'display_name',
-        label: 'Display Name'
-      })}
-    </div>
-  </div>
+            <div className="row">
+              <div className="col-md-6">
+                {renderField({
+                  name: 'gst_registered_name',
+                  label: 'Customer GST Registered Name'
+                })}
+              </div>
+              <div className="col-md-6">
+                {renderField({
+                  name: 'additional_business_name',
+                  label: 'Additional Business Name'
+                })}
+              </div>
+            </div>
 
-  <div className="row">
-    <div className="col-md-6">
-      {renderField({
-        name: 'gst_registered_name',
-        label: 'Customer GST Registered Name'
-      })}
-    </div>
-    <div className="col-md-6">
-      {renderField({
-        name: 'additional_business_name',
-        label: 'Additional Business Name'
-      })}
-    </div>
-  </div>
+            <div className="row">
+              <div className="col-md-6">
+                {renderField({
+                  type: 'tel',
+                  name: 'phone_number',
+                  label: 'Phone Number'
+                })}
+              </div>
+              <div className="col-md-6">
+                {renderField({
+                  name: 'fax',
+                  label: 'Fax'
+                })}
+              </div>
+            </div>
 
-  <div className="row">
-    <div className="col-md-6">
-      {renderField({
-        type: 'tel',
-        name: 'phone_number',
-        label: 'Phone Number'
-      })}
-    </div>
-        <div className="col-md-6">
-      {renderField({
-        name: 'fax',
-        label: 'Fax'
-      })}
-    </div>
-  </div>
-
-  <div className="row">
-
-    <div className="col-md-6">
-      {renderField({
-        type: 'tel',
-        name: 'mobile_number',
-        label: 'Mobile Number'
-      })}
-    </div>
-    <div className="col-md-6">
-      {renderField({
-        type: 'text',
-        name: 'password',
-        label: 'Password',
-        value: formData.password,
-        disabled: true
-      })}
-    </div>
-  </div>
-</FormSection>
+            <div className="row">
+              <div className="col-md-6">
+                {renderField({
+                  type: 'tel',
+                  name: 'mobile_number',
+                  label: 'Mobile Number'
+                })}
+              </div>
+              <div className="col-md-6">
+                {renderField({
+                  type: 'text',
+                  name: 'password',
+                  label: 'Password',
+                  value: formData.password,
+                  disabled: true
+                })}
+              </div>
+            </div>
+          </FormSection>
         );
 
       case 'banking':
@@ -2223,13 +2230,13 @@ useEffect(() => {
               <h3 className="customer-subsection-title">Account Information</h3>
               <div className="row">
                 <div className="col-md-4">
-  {renderField({
-    name: 'account_number',
-    label: 'Account Number',
-    type: 'text',
-    maxLength: 18, // ✅ limit to 18 digits
-  })}
-</div>
+                  {renderField({
+                    name: 'account_number',
+                    label: 'Account Number',
+                    type: 'text',
+                    maxLength: 18,
+                  })}
+                </div>
                 <div className="col-md-4">
                   {renderField({
                     name: 'account_name',
@@ -2252,17 +2259,16 @@ useEffect(() => {
               </div>
 
               <div className="row">
-               
-<div className="col-md-4">
-  {renderField({
-    name: 'ifsc_code',
-    label: 'IFSC Code',
-    type: 'text',
-    maxLength: 11, // ✅ IFSC always 11 characters
-    pattern: "^[A-Z]{4}0[0-9A-Z]{6}$",
-    title: "IFSC Code format: 4 letters, 0, then 6 alphanumeric (e.g. SBIN0000123)",
-  })}
-</div>
+                <div className="col-md-4">
+                  {renderField({
+                    name: 'ifsc_code',
+                    label: 'IFSC Code',
+                    type: 'text',
+                    maxLength: 11,
+                    pattern: "^[A-Z]{4}0[0-9A-Z]{6}$",
+                    title: "IFSC Code format: 4 letters, 0, then 6 alphanumeric (e.g. SBIN0000123)",
+                  })}
+                </div>
                 <div className="col-md-4">
                   {renderField({
                     type: 'select',
@@ -2287,15 +2293,15 @@ useEffect(() => {
               <h3 className="customer-subsection-title">Tax Information</h3>
               <div className="row">
                 <div className="col-md-4">
-  {renderField({
-    name: 'pan',
-    label: 'PAN',
-    type: 'text',
-    maxLength: 10, // ✅ PAN has 10 characters
-    pattern: "^[A-Z]{5}[0-9]{4}[A-Z]{1}$",
-    title: "PAN format: 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)",
-  })}
-</div>
+                  {renderField({
+                    name: 'pan',
+                    label: 'PAN',
+                    type: 'text',
+                    maxLength: 10,
+                    pattern: "^[A-Z]{5}[0-9]{4}[A-Z]{1}$",
+                    title: "PAN format: 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)",
+                  })}
+                </div>
                 <div className="col-md-4">
                   {renderField({
                     name: 'tan',
@@ -2452,17 +2458,17 @@ useEffect(() => {
                 })}
               </div>
               
-<div className="col-md-6">
-  {renderField({
-    name: 'shipping_gstin',
-    label: 'GSTIN',
-    type: 'text',
-    maxLength: 15, // ✅ GSTIN is always 15 characters
-    pattern: "^[0-9A-Z]{15}$",
-    title: "GSTIN must be exactly 15 characters long (A-Z, 0-9 only)",
-    required: true
-  })}
-</div>
+              <div className="col-md-6">
+                {renderField({
+                  name: 'shipping_gstin',
+                  label: 'GSTIN',
+                  type: 'text',
+                  maxLength: 15,
+                  pattern: "^[0-9A-Z]{15}$",
+                  title: "GSTIN must be exactly 15 characters long (A-Z, 0-9 only)",
+                  required: true
+                })}
+              </div>
             </div>
           </FormSection>
         );
@@ -2570,11 +2576,11 @@ useEffect(() => {
                     {renderField({
                       name: 'billing_gstin',
                       label: 'GSTIN',
-                       type: 'text',
-    maxLength: 15, // ✅ GSTIN is always 15 characters
-    pattern: "^[0-9A-Z]{15}$",
-    title: "GSTIN must be exactly 15 characters long (A-Z, 0-9 only)",
-    required: true
+                      type: 'text',
+                      maxLength: 15,
+                      pattern: "^[0-9A-Z]{15}$",
+                      title: "GSTIN must be exactly 15 characters long (A-Z, 0-9 only)",
+                      required: true
                     })}
                   </div>
                 </div>

@@ -133,6 +133,8 @@ import InvoicePDFDownload from './Component/Panels/Admin/SalesInvoicePage/Invoic
 import Category from "./Component/Panels/Admin/Category/CategoryTable"
 import Company from "./Component/Panels/Admin/Company/CompanyTable"
 import Units from "./Component/Panels/Admin/Units/UnitsTable"
+import Ledger from "./Component/Panels/Admin/Ledger/Ledger";
+import CreateNote from "./Component/Panels/Admin/CreditNote/CreateNote";
 
 
 
@@ -178,7 +180,7 @@ function App() {
          <Route path="/sales/invoices" element={<SalesInvoiceTable />} />
          <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
 <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
-           <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
+           <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
  
   
         <Route path="/sales/receipts" element={<AdminReceiptsTable />} />
@@ -201,7 +203,7 @@ function App() {
 
         <Route path="/purchase/purchase-invoice" element={<PurchaseInvoiceTable />} />
         <Route path="/purchase/create-purchase-invoice" element={<CreatePurchaseInvoiceForm />} />
-          <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
+          <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
 
         <Route path="/purchase/purchase-order" element={<PurchaseOrderTable />} />
         <Route path="/purchase/voucher" element={<VoucherTable />} />
@@ -254,6 +256,9 @@ function App() {
             <Route path="/category" element={<Category />} />
             <Route path="/company" element={<Company />} />
             <Route path="/units" element={<Units />} />
+            <Route path="/ledger" element={<Ledger />} />
+
+            <Route path="sales/create_note" element={<CreateNote />} />
 
 
 

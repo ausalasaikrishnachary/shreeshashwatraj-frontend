@@ -1,5 +1,6 @@
 import { pdf } from '@react-pdf/renderer';
 import InvoicePDFDocument from '../components/InvoicePDFDocument';
+import { baseurl } from '../../../BaseURL/BaseURL';
 
 export const downloadInvoicePDF = async (invoiceData, invoiceNumber, gstBreakdown, isSameState) => {
   try {
@@ -56,7 +57,7 @@ export const storePDFInVoucher = async (pdfBlob, filename, invoiceNumber, invoic
     };
     
     // Call your API to store in voucher table
-    const response = await fetch('http://localhost:5000/api/vouchers/store-pdf', {
+    const response = await fetch(`${baseurl}/api/vouchers/store-pdf`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -81,7 +82,7 @@ export const storePDFInVoucher = async (pdfBlob, filename, invoiceNumber, invoic
 
 export const downloadExistingPDF = async (invoiceNumber) => {
   try {
-    const response = await fetch(`http://localhost:5000/api/vouchers/pdf/${invoiceNumber}`);
+    const response = await fetch(`${baseurl}/api/vouchers/pdf/${invoiceNumber}`);
     
     if (!response.ok) {
       const errorData = await response.json();

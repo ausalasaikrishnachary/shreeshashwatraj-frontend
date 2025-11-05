@@ -518,24 +518,32 @@ import { FaSearch } from "react-icons/fa";
 
 function Retailers() {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false); // Add mobile state
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const navigate = useNavigate();
   const [retailersData, setRetailersData] = useState([]);
   const [filteredRetailersData, setFilteredRetailersData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRole, setSelectedRole] = useState("retailer"); // Default to retailer
 
   // Fetch retailers data from API
   useEffect(() => {
     fetchRetailers();
   }, []);
 
-  // Filter retailers by role when data changes
+  // Filter retailers by role when data changes or role selection changes
   useEffect(() => {
     if (retailersData.length > 0) {
       const filteredData = retailersData
-        .filter(item => item.role === "retailer")
+        .filter(item => {
+          if (selectedRole === "retailer") {
+            return item.role === "retailer";
+          } else if (selectedRole === "supplier") {
+            return item.role === "supplier";
+          }
+          return false;
+        })
         .filter(item =>
           // Convert fields to lowercase for case-insensitive search
           (item.business_name || item.name || "")
@@ -547,7 +555,7 @@ function Retailers() {
         );
       setFilteredRetailersData(filteredData);
     }
-  }, [retailersData, searchTerm]);
+  }, [retailersData, searchTerm, selectedRole]);
 
   const fetchRetailers = async () => {
     try {
@@ -563,26 +571,26 @@ function Retailers() {
     }
   };
 
-  // Handle delete retailer
-  const handleDelete = async (id, retailerName) => {
-    if (window.confirm(`Are you sure you want to delete ${retailerName}?`)) {
+  // Handle delete retailer/supplier
+  const handleDelete = async (id, name) => {
+    if (window.confirm(`Are you sure you want to delete ${name}?`)) {
       try {
         await axios.delete(`${baseurl}/accounts/${id}`);
-        alert('Retailer deleted successfully!');
+        alert(`${selectedRole === 'retailer' ? 'Retailer' : 'Supplier'} deleted successfully!`);
         fetchRetailers(); // Refresh the list
       } catch (err) {
-        console.error('Failed to delete retailer:', err);
-        alert('Failed to delete retailer');
+        console.error('Failed to delete:', err);
+        alert(`Failed to delete ${selectedRole === 'retailer' ? 'retailer' : 'supplier'}`);
       }
     }
   };
 
-  // Handle edit retailer
+  // Handle edit retailer/supplier
   const handleEdit = (id) => {
     navigate(`/retailers/edit/${id}`);
   };
 
-  // Handle view retailer
+  // Handle view retailer/supplier
   const handleView = (id) => {
     navigate(`/retailers/view/${id}`);
   };
@@ -591,6 +599,13 @@ function Retailers() {
   const handleToggleMobile = () => {
     setIsMobileOpen(!isMobileOpen);
   };
+
+  // Handle add retailer
+  const handleAddRetailer = () => {
+    navigate("/retailers/add");
+  };
+
+  // Handle add supplier
 
   // Custom renderers
   const renderRetailerCell = (item) => (
@@ -628,10 +643,10 @@ function Retailers() {
     <div className="retailers-table__performance-cell">
       <div className="retailers-table__rating">
         <span className="retailers-table__rating-icon">⭐</span>
-        {item.tds_slab_rate || "N/A"}
+        Discount: {item.discount || 0}%
       </div>
       <div className="retailers-table__revenue">
-        ₹ {item.opening_balance ? parseInt(item.opening_balance).toLocaleString() : "0"}
+        Target: ₹ {item.Target ? parseInt(item.Target).toLocaleString() : "100,000"}
       </div>
     </div>
   );
@@ -676,20 +691,35 @@ function Retailers() {
     </div>
   );
 
-const columns = [
-  { key: "__item", title: "Retailer", render: (value, item) => renderRetailerCell(item) },
-  { key: "__item", title: "Contact", render: (value, item) => renderContactCell(item) },
-  { key: "__item", title: "Type & Location", render: (value, item) => renderTypeLocationCell(item) },
-  { key: "display_name", title: "Display Name" },
-  { key: "__item", title: "Group Type", render: (value, item) => renderGroupTypeCell(item) },
-  { key: "__item", title: "Performance", render: (value, item) => renderPerformanceCell(item) },
-  { key: "__item", title: "Status", render: (value, item) => renderStatusCell(item) },
-  { key: "__item", title: "Actions", render: (value, item) => renderActionsCell(item) }
-];
-;
+  const columns = [
+    { key: "__item", title: selectedRole === "retailer" ? "Retailer" : "Supplier", render: (value, item) => renderRetailerCell(item) },
+    { key: "__item", title: "Contact", render: (value, item) => renderContactCell(item) },
+    { key: "__item", title: "Type & Location", render: (value, item) => renderTypeLocationCell(item) },
+    { key: "display_name", title: "Display Name" },
+    { key: "__item", title: "Group Type", render: (value, item) => renderGroupTypeCell(item) },
+    { key: "__item", title: "Performance", render: (value, item) => renderPerformanceCell(item) },
+    { key: "__item", title: "Status", render: (value, item) => renderStatusCell(item) },
+    { key: "__item", title: "Actions", render: (value, item) => renderActionsCell(item) }
+  ];
 
-  const handleAddRetailerClick = () => {
-    navigate("/retailers/add");
+  const getTitle = () => {
+    return selectedRole === "retailer" ? "All Retailers" : "All Suppliers";
+  };
+
+  const getSubtitle = () => {
+    return selectedRole === "retailer" 
+      ? "Manage retailer relationships and track performance" 
+      : "Manage supplier relationships and track performance";
+  };
+
+  const getSectionTitle = () => {
+    return selectedRole === "retailer" ? "Retailers" : "Suppliers";
+  };
+
+  const getSectionDescription = () => {
+    return selectedRole === "retailer" 
+      ? "Track retailer performance and manage relationships"
+      : "Track supplier performance and manage relationships";
   };
 
   if (loading) {
@@ -702,7 +732,7 @@ const columns = [
         />
         <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
           <div className="retailers-main-content">
-            <div className="loading-spinner">Loading retailers...</div>
+            <div className="loading-spinner">Loading {selectedRole === 'retailer' ? 'retailers' : 'suppliers'}...</div>
           </div>
         </div>
       </div>
@@ -749,9 +779,9 @@ const columns = [
           <div className="retailers-content-section">
             <div className="retailers-header-top">
               <div className="retailers-title-section">
-                <h1 className="retailers-main-title">All Retailers</h1>
+                <h1 className="retailers-main-title">{getTitle()}</h1>
                 <p className="retailers-subtitle">
-                  Manage retailer relationships and track performance
+                  {getSubtitle()}
                 </p>
               </div>
             </div>
@@ -761,7 +791,7 @@ const columns = [
                 <div className="retailers-search-box">
                   <input
                     type="text"
-                    placeholder="Search retailers ..."
+                    placeholder={`Search ${selectedRole === 'retailer' ? 'retailers' : 'suppliers'}...`}
                     className="retailers-search-input"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -769,23 +799,42 @@ const columns = [
                   <FaSearch className="retailers-search-icon" size={18} />
                 </div>
               </div>
+<div className="retailers-buttons-container">
+  {/* Role Selection Dropdown */}
+  <div className="retailers-role-selector">
+    <select 
+      className="retailers-role-dropdown"
+      value={selectedRole}
+      onChange={(e) => setSelectedRole(e.target.value)}
+    >
+      <option value="retailer">Retailers</option>
+      <option value="supplier">Suppliers</option>
+    </select>
+  </div>
 
-              <button
-                className="retailers-add-button retailers-add-button--top"
-                onClick={handleAddRetailerClick}
-              >
-                <span className="retailers-add-icon">+</span>
-                Add Retailer
-              </button>
+  {/* Add Buttons */}
+  <div className="retailers-add-buttons">
+    <button
+      className="retailers-add-button retailers-add-button--retailer"
+      onClick={handleAddRetailer}
+    >
+      <span className="retailers-add-icon">+</span>
+      Add Retailer
+    </button>
+
+   
+  </div>
+</div>
+
             </div>
 
             <div className="retailers-list-section">
               <div className="retailers-section-header">
                 <h2 className="retailers-section-title">
-                  Retailers ({filteredRetailersData.length})
+                  {getSectionTitle()} ({filteredRetailersData.length})
                 </h2>
                 <p className="retailers-section-description">
-                  Track retailer performance and manage relationships
+                  {getSectionDescription()}
                 </p>
               </div>
 
@@ -794,7 +843,7 @@ const columns = [
                   data={filteredRetailersData}
                   columns={columns}
                   initialEntriesPerPage={10}
-                  searchPlaceholder="Search retailers..."
+                  searchPlaceholder={`Search ${selectedRole === 'retailer' ? 'retailers' : 'suppliers'}...`}
                   showSearch={true}
                   showEntriesSelector={true}
                   showPagination={true}

@@ -31,8 +31,11 @@ import {
   FaStickyNote,
   FaFileExport,
   FaMoneyBillWave,
-  FaRuler
+  FaRuler,
+  
 } from "react-icons/fa";
+import { FiHome } from 'react-icons/fi'; // ✅ Feather icons
+
 import "./AdminSidebar.css";
 import UserCard from "../../Panels/UserCard/UserCard";
 
@@ -142,6 +145,8 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       ],
     },
     { path: "/admin_expensive", name: "Expensive Request", icon: <FaMoneyBillWave /> },
+        { path: "/ledger", name: "Ledger", icon: <FiHome /> },
+
     { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },
     { path: "/expenses", name: "Expenses", icon: <FaMoneyBill /> },
     { path: "/reports", name: "Reports", icon: <FaFileAlt /> },
