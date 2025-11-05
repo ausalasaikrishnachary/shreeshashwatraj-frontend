@@ -8,8 +8,8 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
 
   const pageTitles = {
     "/admindashboard": "Dashboard",
-    "/retailers": "Retailers",
-    "/retailers/add": "Add Retailer",
+    "/retailers": "Contact",
+    "/retailers/add": "Add Contact",
     "/staff": "Staff",
     "/sales": "Sales",
     "/products": "Products",
