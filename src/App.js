@@ -146,6 +146,8 @@ import InvoicePDFDownload from './Component/Panels/Admin/SalesInvoicePage/Invoic
 // import Units from "./Component/Panels/Admin/Units/UnitsTable"
 import Profile from "./Component/Panels/Retailer/RetailerProfile/Profile";
 import RetailerOrders from "./Component/Panels/Retailer/RetailerOrders/RetailerOrders";
+import DeleteProfile from "./Component/Panels/Retailer/RetailerProfile/DeleteProfile";
+import EditProfile from "./Component/Panels/Retailer/RetailerProfile/EditProfile";
 
 
 
@@ -194,6 +196,7 @@ function App() {
         <Route path="/sale" element={<AdminSales />} />
          <Route path="/sales/invoices" element={<SalesInvoiceTable />} />
          <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
+         <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
 <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
            <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
          <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
@@ -239,8 +242,10 @@ function App() {
         <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />|
         <Route path="/admin/marketing/offers-postings" element={<OffersPostings />} /> */}
 
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/edit" element={<EditProfile />} />
+        <Route path="/profile/delete" element={<DeleteProfile />} />
 
- 
         <Route path="/retailers" element={<AdminRetailers />} />
         <Route path="/retailers/add" element={<AddRetailerForm mode="add" />} />
         <Route path="/retailers/edit/:id" element={<AddRetailerForm mode="edit" />} />
