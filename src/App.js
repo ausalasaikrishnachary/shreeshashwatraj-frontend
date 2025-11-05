@@ -65,6 +65,9 @@ import RetailerProfile from "./Component/Panels/Retailer/RetailerProfile/Retaile
 import RetailerReportPage from "./Component/Panels/Admin/AdminReports/RetailerReportPage";
 
 
+//sales 
+import SalesReportPage from "./Component/Panels/Admin/AdminReports/SalesReportPage";
+
 // Admin Pages
 import AdminRetailers from "./Component/Panels/Admin/AdminRetailers/Retailers";
 import AddRetailerForm from "./Component/Panels/Admin/AdminRetailers/AddRetailer"
@@ -101,6 +104,8 @@ import AddExpenses from "./Component/Panels/Admin/AdminExpenses/AddExpenses";
 import AdminReports from "./Component/Panels/Admin/AdminReports/Reports";
 import AdminRoleAccess from "./Component/Panels/Admin/AdminRoleAccess/RoleAccess";
 import DashboardCard from "./Component/Panels/Admin/AdminDashboard/DashboardCard"
+import ExpenseReportPage from "./Component/Panels/Admin/AdminReports/ExpenseReportPage";
+
 
 // Staff Pages (Mobile Only)
 import MyRetailers from "./Component/Panels/Staff/StaffPages/Staff_MyRetailers/MyRetailers";
@@ -232,6 +237,7 @@ function App() {
 
         <Route path="/expenses" element={<AdminExpenses />} />
         <Route path="/expenses/add" element={<AddExpenses />} />
+            <Route path="/reports/expense-report-page" element={<ExpenseReportPage />} />
         <Route path="/reports" element={<AdminReports />} />
         <Route path="/roleaccess" element={<AdminRoleAccess />} />
         <Route path="/sales_visit" element={<SalesVisit />} />
@@ -273,7 +279,7 @@ function App() {
 
 
 
-
+     <Route path="/reports/sales-report-page" element={<SalesReportPage />} />
 
 
 

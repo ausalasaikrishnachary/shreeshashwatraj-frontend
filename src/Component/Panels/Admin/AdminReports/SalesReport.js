@@ -3,6 +3,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell
 } from 'recharts';
+import { Link } from "react-router-dom";
+import { FaChartLine } from "react-icons/fa";
 
 const SalesReport = () => {
   // Sales trend data
@@ -51,6 +53,14 @@ const SalesReport = () => {
           <h3>P Sales</h3>
           <div className="stat-value">666,677</div>
         </div>
+
+<Link to="/reports/sales-report-page" className="stat-card">
+  <div className="icon-container">
+    <FaChartLine className="icon" />   {/* ✅ new icon */}
+  </div>
+  <h4 className="mt-3">View Sales Report</h4>
+</Link>
+
       </div>
 
       <div className="charts-container">
