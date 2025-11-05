@@ -1,228 +1,291 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import StaffMobileLayout from "../StaffMobileLayout/StaffMobileLayout";
 import "./StaffOffers.css";
 
 function StaffOffers() {
-  const [activeTab, setActiveTab] = useState("Offers & Discounts");
+  const [offers, setOffers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const offersPerPage = 5;
 
-  const tabs = ["Offers & Discounts", "Marketing Campaigns"];
+  const API_BASE = "http://localhost:5000/api";
 
-  const statsData = {
-    "Offers & Discounts": {
-      activeOffers: 1,
-      totalUsage: 70,
-      scheduled: 1,
-      campaignsSent: 2
-    },
-    "Marketing Campaigns": {
-      activeOffers: 3,
-      totalUsage: 120,
-      scheduled: 2,
-      campaignsSent: 5
+  // Function to format date to Indian format (DD/MM/YYYY)
+  const formatToIndianDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
+      
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid Date';
     }
   };
 
-  const offersData = [
-    {
-      id: 1,
-      title: "Electronics Mega Sale",
-      category: "Electronics",
-      type: "Category",
-      description: "Flat 20% off on all electronics items above ₹10,000",
-      discount: "20%",
-      validFrom: "2024-01-15",
-      validTill: "2024-01-31",
-      createdBy: "Admin",
-      terms: "Minimum order: ₹10,000 • Max discount: ₹5,000",
-      usage: "47 / 200",
-      status: "Active"
-    },
-    {
-      id: 2,
-      title: "Flash Sale - Textiles",
-      category: "Textiles",
-      type: "Flash",
-      description: "Buy 2 Get 1 Free on textile inventory",
-      discount: "Buy 2 Get 1",
-      validFrom: "2024-01-16",
-      validTill: "2024-01-16",
-      createdBy: "Admin",
-      terms: "Limited stock • While supplies last",
-      usage: "23 / 50",
-      status: "Expired"
-    },
-    {
-      id: 3,
-      title: "New Year Global Offer",
-      category: "All Categories",
-      type: "Global",
-      description: "$500 off on orders above ₹5000 - Valid for all categories",
-      discount: "₹500",
-      validFrom: "2024-01-20",
-      validTill: "2024-02-20",
-      createdBy: "Admin",
-      terms: "Minimum order: ₹5,000",
-      usage: "70 / 200",
-      status: "Active"
+  const fetchOffers = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE}/offers?page=${currentPage}&limit=${offersPerPage}&search=${searchTerm}&offer_type=${filterType === 'All' ? '' : filterType}`
+      );
+      const data = await response.json();
+      if (data.offers) {
+        setOffers(data.offers);
+      }
+    } catch (error) {
+      console.error('Error fetching offers:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const campaignsData = [
-    {
-      id: 1,
-      title: "Q1 Product Launch",
-      type: "Email Campaign",
-      description: "New product lineup announcement to all retailers",
-      status: "Scheduled",
-      sentDate: "2024-02-01",
-      recipients: "All Retailers",
-      performance: "78% Open Rate"
-    },
-    {
-      id: 2,
-      title: "Seasonal Promotion",
-      type: "SMS Campaign",
-      description: "Special discounts for spring season",
-      status: "Sent",
-      sentDate: "2024-01-15",
-      recipients: "Premium Retailers",
-      performance: "45% Click Rate"
+  const deleteOffer = async (id) => {
+    try {
+      const response = await fetch(`${API_BASE}/offers/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      fetchOffers();
+    } catch (error) {
+      console.error('Error deleting offer:', error);
+      alert('Error deleting offer. Please try again.');
     }
-  ];
+  };
 
-  const currentStats = statsData[activeTab];
-  const displayData = activeTab === "Offers & Discounts" ? offersData : campaignsData;
+  const toggleOfferStatus = async (id, currentStatus) => {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    try {
+      const response = await fetch(`${API_BASE}/offers/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      fetchOffers();
+    } catch (error) {
+      console.error('Error updating offer status:', error);
+      alert('Error updating offer status. Please try again.');
+    }
+  };
+
+  useEffect(() => {
+    fetchOffers();
+  }, [currentPage, searchTerm, filterType]);
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this offer?")) {
+      await deleteOffer(id);
+    }
+  };
+
+  const handleToggleStatus = async (id, currentStatus) => {
+    await toggleOfferStatus(id, currentStatus);
+  };
+
+  // Filter and Pagination Logic
+  const filteredOffers = offers.filter((offer) => {
+    const matchesSearch = offer.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         offer.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filterType === "All" || offer.offer_type === filterType;
+    return matchesSearch && matchesFilter;
+  });
+
+  const totalPages = Math.ceil(filteredOffers.length / offersPerPage);
+  const indexOfLastItem = currentPage * offersPerPage;
+  const indexOfFirstItem = indexOfLastItem - offersPerPage;
+  const currentItemsPage = filteredOffers.slice(indexOfFirstItem, indexOfLastItem);
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+
+  const handleAddNew = () => {
+    // Implement add new offer functionality
+    alert("Add new offer functionality to be implemented");
+  };
+
+  const handleEditItem = (offer) => {
+    // Implement edit offer functionality
+    alert(`Edit offer: ${offer.title}`);
+  };
+
+  const renderRegularOfferCard = (offer) => (
+    <div key={offer.id} className={`offers-card-item mobile ${offer.status}`}>
+      <div className="offers-card-image">
+        {offer.image_url ? (
+          <img src={`http://localhost:5000${offer.image_url}`} alt={offer.title} />
+        ) : (
+          <div className="offers-no-image">No Image</div>
+        )}
+      </div>
+      
+      <div className="offers-card-content">
+        <div className="offers-card-header">
+          <h3 className="offers-card-title">{offer.title}</h3>
+          <span className={`offers-status-badge ${offer.status}`}>
+            {offer.status}
+          </span>
+        </div>
+        
+        <p className="offers-card-desc">{offer.description}</p>
+        
+        <div className="offers-details-list">
+          <div className="offers-detail-item">
+            <strong>Discount:</strong> {offer.discount_percentage}%
+          </div>
+          
+          <div className="offers-detail-item">
+            <strong>Min. Amount:</strong> ₹{offer.minimum_amount || 0}
+          </div>
+          
+          {offer.offer_type === 'category' && (
+            <>
+              <div className="offers-detail-item">
+                <strong>Category:</strong> {offer.category_name}
+              </div>
+              {offer.product_name && (
+                <div className="offers-detail-item">
+                  <strong>Product:</strong> {offer.product_name}
+                </div>
+              )}
+            </>
+          )}
+          
+          <div className="offers-detail-item">
+            <strong>Valid:</strong> {formatToIndianDate(offer.valid_from)} to {formatToIndianDate(offer.valid_until)}
+          </div>
+        </div>
+
+        {/* <div className="offers-card-actions mobile">
+          <button 
+            className="offers-btn-edit"
+            onClick={() => handleEditItem(offer)}
+          >
+            Edit
+          </button>
+          <button 
+            className="offers-btn-delete"
+            onClick={() => handleDelete(offer.id)}
+          >
+            Delete
+          </button>
+          <button 
+            className={`offers-btn-status ${offer.status}`}
+            onClick={() => handleToggleStatus(offer.id, offer.status)}
+          >
+            {offer.status === 'active' ? 'Deactivate' : 'Activate'}
+          </button>
+        </div> */}
+      </div>
+    </div>
+  );
 
   return (
     <StaffMobileLayout>
       <div className="staff-offers-mobile">
-        <header className="offers-header">
-          <h1>Offers & Campaigns</h1>
-          <p>Manage your promotional offers and marketing campaigns</p>
-        </header>
+        <h1>Offers Module</h1>
 
-        {/* Stats Overview */}
-        <div className="stats-overview">
-          <div className="stat-item">
-            <div className="stat-value">{currentStats.activeOffers}</div>
-            <div className="stat-label">Active Offers</div>
+        {/* Filters Section */}
+        <div className="offers-filters-section mobile">
+          <div className="offers-search-box mobile">
+            <input
+              type="text"
+              placeholder="Search offers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="offers-search-input mobile"
+            />
+            <span className="offers-search-icon">🔍</span>
           </div>
-          <div className="stat-item">
-            <div className="stat-value">{currentStats.totalUsage}</div>
-            <div className="stat-label">Total Usage</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-value">{currentStats.scheduled}</div>
-            <div className="stat-label">Scheduled</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-value">{currentStats.campaignsSent}</div>
-            <div className="stat-label">Campaigns Sent</div>
-          </div>
+          
+          <select 
+            value={filterType} 
+            onChange={(e) => setFilterType(e.target.value)}
+            className="offers-filter-select mobile"
+          >
+            <option value="All">All Offers</option>
+            <option value="global">Global Offers</option>
+            <option value="category">Category Specific</option>
+          </select>
         </div>
 
-        {/* Tabs Section */}
-        <div className="tabs-section">
-          <div className="tabs-container">
-            {tabs.map(tab => (
-              <div
-                key={tab}
-                className={`tab-item ${activeTab === tab ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </div>
-            ))}
-          </div>
-        </div>
+        {loading && (
+          <div className="offers-loading mobile">Loading offers...</div>
+        )}
 
-        {/* Content Section */}
-        <div className="offers-content">
-          {activeTab === "Offers & Discounts" ? (
-            <div className="offers-list">
-              {offersData.map(offer => (
-                <div key={offer.id} className="offer-card">
-                  <div className="offer-header">
-                    <div className="offer-title-section">
-                      <h3 className="offer-title">{offer.title}</h3>
-                      <div className="offer-category-type">
-                        <span className="offer-category">{offer.category}</span>
-                        <span className="offer-type">{offer.type}</span>
-                      </div>
-                    </div>
-                    <span className={`status-badge ${offer.status.toLowerCase()}`}>
-                      {offer.status}
-                    </span>
-                  </div>
-
-                  <p className="offer-description">{offer.description}</p>
-
-                  <div className="offer-details">
-                    <div className="detail-row">
-                      <span className="detail-label">Discount</span>
-                      <span className="detail-value discount">{offer.discount}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Valid From</span>
-                      <span className="detail-value">{offer.validFrom}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Valid Till</span>
-                      <span className="detail-value">{offer.validTill}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Created By</span>
-                      <span className="detail-value">{offer.createdBy}</span>
-                    </div>
-                  </div>
-
-                  <div className="offer-terms">
-                    {offer.terms}
-                  </div>
-
-                  <div className="offer-usage">
-                    <span className="usage-label">Usage</span>
-                    <span className="usage-value">{offer.usage}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* Offers Grid */}
+        <div className="offers-cards-grid mobile">
+          {currentItemsPage.length > 0 ? (
+            currentItemsPage.map(renderRegularOfferCard)
           ) : (
-            <div className="campaigns-list">
-              {campaignsData.map(campaign => (
-                <div key={campaign.id} className="campaign-card">
-                  <div className="campaign-header">
-                    <h3 className="campaign-title">{campaign.title}</h3>
-                    <span className={`status-badge ${campaign.status.toLowerCase()}`}>
-                      {campaign.status}
-                    </span>
-                  </div>
-
-                  <div className="campaign-type">
-                    {campaign.type}
-                  </div>
-
-                  <p className="campaign-description">{campaign.description}</p>
-
-                  <div className="campaign-details">
-                    <div className="detail-row">
-                      <span className="detail-label">Sent Date</span>
-                      <span className="detail-value">{campaign.sentDate}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Recipients</span>
-                      <span className="detail-value">{campaign.recipients}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Performance</span>
-                      <span className="detail-value performance">{campaign.performance}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="offers-empty-state mobile">
+              <div className="offers-empty-icon">📋</div>
+              <h3>No offers found</h3>
+              <p>
+                {searchTerm 
+                  ? "No offers match your search criteria."
+                  : "Get started by creating your first offer."
+                }
+              </p>
+              <button 
+                className="offers-add-btn mobile"
+                onClick={handleAddNew}
+              >
+                + Add Offer
+              </button>
             </div>
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && filteredOffers.length > 0 && (
+          <div className="offers-pagination mobile">
+            <button 
+              onClick={handlePrevPage} 
+              disabled={currentPage === 1}
+              className="offers-pagination-btn mobile"
+            >
+              Previous
+            </button>
+            <span className="offers-pagination-info mobile">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button 
+              onClick={handleNextPage} 
+              disabled={currentPage === totalPages}
+              className="offers-pagination-btn mobile"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
     </StaffMobileLayout>
   );

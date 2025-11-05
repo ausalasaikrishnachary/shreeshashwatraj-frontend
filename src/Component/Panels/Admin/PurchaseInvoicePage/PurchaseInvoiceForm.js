@@ -788,51 +788,51 @@ const handleSubmit = async (e) => {
                             New
                           </Button>
                         </div>
-                        <Form.Select
-                          className="mb-2 border-primary"
-                          value={inputName}
-                          onChange={(e) => {
-                            const selectedName = e.target.value;
-                            setInputName(selectedName);
-                            const supplier = accounts.find(acc => acc.business_name === selectedName);
-                            if (supplier) {
-                              setSelectedSupplierId(supplier.id);
-                              setSelected(true);
-                              setInvoiceData(prev => ({
-                                ...prev,
-                                supplierInfo: {
-                                  name: supplier.display_name,
-                                  businessName: supplier.business_name,
-                                  state: supplier.billing_state,
-                                  gstin: supplier.gstin
-                                },
-                                billingAddress: {
-                                  addressLine1: supplier.billing_address_line1,
-                                  addressLine2: supplier.billing_address_line2 || "",
-                                  city: supplier.billing_city,
-                                  pincode: supplier.billing_pin_code,
-                                  state: supplier.billing_state
-                                },
-                                shippingAddress: {
-                                  addressLine1: supplier.shipping_address_line1,
-                                  addressLine2: supplier.shipping_address_line2 || "",
-                                  city: supplier.shipping_city,
-                                  pincode: supplier.shipping_pin_code,
-                                  state: supplier.shipping_state
-                                }
-                              }));
-                            }
-                          }}
-                        >
-                          <option value="">Select Customer</option>
-                          {accounts
-                            .filter(acc => acc.role === "retailer")
-                            .map(acc => (
-                              <option key={acc.id} value={acc.business_name}>
-                                {acc.business_name} ({acc.mobile_number})
-                              </option>
-                            ))}
-                        </Form.Select>
+                       <Form.Select
+  className="mb-2 border-primary"
+  value={inputName}
+  onChange={(e) => {
+    const selectedName = e.target.value;
+    setInputName(selectedName);
+    const supplier = accounts.find(acc => acc.business_name === selectedName);
+    if (supplier) {
+      setSelectedSupplierId(supplier.id);
+      setSelected(true);
+      setInvoiceData(prev => ({
+        ...prev,
+        supplierInfo: {
+          name: supplier.display_name,
+          businessName: supplier.business_name,
+          state: supplier.billing_state,
+          gstin: supplier.gstin
+        },
+        billingAddress: {
+          addressLine1: supplier.billing_address_line1,
+          addressLine2: supplier.billing_address_line2 || "",
+          city: supplier.billing_city,
+          pincode: supplier.billing_pin_code,
+          state: supplier.billing_state
+        },
+        shippingAddress: {
+          addressLine1: supplier.shipping_address_line1,
+          addressLine2: supplier.shipping_address_line2 || "",
+          city: supplier.shipping_city,
+          pincode: supplier.shipping_pin_code,
+          state: supplier.shipping_state
+        }
+      }));
+    }
+  }}
+>
+  <option value="">Select Supplier</option> {/* Changed from "Select Customer" */}
+  {accounts
+    .filter(acc => acc.role === "supplier") // ← CHANGED FROM "retailer" TO "supplier"
+    .map(acc => (
+      <option key={acc.id} value={acc.business_name}>
+        {acc.business_name} ({acc.mobile_number})
+      </option>
+    ))}
+</Form.Select>
                       </>
                     ) : (
                       <>
@@ -1032,7 +1032,7 @@ const handleSubmit = async (e) => {
                 </Row>
 
                 {/* Batch Details Display */}
-                {selectedBatchDetails && (
+                {/* {selectedBatchDetails && (
                   <Row className="mt-2">
                     <Col>
                       <div className="bg-info bg-opacity-10 p-2 rounded border">
@@ -1046,7 +1046,7 @@ const handleSubmit = async (e) => {
                       </div>
                     </Col>
                   </Row>
-                )}
+                )} */}
               </div>
 
               {/* Items Table */}

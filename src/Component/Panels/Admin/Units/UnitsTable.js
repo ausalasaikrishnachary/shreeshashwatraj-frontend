@@ -25,71 +25,99 @@ function UnitsTable() {
   const [unitName, setUnitName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  // Normalize unit data
+  const normalizeUnit = (unit) => {
+    return {
+      id: unit.id,
+      unit_name: unit.name || unit.unit_name,
+      symbol: unit.symbol || (unit.name ? unit.name.substring(0, 2).toLowerCase() : ""),
+      unit_type: unit.unit_type || "General",
+      base_unit: unit.base_unit || (unit.name ? unit.name.toLowerCase() : ""),
+      conversion_factor: unit.conversion_factor || "1",
+      description: unit.description || `Unit for ${unit.name || unit.unit_name}`,
+      decimal_places: unit.decimal_places || "2",
+      status: unit.status || "Active",
+      created_date: unit.created_date || new Date().toISOString().split('T')[0],
+      created_at: unit.created_at || unit.created_date || new Date().toISOString()
+    };
+  };
+
+  // Sort units by created_at in descending order (newest first)
+  const sortUnitsByCreatedAt = (units) => {
+    return units.sort((a, b) => {
+      const dateA = new Date(a.created_at || a.created_date || a.id);
+      const dateB = new Date(b.created_at || b.created_date || b.id);
+      return dateB - dateA; // Descending order (newest first)
+    });
+  };
+
   // Fetch units data from API
   useEffect(() => {
     fetchUnits();
   }, []);
 
- const fetchUnits = async () => {
-  try {
-    setLoading(true);
-    const response = await axios.get(`${baseurl}/units`);
-    const transformedData = response.data.map(unit => ({
-      id: unit.id,
-      unit_name: unit.name,
-      symbol: unit.name.substring(0, 2).toLowerCase(),
-      unit_type: "General",
-      base_unit: unit.name.toLowerCase(),
-      conversion_factor: "1",
-      description: `Unit for ${unit.name}`,
-      decimal_places: "2",
-      status: "Active",
-      created_date: new Date().toISOString().split('T')[0]
-    }));
-    
-    // Sort units by ID descending (newest first)
-    const sortedData = transformedData.sort((a, b) => b.id - a.id);
-    setUnitsData(sortedData);
-    setError(null);
-  } catch (err) {
-    console.error('Failed to fetch units:', err);
-    setError('Failed to load units data');
-    
-    const staticUnitsData = [
-      {
-        id: 1,
-        unit_name: "Kilogram",
-        symbol: "kg",
-        unit_type: "Weight",
-        base_unit: "gram",
-        conversion_factor: "1000",
-        description: "Standard unit for measuring weight",
-        decimal_places: "3",
-        status: "Active",
-        created_date: "2023-01-15"
-      },
-      {
-        id: 2,
-        unit_name: "Meter",
-        symbol: "m",
-        unit_type: "Length",
-        base_unit: "meter",
+  const fetchUnits = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${baseurl}/units`);
+      const transformedData = response.data.map(unit => ({
+        id: unit.id,
+        unit_name: unit.name,
+        symbol: unit.name.substring(0, 2).toLowerCase(),
+        unit_type: "General",
+        base_unit: unit.name.toLowerCase(),
         conversion_factor: "1",
-        description: "Standard unit for measuring length",
+        description: `Unit for ${unit.name}`,
         decimal_places: "2",
         status: "Active",
-        created_date: "2023-01-10"
-      }
-    ];
-    
-    // Sort static data as well
-    const sortedStaticData = staticUnitsData.sort((a, b) => b.id - a.id);
-    setUnitsData(sortedStaticData);
-  } finally {
-    setLoading(false);
-  }
-};
-
+        created_date: new Date().toISOString().split('T')[0],
+        created_at: unit.created_at || new Date().toISOString()
+      }));
+      
+      // Sort units by created_at (newest first)
+      const sortedData = sortUnitsByCreatedAt(transformedData);
+      setUnitsData(sortedData);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch units:', err);
+      setError('Failed to load units data');
+      
+      const staticUnitsData = [
+        {
+          id: 1,
+          unit_name: "Kilogram",
+          symbol: "kg",
+          unit_type: "Weight",
+          base_unit: "gram",
+          conversion_factor: "1000",
+          description: "Standard unit for measuring weight",
+          decimal_places: "3",
+          status: "Active",
+          created_date: "2023-01-15",
+          created_at: "2023-01-15T10:00:00Z"
+        },
+        {
+          id: 2,
+          unit_name: "Meter",
+          symbol: "m",
+          unit_type: "Length",
+          base_unit: "meter",
+          conversion_factor: "1",
+          description: "Standard unit for measuring length",
+          decimal_places: "2",
+          status: "Active",
+          created_date: "2023-01-10",
+          created_at: "2023-01-10T09:30:00Z"
+        }
+      ];
+      
+      // Sort static data as well
+      const sortedStaticData = sortUnitsByCreatedAt(staticUnitsData);
+      setUnitsData(sortedStaticData);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter units when search term changes
   useEffect(() => {
@@ -134,23 +162,12 @@ function UnitsTable() {
     
     setIsSaving(true);
     try {
-      const response = await axios.put(`${baseurl}/units/${editingUnit.id}`, {
+      await axios.put(`${baseurl}/units/${editingUnit.id}`, {
         name: unitName
       });
       
-      // Update the unit in local state
-      const updatedUnits = unitsData.map(unit =>
-        unit.id === editingUnit.id 
-          ? { 
-              ...unit, 
-              unit_name: unitName,
-              symbol: unitName.substring(0, 2).toLowerCase(),
-              description: `Unit for ${unitName}`,
-              base_unit: unitName.toLowerCase()
-            }
-          : unit
-      );
-      setUnitsData(updatedUnits);
+      // Refetch units to get proper sorting with updated data
+      await fetchUnits();
       
       setUnitName("");
       setShowEditModal(false);
@@ -166,7 +183,7 @@ function UnitsTable() {
 
   // Handle add new unit from modal
   const handleAddUnit = (newUnit) => {
-    fetchUnits();
+    fetchUnits(); // This will refetch and sort with newest first
     setShowAddModal(false);
   };
 
@@ -176,10 +193,15 @@ function UnitsTable() {
   };
 
   // Custom renderers for units data
+  const renderSerialNumberCell = (item, index) => (
+    <div className="units-table__sno-cell">
+      <span className="units-table__sno">{index + 1}</span>
+    </div>
+  );
+
   const renderUnitCell = (item) => (
     <div className="units-table__unit-cell">
       <strong className="units-table__unit-name">{item.unit_name}</strong>
-      {/* <span className="units-table__unit-symbol">({item.symbol}) - {item.unit_type}</span> */}
     </div>
   );
 
@@ -209,9 +231,12 @@ function UnitsTable() {
   );
 
   const columns = [
-    { key: "id", title: "ID" },
+    { 
+      key: "__item", 
+      title: "S.No", 
+      render: (value, item, index) => renderSerialNumberCell(item, index) 
+    },
     { key: "__item", title: "Unit", render: (value, item) => renderUnitCell(item) },
-    // { key: "__item", title: "Status", render: (value, item) => renderStatusCell(item) },
     { key: "__item", title: "Actions", render: (value, item) => renderActionsCell(item) }
   ];
 

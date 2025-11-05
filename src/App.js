@@ -92,13 +92,6 @@ import VoucherTable from "./Component/Panels/Admin/Vochur/VochurTable";
 import AddProduct from './Component/Panels/Admin/AdminProducts/AddProducts';
 import AdminMarketing from "./Component/Panels/Admin/AdminMarketing/Marketing";
 import AddMarketing from "./Component/Panels/Admin/AdminMarketing/AddMarketing";
-
-import GlobalOffers from "./Component/Panels/Admin/AdminMarketing/OffersModule/GlobalOffers";
-import CategorySpecificOffers from "./Component/Panels/Admin/AdminMarketing/OffersModule/Category-Specific-Offers";
-import FlashSales from "./Component/Panels/Admin/AdminMarketing/OffersModule/Flash-Sales";
-import OffersPostings from "./Component/Panels/Admin/AdminMarketing/OffersModule/OffersPostings/OffersPostings";
-
-
 import AdminExpenses from "./Component/Panels/Admin/AdminExpenses/Expenses";
 import AddExpenses from "./Component/Panels/Admin/AdminExpenses/AddExpenses";
 import AdminReports from "./Component/Panels/Admin/AdminReports/Reports";
@@ -139,12 +132,20 @@ import InvoicePDFPreview from './Component/Panels/Admin/SalesInvoicePage/Invoice
 import PurchasePDFPreview from "./Component/Panels/Admin/PurchaseInvoicePage/PurchasePDFPreview";
 import ReceiptView from "./Component/Panels/Admin/Receipts/Receiptsview";
 import AddUnitModal from "./Component/Panels/Admin/Inventory/Sales_catalogue/AddUnitsModal";
-// Add this import
-import InvoicePDFDownload from './Component/Panels/Admin/SalesInvoicePage/InvoicePDFDocument';
-
+import OffersPostings from './Component/Panels/Admin/AdminMarketing/OffersModule/OffersPostings/OffersPostings'
 import Category from "./Component/Panels/Admin/Category/CategoryTable"
 import Company from "./Component/Panels/Admin/Company/CompanyTable"
 import Units from "./Component/Panels/Admin/Units/UnitsTable"
+import Ledger from "./Component/Panels/Admin/Ledger/Ledger";
+import CreateNote from "./Component/Panels/Admin/CreditNote/CreateNote";
+// Add this import
+import InvoicePDFDownload from './Component/Panels/Admin/SalesInvoicePage/InvoicePDFDocument';
+
+// import Category from "./Component/Panels/Admin/Category/CategoryTable"
+// import Company from "./Component/Panels/Admin/Company/CompanyTable"
+// import Units from "./Component/Panels/Admin/Units/UnitsTable"
+import Profile from "./Component/Panels/Retailer/RetailerProfile/Profile";
+import RetailerOrders from "./Component/Panels/Retailer/RetailerOrders/RetailerOrders";
 
 
 
@@ -169,6 +170,10 @@ function App() {
         <Route path="/retailer-history" element={<RetailerHistory />} />
         <Route path="/retailer-offers" element={<RetailerOffers />} />
         <Route path="/retailer-profile" element={<RetailerProfile />} />
+        <Route path="/profile/:id" element={<Profile />} />
+        <Route path="/retailer-orders" element={<RetailerOrders />} />
+{/* <Route path="/retailer-profile/:id?" element={<RetailerProfile />} /> */}
+
          <Route path="/reports/retailer-report-page" element={<RetailerReportPage />} />
 
 
@@ -190,6 +195,8 @@ function App() {
          <Route path="/sales/invoices" element={<SalesInvoiceTable />} />
          <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
 <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
+           <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
+         <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
            <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
  
   
@@ -213,7 +220,7 @@ function App() {
 
         <Route path="/purchase/purchase-invoice" element={<PurchaseInvoiceTable />} />
         <Route path="/purchase/create-purchase-invoice" element={<CreatePurchaseInvoiceForm />} />
-          <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
+          <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
 
         <Route path="/purchase/purchase-order" element={<PurchaseOrderTable />} />
         <Route path="/purchase/voucher" element={<VoucherTable />} />
@@ -223,10 +230,14 @@ function App() {
         <Route path="/add-product" element={<AddProduct />} />
         <Route path="/marketing" element={<AdminMarketing />} />
         <Route path="/add-marketing" element={<AddMarketing />} />
-        <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} />
-<Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} />
-<Route path="/admin/marketing/flash-sales" element={<FlashSales />} />|
-<Route path="/admin/marketing/offers-postings" element={<OffersPostings />} />
+        {/* <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} /> */}
+        {/* <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} /> */}
+        {/* <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />| */}
+        <Route path="/admin/marketing/offers-postings" element={<OffersPostings />} />
+        {/* <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} />
+        <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} />
+        <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />|
+        <Route path="/admin/marketing/offers-postings" element={<OffersPostings />} /> */}
 
 
  
@@ -249,8 +260,6 @@ function App() {
              <Route path='/AddProductPage' element={<AddProductPage />} />
 <Route path="/AddProductPage/:productId" element={<AddProductPage />} />
             <Route path='/salesitemspage/:productId' element={<SalesItemsPage />} />
-        
-              <Route path="/sales/invoice-download" element={<InvoicePDFDownload />} />
              <Route path='/salesitemspage' element={<SalesItemsPage />} />
             <Route path="/addcompanymodal " element={<AddCompanyModal />} />
             <Route path="/addcategorymodal" element={<AddCategoryModal />} />
@@ -261,26 +270,29 @@ function App() {
 
             <Route path="/staff_expensive" element={<Staff_expensive />} />
             <Route path="/staff_add_expensive" element={<Staff_Add_expensive />} />
-            <Route path="/admin_expensive" element={<AdminExpensiveRequest />} />
-            <Route path="/admin_expensive/view/:id" element={<AdminExpensiveRequest mode="view"/>} />
-            <Route path="/admin_expensive/edit/:id" element={<AdminExpensiveRequest mode="edit"/>} />
-            <Route path="/salesitems_productdetails/:id" element={<Salesitems_productsdetails />} />
-            <Route path="/receipts_view/:id" element={<ReceiptView />} />
-            <Route path="/addunitsmodal" element={<AddUnitModal />} />
+<Route path="/admin_expensive" element={<AdminExpensiveRequest />} />
+<Route path="/admin_expensive/view/:id" element={<AdminExpensiveRequest mode="view"/>} />
+<Route path="/admin_expensive/edit/:id" element={<AdminExpensiveRequest mode="edit"/>} />
+<Route path="/salesitems_productdetails/:id" element={<Salesitems_productsdetails />} />
+<Route path="/receipts_view/:id" element={<ReceiptView />} />
+<Route path="/addunitsmodal" element={<AddUnitModal />} />
 
-
-
-            <Route path="/category" element={<Category />} />
+<Route path="/category" element={<Category />} />
             <Route path="/category/:id" element={<Category />} />
             <Route path="/company" element={<Company />} />
             <Route path="/company/:id" element={<Company />} />
             <Route path="/units" element={<Units />} />
+            <Route path="/ledger" element={<Ledger />} />
+
+            <Route path="sales/create_note" element={<CreateNote />} />
+
+
+
+
             <Route path="/units/:id" element={<Units />} />
 
 
-
      <Route path="/reports/sales-report-page" element={<SalesReportPage />} />
-
 
 
 

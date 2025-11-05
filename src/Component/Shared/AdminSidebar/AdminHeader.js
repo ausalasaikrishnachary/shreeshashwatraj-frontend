@@ -24,7 +24,10 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
     "/purchased_items": "Purchased Items",
     "/purchased_items": "Purchase Items",
     "/sale_items": "Sales Items",
-    "/admin_expensive" : "Expensive Request", 
+    "/admin_expensive" : "Expensive Request",
+    "/ledger": "Ledger",
+    "/sales/create_note": "Credit Note",
+    "/purchase/create-purchase-invoice": "Purchase Invoice"
   };
 
   const getPageTitle = () => {

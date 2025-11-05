@@ -173,15 +173,20 @@ const ReusableTable = ({
           </thead>
           <tbody>
             {paginatedData.length > 0 ? (
-              paginatedData.map((item, index) => (
-                <tr key={index} className="rt-table__row">
-                  {columns.map((column) => (
-                    <td key={column.key} className="rt-table__cell" style={column.style || {}}>
-                      {column.render ? column.render(item[column.key], item, index) : item[column.key]}
-                    </td>
-                  ))}
-                </tr>
-              ))
+              paginatedData.map((item, pageIndex) => {
+                // Calculate the global index in the filtered data
+                const globalIndex = startIndex + pageIndex;
+                
+                return (
+                  <tr key={globalIndex} className="rt-table__row">
+                    {columns.map((column) => (
+                      <td key={column.key} className="rt-table__cell" style={column.style || {}}>
+                        {column.render ? column.render(item[column.key], item, globalIndex) : item[column.key]}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
             ) : (
               <tr className="rt-table__row">
                 <td className="rt-table__cell" colSpan={columns.length}>

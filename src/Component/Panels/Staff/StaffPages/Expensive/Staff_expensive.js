@@ -51,11 +51,11 @@ function Staff_expensive() {
         <div className="page-header">
           <div className="header-content">
             <div className="header-text">
-              <h1>Expensive</h1>
+              <h1>Expenses</h1>
               <p>Manage retailer relationships and track performance</p>
             </div>
             <button className="add-retailer-btn-top" onClick={handleAddRetailer}>
-              + Add Expensive
+              + Add Expense
             </button>
           </div>
         </div>
@@ -74,7 +74,7 @@ function Staff_expensive() {
 
         <div className="retailers-section">
           <div className="section-header">
-            <h2>Expensive ({filteredRetailers.length})</h2>
+            <h2>Expense ({filteredRetailers.length})</h2>
             <p>Track retailer performance and manage relationships</p>
           </div>
 
