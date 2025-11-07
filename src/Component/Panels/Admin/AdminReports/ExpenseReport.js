@@ -12,6 +12,8 @@ import {
 } from "recharts";
 import { FaClipboard, FaCalendarAlt, FaCheckSquare, FaTimesCircle } from "react-icons/fa";
 import "./ExpenseReports.css";
+import { Link } from "react-router-dom";
+import { FaMoneyBillAlt } from "react-icons/fa";
 
 const Dashboard = () => {
   // Data for Pie Chart
@@ -63,6 +65,13 @@ const Dashboard = () => {
             <p className="value red-text">3</p>
           </div>
         </div>
+  <Link to="/reports/expense-report-page" className="stat-card">
+  <div className="icon-container">
+    <FaMoneyBillAlt className="icon" />
+  </div>
+  <h4 className="mt-3">View Expense Report</h4>
+</Link>
+                   
       </div>
 
       {/* Charts Section */}

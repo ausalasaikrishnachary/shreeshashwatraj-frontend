@@ -106,7 +106,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
 
   const menuItems = [
     { path: "/admindashboard", name: "Dashboard", icon: <FaTachometerAlt /> },
-    { path: "/retailers", name: "Retailers", icon: <FaUsers /> },
+    { path: "/retailers", name: "Contacts", icon: <FaUsers /> },
     { path: "/staff", name: "Staff", icon: <FaUserTie /> },
     { path: "/sales_visit", name: "Sales Visit", icon: <FaClipboardList /> },
     {
@@ -144,7 +144,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
         { path: "/purchase/payables", name: "Payables", icon: <FaHandHoldingUsd /> },
       ],
     },
-    { path: "/admin_expensive", name: "Expensive Request", icon: <FaMoneyBillWave /> },
+    { path: "/admin_expensive", name: "Expense Requests", icon: <FaMoneyBillWave /> },
         { path: "/ledger", name: "Ledger", icon: <FiHome /> },
 
     { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },

@@ -702,13 +702,13 @@ function Retailers() {
   ];
 
   const getTitle = () => {
-    return selectedRole === "retailer" ? "All Retailers" : "All Suppliers";
+    return selectedRole === "retailer" ? "All Contacts" : "All Suppliers";
   };
 
   const getSubtitle = () => {
     return selectedRole === "retailer" 
-      ? "Manage retailer relationships and track performance" 
-      : "Manage supplier relationships and track performance";
+      ? "" 
+      : "";
   };
 
   const getSectionTitle = () => {
@@ -717,8 +717,8 @@ function Retailers() {
 
   const getSectionDescription = () => {
     return selectedRole === "retailer" 
-      ? "Track retailer performance and manage relationships"
-      : "Track supplier performance and manage relationships";
+      ? ""
+      : "";
   };
 
   if (loading) {
@@ -818,7 +818,7 @@ function Retailers() {
       onClick={handleAddRetailer}
     >
       <span className="retailers-add-icon">+</span>
-      Add Retailer
+      Add Contact
     </button>
 
    

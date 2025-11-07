@@ -385,3 +385,22 @@ input.form-control {
     font-size: 0.7rem;
   }
 }
+
+
+/* Action buttons styling */
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* Ensure proper spacing for action buttons */
+.d-flex.gap-2 {
+  gap: 0.5rem;
+}
+
+/* Hover effects for action buttons */
+.btn-outline-primary:hover,
+.btn-outline-danger:hover {
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
