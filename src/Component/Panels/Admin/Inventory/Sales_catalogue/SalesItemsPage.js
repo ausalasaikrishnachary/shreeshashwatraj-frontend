@@ -226,87 +226,63 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     return newBarcode;
   };
 
-  // FIXED: Get batch number from backend to ensure uniqueness across all products
-  // In your createDefaultBatch function, update the fetchNextBatchNumber call:
- const fetchNextBatchNumber = async () => {
-    try {
-      console.log('🔄 Generating next batch number...');
-      console.log('📦 Available productId:', productId);
-      console.log('📦 Current batches:', batches.map(b => b.batchNumber));
-      
-      // METHOD 1: Use existing batches to determine next number
-      if (batches.length > 0) {
-        const existingNumbers = batches.map(batch => {
-          const num = batch.batchNumber.replace('S', '');
-          return parseInt(num) || 0;
-        }).filter(num => !isNaN(num));
-        
-        if (existingNumbers.length > 0) {
-          const highestNumber = Math.max(...existingNumbers);
-          const nextNumber = highestNumber + 1;
-          const batchNumber = `S${String(nextNumber).padStart(4, '0')}`;
-          console.log('✅ Generated from existing batches:', batchNumber);
-          return batchNumber;
-        }
-      }
-      
-      // METHOD 2: Try backend with productId if available
-      if (productId) {
-        console.log('🔄 Trying backend with productId:', productId);
-        try {
-          const response = await axios.get(`${baseurl}/batches/next-batch-number`, {
-            params: { 
-              group_by: formData.group_by || 'Salescatalog',
-              product_id: productId
-            }
-          });
-          
-          if (response.data.success) {
-            console.log('✅ Received from backend:', response.data.batch_number);
-            return response.data.batch_number;
-          }
-        } catch (backendError) {
-          console.log('⚠️ Backend failed, using fallback');
-        }
-      }
-      
-      // METHOD 3: Simple increment based on batch count
-      const fallbackNumber = `S${String(batches.length + 1).padStart(4, '0')}`;
-      console.log('✅ Using fallback batch number:', fallbackNumber);
-      return fallbackNumber;
-      
-    } catch (error) {
-      console.error('❌ Error in fetchNextBatchNumber:', error);
-      // Ultimate fallback
-      const timestamp = Date.now();
-      const ultimateFallback = `S${String(timestamp).slice(-4)}`;
-      console.log('🆘 Using ultimate fallback:', ultimateFallback);
-      return ultimateFallback;
-    }
-  };
+const fetchNextBatchNumber = async () => {
+  console.log('🔄 Generating next batch number...');
+  console.log('📦 Current batches:', batches.map(b => b.batchNumber));
 
-  const createDefaultBatch = async () => {
-    const newBarcode = await generateUniqueBarcode();
-    const batchNumber = await fetchNextBatchNumber();
-    
-    console.log('📦 Generated batch number from backend:', batchNumber);
-    
-    return {
-      id: `temp_${Date.now()}_${Math.random()}`,
-      dbId: null,
-      batchNumber: batchNumber,
-      mfgDate: '',
-      expDate: '',
-      quantity: formData.opening_stock || '',
-      costPrice: '',
-      sellingPrice: formData?.price || '',
-      purchasePrice: '',
-      mrp: '',
-      batchPrice: '',
-      barcode: newBarcode,
-      isExisting: false
-    };
+  try {
+    // Call API always, even for new product
+    const response = await axios.get(`${baseurl}/batches/next-batch-number`, {
+      params: {
+        group_by: formData.group_by || 'Salescatalog',
+        product_id: productId || ''  // empty if new product
+      }
+    });
+
+    if (response.data && response.data.success && response.data.batch_number) {
+      console.log('✅ Received batch number from backend:', response.data.batch_number);
+      return response.data.batch_number;
+    }
+
+    // Fallback if API fails
+    if (batches.length > 0) {
+      const existingNumbers = batches.map(b => parseInt(b.batchNumber.replace(/\D/g, '')) || 0);
+      const nextNumber = Math.max(...existingNumbers) + 1;
+      return `S${String(nextNumber).padStart(4, '0')}`;
+    }
+
+    return `S${String(batches.length + 1).padStart(4, '0')}`;
+  } catch (error) {
+    console.error('❌ Error fetching next batch number:', error);
+    return `S${String(batches.length + 1).padStart(4, '0')}`;
+  }
+};
+
+
+
+ const createDefaultBatch = async () => {
+  const newBarcode = await generateUniqueBarcode();
+  const batchNumber = await fetchNextBatchNumber(); 
+
+  console.log('📦 Final generated batch number:', batchNumber);
+
+  return {
+    id: `temp_${Date.now()}_${Math.random()}`,
+    dbId: null,
+    batchNumber, // ✅ backend or correct fallback
+    mfgDate: '',
+    expDate: '',
+    quantity: formData.opening_stock || '',
+    costPrice: '',
+    sellingPrice: formData?.price || '',
+    purchasePrice: '',
+    mrp: '',
+    batchPrice: '',
+    barcode: newBarcode,
+    isExisting: false
   };
+};
+
 
   const [formData, setFormData] = useState({
     group_by: groupType,
@@ -378,8 +354,6 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     setBatches(updated);
   };
 
-  // FIXED: Add new batch function with backend batch number generation
-// FIXED: Add new batch function with backend batch number generation
 const addNewBatch = async () => {
   try {
     console.log('➕ Starting to add new batch...');

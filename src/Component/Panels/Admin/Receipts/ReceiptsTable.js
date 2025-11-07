@@ -6,6 +6,8 @@ import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import './Receipts.css';
+import { render } from '@testing-library/react';
+
 
 const ReceiptsTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -36,8 +38,41 @@ const [formData, setFormData] = useState({
   retailerMobile: '',
   retailerEmail: '',
   retailerGstin: '',
-  retailerBusinessName: ''
+  retailerBusinessName: '',
+    transactionProofFile: '' // Add this
 });
+
+// File change handler
+const handleFileChange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size should be less than 5MB');
+      return;
+    }
+    
+    // Validate file type
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please select a valid file type (PDF, JPG, PNG, DOC, DOCX)');
+        return;
+      }
+    
+    setFormData(prev => ({
+      ...prev,
+      transactionProofFile: file
+    }));
+  }
+};
+
+// File remove handler
+const handleRemoveFile = () => {
+  setFormData(prev => ({
+    ...prev,
+    transactionProofFile: null
+  }));
+};
 
   const receiptStats = [
     { label: 'Total Receipts', value: '₹ 2,50,000', change: '+18%', type: 'total' },
@@ -86,6 +121,12 @@ const [formData, setFormData] = useState({
       title: 'PAYMENT METHOD', 
       style: { textAlign: 'center' },
       render: (value) => value || 'N/A'
+    },
+    {
+      key:'invoice_numbers',
+      title:'Accounting',
+      style:{textAlign:'center'},
+      render:(value) => value || '0'
     },
     { 
       key: 'receipt_date', 
@@ -273,7 +314,7 @@ const [formData, setFormData] = useState({
       bankName: '',
       transactionDate: '',
       reconciliationOption: 'Do Not Reconcile',
-      receiptNumber: nextReceiptNumber // Keep the latest receipt number
+      receiptNumber: nextReceiptNumber 
     }));
   };
 
@@ -301,96 +342,96 @@ const handleRetailerChange = (e) => {
   }));
 };
 
-  // Create new receipt
-  const handleCreateReceipt = async () => {
-    // Validation
-    if (!formData.retailerId) {
-      alert('Please select a retailer');
-      return;
+const handleCreateReceipt = async () => {
+  // Validation
+  if (!formData.retailerId) {
+    alert('Please select a retailer');
+    return;
+  }
+  if (!formData.amount || parseFloat(formData.amount) <= 0) {
+    alert('Please enter a valid amount');
+    return;
+  }
+  if (!formData.receiptDate) {
+    alert('Please select a receipt date');
+    return;
+  }
+
+  try {
+    setIsLoading(true);
+    
+    // Create FormData instead of JSON
+    const formDataToSend = new FormData();
+    
+    // Append all form fields
+    formDataToSend.append('receipt_number', formData.receiptNumber);
+    formDataToSend.append('retailer_id', formData.retailerId);
+    formDataToSend.append('amount', formData.amount);
+    formDataToSend.append('currency', formData.currency);
+    formDataToSend.append('payment_method', formData.paymentMethod);
+    formDataToSend.append('receipt_date', formData.receiptDate);
+    formDataToSend.append('note', formData.note);
+    formDataToSend.append('bank_name', formData.bankName);
+    formDataToSend.append('transaction_date', formData.transactionDate || '');
+    formDataToSend.append('reconciliation_option', formData.reconciliationOption);
+    formDataToSend.append('retailer_name', formData.retailerBusinessName);
+    
+    // Append file if exists
+    if (formData.transactionProofFile) {
+      formDataToSend.append('transaction_proof', formData.transactionProofFile);
     }
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      alert('Please enter a valid amount');
-      return;
-    }
-    if (!formData.receiptDate) {
-      alert('Please select a receipt date');
-      return;
-    }
 
-    try {
-      setIsLoading(true);
-    const receiptPayload = {
-  receipt_number: formData.receiptNumber,
-  retailer_id: formData.retailerId,
-  amount: parseFloat(formData.amount),
-  currency: formData.currency,
-  payment_method: formData.paymentMethod,
-  receipt_date: formData.receiptDate,
-  note: formData.note,
-  bank_name: formData.bankName,
-  transaction_date: formData.transactionDate || null,
-  reconciliation_option: formData.reconciliationOption,
-  // Include retailer details
-  retailer_mobile: formData.retailerMobile,
-  retailer_email: formData.retailerEmail,
-  retailer_gstin: formData.retailerGstin,
-  retailer_business_name: formData.retailerBusinessName
-};
+    console.log('Sending receipt data with FormData...');
 
-      console.log('Sending receipt data:', receiptPayload);
-      console.log('API endpoint:', `${baseurl}/api/receipts`);
+    const response = await fetch(`${baseurl}/api/receipts`, {
+      method: 'POST',
+      // Don't set Content-Type header for FormData - browser will set it automatically with boundary
+      body: formDataToSend,
+    });
 
-      const response = await fetch(`${baseurl}/api/receipts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(receiptPayload),
-      });
-
-      console.log('Response status:', response.status);
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Receipt created successfully:', result);
-        await fetchReceipts(); // Refresh the receipts list
-        handleCloseModal(); // Close modal
-        alert('Receipt created successfully!');
-        
-        // Navigate to the ReceiptView page with the new receipt's ID
-        if (result.id) {
-          navigate(`/receipts_view/${result.id}`);
-        } else {
-          console.error('No ID returned in response');
-          alert('Receipt created, but unable to view details. Please check the receipt list.');
-        }
-
-        await fetchNextReceiptNumber(); // Fetch the next receipt number
+    console.log('Response status:', response.status);
+    if (response.ok) {
+      const result = await response.json();
+      console.log('Receipt created successfully:', result);
+      await fetchReceipts(); // Refresh the receipts list
+      handleCloseModal(); // Close modal
+      alert('Receipt created successfully!');
+      
+      // Navigate to the ReceiptView page with the new receipt's ID
+      if (result.id) {
+        navigate(`/receipts_view/${result.id}`);
       } else {
-        const errorText = await response.text();
-        console.error('Failed to create receipt. Status:', response.status);
-        console.error('Error response:', errorText);
-        let errorMessage = 'Failed to create receipt. ';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage += errorData.error || 'Please try again.';
-          if (errorData.error.includes('already exists')) {
-            // Handle duplicate receipt number
-            console.log('Duplicate receipt number detected, fetching new number...');
-            await fetchNextReceiptNumber();
-            errorMessage += ' A new receipt number has been generated. Please try again.';
-          }
-        } catch {
-          errorMessage += 'Please try again.';
-        }
-        alert(errorMessage);
+        console.error('No ID returned in response');
+        alert('Receipt created, but unable to view details. Please check the receipt list.');
       }
-    } catch (err) {
-      console.error('Error creating receipt:', err);
-      alert('Network error. Please check your connection and try again.');
-    } finally {
-      setIsLoading(false);
+
+      await fetchNextReceiptNumber(); // Fetch the next receipt number
+    } else {
+      const errorText = await response.text();
+      console.error('Failed to create receipt. Status:', response.status);
+      console.error('Error response:', errorText);
+      let errorMessage = 'Failed to create receipt. ';
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage += errorData.error || 'Please try again.';
+        if (errorData.error.includes('already exists')) {
+          // Handle duplicate receipt number
+          console.log('Duplicate receipt number detected, fetching new number...');
+          await fetchNextReceiptNumber();
+          errorMessage += ' A new receipt number has been generated. Please try again.';
+        }
+      } catch {
+        errorMessage += 'Please try again.';
+      }
+      alert(errorMessage);
     }
-  };
+  } catch (err) {
+    console.error('Error creating receipt:', err);
+    alert('Network error. Please check your connection and try again.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // View receipt details
   const handleViewReceipt = (receiptId) => {
@@ -562,13 +603,13 @@ const handleRetailerChange = (e) => {
               {/* Receipts Table */}
               <ReusableTable
                 title="Receipts"
-                data={receiptData} // Pass all data - no pagination needed
+                data={receiptData} 
                 columns={columns}
                 searchPlaceholder="Search receipts..."
                  initialEntriesPerPage={5}
                 showSearch={true}
-                showEntriesSelector={false} // No entries selector needed
-                // showPagination={false} // No pagination needed
+                showEntriesSelector={false} 
+                showPagination={true} // No pagination needed
                 isLoading={isLoading}
               />
             </div>
@@ -728,10 +769,39 @@ const handleRetailerChange = (e) => {
                           />
                         </div>
                         <div className="mb-3">
-                          <label className="form-label">Transaction Proof Document</label>
-                          <input type="file" className="form-control" />
-                          <small className="text-muted">No file chosen</small>
-                        </div>
+  <label className="form-label">Transaction Proof Document</label>
+  <input 
+    type="file" 
+    className="form-control" 
+    onChange={(e) => handleFileChange(e)}
+    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+  />
+  <small className="text-muted">
+    {formData.transactionProofFile ? formData.transactionProofFile.name : 'No file chosen'}
+  </small>
+  
+  {/* Show selected file info */}
+  {formData.transactionProofFile && (
+    <div className="mt-2">
+      <div className="d-flex align-items-center">
+        <span className="badge bg-success me-2">
+          <i className="bi bi-file-earmark-check"></i>
+        </span>
+        <span className="small">
+          {formData.transactionProofFile.name} 
+          ({Math.round(formData.transactionProofFile.size / 1024)} KB)
+        </span>
+        <button 
+          type="button" 
+          className="btn btn-sm btn-outline-danger ms-2"
+          onClick={() => handleRemoveFile()}
+        >
+          <i className="bi bi-x"></i>
+        </button>
+      </div>
+    </div>
+  )}
+</div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
