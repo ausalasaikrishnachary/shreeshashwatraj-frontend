@@ -17,6 +17,7 @@ const Salesitems_productsdetails = ({ user }) => {
     try {
       setLoading(true);
       const response = await axios.get(`${baseurl}/products/${id}/with-batches`);
+      console.log("API Response:", response.data); // Debug log
       setProductData(response.data);
       setLoading(false);
     } catch (error) {
@@ -30,10 +31,58 @@ const Salesitems_productsdetails = ({ user }) => {
     fetchProduct();
   }, [id]);
 
-  // Function to get stock data for a specific batch
+  // Function to get ALL stock data for a specific batch
   const getStockDataForBatch = (batchNumber) => {
-    if (!productData.stock || productData.stock.length === 0) return null;
-    return productData.stock.find(stock => stock.batch_number === batchNumber);
+    if (!productData.stock || productData.stock.length === 0) return [];
+    return productData.stock.filter(stock => stock.batch_number === batchNumber);
+  };
+
+  // Function to calculate cumulative stock for a batch
+  const calculateBatchStock = (batchNumber) => {
+    const batchStocks = getStockDataForBatch(batchNumber);
+    
+    if (batchStocks.length === 0) {
+      return {
+        opening_stock: 0,
+        stock_in: 0,
+        stock_out: 0,
+        balance_stock: 0,
+        latest_date: null
+      };
+    }
+
+    let opening_stock = 0;
+    let stock_in = 0;
+    let stock_out = 0;
+    let balance_stock = 0;
+    let latest_date = null;
+
+    // Sort by date to process in chronological order
+    const sortedStocks = batchStocks.sort((a, b) => new Date(a.date || a.created_at) - new Date(b.date || b.created_at));
+    
+    sortedStocks.forEach((stock, index) => {
+      if (index === 0) {
+        // First entry - this is our opening stock
+        opening_stock = parseFloat(stock.opening_stock) || 0;
+      }
+      
+      stock_in += parseFloat(stock.stock_in) || 0;
+      stock_out += parseFloat(stock.stock_out) || 0;
+      balance_stock = parseFloat(stock.balance_stock) || 0;
+      
+      // Update latest date
+      if (stock.date || stock.created_at) {
+        latest_date = stock.date || stock.created_at;
+      }
+    });
+
+    return {
+      opening_stock,
+      stock_in,
+      stock_out,
+      balance_stock,
+      latest_date
+    };
   };
 
   if (loading) {
@@ -145,7 +194,7 @@ const Salesitems_productsdetails = ({ user }) => {
                 </div>
 
                 <div className="col-md-8">
-                  {/* Product Stock Details - Shows different views based on maintain_batch */}
+                  {/* Product Stock Details */}
                   <div className="card mb-4 p-3 shadow-sm border-0">
                     <h5 className="fw-semibold text-secondary">
                       {productData.maintain_batch ? "Product Batch Stock Details" : "Product Stock Details"}
@@ -175,26 +224,29 @@ const Salesitems_productsdetails = ({ user }) => {
                             // BATCH VIEW
                             productData.batches && productData.batches.length > 0 ? (
                               productData.batches.map((batch) => {
-                                const stockData = getStockDataForBatch(batch.batch_number);
+                                const batchStock = calculateBatchStock(batch.batch_number);
+                                
+                                console.log(`Batch ${batch.batch_number} Stock:`, batchStock); // Debug log
+                                
                                 return (
                                   <tr key={batch.id}>
                                     <td>{productData.goods_name}</td>
                                     <td>₹{batch.selling_price || productData.price}</td>
                                     <td>{batch.batch_number}</td>
                                     <td>{batch.quantity}</td>
-                                    <td>{stockData ? stockData.opening_stock : batch.quantity}</td>
+                                    <td>{batchStock.opening_stock}</td>
                                     <td style={{ color: 'green', fontWeight: '600' }}>
-                                      {stockData ? stockData.stock_in : 0}
+                                      {batchStock.stock_in}
                                     </td>
                                     <td style={{ color: 'red', fontWeight: '600' }}>
-                                      {stockData ? stockData.stock_out : 0}
+                                      {batchStock.stock_out}
                                     </td>
                                     <td style={{ fontWeight: '600' }}>
-                                      {stockData ? stockData.balance_stock : batch.quantity}
+                                      {batchStock.balance_stock}
                                     </td>
                                     <td>
-                                      {stockData && stockData.date 
-                                        ? new Date(stockData.date).toLocaleDateString("en-IN")
+                                      {batchStock.latest_date 
+                                        ? new Date(batchStock.latest_date).toLocaleDateString("en-IN")
                                         : new Date(batch.created_at).toLocaleDateString("en-IN")}
                                     </td>
                                   </tr>
@@ -202,13 +254,13 @@ const Salesitems_productsdetails = ({ user }) => {
                               })
                             ) : (
                               <tr>
-                                <td colSpan={productData.maintain_batch ? "9" : "7"} className="text-center text-muted">
+                                <td colSpan="9" className="text-center text-muted">
                                   No batches found for this product.
                                 </td>
                               </tr>
                             )
                           ) : (
-                            // NON-BATCH VIEW - Show overall product stock
+                            // NON-BATCH VIEW
                             <tr>
                               <td>{productData.goods_name}</td>
                               <td>₹{productData.price}</td>
@@ -232,8 +284,7 @@ const Salesitems_productsdetails = ({ user }) => {
                     </div>
                   </div>
 
-                  {/* Stock Summary Card */}
-                
+             
                 </div>
               </div>
             </div>
