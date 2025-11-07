@@ -1286,20 +1286,10 @@ const CreateInvoice = ({ user }) => {
                           <td>{item.batch}</td>
                           <td>
                             {item.batchDetails && (
-                             <small>
-  MFG: {item.batchDetails.mfg_date 
-    ? new Date(item.batchDetails.mfg_date).toLocaleDateString('en-GB') 
-    : item.batchDetails.manufacturing_date 
-      ? new Date(item.batchDetails.manufacturing_date).toLocaleDateString('en-GB') 
-      : ''}<br/>
-
-  EXP: {item.batchDetails.exp_date 
-    ? new Date(item.batchDetails.exp_date).toLocaleDateString('en-GB') 
-    : item.batchDetails.expiry_date 
-      ? new Date(item.batchDetails.expiry_date).toLocaleDateString('en-GB') 
-      : ''}
-</small>
-
+                              <small>
+                                MFG: {item.batchDetails.mfg_date || item.batchDetails.manufacturing_date}<br/>
+                                EXP: {item.batchDetails.exp_date || item.batchDetails.expiry_date}
+                              </small>
                             )}
                           </td>
                           <td className="text-center">
