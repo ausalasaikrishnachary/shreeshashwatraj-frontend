@@ -31,57 +31,66 @@ const Salesitems_productsdetails = ({ user }) => {
     fetchProduct();
   }, [id]);
 
-  // Function to get ALL stock data for a specific batch
-  const getStockDataForBatch = (batchNumber) => {
-    if (!productData.stock || productData.stock.length === 0) return [];
-    return productData.stock.filter(stock => stock.batch_number === batchNumber);
-  };
-
-  // Function to calculate cumulative stock for a batch
-  const calculateBatchStock = (batchNumber) => {
-    const batchStocks = getStockDataForBatch(batchNumber);
+  // Function to calculate stock data for a specific batch
+  const calculateBatchStock = (batch) => {
+    // If we have stock data for this batch, use it
+    const batchStocks = productData.stock?.filter(stock => stock.batch_number === batch.batch_number) || [];
     
-    if (batchStocks.length === 0) {
+    if (batchStocks.length > 0) {
+      // Calculate from stock transactions
+      let opening_stock = 0;
+      let stock_in = 0;
+      let stock_out = 0;
+      let balance_stock = 0;
+      let latest_date = null;
+
+      // Sort by date to process in chronological order
+      const sortedStocks = batchStocks.sort((a, b) => new Date(a.date || a.created_at) - new Date(b.date || b.created_at));
+      
+      sortedStocks.forEach((stock, index) => {
+        if (index === 0) {
+          opening_stock = parseFloat(stock.opening_stock) || 0;
+        }
+        
+        stock_in += parseFloat(stock.stock_in) || 0;
+        stock_out += parseFloat(stock.stock_out) || 0;
+        balance_stock = parseFloat(stock.balance_stock) || 0;
+        
+        if (stock.date || stock.created_at) {
+          latest_date = stock.date || stock.created_at;
+        }
+      });
+
       return {
-        opening_stock: 0,
-        stock_in: 0,
-        stock_out: 0,
-        balance_stock: 0,
-        latest_date: null
+        opening_stock,
+        stock_in,
+        stock_out,
+        balance_stock,
+        latest_date
+      };
+    } else {
+      // If no stock transactions, use batch quantity as balance stock
+      // and product data for other fields
+      const batchQuantity = parseFloat(batch.quantity) || 0;
+      
+      return {
+        opening_stock: parseFloat(batch.quantity) || 0, // Use batch quantity as opening for batch view
+        stock_in: 0, // Default to 0 for batches without specific stock data
+        stock_out: 0, // Default to 0 for batches without specific stock data
+        balance_stock: batchQuantity, // Use batch quantity as balance stock
+        latest_date: batch.created_at
       };
     }
+  };
 
-    let opening_stock = 0;
-    let stock_in = 0;
-    let stock_out = 0;
-    let balance_stock = 0;
-    let latest_date = null;
-
-    // Sort by date to process in chronological order
-    const sortedStocks = batchStocks.sort((a, b) => new Date(a.date || a.created_at) - new Date(b.date || b.created_at));
-    
-    sortedStocks.forEach((stock, index) => {
-      if (index === 0) {
-        // First entry - this is our opening stock
-        opening_stock = parseFloat(stock.opening_stock) || 0;
-      }
-      
-      stock_in += parseFloat(stock.stock_in) || 0;
-      stock_out += parseFloat(stock.stock_out) || 0;
-      balance_stock = parseFloat(stock.balance_stock) || 0;
-      
-      // Update latest date
-      if (stock.date || stock.created_at) {
-        latest_date = stock.date || stock.created_at;
-      }
-    });
-
+  // Function to get product-level stock data (for non-batch view)
+  const getProductStockData = () => {
     return {
-      opening_stock,
-      stock_in,
-      stock_out,
-      balance_stock,
-      latest_date
+      opening_stock: parseFloat(productData.opening_stock) || 0,
+      stock_in: parseFloat(productData.stock_in) || 0,
+      stock_out: parseFloat(productData.stock_out) || 0,
+      balance_stock: parseFloat(productData.balance_stock) || 0,
+      latest_date: productData.opening_stock_date || productData.created_at
     };
   };
 
@@ -209,7 +218,7 @@ const Salesitems_productsdetails = ({ user }) => {
                             {productData.maintain_batch ? (
                               <>
                                 <th>Batch Number</th>
-                                <th>Batch Quantity</th>
+                                {/* <th>Batch Quantity</th> */}
                               </>
                             ) : null}
                             <th>Opening Stock</th>
@@ -221,10 +230,10 @@ const Salesitems_productsdetails = ({ user }) => {
                         </thead>
                         <tbody>
                           {productData.maintain_batch ? (
-                            // BATCH VIEW
+                            // BATCH VIEW - Use batch data
                             productData.batches && productData.batches.length > 0 ? (
                               productData.batches.map((batch) => {
-                                const batchStock = calculateBatchStock(batch.batch_number);
+                                const batchStock = calculateBatchStock(batch);
                                 
                                 console.log(`Batch ${batch.batch_number} Stock:`, batchStock); // Debug log
                                 
@@ -233,7 +242,7 @@ const Salesitems_productsdetails = ({ user }) => {
                                     <td>{productData.goods_name}</td>
                                     <td>₹{batch.selling_price || productData.price}</td>
                                     <td>{batch.batch_number}</td>
-                                    <td>{batch.quantity}</td>
+                                    {/* <td>{batch.quantity}</td> */}
                                     <td>{batchStock.opening_stock}</td>
                                     <td style={{ color: 'green', fontWeight: '600' }}>
                                       {batchStock.stock_in}
@@ -260,31 +269,34 @@ const Salesitems_productsdetails = ({ user }) => {
                               </tr>
                             )
                           ) : (
-                            // NON-BATCH VIEW
-                            <tr>
-                              <td>{productData.goods_name}</td>
-                              <td>₹{productData.price}</td>
-                              <td>{productData.opening_stock}</td>
-                              <td style={{ color: 'green', fontWeight: '600' }}>
-                                {productData.stock_in || 0}
-                              </td>
-                              <td style={{ color: 'red', fontWeight: '600' }}>
-                                {productData.stock_out || 0}
-                              </td>
-                              <td style={{ fontWeight: '600' }}>
-                                {productData.balance_stock}
-                              </td>
-                              <td>
-                                {new Date(productData.opening_stock_date).toLocaleDateString("en-IN")}
-                              </td>
-                            </tr>
+                            // NON-BATCH VIEW - Use product data
+                            (() => {
+                              const productStock = getProductStockData();
+                              return (
+                                <tr>
+                                  <td>{productData.goods_name}</td>
+                                  <td>₹{productData.price}</td>
+                                  <td>{productStock.opening_stock}</td>
+                                  <td style={{ color: 'green', fontWeight: '600' }}>
+                                    {productStock.stock_in}
+                                  </td>
+                                  <td style={{ color: 'red', fontWeight: '600' }}>
+                                    {productStock.stock_out}
+                                  </td>
+                                  <td style={{ fontWeight: '600' }}>
+                                    {productStock.balance_stock}
+                                  </td>
+                                  <td>
+                                    {new Date(productStock.latest_date).toLocaleDateString("en-IN")}
+                                  </td>
+                                </tr>
+                              );
+                            })()
                           )}
                         </tbody>
                       </table>
                     </div>
                   </div>
-
-             
                 </div>
               </div>
             </div>
