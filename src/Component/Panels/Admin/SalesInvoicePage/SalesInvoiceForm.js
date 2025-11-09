@@ -541,48 +541,60 @@ const CreateInvoice = ({ user }) => {
     }));
   };
 
-  const addItem = () => {
-    if (!itemForm.product) {
-      setError("Please select a product");
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
+const addItem = () => {
+  if (!itemForm.product) {
+    setError("Please select a product");
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
 
-    const calculatedItem = {
-      ...calculateItemTotal(),
-      batch: selectedBatch,
-      batch_id: itemForm.batch_id,
-      product_id: itemForm.product_id,
-      batchDetails: selectedBatchDetails
-    };
+  // Debug the itemForm before adding
+  console.log('➕ Adding item with data:', {
+    product: itemForm.product,
+    product_id: itemForm.product_id,
+    batch: itemForm.batch,
+    batch_id: itemForm.batch_id,
+    has_product_id: !!itemForm.product_id,
+    has_batch_id: !!itemForm.batch_id
+  });
 
-    setInvoiceData(prev => ({
-      ...prev,
-      items: [...prev.items, calculatedItem]
-    }));
-
-    // Reset form including IDs
-    setItemForm({
-      product: "",
-      product_id: "",
-      description: "",
-      quantity: 1,
-      price: 0,
-      discount: 0,
-      gst: 0,
-      cgst: 0,
-      sgst: 0,
-      igst: 0,
-      cess: 0,
-      total: 0,
-      batch: "",
-      batch_id: "",
-      batchDetails: null
-    });
-    setBatches([]);
-    setSelectedBatch("");
-    setSelectedBatchDetails(null);
+  const calculatedItem = {
+    ...calculateItemTotal(),
+    batch: selectedBatch,
+    batch_id: itemForm.batch_id, // Make sure this is included
+    product_id: itemForm.product_id, // Make sure this is included
+    batchDetails: selectedBatchDetails
   };
+
+  console.log('✅ Final item data for invoice:', calculatedItem);
+
+  setInvoiceData(prev => ({
+    ...prev,
+    items: [...prev.items, calculatedItem]
+  }));
+
+  // Reset form including IDs
+  setItemForm({
+    product: "",
+    product_id: "",
+    description: "",
+    quantity: 1,
+    price: 0,
+    discount: 0,
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0,
+    total: 0,
+    batch: "",
+    batch_id: "",
+    batchDetails: null
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+};
 
   const removeItem = (index) => {
     setInvoiceData(prev => ({
@@ -713,138 +725,208 @@ const CreateInvoice = ({ user }) => {
     setTimeout(() => setSuccess(false), 3000);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
-    
-    if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-      setError("Please select a supplier/customer");
-      setLoading(false);
-      setTimeout(() => setError(null), 3000);
-      return;
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError(null);
+  setSuccess(false);
+  
+  if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
+    setError("Please select a supplier/customer");
+    setLoading(false);
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
+
+  if (invoiceData.items.length === 0) {
+    setError("Please add at least one item to the invoice");
+    setLoading(false);
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
+
+  try {
+    const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
+    console.log('Submitting invoice with number:', finalInvoiceNumber);
+
+    // Calculate GST breakdown for backend
+    const sameState = isSameState();
+    let totalCGST = 0;
+    let totalSGST = 0;
+    let totalIGST = 0;
+
+    if (sameState) {
+      totalCGST = parseFloat(invoiceData.totalGST) / 2;
+      totalSGST = parseFloat(invoiceData.totalGST) / 2;
+      totalIGST = 0;
+    } else {
+      totalCGST = 0;
+      totalSGST = 0;
+      totalIGST = parseFloat(invoiceData.totalGST);
     }
 
-    if (invoiceData.items.length === 0) {
-      setError("Please add at least one item to the invoice");
-      setLoading(false);
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    try {
-      const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
-      console.log('Submitting invoice with number:', finalInvoiceNumber);
-
-      // Calculate GST breakdown for backend
-      const sameState = isSameState();
-      let totalCGST = 0;
-      let totalSGST = 0;
-      let totalIGST = 0;
-
-      if (sameState) {
-        totalCGST = parseFloat(invoiceData.totalGST) / 2;
-        totalSGST = parseFloat(invoiceData.totalGST) / 2;
-        totalIGST = 0;
-      } else {
-        totalCGST = 0;
-        totalSGST = 0;
-        totalIGST = parseFloat(invoiceData.totalGST);
-      }
-
-      // Extract batch details from items with ALL data including discount and GST
-      const batchDetails = invoiceData.items.map(item => ({
+    // Enhanced debugging for items
+    console.log('🔍 Debugging Items Array Before Processing:');
+    invoiceData.items.forEach((item, index) => {
+      console.log(`Item ${index + 1}:`, {
         product: item.product,
         product_id: item.product_id,
-        description: item.description,
         batch: item.batch,
         batch_id: item.batch_id,
-        quantity: parseFloat(item.quantity) || 0,
-        price: parseFloat(item.price) || 0,
-        discount: parseFloat(item.discount) || 0,
-        gst: parseFloat(item.gst) || 0,
-        cgst: parseFloat(item.cgst) || 0,
-        sgst: parseFloat(item.sgst) || 0,
-        igst: parseFloat(item.igst) || 0,
-        cess: parseFloat(item.cess) || 0,
-        total: parseFloat(item.total) || 0,
-        batchDetails: item.batchDetails
-      }));
+        has_product_id: !!item.product_id,
+        has_batch_id: !!item.batch_id
+      });
+    });
 
-      // Create payload with IDs and proper totals
-      const payload = {
-        ...invoiceData,
-        invoiceNumber: finalInvoiceNumber,
-        selectedSupplierId: selectedSupplierId,
-        type: 'sales',
-        totalCGST: totalCGST.toFixed(2),
-        totalSGST: totalSGST.toFixed(2),
-        totalIGST: totalIGST.toFixed(2),
-        taxType: sameState ? "CGST/SGST" : "IGST",
-        batchDetails: batchDetails,
-        product_id: invoiceData.items[0]?.product_id || null,
-        batch_id: invoiceData.items[0]?.batch_id || null
-      };
+    // Extract batch details from items with ALL data including discount and GST
+    const batchDetails = invoiceData.items.map(item => ({
+      product: item.product,
+      product_id: item.product_id,
+      description: item.description,
+      batch: item.batch,
+      batch_id: item.batch_id,
+      quantity: parseFloat(item.quantity) || 0,
+      price: parseFloat(item.price) || 0,
+      discount: parseFloat(item.discount) || 0,
+      gst: parseFloat(item.gst) || 0,
+      cgst: parseFloat(item.cgst) || 0,
+      sgst: parseFloat(item.sgst) || 0,
+      igst: parseFloat(item.igst) || 0,
+      cess: parseFloat(item.cess) || 0,
+      total: parseFloat(item.total) || 0,
+      batchDetails: item.batchDetails
+    }));
 
-      // Remove unused fields
-      delete payload.companyState;
-      delete payload.supplierState;
-      delete payload.items;
+    console.log('📦 Processed Batch Details:');
+    batchDetails.forEach((detail, index) => {
+      console.log(`Batch Detail ${index + 1}:`, {
+        product_id: detail.product_id,
+        batch_id: detail.batch_id,
+        product: detail.product,
+        batch: detail.batch
+      });
+    });
 
-      console.log('Submitting invoice payload with batchDetails:', payload);
+    // Get product_id and batch_id for logging
+    const firstItemProductId = invoiceData.items[0]?.product_id || null;
+    const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
+    
+    console.log('📦 Product and Batch IDs Summary:');
+    console.log('First item product_id:', firstItemProductId);
+    console.log('First item batch_id:', firstItemBatchId);
+    console.log('All items product_ids:', invoiceData.items.map(item => item.product_id));
+    console.log('All items batch_ids:', invoiceData.items.map(item => item.batch_id));
 
-      let response;
-      if (isEditMode && editingVoucherId) {
-        // Update existing invoice
-        response = await fetch(`${baseurl}/transactions/${editingVoucherId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload)
-        });
-      } else {
-        // Create new invoice
-        response = await fetch(`${baseurl}/transaction`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload)
-        });
-      }
-      
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(responseData.error || 'Failed to submit invoice');
-      }
-      
-      localStorage.removeItem('draftInvoice');
-      setSuccess(isEditMode ? 'Invoice updated successfully!' : 'Invoice submitted successfully!');
-      setIsPreviewReady(true);
-
-      // Store preview data with voucher ID
-      const previewData = {
-        ...invoiceData,
-        invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
-        voucherId: responseData.voucherId || editingVoucherId
-      };
-      localStorage.setItem('previewInvoice', JSON.stringify(previewData));
-      
-      // Navigate to preview page with voucher ID
-      setTimeout(() => {
-        navigate(`/sales/invoice-preview/${responseData.voucherId || editingVoucherId}`);
-      }, 2000);
-      
-    } catch (err) {
-      setError(err.message);
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setLoading(false);
+    // Validate that we have product_id and batch_id
+    const missingProductIds = invoiceData.items.filter(item => !item.product_id);
+    const missingBatchIds = invoiceData.items.filter(item => !item.batch_id);
+    
+    if (missingProductIds.length > 0) {
+      console.warn('⚠️ Items missing product_id:', missingProductIds);
     }
-  };
+    if (missingBatchIds.length > 0) {
+      console.warn('⚠️ Items missing batch_id:', missingBatchIds);
+    }
+
+    // Create payload with IDs and proper totals
+    const payload = {
+      ...invoiceData,
+      invoiceNumber: finalInvoiceNumber,
+      selectedSupplierId: selectedSupplierId,
+      type: 'sales',
+      totalCGST: totalCGST.toFixed(2),
+      totalSGST: totalSGST.toFixed(2),
+      totalIGST: totalIGST.toFixed(2),
+      taxType: sameState ? "CGST/SGST" : "IGST",
+      batchDetails: batchDetails,
+      product_id: 123,
+      batch_id: "bth0001",
+      // Add primary product and batch IDs for voucher table
+      primaryProductId: firstItemProductId,
+      primaryBatchId: firstItemBatchId
+    };
+
+    // Remove unused fields
+    delete payload.companyState;
+    delete payload.supplierState;
+    delete payload.items;
+
+    console.log('🚀 Final Payload Analysis:');
+    console.log('Payload product_id:', payload.product_id);
+    console.log('Payload batch_id:', payload.batch_id);
+    console.log('Payload primaryProductId:', payload.primaryProductId);
+    console.log('Payload primaryBatchId:', payload.primaryBatchId);
+    console.log('Payload batchDetails length:', payload.batchDetails.length);
+    console.log('First batchDetail product_id:', payload.batchDetails[0]?.product_id);
+    console.log('First batchDetail batch_id:', payload.batchDetails[0]?.batch_id);
+    
+    // Final validation
+    if (!payload.product_id || !payload.batch_id) {
+      console.error('❌ CRITICAL: product_id or batch_id is still undefined in payload!');
+      console.error('Payload structure:', JSON.stringify(payload, null, 2));
+    } else {
+      console.log('✅ SUCCESS: product_id and batch_id are properly set in payload!');
+    }
+
+    let response;
+    if (isEditMode && editingVoucherId) {
+      console.log('🔄 Updating existing invoice with ID:', editingVoucherId);
+      response = await fetch(`${baseurl}/transactions/${editingVoucherId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      console.log('🆕 Creating new invoice');
+      response = await fetch(`${baseurl}/transaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+    }
+    
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(responseData.error || 'Failed to submit invoice');
+    }
+    
+    console.log('✅ Server Response:', responseData);
+    console.log('Response voucherId:', responseData.voucherId);
+    console.log('Response product_id:', responseData.product_id);
+    console.log('Response batch_id:', responseData.batch_id);
+    
+    localStorage.removeItem('draftInvoice');
+    setSuccess(isEditMode ? 'Invoice updated successfully!' : 'Invoice submitted successfully!');
+    setIsPreviewReady(true);
+
+    // Store preview data with voucher ID
+    const previewData = {
+      ...invoiceData,
+      invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
+      voucherId: responseData.voucherId || editingVoucherId,
+      product_id: responseData.product_id || firstItemProductId,
+      batch_id: responseData.batch_id || firstItemBatchId
+    };
+    localStorage.setItem('previewInvoice', JSON.stringify(previewData));
+    
+    // Navigate to preview page with voucher ID
+    setTimeout(() => {
+      navigate(`/sales/invoice-preview/${responseData.voucherId || editingVoucherId}`);
+    }, 2000);
+    
+  } catch (err) {
+    console.error('❌ Error in handleSubmit:', err);
+    setError(err.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const calculateTotalPrice = () => {
     const price = parseFloat(itemForm.price) || 0;
@@ -1089,77 +1171,110 @@ const CreateInvoice = ({ user }) => {
       </button>
     </div>
    
-    <Form.Select
-      name="product"
-      value={itemForm.product}
-      onChange={async (e) => {
-        const selectedName = e.target.value;
-        const selectedProduct = products.find(
-          (p) => p.goods_name === selectedName
-        );
+<Form.Select
+  name="product"
+  value={itemForm.product}
+  onChange={async (e) => {
+    const selectedName = e.target.value;
+    const selectedProduct = products.find(
+      (p) => p.goods_name === selectedName
+    );
 
-        if (selectedProduct) {
-          setItemForm((prev) => ({
-            ...prev,
-            product: selectedProduct.goods_name,
-            product_id: selectedProduct.id,
-            price: selectedProduct.net_price, // Default price from product
-            gst: parseFloat(selectedProduct.gst_rate)
-              ? selectedProduct.gst_rate.replace("%", "")
-              : 0,
-            description: selectedProduct.description || "",
-          }));
+    console.log('🔍 Selected Product:', selectedProduct); // Debug log
 
-          try {
-            const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
-            const batchData = await res.json();
-            setBatches(batchData);
-            setSelectedBatch("");
-            setSelectedBatchDetails(null);
-          } catch (err) {
-            console.error("Failed to fetch batches:", err);
-            setBatches([]);
-          }
-        }
-      }}
-      className="border-primary"
-    >
-      <option value="">Select Product</option>
-      {products
-        .filter((p) => p.group_by === "Salescatalog")
-        .map((p) => (
-          <option key={p.id} value={p.goods_name}>
-            {p.goods_name}
-          </option>
-        ))}
-    </Form.Select>
+    if (selectedProduct) {
+      setItemForm((prev) => ({
+        ...prev,
+        product: selectedProduct.goods_name,
+        product_id: selectedProduct.id, // Make sure this is set
+        price: selectedProduct.net_price,
+        gst: parseFloat(selectedProduct.gst_rate)
+          ? selectedProduct.gst_rate.replace("%", "")
+          : 0,
+        description: selectedProduct.description || "",
+        batch: "", // Reset batch when product changes
+        batch_id: "" // Reset batch_id when product changes
+      }));
 
-    <Form.Select
-      className="mt-2 border-primary"
-      name="batch"
-      value={selectedBatch}
-      onChange={(e) => {
-        const batchNumber = e.target.value;
-        setSelectedBatch(batchNumber);
-        const batch = batches.find(b => b.batch_number === batchNumber);
-        setSelectedBatchDetails(batch || null);
+      console.log('✅ Product ID set:', selectedProduct.id); // Debug log
 
-        if (batch) {
-          setItemForm(prev => ({
-            ...prev,
-            batch_id: batch.id,
-            price: batch.selling_price // Use selling_price from batch instead of product net_price
-          }));
-        }
-      }}
-    >
-      <option value="">Select Batch</option>
-      {batches.map((batch) => (
-        <option key={batch.id} value={batch.batch_number}>
-          {batch.batch_number} (Qty: {batch.quantity} )
-        </option>
-      ))}
-    </Form.Select>
+      try {
+        const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
+        const batchData = await res.json();
+        console.log('📦 Batches fetched:', batchData); // Debug log
+        setBatches(batchData);
+        setSelectedBatch("");
+        setSelectedBatchDetails(null);
+      } catch (err) {
+        console.error("Failed to fetch batches:", err);
+        setBatches([]);
+      }
+    } else {
+      // Reset form if no product selected
+      setItemForm(prev => ({
+        ...prev,
+        product: "",
+        product_id: "",
+        description: "",
+        price: 0,
+        gst: 0,
+        batch: "",
+        batch_id: ""
+      }));
+      setBatches([]);
+      setSelectedBatch("");
+      setSelectedBatchDetails(null);
+    }
+  }}
+  className="border-primary"
+>
+  <option value="">Select Product</option>
+  {products
+    .filter((p) => p.group_by === "Salescatalog")
+    .map((p) => (
+      <option key={p.id} value={p.goods_name}>
+        {p.goods_name}
+      </option>
+    ))}
+</Form.Select>
+
+<Form.Select
+  className="mt-2 border-primary"
+  name="batch"
+  value={selectedBatch}
+  onChange={(e) => {
+    const batchNumber = e.target.value;
+    setSelectedBatch(batchNumber);
+    const batch = batches.find(b => b.batch_number === batchNumber);
+    setSelectedBatchDetails(batch || null);
+
+    console.log('🔍 Selected Batch:', batch); // Debug log
+
+    if (batch) {
+      setItemForm(prev => ({
+        ...prev,
+        batch: batchNumber,
+        batch_id: batch.batch_number, // Make sure this is set
+        price: batch.selling_price
+      }));
+      console.log('✅ Batch ID set:', batch.batch_number); // Debug log
+    } else {
+      // Reset batch info if no batch selected
+      setItemForm(prev => ({
+        ...prev,
+        batch: "",
+        batch_id: ""
+      }));
+    }
+  }}
+>
+  <option value="">Select Batch</option>
+  {batches.map((batch) => (
+    <option key={batch.id} value={batch.batch_number}>
+      {batch.batch_number} (Qty: {batch.quantity} )
+    </option>
+  ))}
+</Form.Select>
   </Col>
 
   <Col md={1}>

@@ -10,14 +10,17 @@ const Salesitems_productsdetails = ({ user }) => {
   const { id } = useParams();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [productData, setProductData] = useState(null);
+  const [voucherData, setVoucherData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [voucherLoading, setVoucherLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [voucherError, setVoucherError] = useState(null);
 
   const fetchProduct = async () => {
     try {
       setLoading(true);
       const response = await axios.get(`${baseurl}/products/${id}/with-batches`);
-      console.log("API Response:", response.data); // Debug log
+      console.log("API Response:", response.data);
       setProductData(response.data);
       setLoading(false);
     } catch (error) {
@@ -27,24 +30,42 @@ const Salesitems_productsdetails = ({ user }) => {
     }
   };
 
+  const fetchVouchersByProduct = async (productId) => {
+    try {
+      setVoucherLoading(true);
+      setVoucherError(null);
+      const response = await axios.get(`${baseurl}/vouchers/by-product/${productId}`);
+      console.log("Vouchers API Response:", response.data);
+      setVoucherData(response.data);
+      setVoucherLoading(false);
+    } catch (error) {
+      console.error("Error fetching voucher data:", error);
+      setVoucherError("Failed to load sales transactions.");
+      setVoucherLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchProduct();
   }, [id]);
 
+  useEffect(() => {
+    if (productData && productData.id) {
+      fetchVouchersByProduct(productData.id);
+    }
+  }, [productData]);
+
   // Function to calculate stock data for a specific batch
   const calculateBatchStock = (batch) => {
-    // If we have stock data for this batch, use it
     const batchStocks = productData.stock?.filter(stock => stock.batch_number === batch.batch_number) || [];
     
     if (batchStocks.length > 0) {
-      // Calculate from stock transactions
       let opening_stock = 0;
       let stock_in = 0;
       let stock_out = 0;
       let balance_stock = 0;
       let latest_date = null;
 
-      // Sort by date to process in chronological order
       const sortedStocks = batchStocks.sort((a, b) => new Date(a.date || a.created_at) - new Date(b.date || b.created_at));
       
       sortedStocks.forEach((stock, index) => {
@@ -69,21 +90,19 @@ const Salesitems_productsdetails = ({ user }) => {
         latest_date
       };
     } else {
-      // If no stock transactions, use batch quantity as balance stock
-      // and product data for other fields
       const batchQuantity = parseFloat(batch.quantity) || 0;
       
       return {
-        opening_stock: parseFloat(batch.quantity) || 0, // Use batch quantity as opening for batch view
-        stock_in: 0, // Default to 0 for batches without specific stock data
-        stock_out: 0, // Default to 0 for batches without specific stock data
-        balance_stock: batchQuantity, // Use batch quantity as balance stock
+        opening_stock: parseFloat(batch.quantity) || 0,
+        stock_in: 0,
+        stock_out: 0,
+        balance_stock: batchQuantity,
         latest_date: batch.created_at
       };
     }
   };
 
-  // Function to get product-level stock data (for non-batch view)
+  // Function to get product-level stock data
   const getProductStockData = () => {
     return {
       opening_stock: parseFloat(productData.opening_stock) || 0,
@@ -92,6 +111,22 @@ const Salesitems_productsdetails = ({ user }) => {
       balance_stock: parseFloat(productData.balance_stock) || 0,
       latest_date: productData.opening_stock_date || productData.created_at
     };
+  };
+
+  // Function to format date
+  const formatDate = (dateString) => {
+    if (!dateString) return '—';
+    return new Date(dateString).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  // Function to format currency
+  const formatCurrency = (amount) => {
+    if (!amount) return '₹0';
+    return `₹${parseFloat(amount).toLocaleString('en-IN')}`;
   };
 
   if (loading) {
@@ -218,7 +253,6 @@ const Salesitems_productsdetails = ({ user }) => {
                             {productData.maintain_batch ? (
                               <>
                                 <th>Batch Number</th>
-                                {/* <th>Batch Quantity</th> */}
                               </>
                             ) : null}
                             <th>Opening Stock</th>
@@ -230,19 +264,17 @@ const Salesitems_productsdetails = ({ user }) => {
                         </thead>
                         <tbody>
                           {productData.maintain_batch ? (
-                            // BATCH VIEW - Use batch data
                             productData.batches && productData.batches.length > 0 ? (
                               productData.batches.map((batch) => {
                                 const batchStock = calculateBatchStock(batch);
                                 
-                                console.log(`Batch ${batch.batch_number} Stock:`, batchStock); // Debug log
+                                console.log(`Batch ${batch.batch_number} Stock:`, batchStock);
                                 
                                 return (
                                   <tr key={batch.id}>
                                     <td>{productData.goods_name}</td>
                                     <td>₹{batch.selling_price || productData.price}</td>
                                     <td>{batch.batch_number}</td>
-                                    {/* <td>{batch.quantity}</td> */}
                                     <td>{batchStock.opening_stock}</td>
                                     <td style={{ color: 'green', fontWeight: '600' }}>
                                       {batchStock.stock_in}
@@ -269,7 +301,6 @@ const Salesitems_productsdetails = ({ user }) => {
                               </tr>
                             )
                           ) : (
-                            // NON-BATCH VIEW - Use product data
                             (() => {
                               const productStock = getProductStockData();
                               return (
@@ -293,6 +324,115 @@ const Salesitems_productsdetails = ({ user }) => {
                               );
                             })()
                           )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Recent Sales Section */}
+                  <div className="card mb-4 p-3 shadow-sm border-0">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h5 className="fw-semibold text-secondary mb-0">Recent Sales</h5>
+                      {voucherData && (
+                        <span className="badge bg-primary">
+                          Total Transactions: {voucherData.totalVouchers || 0}
+                        </span>
+                      )}
+                    </div>
+                    <hr className="my-2" />
+                    
+                    {voucherLoading ? (
+                      <div className="text-center py-3">
+                        <div className="spinner-border text-primary" role="status">
+                          <span className="visually-hidden">Loading sales data...</span>
+                        </div>
+                        <p className="mt-2 text-muted">Loading sales transactions...</p>
+                      </div>
+                    ) : voucherError ? (
+                      <div className="text-center py-3 text-danger">
+                        <p>{voucherError}</p>
+                        <button
+                          onClick={() => fetchVouchersByProduct(productData.id)}
+                          className="btn btn-sm btn-outline-primary"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    ) : voucherData && voucherData.vouchers && voucherData.vouchers.length > 0 ? (
+                      <div className="table-responsive">
+                        <table className="salesitems-table">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Invoice No</th>
+                              <th>Date</th>
+                              <th>Customer</th>
+                              <th>Quantity</th>
+                              <th>Total Amount</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {voucherData.vouchers.map((voucher) => (
+                              <tr key={voucher.VoucherID}>
+                                <td>
+                                  <strong>{voucher.InvoiceNumber || 'N/A'}</strong>
+                                </td>
+                                <td>{formatDate(voucher.Date)}</td>
+                                <td>{voucher.PartyName || voucher.AccountName || 'N/A'}</td>
+                                <td>
+                                  <span className="badge bg-secondary">
+                                    {voucher.TotalQty || voucher.totalQuantity || 0}
+                                  </span>
+                                </td>
+                                <td>
+                                  <strong>{formatCurrency(voucher.TotalAmount || voucher.totalAmount)}</strong>
+                                </td>
+                                <td>
+                                  <span 
+                                    className={`badge ${
+                                      voucher.status === 'Paid' 
+                                        ? 'bg-success' 
+                                        : voucher.status === 'Pending'
+                                        ? 'bg-warning'
+                                        : 'bg-secondary'
+                                    }`}
+                                  >
+                                    {voucher.status || 'Pending'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-muted">
+                        <p>No sales transactions found for this product.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Recent Purchases */}
+                  <div className="card mb-4 p-3 shadow-sm border-0">
+                    <h5 className="fw-semibold text-secondary">Recent Purchases</h5>
+                    <hr className="my-2" />
+                    <div className="table-responsive">
+                      <table className="salesitems-table">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Purchase Invoice</th>
+                            <th>Invoice Date</th>
+                            <th>Supplier Name</th>
+                            <th>Stock</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>01/01/1970</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>{productData.unit}</td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>
