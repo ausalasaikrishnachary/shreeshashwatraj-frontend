@@ -128,7 +128,8 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
         min_stock_alert: product.min_stock_alert || '',
         max_stock_alert: product.max_stock_alert || '',
         description: product.description || '',
-        maintain_batch: product.maintain_batch || false
+        maintain_batch: product.maintain_batch || false,
+        discount: product.discount || '' // ADDED DISCOUNT FIELD
       });
 
       setMaintainBatch(product.maintain_batch || false);
@@ -226,9 +227,7 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     return newBarcode;
   };
 
-  // FIXED: Get batch number from backend to ensure uniqueness across all products
-  // In your createDefaultBatch function, update the fetchNextBatchNumber call:
- const fetchNextBatchNumber = async () => {
+  const fetchNextBatchNumber = async () => {
     try {
       console.log('🔄 Generating next batch number...');
       console.log('📦 Available productId:', productId);
@@ -328,7 +327,8 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     min_stock_alert: '',
     max_stock_alert: '',
     description: '',
-    maintain_batch: false
+    maintain_batch: false,
+    discount: '' // ADDED DISCOUNT FIELD
   });
 
   const handleChange = async (e) => {
@@ -378,32 +378,30 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     setBatches(updated);
   };
 
-  // FIXED: Add new batch function with backend batch number generation
-// FIXED: Add new batch function with backend batch number generation
-const addNewBatch = async () => {
-  try {
-    console.log('➕ Starting to add new batch...');
-    console.log('📊 Current batches count:', batches.length);
-    console.log('📦 Current product ID:', productId);
-    console.log('🏷️ Current batch numbers:', batches.map(b => b.batchNumber));
-    
-    const newBatch = await createDefaultBatch();
-    console.log('✅ New batch created:', {
-      batchNumber: newBatch.batchNumber,
-      id: newBatch.id
-    });
-    
-    setBatches(prev => {
-      const updated = [...prev, newBatch];
-      console.log('📦 Batches after add:', updated.map(b => b.batchNumber));
-      return updated;
-    });
-    
-  } catch (error) {
-    console.error('❌ Error adding new batch:', error);
-    showAlert('Error adding new batch. Please try again.', 'danger');
-  }
-};
+  const addNewBatch = async () => {
+    try {
+      console.log('➕ Starting to add new batch...');
+      console.log('📊 Current batches count:', batches.length);
+      console.log('📦 Current product ID:', productId);
+      console.log('🏷️ Current batch numbers:', batches.map(b => b.batchNumber));
+      
+      const newBatch = await createDefaultBatch();
+      console.log('✅ New batch created:', {
+        batchNumber: newBatch.batchNumber,
+        id: newBatch.id
+      });
+      
+      setBatches(prev => {
+        const updated = [...prev, newBatch];
+        console.log('📦 Batches after add:', updated.map(b => b.batchNumber));
+        return updated;
+      });
+      
+    } catch (error) {
+      console.error('❌ Error adding new batch:', error);
+      showAlert('Error adding new batch. Please try again.', 'danger');
+    }
+  };
 
   const removeBatch = (id) => {
     if (batches.length <= 1 && maintainBatch) {
@@ -510,7 +508,8 @@ const addNewBatch = async () => {
         balance_stock: dataToSend.balance_stock,
         maintain_batch: dataToSend.maintain_batch,
         batch_count: batchesForBackend.length,
-        batch_numbers: batchesForBackend.map(b => b.batch_number)
+        batch_numbers: batchesForBackend.map(b => b.batch_number),
+        discount: dataToSend.discount // ADDED DISCOUNT
       });
 
       if (productId) {
@@ -768,6 +767,17 @@ const addNewBatch = async () => {
                       type="number"
                       step="0.01"
                       value={formData.cess_amount}
+                      onChange={handleChange}
+                    />
+                  </div>
+                  <div className="col">
+                    <Form.Label>Discount %</Form.Label> {/* ADDED DISCOUNT FIELD */}
+                    <Form.Control
+                      placeholder="Discount %"
+                      name="discount"
+                      type="number"
+                      step="0.01"
+                      value={formData.discount}
                       onChange={handleChange}
                     />
                   </div>

@@ -52,58 +52,9 @@ function StaffOffers() {
     }
   };
 
-  const deleteOffer = async (id) => {
-    try {
-      const response = await fetch(`${API_BASE}/offers/${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      fetchOffers();
-    } catch (error) {
-      console.error('Error deleting offer:', error);
-      alert('Error deleting offer. Please try again.');
-    }
-  };
-
-  const toggleOfferStatus = async (id, currentStatus) => {
-    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    try {
-      const response = await fetch(`${API_BASE}/offers/${id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      fetchOffers();
-    } catch (error) {
-      console.error('Error updating offer status:', error);
-      alert('Error updating offer status. Please try again.');
-    }
-  };
-
   useEffect(() => {
     fetchOffers();
   }, [currentPage, searchTerm, filterType]);
-
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this offer?")) {
-      await deleteOffer(id);
-    }
-  };
-
-  const handleToggleStatus = async (id, currentStatus) => {
-    await toggleOfferStatus(id, currentStatus);
-  };
 
   // Filter and Pagination Logic
   const filteredOffers = offers.filter((offer) => {
@@ -126,14 +77,15 @@ function StaffOffers() {
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
-  const handleAddNew = () => {
-    // Implement add new offer functionality
-    alert("Add new offer functionality to be implemented");
-  };
-
-  const handleEditItem = (offer) => {
-    // Implement edit offer functionality
-    alert(`Edit offer: ${offer.title}`);
+  const handleViewDetails = (offer) => {
+    // Implement view details functionality
+    alert(`Viewing details for: ${offer.title}\n\n` +
+          `Description: ${offer.description}\n` +
+          `Discount: ${offer.discount_percentage}%\n` +
+          `Minimum Amount: ₹${offer.minimum_amount || 0}\n` +
+          `Type: ${offer.offer_type}\n` +
+          `Valid From: ${formatToIndianDate(offer.valid_from)}\n` +
+          `Valid Until: ${formatToIndianDate(offer.valid_until)}`);
   };
 
   const renderRegularOfferCard = (offer) => (
@@ -165,17 +117,23 @@ function StaffOffers() {
             <strong>Min. Amount:</strong> ₹{offer.minimum_amount || 0}
           </div>
           
-          {offer.offer_type === 'category' && (
-            <>
-              <div className="offers-detail-item">
-                <strong>Category:</strong> {offer.category_name}
-              </div>
-              {offer.product_name && (
-                <div className="offers-detail-item">
-                  <strong>Product:</strong> {offer.product_name}
-                </div>
-              )}
-            </>
+          <div className="offers-detail-item">
+            <strong>Type:</strong> 
+            {offer.offer_type === 'global' && ' Global Offer'}
+            {offer.offer_type === 'category' && ' Category Specific'}
+            {offer.offer_type === 'product' && ' Product Specific'}
+          </div>
+          
+          {offer.offer_type === 'category' && offer.category_name && (
+            <div className="offers-detail-item">
+              <strong>Category:</strong> {offer.category_name}
+            </div>
+          )}
+          
+          {offer.offer_type === 'product' && offer.product_name && (
+            <div className="offers-detail-item">
+              <strong>Product:</strong> {offer.product_name}
+            </div>
           )}
           
           <div className="offers-detail-item">
@@ -183,24 +141,13 @@ function StaffOffers() {
           </div>
         </div>
 
+        {/* Staff actions - View Details only */}
         {/* <div className="offers-card-actions mobile">
           <button 
             className="offers-btn-edit"
-            onClick={() => handleEditItem(offer)}
+            onClick={() => handleViewDetails(offer)}
           >
-            Edit
-          </button>
-          <button 
-            className="offers-btn-delete"
-            onClick={() => handleDelete(offer.id)}
-          >
-            Delete
-          </button>
-          <button 
-            className={`offers-btn-status ${offer.status}`}
-            onClick={() => handleToggleStatus(offer.id, offer.status)}
-          >
-            {offer.status === 'active' ? 'Deactivate' : 'Activate'}
+            View Details
           </button>
         </div> */}
       </div>
@@ -233,6 +180,7 @@ function StaffOffers() {
             <option value="All">All Offers</option>
             <option value="global">Global Offers</option>
             <option value="category">Category Specific</option>
+            <option value="product">Product Specific</option>
           </select>
         </div>
 
@@ -251,15 +199,9 @@ function StaffOffers() {
               <p>
                 {searchTerm 
                   ? "No offers match your search criteria."
-                  : "Get started by creating your first offer."
+                  : "No offers available at the moment."
                 }
               </p>
-              <button 
-                className="offers-add-btn mobile"
-                onClick={handleAddNew}
-              >
-                + Add Offer
-              </button>
             </div>
           )}
         </div>
