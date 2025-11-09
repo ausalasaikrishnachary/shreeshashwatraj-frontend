@@ -1075,155 +1075,157 @@ const CreateInvoice = ({ user }) => {
               {/* Item Section */}
               <div className="item-section mb-3 mt-3 bg-white p-3 rounded">
                 <h6 className="text-primary mb-3">Add Items</h6>
-            <Row className="align-items-end">
-  <Col md={2}>
-    <div className="d-flex justify-content-between align-items-center mb-1">
-      <Form.Label className="mb-0 fw-bold">Item</Form.Label>
-      <button
-        type="button"
-        className="btn btn-link p-0 text-primary"
-        style={{ textDecoration: "none", fontSize: "14px" }}
-        onClick={() => navigate("/salesitemspage")}
-      >
-        + New Item
-      </button>
-    </div>
-   
-    <Form.Select
-      name="product"
-      value={itemForm.product}
-      onChange={async (e) => {
-        const selectedName = e.target.value;
-        const selectedProduct = products.find(
-          (p) => p.goods_name === selectedName
-        );
+                <Row className="align-items-end">
+                  <Col md={2}>
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <Form.Label className="mb-0 fw-bold">Item</Form.Label>
+                      <button
+                        type="button"
+                        className="btn btn-link p-0 text-primary"
+                        style={{ textDecoration: "none", fontSize: "14px" }}
+                        onClick={() => navigate("/salesitemspage")}
+                      >
+                        + New Item
+                      </button>
+                    </div>
+                   
+                      <Form.Select
+                        name="product"
+                        value={itemForm.product}
+                        onChange={async (e) => {
+                          const selectedName = e.target.value;
+                          const selectedProduct = products.find(
+                            (p) => p.goods_name === selectedName
+                          );
 
-        if (selectedProduct) {
-          setItemForm((prev) => ({
-            ...prev,
-            product: selectedProduct.goods_name,
-            product_id: selectedProduct.id,
-            price: selectedProduct.net_price, // Default price from product
-            gst: parseFloat(selectedProduct.gst_rate)
-              ? selectedProduct.gst_rate.replace("%", "")
-              : 0,
-            description: selectedProduct.description || "",
-          }));
+                          if (selectedProduct) {
+                            setItemForm((prev) => ({
+                              ...prev,
+                              product: selectedProduct.goods_name,
+                              product_id: selectedProduct.id,
+                              price: selectedProduct.net_price,
+                              gst: parseFloat(selectedProduct.gst_rate)
+                                ? selectedProduct.gst_rate.replace("%", "")
+                                : 0,
+                              description: selectedProduct.description || "",
+                            }));
 
-          try {
-            const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
-            const batchData = await res.json();
-            setBatches(batchData);
-            setSelectedBatch("");
-            setSelectedBatchDetails(null);
-          } catch (err) {
-            console.error("Failed to fetch batches:", err);
-            setBatches([]);
-          }
-        }
-      }}
-      className="border-primary"
-    >
-      <option value="">Select Product</option>
-      {products
-        .filter((p) => p.group_by === "Salescatalog")
-        .map((p) => (
-          <option key={p.id} value={p.goods_name}>
-            {p.goods_name}
-          </option>
-        ))}
-    </Form.Select>
+                            try {
+                              const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
+                              const batchData = await res.json();
+                              setBatches(batchData);
+                              setSelectedBatch("");
+                              setSelectedBatchDetails(null);
+                            } catch (err) {
+                              console.error("Failed to fetch batches:", err);
+                              setBatches([]);
+                            }
+                          }
+                        }}
+                        className="border-primary"
+                      >
+                        <option value="">Select Product</option>
+                        {products
+                          .filter((p) => p.group_by === "Salescatalog")
+                          .map((p) => (
+                            <option key={p.id} value={p.goods_name}>
+                              {p.goods_name}
+                            </option>
+                          ))}
+                      </Form.Select>
 
-    <Form.Select
-      className="mt-2 border-primary"
-      name="batch"
-      value={selectedBatch}
-      onChange={(e) => {
-        const batchNumber = e.target.value;
-        setSelectedBatch(batchNumber);
-        const batch = batches.find(b => b.batch_number === batchNumber);
-        setSelectedBatchDetails(batch || null);
+                      
+                      <Form.Select
+                        className="mt-2 border-primary"
+                        name="batch"
+                        value={selectedBatch}
+                        onChange={(e) => {
+                          const batchNumber = e.target.value;
+                          setSelectedBatch(batchNumber);
+                          const batch = batches.find(b => b.batch_number === batchNumber);
+                          setSelectedBatchDetails(batch || null);
 
-        if (batch) {
-          setItemForm(prev => ({
-            ...prev,
-            batch_id: batch.id,
-            price: batch.selling_price // Use selling_price from batch instead of product net_price
-          }));
-        }
-      }}
-    >
-      <option value="">Select Batch</option>
-      {batches.map((batch) => (
-        <option key={batch.id} value={batch.batch_number}>
-          {batch.batch_number} (Qty: {batch.quantity} )
-        </option>
-      ))}
-    </Form.Select>
-  </Col>
+                          if (batch) {
+                            setItemForm(prev => ({
+                              ...prev,
+                              batch_id: batch.id
+                            }));
+                          }
+                        }}
+                      >
+                        <option value="">Select Batch</option>
+                        {batches.map((batch) => (
+                          <option key={batch.id} value={batch.batch_number}>
+                            {batch.batch_number} (Qty: {batch.quantity})
+                          </option>
+                        ))}
+                      </Form.Select>
 
-  <Col md={1}>
-    <Form.Label className="fw-bold">Qty</Form.Label>
-    <Form.Control
-      name="quantity"
-      type="number"
-      value={itemForm.quantity}
-      onChange={handleItemChange}
-      min="1"
-      className="border-primary"
-    />
-  </Col>
+                  </Col>
 
-  <Col md={2}>
-    <Form.Label className="fw-bold">Price (₹)</Form.Label>
-    <Form.Control
-      name="price"
-      type="number"
-      value={itemForm.price}
-      readOnly
-      className="border-primary bg-light"
-    />
-  </Col>
+                  <Col md={1}>
+                    <Form.Label className="fw-bold">Qty</Form.Label>
+                    <Form.Control
+                      name="quantity"
+                      type="number"
+                      value={itemForm.quantity}
+                      onChange={handleItemChange}
+                      min="1"
+                      className="border-primary"
+                    />
+                  </Col>
 
-  <Col md={2}>
-    <Form.Label className="fw-bold">Discount (%)</Form.Label>
-    <Form.Control
-      name="discount"
-      type="number"
-      value={itemForm.discount}
-      onChange={handleItemChange}
-      min="0"
-      max="100"
-      className="border-primary"
-    />
-  </Col>
+                  <Col md={2}>
+                    <Form.Label className="fw-bold">Price (₹)</Form.Label>
+                    <Form.Control
+                      name="price"
+                      type="number"
+                      value={itemForm.price}
+                      readOnly
+                      className="border-primary bg-light"
+                    />
+                  </Col>
 
-  <Col md={2}>
-    <Form.Label className="fw-bold">GST (%)</Form.Label>
-    <Form.Control
-      name="gst"
-      type="number"
-      value={itemForm.gst}
-      readOnly
-      className="border-primary bg-light"
-    />
-  </Col>
+                  <Col md={2}>
+                    <Form.Label className="fw-bold">Discount (%)</Form.Label>
+                    <Form.Control
+                      name="discount"
+                      type="number"
+                      value={itemForm.discount}
+                      onChange={handleItemChange}
+                      min="0"
+                      max="100"
+                      className="border-primary"
+                    />
+                  </Col>
 
-  <Col md={2}>
-    <Form.Label className="fw-bold">Total Price (₹)</Form.Label>
-    <Form.Control
-      type="text"
-      value={calculateTotalPrice()}
-      readOnly
-      className="border-primary bg-light"
-    />
-  </Col>
-  <Col md={1}>
-    <Button variant="success" onClick={addItem} className="w-100">
-      Add
-    </Button>
-  </Col>
-</Row>
+                  <Col md={2}>
+                    <Form.Label className="fw-bold">GST (%)</Form.Label>
+                    <Form.Control
+                      name="gst"
+                      type="number"
+                      value={itemForm.gst}
+                      readOnly
+                      className="border-primary bg-light"
+                    />
+                  </Col>
+
+                  <Col md={2}>
+                    <Form.Label className="fw-bold">Total Price (₹)</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={calculateTotalPrice()}
+                      readOnly
+                      className="border-primary bg-light"
+                    />
+                  </Col>
+                  <Col md={1}>
+                    <Button variant="success" onClick={addItem} className="w-100">
+                      Add
+                    </Button>
+                  </Col>
+                </Row>
+
                 <Row className="mt-2">
                   <Col>
                     <Form.Control
@@ -1284,20 +1286,10 @@ const CreateInvoice = ({ user }) => {
                           <td>{item.batch}</td>
                           <td>
                             {item.batchDetails && (
-                             <small>
-  MFG: {item.batchDetails.mfg_date 
-    ? new Date(item.batchDetails.mfg_date).toLocaleDateString('en-GB') 
-    : item.batchDetails.manufacturing_date 
-      ? new Date(item.batchDetails.manufacturing_date).toLocaleDateString('en-GB') 
-      : ''}<br/>
-
-  EXP: {item.batchDetails.exp_date 
-    ? new Date(item.batchDetails.exp_date).toLocaleDateString('en-GB') 
-    : item.batchDetails.expiry_date 
-      ? new Date(item.batchDetails.expiry_date).toLocaleDateString('en-GB') 
-      : ''}
-</small>
-
+                              <small>
+                                MFG: {item.batchDetails.mfg_date || item.batchDetails.manufacturing_date}<br/>
+                                EXP: {item.batchDetails.exp_date || item.batchDetails.expiry_date}
+                              </small>
                             )}
                           </td>
                           <td className="text-center">
