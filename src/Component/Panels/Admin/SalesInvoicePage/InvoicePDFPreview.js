@@ -39,7 +39,9 @@ const InvoicePDFPreview = () => {
     retailerGstin: '',
     retailerBusinessName: '',
     invoiceNumber: '',
-    transactionProofFile: null
+    transactionProofFile: null,
+      product_id: '', // Add this
+  batch_id: '' // Add this
   });
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
@@ -935,22 +937,46 @@ const InvoicePDFPreview = () => {
     };
   };
 
-  const handleOpenReceiptModal = () => {
-    if (!invoiceData) return;
-    
-    const balanceDue = paymentData ? paymentData.summary.balanceDue : parseFloat(invoiceData.grandTotal);
-    
-    setReceiptFormData(prev => ({
-      ...prev,
-      retailerBusinessName: invoiceData.supplierInfo.businessName,
-      retailerId: invoiceData.supplierInfo.id || '',
-      amount: balanceDue,
-      invoiceNumber: invoiceData.invoiceNumber
-    }));
-    
-    fetchNextReceiptNumber();
-    setShowReceiptModal(true);
+const handleOpenReceiptModal = () => {
+  console.log("🟦 handleOpenReceiptModal TRIGGERED");
+
+  if (!invoiceData) {
+    console.log("❌ No invoiceData found");
+    return;
+  }
+
+  const balanceDue = paymentData 
+    ? paymentData.summary.balanceDue 
+    : parseFloat(invoiceData.grandTotal);
+
+  console.log("✅ balanceDue:", balanceDue);
+
+  const firstItem = invoiceData.items[0];
+  console.log("✅ firstItem:", firstItem);
+
+  const updatedForm = {
+    retailerBusinessName: invoiceData.supplierInfo.businessName,
+    retailerId: invoiceData.supplierInfo.id || '',
+    amount: balanceDue,
+    invoiceNumber: invoiceData.invoiceNumber,
+    product_id: firstItem?.product_id || '',
+    batch_id: firstItem?.batch_id || ''
   };
+
+  console.log("✅ Updated Receipt Form Data:", updatedForm);
+
+  setReceiptFormData(prev => ({
+    ...prev,
+    ...updatedForm
+  }));
+
+  console.log("📌 Fetching next receipt number...");
+  fetchNextReceiptNumber();
+
+  console.log("📌 Opening Receipt Modal");
+  setShowReceiptModal(true);
+};
+
 
   const handleCloseReceiptModal = () => {
     setShowReceiptModal(false);
@@ -996,24 +1022,30 @@ const InvoicePDFPreview = () => {
       formDataToSend.append('bank_name', receiptFormData.bankName);
       formDataToSend.append('transaction_date', receiptFormData.transactionDate || '');
       formDataToSend.append('reconciliation_option', receiptFormData.reconciliationOption);
-      formDataToSend.append('invoice_number', receiptFormData.invoiceNumber);
-      formDataToSend.append('retailer_mobile', receiptFormData.retailerMobile);
-      formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
-      formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
-      formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
-      formDataToSend.append('from_invoice', 'true');
-  
-      if (receiptFormData.transactionProofFile) {
-        formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
-      }
-  
-      console.log('Creating receipt from invoice with FormData...');
+    formDataToSend.append('invoice_number', receiptFormData.invoiceNumber);
+    formDataToSend.append('retailer_mobile', receiptFormData.retailerMobile);
+    formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
+    formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
+    
+    // FIX: Properly append product_id and batch_id
+    formDataToSend.append('product_id', receiptFormData.product_id || '');
+    formDataToSend.append('batch_id', receiptFormData.batch_id || '');
+    
+    formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
+    formDataToSend.append('from_invoice', 'true');
 
-      const response = await fetch(`${baseurl}/api/receipts`, {
-        method: 'POST',
-        body: formDataToSend,
-      });
-  
+    if (receiptFormData.transactionProofFile) {
+      formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
+    }
+
+    console.log('Creating receipt from invoice with FormData...');
+    console.log('Product ID:', receiptFormData.product_id);
+    console.log('Batch ID:', receiptFormData.batch_id);
+
+    const response = await fetch(`${baseurl}/api/receipts`, {
+      method: 'POST',
+      body: formDataToSend,
+    });
       if (response.ok) {
         const result = await response.json();
         console.log('Receipt created successfully:', result);
