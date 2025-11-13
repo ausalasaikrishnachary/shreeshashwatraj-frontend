@@ -55,52 +55,67 @@ const Salesitems_productsdetails = ({ user }) => {
     }
   }, [productData]);
 
-  // Function to calculate stock data for a specific batch
-  const calculateBatchStock = (batch) => {
-    const batchStocks = productData.stock?.filter(stock => stock.batch_number === batch.batch_number) || [];
-    
-    if (batchStocks.length > 0) {
-      let opening_stock = 0;
-      let stock_in = 0;
-      let stock_out = 0;
-      let balance_stock = 0;
-      let latest_date = null;
 
-      const sortedStocks = batchStocks.sort((a, b) => new Date(a.date || a.created_at) - new Date(b.date || b.created_at));
-      
+  const calculateBatchStock = (batchObj) => {
+    console.log("==== Calculating stock for batch ====");
+    console.log("Batch Object:", batchObj);
+
+    const batchNumber = (batchObj.batch_number || '').toString().trim();
+    console.log("Batch Number:", batchNumber);
+
+    // Filter stock records if available
+    const batchStocks = (productData.stock || []).filter(
+      stock => (stock.batch_number || '').toString().trim() === batchNumber
+    );
+
+    console.log("Matching stock records:", batchStocks);
+
+    let opening_stock = parseFloat(batchObj.opening_stock) || parseFloat(batchObj.quantity) || 0;
+    let stock_in = 0;
+    let stock_out = 0;
+    let balance_stock = opening_stock;
+    let latest_date = batchObj.updated_at || batchObj.created_at;
+
+    if (batchStocks.length > 0) {
+      const sortedStocks = batchStocks.sort(
+        (a, b) => new Date(a.date || a.created_at) - new Date(b.date || b.created_at)
+      );
+
       sortedStocks.forEach((stock, index) => {
-        if (index === 0) {
-          opening_stock = parseFloat(stock.opening_stock) || 0;
+        if (index === 0 && stock.opening_stock != null) {
+          opening_stock = parseFloat(stock.opening_stock) || opening_stock;
         }
-        
         stock_in += parseFloat(stock.stock_in) || 0;
         stock_out += parseFloat(stock.stock_out) || 0;
-        balance_stock = parseFloat(stock.balance_stock) || 0;
-        
-        if (stock.date || stock.created_at) {
-          latest_date = stock.date || stock.created_at;
-        }
+        balance_stock = parseFloat(stock.balance_stock) || (opening_stock + stock_in - stock_out);
+        latest_date = stock.date || stock.created_at || latest_date;
       });
 
-      return {
-        opening_stock,
-        stock_in,
-        stock_out,
-        balance_stock,
-        latest_date
-      };
+      balance_stock = opening_stock + stock_in - stock_out;
     } else {
-      const batchQuantity = parseFloat(batch.quantity) || 0;
-      
-      return {
-        opening_stock: parseFloat(batch.quantity) || 0,
-        stock_in: 0,
-        stock_out: 0,
-        balance_stock: batchQuantity,
-        latest_date: batch.created_at
-      };
+      console.log("No stock records found for this batch, using batch properties");
+      stock_in = parseFloat(batchObj.stock_in) || 0;
+      stock_out = parseFloat(batchObj.stock_out) || 0;
+      balance_stock = parseFloat(batchObj.quantity) || 0;
     }
+
+    console.log(`Batch ${batchNumber} Stock Calculated:`, { opening_stock, stock_in, stock_out, balance_stock, latest_date });
+    console.log("==== Finished calculating stock for batch ====");
+
+    return {
+      opening_stock,
+      stock_in,
+      stock_out,
+      balance_stock,
+      latest_date,
+    };
   };
+
+
+
+
+
+
 
   // Function to get product-level stock data
   const getProductStockData = () => {
@@ -247,84 +262,56 @@ const Salesitems_productsdetails = ({ user }) => {
                     <div className="table-responsive">
                       <table className="salesitems-table">
                         <thead className="table-light">
-                          <tr>
-                            <th>Product Name</th>
-                            <th>Price</th>
-                            {productData.maintain_batch ? (
-                              <>
-                                <th>Batch Number</th>
-                              </>
-                            ) : null}
-                            <th>Opening Stock</th>
-                            <th>Stock In</th>
-                            <th>Stock Out</th>
-                            <th>Balance Stock</th>
-                            <th>Date</th>
-                          </tr>
+                         <tr>
+    <th>Product Name</th>
+    <th>Price</th>
+    <th>Batch Number</th>
+    <th>Opening Stock</th>
+    <th>Stock In</th>
+    <th>Stock Out</th>
+    <th>Balance Stock</th>
+    <th>Date</th>
+  </tr>
                         </thead>
                         <tbody>
-                          {productData.maintain_batch ? (
-                            productData.batches && productData.batches.length > 0 ? (
-                              productData.batches.map((batch) => {
-                                const batchStock = calculateBatchStock(batch);
-                                
-                                console.log(`Batch ${batch.batch_number} Stock:`, batchStock);
-                                
-                                return (
-                                  <tr key={batch.id}>
-                                    <td>{productData.goods_name}</td>
-                                    <td>₹{batch.selling_price || productData.price}</td>
-                                    <td>{batch.batch_number}</td>
-                                    <td>{batchStock.opening_stock}</td>
-                                    <td style={{ color: 'green', fontWeight: '600' }}>
-                                      {batchStock.stock_in}
-                                    </td>
-                                    <td style={{ color: 'red', fontWeight: '600' }}>
-                                      {batchStock.stock_out}
-                                    </td>
-                                    <td style={{ fontWeight: '600' }}>
-                                      {batchStock.balance_stock}
-                                    </td>
-                                    <td>
-                                      {batchStock.latest_date 
-                                        ? new Date(batchStock.latest_date).toLocaleDateString("en-IN")
-                                        : new Date(batch.created_at).toLocaleDateString("en-IN")}
-                                    </td>
-                                  </tr>
-                                );
-                              })
-                            ) : (
-                              <tr>
-                                <td colSpan="9" className="text-center text-muted">
-                                  No batches found for this product.
-                                </td>
-                              </tr>
-                            )
-                          ) : (
-                            (() => {
-                              const productStock = getProductStockData();
-                              return (
-                                <tr>
-                                  <td>{productData.goods_name}</td>
-                                  <td>₹{productData.price}</td>
-                                  <td>{productStock.opening_stock}</td>
-                                  <td style={{ color: 'green', fontWeight: '600' }}>
-                                    {productStock.stock_in}
-                                  </td>
-                                  <td style={{ color: 'red', fontWeight: '600' }}>
-                                    {productStock.stock_out}
-                                  </td>
-                                  <td style={{ fontWeight: '600' }}>
-                                    {productStock.balance_stock}
-                                  </td>
-                                  <td>
-                                    {new Date(productStock.latest_date).toLocaleDateString("en-IN")}
-                                  </td>
-                                </tr>
-                              );
-                            })()
-                          )}
-                        </tbody>
+  {productData.batches && productData.batches.length > 0 ? (
+    productData.batches.map((batch) => {
+      const batchStock = calculateBatchStock(batch);
+
+      console.log(`Batch ${batch.batch_number} Stock:`, batchStock);
+
+      return (
+        <tr key={batch.id}>
+          <td>{productData.goods_name}</td>
+          <td>₹{batch.selling_price || productData.price}</td>
+          <td>{batch.batch_number}</td>
+          <td>{batchStock.opening_stock}</td>
+          <td style={{ color: 'green', fontWeight: '600' }}>
+            {batchStock.stock_in}
+          </td>
+          <td style={{ color: 'red', fontWeight: '600' }}>
+            {batchStock.stock_out}
+          </td>
+          <td style={{ fontWeight: '600' }}>
+            {batchStock.balance_stock}
+          </td>
+          <td>
+            {batchStock.latest_date
+              ? new Date(batchStock.latest_date).toLocaleDateString("en-IN")
+              : new Date(batch.created_at).toLocaleDateString("en-IN")}
+          </td>
+        </tr>
+      );
+    })
+  ) : (
+    <tr>
+      <td colSpan="9" className="text-center text-muted">
+        No batches found for this product.
+      </td>
+    </tr>
+  )}
+</tbody>
+
                       </table>
                     </div>
                   </div>
@@ -340,7 +327,7 @@ const Salesitems_productsdetails = ({ user }) => {
                       )}
                     </div>
                     <hr className="my-2" />
-                    
+
                     {voucherLoading ? (
                       <div className="text-center py-3">
                         <div className="spinner-border text-primary" role="status">
@@ -388,14 +375,13 @@ const Salesitems_productsdetails = ({ user }) => {
                                   <strong>{formatCurrency(voucher.TotalAmount || voucher.totalAmount)}</strong>
                                 </td>
                                 <td>
-                                  <span 
-                                    className={`badge ${
-                                      voucher.status === 'Paid' 
-                                        ? 'bg-success' 
+                                  <span
+                                    className={`badge ${voucher.status === 'Paid'
+                                        ? 'bg-success'
                                         : voucher.status === 'Pending'
-                                        ? 'bg-warning'
-                                        : 'bg-secondary'
-                                    }`}
+                                          ? 'bg-warning'
+                                          : 'bg-secondary'
+                                      }`}
                                   >
                                     {voucher.status || 'Pending'}
                                   </span>

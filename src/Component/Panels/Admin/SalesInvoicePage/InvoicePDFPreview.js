@@ -365,7 +365,7 @@ const InvoicePDFPreview = () => {
       
       supplierInfo: {
         name: apiData.PartyName || 'Customer',
-        businessName: apiData.AccountName || 'Business',
+        businessName: apiData.AccountName || 'Business', // This is the PartyName
         gstin: apiData.gstin || '',
         state: apiData.billing_state || apiData.BillingState || '',
         id: apiData.PartyID || null
@@ -955,7 +955,7 @@ const handleOpenReceiptModal = () => {
   console.log("✅ firstItem:", firstItem);
 
   const updatedForm = {
-    retailerBusinessName: invoiceData.supplierInfo.businessName,
+    retailerBusinessName: invoiceData.supplierInfo.name, // ✅ CHANGED TO 'name' (PartyName)
     retailerId: invoiceData.supplierInfo.id || '',
     amount: balanceDue,
     invoiceNumber: invoiceData.invoiceNumber,

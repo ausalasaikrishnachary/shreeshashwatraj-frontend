@@ -2154,6 +2154,7 @@
 
 
 import React, { useState, useEffect } from "react";
+import { baseurl } from "../../../../../BaseURL/BaseURL";
 
 function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -2176,8 +2177,8 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [removeExistingImage, setRemoveExistingImage] = useState(false);
 
-  const API_BASE = "http://localhost:5000/api";
-  const API_BASE_CAT = "http://localhost:5000";
+  const API_BASE = `${baseurl}/api`;
+  const API_BASE_CAT = `${baseurl}`;
 
   // Function to convert date to YYYY-MM-DD format for HTML date input
   const formatDateForInput = (dateString) => {
@@ -2818,7 +2819,7 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
             <div className="offers-current-image">
               <p>Current Image:</p>
               <img 
-                src={`http://localhost:5000${editingOffer.image_url}`} 
+                src={`${baseurl}${editingOffer.image_url}`} 
                 alt="Current offer" 
                 className="offers-image-preview"
               />

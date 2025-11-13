@@ -4,6 +4,7 @@ import './InvoicePDFPreview.css';
 import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, FaCalendar, FaReceipt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import html2pdf from 'html2pdf.js';
+import { baseurl } from '../../../BaseURL/BaseURL';
 
 const InvoicePDFPreview = () => {
   const navigate = useNavigate();
@@ -60,7 +61,7 @@ const InvoicePDFPreview = () => {
     
     try {
       setLoadingPayment(true);
-      const response = await fetch(`http://localhost:5000/api/invoices/${invNumber}`);
+      const response = await fetch(`${baseurl}/api/invoices/${invNumber}`);
       
       if (response.ok) {
         const result = await response.json();

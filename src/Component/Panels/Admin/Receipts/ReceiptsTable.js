@@ -103,7 +103,7 @@ const handleRemoveFile = () => {
       render: (value, row) => (
         <button
           className="btn btn-link p-0 text-primary text-decoration-none"
-          onClick={() => handleViewReceipt(row.id)}
+          onClick={() => handleViewReceipt(row.VoucherID)}
           title="Click to view receipt"
         >
           {value || 'N/A'}
@@ -111,7 +111,7 @@ const handleRemoveFile = () => {
       )
     },
     { 
-      key: 'amount', 
+      key: 'paid_amount', 
       title: 'AMOUNT', 
       style: { textAlign: 'right' },
       render: (value) => value || '₹ 0.00'

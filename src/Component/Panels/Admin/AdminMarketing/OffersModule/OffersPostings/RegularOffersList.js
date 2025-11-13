@@ -271,6 +271,7 @@
 
 
 import React, { useState, useEffect } from "react";
+import { baseurl } from "../../../../../BaseURL/BaseURL";
 
 function RegularOffersList({ searchTerm, filterType, onSearchChange, onFilterChange, onAddNew, onEditItem }) {
   const [offers, setOffers] = useState([]);
@@ -278,7 +279,7 @@ function RegularOffersList({ searchTerm, filterType, onSearchChange, onFilterCha
   const [currentPage, setCurrentPage] = useState(1);
   const offersPerPage = 5;
 
-  const API_BASE = "http://localhost:5000/api";
+  const API_BASE = `${baseurl}/api`;
 
   // Function to format date to Indian format (DD/MM/YYYY)
   const formatToIndianDate = (dateString) => {
@@ -398,7 +399,7 @@ function RegularOffersList({ searchTerm, filterType, onSearchChange, onFilterCha
     <div key={offer.id} className={`offers-card-item ${offer.status}`}>
       <div className="offers-card-image">
         {offer.image_url ? (
-          <img src={`http://localhost:5000${offer.image_url}`} alt={offer.title} />
+          <img src={`${baseurl}${offer.image_url}`} alt={offer.title} />
         ) : (
           <div className="offers-no-image">No Image</div>
         )}

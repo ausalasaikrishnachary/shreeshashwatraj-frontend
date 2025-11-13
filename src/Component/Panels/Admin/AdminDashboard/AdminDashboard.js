@@ -16,6 +16,7 @@ import {
 import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
 import DashboardCharts from "./DashboardCard";
+import { baseurl } from "../../../BaseURL/BaseURL";
 import "./AdminDashboard.css";
 
 function AdminDashboard() {
@@ -42,7 +43,7 @@ function AdminDashboard() {
     const fetchReceivables = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:5000/api/sales-receipt-totals');
+        const response = await fetch(`${baseurl}/api/sales-receipt-totals`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch receivables data');
@@ -106,14 +107,14 @@ function AdminDashboard() {
           }`}
         >
           {/* Welcome Section */}
-          <div className="admin-dashboard-welcome-section">
+          {/* <div className="admin-dashboard-welcome-section">
             <h1 className="admin-dashboard-greeting">
               Good morning, Admin User! 💤
             </h1>
             <p className="admin-dashboard-subtitle">
               Here's what's happening across your retail network today.
             </p>
-          </div>
+          </div> */}
 
           {/* Stats Grid */}
           <div className="admin-dashboard-stats-grid">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import StaffMobileLayout from "../StaffMobileLayout/StaffMobileLayout";
 import "./StaffOffers.css";
+import { baseurl } from "../../../../BaseURL/BaseURL";
 
 function StaffOffers() {
   const [offers, setOffers] = useState([]);
@@ -10,7 +11,7 @@ function StaffOffers() {
   const [currentPage, setCurrentPage] = useState(1);
   const offersPerPage = 5;
 
-  const API_BASE = "http://localhost:5000/api";
+  const API_BASE = `${baseurl}/api`;
 
   // Function to format date to Indian format (DD/MM/YYYY)
   const formatToIndianDate = (dateString) => {
@@ -92,7 +93,7 @@ function StaffOffers() {
     <div key={offer.id} className={`offers-card-item mobile ${offer.status}`}>
       <div className="offers-card-image">
         {offer.image_url ? (
-          <img src={`http://localhost:5000${offer.image_url}`} alt={offer.title} />
+          <img src={`${baseurl}${offer.image_url}`} alt={offer.title} />
         ) : (
           <div className="offers-no-image">No Image</div>
         )}

@@ -30,17 +30,34 @@ const ReceiptView = () => {
       if (response.ok) {
         const data = await response.json();
         setReceipt(data);
-        setEditFormData({
-          retailer_id: data.retailer_id,
-          amount: data.amount,
-          currency: data.currency,
-          payment_method: data.payment_method,
-          receipt_date: data.receipt_date ? data.receipt_date.split('T')[0] : '',
-          note: data.note || '',
-          bank_name: data.bank_name || '',
-          transaction_date: data.transaction_date ? data.transaction_date.split('T')[0] : '',
-          reconciliation_option: data.reconciliation_option || 'Do Not Reconcile'
-        });
+       console.log('📦 API Receipt Data:', data);
+
+setEditFormData({
+  retailer_id: data.PartyID || '', // PartyID → retailer_id
+  paid_amount: data.paid_amount || data.TotalAmount || '', // TotalAmount maps to paid_amount
+  currency: data.currency || 'INR', // default INR (not in API)
+  payment_method: data.AccountName || '', // AccountName → payment method (e.g., Cash Account)
+  receipt_date: data.Date ? data.Date.split('T')[0] : '', // Date field from API
+  note: data.PaymentTerms || '', // PaymentTerms → note
+  bank_name: data.BankName || '', // BankName from API
+  transaction_date: data.paid_date ? data.paid_date.split('T')[0] : '', // paid_date → transaction_date
+  reconciliation_option: data.status || '', // status → reconciliation_option
+});
+
+console.log('📝 Edit form data loaded:', {
+  retailer_id: data.PartyID,
+  paid_amount: data.paid_amount || data.TotalAmount,
+  currency: data.currency || 'INR',
+  payment_method: data.AccountName,
+  receipt_date: data.Date,
+  note: data.PaymentTerms,
+  bank_name: data.BankName,
+  transaction_date: data.paid_date,
+  reconciliation_option: data.status,
+});
+
+
+
       } else {
         setError('Failed to load receipt');
       }
@@ -119,22 +136,35 @@ const ReceiptView = () => {
       const formDataToSend = new FormData();
 
       // Append all receipt data
-      formDataToSend.append('retailer_id', editFormData.retailer_id);
-      formDataToSend.append('amount', editFormData.amount);
-      formDataToSend.append('currency', editFormData.currency);
-      formDataToSend.append('payment_method', editFormData.payment_method);
-      formDataToSend.append('receipt_date', editFormData.receipt_date);
-      formDataToSend.append('note', editFormData.note);
-      formDataToSend.append('bank_name', editFormData.bank_name);
-      formDataToSend.append('transaction_date', editFormData.transaction_date || '');
-      formDataToSend.append('reconciliation_option', editFormData.reconciliation_option);
+      formDataToSend.append('TransactionType', "Receipt");
+      formDataToSend.append('PartyID', editFormData.retailer_id);
+      formDataToSend.append('paid_amount', editFormData.paid_amount);
+      // formDataToSend.append('currency', editFormData.currency);
+      // formDataToSend.append('payment_method', editFormData.payment_method);
+      // formDataToSend.append('receipt_date', editFormData.receipt_date);
+      // formDataToSend.append('note', editFormData.note);
+      // formDataToSend.append('bank_name', editFormData.bank_name);
+      // formDataToSend.append('transaction_date', editFormData.transaction_date || '');
+      // formDataToSend.append('reconciliation_option', editFormData.reconciliation_option);
+      formDataToSend.append('DC', "C");
+
+//       formDataToSend.append('PartyID', '2');
+// formDataToSend.append('paid_amount', '594');
+// formDataToSend.append('currency', 'INR');
+// formDataToSend.append('payment_method', 'Bank Transfer');
+// formDataToSend.append('receipt_date', '2025-11-10');
+// formDataToSend.append('note', 'Test update for receipt');
+// formDataToSend.append('bank_name', 'HDFC Bank');
+// formDataToSend.append('transaction_date', '2025-11-09');
+// formDataToSend.append('reconciliation_option', 'Auto');
+
 
       // Append file if exists
       if (transactionProofFile) {
         formDataToSend.append('transaction_proof', transactionProofFile);
       }
 
-      const response = await fetch(`${baseurl}/api/receipts/${id}`, {
+      const response = await fetch(`${baseurl}/api/voucher/${id}`, {
         method: 'PUT',
         // Don't set Content-Type header for FormData
         body: formDataToSend,
@@ -361,8 +391,8 @@ const handleDownloadProof = async (view = false) => {
                       <input
                         type="number"
                         className="form-control"
-                        name="amount"
-                        value={editFormData.amount || ''}
+                        name="paid_amount"
+                        value={editFormData.paid_amount || ''}
                         onChange={handleEditInputChange}
                         placeholder="Amount"
                         min="0"
@@ -600,7 +630,7 @@ const handleDownloadProof = async (view = false) => {
               <div className="modal-body">
                 <p>Are you sure you want to delete this receipt?</p>
                 <p><strong>Receipt Number:</strong> {receipt.receipt_number}</p>
-                <p><strong>Amount:</strong> ₹ {parseFloat(receipt.amount || 0).toLocaleString('en-IN')}</p>
+                <p><strong>Amount:</strong> ₹ {parseFloat(receipt.paid_amount || 0).toLocaleString('en-IN')}</p>
                 <p className="text-danger"><small>This action cannot be undone.</small></p>
               </div>
               <div className="modal-footer">
@@ -652,7 +682,7 @@ const handleDownloadProof = async (view = false) => {
           <div className="receipt-payment-info">
             <div className="payup-section">
               <strong>Payup:</strong>
-              <span className="payup-amount">₹ {parseFloat(receipt.amount || 0).toLocaleString('en-IN')}</span>
+              <span className="payup-amount">₹ {parseFloat(receipt.paid_amount || 0).toLocaleString('en-IN')}</span>
             </div>
           </div>
 
@@ -661,7 +691,7 @@ const handleDownloadProof = async (view = false) => {
           {/* Receipt Details */}
           <div className="receipt-details">
             <div className="receipt-meta">
-              <p><strong>RECEIPT Date:</strong> {receipt.receipt_date ? new Date(receipt.receipt_date).toLocaleDateString('en-IN') : 'N/A'}</p>
+              <p><strong>RECEIPT Date:</strong> {receipt.created_at ? new Date(receipt.created_at).toLocaleDateString('en-IN') : 'N/A'}</p>
               <p><strong>Created by:</strong> IIIQ bets</p>
             </div>
           </div>
@@ -678,13 +708,13 @@ const handleDownloadProof = async (view = false) => {
               </thead>
               <tbody>
                 <tr>
-                  <td>Received from {receipt.payee_name || 'N/A'} of {numberToWords(receipt.amount)}</td>
+                  <td>Received from {receipt.PartyName || 'N/A'} of {numberToWords(receipt.paid_amount)}</td>
                   <td>TOTAL</td>
                 </tr>
                 <tr>
                   <td></td>
                   <td>
-                    <strong>₹ {parseFloat(receipt.amount || 0).toLocaleString('en-IN')}</strong>
+                    <strong>₹ {parseFloat(receipt.paid_amount || 0).toLocaleString('en-IN')}</strong>
                   </td>
                 </tr>
               </tbody>
