@@ -3,7 +3,7 @@ import { Container, Row, Col, Form, Button, Table, Alert } from 'react-bootstrap
 import './Invoices.css';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
-import { FaEdit, FaTrash, FaEye } from "react-icons/fa";
+import { FaEdit, FaTrash, FaEye, FaSave, FaTimes } from "react-icons/fa";
 import { baseurl } from '../../../BaseURL/BaseURL';
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -21,6 +21,7 @@ const CreateInvoice = ({ user }) => {
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const [hasFetchedInvoiceNumber, setHasFetchedInvoiceNumber] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [editingItemIndex, setEditingItemIndex] = useState(null);
   const [editingVoucherId, setEditingVoucherId] = useState(null);
   const navigate = useNavigate();
   const { id } = useParams(); // Get voucher ID from URL if editing
@@ -548,32 +549,32 @@ const addItem = () => {
     return;
   }
 
-  // Debug the itemForm before adding
-  console.log('➕ Adding item with data:', {
-    product: itemForm.product,
-    product_id: itemForm.product_id,
-    batch: itemForm.batch,
-    batch_id: itemForm.batch_id,
-    has_product_id: !!itemForm.product_id,
-    has_batch_id: !!itemForm.batch_id
-  });
-
   const calculatedItem = {
     ...calculateItemTotal(),
     batch: selectedBatch,
-    batch_id: itemForm.batch_id, // Make sure this is included
-    product_id: itemForm.product_id, // Make sure this is included
+    batch_id: itemForm.batch_id,
+    product_id: itemForm.product_id,
     batchDetails: selectedBatchDetails
   };
 
-  console.log('✅ Final item data for invoice:', calculatedItem);
+  if (editingItemIndex !== null) {
+    // Update existing item
+    setInvoiceData(prev => ({
+      ...prev,
+      items: prev.items.map((item, index) => 
+        index === editingItemIndex ? calculatedItem : item
+      )
+    }));
+    setEditingItemIndex(null);
+  } else {
+    // Add new item
+    setInvoiceData(prev => ({
+      ...prev,
+      items: [...prev.items, calculatedItem]
+    }));
+  }
 
-  setInvoiceData(prev => ({
-    ...prev,
-    items: [...prev.items, calculatedItem]
-  }));
-
-  // Reset form including IDs
+  // Reset form
   setItemForm({
     product: "",
     product_id: "",
@@ -596,6 +597,73 @@ const addItem = () => {
   setSelectedBatchDetails(null);
 };
 
+
+const editItem = (index) => {
+  const itemToEdit = invoiceData.items[index];
+  
+  // Set the form fields with the item data
+  setItemForm({
+    product: itemToEdit.product,
+    product_id: itemToEdit.product_id,
+    description: itemToEdit.description,
+    quantity: itemToEdit.quantity,
+    price: itemToEdit.price,
+    discount: itemToEdit.discount,
+    gst: itemToEdit.gst,
+    cgst: itemToEdit.cgst,
+    sgst: itemToEdit.sgst,
+    igst: itemToEdit.igst,
+    cess: itemToEdit.cess,
+    total: itemToEdit.total,
+    batch: itemToEdit.batch,
+    batch_id: itemToEdit.batch_id,
+    batchDetails: itemToEdit.batchDetails
+  });
+  
+  setSelectedBatch(itemToEdit.batch);
+  setSelectedBatchDetails(itemToEdit.batchDetails);
+  setEditingItemIndex(index);
+  
+  // Fetch batches for the product
+  if (itemToEdit.product_id) {
+    fetchBatchesForProduct(itemToEdit.product_id);
+  }
+};
+
+const fetchBatchesForProduct = async (productId) => {
+  try {
+    const res = await fetch(`${baseurl}/products/${productId}/batches`);
+    const batchData = await res.json();
+    setBatches(batchData);
+  } catch (err) {
+    console.error("Failed to fetch batches:", err);
+    setBatches([]);
+  }
+};
+
+const cancelEdit = () => {
+  setEditingItemIndex(null);
+  setItemForm({
+    product: "",
+    product_id: "",
+    description: "",
+    quantity: 1,
+    price: 0,
+    discount: 0,
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0,
+    total: 0,
+    batch: "",
+    batch_id: "",
+    batchDetails: null
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+};
   const removeItem = (index) => {
     setInvoiceData(prev => ({
       ...prev,
@@ -1156,7 +1224,9 @@ const addItem = () => {
 
               {/* Item Section */}
               <div className="item-section mb-3 mt-3 bg-white p-3 rounded">
-                <h6 className="text-primary mb-3">Add Items</h6>
+              <h6 className="text-primary mb-3">
+  {editingItemIndex !== null ? `Edit Item (${editingItemIndex + 1})` : 'Add Items'}
+</h6>
             <Row className="align-items-end">
   <Col md={2}>
     <div className="d-flex justify-content-between align-items-center mb-1">
@@ -1333,11 +1403,24 @@ const addItem = () => {
       className="border-primary bg-light"
     />
   </Col>
-  <Col md={1}>
-    <Button variant="success" onClick={addItem} className="w-100">
-      Add
+ <Col md={1}>
+  <Button 
+    variant={editingItemIndex !== null ? "warning" : "success"} 
+    onClick={addItem} 
+    className="w-100 me-1"
+  >
+    {editingItemIndex !== null ? <FaSave /> : "Add"}
+  </Button>
+  {editingItemIndex !== null && (
+    <Button 
+      variant="secondary" 
+      onClick={cancelEdit} 
+      className="w-100 mt-1"
+    >
+      <FaTimes />
     </Button>
-  </Col>
+  )}
+</Col>
 </Row>
                 <Row className="mt-2">
                   <Col>
@@ -1415,11 +1498,23 @@ const addItem = () => {
 
                             )}
                           </td>
-                          <td className="text-center">
-                            <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
-                              <FaTrash />
-                            </Button>
-                          </td>
+                <td className="text-center">
+  <Button 
+    variant="warning" 
+    size="sm" 
+    onClick={() => editItem(index)}
+    className="me-1"
+  >
+    <FaEdit />
+  </Button>
+  <Button 
+    variant="danger" 
+    size="sm" 
+    onClick={() => removeItem(index)}
+  >
+    <FaTrash />
+  </Button>
+</td>
                         </tr>
                       ))
                     )}

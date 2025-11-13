@@ -95,23 +95,28 @@ const SalesItems = ({ user }) => {
       alert("Failed to delete product");
     }
   };
+// ✅ Add Stock - CORRECTED VERSION
+const handleAddStock = async (quantityToAdd, remark, batchNumber) => {
+  try {
+    console.log('Sending request with:', {
+      quantity: quantityToAdd,  // This should be just the number, not an object
+      remark: remark || '',
+      batch_number: batchNumber
+    });
 
-  // ✅ Add Stock
-  const handleAddStock = async ({ quantity, remark }) => {
-    try {
-      await axios.post(`${baseurl}/stock/${selectedProductId}`, {
-        stock_in: quantity,
-        stock_out: 0,
-        date: new Date().toISOString().split("T")[0],
-        remark,
-      });
-      fetchProducts();
-      alert("Stock added successfully!");
-    } catch (error) {
-      console.error(error);
-      alert("Failed to add stock");
-    }
-  };
+    await axios.post(`${baseurl}/stock/${selectedProductId}`, {
+      quantity: quantityToAdd,  // Send as number directly
+      remark: remark || '',
+      batch_number: batchNumber
+    });
+    
+    fetchProducts();
+    alert("Stock added successfully!");
+  } catch (error) {
+    console.error('Error adding stock:', error);
+    alert("Failed to add stock: " + (error.response?.data?.message || error.message));
+  }
+};
 
   // ✅ Deduct Stock
   const handleDeductStock = async ({ quantity, remark }) => {
