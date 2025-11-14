@@ -102,42 +102,42 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     loadProductData();
   }, [productId, groupType]);
 
-  const fetchProductById = async (id) => {
-    try {
-      const response = await axios.get(`${baseurl}/products/${id}`);
-      const product = response.data;
-      console.log('📦 Fetched product:', product);
+const fetchProductById = async (id) => {
+  try {
+    const response = await axios.get(`${baseurl}/products/${id}`);
+    const product = response.data;
+    console.log('📦 Fetched product:', product);
 
-      setFormData({
-        group_by: product.group_by || groupType,
-        goods_name: product.goods_name || product.name || '',
-        category_id: product.category_id || '',
-        company_id: product.company_id || '',
-        price: product.price || '',
-        inclusive_gst: product.inclusive_gst || '',
-        gst_rate: product.gst_rate || '',
-        non_taxable: product.non_taxable || '',
-        net_price: product.net_price || '',
-        hsn_code: product.hsn_code || '',
-        unit: product.unit || 'UNT-UNITS',
-        cess_rate: product.cess_rate || '',
-        cess_amount: product.cess_amount || '',
-        sku: product.sku || '',
-        opening_stock: product.opening_stock || '',
-        opening_stock_date: product.opening_stock_date ? product.opening_stock_date.split('T')[0] : new Date().toISOString().split('T')[0],
-        min_stock_alert: product.min_stock_alert || '',
-        max_stock_alert: product.max_stock_alert || '',
-        description: product.description || '',
-        maintain_batch: product.maintain_batch || false
-      });
+    setFormData({
+      group_by: product.group_by || groupType,
+      goods_name: product.goods_name || product.name || '',
+      category_id: product.category_id || '',
+      company_id: product.company_id || '',
+      price: product.price || '',
+      inclusive_gst: product.inclusive_gst || '',
+      gst_rate: product.gst_rate || '',
+      non_taxable: product.non_taxable || '',
+      net_price: product.net_price || '',
+      hsn_code: product.hsn_code || '',
+      unit: product.unit || 'UNT-UNITS',
+      cess_rate: product.cess_rate || '',
+      cess_amount: product.cess_amount || '',
+      sku: product.sku || '',
+      opening_stock: product.opening_stock || (product.batches && product.batches[0] ? product.batches[0].opening_stock : ''),
+      opening_stock_date: product.opening_stock_date ? product.opening_stock_date.split('T')[0] : new Date().toISOString().split('T')[0],
+      min_stock_alert: product.min_stock_alert || '',
+      max_stock_alert: product.max_stock_alert || '',
+      description: product.description || '',
+      maintain_batch: product.maintain_batch || false
+    });
 
-      setMaintainBatch(product.maintain_batch || false);
-      await fetchBatches(id);
-    } catch (error) {
-      console.error('Error fetching product:', error);
-      showAlert('Error fetching product data', 'danger');
-    }
-  };
+    setMaintainBatch(product.maintain_batch || false);
+    await fetchBatches(id);
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    showAlert('Error fetching product data', 'danger');
+  }
+};
 
   const fetchCategories = async () => {
     try {
@@ -176,6 +176,7 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
           expDate: batch.exp_date?.split('T')[0] || '',
           quantity: batch.quantity || '',
           costPrice: batch.cost_price || '',
+            opening_stock: batch.opening_stock || '', // ADD THIS LINE
           sellingPrice: batch.selling_price || '', // CHANGED: Empty instead of formData.price
           purchasePrice: batch.purchase_price || '',
           mrp: batch.mrp || '',
@@ -590,6 +591,10 @@ const handleSubmit = async (e) => {
   }
 };
 
+
+
+
+
   const pageTitle = productId
     ? `Edit Product in Sales Catalog`
     : `Add Product to Sales Catalog`;
@@ -841,19 +846,19 @@ const handleSubmit = async (e) => {
                   </div>
                   
                   {/* Conditionally show Opening Stock field */}
-                  {!maintainBatch && (
-                    <div className="col">
-                      <Form.Label>Opening Stock *</Form.Label>
-                      <Form.Control
-                        placeholder="Opening Stock"
-                        name="opening_stock"
-                        type="number"
-                        value={formData.opening_stock}
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
-                  )}
+  {!maintainBatch && (
+  <div className="col">
+    <Form.Label>Opening Stock *</Form.Label>
+    <Form.Control
+      placeholder="Opening Stock"
+      name="opening_stock"
+      type="number"
+      value={formData.opening_stock || (batches.length > 0 ? batches[0].opening_stock : '')}
+      onChange={handleChange}
+      required
+    />
+  </div>
+)}
                   
                   {/* Show calculated stock when batches exist */}
                   {maintainBatch && batches.length > 0 && (
