@@ -1663,7 +1663,7 @@ const handleOpenReceiptModal = () => {
                         <th width="10%">Qty</th>
                         <th width="15%">Price</th>
                         <th width="10%">GST %</th>
-                        <th width="15%">Amount (₹)</th>
+                        <th width="15%"> Amount (₹)</th>
                         <th width="5%">Action</th>
                       </tr>
                     </thead>
@@ -1733,7 +1733,7 @@ const handleOpenReceiptModal = () => {
                         <th width="10%">Qty</th>
                         <th width="15%">Price</th>
                         <th width="10%">GST %</th>
-                        <th width="10%">Amount (₹)</th>
+                        <th width="10%"> Taxable Amount (₹)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1795,7 +1795,7 @@ const handleOpenReceiptModal = () => {
                       <table className="amount-table w-100">
                         <tbody>
                           <tr>
-                            <td className="pb-2">Taxable Amount:</td>
+                            <td className="pb-2">  Amount:</td>
                             <td className="text-end pb-2">₹{currentData.taxableAmount}</td>
                           </tr>
                           

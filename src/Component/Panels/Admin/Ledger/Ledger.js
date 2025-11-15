@@ -125,7 +125,7 @@ const groupedLedger = ledgerData.reduce((acc, entry) => {
               <tr key={tx.id || idx}>
                 <td>{tx.date ? new Date(tx.date).toLocaleDateString() : "-"}</td>
                 <td>{tx.trantype || "-"}</td>
-                <td>{tx.AccountName || "-"}</td>
+                <td>{tx.PartyName || "-"}</td>
                 <td>{dc || "-"}</td>
                 <td>{dc === "C" ? tx.Amount : "-"}</td>
                 <td>{dc === "D" ? tx.Amount : "-"}</td>
