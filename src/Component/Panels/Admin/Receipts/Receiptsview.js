@@ -17,57 +17,73 @@ const ReceiptView = () => {
   const [editFormData, setEditFormData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transactionProofFile, setTransactionProofFile] = useState(null);
+  const [invoices, setInvoices] = useState([]);
 
   useEffect(() => {
     fetchReceipt();
+     fetchInvoices(); // Add this line
+
   }, [id]);
-
-  const fetchReceipt = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(`${baseurl}/api/receipts/${id}`);
+const fetchReceipt = async () => {
+  try {
+    setIsLoading(true);
+    const response = await fetch(`${baseurl}/api/receipts/${id}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      setReceipt(data);
       
-      if (response.ok) {
-        const data = await response.json();
-        setReceipt(data);
-       console.log('📦 API Receipt Data:', data);
+      // ADD THIS DEBUG LOG to see all fields from API
+      console.log('🔍 FULL API RESPONSE:', data);
+      console.log('🔍 Available fields:', Object.keys(data));
+      
+      // Look for invoice number in different possible field names
+      console.log('🔍 Possible invoice fields:');
+      console.log('- invoiceNumber:', data.invoiceNumber);
+      console.log('- InvoiceNumber:', data.InvoiceNumber);
+      console.log('- invoice_number:', data.invoice_number);
+      console.log('- Invoice_Number:', data.Invoice_Number);
+      console.log('- inv_number:', data.inv_number);
+      console.log('- invoice_no:', data.invoice_no);
+      console.log('- InvoiceNo:', data.InvoiceNo);
+      
+      setEditFormData({
+        retailer_id: data.PartyID || '',
+        paid_amount: data.paid_amount || data.TotalAmount || '',
+        currency: data.currency || 'INR',
+        payment_method: data.AccountName || '',
+        receipt_date: data.Date ? data.Date.split('T')[0] : '',
+        note: data.PaymentTerms || '',
+        bank_name: data.BankName || '',
+        transaction_date: data.paid_date ? data.paid_date.split('T')[0] : '',
+        reconciliation_option: data.status || '',
+        // Update this line with the correct field name from your API
+        invoiceNumber: data.invoiceNumber || data.InvoiceNumber || data.invoice_number || data.Invoice_Number || data.inv_number || data.invoice_no || data.InvoiceNo || ''
+      });
+      
+      console.log('📝 Edit form data loaded:', {
+        retailer_id: data.PartyID,
+        paid_amount: data.paid_amount || data.TotalAmount,
+        currency: data.currency || 'INR',
+        payment_method: data.AccountName,
+        receipt_date: data.Date,
+        note: data.PaymentTerms,
+        bank_name: data.BankName,
+        transaction_date: data.paid_date,
+        reconciliation_option: data.status,
+        invoiceNumber: data.invoiceNumber || data.InvoiceNumber || data.invoice_number || data.Invoice_Number || data.inv_number || data.invoice_no || data.InvoiceNo,
+      });
 
-setEditFormData({
-  retailer_id: data.PartyID || '', // PartyID → retailer_id
-  paid_amount: data.paid_amount || data.TotalAmount || '', // TotalAmount maps to paid_amount
-  currency: data.currency || 'INR', // default INR (not in API)
-  payment_method: data.AccountName || '', // AccountName → payment method (e.g., Cash Account)
-  receipt_date: data.Date ? data.Date.split('T')[0] : '', // Date field from API
-  note: data.PaymentTerms || '', // PaymentTerms → note
-  bank_name: data.BankName || '', // BankName from API
-  transaction_date: data.paid_date ? data.paid_date.split('T')[0] : '', // paid_date → transaction_date
-  reconciliation_option: data.status || '', // status → reconciliation_option
-});
-
-console.log('📝 Edit form data loaded:', {
-  retailer_id: data.PartyID,
-  paid_amount: data.paid_amount || data.TotalAmount,
-  currency: data.currency || 'INR',
-  payment_method: data.AccountName,
-  receipt_date: data.Date,
-  note: data.PaymentTerms,
-  bank_name: data.BankName,
-  transaction_date: data.paid_date,
-  reconciliation_option: data.status,
-});
-
-
-
-      } else {
-        setError('Failed to load receipt');
-      }
-    } catch (err) {
-      console.error('Error fetching receipt:', err);
-      setError('Error loading receipt');
-    } finally {
-      setIsLoading(false);
+    } else {
+      setError('Failed to load receipt');
     }
-  };
+  } catch (err) {
+    console.error('Error fetching receipt:', err);
+    setError('Error loading receipt');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handlePrint = () => {
     window.print();
@@ -99,6 +115,24 @@ console.log('📝 Edit form data loaded:', {
     }));
   };
 
+
+
+  // Add fetchInvoices function
+const fetchInvoices = async () => {
+  try {
+    console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber`);
+    const response = await fetch(`${baseurl}/api/vouchersnumber`);
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Received invoices data:', data);
+      setInvoices(data);
+    } else {
+      console.error('Failed to fetch invoices. Status:', response.status);
+    }
+  } catch (err) {
+    console.error('Error fetching invoices:', err);
+  }
+};
   // File change handler for edit modal
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -147,6 +181,8 @@ console.log('📝 Edit form data loaded:', {
       // formDataToSend.append('transaction_date', editFormData.transaction_date || '');
       // formDataToSend.append('reconciliation_option', editFormData.reconciliation_option);
       formDataToSend.append('DC', "C");
+       formDataToSend.append('invoiceNumber', editFormData.invoiceNumber || '');
+
 
 //       formDataToSend.append('PartyID', '2');
 // formDataToSend.append('paid_amount', '594');
@@ -418,6 +454,9 @@ const handleDownloadProof = async (view = false) => {
                     </div>
                   </div>
                 </div>
+
+
+
                 <div className="row mb-3">
                   <div className="col-md-6">
                     <div className="mb-3">
@@ -571,6 +610,27 @@ const handleDownloadProof = async (view = false) => {
                     </div>
                   </div>
                 </div>
+                <div className="row mb-3">
+  <div className="col-md-6">
+    <div className="mb-3">
+      <label className="form-label">Invoice Number *</label>
+      <select
+        className="form-select"
+        name="invoiceNumber"
+        value={editFormData.invoiceNumber || ''}
+        onChange={handleEditInputChange}
+        required
+      >
+        <option value="">Select Invoice Number</option>
+        {invoices.map((invoice) => (
+          <option key={invoice.VoucherID} value={invoice.VchNo}>
+            {invoice.VchNo}
+          </option>
+        ))}
+      </select>
+    </div>
+  </div>
+</div>  
                 <div className="row">
                   <div className="col-12">
                     <div className="mb-3">
@@ -749,6 +809,8 @@ const handleDownloadProof = async (view = false) => {
     <div className="col-md-6">
       {receipt.bank_name && <p><strong>Bank Name:</strong> {receipt.bank_name}</p>}
     </div>
+
+
     <div className="col-md-6">
       <p><strong>Receipt Number:</strong> {receipt.receipt_number || 'N/A'}</p>
     </div>
@@ -761,10 +823,13 @@ const handleDownloadProof = async (view = false) => {
         <p><strong>Transaction Date:</strong> {new Date(receipt.transaction_date).toLocaleDateString('en-IN')}</p>
       )}
     </div>
-    <div className="col-md-6">
-      {/* Empty column to maintain alignment */}
-    </div>
+
   </div>
+  <div className="row">
+<div className="col-md-6">
+  <p><strong>Invoice Number :</strong> {receipt.invoiceNumber || receipt.InvoiceNumber  || 'Not available'}</p>
+</div>
+</div>
 
   {/* Fourth Row - Full Width for Transaction Proof */}
   <div className="row">

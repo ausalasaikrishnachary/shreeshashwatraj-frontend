@@ -6,8 +6,6 @@ import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import './Receipts.css';
-import { render } from '@testing-library/react';
-
 
 const ReceiptsTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -23,56 +21,74 @@ const ReceiptsTable = () => {
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
   const [activeTab, setActiveTab] = useState('Receipts');
-const [formData, setFormData] = useState({
-  receiptNumber: 'REC001',
-  retailerId: '',
-  amount: '',
-  currency: 'INR',
-  paymentMethod: 'Direct Deposit',
-  receiptDate: new Date().toISOString().split('T')[0],
-  note: '',
-  bankName: '',
-  transactionDate: '',
-  reconciliationOption: 'Do Not Reconcile',
-  // Add retailer details fields
-  retailerMobile: '',
-  retailerEmail: '',
-  retailerGstin: '',
-  retailerBusinessName: '',
-    transactionProofFile: '' // Add this
-});
+  const [invoices, setInvoices] = useState([]); // Add invoices state
+  const [selectedInvoice, setSelectedInvoice] = useState(''); // Add selected invoice state
 
-// File change handler
-const handleFileChange = (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size should be less than 5MB');
-      return;
+  const [formData, setFormData] = useState({
+    receiptNumber: 'REC001',
+    retailerId: '',
+    amount: '',
+    currency: 'INR',
+    paymentMethod: 'Direct Deposit',
+    receiptDate: new Date().toISOString().split('T')[0],
+    note: '',
+    bankName: '',
+    transactionDate: '',
+    reconciliationOption: 'Do Not Reconcile',
+    retailerMobile: '',
+    retailerEmail: '',
+    retailerGstin: '',
+    retailerBusinessName: '',
+    transactionProofFile: '',
+    invoiceNumber: '' // Add invoice number field
+  });
+
+  // Fetch invoices from API
+  const fetchInvoices = async () => {
+    try {
+      console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber`);
+      const response = await fetch(`${baseurl}/api/vouchersnumber`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Received invoices data:', data);
+        setInvoices(data);
+      } else {
+        console.error('Failed to fetch invoices. Status:', response.status);
+      }
+    } catch (err) {
+      console.error('Error fetching invoices:', err);
     }
-    
-    // Validate file type
+  };
+
+  // File change handler
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size should be less than 5MB');
+        return;
+      }
+      
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (!allowedTypes.includes(file.type)) {
         alert('Please select a valid file type (PDF, JPG, PNG, DOC, DOCX)');
         return;
       }
     
+      setFormData(prev => ({
+        ...prev,
+        transactionProofFile: file
+      }));
+    }
+  };
+
+  // File remove handler
+  const handleRemoveFile = () => {
     setFormData(prev => ({
       ...prev,
-      transactionProofFile: file
+      transactionProofFile: null
     }));
-  }
-};
-
-// File remove handler
-const handleRemoveFile = () => {
-  setFormData(prev => ({
-    ...prev,
-    transactionProofFile: null
-  }));
-};
+  };
 
   const receiptStats = [
     { label: 'Total Receipts', value: '₹ 2,50,000', change: '+18%', type: 'total' },
@@ -224,7 +240,6 @@ const handleRemoveFile = () => {
         
         // Sort data in descending order by receipt_date or id
         const sortedData = data.sort((a, b) => {
-          // Sort by receipt_date descending, then by id descending
           const dateA = new Date(a.receipt_date || a.created_at);
           const dateB = new Date(b.receipt_date || b.created_at);
           return dateB - dateA || b.id - a.id;
@@ -234,7 +249,6 @@ const handleRemoveFile = () => {
         const transformedData = sortedData.map(receipt => ({
           ...receipt,
           id: receipt.id || '',
-          // Ensure retailer object exists and has business_name
           retailer: receipt.retailer || { 
             business_name: receipt.payee_name || receipt.retailer_name || 'N/A' 
           },
@@ -281,6 +295,7 @@ const handleRemoveFile = () => {
     fetchAccounts();
     fetchReceipts();
     fetchNextReceiptNumber();
+    fetchInvoices(); // Fetch invoices when component mounts
   }, []);
 
   // Tab navigation
@@ -314,8 +329,10 @@ const handleRemoveFile = () => {
       bankName: '',
       transactionDate: '',
       reconciliationOption: 'Do Not Reconcile',
-      receiptNumber: nextReceiptNumber 
+      receiptNumber: nextReceiptNumber,
+      invoiceNumber: '' // Reset invoice number
     }));
+    setSelectedInvoice(''); // Reset selected invoice
   };
 
   // Handle form input changes
@@ -327,111 +344,122 @@ const handleRemoveFile = () => {
       [name]: value
     }));
   };
+
   // Handle retailer selection change
-const handleRetailerChange = (e) => {
-  const selectedRetailerId = e.target.value;
-  const selectedRetailer = accounts.find(acc => acc.id == selectedRetailerId);
-  
-  setFormData(prev => ({
-    ...prev,
-    retailerId: selectedRetailerId,
-    retailerMobile: selectedRetailer?.mobile_number || '',
-    retailerEmail: selectedRetailer?.email || '',
-    retailerGstin: selectedRetailer?.gstin || '',
-    retailerBusinessName: selectedRetailer?.business_name || ''
-  }));
-};
+  const handleRetailerChange = (e) => {
+    const selectedRetailerId = e.target.value;
+    const selectedRetailer = accounts.find(acc => acc.id == selectedRetailerId);
+    
+    setFormData(prev => ({
+      ...prev,
+      retailerId: selectedRetailerId,
+      retailerMobile: selectedRetailer?.mobile_number || '',
+      retailerEmail: selectedRetailer?.email || '',
+      retailerGstin: selectedRetailer?.gstin || '',
+      retailerBusinessName: selectedRetailer?.business_name || ''
+    }));
+  };
 
-const handleCreateReceipt = async () => {
-  // Validation
-  if (!formData.retailerId) {
-    alert('Please select a retailer');
-    return;
-  }
-  if (!formData.amount || parseFloat(formData.amount) <= 0) {
-    alert('Please enter a valid amount');
-    return;
-  }
-  if (!formData.receiptDate) {
-    alert('Please select a receipt date');
-    return;
-  }
+  // Handle invoice selection change
+  const handleInvoiceChange = (e) => {
+    const selectedVchNo = e.target.value;
+    setSelectedInvoice(selectedVchNo);
+    setFormData(prev => ({
+      ...prev,
+      invoiceNumber: selectedVchNo
+    }));
+  };
 
-  try {
-    setIsLoading(true);
-    
-    // Create FormData instead of JSON
-    const formDataToSend = new FormData();
-    
-    // Append all form fields
-    formDataToSend.append('receipt_number', formData.receiptNumber);
-    formDataToSend.append('retailer_id', formData.retailerId);
-    formDataToSend.append('amount', formData.amount);
-    formDataToSend.append('currency', formData.currency);
-    formDataToSend.append('payment_method', formData.paymentMethod);
-    formDataToSend.append('receipt_date', formData.receiptDate);
-    formDataToSend.append('note', formData.note);
-    formDataToSend.append('bank_name', formData.bankName);
-    formDataToSend.append('transaction_date', formData.transactionDate || '');
-    formDataToSend.append('reconciliation_option', formData.reconciliationOption);
-    formDataToSend.append('retailer_name', formData.retailerBusinessName);
-    
-    // Append file if exists
-    if (formData.transactionProofFile) {
-      formDataToSend.append('transaction_proof', formData.transactionProofFile);
+  const handleCreateReceipt = async () => {
+    // Validation
+    if (!formData.retailerId) {
+      alert('Please select a retailer');
+      return;
+    }
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+    if (!formData.receiptDate) {
+      alert('Please select a receipt date');
+      return;
     }
 
-    console.log('Sending receipt data with FormData...');
-
-    const response = await fetch(`${baseurl}/api/receipts`, {
-      method: 'POST',
-      // Don't set Content-Type header for FormData - browser will set it automatically with boundary
-      body: formDataToSend,
-    });
-
-    console.log('Response status:', response.status);
-    if (response.ok) {
-      const result = await response.json();
-      console.log('Receipt created successfully:', result);
-      await fetchReceipts(); // Refresh the receipts list
-      handleCloseModal(); // Close modal
-      alert('Receipt created successfully!');
+    try {
+      setIsLoading(true);
       
-      // Navigate to the ReceiptView page with the new receipt's ID
-      if (result.id) {
-        navigate(`/receipts_view/${result.id}`);
-      } else {
-        console.error('No ID returned in response');
-        alert('Receipt created, but unable to view details. Please check the receipt list.');
+      // Create FormData instead of JSON
+      const formDataToSend = new FormData();
+      
+      // Append all form fields
+      formDataToSend.append('receipt_number', formData.receiptNumber);
+      formDataToSend.append('retailer_id', formData.retailerId);
+      formDataToSend.append('amount', formData.amount);
+      formDataToSend.append('currency', formData.currency);
+      formDataToSend.append('payment_method', formData.paymentMethod);
+      formDataToSend.append('receipt_date', formData.receiptDate);
+      formDataToSend.append('note', formData.note);
+      formDataToSend.append('bank_name', formData.bankName);
+      formDataToSend.append('transaction_date', formData.transactionDate || '');
+      formDataToSend.append('reconciliation_option', formData.reconciliationOption);
+      formDataToSend.append('retailer_name', formData.retailerBusinessName);
+      formDataToSend.append('invoice_number', formData.invoiceNumber); // Add invoice number
+      
+      // Append file if exists
+      if (formData.transactionProofFile) {
+        formDataToSend.append('transaction_proof', formData.transactionProofFile);
       }
 
-      await fetchNextReceiptNumber(); // Fetch the next receipt number
-    } else {
-      const errorText = await response.text();
-      console.error('Failed to create receipt. Status:', response.status);
-      console.error('Error response:', errorText);
-      let errorMessage = 'Failed to create receipt. ';
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage += errorData.error || 'Please try again.';
-        if (errorData.error.includes('already exists')) {
-          // Handle duplicate receipt number
-          console.log('Duplicate receipt number detected, fetching new number...');
-          await fetchNextReceiptNumber();
-          errorMessage += ' A new receipt number has been generated. Please try again.';
+      console.log('Sending receipt data with FormData...');
+      console.log('Invoice Number:', formData.invoiceNumber);
+
+      const response = await fetch(`${baseurl}/api/receipts`, {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      console.log('Response status:', response.status);
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Receipt created successfully:', result);
+        await fetchReceipts(); // Refresh the receipts list
+        handleCloseModal(); // Close modal
+        alert('Receipt created successfully!');
+        
+        // Navigate to the ReceiptView page with the new receipt's ID
+        if (result.id) {
+          navigate(`/receipts_view/${result.id}`);
+        } else {
+          console.error('No ID returned in response');
+          alert('Receipt created, but unable to view details. Please check the receipt list.');
         }
-      } catch {
-        errorMessage += 'Please try again.';
+
+        await fetchNextReceiptNumber(); // Fetch the next receipt number
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to create receipt. Status:', response.status);
+        console.error('Error response:', errorText);
+        let errorMessage = 'Failed to create receipt. ';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage += errorData.error || 'Please try again.';
+          if (errorData.error.includes('already exists')) {
+            console.log('Duplicate receipt number detected, fetching new number...');
+            await fetchNextReceiptNumber();
+            errorMessage += ' A new receipt number has been generated. Please try again.';
+          }
+        } catch {
+          errorMessage += 'Please try again.';
+        }
+        alert(errorMessage);
       }
-      alert(errorMessage);
+    } catch (err) {
+      console.error('Error creating receipt:', err);
+      alert('Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
     }
-  } catch (err) {
-    console.error('Error creating receipt:', err);
-    alert('Network error. Please check your connection and try again.');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   // View receipt details
   const handleViewReceipt = (receiptId) => {
@@ -463,13 +491,11 @@ const handleCreateReceipt = async () => {
   // Download receipts
   const handleDownload = () => {
     alert(`Downloading receipts for ${month} ${year}`);
-    // Implement download logic here
   };
 
   // Download date range receipts
   const handleDownloadRange = () => {
     alert(`Downloading receipts from ${startDate} to ${endDate}`);
-    // Implement download logic here
   };
 
   return (
@@ -606,10 +632,10 @@ const handleCreateReceipt = async () => {
                 data={receiptData} 
                 columns={columns}
                 searchPlaceholder="Search receipts..."
-                 initialEntriesPerPage={5}
+                initialEntriesPerPage={5}
                 showSearch={true}
                 showEntriesSelector={false} 
-                showPagination={true} // No pagination needed
+                showPagination={true}
                 isLoading={isLoading}
               />
             </div>
@@ -682,26 +708,32 @@ const handleCreateReceipt = async () => {
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Invoice Number Selection - Added below the first row */}
+                    <div className="row mb-4">
+                     
+                    </div>
+
                     <div className="row mb-4">
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Retailer *</label>
                           <select
-  className="form-select"
-  name="retailerId"
-  value={formData.retailerId}
-  onChange={handleRetailerChange} // Use the new handler
-  required
->
-  <option value="">Select Retailer</option>
-  {accounts
-    .filter(acc => acc.role === "retailer" && acc.business_name)
-    .map((acc) => (
-      <option key={acc.id} value={acc.id}>
-        {acc.business_name}
-      </option>
-    ))}
-</select>
+                            className="form-select"
+                            name="retailerId"
+                            value={formData.retailerId}
+                            onChange={handleRetailerChange}
+                            required
+                          >
+                            <option value="">Select Retailer</option>
+                            {accounts
+                              .filter(acc => acc.role === "retailer" && acc.business_name)
+                              .map((acc) => (
+                                <option key={acc.id} value={acc.id}>
+                                  {acc.business_name}
+                                </option>
+                              ))}
+                          </select>
                         </div>
                       </div>
                       <div className="col-md-6">
@@ -750,8 +782,21 @@ const handleCreateReceipt = async () => {
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">For</label>
-                          <p className="mt-2">Authorised Signatory</p>
+                          <label className="form-label">Invoice Number *</label>
+                          <select
+                            className="form-select"
+                            name="invoiceNumber"
+                            value={formData.invoiceNumber}
+                            onChange={handleInvoiceChange}
+                            required
+                          >
+                            <option value="">Select Invoice Number</option>
+                            {invoices.map((invoice) => (
+                              <option key={invoice.VoucherID} value={invoice.VchNo}>
+                                {invoice.VchNo}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </div>
@@ -769,39 +814,38 @@ const handleCreateReceipt = async () => {
                           />
                         </div>
                         <div className="mb-3">
-  <label className="form-label">Transaction Proof Document</label>
-  <input 
-    type="file" 
-    className="form-control" 
-    onChange={(e) => handleFileChange(e)}
-    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-  />
-  <small className="text-muted">
-    {formData.transactionProofFile ? formData.transactionProofFile.name : 'No file chosen'}
-  </small>
-  
-  {/* Show selected file info */}
-  {formData.transactionProofFile && (
-    <div className="mt-2">
-      <div className="d-flex align-items-center">
-        <span className="badge bg-success me-2">
-          <i className="bi bi-file-earmark-check"></i>
-        </span>
-        <span className="small">
-          {formData.transactionProofFile.name} 
-          ({Math.round(formData.transactionProofFile.size / 1024)} KB)
-        </span>
-        <button 
-          type="button" 
-          className="btn btn-sm btn-outline-danger ms-2"
-          onClick={() => handleRemoveFile()}
-        >
-          <i className="bi bi-x"></i>
-        </button>
-      </div>
-    </div>
-  )}
-</div>
+                          <label className="form-label">Transaction Proof Document</label>
+                          <input 
+                            type="file" 
+                            className="form-control" 
+                            onChange={(e) => handleFileChange(e)}
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                          />
+                          <small className="text-muted">
+                            {formData.transactionProofFile ? formData.transactionProofFile.name : 'No file chosen'}
+                          </small>
+                          
+                          {formData.transactionProofFile && (
+                            <div className="mt-2">
+                              <div className="d-flex align-items-center">
+                                <span className="badge bg-success me-2">
+                                  <i className="bi bi-file-earmark-check"></i>
+                                </span>
+                                <span className="small">
+                                  {formData.transactionProofFile.name} 
+                                  ({Math.round(formData.transactionProofFile.size / 1024)} KB)
+                                </span>
+                                <button 
+                                  type="button" 
+                                  className="btn btn-sm btn-outline-danger ms-2"
+                                  onClick={() => handleRemoveFile()}
+                                >
+                                  <i className="bi bi-x"></i>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
