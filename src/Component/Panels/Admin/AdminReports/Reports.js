@@ -50,17 +50,18 @@ const voucherDetailsColumns = [
     title: "S.No", 
     style: { fontWeight: "bold" },
     render: (value, record, index) => index + 1},
-        { key: "id", title: "Voucher ID", style: { fontWeight: "bold" } },
-    { key: "InvoiceNumber", title: "Invoice Number" },
-    { key: "PartyName", title: "Party Name" },
+        // { key: "id", title: "Voucher ID", style: { fontWeight: "bold" } },
+    // { key: "InvoiceNumber", title: "Invoice Number" },
+    // { key: "PartyName", title: "Party Name" },
     { key: "product", title: "Product" },
-    { key: "batch", title: "Batch" },
+    // { key: "batch", title: "Batch" },
     { key: "quantity", title: "Quantity" },
-    { key: "price", title: "Price" },
-    { key: "gst", title: "GST" },
-    { key: "igst", title: "IGST" },
-    { key: "total", title: "Total" },
-    { key: "created_at", title: "Created At" },
+    { key: "price", title: "Taxable Amount" },
+    // { key: "gst", title: "GST" },
+    // { key: "igst", title: "IGST" },
+    { key: "total", title: "Net Payable Amount" },
+    { key: "total", title: "Total Amount" },
+    // { key: "created_at", title: "Created At" },
   ];
 
   // Format date for display
@@ -171,7 +172,7 @@ const processedVoucherDetails = voucherDetails.map((item, index) => ({
         return (
           <>
             {/* Stats Cards for Voucher Details */}
-            <div className="stats-grid">
+            {/* <div className="stats-grid">
               <div className="stat-card">
                 <h4>Total Vouchers</h4>
                 <div className="stat-number">{voucherDetails.length}</div>
@@ -197,11 +198,11 @@ const processedVoucherDetails = voucherDetails.map((item, index) => ({
                   }
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Voucher Details Table */}
             <div className="table-section">
-              <h2>Voucher Details</h2>
+              <h2>Sales Reports</h2>
               {loading ? (
                 <div className="text-center">Loading voucher details...</div>
               ) : error ? (
@@ -332,7 +333,7 @@ const processedVoucherDetails = voucherDetails.map((item, index) => ({
                     Retailers Reports
                   </span>
                 </div>
-                <div
+                {/* <div
                   className="report-link-item"
                   onClick={() => setActiveReport("sales")}
                 >
@@ -343,7 +344,7 @@ const processedVoucherDetails = voucherDetails.map((item, index) => ({
                   >
                     Sales Reports
                   </span>
-                </div>
+                </div> */}
                 <div
                   className="report-link-item"
                   onClick={() => setActiveReport("expense")}
@@ -377,7 +378,7 @@ const processedVoucherDetails = voucherDetails.map((item, index) => ({
                       activeReport === "voucher" ? "active" : ""
                     }`}
                   >
-                    Voucher Details
+                    Sales Reports
                   </span>
                 </div>
               </div>
