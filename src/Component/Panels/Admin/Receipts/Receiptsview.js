@@ -30,25 +30,22 @@ const fetchReceipt = async () => {
     const response = await fetch(`${baseurl}/api/receipts/${id}`);
     
     if (response.ok) {
-      const data = await response.json();
+      const data = await response.json(); 
       setReceipt(data);
       
-      // ADD THIS DEBUG LOG to see all fields from API
       console.log('🔍 FULL API RESPONSE:', data);
       console.log('🔍 Available fields:', Object.keys(data));
       
-      // Look for invoice number in different possible field names
-      console.log('🔍 Possible invoice fields:');
-      console.log('- invoiceNumber:', data.invoiceNumber);
-      console.log('- InvoiceNumber:', data.InvoiceNumber);
-      console.log('- invoice_number:', data.invoice_number);
-      console.log('- Invoice_Number:', data.Invoice_Number);
-      console.log('- inv_number:', data.inv_number);
-      console.log('- invoice_no:', data.invoice_no);
-      console.log('- InvoiceNo:', data.InvoiceNo);
+      // Look for retailer ID in different possible field names
+      console.log('🔍 Possible retailer ID fields:');
+      console.log('- PartyID:', data.PartyID);
+      console.log('- retailer_id:', data.retailer_id);
+      console.log('- retailerId:', data.retailerId);
+      console.log('- retailerID:', data.retailerID);
       
+      // Update edit form data with correct retailer ID
       setEditFormData({
-        retailer_id: data.PartyID || '',
+        retailer_id: data.PartyID || data.retailer_id || '', // Use the correct field
         paid_amount: data.paid_amount || data.TotalAmount || '',
         currency: data.currency || 'INR',
         payment_method: data.AccountName || '',
@@ -57,22 +54,17 @@ const fetchReceipt = async () => {
         bank_name: data.BankName || '',
         transaction_date: data.paid_date ? data.paid_date.split('T')[0] : '',
         reconciliation_option: data.status || '',
-        // Update this line with the correct field name from your API
         invoiceNumber: data.invoiceNumber || data.InvoiceNumber || data.invoice_number || data.Invoice_Number || data.inv_number || data.invoice_no || data.InvoiceNo || ''
       });
-      
-      console.log('📝 Edit form data loaded:', {
-        retailer_id: data.PartyID,
-        paid_amount: data.paid_amount || data.TotalAmount,
-        currency: data.currency || 'INR',
-        payment_method: data.AccountName,
-        receipt_date: data.Date,
-        note: data.PaymentTerms,
-        bank_name: data.BankName,
-        transaction_date: data.paid_date,
-        reconciliation_option: data.status,
-        invoiceNumber: data.invoiceNumber || data.InvoiceNumber || data.invoice_number || data.Invoice_Number || data.inv_number || data.invoice_no || data.InvoiceNo,
-      });
+
+      // Fetch retailer details using the correct ID field
+      const retailerId = data.PartyID || data.retailer_id;
+      if (retailerId) {
+        console.log('🔄 Fetching retailer details for ID:', retailerId);
+        fetchRetailerDetails(retailerId);
+      } else {
+        console.warn('⚠️ No retailer ID found in receipt data');
+      }
 
     } else {
       setError('Failed to load receipt');
@@ -280,24 +272,66 @@ const handleDownloadProof = async (view = false) => {
   }
 };
 
-  useEffect(() => {
-    if (receipt && receipt.retailer_id) {
-      fetchRetailerDetails(receipt.retailer_id);
+useEffect(() => {
+  if (receipt) {
+    // Get retailer ID from the correct field
+    const retailerId = receipt.PartyID || receipt.retailer_id;
+    if (retailerId) {
+      console.log('🔄 useEffect: Fetching retailer for ID:', retailerId);
+      fetchRetailerDetails(retailerId);
+    } else {
+      console.warn('⚠️ useEffect: No retailer ID found in receipt');
     }
-  }, [receipt]);
+  }
+}, [receipt]);
 
-  const fetchRetailerDetails = async (retailerId) => {
-    try {
-      const response = await fetch(`${baseurl}/accounts/${retailerId}`);
-      if (response.ok) {
-        const retailerData = await response.json();
-        setRetailerDetails(retailerData);
+const fetchRetailerDetails = async (retailerId) => {
+  try {
+    console.log('🔍 Fetching retailer details for ID:', retailerId);
+    
+    // Use the correct endpoint and ID field
+    const response = await fetch(`${baseurl}/accounts/${retailerId}`);
+    
+    if (response.ok) {
+      const retailerData = await response.json();
+      console.log('✅ Retailer details fetched:', retailerData);
+      setRetailerDetails(retailerData);
+    } else {
+      console.error('❌ Failed to fetch retailer details. Status:', response.status);
+      // Try alternative endpoint or fallback
+      await fetchAllAccountsAndFindRetailer(retailerId);
+    }
+  } catch (err) {
+    console.error('❌ Error fetching retailer details:', err);
+    await fetchAllAccountsAndFindRetailer(retailerId);
+  }
+};
+
+// Fallback function to fetch all accounts and find by ID
+const fetchAllAccountsAndFindRetailer = async (retailerId) => {
+  try {
+    console.log('🔄 Trying to fetch all accounts...');
+    const response = await fetch(`${baseurl}/accounts`);
+    
+    if (response.ok) {
+      const allAccounts = await response.json();
+      console.log('📋 All accounts fetched:', allAccounts);
+      
+      // Find the retailer by ID (not retailer_id)
+      const foundRetailer = allAccounts.find(account => account.id == retailerId);
+      
+      if (foundRetailer) {
+        console.log('✅ Retailer found in all accounts:', foundRetailer);
+        setRetailerDetails(foundRetailer);
+      } else {
+        console.warn('⚠️ Retailer not found in accounts list');
+        setRetailerDetails(null);
       }
-    } catch (err) {
-      console.error('Error fetching retailer details:', err);
     }
-  };
-
+  } catch (err) {
+    console.error('❌ Error fetching all accounts:', err);
+  }
+};
   // Convert numbers to words (Indian format)
   const numberToWords = (num) => {
     if (!num) return "Zero Only";
@@ -826,9 +860,10 @@ const handleDownloadProof = async (view = false) => {
 
   </div>
   <div className="row">
-<div className="col-md-6">
+    <div className="col-md-6">
   <p><strong>Invoice Number :</strong> {receipt.invoiceNumber || receipt.InvoiceNumber  || 'Not available'}</p>
 </div>
+
 </div>
 
   {/* Fourth Row - Full Width for Transaction Proof */}
