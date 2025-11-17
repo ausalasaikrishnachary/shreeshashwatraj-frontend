@@ -194,20 +194,6 @@ useEffect(() => {
 
     setEditingIndex(null);
 
-    // Show success message with details
-  //   window.alert(`✅ Quantity updated successfully!\n\nItem: ${item.product}\nNew Quantity: ${newQty}\nPrice: ₹${price}\nNew Total: ₹${newTotal}`);
-
-  //   // Call API to update quantity in backend
-  //   axios
-  // .put(`${baseurl}/api/update-invoice-item/${item.id}`, {
-  //   quantity: newQty,
-  // })
-  // .then((res) => {
-  //   console.log("Quantity updated in backend successfully!");
-  // })
-  // .catch((err) => {
-  //   console.error("Failed to update quantity in database:", err);
-  // });
 
   };
 
