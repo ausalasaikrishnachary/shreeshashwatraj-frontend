@@ -1932,19 +1932,36 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       };
     }
 
-    try {
-      if (isEditing) {
-        await axios.put(`${baseurl}/accounts/${id}`, finalData);
-        alert('Retailer updated successfully!');
-      } else {
-        await axios.post(`${baseurl}/accounts`, finalData);
-        alert('Retailer added successfully!');
-      }
-      navigate('/retailers');
-    } catch (err) {
-      console.error(err);
-      alert(`Failed to ${isEditing ? 'update' : 'add'} retailer`);
+  const isSupplier = formData.group === "SUPPLIERS";
+
+try {
+  if (isEditing) {
+    await axios.put(`${baseurl}/accounts/${id}`, finalData);
+
+    if (isSupplier) {
+      alert("Supplier updated successfully!");
+    } else {
+      alert("Retailer updated successfully!");
     }
+
+  } else {
+    await axios.post(`${baseurl}/accounts`, finalData);
+
+    if (isSupplier) {
+      alert("Supplier added successfully!");
+    } else {
+      alert("Retailer added successfully!");
+    }
+  }
+
+  navigate('/retailers');
+
+} catch (err) {
+  console.error(err);
+
+  alert(`Failed to ${isEditing ? 'update' : 'add'} ${isSupplier ? 'supplier' : 'retailer'}`);
+}
+
   };
 
   useEffect(() => {

@@ -1141,7 +1141,7 @@ const cancelEdit = () => {
                               setInvoiceData(prev => ({
                                 ...prev,
                                 supplierInfo: {
-                                  name: supplier.display_name,
+                                  name: supplier.name,
                                   businessName: supplier.business_name,
                                   state: supplier.billing_state,
                                   gstin: supplier.gstin
