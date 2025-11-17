@@ -195,20 +195,20 @@ useEffect(() => {
     setEditingIndex(null);
 
     // Show success message with details
-    window.alert(`✅ Quantity updated successfully!\n\nItem: ${item.product}\nNew Quantity: ${newQty}\nPrice: ₹${price}\nNew Total: ₹${newTotal}`);
+  //   window.alert(`✅ Quantity updated successfully!\n\nItem: ${item.product}\nNew Quantity: ${newQty}\nPrice: ₹${price}\nNew Total: ₹${newTotal}`);
 
-    // Call API to update quantity in backend
-    axios
-      .put(`${baseurl}/api/update-invoice-item/${item.id}`, {
-        quantity: newQty,
-      })
-      .then((res) => {
-        console.log("Quantity updated in backend successfully!");
-      })
-      .catch((err) => {
-        console.error(err);
-        window.alert("⚠️ Quantity updated locally but failed to update in database. Please try again.");
-      });
+  //   // Call API to update quantity in backend
+  //   axios
+  // .put(`${baseurl}/api/update-invoice-item/${item.id}`, {
+  //   quantity: newQty,
+  // })
+  // .then((res) => {
+  //   console.log("Quantity updated in backend successfully!");
+  // })
+  // .catch((err) => {
+  //   console.error("Failed to update quantity in database:", err);
+  // });
+
   };
 
   const handleEditClick = (index, item) => {
@@ -250,14 +250,15 @@ const handleCreateCreditNote = async () => {
 
     // Prepare request data with product_id and batch
     const requestData = {
+      transactionType: "CreditNote", // Add this line
       invoiceNumber: selectedInvoice,
       noteDate: noteDate,
       creditNoteNumber: creditNoteNumber,
       items: items.map(item => ({
         id: item.id,
-        product_id: item.product_id, // Make sure this is included
+        product_id: item.product_id,
         product: item.product,
-        batch: item.batch, // This is the batch_number
+        batch: item.batch,
         quantity: item.quantity,
         originalQuantity: item.originalQuantity || item.quantity,
         price: item.price,
@@ -281,7 +282,7 @@ const handleCreateCreditNote = async () => {
 
     console.log("📦 Sending credit note data:", requestData);
 
-    const response = await axios.post(`${baseurl}/api/create-credit-note`, requestData);
+    const response = await axios.post(`${baseurl}/transaction`, requestData);
 
     if (response.data.success) {
       window.alert(`✅ Credit Note created successfully!\n\nCredit Note Number: ${response.data.creditNoteNumber}\nProduct ID: ${response.data.product_id}\nBatch ID: ${response.data.batch_id}\nTotal Amount: ₹${totals.grandTotal}`);
