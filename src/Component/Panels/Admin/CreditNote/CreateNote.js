@@ -8,28 +8,54 @@ import { baseurl } from '../../../BaseURL/BaseURL';
 
 const CreateNote = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [creditNoteNumber, setCreditNoteNumber] = useState("CNOTE0001");
+  const [creditNoteNumber, setCreditNoteNumber] = useState("");
   const [invoiceList, setInvoiceList] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(""); 
   const [customerData, setCustomerData] = useState(null);
   const [noteDate, setNoteDate] = useState(new Date().toISOString().split('T')[0]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [loadingCustomer, setLoadingCustomer] = useState(false);
+  const [loadingCreditNote, setLoadingCreditNote] = useState(true);
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editedQuantity, setEditedQuantity] = useState("");
   const [error, setError] = useState("");
-  const [batches, setBatches] = useState([]);
+  const [items, setItems] = useState([]);
+
+             useEffect(() => {
+  const fetchCreditNoteNumber = async () => {
+    try {
+      setLoadingCreditNote(true);
+      
+      const response = await axios.get(`${baseurl}/api/next-creditnote-number`);
+      console.log("📦 API Response:", response.data);
+      
+      const nextNumber = response?.data?.nextCreditNoteNumber;
+      if (nextNumber) {
+        console.log("✅ About to set credit note number to:", nextNumber);
+        setCreditNoteNumber(nextNumber);
+        console.log("✅ Set complete - now triggering re-render");
+      } else {
+        console.warn("⚠️ No nextCreditNoteNumber found. Response structure:", response.data);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching credit note number:", error.response?.data || error.message);
+    } finally {
+      setLoadingCreditNote(false);
+    }
+  };
+
+  fetchCreditNoteNumber();
+}, []);
+
+// Debug state change
+useEffect(() => {
+  console.log('🔄 State updated - creditNoteNumber:', creditNoteNumber);
+}, [creditNoteNumber]);
 
   useEffect(() => {
-    axios.get(`${baseurl}/next-creditnote-number`)
-      .then(res => {
-        if (res.data && res.data.nextCreditNoteNumber) {
-          setCreditNoteNumber(res.data.nextCreditNoteNumber);
-        }
-      })
-      .catch(err => {
-        console.error("Error fetching next number:", err);
-        setCreditNoteNumber("CNOTE0001");
-      });
-  }, []);
+    console.log("🔍 creditNoteNumber updated:", creditNoteNumber);
+  }, [creditNoteNumber]);
+
 
   useEffect(() => {
     setLoadingInvoices(true);
@@ -66,24 +92,20 @@ const CreateNote = () => {
           console.log("Fetched invoice details:", res.data);
           setCustomerData(res.data);
           
-          // Set batches from the API response
-          if (res.data.all_batches && Array.isArray(res.data.all_batches)) {
-            setBatches(res.data.all_batches);
+          if (res.data.items && Array.isArray(res.data.items)) {
+            setItems(res.data.items);
           } else {
-            setBatches([]);
+            setItems([]);
           }
-          
           setLoadingCustomer(false);
         })
         .catch(err => {
           console.error("Error fetching customer details:", err);
           setCustomerData(null);
-          setBatches([]);
           setLoadingCustomer(false);
         });
     } else {
       setCustomerData(null);
-      setBatches([]);
     }
   }, [selectedInvoice]);
 
@@ -105,36 +127,185 @@ const CreateNote = () => {
 
   // Calculate totals based on all batches
   const calculateTotals = () => {
-    if (batches.length === 0) {
+    if (items.length === 0) {
       return {
         taxableAmount: 0,
         totalGST: 0,
-        totalCess: 0,
+        totalIGST: 0,
         grandTotal: 0
       };
     }
 
-    // Calculate based on batches data
-    const taxableAmount = batches.reduce((sum, batch) => {
-      const quantity = parseFloat(batch.quantity) || 0;
-      const sellingPrice = parseFloat(batch.selling_price) || 0;
-      return sum + (quantity * sellingPrice);
+    const taxableAmount = items.reduce((sum, item) => {
+      const quantity = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.price) || 0;
+      return sum + (quantity * price);
     }, 0);
 
-    // These calculations are placeholder - adjust based on your actual GST structure
-    const totalGST = taxableAmount * 0.18; // Assuming 18% GST
-    const totalCess = 0; // Adjust based on your cess calculation
-    const grandTotal = taxableAmount + totalGST + totalCess;
+    const totalGST = taxableAmount * 0.12; // 18% GST
+    const totalIGST = taxableAmount * 0.12; // assuming IGST same as GST
+    const grandTotal = taxableAmount + totalIGST;
 
     return {
       taxableAmount: taxableAmount.toFixed(2),
       totalGST: totalGST.toFixed(2),
-      totalCess: totalCess.toFixed(2),
+      totalIGST: totalIGST.toFixed(2),
       grandTotal: grandTotal.toFixed(2)
     };
   };
 
   const totals = calculateTotals();
+
+  const handleUpdateQuantity = (index, item) => {
+    const maxQty = parseFloat(item.originalQuantity || item.quantity);
+    const newQty = parseFloat(editedQuantity);
+
+    // Validation checks
+    if (isNaN(newQty) || newQty < 0) {
+      window.alert("Please enter a valid quantity (positive number)");
+      return;
+    }
+
+    if (newQty > maxQty) {
+      window.alert(`🚨 HIGH ALERT: Quantity cannot exceed original quantity (${maxQty})`);
+      return;
+    }
+
+    if (newQty === 0) {
+      if (!window.confirm("Are you sure you want to set quantity to 0? This will remove the item from calculations.")) {
+        return;
+      }
+    }
+
+    // Calculate new total price
+    const price = parseFloat(item.price) || 0;
+    const newTotal = (newQty * price).toFixed(2);
+
+    // Update the items state
+    const updatedItems = [...items];
+    updatedItems[index].quantity = newQty;
+    updatedItems[index].total = newTotal;
+    setItems(updatedItems);
+
+    // Update customerData.items too for table display
+    const updatedCustomerData = { ...customerData };
+    updatedCustomerData.items = updatedItems;
+    setCustomerData(updatedCustomerData);
+
+    setEditingIndex(null);
+
+    // Show success message with details
+    window.alert(`✅ Quantity updated successfully!\n\nItem: ${item.product}\nNew Quantity: ${newQty}\nPrice: ₹${price}\nNew Total: ₹${newTotal}`);
+
+    // Call API to update quantity in backend
+    axios
+      .put(`${baseurl}/api/update-invoice-item/${item.id}`, {
+        quantity: newQty,
+      })
+      .then((res) => {
+        console.log("Quantity updated in backend successfully!");
+      })
+      .catch((err) => {
+        console.error(err);
+        window.alert("⚠️ Quantity updated locally but failed to update in database. Please try again.");
+      });
+  };
+
+  const handleEditClick = (index, item) => {
+    setEditingIndex(index);
+    setEditedQuantity(item.quantity);
+  };
+
+  const handleQuantityChange = (e, item) => {
+    const newValue = e.target.value;
+    setEditedQuantity(newValue);
+    
+    // Real-time validation for high quantity
+    const maxQty = parseFloat(item.originalQuantity || item.quantity);
+    const newQty = parseFloat(newValue);
+    
+    if (!isNaN(newQty) && newQty > maxQty) {
+      // You can add visual feedback here if needed
+      console.warn(`Quantity exceeds maximum allowed: ${maxQty}`);
+    }
+  };
+
+const handleCreateCreditNote = async () => {
+  try {
+    // Validate data
+    if (!selectedInvoice) {
+      window.alert("Please select an invoice first");
+      return;
+    }
+
+    if (items.length === 0) {
+      window.alert("No items available for credit note");
+      return;
+    }
+
+    if (!creditNoteNumber) {
+      window.alert("Credit note number is not available. Please try again.");
+      return;
+    }
+
+    // Prepare request data with product_id and batch
+    const requestData = {
+      invoiceNumber: selectedInvoice,
+      noteDate: noteDate,
+      creditNoteNumber: creditNoteNumber,
+      items: items.map(item => ({
+        id: item.id,
+        product_id: item.product_id, // Make sure this is included
+        product: item.product,
+        batch: item.batch, // This is the batch_number
+        quantity: item.quantity,
+        originalQuantity: item.originalQuantity || item.quantity,
+        price: item.price,
+        discount: item.discount,
+        gst: item.gst,
+        igst: item.igst,
+        total: item.total
+      })),
+      customerData: {
+        business_name: customerData?.business_name,
+        email: customerData?.email,
+        mobile_number: customerData?.mobile_number,
+        gstin: customerData?.gstin,
+        account_id: customerData?.account_id,
+        party_id: customerData?.party_id
+      },
+      totals: totals,
+      noteText: document.querySelector('textarea[placeholder="Note"]')?.value || '',
+      terms: document.querySelector('textarea[placeholder="Terms and Condition"]')?.value || ''
+    };
+
+    console.log("📦 Sending credit note data:", requestData);
+
+    const response = await axios.post(`${baseurl}/api/create-credit-note`, requestData);
+
+    if (response.data.success) {
+      window.alert(`✅ Credit Note created successfully!\n\nCredit Note Number: ${response.data.creditNoteNumber}\nProduct ID: ${response.data.product_id}\nBatch ID: ${response.data.batch_id}\nTotal Amount: ₹${totals.grandTotal}`);
+      
+      // Reset form or redirect
+      setSelectedInvoice("");
+      setCustomerData(null);
+      setItems([]);
+      
+      // Refresh credit note number
+      const nextNumResponse = await axios.get(`${baseurl}/api/next-creditnote-number`);
+      if (nextNumResponse.data && nextNumResponse.data.nextCreditNoteNumber) {
+        setCreditNoteNumber(nextNumResponse.data.nextCreditNoteNumber);
+      }
+      
+    } else {
+      throw new Error(response.data.error);
+    }
+
+  } catch (error) {
+    console.error('❌ Error creating credit note:', error);
+    window.alert(`❌ Failed to create credit note: ${error.response?.data?.error || error.message}`);
+  }
+};
 
   return (
     <div className="credit-note-wrapper">
@@ -164,10 +335,32 @@ const CreateNote = () => {
               </div>
 
               <div className="col-lg-4 col-md-5 p-3">
-                <div className="mb-2">
-                  <label className="form-label small mb-1">Credit Note No</label>
-                  <input className="form-control form-control-sm" value={creditNoteNumber} readOnly />
-                </div>
+
+
+<div className="mb-2">
+  <label className="form-label small mb-1">Credit Note No</label>
+  <div className="position-relative">
+    <input 
+      key={creditNoteNumber || 'default'}
+      className="form-control form-control-sm" 
+      value={creditNoteNumber || ""} 
+      readOnly 
+      placeholder={loadingCreditNote ? "Loading..." : "CNOTE0001"}
+    />
+    {loadingCreditNote && (
+      <div className="position-absolute top-50 end-0 translate-middle-y me-2">
+        <div className="spinner-border spinner-border-sm text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    )}
+  </div>
+  {!creditNoteNumber && !loadingCreditNote && (
+    <div className="text-warning small mt-1">
+      Unable to load credit note number. Using default.
+    </div>
+  )}
+</div>
                 <div className="mb-2">
                   <label className="form-label small mb-1">Note Date</label>
                   <input 
@@ -265,72 +458,108 @@ const CreateNote = () => {
               </div>
             </div>
 
-            {/* Batches table - Now showing all batches */}
+            {/* Items Table */}
             <div className="table-responsive mt-3">
               <table className="table table-sm table-bordered align-middle">
                 <thead className="table-light text-center">
                   <tr>
                     <th>PRODUCT</th>
-                    <th>BATCH NO</th>
-                    <th>QUANTITY</th>
-                    <th>SELLING PRICE</th>
-                    <th>COST PRICE</th>
-                    <th>MRP</th>
-                   
-                   
+                    <th>BATCH</th>
+                    <th>QTY</th>
+                    <th>PRICE</th>
                     <th>DISCOUNT</th>
-                    <th>GST</th>
-                    <th>CGST</th>
-                    <th>SGST</th>
-                    <th>IGST</th>
-                    <th>CESS</th>
+                    <th>GST %</th>
+                    <th>IGST %</th>
                     <th>TOTAL</th>
                     <th>ACTION</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {loadingCustomer ? (
-                    <tr>
-                      <td colSpan="16" className="text-center">
-                        <div className="spinner-border spinner-border-sm me-2" role="status"></div>
-                        Loading batches data...
-                      </td>
-                    </tr>
-                  ) : batches.length > 0 ? (
-                    batches.map((batch, index) => {
-                      const quantity = parseFloat(batch.quantity) || 0;
-                      const sellingPrice = parseFloat(batch.selling_price) || 0;
-                      const total = quantity * sellingPrice;
-                      
-                      return (
-                        <tr key={batch.id || index}>
-                          <td className="ps-3 text-start">
-                            {customerData?.product_name || 'Product Name'}
-                          </td>
-                          <td>{batch.batch_number || 'N/A'}</td>
-                          <td className="text-end">{batch.quantity || '0.00'}</td>
-                          <td className="text-end">{batch.selling_price || '0.00'}</td>
-                          <td className="text-end">{batch.cost_price || '0.00'}</td>
-                          <td className="text-end">{batch.mrp || '0.00'}</td>
-                     
-                          <td className="text-end">0.00</td> {/* Discount - adjust as needed */}
-                          <td className="text-end">18.00%</td> {/* GST Rate - adjust as needed */}
-                          <td className="text-end">{(total * 0.09).toFixed(2)}</td> {/* CGST - 9% */}
-                          <td className="text-end">{(total * 0.09).toFixed(2)}</td> {/* SGST - 9% */}
-                          <td className="text-end">0.00</td> {/* IGST */}
-                          <td className="text-end">0.00</td> {/* CESS */}
-                          <td className="text-end">{total.toFixed(2)}</td>
-                          <td className="text-center">
-                            <button className="btn btn-sm btn-outline-primary me-1" title="Edit">✏️</button>
-                            <button className="btn btn-sm btn-outline-danger" title="Delete">🗑️</button>
-                          </td>
-                        </tr>
-                      );
-                    })
+                  {customerData?.items?.length > 0 ? (
+                    customerData.items.map((item, index) => (
+                      <tr key={item.id || index}>
+                        <td className="ps-3 text-start">{item.product}</td>
+                        <td>{item.batch}</td>
+                        <td className="text-end">
+                          {editingIndex === index ? (
+                            <input
+                              type="number"
+                              className="form-control form-control-sm"
+                              value={editedQuantity}
+                              min="0"
+                              max={item.originalQuantity || item.quantity}
+                              step="0.01"
+                              onChange={(e) => handleQuantityChange(e, item)}
+                              style={{
+                                border: parseFloat(editedQuantity) > parseFloat(item.originalQuantity || item.quantity) 
+                                  ? '2px solid red' 
+                                  : '1px solid #ced4da'
+                              }}
+                            />
+                          ) : (
+                            item.quantity
+                          )}
+                        </td>
+                        <td className="text-end">₹{item.price}</td>
+                        <td className="text-end">{item.discount}</td>
+                        <td className="text-end">{item.gst}%</td>
+                        <td className="text-end">{item.igst}%</td>
+                        <td className="text-end fw-bold">
+                          {editingIndex === index ? (
+                            <span>₹{(parseFloat(editedQuantity || 0) * parseFloat(item.price || 0)).toFixed(2)}</span>
+                          ) : (
+                            `₹${item.total}`
+                          )}
+                        </td>
+                        <td className="text-center">
+                          {editingIndex === index ? (
+                            <>
+                              <button
+                                className="btn btn-sm btn-success me-1"
+                                onClick={() => handleUpdateQuantity(index, item)}
+                                title="Save changes"
+                              >
+                                ✅
+                              </button>
+                              <button
+                                className="btn btn-sm btn-secondary"
+                                onClick={() => setEditingIndex(null)}
+                                title="Cancel editing"
+                              >
+                                ❌
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                className="btn btn-sm btn-outline-primary me-1"
+                                onClick={() => handleEditClick(index, item)}
+                                title="Edit quantity"
+                              >
+                                ✏️
+                              </button>
+                              <button 
+                                className="btn btn-sm btn-outline-danger"
+                                title="Delete item"
+                                onClick={() => {
+                                  if (window.confirm(`Are you sure you want to remove ${item.product}?`)) {
+                                    // Add delete functionality here
+                                    window.alert("Delete functionality to be implemented");
+                                  }
+                                }}
+                              >
+                                🗑️
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    ))
                   ) : (
                     <tr>
-                      <td colSpan="16" className="text-center text-muted">
-                        {selectedInvoice ? 'No batches found for this product' : 'Select an invoice to view batches'}
+                      <td colSpan="9" className="text-center text-muted">
+                        {selectedInvoice ? "No items found for this invoice" : "Select an invoice to view items"}
                       </td>
                     </tr>
                   )}
@@ -348,15 +577,15 @@ const CreateNote = () => {
                 <div className="border p-2 d-flex flex-column" style={{ minHeight: 120 }}>
                   <div className="d-flex justify-content-between">
                     <div>Taxable Amount</div>
-                    <div className="text-end">{totals.taxableAmount}</div>
+                    <div className="text-end">₹{totals.taxableAmount}</div>
                   </div>
                   <div className="d-flex justify-content-between">
                     <div>Total GST</div>
-                    <div className="text-end">{totals.totalGST}</div>
+                    <div className="text-end">₹{totals.totalGST}</div>
                   </div>
                   <div className="d-flex justify-content-between">
-                    <div>Total Cess</div>
-                    <div className="text-end">{totals.totalCess}</div>
+                    <div>Total IGST</div>
+                    <div className="text-end">₹{totals.totalGST}</div>
                   </div>
 
                   <div className="d-flex justify-content-between align-items-center mt-2">
@@ -367,7 +596,7 @@ const CreateNote = () => {
                     </div>
                     <div className="text-end" style={{ width: "40%" }}>
                       <div className="fw-bold">Grand Total</div>
-                      <div className="fs-5 fw-bold">{totals.grandTotal}</div>
+                      <div className="fs-5 fw-bold">₹{totals.grandTotal}</div>
                     </div>
                   </div>
                 </div>
@@ -389,7 +618,13 @@ const CreateNote = () => {
 
             {/* Button */}
             <div className="d-flex justify-content-end mt-3">
-              <button className="btn btn-success">+ Create Credit Note</button>
+              <button 
+                className="btn btn-success"
+                onClick={handleCreateCreditNote}
+                disabled={!selectedInvoice || items.length === 0 || !creditNoteNumber}
+              >
+                + Create Credit Note
+              </button>
             </div>
           </div>
 
