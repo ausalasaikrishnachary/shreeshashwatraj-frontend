@@ -23,6 +23,7 @@ function AdminDashboard() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [receivables, setReceivables] = useState(0);
+  const [payables, setPayables] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -61,6 +62,36 @@ function AdminDashboard() {
         setError(err.message);
         // Set default value in case of error
         setReceivables(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReceivables();
+  }, []);
+
+    useEffect(() => {
+    const fetchReceivables = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`${baseurl}/api/total-payables`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch receivables data');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          setPayables(result.data.netAmount || 0);
+        } else {
+          throw new Error(result.error || 'Failed to fetch receivables');
+        }
+      } catch (err) {
+        console.error('Error fetching receivables:', err);
+        setError(err.message);
+        // Set default value in case of error
+        setPayables(0);
       } finally {
         setLoading(false);
       }
@@ -148,6 +179,28 @@ function AdminDashboard() {
                   <div className="error-text">Error</div>
                 ) : (
                   formatCurrency(receivables)
+                )}
+              </div>
+              <div className="admin-dashboard-stat-change">
+                {!loading && !error && "Outstanding amount"}
+              </div>
+              {error && (
+                <div className="admin-dashboard-stat-error">
+                  {error}
+                </div>
+              )}
+            </div>
+
+            {/* payables Card */}
+            <div className="admin-dashboard-stat-card">
+              <h3 className="admin-dashboard-stat-label"> Total Payables</h3>
+              <div className="admin-dashboard-stat-value">
+                {loading ? (
+                  <div className="loading-spinner">Loading...</div>
+                ) : error ? (
+                  <div className="error-text">Error</div>
+                ) : (
+                  formatCurrency(payables)
                 )}
               </div>
               <div className="admin-dashboard-stat-change">

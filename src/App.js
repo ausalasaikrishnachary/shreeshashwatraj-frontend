@@ -148,6 +148,7 @@ import Profile from "./Component/Panels/Retailer/RetailerProfile/Profile";
 import RetailerOrders from "./Component/Panels/Retailer/RetailerOrders/RetailerOrders";
 import DeleteProfile from "./Component/Panels/Retailer/RetailerProfile/DeleteProfile";
 import EditProfile from "./Component/Panels/Retailer/RetailerProfile/EditProfile";
+import PurchaseInvoiceEdit from "./Component/Panels/Admin/PurchaseInvoicePage/PurchaseInvoiceEdit";
 
 
 
@@ -203,6 +204,7 @@ function App() {
            <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
          <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
            <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
+            <Route path="/Purchase/editinvoice/:id" element={<PurchaseInvoiceEdit />} />
  
   
         <Route path="/sales/receipts" element={<AdminReceiptsTable />} />

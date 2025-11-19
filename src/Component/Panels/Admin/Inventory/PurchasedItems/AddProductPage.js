@@ -417,9 +417,9 @@ useEffect(() => {
     console.log('📤 Sending purchase data to backend:', JSON.stringify(purchaseData, null, 2));
 
     // Use the new backend endpoint for dual product creation
-    const response = await axios.post(`${baseurl}/products/purchase-with-sales`, {
+    const response = await axios.post(`${baseurl}/products`, {
       ...purchaseData,
-      create_sales_catalog: formData.can_be_sold
+      // create_sales_catalog: formData.can_be_sold
     }, {
       headers: { 'Content-Type': 'application/json' }
     });
