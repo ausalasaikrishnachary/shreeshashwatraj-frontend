@@ -4,6 +4,7 @@ import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import { baseurl } from "../../../BaseURL/BaseURL";
+import { FaFilePdf, FaTrash, FaDownload } from 'react-icons/fa';
 import './PurchaseInvoice.css';
 
 const PurchaseInvoiceTable = () => {
@@ -19,6 +20,7 @@ const PurchaseInvoiceTable = () => {
   const [year, setYear] = useState('2025');
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
+    const [deleting, setDeleting] = useState({});
 
   // Fetch purchase invoices from API
   useEffect(() => {
@@ -359,6 +361,87 @@ const formatDate = (dateString) => {
     ];
   };
 
+    // Handle Delete Invoice
+    // const handleDeleteInvoice = async (invoice) => {
+    //   const voucherId = invoice.originalData?.VoucherID || invoice.id;
+    //   const invoiceNumber = invoice.number;
+      
+    //   if (!window.confirm(`Are you sure you want to delete invoice ${invoiceNumber}? This action cannot be undone and will update stock values.`)) {
+    //     return;
+    //   }
+      
+    //   try {
+    //     setDeleting(prev => ({ ...prev, [voucherId]: true }));
+        
+    //     const response = await fetch(`${baseurl}/transactions/${voucherId}`, {
+    //       method: 'DELETE',
+    //     });
+        
+    //     if (!response.ok) {
+    //       throw new Error('Failed to delete invoice');
+    //     }
+        
+    //     const result = await response.json();
+        
+    //     // Remove from local state
+    //     setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
+        
+    //     alert('Invoice deleted successfully!');
+        
+    //   } catch (error) {
+    //     console.error('Error deleting invoice:', error);
+    //     alert('Error deleting invoice: ' + error.message);
+    //   } finally {
+    //     setDeleting(prev => ({ ...prev, [voucherId]: false }));
+    //   }
+    // };
+
+    // Handle Delete Invoice
+const handleDeleteInvoice = async (invoice) => {
+  const voucherId = invoice.originalData?.VoucherID || invoice.id;
+  const invoiceNumber = invoice.pinvoice || invoice.originalData?.InvoiceNumber;
+  
+  if (!window.confirm(`Are you sure you want to delete purchase invoice ${invoiceNumber}? This action cannot be undone and will update stock values.`)) {
+    return;
+  }
+  
+  try {
+    setDeleting(prev => ({ ...prev, [voucherId]: true }));
+    
+    const response = await fetch(`${baseurl}/transactions/${voucherId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        transactionType: 'Purchase', // Important: Specify this is a Purchase transaction
+        invoiceNumber: invoiceNumber
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to delete invoice');
+    }
+    
+    const result = await response.json();
+    
+    // Remove from local state
+    setPurchaseInvoices(prev => prev.filter(inv => {
+      const invVoucherId = inv.originalData?.VoucherID || inv.id;
+      return invVoucherId !== voucherId;
+    }));
+    
+    alert('Purchase invoice deleted successfully! Stock has been updated accordingly.');
+    
+  } catch (error) {
+    console.error('Error deleting purchase invoice:', error);
+    alert('Error deleting purchase invoice: ' + error.message);
+  } finally {
+    setDeleting(prev => ({ ...prev, [voucherId]: false }));
+  }
+};
+
   const purchaseInvoiceStats = calculatePurchaseStats();
 
   const tabs = [
@@ -426,7 +509,55 @@ const formatDate = (dateString) => {
       year: "numeric" 
     });
   }
-}
+},
+ {
+    key: 'actions',
+    title: 'ACTIONS',
+    style: { textAlign: 'center' },
+    render: (value, row) => (
+      <div className="d-flex justify-content-center gap-2">
+        
+        {/* <button
+          className={`btn btn-sm ${row.hasPDF ? 'btn-success' : 'btn-outline-warning'}`}
+          onClick={() => handleDownloadPDF(row)}
+          disabled={downloading[row.id]}
+          title={row.hasPDF ? 'Download PDF' : 'Generate and Download PDF'}
+        >
+          {downloading[row.id] ? (
+            <div className="spinner-border spinner-border-sm" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+          ) : row.hasPDF ? (
+            <>
+              <FaDownload className="me-1" />
+              
+            </>
+          ) : (
+            <>
+              <FaFilePdf className="me-1" />
+              Generate PDF
+            </>
+          )}
+        </button> */}
+        
+        {/* Delete Button */}
+        <button
+          className="btn btn-sm btn-outline-danger"
+          onClick={() => handleDeleteInvoice(row)}
+          disabled={deleting[row.id]}
+          title="Delete Invoice"
+        >
+          {deleting[row.id] ? (
+            <div className="spinner-border spinner-border-sm" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+          ) : (
+            <FaTrash />
+          )}
+        </button>
+      </div>
+    )
+  },
     // {
     //   key: 'action',
     //   title: 'ACTION',

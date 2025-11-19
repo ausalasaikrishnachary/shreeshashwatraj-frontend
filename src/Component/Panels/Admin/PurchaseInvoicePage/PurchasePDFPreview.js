@@ -1,335 +1,445 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, Row, Col, Button, Form, Table, Alert, Card , Modal, Badge} from 'react-bootstrap';
+import { Container, Row, Col, Button, Form, Table, Alert, Card, ProgressBar, Modal, Badge } from 'react-bootstrap';
 import './InvoicePDFPreview.css';
-import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, FaCalendar, FaReceipt , FaRegFileAlt,FaExclamationTriangle, FaCheckCircle} from "react-icons/fa";
-import { data, useNavigate } from "react-router-dom";
-import html2pdf from 'html2pdf.js';
-import { baseurl } from '../../../BaseURL/BaseURL';
+import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, FaCalendar, FaReceipt, FaRegFileAlt, FaExclamationTriangle, FaCheckCircle, FaTrash } from "react-icons/fa";
+import { useNavigate, useParams } from "react-router-dom";
+import { baseurl } from "../../../BaseURL/BaseURL";
 
 const PurchasePDFPreview = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const [isEditMode, setIsEditMode] = useState(false);
   const [invoiceData, setInvoiceData] = useState(null);
   const [editedData, setEditedData] = useState(null);
-  const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [downloading, setDownloading] = useState(false);
-    const [paymentLoading, setPaymentLoading] = useState(true);
   const [paymentData, setPaymentData] = useState(null);
-  const [loadingPayment, setLoadingPayment] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [paymentLoading, setPaymentLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [paymentError, setPaymentError] = useState(null);
+  const [downloading, setDownloading] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [receiptFormData, setReceiptFormData] = useState({
+    receiptNumber: '',
+    retailerId: '',
+    amount: '',
+    currency: 'INR',
+    paymentMethod: 'Direct Deposit',
+    receiptDate: new Date().toISOString().split('T')[0],
+    note: '',
+    bankName: '',
+    transactionDate: '',
+    reconciliationOption: 'Do Not Reconcile',
+    retailerMobile: '',
+    retailerEmail: '',
+    retailerGstin: '',
+    retailerBusinessName: '',
+    invoiceNumber: '',
+    transactionProofFile: null,
+      product_id: '', // Add this
+  batch_id: '' // Add this
+  });
+  const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
-const [showVoucherModal, setShowVoucherModal] = useState(false);
-const [voucherFormData, setVoucherFormData] = useState({
-  voucherNumber: '',
-  supplierId: '',
-  amount: '',
-  currency: 'INR',
-  paymentMethod: 'Direct Deposit',
-  voucherDate: new Date().toISOString().split('T')[0],
-  note: '',
-  bankName: '',
-  transactionDate: '',
-  reconciliationOption: 'Do Not Reconcile',
-  supplierMobile: '',
-  supplierEmail: '',
-  supplierGstin: '',
-  supplierBusinessName: '',
-  invoiceNumber: ''
-});
-const [isCreatingVoucher, setIsCreatingVoucher] = useState(false);
-  
+
+  // Add this function to handle navigation to edit form
+  const handleEditInvoice = () => {
+    if (invoiceData && invoiceData.voucherId) {
+      // Navigate to the sales form with the voucher ID for editing
+      navigate(`/Purchase/editinvoice/${invoiceData.voucherId}`);
+    } else {
+      setError('Cannot edit invoice: Voucher ID not found');
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size should be less than 5MB');
+        return;
+      }
+      
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please select a valid file type (PDF, JPG, PNG, DOC, DOCX)');
+        return;
+      }
+      
+      setReceiptFormData(prev => ({
+        ...prev,
+        transactionProofFile: file
+      }));
+    }
+  };
 
   useEffect(() => {
-    // Load purchase invoice data from localStorage
-    const savedData = localStorage.getItem('previewPurchaseInvoice');
-    if (savedData) {
-      const data = JSON.parse(savedData);
-      setInvoiceData(data);
-      setEditedData(data);
-      
-      if (data.invoiceNumber) {
-        setInvoiceNumber(data.invoiceNumber);
-        fetchPaymentData(data.invoiceNumber);
-      } else {
-        const draftData = localStorage.getItem('draftPurchaseInvoice');
-        if (draftData) {
-          const draft = JSON.parse(draftData);
-          const invNumber = draft.invoiceNumber || 'PINV001';
-          setInvoiceNumber(invNumber);
-          fetchPaymentData(invNumber);
-        } else {
-          setInvoiceNumber('PINV001');
-        }
-      }
-    } else {
-      const draftData = localStorage.getItem('draftPurchaseInvoice');
-      if (draftData) {
-        const draft = JSON.parse(draftData);
-        const invNumber = draft.invoiceNumber || 'PINV001';
-        setInvoiceData(draft);
-        setEditedData(draft);
-        setInvoiceNumber(invNumber);
-        fetchPaymentData(invNumber);
-        localStorage.setItem('previewPurchaseInvoice', draftData);
-      } else {
-        window.location.href = '/purchase/create-invoice';
-      }
-    }
-  }, [navigate]);
-const fetchPaymentData = async (invNumber) => {
-  if (!invNumber) {
-    console.log('❌ fetchPaymentData: No invoice number provided');
-    return;
-  }
-  
-  console.log(`🔍 fetchPaymentData: Fetching payment data for invoice: ${invNumber}`);
-  
-  try {
-    setLoadingPayment(true);
-    const response = await fetch(`${baseurl}/api/invoice/${invNumber}`);
-    
-    console.log(`📡 fetchPaymentData: API Response status: ${response.status} ${response.statusText}`);
-    
-    if (response.ok) {
-      const result = await response.json();
-      console.log('✅ fetchPaymentData: API Response data:', result);
-      
-      if (result.success) {
-        console.log('💰 fetchPaymentData: Setting payment data:', result.data);
-        setPaymentData(result.data);
-        
-        // Log detailed payment information
-        if (result.data && result.data.allEntries) {
-          console.log('📊 fetchPaymentData: All entries found:', result.data.allEntries.length);
-          
-          result.data.allEntries.forEach((entry, index) => {
-            console.log(`   Entry ${index + 1}:`, {
-              TransactionType: entry.TransactionType,
-              InvoiceNumber: entry.InvoiceNumber,
-              TotalAmount: entry.TotalAmount,
-              paid_amount: entry.paid_amount,
-              balance_amount: entry.balance_amount,
-              status: entry.status,
-              Date: entry.Date
-            });
-          });
-          
-          // Calculate and log payment summary
-          const purchaseEntry = result.data.allEntries.find(entry => 
-            entry.TransactionType === 'Purchase'
-          );
-          const voucherEntries = result.data.allEntries.filter(entry => 
-            entry.TransactionType === 'Voucher'
-          );
-          
-          if (purchaseEntry) {
-            const totalAmount = parseFloat(purchaseEntry.TotalAmount) || 0;
-            const totalPaid = voucherEntries.reduce((sum, entry) => 
-              sum + (parseFloat(entry.paid_amount) || 0), 0
-            );
-            const balanceDue = totalAmount - totalPaid;
-            
-            console.log('🧮 fetchPaymentData: Payment Summary:', {
-              totalAmount,
-              totalPaid,
-              balanceDue,
-              purchaseEntries: result.data.allEntries.filter(e => e.TransactionType === 'Purchase').length,
-              voucherEntries: voucherEntries.length
-            });
-          }
-        }
-      } else {
-        console.warn('⚠️ fetchPaymentData: API returned success: false', result);
-        setPaymentData(null);
-      }
-    } else {
-      console.error('❌ fetchPaymentData: API request failed with status:', response.status);
-      const errorText = await response.text();
-      console.error('❌ fetchPaymentData: Error response:', errorText);
-      setPaymentData(null);
-    }
-  } catch (error) {
-    console.error('💥 fetchPaymentData: Network error:', error);
-    console.error('💥 fetchPaymentData: Error details:', {
-      message: error.message,
-      stack: error.stack
-    });
-    setPaymentData(null);
-  } finally {
-    console.log('🔚 fetchPaymentData: Setting loading to false');
-    setLoadingPayment(false);
-  }
-};
-  const handlePrint = () => {
-    window.print();
-  };
+    fetchTransactionData();
+  }, [id]);
 
-  const handleDownloadPDF = async () => {
-    if (!invoiceRef.current) {
-      alert("Invoice content not found. Please try again.");
-      return;
+  useEffect(() => {
+    if (invoiceData && invoiceData.invoiceNumber) {
+      fetchPaymentData(invoiceData.invoiceNumber);
     }
+  }, [invoiceData]);
 
+  const fetchPaymentData = async (invoiceNumber) => {
     try {
-      setDownloading(true);
+      setPaymentLoading(true);
+      setPaymentError(null);
       
-      const element = invoiceRef.current;
-      const filename = `Purchase_Invoice_${displayInvoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+      console.log('Fetching payment data for invoice:', invoiceNumber);
+      const response = await fetch(`${baseurl}/invoices/${invoiceNumber}`);
       
-      // Create a clone for PDF generation
-      const clone = element.cloneNode(true);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
-      // Remove all non-printable elements
-      const nonPrintableElements = clone.querySelectorAll(
-        '.d-print-none, .btn, .alert, .action-bar, .tax-indicator, .no-print, .edit-control, .payment-sidebar'
-      );
-      nonPrintableElements.forEach(el => el.remove());
+      const result = await response.json();
+      console.log("Payment API result:", result);
       
-      // Ensure all content is visible
-      const hiddenElements = clone.querySelectorAll('[style*="display: none"], .d-none');
-      hiddenElements.forEach(el => {
-        el.style.display = 'block';
-      });
-
-      // Add PDF-specific styles
-      const style = document.createElement('style');
-      style.innerHTML = `
-        @media all {
-          * {
-            -webkit-print-color-adjust: exact !important;
-            color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Arial', sans-serif;
-            background: white !important;
-            color: black !important;
-          }
-          .invoice-pdf-preview {
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 15px !important;
-            box-shadow: none !important;
-            border: none !important;
-            background: white !important;
-          }
-          .table-dark {
-            background-color: #343a40 !important;
-            color: white !important;
-            -webkit-print-color-adjust: exact;
-          }
-          .bg-light {
-            background-color: #f8f9fa !important;
-            -webkit-print-color-adjust: exact;
-          }
-          .text-primary { color: #000000 !important; font-weight: bold; }
-          .text-danger { color: #000000 !important; font-weight: bold; }
-          .text-success { color: #000000 !important; font-weight: bold; }
-          .border { border: 1px solid #000000 !important; }
-          .border-bottom { border-bottom: 1px solid #000000 !important; }
-          .border-top { border-top: 1px solid #000000 !important; }
-          .shadow-sm { box-shadow: none !important; }
-          .rounded { border-radius: 0 !important; }
-          
-          /* Ensure table borders are visible */
-          table { 
-            border-collapse: collapse !important;
-            width: 100% !important;
-          }
-          th, td {
-            border: 1px solid #000000 !important;
-            padding: 6px 8px !important;
-          }
-          th {
-            background-color: #343a40 !important;
-            color: white !important;
-            -webkit-print-color-adjust: exact;
-          }
-        }
-        
-        @page {
-          margin: 10mm;
-          size: A4 portrait;
-        }
-        
-        @media print {
-          body { 
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
-          .invoice-preview-page {
-            background: white !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          .invoice-preview-container {
-            max-width: 100% !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          .invoice-pdf-preview {
-            box-shadow: none !important;
-            border: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            background: white !important;
-          }
-          .no-print, .action-bar, .tax-indicator, .btn, .payment-sidebar {
-            display: none !important;
-          }
-        }
-      `;
-      clone.appendChild(style);
-
-      // PDF configuration optimized for better output
-      const opt = {
-        margin: [10, 10, 10, 10],
-        filename: filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          letterRendering: true,
-          width: element.scrollWidth,
-          height: element.scrollHeight,
-          backgroundColor: '#FFFFFF',
-          scrollX: 0,
-          scrollY: 0,
-          windowWidth: element.scrollWidth,
-          windowHeight: element.scrollHeight
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'portrait',
-          compress: true,
-          hotfixes: ["px_scaling"]
-        },
-        pagebreak: { 
-          mode: ['avoid-all', 'css', 'legacy'],
-          before: '.page-break-before',
-          after: '.page-break-after',
-          avoid: '.no-break'
-        }
-      };
-
-      // Generate PDF
-      await html2pdf().set(opt).from(clone).save();
-      
-      setDownloading(false);
+      if ( result.data) {
+        const transformedData = transformPaymentData(result.data);
+        console.log("data",transformedData)
+        setPaymentData(transformedData);
+      } else {
+        throw new Error(result.message || 'No payment data received');
+      }
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      // Fallback to print method
-      handlePrintFallback();
+      console.error('Error fetching payment data:', error);
+      setPaymentError(error.message);
+      if (invoiceData) {
+        const fallbackPaymentData = {
+          invoice: {
+            invoiceNumber: invoiceData.invoiceNumber,
+            invoiceDate: invoiceData.invoiceDate,
+            totalAmount: parseFloat(invoiceData.grandTotal) || 0,
+            overdueDays: 0
+          },
+          receipts: [],
+          purchasevoucher:[],
+          summary: {
+            totalPaid: 0,
+            balanceDue: parseFloat(invoiceData.grandTotal) || 0,
+            status: 'Pending'
+          }
+        };
+        setPaymentData(fallbackPaymentData);
+      }
+    } finally {
+      setPaymentLoading(false);
     }
   };
+
+const transformPaymentData = (apiData) => {
+  console.log("🔍 Raw Payment API:", apiData);
+
+  // For purchase invoices, the actual invoice is inside purchases[0]
+  const purchase = apiData.purchases?.[0] || {};
+
+  console.log("🔍 Extracted Purchase Invoice:", purchase);
+
+  // Extract amounts
+  const totalAmount = Number(purchase.TotalAmount || purchase.grandTotal || 0);
+
+  const purchasevoucherEntries = apiData.purchasevoucher || [];
+
+  // Sum paid amounts
+  const totalPaid = purchasevoucherEntries.reduce((sum, v) => {
+    return sum + Number(v.paid_amount || 0);
+  }, 0);
+
+  const balanceDue = totalAmount - totalPaid;
+
+  // Dates
+  const invoiceDate = purchase.Date || purchase.invoiceDate;
+  const overdueDays = invoiceDate
+    ? Math.floor((new Date() - new Date(invoiceDate)) / (1000 * 60 * 60 * 24))
+    : 0;
+
+  // Transform vouchers
+  const purchasevoucher = purchasevoucherEntries.map(v => ({
+    receiptNumber: v.VchNo || v.receipt_number || `VCH${v.VoucherID}`,
+    paidAmount: Number(v.paid_amount || 0),
+    totalAmount: Number(v.TotalAmount || 0),
+    paidDate: v.Date || v.paid_date,
+    status: v.status || 'Paid',
+    voucherId: v.VoucherID
+  }));
+
+  // Payment status
+  let status = 'Pending';
+  if (balanceDue === 0) status = 'Paid';
+  else if (totalPaid > 0) status = 'Partial';
+
+  return {
+    invoice: {
+      invoiceNumber: purchase.InvoiceNumber || purchase.invoiceNumber,
+      invoiceDate: invoiceDate,
+      totalAmount: totalAmount,
+      overdueDays: overdueDays
+    },
+    purchasevoucher: purchasevoucher,
+    summary: {
+      totalPaid,
+      balanceDue,
+      status
+    }
+  };
+};
+
+
+  const fetchNextReceiptNumber = async () => {
+    try {
+      const response = await fetch(`${baseurl}/api/next-receipt-number`);
+      if (response.ok) {
+        const data = await response.json();
+        setReceiptFormData(prev => ({
+          ...prev,
+          receiptNumber: data.nextReceiptNumber
+        }));
+      } else {
+        await generateFallbackReceiptNumber();
+      }
+    } catch (err) {
+      console.error('Error fetching next receipt number:', err);
+      await generateFallbackReceiptNumber();
+    }
+  };
+
+  const generateFallbackReceiptNumber = async () => {
+    try {
+      const response = await fetch(`${baseurl}/api/last-receipt`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.lastReceiptNumber) {
+          const lastNumber = data.lastReceiptNumber;
+          const numberMatch = lastNumber.match(/REC(\d+)/);
+          if (numberMatch) {
+            const nextNum = parseInt(numberMatch[1], 10) + 1;
+            const fallbackReceiptNumber = `REC${nextNum.toString().padStart(3, '0')}`;
+            setReceiptFormData(prev => ({
+              ...prev,
+              receiptNumber: fallbackReceiptNumber
+            }));
+            return;
+          }
+        }
+      }
+      setReceiptFormData(prev => ({
+        ...prev,
+        receiptNumber: 'REC001'
+      }));
+    } catch (err) {
+      setReceiptFormData(prev => ({
+        ...prev,
+        receiptNumber: 'REC001'
+      }));
+    }
+  };
+
+  const fetchTransactionData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('Fetching transaction data for ID:', id);
+      const apiUrl = `${baseurl}/transactions/${id}`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const apiData = result.data;
+        const transformedData = transformApiDataToInvoiceFormat(apiData);
+        setInvoiceData(transformedData);
+        setEditedData(transformedData);
+      } else if (result.VoucherID) {
+        const transformedData = transformApiDataToInvoiceFormat(result);
+        setInvoiceData(transformedData);
+        setEditedData(transformedData);
+      } else {
+        throw new Error(result.message || 'No valid data received from API');
+      }
+    } catch (error) {
+      console.error('Error fetching transaction:', error);
+      setError(`API Error: ${error.message}`);
+      
+      const savedData = localStorage.getItem('previewInvoice');
+      if (savedData) {
+        try {
+          const data = JSON.parse(savedData);
+          setInvoiceData(data);
+          setEditedData(data);
+          setError(null);
+        } catch (parseError) {
+          console.error('Error parsing localStorage data:', parseError);
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const transformApiDataToInvoiceFormat = (apiData) => {
+    console.log('Transforming API data:', apiData);
+    
+    let batchDetails = [];
+    try {
+      if (apiData.batch_details && typeof apiData.batch_details === 'string') {
+        batchDetails = JSON.parse(apiData.batch_details);
+      } else if (Array.isArray(apiData.batch_details)) {
+        batchDetails = apiData.batch_details;
+      } else if (apiData.BatchDetails && typeof apiData.BatchDetails === 'string') {
+        batchDetails = JSON.parse(apiData.BatchDetails);
+      }
+    } catch (error) {
+      console.error('Error parsing batch details:', error);
+    }
+
+    const items = batchDetails.map((batch, index) => {
+      const quantity = parseFloat(batch.quantity) || 0;
+      const price = parseFloat(batch.price) || 0;
+      const discount = parseFloat(batch.discount) || 0;
+      const gst = parseFloat(batch.gst) || 0;
+      const cess = parseFloat(batch.cess) || 0;
+      
+      const subtotal = quantity * price;
+      const discountAmount = subtotal * (discount / 100);
+      const amountAfterDiscount = subtotal - discountAmount;
+      const gstAmount = amountAfterDiscount * (gst / 100);
+      const cessAmount = amountAfterDiscount * (cess / 100);
+      const total = amountAfterDiscount + gstAmount + cessAmount;
+
+      const isSameState = parseFloat(apiData.IGSTAmount) === 0;
+      let cgst, sgst, igst;
+      
+      if (isSameState) {
+        cgst = gst / 2;
+        sgst = gst / 2;
+        igst = 0;
+      } else {
+        cgst = 0;
+        sgst = 0;
+        igst = gst;
+      }
+
+      return {
+        id: index + 1,
+        product: batch.product || 'Product',
+        description: batch.description || `Batch: ${batch.batch}`,
+        quantity: quantity,
+        price: price,
+        discount: discount,
+        gst: gst,
+        cgst: cgst,
+        sgst: sgst,
+        igst: igst,
+        cess: cess,
+        total: total.toFixed(2),
+        batch: batch.batch || '',
+        batch_id: batch.batch_id || '',
+        product_id: batch.product_id || ''
+      };
+    }) || [];
+
+    const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
+    const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
+    const grandTotal = parseFloat(apiData.TotalAmount) || 0;
+
+    return {
+      voucherId: apiData.VoucherID,
+      invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
+      invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      
+      companyInfo: {
+        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+        email: "sumukhuri7@gmail.com",
+        phone: "3456548878543",
+        gstin: "ZAAABCD0508B1ZG",
+        state: "Karnataka"
+      },
+      
+      supplierInfo: {
+        name: apiData.PartyName || 'Customer',
+        businessName: apiData.AccountName || 'Business', // This is the PartyName
+        gstin: apiData.gstin || '',
+        state: apiData.billing_state || apiData.BillingState || '',
+        id: apiData.PartyID || null
+      },
+      
+      billingAddress: {
+        addressLine1: apiData.billing_address_line1 || apiData.BillingAddress || '',
+        addressLine2: apiData.billing_address_line2 || '',
+        city: apiData.billing_city || apiData.BillingCity || '',
+        pincode: apiData.billing_pin_code || apiData.BillingPincode || '',
+        state: apiData.billing_state || apiData.BillingState || ''
+      },
+      
+      shippingAddress: {
+        addressLine1: apiData.shipping_address_line1 || apiData.ShippingAddress || apiData.billing_address_line1 || apiData.BillingAddress || '',
+        addressLine2: apiData.shipping_address_line2 || apiData.billing_address_line2 || '',
+        city: apiData.shipping_city || apiData.ShippingCity || apiData.billing_city || apiData.BillingCity || '',
+        pincode: apiData.shipping_pin_code || apiData.ShippingPincode || apiData.billing_pin_code || apiData.BillingPincode || '',
+        state: apiData.shipping_state || apiData.ShippingState || apiData.billing_state || apiData.BillingState || ''
+      },
+      
+      items: items.length > 0 ? items : [{
+        id: 1,
+        product: 'Product',
+        description: 'No batch details available',
+        quantity: 1,
+        price: grandTotal,
+        discount: 0,
+        gst: parseFloat(apiData.IGSTPercentage) || 0,
+        cgst: parseFloat(apiData.CGSTPercentage) || 0,
+        sgst: parseFloat(apiData.SGSTPercentage) || 0,
+        igst: parseFloat(apiData.IGSTPercentage) || 0,
+        cess: 0,
+        total: grandTotal.toFixed(2),
+        batch: '',
+        batch_id: '',
+        product_id: ''
+      }],
+      
+      taxableAmount: taxableAmount.toFixed(2),
+      totalGST: totalGST.toFixed(2),
+      grandTotal: grandTotal.toFixed(2),
+      totalCess: "0.00",
+      
+      note: apiData.Notes || "Thank you for your business!",
+      transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
+      additionalCharge: "",
+      additionalChargeAmount: "0.00",
+      
+      totalCGST: parseFloat(apiData.CGSTAmount) || 0,
+      totalSGST: parseFloat(apiData.SGSTAmount) || 0,
+      totalIGST: parseFloat(apiData.IGSTAmount) || 0,
+      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST"
+    };
+  };
+
 const PaymentStatus = () => {
-  console.log('🎯 PaymentStatus: Rendering with paymentData:', paymentData);
-  
-  if (loadingPayment) {
+  if (paymentLoading) {
     return (
       <Card className="shadow-sm mb-3">
         <Card.Header className="bg-primary text-white">
@@ -350,8 +460,7 @@ const PaymentStatus = () => {
     );
   }
 
-  if (!paymentData || !paymentData.allEntries || paymentData.allEntries.length === 0) {
-    console.log('📭 PaymentStatus: No payment data available');
+  if (!paymentData) {
     return (
       <Card className="shadow-sm mb-3">
         <Card.Header className="bg-primary text-white">
@@ -370,69 +479,11 @@ const PaymentStatus = () => {
     );
   }
 
-  // Find the main purchase entry - it should be the one with TransactionType 'Purchase'
-  const purchaseEntry = paymentData.allEntries.find(entry => 
-    entry.TransactionType === 'Purchase'
-  );
+    const { invoice, receipts, summary, purchasevoucher,  } = paymentData;
+    console.log("paymentdata",paymentData)
+    console.log("invoice",invoice)
+    const progressPercentage = invoice.totalAmount > 0 ? (summary.totalPaid / invoice.totalAmount) * 100 : 0;
 
-  console.log('🔍 PaymentStatus: Purchase entry:', purchaseEntry);
-
-  // Find all voucher entries - changed from 'Purchase Voucher Payment' to 'Voucher'
-  const voucherEntries = paymentData.allEntries.filter(entry => 
-    entry.TransactionType === 'Voucher'
-  );
-
-  console.log('🔍 PaymentStatus: Voucher entries found:', voucherEntries.length, voucherEntries);
-
-  // If no purchase entry found, but we have voucher entries, let's check if we can calculate from vouchers
-  if (!purchaseEntry) {
-    console.log('⚠️ PaymentStatus: No purchase entry found, checking if we can calculate from vouchers');
-    
-    // Try to find the original purchase amount from voucher entries
-    if (voucherEntries.length > 0) {
-      // Get the invoice number from the first voucher entry
-      const invoiceNumber = voucherEntries[0].InvoiceNumber;
-      console.log('📄 PaymentStatus: Invoice number from vouchers:', invoiceNumber);
-      
-      return (
-        <Card className="shadow-sm mb-3">
-          <Card.Header className="bg-primary text-white">
-            <h5 className="mb-0">
-              <FaReceipt className="me-2" />
-              Payment Status
-            </h5>
-          </Card.Header>
-          <Card.Body>
-            <div className="text-center text-warning">
-              <FaExclamationTriangle className="mb-2" />
-              <p>Original purchase data not found</p>
-              <small>Showing payment entries only</small>
-            </div>
-            
-            {/* Show voucher payments anyway */}
-            <div className="payment-amounts mb-3 mt-3">
-              {voucherEntries.map((payment, index) => (
-                <div key={index} className="d-flex justify-content-between align-items-center mb-2 ps-3 border-start border-success">
-                  <span className="text-success">
-                    <FaCheckCircle className="me-1" />
-                    Payment:
-                  </span>
-                  <div className="d-flex align-items-center">
-                    <small className="text-muted ms-1">
-                      (On {new Date(payment.Date).toLocaleDateString()}) – {payment.VchNo}
-                    </small>
-                    <span className="fw-bold text-success ms-2">
-                      ₹{(parseFloat(payment.paid_amount) || 0).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card.Body>
-        </Card>
-      );
-    }
-    
     return (
       <Card className="shadow-sm mb-3">
         <Card.Header className="bg-primary text-white">
@@ -442,257 +493,198 @@ const PaymentStatus = () => {
           </h5>
         </Card.Header>
         <Card.Body>
-          <div className="text-center text-muted">
-            <FaExclamationTriangle className="mb-2" />
-            <p>No purchase data found</p>
+          <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+            <span className="fw-bold">Status:</span>
+            <Badge bg={
+              summary.status === 'Paid' ? 'success' :
+              summary.status === 'Partial' ? 'warning' : 'danger'
+            }>
+              {summary.status}
+            </Badge>
+          </div>
+
+          <div className="payment-amounts mb-3">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <span className="text-muted">
+                <FaRupeeSign className="me-1" />
+                Invoiced:
+              </span>
+              <small className="text-muted ms-1">
+                (On {new Date(invoice.invoiceDate).toLocaleDateString()})
+              </small>
+              <span className="fw-bold text-primary">
+                ₹{invoice.totalAmount.toFixed(2)}
+              </span>
+            </div>
+          {purchasevoucher.map((voucher, index) => {
+            console.log(`Rendering voucher ${index}:`, voucher);
+            return (
+              <div key={`voucher-${voucher.voucherId || index}`} className="d-flex justify-content-between align-items-center mb-2 ps-3 border-start border-info">
+                <span className="text-info">
+                  <FaCheckCircle className="me-1" />
+                  Voucher:
+                </span>
+                <div className="d-flex flex-column align-items-end">
+                  <small className="text-muted">
+                    (On {new Date(voucher.paidDate).toLocaleDateString()}) – {voucher.receiptNumber}
+                  </small>
+                  <span className="fw-bold text-info">
+                    ₹{voucher.paidAmount.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+
+            <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
+              <span className="text-danger">
+                <FaExclamationTriangle className="me-1" />
+                Balance Due:
+              </span>
+              <span className="fw-bold text-danger">
+                ₹{Math.ceil(summary.balanceDue).toFixed(2)}
+              </span>
+            </div>
           </div>
         </Card.Body>
       </Card>
     );
-  }
-
-  // Calculate totals
-  const totalAmount = parseFloat(purchaseEntry.TotalAmount) || 0;
-  const totalPaid = voucherEntries.reduce((sum, entry) => 
-    sum + (parseFloat(entry.paid_amount) || 0), 0
-  );
-  const balanceDue = totalAmount - totalPaid;
-
-  console.log('🧮 PaymentStatus: Calculated amounts:', {
-    totalAmount,
-    totalPaid,
-    balanceDue
-  });
-
-  // Determine status
-  let status = 'Pending';
-  let statusVariant = 'danger';
-  
-  if (totalPaid >= totalAmount) {
-    status = 'Paid';
-    statusVariant = 'success';
-  } else if (totalPaid > 0) {
-    status = 'Partial';
-    statusVariant = 'warning';
-  }
-
-  const progressPercentage = totalAmount > 0 ? (totalPaid / totalAmount) * 100 : 0;
-
-  return (
-    <Card className="shadow-sm mb-3">
-      <Card.Header className="bg-primary text-white">
-        <h5 className="mb-0">
-          <FaReceipt className="me-2" />
-          Payment Status
-        </h5>
-      </Card.Header>
-      <Card.Body>
-        {/* Status Badge */}
-        <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
-          <span className="fw-bold">Status:</span>
-          <Badge bg={statusVariant}>
-            {status}
-          </Badge>
-        </div>
-
-        {/* Amount Summary */}
-        <div className="payment-amounts mb-3">
-          {/* Invoiced Amount */}
-          <div className="d-flex justify-content-between align-items-center mb-2">
-            <span className="text-muted">
-              <FaRupeeSign className="me-1" />
-              Invoiced:
-            </span>
-            <div className="d-flex align-items-center">
-              <small className="text-muted ms-1">
-                (On {new Date(purchaseEntry.Date).toLocaleDateString()})
-              </small>
-              <span className="fw-bold text-primary ms-2">
-                ₹{totalAmount.toFixed(2)}
-              </span>
-            </div>
-          </div>
-
-          {/* Payment Entries - Now using voucherEntries instead of paymentEntries */}
-          {voucherEntries.map((payment, index) => (
-            <div key={index} className="d-flex justify-content-between align-items-center mb-2 ps-3 border-start border-success">
-              <span className="text-success">
-                <FaCheckCircle className="me-1" />
-                Paid:
-              </span>
-              <div className="d-flex align-items-center">
-                <small className="text-muted ms-1">
-                  (On {new Date(payment.Date || payment.paid_date).toLocaleDateString()}) – {payment.VchNo || payment.receipt_number}
-                </small>
-                <span className="fw-bold text-success ms-2">
-                  ₹{(parseFloat(payment.paid_amount) || 0).toFixed(2)}
-                </span>
-              </div>
-            </div>
-          ))}
-
-          {/* Balance Due */}
-          <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
-            <span className="text-danger">
-              <FaExclamationTriangle className="me-1" />
-              Balance Due:
-            </span>
-            <span className="fw-bold text-danger">
-              ₹{balanceDue.toFixed(2)}
-            </span>
-          </div>
-        </div>
-
-
-    
-      </Card.Body>
-    </Card>
-  );
-};
-
-  const handlePrintFallback = () => {
-    const originalContent = document.getElementById('invoice-pdf-content').innerHTML;
-    const printWindow = window.open('', '_blank');
-    
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Purchase Invoice ${displayInvoiceNumber}</title>
-        <meta charset="utf-8">
-        <style>
-          body { 
-            font-family: Arial, sans-serif; 
-            margin: 15px; 
-            color: #000;
-            background: white;
-            font-size: 12px;
-            line-height: 1.4;
-          }
-          .invoice-pdf-preview {
-            width: 100%;
-            max-width: 100%;
-          }
-          .header { 
-            border-bottom: 2px solid #333; 
-            padding-bottom: 15px; 
-            margin-bottom: 15px; 
-          }
-          .company-name { 
-            color: #000; 
-            font-weight: bold;
-            font-size: 18px;
-            margin-bottom: 5px; 
-          }
-          .invoice-title { 
-            color: #000; 
-            font-weight: bold;
-            font-size: 20px;
-            margin-bottom: 10px; 
-          }
-          .invoice-meta { 
-            background-color: #f5f5f5; 
-            padding: 10px; 
-            border: 1px solid #ddd;
-          }
-          .bg-light { 
-            background-color: #f5f5f5 !important; 
-          }
-          .table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-bottom: 15px; 
-            font-size: 11px;
-          }
-          .table th, .table td { 
-            border: 1px solid #000; 
-            padding: 6px 8px; 
-            text-align: left; 
-          }
-          .table th { 
-            background-color: #333 !important; 
-            color: white; 
-            font-weight: bold;
-          }
-          .table-dark th {
-            background-color: #333 !important;
-            color: white;
-          }
-          .text-end { text-align: right; }
-          .text-center { text-align: center; }
-          .border { border: 1px solid #000; }
-          .p-2 { padding: 8px; }
-          .p-3 { padding: 12px; }
-          .p-4 { padding: 16px; }
-          .mb-1 { margin-bottom: 5px; }
-          .mb-2 { margin-bottom: 8px; }
-          .mb-3 { margin-bottom: 12px; }
-          .mb-4 { margin-bottom: 16px; }
-          .mt-2 { margin-top: 8px; }
-          .mt-3 { margin-top: 12px; }
-          .pb-2 { padding-bottom: 8px; }
-          .pt-2 { padding-top: 8px; }
-          .pt-3 { padding-top: 12px; }
-          .border-top { border-top: 1px solid #000; }
-          .border-bottom { border-bottom: 1px solid #000; }
-          .fw-bold { font-weight: bold; }
-          .text-primary { color: #000; font-weight: bold; }
-          .text-danger { color: #000; font-weight: bold; }
-          .text-success { color: #000; font-weight: bold; }
-          .text-muted { color: #666; }
-          .small { font-size: 10px; }
-          .row { display: flex; flex-wrap: wrap; margin-right: -10px; margin-left: -10px; }
-          .col-md-6 { flex: 0 0 50%; max-width: 50%; padding: 0 10px; }
-          .col-md-7 { flex: 0 0 58.333333%; max-width: 58.333333%; padding: 0 10px; }
-          .col-md-5 { flex: 0 0 41.666667%; max-width: 41.666667%; padding: 0 10px; }
-          .col-md-8 { flex: 0 0 66.666667%; max-width: 66.666667%; padding: 0 10px; }
-          .col-md-4 { flex: 0 0 33.333333%; max-width: 33.333333%; padding: 0 10px; }
-          .no-print { display: none !important; }
-          .payment-sidebar { display: none !important; }
-          @media print {
-            body { margin: 0; padding: 0; }
-            .invoice-pdf-preview { box-shadow: none; border: none; }
-            .table th { background-color: #333 !important; -webkit-print-color-adjust: exact; }
-            .bg-light { background-color: #f5f5f5 !important; -webkit-print-color-adjust: exact; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="invoice-pdf-preview">
-          ${originalContent
-            .replace(/<div[^>]*class="[^"]*d-print-none[^"]*"[^>]*>.*?<\/div>/gs, '')
-            .replace(/<div[^>]*class="[^"]*action-bar[^"]*"[^>]*>.*?<\/div>/gs, '')
-            .replace(/<div[^>]*class="[^"]*tax-indicator[^"]*"[^>]*>.*?<\/div>/gs, '')
-            .replace(/<div[^>]*class="[^"]*payment-sidebar[^"]*"[^>]*>.*?<\/div>/gs, '')
-            .replace(/<button[^>]*>.*?<\/button>/gs, '')
-            .replace(/<input[^>]*>/gs, '')
-            .replace(/<textarea[^>]*>.*?<\/textarea>/gs, '')
-            .replace(/<form[^>]*>.*?<\/form>/gs, '')
-          }
-        </div>
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(() => {
-              window.close();
-            }, 1000);
-          };
-        </script>
-      </body>
-      </html>
-    `;
-    
-    printWindow.document.write(printContent);
-    printWindow.document.close();
   };
 
-  const handleEditToggle = () => {
-    if (isEditMode) {
-      setInvoiceData(editedData);
-      localStorage.setItem('previewPurchaseInvoice', JSON.stringify(editedData));
-      localStorage.setItem('draftPurchaseInvoice', JSON.stringify(editedData));
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      setDownloading(true);
+      setError(null);
+      
+      if (!currentData) {
+        throw new Error('No invoice data available');
+      }
+
+      let pdf;
+      let InvoicePDFDocument;
+      
+      try {
+        const reactPdf = await import('@react-pdf/renderer');
+        pdf = reactPdf.pdf;
+        
+        const pdfModule = await import('./InvoicePDFDocument');
+        InvoicePDFDocument = pdfModule.default;
+      } catch (importError) {
+        console.error('Error importing PDF modules:', importError);
+        throw new Error('Failed to load PDF generation libraries');
+      }
+
+      const gstBreakdown = calculateGSTBreakdown();
+      const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+
+      console.log('Generating PDF for invoice:', currentData.invoiceNumber);
+
+      let pdfDoc;
+      try {
+        pdfDoc = (
+          <InvoicePDFDocument 
+            invoiceData={currentData}
+            invoiceNumber={currentData.invoiceNumber}
+            gstBreakdown={gstBreakdown}
+            isSameState={isSameState}
+          />
+        );
+      } catch (componentError) {
+        console.error('Error creating PDF component:', componentError);
+        throw new Error('Failed to create PDF document structure');
+      }
+
+      let blob;
+      try {
+        blob = await pdf(pdfDoc).toBlob();
+      } catch (pdfError) {
+        console.error('Error generating PDF blob:', pdfError);
+        throw new Error('Failed to generate PDF file');
+      }
+      
+      const filename = `Invoice_${currentData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+      const base64data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+        const storeResponse = await fetch(`${baseurl}/transactions/${id}/pdf`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            pdfData: base64data,
+            fileName: filename
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!storeResponse.ok) {
+          const errorText = await storeResponse.text();
+          throw new Error(`Server error: ${storeResponse.status} - ${errorText}`);
+        }
+
+        const storeResult = await storeResponse.json();
+        
+        if (storeResult.success) {
+          console.log('PDF stored successfully in database');
+          
+          const downloadUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = downloadUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(downloadUrl);
+          
+          setSuccess('PDF downloaded and stored successfully!');
+          setTimeout(() => setSuccess(false), 3000);
+        } else {
+          throw new Error(storeResult.message || 'Failed to store PDF');
+        }
+      } catch (storeError) {
+        console.error('Error storing PDF:', storeError);
+        
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+        
+        setSuccess('PDF downloaded successfully! (Not stored in database due to size limitations)');
+        setTimeout(() => setSuccess(false), 3000);
+      }
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setError('Failed to generate PDF: ' + error.message);
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setDownloading(false);
     }
-    setIsEditMode(!isEditMode);
+  };
+
+  // Replace the existing handleEditToggle with handleEditInvoice
+  const handleEditToggle = () => {
+    handleEditInvoice(); // Now this will navigate to the form for editing
   };
 
   const handleCancelEdit = () => {
@@ -700,16 +692,111 @@ const PaymentStatus = () => {
     setIsEditMode(false);
   };
 
+  const handleSaveChanges = async () => {
+    if (!editedData) return;
+    
+    try {
+      setUpdating(true);
+      setError(null);
+      
+      const optimizedPayload = {
+        voucherId: editedData.voucherId,
+        invoiceNumber: editedData.invoiceNumber,
+        invoiceDate: editedData.invoiceDate,
+        supplierInfo: editedData.supplierInfo,
+        taxableAmount: editedData.taxableAmount,
+        totalGST: editedData.totalGST,
+        grandTotal: editedData.grandTotal,
+        batchDetails: editedData.items.map(item => ({
+          product: item.product,
+          product_id: item.product_id,
+          description: item.description,
+          batch: item.batch,
+          batch_id: item.batch_id,
+          quantity: parseFloat(item.quantity) || 0,
+          price: parseFloat(item.price) || 0,
+          discount: parseFloat(item.discount) || 0,
+          gst: parseFloat(item.gst) || 0,
+          cgst: parseFloat(item.cgst) || 0,
+          sgst: parseFloat(item.sgst) || 0,
+          igst: parseFloat(item.igst) || 0,
+          cess: parseFloat(item.cess) || 0,
+          total: parseFloat(item.total) || 0
+        }))
+      };
+
+      console.log('Saving updated invoice with batch details:', optimizedPayload);
+
+      const response = await fetch(`${baseurl}/transactions/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(optimizedPayload)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to update invoice');
+      }
+      
+      const result = await response.json();
+      
+      setInvoiceData(editedData);
+      setIsEditMode(false);
+      setUpdateSuccess('Invoice updated successfully! Stock has been adjusted accordingly.');
+      
+      setTimeout(() => {
+        setUpdateSuccess(false);
+      }, 3000);
+      
+      console.log('Invoice updated successfully:', result);
+      
+    } catch (error) {
+      console.error('Error updating invoice:', error);
+      setError('Failed to update invoice: ' + error.message);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDeleteInvoice = async () => {
+    if (!invoiceData || !invoiceData.voucherId) return;
+    
+    try {
+      setDeleting(true);
+      setError(null);
+      
+      const response = await fetch(`${baseurl}/transactions/${invoiceData.voucherId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete invoice');
+      }
+      
+      const result = await response.json();
+      
+      setShowDeleteModal(false);
+      alert('Invoice deleted successfully!');
+      
+      navigate('/sales/invoices');
+      
+      console.log('Invoice deleted successfully:', result);
+      
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+      setError('Failed to delete invoice: ' + error.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleInputChange = (field, value) => {
     setEditedData(prev => ({
       ...prev,
       [field]: value
     }));
-    
-    if (field === 'invoiceNumber') {
-      setInvoiceNumber(value);
-      fetchPaymentData(value);
-    }
   };
 
   const handleNestedChange = (section, field, value) => {
@@ -751,6 +838,39 @@ const PaymentStatus = () => {
     recalculateTotals(newItems);
   };
 
+  const addNewItem = () => {
+    const newItem = {
+      id: editedData.items.length + 1,
+      product: 'New Product',
+      description: 'Product description',
+      quantity: 1,
+      price: 0,
+      discount: 0,
+      gst: 0,
+      cgst: 0,
+      sgst: 0,
+      igst: 0,
+      total: 0,
+      batch: '',
+      batch_id: '',
+      product_id: ''
+    };
+    
+    setEditedData(prev => ({
+      ...prev,
+      items: [...prev.items, newItem]
+    }));
+  };
+
+  const removeItem = (index) => {
+    const newItems = editedData.items.filter((_, i) => i !== index);
+    setEditedData(prev => ({
+      ...prev,
+      items: newItems
+    }));
+    recalculateTotals(newItems);
+  };
+
   const recalculateTotals = (items) => {
     const taxableAmount = items.reduce((sum, item) => {
       const quantity = parseFloat(item.quantity) || 0;
@@ -786,11 +906,6 @@ const PaymentStatus = () => {
       grandTotal: grandTotal.toFixed(2)
     }));
   };
-
-  // const handleBackToCreate = () => {
-  //   localStorage.setItem('draftPurchaseInvoice', JSON.stringify(editedData));
-  //   window.close();
-  // };
 
   const calculateGSTBreakdown = () => {
     if (!currentData || !currentData.items) return { totalCGST: 0, totalSGST: 0, totalIGST: 0 };
@@ -844,18 +959,181 @@ const PaymentStatus = () => {
     };
   };
 
+const handleOpenReceiptModal = () => {
+  console.log("🟦 handleOpenReceiptModal TRIGGERED");
+
   if (!invoiceData) {
+    console.log("❌ No invoiceData found");
+    return;
+  }
+
+  const balanceDue = paymentData 
+    ? paymentData.summary.balanceDue 
+    : parseFloat(invoiceData.grandTotal);
+
+  console.log("✅ balanceDue:", balanceDue);
+
+  const firstItem = invoiceData.items[0];
+  console.log("✅ firstItem:", firstItem);
+
+  const updatedForm = {
+    retailerBusinessName: invoiceData.supplierInfo.name, // ✅ CHANGED TO 'name' (PartyName)
+    retailerId: invoiceData.supplierInfo.id || '',
+    amount: balanceDue,
+    invoiceNumber: invoiceData.invoiceNumber,
+    product_id: firstItem?.product_id || '',
+    batch_id: firstItem?.batch_id || ''
+  };
+
+  console.log("✅ Updated Receipt Form Data:", updatedForm);
+
+  setReceiptFormData(prev => ({
+    ...prev,
+    ...updatedForm
+  }));
+
+  console.log("📌 Fetching next receipt number...");
+  fetchNextReceiptNumber();
+
+  console.log("📌 Opening Receipt Modal");
+  setShowReceiptModal(true);
+};
+
+
+  const handleCloseReceiptModal = () => {
+    setShowReceiptModal(false);
+    setIsCreatingReceipt(false);
+  };
+
+  const handleReceiptInputChange = (e) => {
+    const { name, value } = e.target;
+    setReceiptFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleRemoveFile = () => {
+    setReceiptFormData(prev => ({
+      ...prev,
+      transactionProofFile: null
+    }));
+    const fileInput = document.querySelector('input[type="file"]');
+    if (fileInput) fileInput.value = '';
+  };
+
+  const handleCreateReceiptFromInvoice = async () => {
+    if (!receiptFormData.amount || parseFloat(receiptFormData.amount) <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+  
+    try {
+      setIsCreatingReceipt(true);
+  
+      const formDataToSend = new FormData();
+  
+      formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
+      formDataToSend.append('TransactionType', "purchase voucher");
+      formDataToSend.append('retailer_id', receiptFormData.retailerId);
+      formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
+      formDataToSend.append('amount', receiptFormData.amount);
+      formDataToSend.append('currency', receiptFormData.currency);
+      formDataToSend.append('payment_method', receiptFormData.paymentMethod);
+      formDataToSend.append('receipt_date', receiptFormData.receiptDate);
+      formDataToSend.append('note', receiptFormData.note);
+      formDataToSend.append('bank_name', receiptFormData.bankName);
+      formDataToSend.append('transaction_date', receiptFormData.transactionDate || '');
+      formDataToSend.append('reconciliation_option', receiptFormData.reconciliationOption);
+    formDataToSend.append('invoice_number', receiptFormData.invoiceNumber);
+    formDataToSend.append('retailer_mobile', receiptFormData.retailerMobile);
+    formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
+    formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
+    
+    // FIX: Properly append product_id and batch_id
+    formDataToSend.append('product_id', receiptFormData.product_id || '');
+    formDataToSend.append('batch_id', receiptFormData.batch_id || '');
+    
+    formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
+    formDataToSend.append('from_invoice', 'true');
+
+    if (receiptFormData.transactionProofFile) {
+      formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
+    }
+
+    console.log('Creating receipt from invoice with FormData...');
+    console.log('Product ID:', receiptFormData.product_id);
+    console.log('Batch ID:', receiptFormData.batch_id);
+
+    const response = await fetch(`${baseurl}/api/receipts`, {
+      method: 'POST',
+      body: formDataToSend,
+    });
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Receipt created successfully:', result);
+        handleCloseReceiptModal();
+        alert('Receipt created successfully!');
+        
+        if (invoiceData && invoiceData.invoiceNumber) {
+          fetchPaymentData(invoiceData.invoiceNumber);
+        }
+        
+        if (result.id) {
+          navigate(`/receipts_view/${result.id}`);
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to create receipt:', errorText);
+        let errorMessage = 'Failed to create receipt. ';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage += errorData.error || 'Please try again.';
+        } catch {
+          errorMessage += 'Please try again.';
+        }
+        alert(errorMessage);
+      }
+    } catch (err) {
+      console.error('Error creating receipt:', err);
+      alert('Network error. Please check your connection and try again.');
+    } finally {
+      setIsCreatingReceipt(false);
+    }
+  };
+
+  if (loading) {
     return (
       <div className="invoice-preview-page">
         <div className="text-center p-5">
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
-          <p className="mt-3">Loading purchase invoice data...</p>
-          <Button variant="primary" onClick={() => window.close()}>
-            Close Window
-          </Button>
+          <p className="mt-3">Loading invoice data...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (error && !invoiceData) {
+    return (
+      <div className="invoice-preview-page">
+        <Container>
+          <div className="text-center p-5">
+            <Alert variant="danger">
+              <h5>Error Loading Invoice</h5>
+              <p>{error}</p>
+              <div className="mt-3">
+                <Button variant="primary" onClick={fetchTransactionData} className="me-2">
+                  Try Again
+                </Button>
+                <Button variant="secondary" onClick={() => window.history.back()}>
+                  Go Back
+                </Button>
+              </div>
+            </Alert>
+          </div>
+        </Container>
       </div>
     );
   }
@@ -863,189 +1141,7 @@ const PaymentStatus = () => {
   const currentData = isEditMode ? editedData : invoiceData;
   const gstBreakdown = calculateGSTBreakdown();
   const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
-  const displayInvoiceNumber = currentData.invoiceNumber || invoiceNumber || 'PINV001';
-
-  // Calculate payment progress
-  const totalAmount = paymentData ? parseFloat(paymentData.TotalAmount) : 0;
-  const paidAmount = paymentData ? parseFloat(paymentData.paid_amount) : 0;
-  const balanceAmount = paymentData ? parseFloat(paymentData.balance_amount) : 0;
-  const paymentProgress = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
-
-
-const handleOpenVoucherModal = () => {
-  if (!invoiceData) return;
-  
-  // Calculate balance from payment data
-  let balanceDue = 0;
-  if (paymentData && paymentData.allEntries) {
-    const purchaseEntry = paymentData.allEntries.find(entry => 
-      entry.TransactionType === 'Purchase'
-    );
-    const paymentEntries = paymentData.allEntries.filter(entry => 
-      entry.TransactionType === 'Purchase Voucher Payment'
-    );
-    
-    const totalAmount = parseFloat(purchaseEntry?.TotalAmount) || 0;
-    const totalPaid = paymentEntries.reduce((sum, entry) => 
-      sum + (parseFloat(entry.paid_amount) || 0), 0
-    );
-    balanceDue = totalAmount - totalPaid;
-  } else {
-    // Fallback to invoice grand total if no payment data
-    balanceDue = parseFloat(invoiceData.grandTotal) || 0;
-  }
-  
-  setVoucherFormData(prev => ({
-    ...prev,
-    supplierBusinessName: invoiceData.supplierInfo.businessName,
-    supplierId: invoiceData.supplierInfo.id || '',
-    amount: balanceDue,
-    invoiceNumber: invoiceData.invoiceNumber
-  }));
-  
-  fetchNextVoucherNumber();
-  setShowVoucherModal(true);
-};
-  // NEW:
-const handleCloseVoucherModal = () => {
-  setShowVoucherModal(false);
-  setIsCreatingVoucher(false);
-};
-  
-    const handleVoucherInputChange = (e) => {
-  const { name, value } = e.target;
-  setVoucherFormData(prev => ({
-    ...prev,
-    [name]: value
-  }));
-};
-  
-const fetchNextVoucherNumber = async () => {
-  try {
-    const response = await fetch(`${baseurl}/api/next-purchase-voucher-number`);
-    if (response.ok) {
-      const data = await response.json();
-      setVoucherFormData(prev => ({
-        ...prev,
-        voucherNumber: data.nextVoucherNumber
-      }));
-    } else {
-      await generateFallbackVoucherNumber();
-    }
-  } catch (err) {
-    console.error('Error fetching next voucher number:', err);
-    await generateFallbackVoucherNumber();
-  }
-};
-
-
-
-
-// REPLACE WITH THIS:
-const generateFallbackVoucherNumber = async () => {
-  try {
-    const response = await fetch(`${baseurl}/api/last-purchase-voucher`);
-    if (response.ok) {
-      const data = await response.json();
-      if (data.lastVoucherNumber) {
-        const lastNumber = data.lastVoucherNumber;
-        const numberMatch = lastNumber.match(/PV(\d+)/);
-        if (numberMatch) {
-          const nextNum = parseInt(numberMatch[1], 10) + 1;
-          const fallbackVoucherNumber = `PV${nextNum.toString().padStart(3, '0')}`;
-          setVoucherFormData(prev => ({
-            ...prev,
-            voucherNumber: fallbackVoucherNumber
-          }));
-          return;
-        }
-      }
-    }
-    setVoucherFormData(prev => ({
-      ...prev,
-      voucherNumber: 'PV001'
-    }));
-  } catch (err) {
-    setVoucherFormData(prev => ({
-      ...prev,
-      voucherNumber: 'PV001'
-    }));
-  }
-};
-
-const handleCreateVoucherFromInvoice = async () => {
-  if (!voucherFormData.amount || parseFloat(voucherFormData.amount) <= 0) {
-    alert('Please enter a valid amount');
-    return;
-  }
-
-  try {
-    setIsCreatingVoucher(true);
-
-    const voucherPayload = {
-      voucher_number: voucherFormData.voucherNumber,
-      supplier_id: voucherFormData.supplierId,
-      supplier_name: voucherFormData.supplierBusinessName,
-      amount: parseFloat(voucherFormData.amount),
-      currency: voucherFormData.currency,
-      payment_method: voucherFormData.paymentMethod,
-      voucher_date: voucherFormData.voucherDate,
-      note: voucherFormData.note,
-      bank_name: voucherFormData.bankName,
-      transaction_date: voucherFormData.transactionDate || null,
-      reconciliation_option: voucherFormData.reconciliationOption,
-      invoice_number: voucherFormData.invoiceNumber,
-      supplier_mobile: voucherFormData.supplierMobile,
-      supplier_email: voucherFormData.supplierEmail,
-      supplier_gstin: voucherFormData.supplierGstin,
-      supplier_business_name: voucherFormData.supplierBusinessName,
-      from_invoice: true
-    };
-
-    console.log('Creating purchase voucher from invoice:', voucherPayload);
-
-    const response = await fetch(`${baseurl}/api/purchase-vouchers`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(voucherPayload),
-    });
-
-    if (response.ok) {
-      const result = await response.json();
-      console.log('Purchase voucher created successfully:', result);
-      handleCloseVoucherModal();
-      alert('Purchase voucher created successfully!');
-      
-      // Refresh payment data
-      if (invoiceData && invoiceData.invoiceNumber) {
-        fetchPaymentData(invoiceData.invoiceNumber);
-      }
-      
-      if (result.id) {
-        navigate(`/purchase-vouchers/${result.id}`);
-      }
-    } else {
-      const errorText = await response.text();
-      console.error('Failed to create purchase voucher:', errorText);
-      let errorMessage = 'Failed to create purchase voucher. ';
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage += errorData.error || 'Please try again.';
-      } catch {
-        errorMessage += 'Please try again.';
-      }
-      alert(errorMessage);
-    }
-  } catch (err) {
-    console.error('Error creating purchase voucher:', err);
-    alert('Network error. Please check your connection and try again.');
-  } finally {
-    setIsCreatingVoucher(false);
-  }
-};
-
+  const displayInvoiceNumber = currentData.invoiceNumber || 'INV001';
 
   return (
     <div className="invoice-preview-page">
@@ -1053,18 +1149,14 @@ const handleCreateVoucherFromInvoice = async () => {
       <div className="action-bar bg-white shadow-sm p-3 mb-3 sticky-top d-print-none no-print">
         <Container fluid>
           <div className="d-flex justify-content-between align-items-center">
-            <h4 className="mb-0">Purchase Invoice Preview - {displayInvoiceNumber}</h4>
+            <h4 className="mb-0">Invoice Preview - {displayInvoiceNumber}</h4>
             <div>
               {!isEditMode ? (
                 <>
-                  <Button
-                    variant="info"
-                    className="me-2 text-white"
-                 onClick={handleOpenVoucherModal}
-                  >
+                  <Button variant="info" className="me-2 text-white" onClick={handleOpenReceiptModal}>
                     <FaRegFileAlt className="me-1" /> Create Voucher
                   </Button>
-                  <Button variant="warning" onClick={handleEditToggle} className="me-2">
+                  <Button variant="warning" onClick={handleEditInvoice} className="me-2">
                     <FaEdit className="me-1" /> Edit Invoice
                   </Button>
                   <Button variant="success" onClick={handlePrint} className="me-2">
@@ -1074,7 +1166,7 @@ const handleCreateVoucherFromInvoice = async () => {
                     variant="danger" 
                     onClick={handleDownloadPDF} 
                     className="me-2"
-                    disabled={downloading}
+                    disabled={downloading || !currentData}
                   >
                     {downloading ? (
                       <>
@@ -1089,17 +1181,32 @@ const handleCreateVoucherFromInvoice = async () => {
                       </>
                     )}
                   </Button>
-                 <Button variant="secondary" onClick={() => window.history.back()}>
-                                  Go Back
-                                </Button>
+
+                  <Button variant="secondary" onClick={() => window.history.back()}>
+                    <FaArrowLeft className="me-1" /> Go Back
+                  </Button>
                 </>
               ) : (
                 <>
-                  <Button variant="success" onClick={handleEditToggle} className="me-2">
-                    <FaSave className="me-1" /> Save Changes
+                  <Button variant="success" onClick={handleSaveChanges} className="me-2" disabled={updating}>
+                    {updating ? (
+                      <>
+                        <div className="spinner-border spinner-border-sm me-1" role="status">
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <FaSave className="me-1" /> Save Changes
+                      </>
+                    )}
                   </Button>
-                  <Button variant="secondary" onClick={handleCancelEdit}>
+                  <Button variant="secondary" onClick={handleCancelEdit} className="me-2">
                     <FaTimes className="me-1" /> Cancel
+                  </Button>
+                  <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
+                    <FaTrash className="me-1" /> Delete
                   </Button>
                 </>
               )}
@@ -1108,26 +1215,273 @@ const handleCreateVoucherFromInvoice = async () => {
         </Container>
       </div>
 
-      {/* Tax Type Indicator */}
-      {currentData.supplierInfo?.state && (
-        <div className="tax-indicator mb-3 d-print-none no-print">
+      {/* Success/Error Alerts */}
+      {updateSuccess && (
+        <div className="d-print-none no-print">
           <Container fluid>
-            <Alert variant={isSameState ? 'success' : 'warning'} className="mb-0">
-              <strong>Tax Type: </strong>
-              {isSameState ? (
-                <>CGST & SGST (Same State - {currentData.companyInfo.state} to {currentData.supplierInfo.state})</>
-              ) : (
-                <>IGST (Inter-State: {currentData.companyInfo.state} to {currentData.supplierInfo.state})</>
-              )}
+            <Alert variant="success" className="mb-3">
+              {updateSuccess}
             </Alert>
           </Container>
         </div>
       )}
 
-      {/* Main Content with Sidebar */}
+      {error && invoiceData && (
+        <div className="d-print-none no-print">
+          <Container fluid>
+            <Alert variant="warning" className="mb-3">
+              <Alert.Heading>Using Local Data</Alert.Heading>
+              <p className="mb-0">{error}</p>
+              <Button variant="outline-warning" size="sm" onClick={fetchTransactionData} className="mt-2">
+                Retry API Connection
+              </Button>
+            </Alert>
+          </Container>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Delete</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to delete invoice <strong>{displayInvoiceNumber}</strong>?</p>
+          <p className="text-danger">This action cannot be undone and will also update the stock values.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={handleDeleteInvoice} disabled={deleting}>
+            {deleting ? (
+              <>
+                <div className="spinner-border spinner-border-sm me-1" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                Deleting...
+              </>
+            ) : (
+              'Delete Invoice'
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Receipt Modal */}
+      <Modal show={showReceiptModal} onHide={handleCloseReceiptModal} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Create Receipt from Invoice</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>  
+          <div className="row mb-4">
+            <div className="col-md-6">
+              <div className="company-info-recepits-table text-center">
+                <label className="form-label-recepits-table">Navkar Exports</label>
+                <p>NO.63/603 AND 64/604, NEAR JAIN TEMPLE</p>
+                <p>1ST MAIN ROAD, T DASARAHALLI</p>
+                <p>GST : 29AAAMPC7994B1ZE</p>
+                <p>Email: akshay555.ak@gmail.com</p>
+                <p>Phone: 09880990431</p>
+              </div>
+            </div>
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Receipt Number</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="receiptNumber"
+                  value={receiptFormData.receiptNumber}
+                  onChange={handleReceiptInputChange}
+                  placeholder="REC0001"
+                  readOnly
+                />
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Receipt Date</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  name="receiptDate"
+                  value={receiptFormData.receiptDate}
+                  onChange={handleReceiptInputChange}
+                />
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Payment Method</label>
+                <select
+                  className="form-select"
+                  name="paymentMethod"
+                  value={receiptFormData.paymentMethod}
+                  onChange={handleReceiptInputChange}
+                >
+                  <option>Direct Deposit</option>
+                  <option>Online Payment</option>
+                  <option>Credit/Debit Card</option>
+                  <option>Demand Draft</option>
+                  <option>Cheque</option>
+                  <option>Cash</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="row mb-4">
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Retailer *</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={receiptFormData.retailerBusinessName || 'Auto-filled from invoice'}
+                  readOnly
+                  disabled
+                />
+                <small className="text-muted">Auto-filled from invoice</small>
+              </div>
+            </div>
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Amount *</label>
+                <div className="input-group custom-amount-receipts-table">
+                  <select
+                    className="form-select currency-select-receipts-table"
+                    name="currency"
+                    value={receiptFormData.currency}
+                    onChange={handleReceiptInputChange}
+                  >
+                    <option>INR</option>
+                    <option>USD</option>
+                    <option>EUR</option>
+                    <option>GBP</option>
+                  </select>
+                  <input
+                    type="number"
+                    className="form-control amount-input-receipts-table"
+                    name="amount"
+                    value={receiptFormData.amount}
+                    onChange={handleReceiptInputChange}
+                    placeholder="Amount"
+                    min="0"
+                    step="0.01"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="row mb-4">
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Note</label>
+                <textarea
+                  className="form-control"
+                  rows="3"
+                  name="note"
+                  value={receiptFormData.note}
+                  onChange={handleReceiptInputChange}
+                  placeholder="Additional notes..."
+                ></textarea>
+              </div>
+            </div>
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">For</label>
+                <p className="mt-2">Authorised Signatory</p>
+              </div>
+            </div>
+          </div>
+          <div className="row">
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Bank Name</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="bankName"
+                  value={receiptFormData.bankName}
+                  onChange={handleReceiptInputChange}
+                  placeholder="Bank Name"
+                />
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Transaction Proof Document</label>
+                <input 
+                  type="file" 
+                  className="form-control" 
+                  onChange={(e) => handleFileChange(e)}
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                />
+                <small className="text-muted">
+                  {receiptFormData.transactionProofFile ? receiptFormData.transactionProofFile.name : 'No file chosen'}
+                </small>
+                
+                {receiptFormData.transactionProofFile && (
+                  <div className="mt-2">
+                    <div className="d-flex align-items-center">
+                      <span className="badge bg-success me-2">
+                        <i className="bi bi-file-earmark-check"></i>
+                      </span>
+                      <span className="small">
+                        {receiptFormData.transactionProofFile.name} 
+                        ({Math.round(receiptFormData.transactionProofFile.size / 1024)} KB)
+                      </span>
+                      <button 
+                        type="button" 
+                        className="btn btn-sm btn-outline-danger ms-2"
+                        onClick={() => handleRemoveFile()}
+                      >
+                        <i className="bi bi-x"></i>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Transaction Date</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  name="transactionDate"
+                  value={receiptFormData.transactionDate}
+                  onChange={handleReceiptInputChange}
+                />
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Reconciliation Option</label>
+                <select
+                  className="form-select"
+                  name="reconciliationOption"
+                  value={receiptFormData.reconciliationOption}
+                  onChange={handleReceiptInputChange}
+                >
+                  <option>Do Not Reconcile</option>
+                  <option>Customer Reconcile</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseReceiptModal}>
+            Close
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleCreateReceiptFromInvoice}
+            disabled={isCreatingReceipt}
+          >
+            {isCreatingReceipt ? 'Creating...' : 'Create voucher'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Main Content */}
       <Container fluid className="invoice-preview-container">
         <Row>
-          {/* Invoice Content - 8 columns */}
+          {/* Invoice Content */}
           <Col lg={8}>
             <div 
               className="invoice-pdf-preview bg-white p-4 shadow-sm" 
@@ -1181,7 +1535,7 @@ const handleCreateVoucherFromInvoice = async () => {
                     )}
                   </Col>
                   <Col md={4} className="text-end">
-                    <h3 className="invoice-title text-danger mb-2">PURCHASE INVOICE</h3>
+                    <h3 className="invoice-title text-danger mb-2">TAX INVOICE</h3>
                     <div className="invoice-meta bg-light p-2 rounded">
                       {isEditMode ? (
                         <div className="edit-control">
@@ -1194,7 +1548,7 @@ const handleCreateVoucherFromInvoice = async () => {
                             />
                           </div>
                           <div className="mb-1">
-                            <strong>Purchase Date:</strong>
+                            <strong>Invoice Date:</strong>
                             <Form.Control 
                               type="date"
                               size="sm"
@@ -1215,7 +1569,7 @@ const handleCreateVoucherFromInvoice = async () => {
                       ) : (
                         <>
                           <p className="mb-1"><strong>Invoice No:</strong> {displayInvoiceNumber}</p>
-                          <p className="mb-1"><strong>Purchase Date:</strong> {new Date(currentData.invoiceDate).toLocaleDateString()}</p>
+                          <p className="mb-1"><strong>Invoice Date:</strong> {new Date(currentData.invoiceDate).toLocaleDateString()}</p>
                           <p className="mb-0"><strong>Due Date:</strong> {new Date(currentData.validityDate).toLocaleDateString()}</p>
                         </>
                       )}
@@ -1224,12 +1578,12 @@ const handleCreateVoucherFromInvoice = async () => {
                 </Row>
               </div>
 
-              {/* Supplier and Address Details */}
+              {/* Customer and Address Details */}
               <div className="address-section mb-4">
                 <Row>
                   <Col md={6}>
                     <div className="billing-address bg-light p-3 rounded">
-                      <h5 className="text-primary mb-2">Supplier:</h5>
+                      <h5 className="text-primary mb-2">Bill To:</h5>
                       {isEditMode ? (
                         <div className="edit-control">
                           <Form.Control 
@@ -1266,7 +1620,7 @@ const handleCreateVoucherFromInvoice = async () => {
                   </Col>
                   <Col md={6}>
                     <div className="shipping-address bg-light p-3 rounded">
-                      <h5 className="text-primary mb-2">Delivery Address:</h5>
+                      <h5 className="text-primary mb-2">Ship To:</h5>
                       {isEditMode ? (
                         <div className="edit-control">
                           <Form.Control 
@@ -1314,22 +1668,26 @@ const handleCreateVoucherFromInvoice = async () => {
 
               {/* Items Table */}
               <div className="items-section mb-4">
-                <h6 className="text-primary mb-2">Purchase Items Details</h6>
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <h6 className="text-primary mb-0">Items Details</h6>
+                  {isEditMode && (
+                    <Button variant="primary" size="sm" onClick={addNewItem}>
+                      + Add Item
+                    </Button>
+                  )}
+                </div>
                 {isEditMode ? (
                   <Table bordered responsive size="sm" className="edit-control">
                     <thead className="table-dark">
                       <tr>
                         <th width="5%">#</th>
-                        <th width="15%">Product</th>
+                        <th width="20%">Product</th>
                         <th width="20%">Description</th>
-                        <th width="8%">Qty</th>
-                        <th width="10%">Price</th>
-                        <th width="8%">Discount %</th>
-                        <th width="8%">GST %</th>
-                        <th width="8%">CGST %</th>
-                        <th width="8%">SGST %</th>
-                        <th width="8%">IGST %</th>
-                        <th width="12%">Amount (₹)</th>
+                        <th width="10%">Qty</th>
+                        <th width="15%">Price</th>
+                        <th width="10%">GST %</th>
+                        <th width="15%"> Amount (₹)</th>
+                        <th width="5%">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1370,43 +1728,20 @@ const handleCreateVoucherFromInvoice = async () => {
                             <Form.Control 
                               type="number"
                               size="sm"
-                              value={item.discount}
-                              onChange={(e) => handleItemChange(index, 'discount', e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <Form.Control 
-                              type="number"
-                              size="sm"
                               value={item.gst}
                               onChange={(e) => handleItemChange(index, 'gst', e.target.value)}
                             />
                           </td>
-                          <td>
-                            <Form.Control 
-                              type="number"
-                              size="sm"
-                              value={item.cgst}
-                              onChange={(e) => handleItemChange(index, 'cgst', e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <Form.Control 
-                              type="number"
-                              size="sm"
-                              value={item.sgst}
-                              onChange={(e) => handleItemChange(index, 'sgst', e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <Form.Control 
-                              type="number"
-                              size="sm"
-                              value={item.igst}
-                              onChange={(e) => handleItemChange(index, 'igst', e.target.value)}
-                            />
-                          </td>
                           <td className="text-end">₹{parseFloat(item.total).toFixed(2)}</td>
+                          <td className="text-center">
+                            <Button 
+                              variant="danger" 
+                              size="sm"
+                              onClick={() => removeItem(index)}
+                            >
+                              <FaTrash />
+                            </Button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1416,16 +1751,12 @@ const handleCreateVoucherFromInvoice = async () => {
                     <thead className="table-dark">
                       <tr>
                         <th width="5%">#</th>
-                        <th width="15%">Product</th>
-                        <th width="20%">Description</th>
-                        <th width="6%">Qty</th>
-                        <th width="10%">Price</th>
-                        <th width="6%">Discount %</th>
-                        <th width="6%">GST %</th>
-                        <th width="6%">CGST %</th>
-                        <th width="6%">SGST %</th>
-                        <th width="6%">IGST %</th>
-                        <th width="14%">Amount (₹)</th>
+                        <th width="25%">Product</th>
+                        <th width="25%">Description</th>
+                        <th width="10%">Qty</th>
+                        <th width="15%">Price</th>
+                        <th width="10%">GST %</th>
+                        <th width="10%"> Taxable Amount (₹)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1436,21 +1767,10 @@ const handleCreateVoucherFromInvoice = async () => {
                           <td>{item.description}</td>
                           <td className="text-center">{item.quantity}</td>
                           <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
-                          <td className="text-center">{item.discount}%</td>
                           <td className="text-center">{item.gst}%</td>
-                          <td className="text-center">{item.cgst}%</td>
-                          <td className="text-center">{item.sgst}%</td>
-                          <td className="text-center">{item.igst}%</td>
                           <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
                         </tr>
                       ))}
-                      {currentData.items.length === 0 && (
-                        <tr>
-                          <td colSpan="11" className="text-center text-muted py-3">
-                            No items added
-                          </td>
-                        </tr>
-                      )}
                     </tbody>
                   </table>
                 )}
@@ -1472,7 +1792,7 @@ const handleCreateVoucherFromInvoice = async () => {
                         />
                       ) : (
                         <p className="bg-light p-2 rounded min-h-100">
-                          {currentData.note || 'Purchase order details and special instructions.'}
+                          {currentData.note}
                         </p>
                       )}
                       
@@ -1487,296 +1807,85 @@ const handleCreateVoucherFromInvoice = async () => {
                         />
                       ) : (
                         <p className="bg-light p-2 rounded">
-                          {currentData.transportDetails || 'Standard delivery. Contact supplier for tracking information.'}
+                          {currentData.transportDetails}
                         </p>
                       )}
                     </div>
                   </Col>
                   <Col md={5}>
                     <div className="amount-breakdown bg-light p-3 rounded">
-                      <h6 className="text-primary mb-3">Purchase Amount Summary</h6>
+                      <h6 className="text-primary mb-3">Amount Summary</h6>
                       <table className="amount-table w-100">
                         <tbody>
                           <tr>
-                            <td className="pb-2">Taxable Amount:</td>
-                            <td className="text-end pb-2">₹{parseFloat(currentData.taxableAmount || 0).toFixed(2)}</td>
+                            <td className="pb-2">  Amount:</td>
+                            <td className="text-end pb-2">₹{currentData.taxableAmount}</td>
                           </tr>
                           
                           {isSameState ? (
                             <>
                               <tr>
-                                <td className="pb-2">CGST ({gstBreakdown.totalCGST > 0 ? '9%' : '0%'}):</td>
+                                <td className="pb-2">CGST:</td>
                                 <td className="text-end pb-2">₹{gstBreakdown.totalCGST}</td>
                               </tr>
                               <tr>
-                                <td className="pb-2">SGST ({gstBreakdown.totalSGST > 0 ? '9%' : '0%'}):</td>
+                                <td className="pb-2">SGST:</td>
                                 <td className="text-end pb-2">₹{gstBreakdown.totalSGST}</td>
                               </tr>
                             </>
                           ) : (
                             <tr>
-                              <td className="pb-2">IGST ({gstBreakdown.totalIGST > 0 ? '18%' : '0%'}):</td>
+                              <td className="pb-2">IGST:</td>
                               <td className="text-end pb-2">₹{gstBreakdown.totalIGST}</td>
                             </tr>
                           )}
                           
                           <tr>
                             <td className="pb-2">Total GST:</td>
-                            <td className="text-end pb-2">₹{parseFloat(currentData.totalGST || 0).toFixed(2)}</td>
+                            <td className="text-end pb-2">₹{currentData.totalGST}</td>
                           </tr>
-                          
-                          <tr>
-                            <td className="pb-2">Total Cess:</td>
-                            <td className="text-end pb-2">₹{parseFloat(currentData.totalCess || 0).toFixed(2)}</td>
-                          </tr>
-                          
-                          {currentData.additionalCharge && (
-                            <tr>
-                              <td className="pb-2">{currentData.additionalCharge}:</td>
-                              <td className="text-end pb-2">₹{parseFloat(currentData.additionalChargeAmount || 0).toFixed(2)}</td>
-                            </tr>
-                          )}
                           
                           <tr className="grand-total border-top pt-2">
                             <td><strong>Grand Total:</strong></td>
-                            <td className="text-end"><strong className="text-success">₹{parseFloat(currentData.grandTotal || 0).toFixed(2)}</strong></td>
+                            <td className="text-end"><strong className="text-success">₹{currentData.grandTotal}</strong></td>
                           </tr>
                         </tbody>
                       </table>
-                      
-                      <div className="mt-3 p-2 border rounded">
-                        <small className="text-muted">
-                          <strong>Tax Summary: </strong>
-                          {isSameState 
-                            ? `CGST (${gstBreakdown.totalCGST > 0 ? '9%' : '0%'}) + SGST (${gstBreakdown.totalSGST > 0 ? '9%' : '0%'}) = ${parseFloat(currentData.totalGST || 0).toFixed(2)}`
-                            : `IGST (${gstBreakdown.totalIGST > 0 ? '18%' : '0%'}) = ${parseFloat(currentData.totalGST || 0).toFixed(2)}`
-                          }
-                        </small>
-                      </div>
                     </div>
                   </Col>
                 </Row>
               </div>
-
-<Modal show={showVoucherModal} onHide={handleCloseVoucherModal} size="lg">
-  <Modal.Header closeButton>
-    <Modal.Title>Create Purchase Voucher</Modal.Title>
-  </Modal.Header>
-  <Modal.Body>  
-    <div className="row mb-4">
-      <div className="col-md-6">
-        <div className="company-info-recepits-table text-center">
-          <label className="form-label-recepits-table">Navkar Exports</label>
-          <p>NO.63/603 AND 64/604, NEAR JAIN TEMPLE</p>
-          <p>1ST MAIN ROAD, T DASARAHALLI</p>
-          <p>GST : 29AAAMPC7994B1ZE</p>
-          <p>Email: akshay555.ak@gmail.com</p>
-          <p>Phone: 9880990431</p>
-        </div>
-      </div>
-      <div className="col-md-6">
-        <div className="mb-3">
-          <label className="form-label">Voucher Number</label>
-          <input
-            type="text"
-            className="form-control"
-            name="voucherNumber"
-            value={voucherFormData.voucherNumber}
-            onChange={handleVoucherInputChange}
-            placeholder="PV001"
-            readOnly
-          />
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Voucher Date</label>
-          <input
-            type="date"
-            className="form-control"
-            name="voucherDate"
-            value={voucherFormData.voucherDate}
-            onChange={handleVoucherInputChange}
-          />
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Payment Method</label>
-          <select
-            className="form-select"
-            name="paymentMethod"
-            value={voucherFormData.paymentMethod}
-            onChange={handleVoucherInputChange}
-          >
-            <option>Direct Deposit</option>
-            <option>Online Payment</option>
-            <option>Credit/Debit Card</option>
-            <option>Demand Draft</option>
-            <option>Cheque</option>
-            <option>Cash</option>
-          </select>
-        </div>
-      </div>
-    </div>
-    <div className="row mb-4">
-      <div className="col-md-6">
-        <div className="mb-3">
-          <label className="form-label">Supplier *</label>
-          <input
-            type="text"
-            className="form-control"
-            value={voucherFormData.supplierBusinessName || 'Auto-filled from invoice'}
-            readOnly
-            disabled
-          />
-          <small className="text-muted">Auto-filled from invoice</small>
-        </div>
-      </div>
-      <div className="col-md-6">
-        <div className="mb-3">
-          <label className="form-label">Amount *</label>
-          <div className="input-group custom-amount-receipts-table">
-            <select
-              className="form-select currency-select-receipts-table"
-              name="currency"
-              value={voucherFormData.currency}
-              onChange={handleVoucherInputChange}
-            >
-              <option>INR</option>
-              <option>USD</option>
-              <option>EUR</option>
-              <option>GBP</option>
-            </select>
-            <input
-              type="number"
-              className="form-control amount-input-receipts-table"
-              name="amount"
-              value={voucherFormData.amount}
-              onChange={handleVoucherInputChange}
-              placeholder="Amount"
-              min="0"
-              step="0.01"
-              required
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-    <div className="row mb-4">
-      <div className="col-md-6">
-        <div className="mb-3">
-          <label className="form-label">Note</label>
-          <textarea
-            className="form-control"
-            rows="3"
-            name="note"
-            value={voucherFormData.note}
-            onChange={handleVoucherInputChange}
-            placeholder="Additional notes..."
-          ></textarea>
-        </div>
-      </div>
-      <div className="col-md-6">
-        <div className="mb-3">
-          <label className="form-label">For</label>
-          <p className="mt-2">Authorised Signatory</p>
-        </div>
-      </div>
-    </div>
-    <div className="row">
-      <div className="col-md-6">
-        <div className="mb-3">
-          <label className="form-label">Bank Name</label>
-          <input
-            type="text"
-            className="form-control"
-            name="bankName"
-            value={voucherFormData.bankName}
-            onChange={handleVoucherInputChange}
-            placeholder="Bank Name"
-          />
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Transaction Proof Document</label>
-          <input type="file" className="form-control" />
-          <small className="text-muted">No file chosen</small>
-        </div>
-      </div>
-      <div className="col-md-6">
-        <div className="mb-3">
-          <label className="form-label">Transaction Date</label>
-          <input
-            type="date"
-            className="form-control"
-            name="transactionDate"
-            value={voucherFormData.transactionDate}
-            onChange={handleVoucherInputChange}
-          />
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Reconciliation Option</label>
-          <select
-            className="form-select"
-            name="reconciliationOption"
-            value={voucherFormData.reconciliationOption}
-            onChange={handleVoucherInputChange}
-          >
-            <option>Do Not Reconcile</option>
-            <option>Customer Reconcile</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  </Modal.Body>
-  <Modal.Footer>
-    <Button variant="secondary" onClick={handleCloseVoucherModal}>
-      Close
-    </Button>
-    <Button 
-      variant="primary" 
-      onClick={handleCreateVoucherFromInvoice}
-      disabled={isCreatingVoucher}
-    >
-      {isCreatingVoucher ? 'Creating...' : 'Create Voucher'}
-    </Button>
-  </Modal.Footer>
-</Modal>
 
               {/* Footer */}
               <div className="invoice-footer border-top pt-3">
                 <Row>
                   <Col md={6}>
                     <div className="bank-details">
-                      <h6 className="text-primary">Payment Details:</h6>
+                      <h6 className="text-primary">Bank Details:</h6>
                       <div className="bg-light p-2 rounded">
-                        <p className="mb-1">Payment Terms: Net 30 Days</p>
-                        <p className="mb-1">Payment Method: Bank Transfer</p>
-                        <p className="mb-0">Account: As per supplier details</p>
+                        <p className="mb-1">Account Name: {currentData.companyInfo.name}</p>
+                        <p className="mb-1">Account Number: XXXX XXXX XXXX</p>
+                        <p className="mb-1">IFSC Code: XXXX0123456</p>
+                        <p className="mb-0">Bank Name: Sample Bank</p>
                       </div>
                     </div>
                   </Col>
                   <Col md={6} className="text-end">
                     <div className="signature-section">
-                      <p className="mb-2">Received By: {currentData.companyInfo.name}</p>
+                      <p className="mb-2">For {currentData.companyInfo.name}</p>
                       <div className="signature-space border-bottom mx-auto" style={{width: '200px', height: '40px'}}></div>
                       <p className="mt-2">Authorized Signatory</p>
                     </div>
                   </Col>
                 </Row>
-                <div className="terms-section mt-3 pt-2 border-top">
-                  <p><strong className="text-primary">Purchase Terms & Conditions:</strong></p>
-                  <ul className="small text-muted mb-0">
-                    <li>Goods received are subject to quality inspection</li>
-                    <li>Payment due within 30 days of invoice date</li>
-                    <li>Defective goods will be returned at supplier's cost</li>
-                    <li>All disputes subject to local jurisdiction</li>
-                  </ul>
-                </div>
               </div>
             </div>
           </Col>
 
-       
-           <Col lg={4} className="d-print-none no-print">
-                      <PaymentStatus />
-                    </Col>
+          {/* Payment Sidebar */}
+          <Col lg={4} className="d-print-none no-print">
+            <PaymentStatus />
+          </Col>
         </Row>
       </Container>
     </div>
