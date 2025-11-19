@@ -26,40 +26,40 @@ const Ledger = () => {
     }
   };
 
-  // Group ledger by PartyName
-const groupedLedger = ledgerData.reduce((acc, entry) => {
-  console.log("data", entry);
+  // Group ledger by PartyID instead of PartyName
+  const groupedLedger = ledgerData.reduce((acc, entry) => {
+    console.log("data", entry);
 
-  const key = entry.PartyName || "Unknown Party"; // group by PartyName
-  if (!acc[key]) {
-    acc[key] = {
-      party: entry.PartyName || "Unknown Party",
-      transactions: [],
-      totalDebit: 0,
-      totalCredit: 0,
-      balance: 0,
-    };
-  }
+    const key = entry.PartyID || "Unknown"; // group by PartyID
+    if (!acc[key]) {
+      acc[key] = {
+        partyID: entry.PartyID || "Unknown",
+        partyName: entry.PartyName || "Unknown Party",
+        transactions: [],
+        totalDebit: 0,
+        totalCredit: 0,
+        balance: 0,
+      };
+    }
 
-  // Add transaction to this party
-  acc[key].transactions.push(entry);
+    // Add transaction to this party
+    acc[key].transactions.push(entry);
 
-  // Convert amount safely
-  const amount = parseFloat(entry.Amount || 0);
+    // Convert amount safely
+    const amount = parseFloat(entry.Amount || 0);
 
-  // 🧾 Use Amount for total — based on DC (Debit or Credit)
-  if (entry.DC === "D") {
-    acc[key].totalDebit += amount;
-  } else if (entry.DC === "C") {
-    acc[key].totalCredit += amount;
-  }
+    // 🧾 Use Amount for total — based on DC (Debit or Credit)
+    if (entry.DC === "D") {
+      acc[key].totalDebit += amount;
+    } else if (entry.DC === "C") {
+      acc[key].totalCredit += amount;
+    }
 
-  // Update balance = totalDebit - totalCredit
-  acc[key].balance = acc[key].totalDebit - acc[key].totalCredit;
+    // Update balance = totalDebit - totalCredit
+    acc[key].balance = acc[key].totalDebit - acc[key].totalCredit;
 
-  return acc;
-}, {});
-
+    return acc;
+  }, {});
 
   const groupedArray = Object.values(groupedLedger);
 
@@ -67,7 +67,7 @@ const groupedLedger = ledgerData.reduce((acc, entry) => {
   const filteredLedger =
     filter === "All"
       ? groupedArray
-      : groupedArray.filter((item) => item.party === filter);
+      : groupedArray.filter((item) => item.partyID === filter);
 
   return (
     <div className="ledger-wrapper">
@@ -82,68 +82,67 @@ const groupedLedger = ledgerData.reduce((acc, entry) => {
             <select value={filter} onChange={(e) => setFilter(e.target.value)}>
               <option value="All">All</option>
               {groupedArray.map((item) => (
-                <option key={item.party} value={item.party}>
-                  {item.party}
+                <option key={item.partyID} value={item.partyID}>
+                  {item.partyName} (ID: {item.partyID})
                 </option>
               ))}
             </select>
           </div>
 
           {/* Loading or Empty */}
-         {loading ? (
-  <p>Loading ledger data...</p>
-) : filteredLedger.length === 0 ? (
-  <p>No ledger entries found.</p>
-) : (
-  filteredLedger.map((ledger, index) => (
-    <div key={`${ledger.partyName || ledger.party || 'ledger'}-${index}`} className="ledger-section">
-      {/* Header with Balance */}
-      <div className="ledger-header">
-        {ledger.party} — Balance:{" "}
-        {Math.abs(ledger.balance).toFixed(2)}{" "}
-        {ledger.balance >= 0 ? "Dr" : "Cr"}
-      </div>
+          {loading ? (
+            <p>Loading ledger data...</p>
+          ) : filteredLedger.length === 0 ? (
+            <p>No ledger entries found.</p>
+          ) : (
+            filteredLedger.map((ledger, index) => (
+              <div key={`${ledger.partyID}-${index}`} className="ledger-section">
+                {/* Header with Balance */}
+                <div className="ledger-header">
+                  {ledger.partyName} (ID: {ledger.partyID}) — Balance:{" "}
+                  {Math.abs(ledger.balance).toFixed(2)}{" "}
+                  {ledger.balance >= 0 ? "Dr" : "Cr"}
+                </div>
 
-      {/* Table */}
-      <table className="ledger-table">
-        <thead>
-          <tr>
-            <th>Transaction Date</th>
-            <th>Transaction Type</th>
-            <th>Account Name</th>
-            <th>Credit/Debit</th>
-            <th>Credit</th>
-            <th>Debit</th>
-            <th>Rec/Vou No</th>
-            <th>Created On</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ledger.transactions.map((tx, idx) => {
-            const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
-            return (
-              <tr key={tx.id || idx}>
-                <td>{tx.date ? new Date(tx.date).toLocaleDateString() : "-"}</td>
-                <td>{tx.trantype || "-"}</td>
-                <td>{tx.PartyName || "-"}</td>
-                <td>{dc || "-"}</td>
-                <td>{dc === "C" ? tx.Amount : "-"}</td>
-                <td>{dc === "D" ? tx.Amount : "-"}</td>
-                <td>{tx.voucherID || "-"}</td>
-                <td>
-                  {tx.created_at
-                    ? new Date(tx.created_at).toLocaleString("en-IN")
-                    : "-"}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  ))
-)}
-
+                {/* Table */}
+                <table className="ledger-table">
+                  <thead>
+                    <tr>
+                      <th>Transaction Date</th>
+                      <th>Transaction Type</th>
+                      <th>Account Name</th>
+                      <th>Credit/Debit</th>
+                      <th>Credit</th>
+                      <th>Debit</th>
+                      <th>Rec/Vou No</th>
+                      <th>Created On</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ledger.transactions.map((tx, idx) => {
+                      const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
+                      return (
+                        <tr key={tx.id || idx}>
+                          <td>{tx.date ? new Date(tx.date).toLocaleDateString() : "-"}</td>
+                          <td>{tx.trantype || "-"}</td>
+                          <td>{tx.PartyName || "-"}</td>
+                          <td>{dc || "-"}</td>
+                          <td>{dc === "C" ? tx.Amount : "-"}</td>
+                          <td>{dc === "D" ? tx.Amount : "-"}</td>
+                          <td>{tx.voucherID || "-"}</td>
+                          <td>
+                            {tx.created_at
+                              ? new Date(tx.created_at).toLocaleString("en-IN")
+                              : "-"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

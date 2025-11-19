@@ -148,6 +148,7 @@ import Profile from "./Component/Panels/Retailer/RetailerProfile/Profile";
 import RetailerOrders from "./Component/Panels/Retailer/RetailerOrders/RetailerOrders";
 import DeleteProfile from "./Component/Panels/Retailer/RetailerProfile/DeleteProfile";
 import EditProfile from "./Component/Panels/Retailer/RetailerProfile/EditProfile";
+import EditCreditNote from "./Component/Panels/Admin/CreditNote/CreateNote";
 
 
 
@@ -291,10 +292,10 @@ function App() {
             <Route path="/units" element={<Units />} />
             <Route path="/ledger" element={<Ledger />} />
 
-            <Route path="sales/create_note" element={<CreateNote />} />
+            <Route path="/sales/credit-note/edit/:id" element={<CreateNote />} />
 
 
-
+        <Route path="/sales/create_note" element={<CreateNote />} />
 
             <Route path="/units/:id" element={<Units />} />
 

@@ -134,50 +134,82 @@ const InvoicePDFPreview = () => {
     }
   };
 
-  const transformPaymentData = (apiData) => {
-    const salesEntry = apiData.sales;
-    const receiptEntries = apiData.receipts || [];
-    
-    const totalAmount = parseFloat(salesEntry.TotalAmount) || 0;
-    const totalPaid = receiptEntries.reduce((sum, receipt) => {
-      return sum + parseFloat(receipt.paid_amount || 0);
-    }, 0);
-    
-    const balanceDue = totalAmount - totalPaid;
-    
-    const invoiceDate = new Date(salesEntry.Date);
-    const today = new Date();
-    const overdueDays = Math.max(0, Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24)));
-    
-    const receipts = receiptEntries.map(receipt => ({
-      receiptNumber: receipt.receipt_number,
-      paidAmount: parseFloat(receipt.paid_amount || 0),
-      paidDate: receipt.paid_date,
-      status: receipt.status
-    }));
-    
-    let status = 'Pending';
-    if (balanceDue === 0) {
-      status = 'Paid';
-    } else if (totalPaid > 0) {
-      status = 'Partial';
+const transformPaymentData = (apiData) => {
+  const salesEntry = apiData.sales;
+  const receiptEntries = apiData.receipts || [];
+  const creditNoteEntries = apiData.creditnotes || [];
+  
+  console.log('Raw API data for payment transformation:', {
+    sales: salesEntry,
+    receipts: receiptEntries,
+    creditnotes: creditNoteEntries
+  });
+  
+  const totalAmount = parseFloat(salesEntry.TotalAmount) || 0;
+  
+  // Calculate total receipts (positive amounts)
+  const totalPaid = receiptEntries.reduce((sum, receipt) => {
+    return sum + parseFloat(receipt.paid_amount || receipt.TotalAmount || 0);
+  }, 0);
+  
+  // Calculate total credit notes (negative amounts - these are deductions)
+  const totalCreditNotes = creditNoteEntries.reduce((sum, creditnote) => {
+    return sum + parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0);
+  }, 0);
+  
+  // Balance = Original - Receipts - CreditNotes
+  const balanceDue = totalAmount - totalPaid - totalCreditNotes;
+  
+  const invoiceDate = new Date(salesEntry.Date);
+  const today = new Date();
+  const overdueDays = Math.max(0, Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24)));
+  
+  // Transform receipts
+  const receipts = receiptEntries.map(receipt => ({
+    receiptNumber: receipt.VchNo || receipt.receipt_number,
+    paidAmount: parseFloat(receipt.paid_amount || receipt.TotalAmount || 0),
+    paidDate: receipt.Date || receipt.paid_date,
+    status: receipt.status || 'Paid',
+    type: 'receipt'
+  }));
+  
+  // Transform credit notes
+  const creditnotes = creditNoteEntries.map(creditnote => ({
+    receiptNumber: creditnote.VchNo || 'CNOTE',
+    paidAmount: parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0),
+    paidDate: creditnote.Date || creditnote.paid_date,
+    status: 'Credit',
+    type: 'credit_note'
+  }));
+  
+  let status = 'Pending';
+  if (balanceDue === 0) {
+    status = 'Paid';
+  } else if (totalPaid > 0 || totalCreditNotes > 0) {
+    status = 'Partial';
+  }
+  
+  const transformedData = {
+    invoice: {
+      invoiceNumber: salesEntry.InvoiceNumber,
+      invoiceDate: salesEntry.Date,
+      totalAmount: totalAmount,
+      overdueDays: overdueDays
+    },
+    receipts: receipts,
+    creditnotes: creditnotes,
+    summary: {
+      totalPaid: totalPaid,
+      totalCreditNotes: totalCreditNotes,
+      balanceDue: balanceDue,
+      status: status
     }
-    
-    return {
-      invoice: {
-        invoiceNumber: salesEntry.InvoiceNumber,
-        invoiceDate: salesEntry.Date,
-        totalAmount: totalAmount,
-        overdueDays: overdueDays
-      },
-      receipts: receipts,
-      summary: {
-        totalPaid: totalPaid,
-        balanceDue: balanceDue,
-        status: status
-      }
-    };
   };
+  
+  console.log('Transformed payment data:', transformedData);
+  
+  return transformedData;
+};
 
   const fetchNextReceiptNumber = async () => {
     try {
@@ -422,50 +454,8 @@ const InvoicePDFPreview = () => {
     };
   };
 
-  const PaymentStatus = () => {
-    if (paymentLoading) {
-      return (
-        <Card className="shadow-sm mb-3">
-          <Card.Header className="bg-primary text-white">
-            <h5 className="mb-0">
-              <FaReceipt className="me-2" />
-              Payment Status
-            </h5>
-          </Card.Header>
-          <Card.Body>
-            <div className="text-center">
-              <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-              Loading payment status...
-            </div>
-          </Card.Body>
-        </Card>
-      );
-    }
-
-    if (!paymentData) {
-      return (
-        <Card className="shadow-sm mb-3">
-          <Card.Header className="bg-primary text-white">
-            <h5 className="mb-0">
-              <FaReceipt className="me-2" />
-              Payment Status
-            </h5>
-          </Card.Header>
-          <Card.Body>
-            <div className="text-center text-muted">
-              <FaExclamationTriangle className="mb-2" />
-              <p>No payment data available</p>
-            </div>
-          </Card.Body>
-        </Card>
-      );
-    }
-
-    const { invoice, receipts, summary } = paymentData;
-    const progressPercentage = invoice.totalAmount > 0 ? (summary.totalPaid / invoice.totalAmount) * 100 : 0;
-
+const PaymentStatus = () => {
+  if (paymentLoading) {
     return (
       <Card className="shadow-sm mb-3">
         <Card.Header className="bg-primary text-white">
@@ -475,60 +465,146 @@ const InvoicePDFPreview = () => {
           </h5>
         </Card.Header>
         <Card.Body>
-          <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
-            <span className="fw-bold">Status:</span>
-            <Badge bg={
-              summary.status === 'Paid' ? 'success' :
-              summary.status === 'Partial' ? 'warning' : 'danger'
-            }>
-              {summary.status}
-            </Badge>
-          </div>
-
-          <div className="payment-amounts mb-3">
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-muted">
-                <FaRupeeSign className="me-1" />
-                Invoiced:
-              </span>
-              <small className="text-muted ms-1">
-                (On {new Date(invoice.invoiceDate).toLocaleDateString()})
-              </small>
-              <span className="fw-bold text-primary">
-                ₹{invoice.totalAmount.toFixed(2)}
-              </span>
+          <div className="text-center">
+            <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
+              <span className="visually-hidden">Loading...</span>
             </div>
-
-            {receipts.map((receipt, index) => (
-              <div key={index} className="d-flex justify-content-between align-items-center mb-2 ps-3 border-start border-success">
-                <span className="text-success">
-                  <FaCheckCircle className="me-1" />
-                  Paid:
-                </span>
-                <small className="text-muted ms-1">
-                  (On {new Date(receipt.paidDate).toLocaleDateString()}) – {receipt.receiptNumber}
-                </small>
-                <span className="fw-bold text-success">
-                  ₹{receipt.paidAmount.toFixed(2)}
-                </span>
-              </div>
-            ))}
-
-            <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
-              <span className="text-danger">
-                <FaExclamationTriangle className="me-1" />
-                Balance Due:
-              </span>
-              <span className="fw-bold text-danger">
-                ₹{summary.balanceDue.toFixed(2)}
-              </span>
-            </div>
+            Loading payment status...
           </div>
         </Card.Body>
       </Card>
     );
+  }
+
+  if (!paymentData) {
+    return (
+      <Card className="shadow-sm mb-3">
+        <Card.Header className="bg-primary text-white">
+          <h5 className="mb-0">
+            <FaReceipt className="me-2" />
+            Payment Status
+          </h5>
+        </Card.Header>
+        <Card.Body>
+          <div className="text-center text-muted">
+            <FaExclamationTriangle className="mb-2" />
+            <p>No payment data available</p>
+          </div>
+        </Card.Body>
+      </Card>
+    );
+  }
+
+  const { invoice, receipts, creditnotes, summary } = paymentData;
+  
+  console.log('PaymentStatus rendering with:', {
+    invoice,
+    receipts,
+    creditnotes,
+    summary
+  });
+
+  // Function to format date in Indian format (DD/MM/YYYY)
+  const formatIndianDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid Date';
+    
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
   };
 
+  // Combine and sort all transactions by date
+  const allTransactions = [
+    ...receipts.map(r => ({ ...r, type: 'receipt' })),
+    ...creditnotes.map(cn => ({ ...cn, type: 'credit_note' }))
+  ].sort((a, b) => new Date(a.paidDate) - new Date(b.paidDate));
+
+  const progressPercentage = invoice.totalAmount > 0 ? 
+    ((summary.totalPaid - summary.totalCreditNotes) / invoice.totalAmount) * 100 : 0;
+
+  return (
+    <Card className="shadow-sm mb-3">
+      <Card.Header className="bg-primary text-white">
+        <h5 className="mb-0">
+          <FaReceipt className="me-2" />
+          Payment Status
+        </h5>
+      </Card.Header>
+      <Card.Body>
+        <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+          <span className="fw-bold">Status:</span>
+          <Badge bg={
+            summary.status === 'Paid' ? 'success' :
+            summary.status === 'Partial' ? 'warning' : 'danger'
+          }>
+            {summary.status}
+          </Badge>
+        </div>
+
+        <div className="payment-amounts mb-3">
+          {/* Original Invoice Amount */}
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="text-muted">
+              <FaRupeeSign className="me-1" />
+              Original Invoice:
+            </span>
+            <small className="text-muted ms-1">
+              (On {formatIndianDate(invoice.invoiceDate)})
+            </small>
+            <span className="fw-bold text-primary">
+              ₹{invoice.totalAmount.toFixed(2)}
+            </span>
+          </div>
+
+          {/* Show all transactions in chronological order */}
+          {allTransactions.map((transaction, index) => (
+            <div 
+              key={`${transaction.type}-${index}`} 
+              className={`d-flex justify-content-between align-items-center mb-2 ps-3 border-start ${
+                transaction.type === 'receipt' ? 'border-success' : 'border-warning'
+              }`}
+            >
+              <span className={transaction.type === 'receipt' ? 'text-success' : 'text-warning'}>
+                {transaction.type === 'receipt' ? (
+                  <FaCheckCircle className="me-1" />
+                ) : (
+                  <FaTimes className="me-1" />
+                )}
+                {transaction.type === 'receipt' ? ' Receipt:' : 'Credit Note:'}
+              </span>
+              <small className="text-muted ms-1">
+                (On {formatIndianDate(transaction.paidDate)}) – {transaction.receiptNumber}
+              </small>
+              <span className={`fw-bold ${
+                transaction.type === 'receipt' ? 'text-success' : 'text-warning'
+              }`}>
+                {transaction.type === 'receipt' ? '' : ''}₹{transaction.paidAmount.toFixed(2)}
+              </span>
+            </div>
+          ))}
+
+     
+
+          {/* Balance Due */}
+          <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
+            <span className="text-danger">
+              <FaExclamationTriangle className="me-1" />
+              Balance Due:
+            </span>
+            <span className="fw-bold text-danger">
+              ₹{summary.balanceDue.toFixed(2)}
+            </span>
+          </div>
+        </div>
+
+      </Card.Body>
+    </Card>
+  );
+};
   const handlePrint = () => {
     window.print();
   };

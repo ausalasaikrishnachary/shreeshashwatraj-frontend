@@ -5,8 +5,11 @@ import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import './Createnote.css'; 
 import { baseurl } from '../../../BaseURL/BaseURL';
+import { useNavigate, useParams } from "react-router-dom";
 
 const CreateNote = () => {
+  const { id } = useParams();
+  const [isEditMode, setIsEditMode] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [creditNoteNumber, setCreditNoteNumber] = useState("");
   const [invoiceList, setInvoiceList] = useState([]);
@@ -15,284 +18,344 @@ const CreateNote = () => {
   const [noteDate, setNoteDate] = useState(new Date().toISOString().split('T')[0]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [loadingCustomer, setLoadingCustomer] = useState(false);
-  const [loadingCreditNote, setLoadingCreditNote] = useState(true);
+  const [loadingCreditNote, setLoadingCreditNote] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editedQuantity, setEditedQuantity] = useState("");
+  const [editedProduct, setEditedProduct] = useState("");
+  const [editedBatch, setEditedBatch] = useState("");
   const [error, setError] = useState("");
   const [items, setItems] = useState([]);
+  const [originalItems, setOriginalItems] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [productBatches, setProductBatches] = useState({});
+  const navigate = useNavigate();
 
-             useEffect(() => {
+  useEffect(() => {
+    if (id) {
+      setIsEditMode(true);
+      fetchCreditNoteData(id);
+    } else {
+      fetchCreditNoteNumber();
+    }
+  }, [id]);
+
   const fetchCreditNoteNumber = async () => {
     try {
       setLoadingCreditNote(true);
-      
       const response = await axios.get(`${baseurl}/api/next-creditnote-number`);
-      console.log("📦 API Response:", response.data);
-      
       const nextNumber = response?.data?.nextCreditNoteNumber;
-      if (nextNumber) {
-        console.log("✅ About to set credit note number to:", nextNumber);
-        setCreditNoteNumber(nextNumber);
-        console.log("✅ Set complete - now triggering re-render");
-      } else {
-        console.warn("⚠️ No nextCreditNoteNumber found. Response structure:", response.data);
-      }
+      setCreditNoteNumber(nextNumber || "CNOTE001");
     } catch (error) {
-      console.error("❌ Error fetching credit note number:", error.response?.data || error.message);
+      setCreditNoteNumber("CNOTE001");
     } finally {
       setLoadingCreditNote(false);
     }
   };
 
-  fetchCreditNoteNumber();
-}, []);
+  const fetchCreditNoteData = async (creditNoteId) => {
+    try {
+      setLoadingCreditNote(true);
+      const response = await axios.get(`${baseurl}/transactions`);
+      const allTransactions = response.data;
+      const creditNoteData = allTransactions.find(
+        transaction => 
+          transaction.TransactionType === "CreditNote" && 
+          transaction.VoucherID.toString() === creditNoteId.toString()
+      );
+      if (!creditNoteData) throw new Error(`Credit note with ID ${creditNoteId} not found`);
+      
+      setCreditNoteNumber(creditNoteData.VchNo || creditNoteData.creditNoteNumber || '');
+      setSelectedInvoice(creditNoteData.InvoiceNumber || creditNoteData.originalInvoiceNumber || '');
+      setNoteDate(creditNoteData.Date || new Date().toISOString().split('T')[0]);
+      
+      let itemsData = [];
+      if (creditNoteData.items) itemsData = creditNoteData.items;
+      else if (creditNoteData.batchDetails) itemsData = creditNoteData.batchDetails;
+      else if (creditNoteData.batch_details) itemsData = creditNoteData.batch_details;
 
-// Debug state change
-useEffect(() => {
-  console.log('🔄 State updated - creditNoteNumber:', creditNoteNumber);
-}, [creditNoteNumber]);
+      const itemsWithOriginal = itemsData.map(item => ({
+        ...item,
+        originalQuantity: parseFloat(item.quantity || item.originalQuantity || 0)
+      }));
+      
+      setItems(itemsWithOriginal);
+      setOriginalItems(itemsWithOriginal);
 
-  useEffect(() => {
-    console.log("🔍 creditNoteNumber updated:", creditNoteNumber);
-  }, [creditNoteNumber]);
-
-
-  useEffect(() => {
-    setLoadingInvoices(true);
-    setError("");
-    axios.get(`${baseurl}/api/credit-notesales`)
-      .then(res => {
-        console.log("Fetched invoices:", res.data);
-        
-        let invoices = [];
-        if (Array.isArray(res.data)) {
-          invoices = res.data;
-        } else if (res.data && Array.isArray(res.data.invoices)) {
-          invoices = res.data.invoices;
-        } else if (res.data && Array.isArray(res.data.data)) {
-          invoices = res.data.data;
-        }
-        
-        setInvoiceList(invoices);
-        setLoadingInvoices(false);
-      })
-      .catch(err => {
-        console.error("Error fetching invoices:", err);
-        setError("Failed to load invoices. Please check if the server is running.");
-        setLoadingInvoices(false);
-        setInvoiceList([]);
+      setCustomerData({
+        business_name: creditNoteData.business_name || creditNoteData.PartyName || creditNoteData.AccountName || 'Customer',
+        email: creditNoteData.email || '',
+        mobile_number: creditNoteData.mobile_number || '',
+        gstin: creditNoteData.gstin || '',
+        account_id: creditNoteData.AccountID || '',
+        party_id: creditNoteData.PartyID || '',
+        billing_address_line1: creditNoteData.billing_address_line1 || '',
+        billing_address_line2: creditNoteData.billing_address_line2 || '',
+        billing_city: creditNoteData.billing_city || '',
+        billing_state: creditNoteData.billing_state || '',
+        billing_country: creditNoteData.billing_country || '',
+        billing_pin_code: creditNoteData.billing_pin_code || '',
+        shipping_address_line1: creditNoteData.shipping_address_line1 || '',
+        shipping_address_line2: creditNoteData.shipping_address_line2 || '',
+        shipping_city: creditNoteData.shipping_city || '',
+        shipping_state: creditNoteData.shipping_state || '',
+        shipping_country: creditNoteData.shipping_country || '',
+        shipping_pin_code: creditNoteData.shipping_pin_code || '',
+        items: itemsWithOriginal
       });
+
+      const uniqueProducts = [...new Set(itemsWithOriginal.map(item => item.product))];
+      setProducts(uniqueProducts);
+
+      const tempProductBatches = {};
+      itemsWithOriginal.forEach(item => {
+        if (!tempProductBatches[item.product]) tempProductBatches[item.product] = new Set();
+        tempProductBatches[item.product].add(item.batch);
+      });
+      const batchesMap = {};
+      uniqueProducts.forEach(prod => {
+        batchesMap[prod] = Array.from(tempProductBatches[prod] || []);
+      });
+      setProductBatches(batchesMap);
+
+    } catch (error) {
+      setError("Failed to load credit note data: " + (error.response?.data?.error || error.message));
+    } finally {
+      setLoadingCreditNote(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      setLoadingInvoices(true);
+      try {
+        const res = await axios.get(`${baseurl}/transactions`);
+        const salesInvoices = res.data.filter(
+          transaction => transaction.TransactionType === "Sales"
+        );
+        setInvoiceList(salesInvoices);
+      } catch (err) {
+        setError("Failed to load invoices. Please check server.");
+        setInvoiceList([]);
+      } finally {
+        setLoadingInvoices(false);
+      }
+    };
+    fetchInvoices();
   }, []);
 
   useEffect(() => {
-    if (selectedInvoice) {
-      setLoadingCustomer(true);
-      axios.get(`${baseurl}/api/invoice-details/${selectedInvoice}`)
-        .then(res => {
-          console.log("Fetched invoice details:", res.data);
-          setCustomerData(res.data);
+    const fetchCustomerData = async () => {
+      if (selectedInvoice && !isEditMode) {
+        setLoadingCustomer(true);
+        try {
+          const res = await axios.get(`${baseurl}/transactions`);
+          const allTransactions = res.data;
+          const selectedInvoiceData = allTransactions.find(
+            transaction => 
+              transaction.TransactionType === "Sales" && 
+              transaction.InvoiceNumber === selectedInvoice
+          );
           
-          if (res.data.items && Array.isArray(res.data.items)) {
-            setItems(res.data.items);
+          if (selectedInvoiceData) {
+            setCustomerData({
+              business_name: selectedInvoiceData.business_name || selectedInvoiceData.PartyName || selectedInvoiceData.AccountName || 'Customer',
+              email: selectedInvoiceData.email || '',
+              mobile_number: selectedInvoiceData.mobile_number || '',
+              gstin: selectedInvoiceData.gstin || '',
+              account_id: selectedInvoiceData.AccountID || '',
+              party_id: selectedInvoiceData.PartyID || '',
+              billing_address_line1: selectedInvoiceData.billing_address_line1 || '',
+              billing_address_line2: selectedInvoiceData.billing_address_line2 || '',
+              billing_city: selectedInvoiceData.billing_city || '',
+              billing_state: selectedInvoiceData.billing_state || '',
+              billing_country: selectedInvoiceData.billing_country || '',
+              billing_pin_code: selectedInvoiceData.billing_pin_code || '',
+              shipping_address_line1: selectedInvoiceData.shipping_address_line1 || '',
+              shipping_address_line2: selectedInvoiceData.shipping_address_line2 || '',
+              shipping_city: selectedInvoiceData.shipping_city || '',
+              shipping_state: selectedInvoiceData.shipping_state || '',
+              shipping_country: selectedInvoiceData.shipping_country || '',
+              shipping_pin_code: selectedInvoiceData.shipping_pin_code || ''
+            });
+
+            let invoiceItems = [];
+            if (selectedInvoiceData.items) invoiceItems = selectedInvoiceData.items;
+            else if (selectedInvoiceData.batchDetails) invoiceItems = selectedInvoiceData.batchDetails;
+            else if (selectedInvoiceData.batch_details) invoiceItems = selectedInvoiceData.batch_details;
+
+            if (invoiceItems && Array.isArray(invoiceItems)) {
+              const itemsWithOriginal = invoiceItems.map(item => ({
+                ...item,
+                originalQuantity: parseFloat(item.quantity || 0)
+              }));
+              setItems(itemsWithOriginal);
+              setOriginalItems(itemsWithOriginal);
+
+              const uniqueProducts = [...new Set(itemsWithOriginal.map(item => item.product))];
+              setProducts(uniqueProducts);
+
+              const tempProductBatches = {};
+              itemsWithOriginal.forEach(item => {
+                if (!tempProductBatches[item.product]) tempProductBatches[item.product] = new Set();
+                tempProductBatches[item.product].add(item.batch);
+              });
+              const batchesMap = {};
+              uniqueProducts.forEach(prod => {
+                batchesMap[prod] = Array.from(tempProductBatches[prod] || []);
+              });
+              setProductBatches(batchesMap);
+            }
           } else {
+            setCustomerData(null);
             setItems([]);
           }
-          setLoadingCustomer(false);
-        })
-        .catch(err => {
-          console.error("Error fetching customer details:", err);
+        } catch (err) {
           setCustomerData(null);
+          setItems([]);
+        } finally {
           setLoadingCustomer(false);
-        });
-    } else {
-      setCustomerData(null);
-    }
-  }, [selectedInvoice]);
+        }
+      } else if (!selectedInvoice) {
+        setCustomerData(null);
+        setItems([]);
+        setOriginalItems([]);
+        setProducts([]);
+        setProductBatches({});
+      }
+    };
+    fetchCustomerData();
+  }, [selectedInvoice, isEditMode]);
 
   const formatAddress = (data, addressType) => {
     if (!data) return 'Address not available';
-    
     const addressParts = [
       data[`${addressType}_address_line1`],
       data[`${addressType}_address_line2`],
       data[`${addressType}_city`],
       data[`${addressType}_pin_code`] ? `PIN: ${data[`${addressType}_pin_code`]}` : '',
       data[`${addressType}_state`],
-      data[`${addressType}_country`],
-      data[`${addressType}_branch_name`]
+      data[`${addressType}_country`]
     ].filter(part => part && part.trim() !== '');
-    
     return addressParts.join(', ') || 'Address not available';
   };
 
-  // Calculate totals based on all batches
   const calculateTotals = () => {
-    if (items.length === 0) {
-      return {
-        taxableAmount: 0,
-        totalGST: 0,
-        totalIGST: 0,
-        grandTotal: 0
-      };
-    }
+    if (items.length === 0) return { taxableAmount: 0, totalGST: 0, totalIGST: 0, grandTotal: 0 };
 
-    const taxableAmount = items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      return sum + (quantity * price);
-    }, 0);
-
-    const totalGST = taxableAmount * 0.12; // 18% GST
-    const totalIGST = taxableAmount * 0.12; // assuming IGST same as GST
-    const grandTotal = taxableAmount + totalIGST;
-
-    return {
-      taxableAmount: taxableAmount.toFixed(2),
-      totalGST: totalGST.toFixed(2),
-      totalIGST: totalIGST.toFixed(2),
-      grandTotal: grandTotal.toFixed(2)
-    };
+    const taxableAmount = items.reduce((sum, item) => sum + (parseFloat(item.quantity)||0)*(parseFloat(item.price)||0)*(1-(parseFloat(item.discount||0)/100)),0);
+    const totalIGST = items.reduce((sum,item)=>sum+(parseFloat(item.quantity)||0)*(parseFloat(item.price)||0)*(1-(parseFloat(item.discount||0)/100))*(parseFloat(item.igst||0)/100),0);
+    const totalGST = 0;
+    const grandTotal = taxableAmount + totalIGST + totalGST;
+    return { taxableAmount: taxableAmount.toFixed(2), totalGST: totalGST.toFixed(2), totalIGST: totalIGST.toFixed(2), grandTotal: grandTotal.toFixed(2) };
   };
 
   const totals = calculateTotals();
 
-  const handleUpdateQuantity = (index, item) => {
-    const maxQty = parseFloat(item.originalQuantity || item.quantity);
+  const handleProductChange = (e) => { setEditedProduct(e.target.value); setEditedBatch(""); };
+  const handleBatchChange = (e) => setEditedBatch(e.target.value);
+  const handleQuantityChange = (e) => setEditedQuantity(e.target.value);
+
+  const handleUpdateItem = (index) => {
     const newQty = parseFloat(editedQuantity);
+    if (isNaN(newQty) || newQty<0){ window.alert("Please enter valid quantity"); return; }
+    const originalItem = originalItems.find(oi=>oi.product===editedProduct && oi.batch===editedBatch);
+    if (editedProduct && editedBatch && !originalItem){ window.alert("No original data found"); return; }
+    const maxQty = originalItem ? parseFloat(originalItem.originalQuantity) : Infinity;
+    if (newQty>maxQty){ window.alert(`Quantity cannot exceed ${maxQty}`); return; }
 
-    // Validation checks
-    if (isNaN(newQty) || newQty < 0) {
-      window.alert("Please enter a valid quantity (positive number)");
-      return;
-    }
-
-    if (newQty > maxQty) {
-      window.alert(`🚨 HIGH ALERT: Quantity cannot exceed original quantity (${maxQty})`);
-      return;
-    }
-
-    if (newQty === 0) {
-      if (!window.confirm("Are you sure you want to set quantity to 0? This will remove the item from calculations.")) {
-        return;
-      }
-    }
-
-    // Calculate new total price
-    const price = parseFloat(item.price) || 0;
-    const newTotal = (newQty * price).toFixed(2);
-
-    // Update the items state
     const updatedItems = [...items];
-    updatedItems[index].quantity = newQty;
-    updatedItems[index].total = newTotal;
+    updatedItems[index] = {...updatedItems[index], product:editedProduct, batch:editedBatch, quantity:newQty};
     setItems(updatedItems);
 
-    // Update customerData.items too for table display
-    const updatedCustomerData = { ...customerData };
+    const updatedCustomerData = {...customerData};
     updatedCustomerData.items = updatedItems;
     setCustomerData(updatedCustomerData);
 
     setEditingIndex(null);
-
-
+    setEditedQuantity("");
+    setEditedProduct("");
+    setEditedBatch("");
   };
 
-  const handleEditClick = (index, item) => {
-    setEditingIndex(index);
-    setEditedQuantity(item.quantity);
-  };
+  const handleEditClick = (index, item) => { setEditingIndex(index); setEditedQuantity(item.quantity); setEditedProduct(item.product); setEditedBatch(item.batch); };
+  const handleCancelEdit = () => { setEditingIndex(null); setEditedQuantity(""); setEditedProduct(""); setEditedBatch(""); };
 
-  const handleQuantityChange = (e, item) => {
-    const newValue = e.target.value;
-    setEditedQuantity(newValue);
-    
-    // Real-time validation for high quantity
-    const maxQty = parseFloat(item.originalQuantity || item.quantity);
-    const newQty = parseFloat(newValue);
-    
-    if (!isNaN(newQty) && newQty > maxQty) {
-      // You can add visual feedback here if needed
-      console.warn(`Quantity exceeds maximum allowed: ${maxQty}`);
+  const handleDeleteItem = (index, item) => {
+    if(window.confirm(`Remove ${item.product}?`)){
+      const updatedItems = items.filter((_,i)=>i!==index);
+      setItems(updatedItems);
+      const updatedCustomerData = {...customerData}; updatedCustomerData.items=updatedItems; setCustomerData(updatedCustomerData);
+      setOriginalItems(updatedItems);
+      if(updatedItems.length>0){
+        const uniqueProducts = [...new Set(updatedItems.map(item=>item.product))]; setProducts(uniqueProducts);
+        const tempProductBatches={};
+        updatedItems.forEach(item=>{if(!tempProductBatches[item.product]) tempProductBatches[item.product]=new Set(); tempProductBatches[item.product].add(item.batch)});
+        const batchesMap={}; uniqueProducts.forEach(prod=>{batchesMap[prod]=Array.from(tempProductBatches[prod]||[])}); setProductBatches(batchesMap);
+      } else { setProducts([]); setProductBatches({}); }
     }
   };
 
 const handleCreateCreditNote = async () => {
   try {
-    // Validate data
-    if (!selectedInvoice) {
-      window.alert("Please select an invoice first");
+    if(items.length===0 || !selectedInvoice){
+      window.alert("No items or invoice selected");
       return;
     }
 
-    if (items.length === 0) {
-      window.alert("No items available for credit note");
-      return;
-    }
-
-    if (!creditNoteNumber) {
-      window.alert("Credit note number is not available. Please try again.");
-      return;
-    }
-
-    // Prepare request data with product_id and batch
     const requestData = {
-      transactionType: "CreditNote", // Add this line
-      invoiceNumber: selectedInvoice,
-      noteDate: noteDate,
-      creditNoteNumber: creditNoteNumber,
-      items: items.map(item => ({
-        id: item.id,
-        product_id: item.product_id,
-        product: item.product,
-        batch: item.batch,
-        quantity: item.quantity,
-        originalQuantity: item.originalQuantity || item.quantity,
-        price: item.price,
-        discount: item.discount,
-        gst: item.gst,
-        igst: item.igst,
-        total: item.total
+      transactionType:"CreditNote",
+      VchNo:creditNoteNumber,
+      Date:noteDate,
+      InvoiceNumber:selectedInvoice,
+      PartyName:customerData?.business_name || 'Customer',
+      BasicAmount:parseFloat(totals.taxableAmount)||0,
+      TaxAmount:parseFloat(totals.totalIGST)||0,
+      TotalAmount:parseFloat(totals.grandTotal)||0,
+      TotalQty:items.reduce((sum,item)=>sum+parseFloat(item.quantity),0),
+      batchDetails:items.map(item=>({
+        product_id:item.product_id,
+        product:item.product,
+        batch:item.batch,
+        quantity:parseFloat(item.quantity)||0,
+        price:parseFloat(item.price)||0,
+        discount:parseFloat(item.discount)||0,
+        gst:parseFloat(item.gst)||0,
+        cgst:parseFloat(item.cgst)||0,
+        sgst:parseFloat(item.sgst)||0,
+        igst:parseFloat(item.igst)||0,
+        cess:parseFloat(item.cess)||0,
+        total:parseFloat(item.total)||0
       })),
-      customerData: {
-        business_name: customerData?.business_name,
-        email: customerData?.email,
-        mobile_number: customerData?.mobile_number,
-        gstin: customerData?.gstin,
-        account_id: customerData?.account_id,
-        party_id: customerData?.party_id
-      },
-      totals: totals,
-      noteText: document.querySelector('textarea[placeholder="Note"]')?.value || '',
-      terms: document.querySelector('textarea[placeholder="Terms and Condition"]')?.value || ''
+      creditNoteNumber:creditNoteNumber,
+      originalInvoiceNumber:selectedInvoice,
+      items:items,
+      customerData:customerData
     };
 
-    console.log("📦 Sending credit note data:", requestData);
+    // 🔹 Log the request data to console
+    console.log("Credit Note Request Data:", requestData);
 
-    const response = await axios.post(`${baseurl}/transaction`, requestData);
-
-    if (response.data.success) {
-      window.alert(`✅ Credit Note created successfully!\n\nCredit Note Number: ${response.data.creditNoteNumber}\nProduct ID: ${response.data.product_id}\nBatch ID: ${response.data.batch_id}\nTotal Amount: ₹${totals.grandTotal}`);
-      
-      // Reset form or redirect
-      setSelectedInvoice("");
-      setCustomerData(null);
-      setItems([]);
-      
-      // Refresh credit note number
-      const nextNumResponse = await axios.get(`${baseurl}/api/next-creditnote-number`);
-      if (nextNumResponse.data && nextNumResponse.data.nextCreditNoteNumber) {
-        setCreditNoteNumber(nextNumResponse.data.nextCreditNoteNumber);
-      }
-      
+    let response;
+    if(isEditMode){
+      response = await axios.put(`${baseurl}/creditnoteupdate/${id}`, requestData);
     } else {
-      throw new Error(response.data.error);
+      response = await axios.post(`${baseurl}/transaction`, requestData);
     }
 
-  } catch (error) {
-    console.error('❌ Error creating credit note:', error);
-    window.alert(`❌ Failed to create credit note: ${error.response?.data?.error || error.message}`);
+    console.log("Backend Response:", response.data); // 🔹 Log backend response
+
+    if(response.data){
+      window.alert("✅ Credit Note saved successfully!");
+      navigate("/sales/credit_note");
+    }
+  } catch (err){
+    console.error("Error sending credit note:", err); // 🔹 Log error
+    window.alert("❌ Failed to save credit note");
   }
 };
+
+
+  if(loadingCreditNote && isEditMode) return <div className="d-flex justify-content-center align-items-center vh-100"><div className="spinner-border text-primary" role="status"></div><span className="ms-2">Loading credit note data...</span></div>;
 
   return (
     <div className="credit-note-wrapper">
@@ -322,32 +385,24 @@ const handleCreateCreditNote = async () => {
               </div>
 
               <div className="col-lg-4 col-md-5 p-3">
-
-
-<div className="mb-2">
-  <label className="form-label small mb-1">Credit Note No</label>
-  <div className="position-relative">
-    <input 
-      key={creditNoteNumber || 'default'}
-      className="form-control form-control-sm" 
-      value={creditNoteNumber || ""} 
-      readOnly 
-      placeholder={loadingCreditNote ? "Loading..." : "CNOTE0001"}
-    />
-    {loadingCreditNote && (
-      <div className="position-absolute top-50 end-0 translate-middle-y me-2">
-        <div className="spinner-border spinner-border-sm text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    )}
-  </div>
-  {!creditNoteNumber && !loadingCreditNote && (
-    <div className="text-warning small mt-1">
-      Unable to load credit note number. Using default.
-    </div>
-  )}
-</div>
+                <div className="mb-2">
+                  <label className="form-label small mb-1">Credit Note No</label>
+                  <div className="position-relative">
+                    <input 
+                      className="form-control form-control-sm" 
+                      value={creditNoteNumber || ""} 
+                      readOnly 
+                      placeholder={loadingCreditNote ? "Loading..." : "CNOTE001"}
+                    />
+                    {loadingCreditNote && (
+                      <div className="position-absolute top-50 end-0 translate-middle-y me-2">
+                        <div className="spinner-border spinner-border-sm text-primary" role="status">
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div className="mb-2">
                   <label className="form-label small mb-1">Note Date</label>
                   <input 
@@ -357,37 +412,32 @@ const handleCreateCreditNote = async () => {
                     onChange={(e) => setNoteDate(e.target.value)}
                   />
                 </div>
-                <div>
-                  <label className="form-label small mb-1">Invoice</label>
-                  <select
-                    className="form-select form-select-sm"
-                    value={selectedInvoice}
-                    onChange={(e) => setSelectedInvoice(e.target.value)}
-                    disabled={loadingInvoices}
-                  >
-                    <option value="">
-                      {loadingInvoices ? "Loading invoices..." : "Select Invoice"}
-                    </option>
-                    {!loadingInvoices && invoiceList && Array.isArray(invoiceList) && invoiceList.length > 0 ? (
-                      invoiceList.map((inv) => (
-                        <option key={inv.VoucherID || inv.id || inv.InvoiceNumber} 
-                                value={inv.InvoiceNumber}>
-                          {inv.InvoiceNumber} 
-                        </option>
-                      ))  
-                    ) : (
-                      !loadingInvoices && <option disabled>No invoices found</option>
-                    )}
-                  </select>
-                  {!loadingInvoices && invoiceList.length === 0 && (
-                    <div className="text-danger small mt-1">
-                      No invoices available. Please check if sales invoices exist in the database.
-                    </div>
-                  )}
-                </div>
+              <div>
+  <label className="form-label small mb-1">Invoice</label>
+  <select
+    className="form-select form-select-sm"
+    value={selectedInvoice}
+    onChange={(e) => setSelectedInvoice(e.target.value)}
+  >
+    <option value="">
+      {loadingInvoices ? "Loading invoices..." : "Select Invoice"}
+    </option>
+    {invoiceList.map((inv) => (
+      <option key={inv.VoucherID} value={inv.InvoiceNumber || inv.VchNo || inv.invoiceNumber}>
+        {inv.InvoiceNumber || inv.VchNo || inv.invoiceNumber || `Invoice ${inv.VoucherID}`}
+      </option>
+    ))}
+  </select>
+  {!loadingInvoices && invoiceList.length === 0 && (
+    <div className="text-danger small mt-1">
+      No sales invoices found. Please create sales invoices first.
+    </div>
+  )}
+</div>
               </div>
             </div>
 
+            {/* Customer Info Section */}
             <div className="row mt-3">
               <div className="col-md-4 border p-3">
                 <div className="fw-bold">Customer Info</div>
@@ -401,7 +451,7 @@ const handleCreateCreditNote = async () => {
                     <div className="small">Business: {customerData.business_name || 'N/A'}</div>
                     <div className="small">Email: {customerData.email || 'N/A'}</div>
                     <div className="small">Mobile: {customerData.mobile_number || 'N/A'}</div>
-                    <div className="small">GSTIN: {customerData.gstin || customerData.gst_registered_name || 'N/A'}</div>
+                    <div className="small">GSTIN: {customerData.gstin || 'N/A'}</div>
                   </>
                 ) : (
                   <div className="small mt-2 text-muted">Select an invoice to load customer data</div>
@@ -410,17 +460,10 @@ const handleCreateCreditNote = async () => {
 
               <div className="col-md-4 border p-3">
                 <div className="fw-bold">Billing Address</div>
-                {loadingCustomer ? (
-                  <div className="small mt-2 text-muted">Loading address...</div>
-                ) : customerData ? (
-                  <>
-                    <div className="small mt-2" style={{ whiteSpace: 'pre-line' }}>
-                      {formatAddress(customerData, 'billing')}
-                    </div>
-                    {customerData.billing_gstin && (
-                      <div className="small mt-2">GSTIN: {customerData.billing_gstin}</div>
-                    )}
-                  </>
+                {customerData ? (
+                  <div className="small mt-2" style={{ whiteSpace: 'pre-line' }}>
+                    {formatAddress(customerData, 'billing')}
+                  </div>
                 ) : (
                   <div className="small mt-2 text-muted">Billing address will appear here</div>
                 )}
@@ -428,17 +471,10 @@ const handleCreateCreditNote = async () => {
 
               <div className="col-md-4 border p-3">
                 <div className="fw-bold">Shipping Address</div>
-                {loadingCustomer ? (
-                  <div className="small mt-2 text-muted">Loading address...</div>
-                ) : customerData ? (
-                  <>
-                    <div className="small mt-2" style={{ whiteSpace: 'pre-line' }}>
-                      {formatAddress(customerData, 'shipping')}
-                    </div>
-                    {customerData.shipping_gstin && (
-                      <div className="small mt-2">GSTIN: {customerData.shipping_gstin}</div>
-                    )}
-                  </>
+                {customerData ? (
+                  <div className="small mt-2" style={{ whiteSpace: 'pre-line' }}>
+                    {formatAddress(customerData, 'shipping')}
+                  </div>
                 ) : (
                   <div className="small mt-2 text-muted">Shipping address will appear here</div>
                 )}
@@ -461,88 +497,126 @@ const handleCreateCreditNote = async () => {
                     <th>ACTION</th>
                   </tr>
                 </thead>
-
                 <tbody>
-                  {customerData?.items?.length > 0 ? (
-                    customerData.items.map((item, index) => (
-                      <tr key={item.id || index}>
-                        <td className="ps-3 text-start">{item.product}</td>
-                        <td>{item.batch}</td>
-                        <td className="text-end">
-                          {editingIndex === index ? (
-                            <input
-                              type="number"
-                              className="form-control form-control-sm"
-                              value={editedQuantity}
-                              min="0"
-                              max={item.originalQuantity || item.quantity}
-                              step="0.01"
-                              onChange={(e) => handleQuantityChange(e, item)}
-                              style={{
-                                border: parseFloat(editedQuantity) > parseFloat(item.originalQuantity || item.quantity) 
-                                  ? '2px solid red' 
-                                  : '1px solid #ced4da'
-                              }}
-                            />
-                          ) : (
-                            item.quantity
-                          )}
-                        </td>
-                        <td className="text-end">₹{item.price}</td>
-                        <td className="text-end">{item.discount}</td>
-                        <td className="text-end">{item.gst}%</td>
-                        <td className="text-end">{item.igst}%</td>
-                        <td className="text-end fw-bold">
-                          {editingIndex === index ? (
-                            <span>₹{(parseFloat(editedQuantity || 0) * parseFloat(item.price || 0)).toFixed(2)}</span>
-                          ) : (
-                            `₹${item.total}`
-                          )}
-                        </td>
-                        <td className="text-center">
-                          {editingIndex === index ? (
-                            <>
-                              <button
-                                className="btn btn-sm btn-success me-1"
-                                onClick={() => handleUpdateQuantity(index, item)}
-                                title="Save changes"
+                  {(customerData?.items || items).length > 0 ? (
+                    (customerData?.items || items).map((item, index) => {
+                      const isEditing = editingIndex === index;
+                      const displayProduct = isEditing ? editedProduct : item.product;
+                      const displayBatch = isEditing ? editedBatch : item.batch;
+                      const displayQuantity = isEditing ? editedQuantity : item.quantity;
+                      const origItem = originalItems.find(oi => oi.product === displayProduct && oi.batch === displayBatch);
+                      const displayPrice = origItem ? parseFloat(origItem.price) : parseFloat(item.price);
+                      const displayDiscount = origItem ? origItem.discount : item.discount;
+                      const displayGst = origItem ? origItem.gst : item.gst;
+                      const displayIgst = origItem ? origItem.igst : item.igst;
+                      const displayTaxable = parseFloat(displayQuantity || 0) * displayPrice * (1 - parseFloat(displayDiscount || 0) / 100);
+                      const displayTotal = (displayTaxable * (1 + parseFloat(displayIgst || 0) / 100)).toFixed(2);
+                      const origForInput = originalItems.find(oi => oi.product === editedProduct && oi.batch === editedBatch);
+                      const maxForInput = origForInput ? origForInput.originalQuantity : "";
+                      const qtyNum = parseFloat(editedQuantity) || 0;
+                      const maxNumForStyle = origForInput ? parseFloat(origForInput.originalQuantity) : Infinity;
+                      const isOver = qtyNum > maxNumForStyle;
+                      const productTdClass = isEditing ? "text-start" : "ps-3 text-start";
+
+                      return (
+                        <tr key={item.id || index}>
+                          <td className={productTdClass}>
+                            {isEditing ? (
+                              <select 
+                                value={editedProduct} 
+                                onChange={handleProductChange} 
+                                className="form-select form-select-sm"
                               >
-                                ✅
-                              </button>
-                              <button
-                                className="btn btn-sm btn-secondary"
-                                onClick={() => setEditingIndex(null)}
-                                title="Cancel editing"
+                                <option value="">Select Product</option>
+                                {products.map(p => (
+                                  <option key={p} value={p}>{p}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              item.product
+                            )}
+                          </td>
+                          <td className={isEditing ? "text-start" : ""}>
+                            {isEditing ? (
+                              <select 
+                                value={editedBatch} 
+                                onChange={handleBatchChange} 
+                                className="form-select form-select-sm"
                               >
-                                ❌
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                className="btn btn-sm btn-outline-primary me-1"
-                                onClick={() => handleEditClick(index, item)}
-                                title="Edit quantity"
-                              >
-                                ✏️
-                              </button>
-                              <button 
-                                className="btn btn-sm btn-outline-danger"
-                                title="Delete item"
-                                onClick={() => {
-                                  if (window.confirm(`Are you sure you want to remove ${item.product}?`)) {
-                                    // Add delete functionality here
-                                    window.alert("Delete functionality to be implemented");
-                                  }
+                                <option value="">Select Batch</option>
+                                {(productBatches[editedProduct] || []).map(b => (
+                                  <option key={b} value={b}>{b}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              item.batch
+                            )}
+                          </td>
+                          <td className="text-end">
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={editedQuantity}
+                                min="0"
+                                max={maxForInput}
+                                step="0.01"
+                                onChange={handleQuantityChange}
+                                style={{
+                                  border: isOver ? '2px solid red' : '1px solid #ced4da'
                                 }}
-                              >
-                                🗑️
-                              </button>
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                              />
+                            ) : (
+                              item.quantity
+                            )}
+                          </td>
+                          <td className="text-end">₹{isEditing ? displayPrice.toFixed(2) : parseFloat(item.price).toFixed(2)}</td>
+                          <td className="text-end">{isEditing ? displayDiscount : item.discount}</td>
+                          <td className="text-end">{isEditing ? displayGst : item.gst}%</td>
+                          <td className="text-end">{isEditing ? displayIgst : item.igst}%</td>
+                          <td className="text-end fw-bold">
+                            ₹{displayTotal}
+                          </td>
+                          <td className="text-center">
+                            {isEditing ? (
+                              <>
+                                <button
+                                  className="btn btn-sm btn-success me-1"
+                                  onClick={() => handleUpdateItem(index)}
+                                  title="Save changes"
+                                >
+                                  ✅
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-secondary"
+                                  onClick={handleCancelEdit}
+                                  title="Cancel editing"
+                                >
+                                  ❌
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  className="btn btn-sm btn-outline-primary me-1"
+                                  onClick={() => handleEditClick(index, item)}
+                                  title="Edit quantity"
+                                >
+                                  ✏️
+                                </button>
+                                <button 
+                                  className="btn btn-sm btn-outline-danger"
+                                  title="Delete item"
+                                  onClick={() => handleDeleteItem(index, item)}
+                                >
+                                  🗑️
+                                </button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td colSpan="9" className="text-center text-muted">
@@ -554,12 +628,11 @@ const handleCreateCreditNote = async () => {
               </table>
             </div>
 
-            {/* Note + totals */}
+            {/* Note + totals section */}
             <div className="row mt-3">
               <div className="col-md-8">
                 <textarea className="form-control" rows="5" placeholder="Note" defaultValue={""} />
               </div>
-
               <div className="col-md-4">
                 <div className="border p-2 d-flex flex-column" style={{ minHeight: 120 }}>
                   <div className="d-flex justify-content-between">
@@ -567,14 +640,9 @@ const handleCreateCreditNote = async () => {
                     <div className="text-end">₹{totals.taxableAmount}</div>
                   </div>
                   <div className="d-flex justify-content-between">
-                    <div>Total GST</div>
-                    <div className="text-end">₹{totals.totalGST}</div>
-                  </div>
-                  <div className="d-flex justify-content-between">
                     <div>Total IGST</div>
-                    <div className="text-end">₹{totals.totalGST}</div>
+                    <div className="text-end">₹{totals.totalIGST}</div>
                   </div>
-
                   <div className="d-flex justify-content-between align-items-center mt-2">
                     <div style={{ width: "55%" }}>
                       <select className="form-select form-select-sm">
@@ -596,7 +664,6 @@ const handleCreateCreditNote = async () => {
                 <label className="form-label small">Terms and Condition</label>
                 <textarea className="form-control" rows="4" placeholder="Terms and Condition" />
               </div>
-
               <div className="col-md-4 border p-3 d-flex flex-column justify-content-between">
                 <div>For</div>
                 <div className="mt-3">Authorized Signatory</div>
@@ -610,11 +677,12 @@ const handleCreateCreditNote = async () => {
                 onClick={handleCreateCreditNote}
                 disabled={!selectedInvoice || items.length === 0 || !creditNoteNumber}
               >
-                + Create Credit Note
+                {isEditMode ? "📝 Update Credit Note" : "+ Create Credit Note"}
               </button>
             </div>
           </div>
 
+          {/* Credit Notes Table */}
           <ReusableTable
             title="Credit Notes"
             initialEntriesPerPage={10}
