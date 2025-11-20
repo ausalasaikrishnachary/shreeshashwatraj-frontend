@@ -1300,7 +1300,7 @@ const cancelEdit = () => {
 >
   <option value="">Select Product</option>
   {products
-    .filter((p) => p.group_by === "Salescatalog")
+    .filter((p) => p.group_by === "Salescatalog" || p.can_be_sold === true)
     .map((p) => (
       <option key={p.id} value={p.goods_name}>
         {p.goods_name}
