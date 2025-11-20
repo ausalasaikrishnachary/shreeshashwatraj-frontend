@@ -156,6 +156,7 @@ const CreateNote = () => {
               transaction.InvoiceNumber === selectedInvoice
           );
           
+           console.log("Selected Invoice Data:", selectedInvoiceData);
           if (selectedInvoiceData) {
             setCustomerData({
               business_name: selectedInvoiceData.business_name || selectedInvoiceData.PartyName || selectedInvoiceData.AccountName || 'Customer',
