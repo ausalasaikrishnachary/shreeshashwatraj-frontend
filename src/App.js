@@ -151,7 +151,7 @@ import EditProfile from "./Component/Panels/Retailer/RetailerProfile/EditProfile
 import EditCreditNote from "./Component/Panels/Admin/CreditNote/CreateNote";
 import PurchaseInvoiceEdit from "./Component/Panels/Admin/PurchaseInvoicePage/PurchaseInvoiceEdit";
 
-
+import VoucherView  from "./Component/Panels/Admin/Vochur/VoucherView"
 
 
 function App() {
@@ -204,7 +204,7 @@ function App() {
 <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
            <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
          <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
-           <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
+           {/* <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} /> */}
             <Route path="/Purchase/editinvoice/:id" element={<PurchaseInvoiceEdit />} />
  
   
@@ -234,6 +234,7 @@ function App() {
         <Route path="/purchase/voucher" element={<VoucherTable />} />
         <Route path="/purchase/debit-note" element={<DebitNoteTable />} />
         <Route path="/purchase/payables" element={<PayablesTable />} />
+        <Route path="/voucher_view/:id" element={<VoucherView />} />
 
         <Route path="/add-product" element={<AddProduct />} />
         <Route path="/marketing" element={<AdminMarketing />} />

@@ -79,9 +79,14 @@ const PurchasePDFPreview = () => {
     }
   };
 
-  useEffect(() => {
-    fetchTransactionData();
-  }, [id]);
+useEffect(() => {
+  if (!id) {
+    console.error("❌ No ID found in URL");
+    return;
+  }
+  fetchTransactionData();
+}, [id]);
+
 
   useEffect(() => {
     if (invoiceData && invoiceData.invoiceNumber) {
@@ -571,7 +576,7 @@ const PaymentStatus = () => {
         const reactPdf = await import('@react-pdf/renderer');
         pdf = reactPdf.pdf;
         
-        const pdfModule = await import('./InvoicePDFDocument');
+        const pdfModule = await import('../SalesInvoicePage/InvoicePDFDocument');
         InvoicePDFDocument = pdfModule.default;
       } catch (importError) {
         console.error('Error importing PDF modules:', importError);
@@ -1080,7 +1085,7 @@ const handleOpenReceiptModal = () => {
         }
         
         if (result.id) {
-          navigate(`/receipts_view/${result.id}`);
+          navigate(`/voucher_view/${result.id}`);
         }
       } else {
         const errorText = await response.text();

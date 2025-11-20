@@ -570,7 +570,7 @@ const CreateProductInvoice = ({ user }) => {
       localStorage.setItem('previewPurchaseInvoice', JSON.stringify(previewData));
 
       setTimeout(() => {
-        navigate("/purchase/invoice-preview");
+        navigate(`/purchase/invoice-preview/${responseData.voucherId}`);
       }, 2000);
 
     } catch (err) {
