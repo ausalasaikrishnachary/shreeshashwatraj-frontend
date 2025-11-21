@@ -294,8 +294,8 @@ const ReceiptsTable = () => {
   // Fetch invoices from API
   const fetchInvoices = async () => {
     try {
-      console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber`);
-      const response = await fetch(`${baseurl}/api/vouchersnumber`);
+      console.log('Fetching invoices from:', `${baseurl}/api/purchasevouchersnumber`);
+      const response = await fetch(`${baseurl}/api/purchasevouchersnumber`);
       if (response.ok) {
         const data = await response.json();
         console.log('Received invoices data:', data);

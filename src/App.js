@@ -153,6 +153,8 @@ import PurchaseInvoiceEdit from "./Component/Panels/Admin/PurchaseInvoicePage/Pu
 
 import VoucherView  from "./Component/Panels/Admin/Vochur/VoucherView"
 import Creditsview from "./Component/Panels/Admin/CreditNote/Creditsview";
+import CreateDebitNote from "./Component/Panels/Admin/DebitTable/CreateDebitNote";
+import DebitView from "./Component/Panels/Admin/DebitTable/DebitView";
 
 
 function App() {
@@ -234,6 +236,8 @@ function App() {
         <Route path="/purchase/purchase-order" element={<PurchaseOrderTable />} />
         <Route path="/purchase/voucher" element={<VoucherTable />} />
         <Route path="/purchase/debit-note" element={<DebitNoteTable />} />
+        <Route path="/purchase/create_note" element={<CreateDebitNote />} />
+        <Route path="/sales/debit-note/edit/:id" element={<CreateDebitNote />} />
         <Route path="/purchase/payables" element={<PayablesTable />} />
         <Route path="/voucher_view/:id" element={<VoucherView />} />
 

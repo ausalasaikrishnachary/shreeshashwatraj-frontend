@@ -112,8 +112,8 @@ const fetchReceipt = async () => {
   // Add fetchInvoices function
 const fetchInvoices = async () => {
   try {
-    console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber`);
-    const response = await fetch(`${baseurl}/api/vouchersnumber`);
+    console.log('Fetching invoices from:', `${baseurl}/api/purchasevouchersnumber`);
+    const response = await fetch(`${baseurl}/api/purchasevouchersnumber`);
     if (response.ok) {
       const data = await response.json();
       console.log('Received invoices data:', data);
@@ -125,6 +125,7 @@ const fetchInvoices = async () => {
     console.error('Error fetching invoices:', err);
   }
 };
+
   // File change handler for edit modal
   const handleFileChange = (e) => {
     const file = e.target.files[0];

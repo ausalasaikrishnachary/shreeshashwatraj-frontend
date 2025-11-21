@@ -1,19 +1,83 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import './DebitNote.css';
+import { baseurl } from '../../../BaseURL/BaseURL';
+import { FaPencilAlt, FaTrash } from "react-icons/fa";
 
 const DebitNoteTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState('Debit Note');
   const navigate = useNavigate();
+  const [creditNoteData, setCreditNoteData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [month, setMonth] = useState('July');
   const [year, setYear] = useState('2025');
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
+  const [activeTab, setActiveTab] = useState('Debit Note');
+
+  // Fetch debit notes from API
+  useEffect(() => {
+    fetchCreditNotes();
+  }, []);
+
+  const fetchCreditNotes = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(`${baseurl}/api/debit-notes-table`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      
+      console.log('API Response:', result);
+      
+      if (result.success) {
+        // Transform the API data to match table format
+        const transformedData = result.creditNotes.map(note => ({
+          id: note.VoucherID, // This is the VoucherID
+          customerName: note.PartyName || 'N/A',
+          noteNumber: note.VchNo || 'N/A',
+          document: note.InvoiceNumber || 'N/A',
+          documentType: note.TransactionType || 'DebitNote',
+          creditAmount: `₹ ${parseFloat(note.TotalAmount || 0).toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })}`,
+          created: note.Date ? new Date(note.Date).toLocaleDateString('en-IN') : 'N/A',
+          status: 'Active',
+          rawData: note // Keep original data for reference
+        }));
+        
+        console.log('Transformed data:', transformedData);
+        setCreditNoteData(transformedData);
+      } else {
+        setError('Failed to fetch debit notes');
+      }
+    } catch (err) {
+      console.error('Error fetching debit notes:', err);
+      setError('Error fetching debit notes data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewCreditNote = (creditNoteId) => {
+    console.log('View debit note ID:', creditNoteId);
+    if (!creditNoteId || creditNoteId === 'undefined') {
+      console.error('Invalid debit note ID:', creditNoteId);
+      alert('Cannot view debit note: Invalid ID');
+      return;
+    }
+    navigate(`/creditview/${creditNoteId}`);
+  };
+
+  const handleCreateClick = () => navigate("/purchase/create_note");
 
   // Define tabs with their corresponding routes
   const tabs = [
@@ -30,103 +94,144 @@ const DebitNoteTable = () => {
     navigate(tab.path);
   };
 
-  // Sample debit note data
-  const debitNoteData = [
-    // Add your debit note data here
-    // Example:
-    // {
-    //   supplierName: "ABC Suppliers",
-    //   noteNumber: "DN-001",
-    //   document: "DN_001.pdf",
-    //   debitAmount: "₹ 15,000.00",
-    //   created: "2025-07-15",
-    //   action: "View"
-    // }
-  ];
+  // Action handlers
+  const handleView = (item) => {
+    console.log('View debit note:', item);
+    if (item.id) {
+      navigate(`/sales/debit-note/view/${item.id}`);
+    }
+  };
 
-  // Debit note stats data
-  const debitNoteStats = [
-    { label: "Total Debit Notes", value: "₹ 2,50,000", change: "+18%", type: "total" },
-    { label: "This Month", value: "₹ 45,000", change: "+12%", type: "month" },
-    { label: "Pending Approval", value: "₹ 75,000", change: "+5%", type: "pending" },
-    { label: "Approved", value: "₹ 1,75,000", change: "+22%", type: "approved" }
-  ];
+  const handleEdit = (item) => {
+    console.log('Edit debit note:', item);
+    if (item.id) {
+      navigate(`/sales/debit-note/edit/${item.id}`);
+    }
+  };
+
+  const handleDelete = async (item) => {
+    if (window.confirm(`Are you sure you want to delete debit note ${item.noteNumber || 'unknown'}?`)) {
+      try {
+        console.log('Delete debit note:', item);
+        
+        const response = await fetch(`${baseurl}/transactions/${item.id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            alert('debit note deleted successfully!');
+            fetchCreditNotes();
+          } else {
+            alert('Failed to delete debit note: ' + (result.message || 'Unknown error'));
+          }
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to delete debit note');
+        }
+      } catch (err) {
+        console.error('Error deleting debit note:', err);
+        alert('Error deleting debit note. Please try again.');
+      }
+    }
+  };
+
+  // Custom renderers
+  const renderDocument = (value, item) => {
+    if (!item) return null;
+    return (
+      <div className="debit-note-table__document-cell">
+        <span className="debit-note-table__document-number">{item.document || 'N/A'}</span>
+        {item.documentType && (
+          <span className="debit-note-table__document-type"></span>
+        )}
+      </div>
+    );
+  };
+
+  const renderCreditAmount = (value, item) => {
+    if (!item) return null;
+    return (
+      <div className="debit-note-table__amount-cell">
+        <div className="debit-note-table__amount">{item.creditAmount || '₹ 0.00'}</div>
+        <div className={`debit-note-table__status debit-note-table__status--${item.status?.toLowerCase() || 'active'}`}>
+          {/* {item.status || 'Active'} */}
+        </div>
+      </div>
+    );
+  };
+
+  const renderAction = (value, item) => {
+    if (!item) return null;
+    return (
+      <div className="debit-note-table__actions">
+        <button
+          className="btn btn-sm btn-outline-warning me-1"
+          onClick={() => handleEdit(item)}
+          title="Edit debit Note"
+        >
+          <FaPencilAlt />
+        </button>
+        
+        <button
+          className="btn btn-sm btn-outline-danger"
+          onClick={() => handleDelete(item)}
+          title="Delete debit Note"
+        >
+          <FaTrash />
+        </button>
+      </div>
+    );
+  };
 
   const columns = [
     {
-      key: 'supplierName',
-      title: 'SUPPLIER NAME',
+      key: 'customerName',
+      title: 'CUSTOMER NAME',
       style: { textAlign: 'left' }
     },
+    // {
+    //   key: 'noteNumber',
+    //   title: 'DEBIT NOTE NUMBER',
+    //   render: (value, row) => (
+    //     <button
+    //       className="btn btn-link p-0 text-primary text-decoration-none"
+    //       onClick={() => handleViewCreditNote(row.id)} // Use row.id which contains VoucherID
+    //       title="Click to view debit note"
+    //     >
+    //       {value || 'N/A'}
+    //     </button>
+    //   ),
+    //   style: { textAlign: 'center' }
+    // },
     {
-      key: 'noteNumber',
-      title: 'NOTE NUMBER',
+      key: 'document',
+      title: 'Invoice Number',
+      render: renderDocument,
       style: { textAlign: 'center' }
     },
     {
-      key: 'document',
-      title: 'DOCUMENT',
-      style: { textAlign: 'center' },
-      render: (item) => (
-        item.document ? (
-          <a href="#" className="document-link" onClick={(e) => handleDocumentClick(e, item.document)}>
-            <i className="bi bi-file-earmark-pdf me-1"></i>
-            {item.document}
-          </a>
-        ) : (
-          <span className="text-muted">No document</span>
-        )
-      )
-    },
-    {
       key: 'debitAmount',
-      title: 'DEBIT AMOUNT',
+      title: 'AMOUNT',
+      render: renderCreditAmount,
       style: { textAlign: 'right' }
     },
     {
       key: 'created',
-      title: 'CREATED',
+      title: 'CREATED DATE',
       style: { textAlign: 'center' }
     },
     {
       key: 'action',
       title: 'ACTION',
-      style: { textAlign: 'center' },
-      render: (item, index) => (
-        <button 
-          className="btn btn-primary btn-sm"
-          onClick={() => handleViewClick(item)}
-        >
-          View
-        </button>
-      )
+      render: renderAction,
+      style: { textAlign: 'center', width: '150px' }
     }
   ];
 
-  const handleCreateClick = () => {
-    navigate("/purchase/create-debit-note");
-  };
-
-  const handleViewClick = (debitNote) => {
-    // Handle view action
-    console.log('View debit note:', debitNote);
-    // navigate(`/purchase/debit-note/${debitNote.id}`);
-  };
-
-  const handleDocumentClick = (e, documentName) => {
-    e.preventDefault();
-    // Handle document download/view
-    console.log('Download document:', documentName);
-  };
-
-  const handleDownloadMonth = () => {
-    // Handle month download
-    console.log('Download month data:', month, year);
-  };
-
-  const handleDownloadRange = () => {
-    // Handle date range download
-    console.log('Download range data:', startDate, endDate);
+  const handleRefreshData = () => {
+    fetchCreditNotes();
   };
 
   return (
@@ -136,7 +241,7 @@ const DebitNoteTable = () => {
         <AdminHeader isCollapsed={isCollapsed} />
         
         <div className="debit-note-content-area">
-          {/* ✅ Purchase Navigation Tabs Section */}
+          {/* ✅ Tabs Section */}
           <div className="debit-note-tabs-section">
             <div className="debit-note-tabs-container">
               {tabs.map((tab) => (
@@ -160,23 +265,18 @@ const DebitNoteTable = () => {
             </div>
           </div>
 
-          {/* Debit Note Stats */}
-          {/* <div className="debit-note-stats-grid">
-            {debitNoteStats.map((stat, index) => (
-              <div key={index} className={`debit-note-stat-card debit-note-stat-card--${stat.type}`}>
-                <h3 className="debit-note-stat-label">{stat.label}</h3>
-                <div className="debit-note-stat-value">{stat.value}</div>
-                <div className={`debit-note-stat-change ${stat.change.startsWith("+") ? "debit-note-stat-change--positive" : "debit-note-stat-change--negative"}`}>
-                  {stat.change} from last month
-                </div>
-              </div>
-            ))}
-          </div> */}
-
           {/* Filters and Actions Section */}
           <div className="debit-note-actions-section">
             <div className="quotation-container p-3">
               <h5 className="mb-3 fw-bold">View Debit Note Details</h5>
+
+              {loading && (
+                <div className="alert alert-info">Loading debit notes...</div>
+              )}
+              
+              {error && (
+                <div className="alert alert-danger">{error}</div>
+              )}
 
               {/* Filters Section */}
               <div className="row align-items-end g-3 mb-3">
@@ -206,7 +306,7 @@ const DebitNoteTable = () => {
                 </div>
 
                 <div className="col-md-auto">
-                  <button className="btn btn-success mt-4" onClick={handleDownloadMonth}>
+                  <button className="btn btn-success mt-4" onClick={handleRefreshData}>
                     <i className="bi bi-download me-1"></i> Download
                   </button>
                 </div>
@@ -230,7 +330,7 @@ const DebitNoteTable = () => {
                 </div>
 
                 <div className="col-md-auto">
-                  <button className="btn btn-success mt-4" onClick={handleDownloadRange}>
+                  <button className="btn btn-success mt-4" onClick={handleRefreshData}>
                     <i className="bi bi-download me-1"></i> Download Range
                   </button>
                 </div>
@@ -240,22 +340,31 @@ const DebitNoteTable = () => {
                     className="btn btn-info text-white mt-4"
                     onClick={handleCreateClick}
                   >
-                    Create
+                    <i className="bi bi-plus-circle me-1"></i>
+                    Create Debit Note
                   </button>
                 </div>
               </div>
 
               {/* Table Section */}
-              <ReusableTable
-                title="Debit Notes"
-                data={debitNoteData}
-                columns={columns}
-                initialEntriesPerPage={10}
-                searchPlaceholder="Search debit notes..."
-                showSearch={true}
-                showEntriesSelector={true}
-                showPagination={true}
-              />
+              {!loading && !error && (
+                <ReusableTable
+                  title={`Debit Notes (${creditNoteData.length} records)`}
+                  data={creditNoteData}
+                  columns={columns}
+                  initialEntriesPerPage={10}
+                  searchPlaceholder="Search debit notes..."
+                  showSearch={true}
+                  showEntriesSelector={true}
+                  showPagination={true}
+                />
+              )}
+
+              {!loading && !error && creditNoteData.length === 0 && (
+                <div className="alert alert-warning">
+                  No debit notes found. Create your first debit note!
+                </div>
+              )}
             </div>
           </div>
         </div>
