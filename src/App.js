@@ -152,6 +152,7 @@ import EditCreditNote from "./Component/Panels/Admin/CreditNote/CreateNote";
 import PurchaseInvoiceEdit from "./Component/Panels/Admin/PurchaseInvoicePage/PurchaseInvoiceEdit";
 
 import VoucherView  from "./Component/Panels/Admin/Vochur/VoucherView"
+import Creditsview from "./Component/Panels/Admin/CreditNote/Creditsview";
 
 
 function App() {
@@ -304,7 +305,7 @@ function App() {
 
 
      <Route path="/reports/sales-report-page" element={<SalesReportPage />} />
-
+<Route path="/creditview/:id" element={<Creditsview />} />
 
 
       </Routes>

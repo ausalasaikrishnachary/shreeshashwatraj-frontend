@@ -8,7 +8,6 @@ import './CreditNote.css';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import { FaPencilAlt, FaTrash } from "react-icons/fa";
 
-
 const CreditNoteTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
@@ -42,7 +41,7 @@ const CreditNoteTable = () => {
       if (result.success) {
         // Transform the API data to match table format
         const transformedData = result.creditNotes.map(note => ({
-          id: note.VoucherID,
+          id: note.VoucherID, // This is the VoucherID
           customerName: note.PartyName || 'N/A',
           noteNumber: note.VchNo || 'N/A',
           document: note.InvoiceNumber || 'N/A',
@@ -53,7 +52,7 @@ const CreditNoteTable = () => {
           })}`,
           created: note.Date ? new Date(note.Date).toLocaleDateString('en-IN') : 'N/A',
           status: 'Active',
-          rawData: note
+          rawData: note // Keep original data for reference
         }));
         
         console.log('Transformed data:', transformedData);
@@ -67,6 +66,16 @@ const CreditNoteTable = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewCreditNote = (creditNoteId) => {
+    console.log('View credit note ID:', creditNoteId);
+    if (!creditNoteId || creditNoteId === 'undefined') {
+      console.error('Invalid credit note ID:', creditNoteId);
+      alert('Cannot view credit note: Invalid ID');
+      return;
+    }
+    navigate(`/creditview/${creditNoteId}`);
   };
 
   const handleCreateClick = () => navigate("/sales/create_note");
@@ -91,49 +100,47 @@ const CreditNoteTable = () => {
   // Action handlers
   const handleView = (item) => {
     console.log('View credit note:', item);
-    // Navigate to view details page or show modal
-    if (item.rawData && item.rawData.VoucherID) {
-      navigate(`/sales/credit-note/view/${item.rawData.VoucherID}`);
+    if (item.id) {
+      navigate(`/sales/credit-note/view/${item.id}`);
     }
   };
 
   const handleEdit = (item) => {
     console.log('Edit credit note:', item);
-    // Navigate to edit page
-    if (item.rawData && item.rawData.VoucherID) {
-      navigate(`/sales/credit-note/edit/${item.rawData.VoucherID}`);
+    if (item.id) {
+      navigate(`/sales/credit-note/edit/${item.id}`);
     }
   };
-const handleDelete = async (item) => {
-  if (window.confirm(`Are you sure you want to delete credit note ${item.noteNumber || 'unknown'}?`)) {
-    try {
-      console.log('Delete credit note:', item);
-      
-      // API call to delete transaction - this will trigger your /transactions/:id endpoint
-      const response = await fetch(`${baseurl}/transactions/${item.rawData.VoucherID}`, {
-        method: 'DELETE'
-      });
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          alert('Credit note deleted successfully!');
-          // Refresh the data
-          fetchCreditNotes();
+  const handleDelete = async (item) => {
+    if (window.confirm(`Are you sure you want to delete credit note ${item.noteNumber || 'unknown'}?`)) {
+      try {
+        console.log('Delete credit note:', item);
+        
+        const response = await fetch(`${baseurl}/transactions/${item.id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            alert('Credit note deleted successfully!');
+            fetchCreditNotes();
+          } else {
+            alert('Failed to delete credit note: ' + (result.message || 'Unknown error'));
+          }
         } else {
-          alert('Failed to delete credit note: ' + (result.message || 'Unknown error'));
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to delete credit note');
         }
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete credit note');
+      } catch (err) {
+        console.error('Error deleting credit note:', err);
+        alert('Error deleting credit note. Please try again.');
       }
-    } catch (err) {
-      console.error('Error deleting credit note:', err);
-      alert('Error deleting credit note. Please try again.');
     }
-  }
-};
-  // Custom renderers - adjusted to accept (value, item) for ReusableTable compatibility
+  };
+
+  // Custom renderers
   const renderDocument = (value, item) => {
     if (!item) return null;
     return (
@@ -162,31 +169,21 @@ const handleDelete = async (item) => {
     if (!item) return null;
     return (
       <div className="credit-note-table__actions">
-        {/* View Button - Eye Icon */}
-        {/* <button
-          className="btn btn-sm btn-outline-primary me-1"
-          onClick={() => handleView(item)}
-          title="View Credit Note"
-        >
-          <i className="bi-eye"></i>
-        </button> */}
-        
-        {/* Edit Button - Pencil Icon */}
         <button
           className="btn btn-sm btn-outline-warning me-1"
           onClick={() => handleEdit(item)}
           title="Edit Credit Note"
         >
- <FaPencilAlt />
-         </button>
+          <FaPencilAlt />
+        </button>
         
-        {/* Delete Button - Trash Icon */}
         <button
           className="btn btn-sm btn-outline-danger"
           onClick={() => handleDelete(item)}
           title="Delete Credit Note"
         >
- <FaTrash />        </button>
+          <FaTrash />
+        </button>
       </div>
     );
   };
@@ -199,7 +196,16 @@ const handleDelete = async (item) => {
     },
     {
       key: 'noteNumber',
-      title: ' CREDIT NOTE NUMBER',
+      title: 'CREDIT NOTE NUMBER',
+      render: (value, row) => (
+        <button
+          className="btn btn-link p-0 text-primary text-decoration-none"
+          onClick={() => handleViewCreditNote(row.id)} // Use row.id which contains VoucherID
+          title="Click to view credit note"
+        >
+          {value || 'N/A'}
+        </button>
+      ),
       style: { textAlign: 'center' }
     },
     {
