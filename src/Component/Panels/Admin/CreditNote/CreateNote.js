@@ -308,6 +308,7 @@ const handleCreateCreditNote = async () => {
       VchNo:creditNoteNumber,
       Date:noteDate,
       InvoiceNumber:selectedInvoice,
+        originalInvoiceNumber: selectedInvoice, // This is crucial for finding the original sales
       PartyName:customerData?.business_name || 'Customer',
       BasicAmount:parseFloat(totals.taxableAmount)||0,
       TaxAmount:parseFloat(totals.totalIGST)||0,

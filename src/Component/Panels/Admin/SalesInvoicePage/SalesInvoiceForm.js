@@ -1256,22 +1256,22 @@ const cancelEdit = () => {
       setItemForm((prev) => ({
         ...prev,
         product: selectedProduct.goods_name,
-        product_id: selectedProduct.id, // Make sure this is set
+        product_id: selectedProduct.id,
         price: selectedProduct.net_price,
         gst: parseFloat(selectedProduct.gst_rate)
           ? selectedProduct.gst_rate.replace("%", "")
           : 0,
         description: selectedProduct.description || "",
-        batch: "", // Reset batch when product changes
-        batch_id: "" // Reset batch_id when product changes
+        batch: "",
+        batch_id: ""
       }));
 
-      console.log('✅ Product ID set:', selectedProduct.id); // Debug log
+      console.log('✅ Product ID set:', selectedProduct.id);
 
       try {
         const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
         const batchData = await res.json();
-        console.log('📦 Batches fetched:', batchData); // Debug log
+        console.log('📦 Batches fetched:', batchData);
         setBatches(batchData);
         setSelectedBatch("");
         setSelectedBatchDetails(null);
@@ -1280,7 +1280,6 @@ const cancelEdit = () => {
         setBatches([]);
       }
     } else {
-      // Reset form if no product selected
       setItemForm(prev => ({
         ...prev,
         product: "",
@@ -1299,14 +1298,34 @@ const cancelEdit = () => {
   className="border-primary"
 >
   <option value="">Select Product</option>
+
   {products
-    .filter((p) => p.group_by === "Salescatalog" || p.can_be_sold === true)
-    .map((p) => (
-      <option key={p.id} value={p.goods_name}>
-        {p.goods_name}
-      </option>
-    ))}
+    .filter(
+      (p) =>
+        p.group_by === "Salescatalog" ||
+        p.can_be_sold === 1 ||
+        p.can_be_sold === true
+    )
+    .map((p) => {
+      
+      // NEW: Mark products coming from can_be_sold with (C)
+      const isC = p.can_be_sold === 1 || p.can_be_sold === true;
+
+      return (
+        <option key={p.id} value={p.goods_name}>
+          {p.goods_name} 
+        </option>
+      );
+    })}
+
+      {/* return (
+        <option key={p.id} value={p.goods_name}>
+          {p.goods_name} {isC ? "(C)" : ""}
+        </option>
+      );
+    })} */}
 </Form.Select>
+
 
 <Form.Select
   className="mt-2 border-primary"
