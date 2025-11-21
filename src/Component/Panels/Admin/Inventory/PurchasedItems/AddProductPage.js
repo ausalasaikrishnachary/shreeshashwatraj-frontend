@@ -25,7 +25,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-   const [batchCounter, setBatchCounter] = useState(1);
+
 
   // Tax calculation function
   const calculateTaxAndNetPrice = (price, gstRate, inclusiveGst) => {
@@ -194,36 +194,16 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     return newBarcode;
   };
 
-  // FIXED: Proper batch number fetching with different prefixes
- // FIXED: Proper batch number fetching with different prefixes and current count
-const fetchNextBatchNumber = async (groupBy = 'Purchaseditems', currentCount = 0) => {
-  try {
-    console.log('🔄 Fetching next batch number for group:', groupBy, 'currentCount:', currentCount);
-    const response = await axios.get(`${baseurl}/batches/next-batch-number`, {
-      params: { 
-        group_by: groupBy,
-        current_count: currentCount // ADD THIS PARAMETER
-      }
-    });
-    console.log('📦 Next batch number for', groupBy, ':', response.data.batch_number);
-    return response.data.batch_number;
-  } catch (error) {
-    console.error('Error fetching next batch number:', error);
-    // Fallback: generate sequential number with prefix considering current count
-    const prefix = groupBy === 'Purchaseditems' ? 'P' : 'S';
-    const fallbackNumber = `${prefix}${String(parseInt(currentCount) + 1).padStart(4, '0')}`;
-    console.log('📦 Using fallback batch number:', fallbackNumber);
-    return fallbackNumber;
-  }
-};
+
 
 const createDefaultBatch = async (currentBatchCount = 0) => {
   const newBarcode = await generateUniqueBarcode();
-  const batchNumber = await fetchNextBatchNumber(formData.group_by, currentBatchCount);
+ const batchNumber = "";  // user will enter manually
+
   return {
     id: `temp_${Date.now()}_${Math.random()}`,
     dbId: null,
-    batchNumber,
+    batchNumber: "",
     mfgDate: '',
     expDate: '',
     quantity: '',
@@ -290,12 +270,12 @@ const handleChange = async (e) => {
 
   if (name === 'maintain_batch') {
     if (checked && batches.length === 0) {
-      setBatchCounter(1); // Start from 1
+      
       const defaultBatch = await createDefaultBatch(0); // Pass 0 for first batch
       setBatches([defaultBatch]);
     } else if (!checked) {
       setBatches([]);
-      setBatchCounter(1); // Reset counter when batch is disabled
+  
     }
     setMaintainBatch(checked);
   }
@@ -310,47 +290,22 @@ const handleChange = async (e) => {
     setBatches(updated);
   };
 
-  // Add these useEffects with your other useEffects
-
-// Reset counter when batch maintenance is turned off
-useEffect(() => {
-  if (!maintainBatch) {
-    setBatchCounter(1); // Reset to 1 when batch maintenance is turned off
-  }
-}, [maintainBatch]);
-
-// Reset counter when editing existing product
-useEffect(() => {
-  if (productId && batches.length > 0) {
-    // When editing existing product, set counter to current batch count + 1
-    setBatchCounter(batches.length + 1);
-    console.log('🔄 Setting batch counter to:', batches.length + 1, 'for editing existing product');
-  }
-}, [productId, batches.length]);
-
-
-
-
-
-
-
  const addNewBatch = async () => {
   try {
     console.log('➕ Starting to add new batch...');
-    console.log('📊 Current batch count:', batchCounter);
+    // console.log('📊 Current batch count:', batchCounter);
     
-    const newBatch = await createDefaultBatch(batchCounter);
-    console.log('✅ New batch created:', newBatch);
+    // const newBatch = await createDefaultBatch(batchCounter);
+    // console.log('✅ New batch created:', newBatch);
     
     setBatches(prev => {
-      const updated = [...prev, newBatch];
+      const updated = [...prev];
       console.log('📦 Batches after add:', updated);
       return updated;
     });
     
-    // Increment the batch counter for next time
-    setBatchCounter(prev => prev + 1);
-    console.log('🔢 Batch counter incremented to:', batchCounter + 1);
+
+    // console.log('🔢 Batch counter incremented to:', batchCounter + 1);
     
   } catch (error) {
     console.error('❌ Error adding new batch:', error);
@@ -757,12 +712,12 @@ useEffect(() => {
           <div className="col-md-4">
             <Form.Label>Batch No.*</Form.Label>
             <Form.Control
-              placeholder="Batch Number"
-              name="batchNumber"
-              value={batch.batchNumber}
-              readOnly
-              required
-            />
+  placeholder="Enter Batch Number"
+  name="batchNumber"
+  value={batch.batchNumber}
+  onChange={(e) => handleBatchChange(index, e)}
+  required
+/>
             <Form.Text className="text-muted">
               Sequential: {batch.batchNumber}
             </Form.Text>
