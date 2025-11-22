@@ -30,13 +30,119 @@ const CreateNote = () => {
   const [productBatches, setProductBatches] = useState({});
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (id) {
-      setIsEditMode(true);
-      fetchCreditNoteData(id);
-    } else {
-      fetchCreditNoteNumber();
+  // Single API call for fetching transaction by ID
+  const fetchTransactionById = async (transactionId) => {
+    try {
+      setLoadingCreditNote(true);
+      const response = await axios.get(`${baseurl}/transactions/${transactionId}`);
+      
+      if (response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || "Failed to fetch transaction");
+      }
+    } catch (error) {
+      console.error("Error fetching transaction:", error);
+      throw error;
+    } finally {
+      setLoadingCreditNote(false);
     }
+  };
+
+  // Fetch all transactions (for invoice list)
+  const fetchAllTransactions = async () => {
+    try {
+      setLoadingInvoices(true);
+      const response = await axios.get(`${baseurl}/transactions`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      throw error;
+    } finally {
+      setLoadingInvoices(false);
+    }
+  };
+
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        if (id) {
+          // Edit Mode - Fetch credit note data using single API
+          setIsEditMode(true);
+          const creditNoteData = await fetchTransactionById(id);
+          
+          if (creditNoteData) {
+            setCreditNoteNumber(creditNoteData.VchNo || creditNoteData.creditNoteNumber || '');
+            setSelectedInvoice(creditNoteData.InvoiceNumber || creditNoteData.originalInvoiceNumber || '');
+            setNoteDate(creditNoteData.Date || new Date().toISOString().split('T')[0]);
+            
+            // Process items
+            const itemsData = creditNoteData.batch_details || creditNoteData.items || [];
+            const itemsWithOriginal = itemsData.map(item => ({
+              ...item,
+              originalQuantity: parseFloat(item.quantity || item.originalQuantity || 0)
+            }));
+            
+            setItems(itemsWithOriginal);
+            setOriginalItems(itemsWithOriginal);
+
+            // Set customer data
+            setCustomerData({
+              business_name: creditNoteData.business_name || creditNoteData.PartyName || creditNoteData.AccountName || 'Customer',
+              email: creditNoteData.email || '',
+              mobile_number: creditNoteData.mobile_number || '',
+              gstin: creditNoteData.gstin || '',
+              account_id: creditNoteData.AccountID || '',
+              party_id: creditNoteData.PartyID || '',
+              billing_address_line1: creditNoteData.billing_address_line1 || '',
+              billing_address_line2: creditNoteData.billing_address_line2 || '',
+              billing_city: creditNoteData.billing_city || '',
+              billing_state: creditNoteData.billing_state || '',
+              billing_country: creditNoteData.billing_country || '',
+              billing_pin_code: creditNoteData.billing_pin_code || '',
+              shipping_address_line1: creditNoteData.shipping_address_line1 || '',
+              shipping_address_line2: creditNoteData.shipping_address_line2 || '',
+              shipping_city: creditNoteData.shipping_city || '',
+              shipping_state: creditNoteData.shipping_state || '',
+              shipping_country: creditNoteData.shipping_country || '',
+              shipping_pin_code: creditNoteData.shipping_pin_code || '',
+              items: itemsWithOriginal
+            });
+
+            // Process products and batches
+            const uniqueProducts = [...new Set(itemsWithOriginal.map(item => item.product))];
+            setProducts(uniqueProducts);
+
+            const tempProductBatches = {};
+            itemsWithOriginal.forEach(item => {
+              if (!tempProductBatches[item.product]) tempProductBatches[item.product] = new Set();
+              tempProductBatches[item.product].add(item.batch);
+            });
+            
+            const batchesMap = {};
+            uniqueProducts.forEach(prod => {
+              batchesMap[prod] = Array.from(tempProductBatches[prod] || []);
+            });
+            setProductBatches(batchesMap);
+          }
+        } else {
+          // Create Mode - Fetch credit note number and invoices
+          await fetchCreditNoteNumber();
+        }
+
+        // Fetch invoices for dropdown
+        const invoices = await fetchAllTransactions();
+        const salesInvoices = invoices.filter(
+          transaction => transaction.TransactionType === "Sales"
+        );
+        setInvoiceList(salesInvoices);
+
+      } catch (error) {
+        setError("Failed to load data: " + (error.response?.data?.error || error.message));
+      }
+    };
+
+    initializeData();
   }, [id]);
 
   const fetchCreditNoteNumber = async () => {
@@ -52,111 +158,19 @@ const CreateNote = () => {
     }
   };
 
-  const fetchCreditNoteData = async (creditNoteId) => {
-    try {
-      setLoadingCreditNote(true);
-      const response = await axios.get(`${baseurl}/transactions`);
-      const allTransactions = response.data;
-      const creditNoteData = allTransactions.find(
-        transaction => 
-          transaction.TransactionType === "CreditNote" && 
-          transaction.VoucherID.toString() === creditNoteId.toString()
-      );
-      if (!creditNoteData) throw new Error(`Credit note with ID ${creditNoteId} not found`);
-      
-      setCreditNoteNumber(creditNoteData.VchNo || creditNoteData.creditNoteNumber || '');
-      setSelectedInvoice(creditNoteData.InvoiceNumber || creditNoteData.originalInvoiceNumber || '');
-      setNoteDate(creditNoteData.Date || new Date().toISOString().split('T')[0]);
-      
-      let itemsData = [];
-      if (creditNoteData.items) itemsData = creditNoteData.items;
-      else if (creditNoteData.batchDetails) itemsData = creditNoteData.batchDetails;
-      else if (creditNoteData.batch_details) itemsData = creditNoteData.batch_details;
-
-      const itemsWithOriginal = itemsData.map(item => ({
-        ...item,
-        originalQuantity: parseFloat(item.quantity || item.originalQuantity || 0)
-      }));
-      
-      setItems(itemsWithOriginal);
-      setOriginalItems(itemsWithOriginal);
-
-      setCustomerData({
-        business_name: creditNoteData.business_name || creditNoteData.PartyName || creditNoteData.AccountName || 'Customer',
-        email: creditNoteData.email || '',
-        mobile_number: creditNoteData.mobile_number || '',
-        gstin: creditNoteData.gstin || '',
-        account_id: creditNoteData.AccountID || '',
-        party_id: creditNoteData.PartyID || '',
-        billing_address_line1: creditNoteData.billing_address_line1 || '',
-        billing_address_line2: creditNoteData.billing_address_line2 || '',
-        billing_city: creditNoteData.billing_city || '',
-        billing_state: creditNoteData.billing_state || '',
-        billing_country: creditNoteData.billing_country || '',
-        billing_pin_code: creditNoteData.billing_pin_code || '',
-        shipping_address_line1: creditNoteData.shipping_address_line1 || '',
-        shipping_address_line2: creditNoteData.shipping_address_line2 || '',
-        shipping_city: creditNoteData.shipping_city || '',
-        shipping_state: creditNoteData.shipping_state || '',
-        shipping_country: creditNoteData.shipping_country || '',
-        shipping_pin_code: creditNoteData.shipping_pin_code || '',
-        items: itemsWithOriginal
-      });
-
-      const uniqueProducts = [...new Set(itemsWithOriginal.map(item => item.product))];
-      setProducts(uniqueProducts);
-
-      const tempProductBatches = {};
-      itemsWithOriginal.forEach(item => {
-        if (!tempProductBatches[item.product]) tempProductBatches[item.product] = new Set();
-        tempProductBatches[item.product].add(item.batch);
-      });
-      const batchesMap = {};
-      uniqueProducts.forEach(prod => {
-        batchesMap[prod] = Array.from(tempProductBatches[prod] || []);
-      });
-      setProductBatches(batchesMap);
-
-    } catch (error) {
-      setError("Failed to load credit note data: " + (error.response?.data?.error || error.message));
-    } finally {
-      setLoadingCreditNote(false);
-    }
-  };
-
+  // Fetch customer data when invoice is selected (for create mode)
   useEffect(() => {
-    const fetchInvoices = async () => {
-      setLoadingInvoices(true);
-      try {
-        const res = await axios.get(`${baseurl}/transactions`);
-        const salesInvoices = res.data.filter(
-          transaction => transaction.TransactionType === "Sales"
-        );
-        setInvoiceList(salesInvoices);
-      } catch (err) {
-        setError("Failed to load invoices. Please check server.");
-        setInvoiceList([]);
-      } finally {
-        setLoadingInvoices(false);
-      }
-    };
-    fetchInvoices();
-  }, []);
-
-  useEffect(() => {
-    const fetchCustomerData = async () => {
+    const fetchCustomerDataFromInvoice = async () => {
       if (selectedInvoice && !isEditMode) {
         setLoadingCustomer(true);
         try {
-          const res = await axios.get(`${baseurl}/transactions`);
-          const allTransactions = res.data;
+          const allTransactions = await fetchAllTransactions();
           const selectedInvoiceData = allTransactions.find(
             transaction => 
               transaction.TransactionType === "Sales" && 
               transaction.InvoiceNumber === selectedInvoice
           );
           
-           console.log("Selected Invoice Data:", selectedInvoiceData);
           if (selectedInvoiceData) {
             setCustomerData({
               business_name: selectedInvoiceData.business_name || selectedInvoiceData.PartyName || selectedInvoiceData.AccountName || 'Customer',
@@ -179,11 +193,8 @@ const CreateNote = () => {
               shipping_pin_code: selectedInvoiceData.shipping_pin_code || ''
             });
 
-            let invoiceItems = [];
-            if (selectedInvoiceData.items) invoiceItems = selectedInvoiceData.items;
-            else if (selectedInvoiceData.batchDetails) invoiceItems = selectedInvoiceData.batchDetails;
-            else if (selectedInvoiceData.batch_details) invoiceItems = selectedInvoiceData.batch_details;
-
+            // Process items from selected invoice
+            let invoiceItems = selectedInvoiceData.batch_details || selectedInvoiceData.items || [];
             if (invoiceItems && Array.isArray(invoiceItems)) {
               const itemsWithOriginal = invoiceItems.map(item => ({
                 ...item,
@@ -200,6 +211,7 @@ const CreateNote = () => {
                 if (!tempProductBatches[item.product]) tempProductBatches[item.product] = new Set();
                 tempProductBatches[item.product].add(item.batch);
               });
+              
               const batchesMap = {};
               uniqueProducts.forEach(prod => {
                 batchesMap[prod] = Array.from(tempProductBatches[prod] || []);
@@ -224,7 +236,8 @@ const CreateNote = () => {
         setProductBatches({});
       }
     };
-    fetchCustomerData();
+
+    fetchCustomerDataFromInvoice();
   }, [selectedInvoice, isEditMode]);
 
   const formatAddress = (data, addressType) => {
@@ -260,9 +273,9 @@ const CreateNote = () => {
     const newQty = parseFloat(editedQuantity);
     if (isNaN(newQty) || newQty<0){ window.alert("Please enter valid quantity"); return; }
     const originalItem = originalItems.find(oi=>oi.product===editedProduct && oi.batch===editedBatch);
-    if (editedProduct && editedBatch && !originalItem){ window.alert("No original data found"); return; }
-    const maxQty = originalItem ? parseFloat(originalItem.originalQuantity) : Infinity;
-    if (newQty>maxQty){ window.alert(`Quantity cannot exceed ${maxQty}`); return; }
+    // if (editedProduct && editedBatch && !originalItem){ window.alert("No original data found"); return; }
+    // const maxQty = originalItem ? parseFloat(originalItem.originalQuantity) : Infinity;
+    // if (newQty>maxQty){ window.alert(`Quantity cannot exceed ${maxQty}`); return; }
 
     const updatedItems = [...items];
     updatedItems[index] = {...updatedItems[index], product:editedProduct, batch:editedBatch, quantity:newQty};
@@ -296,65 +309,63 @@ const CreateNote = () => {
     }
   };
 
-const handleCreateCreditNote = async () => {
-  try {
-    if(items.length===0 || !selectedInvoice){
-      window.alert("No items or invoice selected");
-      return;
+  const handleCreateCreditNote = async () => {
+    try {
+      if(items.length===0 || !selectedInvoice){
+        window.alert("No items or invoice selected");
+        return;
+      }
+
+      const requestData = {
+        transactionType:"CreditNote",
+        VchNo:creditNoteNumber,
+        Date:noteDate,
+        InvoiceNumber:selectedInvoice,
+        PartyName:customerData?.business_name || 'Customer',
+        BasicAmount:parseFloat(totals.taxableAmount)||0,
+        TaxAmount:parseFloat(totals.totalIGST)||0,
+        TotalAmount:parseFloat(totals.grandTotal)||0,
+        TotalQty:items.reduce((sum,item)=>sum+parseFloat(item.quantity),0),
+        batchDetails:items.map(item=>({
+          product_id:item.product_id,
+          product:item.product,
+          batch:item.batch,
+          quantity:parseFloat(item.quantity)||0,
+          price:parseFloat(item.price)||0,
+          discount:parseFloat(item.discount)||0,
+          gst:parseFloat(item.gst)||0,
+          cgst:parseFloat(item.cgst)||0,
+          sgst:parseFloat(item.sgst)||0,
+          igst:parseFloat(item.igst)||0,
+          cess:parseFloat(item.cess)||0,
+          total:parseFloat(item.total)||0
+        })),
+        creditNoteNumber:creditNoteNumber,
+        originalInvoiceNumber:selectedInvoice,
+        items:items,
+        customerData:customerData
+      };
+
+      console.log("Credit Note Request Data:", requestData);
+
+      let response;
+      if(isEditMode){
+        response = await axios.put(`${baseurl}/creditnoteupdate/${id}`, requestData);
+      } else {
+        response = await axios.post(`${baseurl}/transaction`, requestData);
+      }
+
+      console.log("Backend Response:", response.data);
+
+      if(response.data){
+        window.alert("✅ Credit Note saved successfully!");
+        navigate("/sales/credit_note");
+      }
+    } catch (err){
+      console.error("Error sending credit note:", err);
+      window.alert("❌ Failed to save credit note");
     }
-
-    const requestData = {
-      transactionType:"CreditNote",
-      VchNo:creditNoteNumber,
-      Date:noteDate,
-      InvoiceNumber:selectedInvoice,
-      PartyName:customerData?.business_name || 'Customer',
-      BasicAmount:parseFloat(totals.taxableAmount)||0,
-      TaxAmount:parseFloat(totals.totalIGST)||0,
-      TotalAmount:parseFloat(totals.grandTotal)||0,
-      TotalQty:items.reduce((sum,item)=>sum+parseFloat(item.quantity),0),
-      batchDetails:items.map(item=>({
-        product_id:item.product_id,
-        product:item.product,
-        batch:item.batch,
-        quantity:parseFloat(item.quantity)||0,
-        price:parseFloat(item.price)||0,
-        discount:parseFloat(item.discount)||0,
-        gst:parseFloat(item.gst)||0,
-        cgst:parseFloat(item.cgst)||0,
-        sgst:parseFloat(item.sgst)||0,
-        igst:parseFloat(item.igst)||0,
-        cess:parseFloat(item.cess)||0,
-        total:parseFloat(item.total)||0
-      })),
-      creditNoteNumber:creditNoteNumber,
-      originalInvoiceNumber:selectedInvoice,
-      items:items,
-      customerData:customerData
-    };
-
-    // 🔹 Log the request data to console
-    console.log("Credit Note Request Data:", requestData);
-
-    let response;
-    if(isEditMode){
-      response = await axios.put(`${baseurl}/creditnoteupdate/${id}`, requestData);
-    } else {
-      response = await axios.post(`${baseurl}/transaction`, requestData);
-    }
-
-    console.log("Backend Response:", response.data); // 🔹 Log backend response
-
-    if(response.data){
-      window.alert("✅ Credit Note saved successfully!");
-      navigate("/sales/credit_note");
-    }
-  } catch (err){
-    console.error("Error sending credit note:", err); // 🔹 Log error
-    window.alert("❌ Failed to save credit note");
-  }
-};
-
+  };
 
   if(loadingCreditNote && isEditMode) return <div className="d-flex justify-content-center align-items-center vh-100"><div className="spinner-border text-primary" role="status"></div><span className="ms-2">Loading credit note data...</span></div>;
 
@@ -413,28 +424,28 @@ const handleCreateCreditNote = async () => {
                     onChange={(e) => setNoteDate(e.target.value)}
                   />
                 </div>
-              <div>
-  <label className="form-label small mb-1">Invoice</label>
-  <select
-    className="form-select form-select-sm"
-    value={selectedInvoice}
-    onChange={(e) => setSelectedInvoice(e.target.value)}
-  >
-    <option value="">
-      {loadingInvoices ? "Loading invoices..." : "Select Invoice"}
-    </option>
-    {invoiceList.map((inv) => (
-      <option key={inv.VoucherID} value={inv.InvoiceNumber || inv.VchNo || inv.invoiceNumber}>
-        {inv.InvoiceNumber || inv.VchNo || inv.invoiceNumber || `Invoice ${inv.VoucherID}`}
-      </option>
-    ))}
-  </select>
-  {!loadingInvoices && invoiceList.length === 0 && (
-    <div className="text-danger small mt-1">
-      No sales invoices found. Please create sales invoices first.
-    </div>
-  )}
-</div>
+                <div>
+                  <label className="form-label small mb-1">Invoice</label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={selectedInvoice}
+                    onChange={(e) => setSelectedInvoice(e.target.value)}
+                  >
+                    <option value="">
+                      {loadingInvoices ? "Loading invoices..." : "Select Invoice"}
+                    </option>
+                    {invoiceList.map((inv) => (
+                      <option key={inv.VoucherID} value={inv.InvoiceNumber || inv.VchNo || inv.invoiceNumber}>
+                        {inv.InvoiceNumber || inv.VchNo || inv.invoiceNumber || `Invoice ${inv.VoucherID}`}
+                      </option>
+                    ))}
+                  </select>
+                  {!loadingInvoices && invoiceList.length === 0 && (
+                    <div className="text-danger small mt-1">
+                      No sales invoices found. Please create sales invoices first.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -699,3 +710,4 @@ const handleCreateCreditNote = async () => {
 };
 
 export default CreateNote;
+

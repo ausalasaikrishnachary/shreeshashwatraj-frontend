@@ -28,6 +28,9 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
     "/admin_expensive" : "Expense Requests",
     "/ledger": "Ledger",
     "/sales/create_note": "Credit Note",
+    "/purchase/debit-note": "Debit Note",
+    "/purchase/create_note": "Debit Note",
+    "/purchase/debit-note/edit":"Debit Note",
     "/purchase/create-purchase-invoice": "Purchase Invoice"
   };
 

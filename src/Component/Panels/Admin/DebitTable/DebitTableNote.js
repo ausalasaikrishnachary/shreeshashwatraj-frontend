@@ -98,14 +98,14 @@ const DebitNoteTable = () => {
   const handleView = (item) => {
     console.log('View debit note:', item);
     if (item.id) {
-      navigate(`/sales/debit-note/view/${item.id}`);
+      navigate(`/purchase/debit-note/view/${item.id}`);
     }
   };
 
   const handleEdit = (item) => {
     console.log('Edit debit note:', item);
     if (item.id) {
-      navigate(`/sales/debit-note/edit/${item.id}`);
+      navigate(`/purchase/debit-note/edit/${item.id}`);
     }
   };
 

@@ -237,7 +237,7 @@ function App() {
         <Route path="/purchase/voucher" element={<VoucherTable />} />
         <Route path="/purchase/debit-note" element={<DebitNoteTable />} />
         <Route path="/purchase/create_note" element={<CreateDebitNote />} />
-        <Route path="/sales/debit-note/edit/:id" element={<CreateDebitNote />} />
+        <Route path="/purchase/debit-note/edit/:id" element={<CreateDebitNote />} />
         <Route path="/purchase/payables" element={<PayablesTable />} />
         <Route path="/voucher_view/:id" element={<VoucherView />} />
 

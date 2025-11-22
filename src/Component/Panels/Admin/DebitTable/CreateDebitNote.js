@@ -260,9 +260,9 @@ const CreateDebitNote = () => {
     const newQty = parseFloat(editedQuantity);
     if (isNaN(newQty) || newQty<0){ window.alert("Please enter valid quantity"); return; }
     const originalItem = originalItems.find(oi=>oi.product===editedProduct && oi.batch===editedBatch);
-    if (editedProduct && editedBatch && !originalItem){ window.alert("No original data found"); return; }
-    const maxQty = originalItem ? parseFloat(originalItem.originalQuantity) : Infinity;
-    if (newQty>maxQty){ window.alert(`Quantity cannot exceed ${maxQty}`); return; }
+    // if (editedProduct && editedBatch && !originalItem){ window.alert("No original data found"); return; }
+    // const maxQty = originalItem ? parseFloat(originalItem.originalQuantity) : Infinity;
+    // if (newQty>maxQty){ window.alert(`Quantity cannot exceed ${maxQty}`); return; }
 
     const updatedItems = [...items];
     updatedItems[index] = {...updatedItems[index], product:editedProduct, batch:editedBatch, quantity:newQty};
