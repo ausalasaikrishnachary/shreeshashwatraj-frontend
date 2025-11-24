@@ -42,7 +42,8 @@ const PurchasePDFPreview = () => {
     invoiceNumber: '',
     transactionProofFile: null,
       product_id: '', // Add this
-  batch_id: '' // Add this
+  batch_id: '' ,
+   TransactionType: 'purchase voucher' // ✅ CHANGED to "purchase voucher"
   });
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
@@ -987,7 +988,8 @@ const handleOpenReceiptModal = () => {
     amount: balanceDue,
     invoiceNumber: invoiceData.invoiceNumber,
     product_id: firstItem?.product_id || '',
-    batch_id: firstItem?.batch_id || ''
+    batch_id: firstItem?.batch_id || '',
+     TransactionType: 'purchase voucher' // ✅ CHANGED to "purchase voucher"
   };
 
   console.log("✅ Updated Receipt Form Data:", updatedForm);
@@ -1039,7 +1041,7 @@ const handleOpenReceiptModal = () => {
       const formDataToSend = new FormData();
   
       formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
-      formDataToSend.append('TransactionType', "purchase voucher");
+formDataToSend.append('TransactionType', receiptFormData.TransactionType)
       formDataToSend.append('retailer_id', receiptFormData.retailerId);
       formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
       formDataToSend.append('amount', receiptFormData.amount);
@@ -1069,6 +1071,7 @@ const handleOpenReceiptModal = () => {
     console.log('Creating receipt from invoice with FormData...');
     console.log('Product ID:', receiptFormData.product_id);
     console.log('Batch ID:', receiptFormData.batch_id);
+    console.log('TransactionType:', receiptFormData.TransactionType);
 
     const response = await fetch(`${baseurl}/api/receipts`, {
       method: 'POST',

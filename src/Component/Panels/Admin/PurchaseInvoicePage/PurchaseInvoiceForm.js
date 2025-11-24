@@ -462,125 +462,235 @@ const CreateProductInvoice = ({ user }) => {
 
 
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError(null);
+  setSuccess(false);
 
-    if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-      setError("Please select a supplier");
-      setLoading(false);
-      setTimeout(() => setError(null), 3000);
-      return;
+  if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
+    setError("Please select a supplier");
+    setLoading(false);
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
+
+  if (invoiceData.items.length === 0) {
+    setError("Please add at least one item to the purchase invoice");
+    setLoading(false);
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
+
+  try {
+    const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
+    console.log('Submitting purchase invoice with number:', finalInvoiceNumber);
+
+    // 🔥 ADD PARTYID AND ACCOUNTID CONSOLE LOGS HERE:
+    console.log('🎯 Frontend - PartyID (selectedSupplierId):', selectedSupplierId);
+    console.log('🏦 Frontend - AccountID (from supplierInfo):', invoiceData.supplierInfo.accountId);
+    console.log('📋 Frontend - Complete Supplier Info:', invoiceData.supplierInfo);
+    console.log('🔍 Frontend - All supplierInfo keys:', Object.keys(invoiceData.supplierInfo));
+
+    const sameState = isSameState();
+    let totalCGST = 0;
+    let totalSGST = 0;
+    let totalIGST = 0;
+
+    if (sameState) {
+      totalCGST = parseFloat(invoiceData.totalGST) / 2;
+      totalSGST = parseFloat(invoiceData.totalGST) / 2;
+      totalIGST = 0;
+    } else {
+      totalCGST = 0;
+      totalSGST = 0;
+      totalIGST = parseFloat(invoiceData.totalGST);
     }
 
-    if (invoiceData.items.length === 0) {
-      setError("Please add at least one item to the purchase invoice");
-      setLoading(false);
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    try {
-      const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
-      console.log('Submitting purchase invoice with number:', finalInvoiceNumber);
-
-      const sameState = isSameState();
-      let totalCGST = 0;
-      let totalSGST = 0;
-      let totalIGST = 0;
-
-      if (sameState) {
-        totalCGST = parseFloat(invoiceData.totalGST) / 2;
-        totalSGST = parseFloat(invoiceData.totalGST) / 2;
-        totalIGST = 0;
-      } else {
-        totalCGST = 0;
-        totalSGST = 0;
-        totalIGST = parseFloat(invoiceData.totalGST);
-      }
-
-      const batchDetails = invoiceData.items.map(item => ({
+    // Enhanced debugging for items
+    console.log('🔍 Debugging Items Array Before Processing:');
+    invoiceData.items.forEach((item, index) => {
+      console.log(`Item ${index + 1}:`, {
         product: item.product,
+        product_id: item.product_id,
         batch: item.batch,
-        quantity: item.quantity,
-        price: item.price,
-        batchDetails: item.batchDetails
-      }));
-
-      const payload = {
-        ...invoiceData,
-        invoiceNumber: finalInvoiceNumber,
-        selectedSupplierId: selectedSupplierId,
-        transactionType: 'Purchase',
-        totalCGST: totalCGST.toFixed(2),
-        totalSGST: totalSGST.toFixed(2),
-        totalIGST: totalIGST.toFixed(2),
-        taxType: sameState ? "CGST/SGST" : "IGST",
-        batchDetails: JSON.stringify(batchDetails)
-      };
-
-      delete payload.companyState;
-      delete payload.supplierState;
-
-      console.log('Submitting purchase invoice payload with invoice number:', payload.invoiceNumber);
-
-      const response = await fetch(`${baseurl}/transaction`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
+        batch_id: item.batch_id,
+        has_product_id: !!item.product_id,
+        has_batch_id: !!item.batch_id
       });
+    });
 
-      const responseData = await response.json();
+    // Extract batch details from items with ALL data including discount and GST
+    const batchDetails = invoiceData.items.map(item => ({
+      product: item.product,
+      product_id: item.product_id,
+      description: item.description,
+      batch: item.batch,
+      batch_id: item.batch_id,
+      quantity: parseFloat(item.quantity) || 0,
+      price: parseFloat(item.price) || 0,
+      discount: parseFloat(item.discount) || 0,
+      gst: parseFloat(item.gst) || 0,
+      cgst: parseFloat(item.cgst) || 0,
+      sgst: parseFloat(item.sgst) || 0,
+      igst: parseFloat(item.igst) || 0,
+      cess: parseFloat(item.cess) || 0,
+      total: parseFloat(item.total) || 0,
+      batchDetails: item.batchDetails
+    }));
 
-      if (!response.ok) {
-        throw new Error(responseData.error || 'Failed to submit purchase invoice');
-      }
+    console.log('📦 Processed Batch Details:');
+    batchDetails.forEach((detail, index) => {
+      console.log(`Batch Detail ${index + 1}:`, {
+        product_id: detail.product_id,
+        batch_id: detail.batch_id,
+        product: detail.product,
+        batch: detail.batch
+      });
+    });
 
-      // Clear localStorage and set success
-      localStorage.removeItem('draftPurchaseInvoice');
-      setSuccess('Purchase invoice submitted successfully!');
-      setIsPreviewReady(true);
+    // Get product_id and batch_id for logging
+    const firstItemProductId = invoiceData.items[0]?.product_id || null;
+    const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
+    
+    console.log('📦 Product and Batch IDs Summary:');
+    console.log('First item product_id:', firstItemProductId);
+    console.log('First item batch_id:', firstItemBatchId);
+    console.log('All items product_ids:', invoiceData.items.map(item => item.product_id));
+    console.log('All items batch_ids:', invoiceData.items.map(item => item.batch_id));
 
-      // Also update invoiceData with the new number
-      setInvoiceData(prev => ({
-        ...prev,
-        // invoiceNumber: newInvoiceNumber
-      }));
-
-      // Save the new invoice number to localStorage for next time
-      const newDraftData = {
-        ...invoiceData,
-        // invoiceNumber: newInvoiceNumber,
-        items: [],
-        taxableAmount: 0,
-        totalGST: 0,
-        totalCess: 0,
-        grandTotal: 0
-      };
-      localStorage.setItem('draftPurchaseInvoice', JSON.stringify(newDraftData));
-
-      const previewData = {
-        ...invoiceData,
-        invoiceNumber: finalInvoiceNumber
-      };
-      localStorage.setItem('previewPurchaseInvoice', JSON.stringify(previewData));
-
-      setTimeout(() => {
-        navigate(`/purchase/invoice-preview/${responseData.voucherId}`);
-      }, 2000);
-
-    } catch (err) {
-      setError(err.message);
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setLoading(false);
+    // Validate that we have product_id and batch_id
+    const missingProductIds = invoiceData.items.filter(item => !item.product_id);
+    const missingBatchIds = invoiceData.items.filter(item => !item.batch_id);
+    
+    if (missingProductIds.length > 0) {
+      console.warn('⚠️ Items missing product_id:', missingProductIds);
     }
-  };
+    if (missingBatchIds.length > 0) {
+      console.warn('⚠️ Items missing batch_id:', missingBatchIds);
+    }
 
+    // Create payload with IDs and proper totals
+    const payload = {
+      ...invoiceData,
+      invoiceNumber: finalInvoiceNumber,
+      selectedSupplierId: selectedSupplierId,
+      TransactionType: 'Purchase', // 🔥 CHANGED from transactionType to TransactionType
+      totalCGST: totalCGST.toFixed(2),
+      totalSGST: totalSGST.toFixed(2),
+      totalIGST: totalIGST.toFixed(2),
+      taxType: sameState ? "CGST/SGST" : "IGST",
+      batchDetails: batchDetails,
+      // Add primary product and batch IDs for voucher table
+      primaryProductId: firstItemProductId,
+      primaryBatchId: firstItemBatchId,
+      // 🔥 ADD PARTYID AND ACCOUNTID TO PAYLOAD:
+      PartyID: selectedSupplierId,
+      AccountID: invoiceData.supplierInfo.accountId,
+      PartyName: invoiceData.supplierInfo.name,
+      AccountName: invoiceData.supplierInfo.businessName || invoiceData.supplierInfo.name,
+      // 🔥 ADD SHIPPING ADDRESS FIELDS:
+      shippingAddress: invoiceData.shippingAddress?.addressLine1 || '',
+      shippingState: invoiceData.shippingAddress?.state || '',
+      shippingCity: invoiceData.shippingAddress?.city || '',
+      shippingPincode: invoiceData.shippingAddress?.pincode || '',
+      // 🔥 ADD BILLING ADDRESS FIELDS:
+      billingAddress: invoiceData.billingAddress?.addressLine1 || '',
+      billingState: invoiceData.billingAddress?.state || '',
+      billingCity: invoiceData.billingAddress?.city || '',
+      billingPincode: invoiceData.billingAddress?.pincode || '',
+      // 🔥 ADD PAYMENT TERMS AND OTHER FIELDS:
+      PaymentTerms: invoiceData.PaymentTerms || "Immediate",
+      Freight: parseFloat(invoiceData.Freight) || 0,
+      BillSundryAmount: parseFloat(invoiceData.BillSundryAmount) || 0,
+      transportDetails: invoiceData.transportDetails || '',
+      note: invoiceData.note || ''
+    };
+
+    // Remove unused fields
+    delete payload.companyState;
+    delete payload.supplierState;
+    delete payload.items;
+
+    // 🔥 LOG THE FINAL PAYLOAD
+    console.log('🚀 Final Purchase Payload with Address Data:', {
+      PartyID: payload.PartyID,
+      AccountID: payload.AccountID,
+      selectedSupplierId: payload.selectedSupplierId,
+      supplierInfo: payload.supplierInfo,
+      shippingAddress: payload.shippingAddress,
+      billingAddress: payload.billingAddress,
+      shippingState: payload.shippingState,
+      billingState: payload.billingState,
+      TransactionType: payload.TransactionType
+    });
+    
+    // Final validation
+    if (!payload.product_id || !payload.batch_id) {
+      console.error('❌ CRITICAL: product_id or batch_id is still undefined in payload!');
+      console.error('Payload structure:', JSON.stringify(payload, null, 2));
+    } else {
+      console.log('✅ SUCCESS: product_id and batch_id are properly set in payload!');
+    }
+
+    console.log('Submitting purchase invoice payload with invoice number:', payload.invoiceNumber);
+
+    const response = await fetch(`${baseurl}/transaction`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      throw new Error(responseData.error || 'Failed to submit purchase invoice');
+    }
+
+    // Clear localStorage and set success
+    localStorage.removeItem('draftPurchaseInvoice');
+    setSuccess('Purchase invoice submitted successfully!');
+    setIsPreviewReady(true);
+
+    // Also update invoiceData with the new number
+    setInvoiceData(prev => ({
+      ...prev,
+      // invoiceNumber: newInvoiceNumber
+    }));
+
+    // Save the new invoice number to localStorage for next time
+    const newDraftData = {
+      ...invoiceData,
+      // invoiceNumber: newInvoiceNumber,
+      items: [],
+      taxableAmount: 0,
+      totalGST: 0,
+      totalCess: 0,
+      grandTotal: 0
+    };
+    localStorage.setItem('draftPurchaseInvoice', JSON.stringify(newDraftData));
+
+    const previewData = {
+      ...invoiceData,
+      invoiceNumber: finalInvoiceNumber,
+      voucherId: responseData.voucherId
+    };
+    localStorage.setItem('previewPurchaseInvoice', JSON.stringify(previewData));
+
+    setTimeout(() => {
+      navigate(`/purchase/invoice-preview/${responseData.voucherId}`);
+    }, 2000);
+
+  } catch (err) {
+    console.error('❌ Error in handleSubmit:', err);
+    setError(err.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setLoading(false);
+  }
+};
     const calculateTotalPrice = () => {
     const price = parseFloat(itemForm.price) || 0;
     const gst = parseFloat(itemForm.gst) || 0;

@@ -41,7 +41,8 @@ const InvoicePDFPreview = () => {
     invoiceNumber: '',
     transactionProofFile: null,
       product_id: '', // Add this
-  batch_id: '' // Add this
+  batch_id: '' ,
+  TransactionType: 'Receipt' // ✅ ADD THIS LINE
   });
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
@@ -1030,13 +1031,18 @@ const handleOpenReceiptModal = () => {
   const firstItem = invoiceData.items[0];
   console.log("✅ firstItem:", firstItem);
 
+  // Debug: Check if batch_id exists in the first item
+  console.log("🔍 First item batch_id:", firstItem?.batch_id);
+  console.log("🔍 All items:", invoiceData.items);
+
   const updatedForm = {
-    retailerBusinessName: invoiceData.supplierInfo.name, // ✅ CHANGED TO 'name' (PartyName)
+    retailerBusinessName: invoiceData.supplierInfo.name,
     retailerId: invoiceData.supplierInfo.id || '',
     amount: balanceDue,
     invoiceNumber: invoiceData.invoiceNumber,
     product_id: firstItem?.product_id || '',
-    batch_id: firstItem?.batch_id || ''
+    batch_id: firstItem?.batch_id || '', // Ensure this is being set
+    TransactionType: 'Receipt'
   };
 
   console.log("✅ Updated Receipt Form Data:", updatedForm);
@@ -1076,34 +1082,35 @@ const handleOpenReceiptModal = () => {
     if (fileInput) fileInput.value = '';
   };
 
-  const handleCreateReceiptFromInvoice = async () => {
-    if (!receiptFormData.amount || parseFloat(receiptFormData.amount) <= 0) {
-      alert('Please enter a valid amount');
-      return;
-    }
-  
-    try {
-      setIsCreatingReceipt(true);
-  
-      const formDataToSend = new FormData();
-  
-      formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
-      formDataToSend.append('retailer_id', receiptFormData.retailerId);
-      formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
-      formDataToSend.append('amount', receiptFormData.amount);
-      formDataToSend.append('currency', receiptFormData.currency);
-      formDataToSend.append('payment_method', receiptFormData.paymentMethod);
-      formDataToSend.append('receipt_date', receiptFormData.receiptDate);
-      formDataToSend.append('note', receiptFormData.note);
-      formDataToSend.append('bank_name', receiptFormData.bankName);
-      formDataToSend.append('transaction_date', receiptFormData.transactionDate || '');
-      formDataToSend.append('reconciliation_option', receiptFormData.reconciliationOption);
+ const handleCreateReceiptFromInvoice = async () => {
+  if (!receiptFormData.amount || parseFloat(receiptFormData.amount) <= 0) {
+    alert('Please enter a valid amount');
+    return;
+  }
+
+  try {
+    setIsCreatingReceipt(true);
+
+    const formDataToSend = new FormData();
+
+    formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
+    formDataToSend.append('retailer_id', receiptFormData.retailerId);
+    formDataToSend.append('TransactionType', receiptFormData.TransactionType);
+    formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
+    formDataToSend.append('amount', receiptFormData.amount);
+    formDataToSend.append('currency', receiptFormData.currency);
+    formDataToSend.append('payment_method', receiptFormData.paymentMethod);
+    formDataToSend.append('receipt_date', receiptFormData.receiptDate);
+    formDataToSend.append('note', receiptFormData.note);
+    formDataToSend.append('bank_name', receiptFormData.bankName);
+    formDataToSend.append('transaction_date', receiptFormData.transactionDate || '');
+    formDataToSend.append('reconciliation_option', receiptFormData.reconciliationOption);
     formDataToSend.append('invoice_number', receiptFormData.invoiceNumber);
     formDataToSend.append('retailer_mobile', receiptFormData.retailerMobile);
     formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
     formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
     
-    // FIX: Properly append product_id and batch_id
+    // FIX: Properly append product_id and batch_id - ensure they have values
     formDataToSend.append('product_id', receiptFormData.product_id || '');
     formDataToSend.append('batch_id', receiptFormData.batch_id || '');
     
@@ -1114,46 +1121,49 @@ const handleOpenReceiptModal = () => {
       formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
     }
 
-    console.log('Creating receipt from invoice with FormData...');
-    console.log('Product ID:', receiptFormData.product_id);
-    console.log('Batch ID:', receiptFormData.batch_id);
+    // Debug: Log all FormData entries
+    console.log('FormData entries:');
+    for (let [key, value] of formDataToSend.entries()) {
+      console.log(`${key}:`, value);
+    }
 
     const response = await fetch(`${baseurl}/api/receipts`, {
       method: 'POST',
       body: formDataToSend,
     });
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Receipt created successfully:', result);
-        handleCloseReceiptModal();
-        alert('Receipt created successfully!');
-        
-        if (invoiceData && invoiceData.invoiceNumber) {
-          fetchPaymentData(invoiceData.invoiceNumber);
-        }
-        
-        if (result.id) {
-          navigate(`/receipts_view/${result.id}`);
-        }
-      } else {
-        const errorText = await response.text();
-        console.error('Failed to create receipt:', errorText);
-        let errorMessage = 'Failed to create receipt. ';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage += errorData.error || 'Please try again.';
-        } catch {
-          errorMessage += 'Please try again.';
-        }
-        alert(errorMessage);
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('Receipt created successfully:', result);
+      handleCloseReceiptModal();
+      alert('Receipt created successfully!');
+      
+      if (invoiceData && invoiceData.invoiceNumber) {
+        fetchPaymentData(invoiceData.invoiceNumber);
       }
-    } catch (err) {
-      console.error('Error creating receipt:', err);
-      alert('Network error. Please check your connection and try again.');
-    } finally {
-      setIsCreatingReceipt(false);
+      
+      if (result.id) {
+        navigate(`/receipts_view/${result.id}`);
+      }
+    } else {
+      const errorText = await response.text();
+      console.error('Failed to create receipt:', errorText);
+      let errorMessage = 'Failed to create receipt. ';
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage += errorData.error || 'Please try again.';
+      } catch {
+        errorMessage += 'Please try again.';
+      }
+      alert(errorMessage);
     }
-  };
+  } catch (err) {
+    console.error('Error creating receipt:', err);
+    alert('Network error. Please check your connection and try again.');
+  } finally {
+    setIsCreatingReceipt(false);
+  }
+};
 
   if (loading) {
     return (

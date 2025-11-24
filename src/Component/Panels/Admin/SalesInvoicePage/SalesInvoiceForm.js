@@ -792,8 +792,7 @@ const cancelEdit = () => {
     setSuccess("Draft cleared successfully!");
     setTimeout(() => setSuccess(false), 3000);
   };
-
- const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
   setError(null);
@@ -816,6 +815,12 @@ const cancelEdit = () => {
   try {
     const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
     console.log('Submitting invoice with number:', finalInvoiceNumber);
+
+    // 🔥 ADD PARTYID AND ACCOUNTID CONSOLE LOGS HERE:
+    console.log('🎯 Frontend - PartyID (selectedSupplierId):', selectedSupplierId);
+    console.log('🏦 Frontend - AccountID (from supplierInfo):', invoiceData.supplierInfo.accountId);
+    console.log('📋 Frontend - Complete Supplier Info:', invoiceData.supplierInfo);
+    console.log('🔍 Frontend - All supplierInfo keys:', Object.keys(invoiceData.supplierInfo));
 
     // Calculate GST breakdown for backend
     const sameState = isSameState();
@@ -911,7 +916,12 @@ const cancelEdit = () => {
       batch_id: "bth0001",
       // Add primary product and batch IDs for voucher table
       primaryProductId: firstItemProductId,
-      primaryBatchId: firstItemBatchId
+      primaryBatchId: firstItemBatchId,
+      // 🔥 ADD PARTYID AND ACCOUNTID TO PAYLOAD:
+      PartyID: selectedSupplierId,
+      AccountID: invoiceData.supplierInfo.accountId,
+      PartyName: invoiceData.supplierInfo.name,
+      AccountName: invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.name
     };
 
     // Remove unused fields
@@ -919,14 +929,13 @@ const cancelEdit = () => {
     delete payload.supplierState;
     delete payload.items;
 
-    console.log('🚀 Final Payload Analysis:');
-    console.log('Payload product_id:', payload.product_id);
-    console.log('Payload batch_id:', payload.batch_id);
-    console.log('Payload primaryProductId:', payload.primaryProductId);
-    console.log('Payload primaryBatchId:', payload.primaryBatchId);
-    console.log('Payload batchDetails length:', payload.batchDetails.length);
-    console.log('First batchDetail product_id:', payload.batchDetails[0]?.product_id);
-    console.log('First batchDetail batch_id:', payload.batchDetails[0]?.batch_id);
+    // 🔥 LOG THE FINAL PAYLOAD
+    console.log('🚀 Final Payload with PartyID and AccountID:', {
+      PartyID: payload.PartyID,
+      AccountID: payload.AccountID,
+      selectedSupplierId: payload.selectedSupplierId,
+      supplierInfo: payload.supplierInfo
+    });
     
     // Final validation
     if (!payload.product_id || !payload.batch_id) {
@@ -947,7 +956,7 @@ const cancelEdit = () => {
         body: JSON.stringify(payload)
       });
     } else {
-      console.log('🆕 Creating new invoice');
+      console.log('🆕 Creating new invoice ');
       response = await fetch(`${baseurl}/transaction`, {
         method: 'POST',
         headers: {
