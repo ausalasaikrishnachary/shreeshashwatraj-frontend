@@ -113,7 +113,7 @@ const ReceiptsTable = () => {
       }
     },
     { 
-      key: 'receipt_number', 
+      key: 'VchNo', 
       title: 'RECEIPT NUMBER', 
       style: { textAlign: 'center' },
       render: (value, row) => (
