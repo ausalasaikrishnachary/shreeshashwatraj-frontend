@@ -5,9 +5,10 @@ import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import './Createnote.css'; 
 import { baseurl } from '../../../BaseURL/BaseURL';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-const CreateCreditNote = () => {
+const EditCreditNote = () => {
+  const { id } = useParams();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [creditNoteNumber, setCreditNoteNumber] = useState("");
   const [invoiceList, setInvoiceList] = useState([]);
@@ -28,6 +29,25 @@ const CreateCreditNote = () => {
   const [productBatches, setProductBatches] = useState({});
   const navigate = useNavigate();
 
+  // Single API call for fetching transaction by ID
+  const fetchTransactionById = async (transactionId) => {
+    try {
+      setLoadingCreditNote(true);
+      const response = await axios.get(`${baseurl}/transactions/${transactionId}`);
+      
+      if (response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || "Failed to fetch transaction");
+      }
+    } catch (error) {
+      console.error("Error fetching transaction:", error);
+      throw error;
+    } finally {
+      setLoadingCreditNote(false);
+    }
+  };
+
   // Fetch all transactions (for invoice list)
   const fetchAllTransactions = async () => {
     try {
@@ -45,8 +65,65 @@ const CreateCreditNote = () => {
   useEffect(() => {
     const initializeData = async () => {
       try {
-        // Fetch credit note number and invoices for create mode
-        await fetchCreditNoteNumber();
+        if (id) {
+          // Edit Mode - Fetch credit note data using single API
+          const creditNoteData = await fetchTransactionById(id);
+          
+          if (creditNoteData) {
+            setCreditNoteNumber(creditNoteData.VchNo || creditNoteData.creditNoteNumber || '');
+            setSelectedInvoice(creditNoteData.InvoiceNumber || creditNoteData.originalInvoiceNumber || '');
+            setNoteDate(creditNoteData.Date || new Date().toISOString().split('T')[0]);
+            
+            // Process items
+            const itemsData = creditNoteData.batch_details || creditNoteData.items || [];
+            const itemsWithOriginal = itemsData.map(item => ({
+              ...item,
+              originalQuantity: parseFloat(item.quantity || item.originalQuantity || 0)
+            }));
+            
+            setItems(itemsWithOriginal);
+            setOriginalItems(itemsWithOriginal);
+
+            // Set customer data
+            setCustomerData({
+              business_name: creditNoteData.business_name || creditNoteData.PartyName || creditNoteData.AccountName || 'Customer',
+              email: creditNoteData.email || '',
+              mobile_number: creditNoteData.mobile_number || '',
+              gstin: creditNoteData.gstin || '',
+              account_id: creditNoteData.AccountID || '',
+              party_id: creditNoteData.PartyID || '',
+              billing_address_line1: creditNoteData.billing_address_line1 || '',
+              billing_address_line2: creditNoteData.billing_address_line2 || '',
+              billing_city: creditNoteData.billing_city || '',
+              billing_state: creditNoteData.billing_state || '',
+              billing_country: creditNoteData.billing_country || '',
+              billing_pin_code: creditNoteData.billing_pin_code || '',
+              shipping_address_line1: creditNoteData.shipping_address_line1 || '',
+              shipping_address_line2: creditNoteData.shipping_address_line2 || '',
+              shipping_city: creditNoteData.shipping_city || '',
+              shipping_state: creditNoteData.shipping_state || '',
+              shipping_country: creditNoteData.shipping_country || '',
+              shipping_pin_code: creditNoteData.shipping_pin_code || '',
+              items: itemsWithOriginal
+            });
+
+            // Process products and batches
+            const uniqueProducts = [...new Set(itemsWithOriginal.map(item => item.product))];
+            setProducts(uniqueProducts);
+
+            const tempProductBatches = {};
+            itemsWithOriginal.forEach(item => {
+              if (!tempProductBatches[item.product]) tempProductBatches[item.product] = new Set();
+              tempProductBatches[item.product].add(item.batch);
+            });
+            
+            const batchesMap = {};
+            uniqueProducts.forEach(prod => {
+              batchesMap[prod] = Array.from(tempProductBatches[prod] || []);
+            });
+            setProductBatches(batchesMap);
+          }
+        }
 
         // Fetch invoices for dropdown
         const invoices = await fetchAllTransactions();
@@ -61,102 +138,7 @@ const CreateCreditNote = () => {
     };
 
     initializeData();
-  }, []);
-
-  const fetchCreditNoteNumber = async () => {
-    try {
-      setLoadingCreditNote(true);
-      const response = await axios.get(`${baseurl}/api/next-creditnote-number`);
-      const nextNumber = response?.data?.nextCreditNoteNumber;
-      setCreditNoteNumber(nextNumber || "CNOTE001");
-    } catch (error) {
-      setCreditNoteNumber("CNOTE001");
-    } finally {
-      setLoadingCreditNote(false);
-    }
-  };
-
-  // Fetch customer data when invoice is selected
-  useEffect(() => {
-    const fetchCustomerDataFromInvoice = async () => {
-      if (selectedInvoice) {
-        setLoadingCustomer(true);
-        try {
-          const allTransactions = await fetchAllTransactions();
-          const selectedInvoiceData = allTransactions.find(
-            transaction => 
-              transaction.TransactionType === "Sales" && 
-              transaction.InvoiceNumber === selectedInvoice
-          );
-          
-          if (selectedInvoiceData) {
-            setCustomerData({
-              business_name: selectedInvoiceData.business_name || selectedInvoiceData.PartyName || selectedInvoiceData.AccountName || 'Customer',
-              email: selectedInvoiceData.email || '',
-              mobile_number: selectedInvoiceData.mobile_number || '',
-              gstin: selectedInvoiceData.gstin || '',
-              account_id: selectedInvoiceData.AccountID || '',
-              party_id: selectedInvoiceData.PartyID || '',
-              billing_address_line1: selectedInvoiceData.billing_address_line1 || '',
-              billing_address_line2: selectedInvoiceData.billing_address_line2 || '',
-              billing_city: selectedInvoiceData.billing_city || '',
-              billing_state: selectedInvoiceData.billing_state || '',
-              billing_country: selectedInvoiceData.billing_country || '',
-              billing_pin_code: selectedInvoiceData.billing_pin_code || '',
-              shipping_address_line1: selectedInvoiceData.shipping_address_line1 || '',
-              shipping_address_line2: selectedInvoiceData.shipping_address_line2 || '',
-              shipping_city: selectedInvoiceData.shipping_city || '',
-              shipping_state: selectedInvoiceData.shipping_state || '',
-              shipping_country: selectedInvoiceData.shipping_country || '',
-              shipping_pin_code: selectedInvoiceData.shipping_pin_code || ''
-            });
-
-            // Process items from selected invoice
-            let invoiceItems = selectedInvoiceData.batch_details || selectedInvoiceData.items || [];
-            if (invoiceItems && Array.isArray(invoiceItems)) {
-              const itemsWithOriginal = invoiceItems.map(item => ({
-                ...item,
-                originalQuantity: parseFloat(item.quantity || 0)
-              }));
-              setItems(itemsWithOriginal);
-              setOriginalItems(itemsWithOriginal);
-
-              const uniqueProducts = [...new Set(itemsWithOriginal.map(item => item.product))];
-              setProducts(uniqueProducts);
-
-              const tempProductBatches = {};
-              itemsWithOriginal.forEach(item => {
-                if (!tempProductBatches[item.product]) tempProductBatches[item.product] = new Set();
-                tempProductBatches[item.product].add(item.batch);
-              });
-              
-              const batchesMap = {};
-              uniqueProducts.forEach(prod => {
-                batchesMap[prod] = Array.from(tempProductBatches[prod] || []);
-              });
-              setProductBatches(batchesMap);
-            }
-          } else {
-            setCustomerData(null);
-            setItems([]);
-          }
-        } catch (err) {
-          setCustomerData(null);
-          setItems([]);
-        } finally {
-          setLoadingCustomer(false);
-        }
-      } else {
-        setCustomerData(null);
-        setItems([]);
-        setOriginalItems([]);
-        setProducts([]);
-        setProductBatches({});
-      }
-    };
-
-    fetchCustomerDataFromInvoice();
-  }, [selectedInvoice]);
+  }, [id]);
 
   const formatAddress = (data, addressType) => {
     if (!data) return 'Address not available';
@@ -224,7 +206,7 @@ const CreateCreditNote = () => {
     }
   };
 
-  const handleCreateCreditNote = async () => {
+  const handleUpdateCreditNote = async () => {
     try {
       if(items.length===0 || !selectedInvoice){
         window.alert("No items or invoice selected");
@@ -261,21 +243,23 @@ const CreateCreditNote = () => {
         customerData:customerData
       };
 
-      console.log("Credit Note Request Data:", requestData);
+      console.log("Credit Note Update Data:", requestData);
 
-      const response = await axios.post(`${baseurl}/transaction`, requestData);
+      const response = await axios.put(`${baseurl}/creditnoteupdate/${id}`, requestData);
 
       console.log("Backend Response:", response.data);
 
       if(response.data){
-        window.alert("✅ Credit Note created successfully!");
+        window.alert("✅ Credit Note updated successfully!");
         navigate("/sales/credit_note");
       }
     } catch (err){
-      console.error("Error creating credit note:", err);
-      window.alert("❌ Failed to create credit note");
+      console.error("Error updating credit note:", err);
+      window.alert("❌ Failed to update credit note");
     }
   };
+
+  if(loadingCreditNote) return <div className="d-flex justify-content-center align-items-center vh-100"><div className="spinner-border text-primary" role="status"></div><span className="ms-2">Loading credit note data...</span></div>;
 
   return (
     <div className="credit-note-wrapper">
@@ -312,15 +296,7 @@ const CreateCreditNote = () => {
                       className="form-control form-control-sm" 
                       value={creditNoteNumber || ""} 
                       readOnly 
-                      placeholder={loadingCreditNote ? "Loading..." : "CNOTE001"}
                     />
-                    {loadingCreditNote && (
-                      <div className="position-absolute top-50 end-0 translate-middle-y me-2">
-                        <div className="spinner-border spinner-border-sm text-primary" role="status">
-                          <span className="visually-hidden">Loading...</span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
                 <div className="mb-2">
@@ -338,21 +314,10 @@ const CreateCreditNote = () => {
                     className="form-select form-select-sm"
                     value={selectedInvoice}
                     onChange={(e) => setSelectedInvoice(e.target.value)}
+                    disabled={true} // Invoice selection disabled in edit mode
                   >
-                    <option value="">
-                      {loadingInvoices ? "Loading invoices..." : "Select Invoice"}
-                    </option>
-                    {invoiceList.map((inv) => (
-                      <option key={inv.VoucherID} value={inv.InvoiceNumber || inv.VchNo || inv.invoiceNumber}>
-                        {inv.InvoiceNumber || inv.VchNo || inv.invoiceNumber || `Invoice ${inv.VoucherID}`}
-                      </option>
-                    ))}
+                    <option value={selectedInvoice}>{selectedInvoice}</option>
                   </select>
-                  {!loadingInvoices && invoiceList.length === 0 && (
-                    <div className="text-danger small mt-1">
-                      No sales invoices found. Please create sales invoices first.
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -361,12 +326,7 @@ const CreateCreditNote = () => {
             <div className="row mt-3">
               <div className="col-md-4 border p-3">
                 <div className="fw-bold">Customer Info</div>
-                {loadingCustomer ? (
-                  <div className="small mt-2 text-muted">
-                    <div className="spinner-border spinner-border-sm me-2" role="status"></div>
-                    Loading customer data...
-                  </div>
-                ) : customerData ? (
+                {customerData ? (
                   <>
                     <div className="small">Business: {customerData.business_name || 'N/A'}</div>
                     <div className="small">Email: {customerData.email || 'N/A'}</div>
@@ -374,7 +334,7 @@ const CreateCreditNote = () => {
                     <div className="small">GSTIN: {customerData.gstin || 'N/A'}</div>
                   </>
                 ) : (
-                  <div className="small mt-2 text-muted">Select an invoice to load customer data</div>
+                  <div className="small mt-2 text-muted">Customer data not available</div>
                 )}
               </div>
 
@@ -385,7 +345,7 @@ const CreateCreditNote = () => {
                     {formatAddress(customerData, 'billing')}
                   </div>
                 ) : (
-                  <div className="small mt-2 text-muted">Billing address will appear here</div>
+                  <div className="small mt-2 text-muted">Billing address not available</div>
                 )}
               </div>
 
@@ -396,7 +356,7 @@ const CreateCreditNote = () => {
                     {formatAddress(customerData, 'shipping')}
                   </div>
                 ) : (
-                  <div className="small mt-2 text-muted">Shipping address will appear here</div>
+                  <div className="small mt-2 text-muted">Shipping address not available</div>
                 )}
               </div>
             </div>
@@ -540,7 +500,7 @@ const CreateCreditNote = () => {
                   ) : (
                     <tr>
                       <td colSpan="9" className="text-center text-muted">
-                        {selectedInvoice ? "No items found for this invoice" : "Select an invoice to view items"}
+                        No items found for this credit note
                       </td>
                     </tr>
                   )}
@@ -594,10 +554,10 @@ const CreateCreditNote = () => {
             <div className="d-flex justify-content-end mt-3">
               <button 
                 className="btn btn-success"
-                onClick={handleCreateCreditNote}
+                onClick={handleUpdateCreditNote}
                 disabled={!selectedInvoice || items.length === 0 || !creditNoteNumber}
               >
-                + Create Credit Note
+                📝 Update Credit Note
               </button>
             </div>
           </div>
@@ -617,4 +577,4 @@ const CreateCreditNote = () => {
   );
 };
 
-export default CreateCreditNote;
+export default EditCreditNote;

@@ -5,9 +5,11 @@ import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import './Createnote.css'; 
 import { baseurl } from '../../../BaseURL/BaseURL';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-const CreateCreditNote = () => {
+const CreateNote = () => {
+  const { id } = useParams();
+  const [isEditMode, setIsEditMode] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [creditNoteNumber, setCreditNoteNumber] = useState("");
   const [invoiceList, setInvoiceList] = useState([]);
@@ -28,6 +30,25 @@ const CreateCreditNote = () => {
   const [productBatches, setProductBatches] = useState({});
   const navigate = useNavigate();
 
+  // Single API call for fetching transaction by ID
+  const fetchTransactionById = async (transactionId) => {
+    try {
+      setLoadingCreditNote(true);
+      const response = await axios.get(`${baseurl}/transactions/${transactionId}`);
+      
+      if (response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || "Failed to fetch transaction");
+      }
+    } catch (error) {
+      console.error("Error fetching transaction:", error);
+      throw error;
+    } finally {
+      setLoadingCreditNote(false);
+    }
+  };
+
   // Fetch all transactions (for invoice list)
   const fetchAllTransactions = async () => {
     try {
@@ -45,8 +66,69 @@ const CreateCreditNote = () => {
   useEffect(() => {
     const initializeData = async () => {
       try {
-        // Fetch credit note number and invoices for create mode
-        await fetchCreditNoteNumber();
+        if (id) {
+          // Edit Mode - Fetch credit note data using single API
+          setIsEditMode(true);
+          const creditNoteData = await fetchTransactionById(id);
+          
+          if (creditNoteData) {
+            setCreditNoteNumber(creditNoteData.VchNo || creditNoteData.creditNoteNumber || '');
+            setSelectedInvoice(creditNoteData.InvoiceNumber || creditNoteData.originalInvoiceNumber || '');
+            setNoteDate(creditNoteData.Date || new Date().toISOString().split('T')[0]);
+            
+            // Process items
+            const itemsData = creditNoteData.batch_details || creditNoteData.items || [];
+            const itemsWithOriginal = itemsData.map(item => ({
+              ...item,
+              originalQuantity: parseFloat(item.quantity || item.originalQuantity || 0)
+            }));
+            
+            setItems(itemsWithOriginal);
+            setOriginalItems(itemsWithOriginal);
+
+            // Set customer data
+            setCustomerData({
+              business_name: creditNoteData.business_name || creditNoteData.PartyName || creditNoteData.AccountName || 'Customer',
+              email: creditNoteData.email || '',
+              mobile_number: creditNoteData.mobile_number || '',
+              gstin: creditNoteData.gstin || '',
+              account_id: creditNoteData.AccountID || '',
+              party_id: creditNoteData.PartyID || '',
+              billing_address_line1: creditNoteData.billing_address_line1 || '',
+              billing_address_line2: creditNoteData.billing_address_line2 || '',
+              billing_city: creditNoteData.billing_city || '',
+              billing_state: creditNoteData.billing_state || '',
+              billing_country: creditNoteData.billing_country || '',
+              billing_pin_code: creditNoteData.billing_pin_code || '',
+              shipping_address_line1: creditNoteData.shipping_address_line1 || '',
+              shipping_address_line2: creditNoteData.shipping_address_line2 || '',
+              shipping_city: creditNoteData.shipping_city || '',
+              shipping_state: creditNoteData.shipping_state || '',
+              shipping_country: creditNoteData.shipping_country || '',
+              shipping_pin_code: creditNoteData.shipping_pin_code || '',
+              items: itemsWithOriginal
+            });
+
+            // Process products and batches
+            const uniqueProducts = [...new Set(itemsWithOriginal.map(item => item.product))];
+            setProducts(uniqueProducts);
+
+            const tempProductBatches = {};
+            itemsWithOriginal.forEach(item => {
+              if (!tempProductBatches[item.product]) tempProductBatches[item.product] = new Set();
+              tempProductBatches[item.product].add(item.batch);
+            });
+            
+            const batchesMap = {};
+            uniqueProducts.forEach(prod => {
+              batchesMap[prod] = Array.from(tempProductBatches[prod] || []);
+            });
+            setProductBatches(batchesMap);
+          }
+        } else {
+          // Create Mode - Fetch credit note number and invoices
+          await fetchCreditNoteNumber();
+        }
 
         // Fetch invoices for dropdown
         const invoices = await fetchAllTransactions();
@@ -61,7 +143,7 @@ const CreateCreditNote = () => {
     };
 
     initializeData();
-  }, []);
+  }, [id]);
 
   const fetchCreditNoteNumber = async () => {
     try {
@@ -76,10 +158,10 @@ const CreateCreditNote = () => {
     }
   };
 
-  // Fetch customer data when invoice is selected
+  // Fetch customer data when invoice is selected (for create mode)
   useEffect(() => {
     const fetchCustomerDataFromInvoice = async () => {
-      if (selectedInvoice) {
+      if (selectedInvoice && !isEditMode) {
         setLoadingCustomer(true);
         try {
           const allTransactions = await fetchAllTransactions();
@@ -146,7 +228,7 @@ const CreateCreditNote = () => {
         } finally {
           setLoadingCustomer(false);
         }
-      } else {
+      } else if (!selectedInvoice) {
         setCustomerData(null);
         setItems([]);
         setOriginalItems([]);
@@ -156,7 +238,7 @@ const CreateCreditNote = () => {
     };
 
     fetchCustomerDataFromInvoice();
-  }, [selectedInvoice]);
+  }, [selectedInvoice, isEditMode]);
 
   const formatAddress = (data, addressType) => {
     if (!data) return 'Address not available';
@@ -191,7 +273,10 @@ const CreateCreditNote = () => {
     const newQty = parseFloat(editedQuantity);
     if (isNaN(newQty) || newQty<0){ window.alert("Please enter valid quantity"); return; }
     const originalItem = originalItems.find(oi=>oi.product===editedProduct && oi.batch===editedBatch);
-    
+    // if (editedProduct && editedBatch && !originalItem){ window.alert("No original data found"); return; }
+    // const maxQty = originalItem ? parseFloat(originalItem.originalQuantity) : Infinity;
+    // if (newQty>maxQty){ window.alert(`Quantity cannot exceed ${maxQty}`); return; }
+
     const updatedItems = [...items];
     updatedItems[index] = {...updatedItems[index], product:editedProduct, batch:editedBatch, quantity:newQty};
     setItems(updatedItems);
@@ -263,19 +348,26 @@ const CreateCreditNote = () => {
 
       console.log("Credit Note Request Data:", requestData);
 
-      const response = await axios.post(`${baseurl}/transaction`, requestData);
+      let response;
+      if(isEditMode){
+        response = await axios.put(`${baseurl}/creditnoteupdate/${id}`, requestData);
+      } else {
+        response = await axios.post(`${baseurl}/transaction`, requestData);
+      }
 
       console.log("Backend Response:", response.data);
 
       if(response.data){
-        window.alert("✅ Credit Note created successfully!");
+        window.alert("✅ Credit Note saved successfully!");
         navigate("/sales/credit_note");
       }
     } catch (err){
-      console.error("Error creating credit note:", err);
-      window.alert("❌ Failed to create credit note");
+      console.error("Error sending credit note:", err);
+      window.alert("❌ Failed to save credit note");
     }
   };
+
+  if(loadingCreditNote && isEditMode) return <div className="d-flex justify-content-center align-items-center vh-100"><div className="spinner-border text-primary" role="status"></div><span className="ms-2">Loading credit note data...</span></div>;
 
   return (
     <div className="credit-note-wrapper">
@@ -418,8 +510,8 @@ const CreateCreditNote = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.length > 0 ? (
-                    items.map((item, index) => {
+                  {(customerData?.items || items).length > 0 ? (
+                    (customerData?.items || items).map((item, index) => {
                       const isEditing = editingIndex === index;
                       const displayProduct = isEditing ? editedProduct : item.product;
                       const displayBatch = isEditing ? editedBatch : item.batch;
@@ -597,7 +689,7 @@ const CreateCreditNote = () => {
                 onClick={handleCreateCreditNote}
                 disabled={!selectedInvoice || items.length === 0 || !creditNoteNumber}
               >
-                + Create Credit Note
+                {isEditMode ? "📝 Update Credit Note" : "+ Create Credit Note"}
               </button>
             </div>
           </div>
@@ -617,4 +709,4 @@ const CreateCreditNote = () => {
   );
 };
 
-export default CreateCreditNote;
+export default CreateNote;

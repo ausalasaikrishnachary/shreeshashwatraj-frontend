@@ -148,7 +148,7 @@ import Profile from "./Component/Panels/Retailer/RetailerProfile/Profile";
 import RetailerOrders from "./Component/Panels/Retailer/RetailerOrders/RetailerOrders";
 import DeleteProfile from "./Component/Panels/Retailer/RetailerProfile/DeleteProfile";
 import EditProfile from "./Component/Panels/Retailer/RetailerProfile/EditProfile";
-import EditCreditNote from "./Component/Panels/Admin/CreditNote/CreateNote";
+import EditCreditNote from "./Component/Panels/Admin/CreditNote/EditCreditNote";
 import PurchaseInvoiceEdit from "./Component/Panels/Admin/PurchaseInvoicePage/PurchaseInvoiceEdit";
 
 import VoucherView  from "./Component/Panels/Admin/Vochur/VoucherView"
@@ -300,7 +300,7 @@ function App() {
             <Route path="/units" element={<Units />} />
             <Route path="/ledger" element={<Ledger />} />
 
-            <Route path="/sales/credit-note/edit/:id" element={<CreateNote />} />
+            <Route path="/sales/credit-note/edit/:id" element={<EditCreditNote />} />
 
 
         <Route path="/sales/create_note" element={<CreateNote />} />
