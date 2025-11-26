@@ -1079,9 +1079,9 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
     });
       if (response.ok) {
         const result = await response.json();
-        console.log('Receipt created successfully:', result);
+        console.log('Voucher created successfully:', result);
         handleCloseReceiptModal();
-        alert('Receipt created successfully!');
+        alert('Voucher created successfully!');
         
         if (invoiceData && invoiceData.invoiceNumber) {
           fetchPaymentData(invoiceData.invoiceNumber);

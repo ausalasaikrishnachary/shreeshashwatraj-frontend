@@ -2020,7 +2020,7 @@ try {
     }
 
     // Conditionally hide fields for SUPPLIERS group
-    if (formData.group === 'SUPPLIERS' && ['role', 'entity_type', 'assigned_staff', 'staffid'].includes(name)) {
+    if (formData.group === 'SUPPLIERS' && ['role',  'assigned_staff', 'staffid'].includes(name)) {
       return null;
     }
 
@@ -2072,189 +2072,304 @@ try {
 
     switch (activeTab) {
       case 'information':
-        return (
-          <FormSection
-            id="information"
-            activeTab={activeTab}
-            title="Information"
-            onBack={null}
-            onNext={handleNext}
-            nextLabel="Banking & Taxes"
-            isViewing={isViewing}
-            onCancel={handleCancel}
-          >
-            <div className="row">
-              <div className="col-md-6">
-                <div className="row">
-                  <div className="col-md-4">
-                    {renderField({
-                      type: 'select',
-                      name: 'title',
-                      label: 'Title',
-                      options: [
-                        { value: 'Mr.', label: 'Mr.' },
-                        { value: 'Mrs.', label: 'Mrs.' },
-                        { value: 'Ms.', label: 'Ms.' },
-                        { value: 'Dr.', label: 'Dr.' }
-                      ]
-                    })}
-                  </div>
-                  <div className="col-md-8">
-                    {renderField({
-                      name: 'name',
-                      label: 'Name'
-                    })}
-                  </div>
-                </div>
-              </div>
-              <div className="col-md-6">
-                {renderField({
-                  type: 'select',
-                  name: 'entity_type',
-                  label: 'Entity Type',
-                  options: [
-                    { value: 'Individual', label: 'Individual' },
-                    { value: 'Company', label: 'Company' },
-                    { value: 'Partnership', label: 'Partnership' }
-                  ]
-                })}
-              </div>
-            </div>
+       return (
+  <FormSection
+    id="information"
+    activeTab={activeTab}
+    title="Information"
+    onBack={null}
+    onNext={handleNext}
+    nextLabel="Banking & Taxes"
+    isViewing={isViewing}
+    onCancel={handleCancel}
+  >
+    <div className="row">
+      <div className="col-md-6">
+        <div className="row">
+          <div className="col-md-4">
+            {renderField({
+              type: 'select',
+              name: 'title',
+              label: 'Title',
+              options: [
+                { value: 'Mr.', label: 'Mr.' },
+                { value: 'Mrs.', label: 'Mrs.' },
+                { value: 'Ms.', label: 'Ms.' },
+                { value: 'Dr.', label: 'Dr.' }
+              ]
+            })}
+          </div>
+          <div className="col-md-8">
+            {renderField({
+              name: 'name',
+              label: 'Name'
+            })}
+          </div>
+        </div>
+      </div>
+      <div className="col-md-6">
+        {renderField({
+          type: 'select',
+          name: 'entity_type',
+          label: 'Entity Type',
+          options: [
+            { value: 'Individual', label: 'Individual' },
+            { value: 'Company', label: 'Company' },
+            { value: 'Partnership', label: 'Partnership' }
+          ]
+        })}
+      </div>
+    </div>
 
-            <div className="row">
-              <div className="col-md-6">
-                {renderField({
-                  type: 'select',
-                  name: 'group',
-                  label: 'Group Type',
-                  options: accountGroups.map(group => ({
-                    value: group.AccountsGroupName,
-                    label: group.AccountsGroupName
-                  }))
-                })}
-              </div>
-              <div className="col-md-6">
-                {renderField({
-                  name: 'gstin',
-                  label: 'Customer GSTIN',
-                  type: 'text',
-                  maxLength: 15,
-                  pattern: "^[0-9A-Z]{15}$",
-                  title: "GSTIN must be exactly 15 characters (A-Z, 0-9 only)",
-                  onChange: handleGstinChange
-                })}
-                {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
-                {gstinError && <div className="text-danger small">{gstinError}</div>}
-              </div>
-            </div>
+    <div className="row">
+      <div className="col-md-6">
+        {renderField({
+          type: 'select',
+          name: 'group',
+          label: 'Group Type',
+          options: accountGroups.map(group => ({
+            value: group.AccountsGroupName,
+            label: group.AccountsGroupName
+          }))
+        })}
+      </div>
+      <div className="col-md-6">
+        {renderField({
+          name: 'gstin',
+          label: 'Customer GSTIN',
+          type: 'text',
+          maxLength: 15,
+          pattern: "^[0-9A-Z]{15}$",
+          title: "GSTIN must be exactly 15 characters (A-Z, 0-9 only)",
+          onChange: handleGstinChange
+        })}
+        {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
+        {gstinError && <div className="text-danger small">{gstinError}</div>}
+      </div>
+    </div>
 
-            <div className="row">
-              <div className="col-md-6">
-                {renderField({
-                  type: 'email',
-                  name: 'email',
-                  label: 'Email'
-                })}
-              </div>
-              <div className="col-md-6">
-                {renderField({
-                  type: 'select',
-                  name: 'staffid',
-                  label: 'Assign staff',
-                  options: staffList
-                })}
-              </div>
-            </div>
+    {/* Email and Assign Staff Row - Fixed Layout */}
+    <div className="row">
+      <div className="col-md-6">
+        {renderField({
+          type: 'email',
+          name: 'email',
+          label: 'Email'
+        })}
+      </div>
+      
+      {/* Conditionally show Assign Staff field */}
+      {formData.group !== 'SUPPLIERS' ? (
+        <div className="col-md-6">
+          {renderField({
+            type: 'select',
+            name: 'staffid',
+            label: 'Assign staff',
+            options: staffList
+          })}
+        </div>
+      ) : (
+        <div className="col-md-6">
+          {renderField({
+            name: 'business_name',
+            label: 'Business Name'
+          })}
+        </div>
+      )}
+    </div>
 
-            <div className="row">
-              <div className="col-md-6">
-                {renderField({
-                  name: 'business_name',
-                  label: 'Business Name'
-                })}
-              </div>
-              <div className="col-md-6">
-                {renderField({
-                  name: 'display_name',
-                  label: 'Display Name'
-                })}
-              </div>
-            </div>
+    {/* Business Name and Display Name Row - Adjusted based on group */}
+    <div className="row">
+      {formData.group !== 'SUPPLIERS' ? (
+        <>
+          <div className="col-md-6">
+            {renderField({
+              name: 'business_name',
+              label: 'Business Name'
+            })}
+          </div>
+          <div className="col-md-6">
+            {renderField({
+              name: 'display_name',
+              label: 'Display Name'
+            })}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="col-md-6">
+            {renderField({
+              name: 'display_name',
+              label: 'Display Name'
+            })}
+          </div>
+          <div className="col-md-6">
+            {renderField({
+              name: 'gst_registered_name',
+              label: 'Customer GST Registered Name'
+            })}
+          </div>
+        </>
+      )}
+    </div>
 
-            <div className="row">
-              <div className="col-md-6">
-                {renderField({
-                  name: 'gst_registered_name',
-                  label: 'Customer GST Registered Name'
-                })}
-              </div>
-              <div className="col-md-6">
-                {renderField({
-                  name: 'additional_business_name',
-                  label: 'Additional Business Name'
-                })}
-              </div>
-            </div>
+    {/* GST Registered Name and Additional Business Name Row - Adjusted based on group */}
+    <div className="row">
+      {formData.group !== 'SUPPLIERS' ? (
+        <>
+          <div className="col-md-6">
+            {renderField({
+              name: 'gst_registered_name',
+              label: 'Customer GST Registered Name'
+            })}
+          </div>
+          <div className="col-md-6">
+            {renderField({
+              name: 'additional_business_name',
+              label: 'Additional Business Name'
+            })}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="col-md-6">
+            {renderField({
+              name: 'additional_business_name',
+              label: 'Additional Business Name'
+            })}
+          </div>
+          <div className="col-md-6">
+            {renderField({
+              type: 'tel',
+              name: 'phone_number',
+              label: 'Phone Number'
+            })}
+          </div>
+        </>
+      )}
+    </div>
 
-            <div className="row">
-              <div className="col-md-6">
-                {renderField({
-                  type: 'tel',
-                  name: 'phone_number',
-                  label: 'Phone Number'
-                })}
-              </div>
-              <div className="col-md-6">
-                {renderField({
-                  name: 'fax',
-                  label: 'Fax'
-                })}
-              </div>
-            </div>
+    {/* Phone Number and Fax Row - Adjusted based on group */}
+    <div className="row">
+      {formData.group !== 'SUPPLIERS' ? (
+        <>
+          <div className="col-md-6">
+            {renderField({
+              type: 'tel',
+              name: 'phone_number',
+              label: 'Phone Number'
+            })}
+          </div>
+          <div className="col-md-6">
+            {renderField({
+              name: 'fax',
+              label: 'Fax'
+            })}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="col-md-6">
+            {renderField({
+              name: 'fax',
+              label: 'Fax'
+            })}
+          </div>
+          <div className="col-md-6">
+            {renderField({
+              type: 'tel',
+              name: 'mobile_number',
+              label: 'Mobile Number'
+            })}
+          </div>
+        </>
+      )}
+    </div>
 
-            <div className="row">
-              <div className="col-md-6">
-                {renderField({
-                  type: 'tel',
-                  name: 'mobile_number',
-                  label: 'Mobile Number'
-                })}
-              </div>
-              <div className="col-md-6">
-                {renderField({
-                  type: 'text',
-                  name: 'password',
-                  label: 'Password',
-                  value: formData.password,
-                  disabled: true
-                })}
-              </div>
-            </div>
+    {/* Mobile Number and Password Row - Adjusted based on group */}
+    <div className="row">
+      {formData.group !== 'SUPPLIERS' ? (
+        <>
+          <div className="col-md-6">
+            {renderField({
+              type: 'tel',
+              name: 'mobile_number',
+              label: 'Mobile Number'
+            })}
+          </div>
+          <div className="col-md-6">
+            {renderField({
+              type: 'text',
+              name: 'password',
+              label: 'Password',
+              value: formData.password,
+              disabled: true
+            })}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="col-md-6">
+            {renderField({
+              type: 'text',
+              name: 'password',
+              label: 'Password',
+              value: formData.password,
+              disabled: true
+            })}
+          </div>
+          <div className="col-md-6">
+            {renderField({
+              type: 'number',
+              name: 'discount',
+              label: 'Discount (%)',
+              min: 0,
+              max: 100,
+              step: 0.1
+            })}
+          </div>
+        </>
+      )}
+    </div>
 
-
-              <div className="row">
-              <div className="col-md-6">
-                {renderField({
-                  type: 'number',
-                  name: 'discount',
-                  label: 'Discount (%)',
-                  min: 0,
-                  max: 100,
-                  step: 0.1
-                })}
-              </div>
-              <div className="col-md-6">
-                {renderField({
-                  type: 'number',
-                  name: 'Target',
-                  label: 'Target (₹)',
-                  min: 0,
-                  step: 1000
-                })}
-              </div>
-            </div>
-          </FormSection>
-        );
+    {/* Discount and Target Row - Adjusted based on group */}
+    <div className="row">
+      {formData.group !== 'SUPPLIERS' ? (
+        <>
+          <div className="col-md-6">
+            {renderField({
+              type: 'number',
+              name: 'discount',
+              label: 'Discount (%)',
+              min: 0,
+              max: 100,
+              step: 0.1
+            })}
+          </div>
+          <div className="col-md-6">
+            {renderField({
+              type: 'number',
+              name: 'Target',
+              label: 'Target (₹)',
+              min: 0,
+              step: 1000
+            })}
+          </div>
+        </>
+      ) : (
+        <div className="col-md-6">
+          {renderField({
+            type: 'number',
+            name: 'Target',
+            label: 'Target (₹)',
+            min: 0,
+            step: 1000
+          })}
+        </div>
+      )}
+    </div>
+  </FormSection>
+);
 
       case 'banking':
         return (
