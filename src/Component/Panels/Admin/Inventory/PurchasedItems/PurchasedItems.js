@@ -90,36 +90,45 @@ const PurchasedItems = ({ user }) => {
     navigate(`/AddProductPage/${product.id}`);
   };
 
-  const handleAddStock = async ({ quantity, remark }) => {
-    try {
-      await axios.post(`${baseurl}/stock/${selectedProductId}`, {
-        stock_in: quantity,
-        stock_out: 0,
-        date: new Date().toISOString().split("T")[0],
-        remark,
-      });
-      fetchProducts();
-      window.alert("✅ New purchased item added successfully!");
-    } catch (error) {
-      console.error("❌ Failed to add stock:", error);
-      window.alert("❌ Failed to add stock. Please try again.");
-    }
-  };
+const handleAddStock = async (stockData) => {
+  try {
+    const { quantity, remark, batchId } = stockData;
 
-  const handleDeductStock = async ({ quantity, remark }) => {
-    try {
-      await axios.post(`${baseurl}/stock/${selectedProductId}`, {
-        stock_in: 0,
-        stock_out: quantity,
-        date: new Date().toISOString().split("T")[0],
-        remark,
-      });
-      fetchProducts();
-      alert("Stock deducted successfully!");
-    } catch (error) {
-      alert("Failed to deduct stock");
-    }
-  };
+    await axios.post(`${baseurl}/stock/${selectedProductId}`, {
+      quantity,
+      remark: remark || '',
+      batchId
+    });
+
+    fetchProducts();
+    alert("Stock added successfully!");
+    setSelectedProductId(null); // reset after save
+  } catch (error) {
+    console.error('Error adding stock:', error);
+    alert("Failed to add stock: " + (error.response?.data?.message || error.message));
+  }
+};
+
+const handleDeductStock = async (stockData) => {
+  try {
+    const { quantity, remark, batchId } = stockData;
+
+    await axios.post(`${baseurl}/stock-deducted/${selectedProductId}`, {
+      quantity,
+      remark: remark || '',
+      batchId
+    });
+
+    fetchProducts();
+    alert("Stock deducted successfully!");
+    setSelectedProductId(null); // reset after save
+  } catch (error) {
+    console.error('Error deducting stock:', error);
+    alert("Failed to deduct stock: " + (error.response?.data?.message || error.message));
+  }
+};
+
+ 
 
   const filteredItems = items.filter((item) =>
     item.goods_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -282,9 +291,27 @@ const PurchasedItems = ({ user }) => {
         </div>
       </div>
       <AddServiceModal show={showServiceModal} onClose={() => setShowServiceModal(false)} groupType="Purchaseditems" />
-      <AddStockModal show={showStockModal} onClose={() => setShowStockModal(false)} currentStock={currentStockData.balance_stock} onSave={handleAddStock} />
-      <DeductStockModal show={showDeductModal} onClose={() => setShowDeductModal(false)} currentStock={currentStockData.balance_stock} onSave={handleDeductStock} />
-      <StockDetailsModal show={showViewModal} onClose={() => { setShowViewModal(false); setSelectedItem(null); }} stockData={selectedItem} context="purchase" />
+<AddStockModal 
+  show={showStockModal} 
+  onClose={() => setShowStockModal(false)} 
+  currentStock={currentStockData.balance_stock} 
+  onSave={handleAddStock} 
+  selectedProductId={selectedProductId} 
+/>
+<DeductStockModal 
+  show={showDeductModal} 
+  onClose={() => setShowDeductModal(false)} 
+  currentStock={currentStockData.balance_stock} 
+  onSave={handleDeductStock} 
+  selectedProductId={selectedProductId} 
+/>
+<StockDetailsModal 
+  show={showViewModal} 
+  onClose={() => { setShowViewModal(false); setSelectedItem(null); }} 
+  stockData={selectedItem} 
+  batches={selectedItem?.batches || []} 
+  context="purchase" 
+/>
     </div>
   );
 };
