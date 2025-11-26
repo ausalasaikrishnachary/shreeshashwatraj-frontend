@@ -23,6 +23,9 @@ const ItemsTable = ({
           <tr>
             <th>PRODUCT</th>
             <th>BATCH</th>
+            {/* <th>SOLD QTY</th>
+            <th>CREDITED QTY</th>
+            <th>AVAILABLE QTY</th> */}
             <th>QTY</th>
             <th>PRICE</th>
             <th>DISCOUNT</th>
@@ -80,17 +83,47 @@ const ItemsTable = ({
                     )}
                   </td>
 
-                  {/* QTY */}
+                  {/* SOLD QUANTITY (Original Sales) */}
+                  {/* <td className="text-center">
+                    <span className="text-primary fw-bold">
+                      {item.soldQuantity || item.originalQuantity}
+                    </span>
+                  </td> */}
+
+                  {/* CREDITED QUANTITY (Previously Credited) */}
+                  {/* <td className="text-center">
+                    <span className="text-warning">
+                      {item.creditedQuantity || 0}
+                    </span>
+                  </td> */}
+
+                  {/* AVAILABLE QUANTITY (Sales - Previous Credits) */}
+                  {/* <td className="text-center">
+                    <span className={item.availableQuantity <= 0 ? "text-danger fw-bold" : "text-success fw-bold"}>
+                      {item.availableQuantity}
+                    </span>
+                  </td> */}
+
+                  {/* CREDIT QUANTITY (Editable) */}
                   <td>
                     {isEditing ? (
-                      <input
-                        type="number"
-                        value={editedQuantity}
-                        onChange={handleQuantityChange}
-                        className="form-control form-control-sm"
-                      />
+                      <div>
+                        <input
+                          type="number"
+                          value={editedQuantity}
+                          onChange={handleQuantityChange}
+                          className="form-control form-control-sm"
+                          min="0"
+                          max={item.availableQuantity}
+                        />
+                        <small className="text-muted">
+                          Max: {item.availableQuantity}
+                        </small>
+                      </div>
                     ) : (
-                      item.quantity
+                      <span className={item.quantity > 0 ? "text-success fw-bold" : ""}>
+                        {item.quantity}
+                      </span>
                     )}
                   </td>
 
@@ -133,6 +166,8 @@ const ItemsTable = ({
                         <button
                           className="btn btn-sm btn-outline-primary me-1"
                           onClick={() => handleEditClick(index, item)}
+                          disabled={item.availableQuantity <= 0}
+                          title={item.availableQuantity <= 0 ? "No quantity available to credit" : "Edit credit quantity"}
                         >
                           ✏️
                         </button>
@@ -150,7 +185,7 @@ const ItemsTable = ({
             })
           ) : (
             <tr>
-              <td colSpan="9" className="text-center text-muted">
+              <td colSpan="12" className="text-center text-muted">
                 No items found
               </td>
             </tr>
