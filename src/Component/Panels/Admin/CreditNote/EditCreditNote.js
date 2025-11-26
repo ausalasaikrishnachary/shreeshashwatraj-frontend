@@ -206,58 +206,76 @@ const EditCreditNote = () => {
     }
   };
 
-  const handleUpdateCreditNote = async () => {
-    try {
-      if(items.length===0 || !selectedInvoice){
-        window.alert("No items or invoice selected");
-        return;
+ const handleUpdateCreditNote = async () => {
+  try {
+    if(items.length === 0 || !selectedInvoice){
+      window.alert("No items or invoice selected");
+      return;
+    }
+
+    const requestData = {
+      transactionType: "CreditNote",
+      VchNo: creditNoteNumber,
+      Date: noteDate,
+      InvoiceNumber: selectedInvoice,
+      PartyName: customerData?.business_name || 'Customer',
+      BasicAmount: parseFloat(totals.taxableAmount) || 0,
+      TaxAmount: parseFloat(totals.totalIGST) || 0,
+      TotalAmount: parseFloat(totals.grandTotal) || 0,
+      TotalQty: items.reduce((sum, item) => sum + parseFloat(item.quantity), 0),
+      batchDetails: items.map(item => ({
+        product_id: item.product_id,
+        product: item.product,
+        batch: item.batch,
+        quantity: parseFloat(item.quantity) || 0,
+        price: parseFloat(item.price) || 0,
+        discount: parseFloat(item.discount) || 0,
+        gst: parseFloat(item.gst) || 0,
+        cgst: parseFloat(item.cgst) || 0,
+        sgst: parseFloat(item.sgst) || 0,
+        igst: parseFloat(item.igst) || 0,
+        cess: parseFloat(item.cess) || 0,
+        total: parseFloat(item.total) || 0
+      })),
+      creditNoteNumber: creditNoteNumber,
+      originalInvoiceNumber: selectedInvoice,
+      items: items,
+      customerData: customerData
+    };
+
+    console.log("Credit Note Update Data:", requestData);
+
+    const response = await axios.put(`${baseurl}/creditnoteupdate/${id}`, requestData);
+
+    console.log("Backend Response:", response.data);
+
+    if(response.data){
+      window.alert("✅ Credit Note updated successfully!");
+      navigate("/sales/credit_note");
+    }
+  } catch (err) {
+    console.error("Error updating credit note:", err);
+    
+    // Check if it's a quantity exceed error
+    if (err.response && err.response.data && err.response.data.message) {
+      const errorMessage = err.response.data.message;
+      
+      if (errorMessage.includes("Quantity exceeds sales quantity") || 
+          errorMessage.includes("exceeds sales quantity")) {
+        window.alert(`❌ Quantity Error: ${errorMessage}`);
+      } else if (errorMessage.includes("No Sales voucher found")) {
+        window.alert(`❌ Sales Not Found: ${errorMessage}`);
+      } else {
+        window.alert(`❌ Failed to update credit note: ${errorMessage}`);
       }
-
-      const requestData = {
-        transactionType:"CreditNote",
-        VchNo:creditNoteNumber,
-        Date:noteDate,
-        InvoiceNumber:selectedInvoice,
-        PartyName:customerData?.business_name || 'Customer',
-        BasicAmount:parseFloat(totals.taxableAmount)||0,
-        TaxAmount:parseFloat(totals.totalIGST)||0,
-        TotalAmount:parseFloat(totals.grandTotal)||0,
-        TotalQty:items.reduce((sum,item)=>sum+parseFloat(item.quantity),0),
-        batchDetails:items.map(item=>({
-          product_id:item.product_id,
-          product:item.product,
-          batch:item.batch,
-          quantity:parseFloat(item.quantity)||0,
-          price:parseFloat(item.price)||0,
-          discount:parseFloat(item.discount)||0,
-          gst:parseFloat(item.gst)||0,
-          cgst:parseFloat(item.cgst)||0,
-          sgst:parseFloat(item.sgst)||0,
-          igst:parseFloat(item.igst)||0,
-          cess:parseFloat(item.cess)||0,
-          total:parseFloat(item.total)||0
-        })),
-        creditNoteNumber:creditNoteNumber,
-        originalInvoiceNumber:selectedInvoice,
-        items:items,
-        customerData:customerData
-      };
-
-      console.log("Credit Note Update Data:", requestData);
-
-      const response = await axios.put(`${baseurl}/creditnoteupdate/${id}`, requestData);
-
-      console.log("Backend Response:", response.data);
-
-      if(response.data){
-        window.alert("✅ Credit Note updated successfully!");
-        navigate("/sales/credit_note");
-      }
-    } catch (err){
-      console.error("Error updating credit note:", err);
+    } else if (err.message && err.message.includes("Quantity exceeds sales quantity")) {
+      // Handle case where error is in err.message directly
+      window.alert(`❌ Quantity Error: ${err.message}`);
+    } else {
       window.alert("❌ Failed to update credit note");
     }
-  };
+  }
+};
 
   if(loadingCreditNote) return <div className="d-flex justify-content-center align-items-center vh-100"><div className="spinner-border text-primary" role="status"></div><span className="ms-2">Loading credit note data...</span></div>;
 
@@ -443,7 +461,7 @@ const EditCreditNote = () => {
                                 step="0.01"
                                 onChange={handleQuantityChange}
                                 style={{
-                                  border: isOver ? '2px solid red' : '1px solid #ced4da'
+                                  border: isOver ? '1px solid #ced4da' : '1px solid #ced4da'
                                 }}
                               />
                             ) : (
