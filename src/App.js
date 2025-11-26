@@ -155,6 +155,7 @@ import VoucherView  from "./Component/Panels/Admin/Vochur/VoucherView"
 import Creditsview from "./Component/Panels/Admin/CreditNote/Creditsview";
 import CreateDebitNote from "./Component/Panels/Admin/DebitTable/CreateDebitNote";
 import DebitView from "./Component/Panels/Admin/DebitTable/DebitView";
+import EditDebitNote from "./Component/Panels/Admin/DebitTable/EditDebitNote";
 
 
 function App() {
@@ -237,7 +238,7 @@ function App() {
         <Route path="/purchase/voucher" element={<VoucherTable />} />
         <Route path="/purchase/debit-note" element={<DebitNoteTable />} />
         <Route path="/purchase/create_note" element={<CreateDebitNote />} />
-        <Route path="/purchase/debit-note/edit/:id" element={<CreateDebitNote />} />
+        <Route path="/purchase/debit-note/edit/:id" element={<EditDebitNote />} />
         <Route path="/purchase/payables" element={<PayablesTable />} />
         <Route path="/voucher_view/:id" element={<VoucherView />} />
 
