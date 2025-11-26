@@ -25,47 +25,46 @@ const DebitNoteTable = () => {
     fetchCreditNotes();
   }, []);
 
-  const fetchCreditNotes = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch(`${baseurl}/api/debit-notes-table`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result = await response.json();
-      
-      console.log('API Response:', result);
-      
-      if (result.success) {
-        // Transform the API data to match table format
-        const transformedData = result.creditNotes.map(note => ({
-          id: note.VoucherID, // This is the VoucherID
-          customerName: note.PartyName || 'N/A',
-          noteNumber: note.VchNo || 'N/A',
-          document: note.InvoiceNumber || 'N/A',
-          documentType: note.TransactionType || 'DebitNote',
-          creditAmount: `₹ ${parseFloat(note.TotalAmount || 0).toLocaleString('en-IN', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          })}`,
-          created: note.Date ? new Date(note.Date).toLocaleDateString('en-IN') : 'N/A',
-          status: 'Active',
-          rawData: note // Keep original data for reference
-        }));
-        
-        console.log('Transformed data:', transformedData);
-        setCreditNoteData(transformedData);
-      } else {
-        setError('Failed to fetch debit notes');
-      }
-    } catch (err) {
-      console.error('Error fetching debit notes:', err);
-      setError('Error fetching debit notes data');
-    } finally {
-      setLoading(false);
+const fetchCreditNotes = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+
+    const response = await fetch(`${baseurl}/api/debit-notes-table`);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+    const result = await response.json();
+    console.log("API Response:", result);
+
+    if (result.success) {
+      const transformedData = result.debitNotes.map(note => ({
+        id: note.VoucherID,
+        customerName: note.PartyName || 'N/A',
+        noteNumber: note.VchNo || 'N/A',
+        document: note.InvoiceNumber || 'N/A',
+        documentType: note.TransactionType || 'DebitNote',
+        creditAmount: `₹ ${parseFloat(note.TotalAmount || 0).toLocaleString('en-IN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })}`,
+        created: note.Date ? new Date(note.Date).toLocaleDateString('en-IN') : 'N/A',
+        status: 'Active',
+        rawData: note
+      }));
+
+      console.log("Transformed data:", transformedData);
+      setCreditNoteData(transformedData);
+    } else {
+      setError("Failed to fetch debit notes");
     }
-  };
+  } catch (err) {
+    console.error("Error fetching debit notes:", err);
+    setError("Error fetching debit notes data");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleViewCreditNote = (creditNoteId) => {
     console.log('View debit note ID:', creditNoteId);
