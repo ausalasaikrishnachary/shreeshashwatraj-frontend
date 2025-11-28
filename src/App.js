@@ -149,6 +149,9 @@ import RetailerOrders from "./Component/Panels/Retailer/RetailerOrders/RetailerO
 import DeleteProfile from "./Component/Panels/Retailer/RetailerProfile/DeleteProfile";
 import EditProfile from "./Component/Panels/Retailer/RetailerProfile/EditProfile";
 
+import CreditPeriodTable from "./Component/Panels/Admin/CreditPeriod/CreditPeriodTable"
+import AddCreditPeriodFix from './Component/Panels/Admin/CreditPeriod/AddCreditPeriod';
+
 
 
 
@@ -188,6 +191,8 @@ function App() {
         <Route path="/staff/expences" element={<StaffExpenses />} />
         <Route path="/staff/add-expense" element={<AddExpense />} />
 
+           
+
         {/* Admin  Pages */}
         <Route path="/staff/offers" element={<StaffOffers />} />
     
@@ -199,7 +204,7 @@ function App() {
 
          <Route path="/sales/createinvoice/:id" element={<SalesInvoiceForm />} />
          <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
-<Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
+          <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
            <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
          <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
            <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
@@ -300,6 +305,11 @@ function App() {
 
 
      <Route path="/reports/sales-report-page" element={<SalesReportPage />} />
+
+
+     <Route path="/credit-period" element={<CreditPeriodTable />} />
+     <Route path="/credit-period-fix/add" element={<AddCreditPeriodFix />} />
+     <Route path="/credit-period-fix/edit/:id" element={<AddCreditPeriodFix />} />
 
 
 

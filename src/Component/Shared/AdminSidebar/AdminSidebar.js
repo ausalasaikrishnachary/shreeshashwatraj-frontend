@@ -32,7 +32,7 @@ import {
   FaFileExport,
   FaMoneyBillWave,
   FaRuler,
-  
+  FaCalendarAlt, // Added for Credit Period Fix
 } from "react-icons/fa";
 import { FiHome } from 'react-icons/fi'; // ✅ Feather icons
 
@@ -109,6 +109,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     { path: "/retailers", name: "Contacts", icon: <FaUsers /> },
     { path: "/staff", name: "Staff", icon: <FaUserTie /> },
     { path: "/sales_visit", name: "Sales Visit", icon: <FaClipboardList /> },
+    { path: "/credit-period", name: "Credit Period Fix", icon: <FaCalendarAlt /> }, // Added new path
     {
       name: "Inventory",
       icon: <FaHandHoldingUsd />,

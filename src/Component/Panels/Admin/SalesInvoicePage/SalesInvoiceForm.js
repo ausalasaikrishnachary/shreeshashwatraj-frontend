@@ -1,11 +1,302 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Table, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, Table, Alert, Badge, Card, ProgressBar, Modal } from 'react-bootstrap';
 import './Invoices.css';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
-import { FaEdit, FaTrash, FaEye } from "react-icons/fa";
+import { FaEdit, FaTrash, FaEye, FaInfoCircle, FaRupeeSign, FaTarget, FaTrophy, FaCrosshairs, FaDotCircle, FaBullseye } from "react-icons/fa";
 import { baseurl } from '../../../BaseURL/BaseURL';
 import { useNavigate, useParams } from "react-router-dom";
+
+// Retailer Eligibility Component
+const RetailerEligibility = ({ customerId, customerName, onDiscountUpdate, invoiceAmount = 0 }) => {
+  const [eligibility, setEligibility] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+
+  // Helper function to format month display
+  const formatMonthDisplay = (dateString) => {
+    if (!dateString) return 'Not available';
+    
+    try {
+      // Handle both YYYY-MM and YYYY-MM-01 formats
+      let date;
+      if (dateString.includes('-01')) {
+        date = new Date(dateString);
+      } else {
+        date = new Date(dateString + '-01');
+      }
+      
+      return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+    } catch (error) {
+      return dateString;
+    }
+  };
+
+  const fetchEligibility = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${baseurl}/discount/eligibility/${customerId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setEligibility(data);
+        // Notify parent component about discount update
+        if (onDiscountUpdate) {
+          onDiscountUpdate(data.nextMonthDiscount);
+        }
+      } else {
+        setError('Failed to fetch eligibility data');
+      }
+    } catch (err) {
+      setError('Error fetching eligibility data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Check eligibility after invoice amount changes
+  useEffect(() => {
+    if (customerId && invoiceAmount > 0) {
+      checkEligibilityWithInvoice();
+    }
+  }, [invoiceAmount]);
+
+  const checkEligibilityWithInvoice = async () => {
+    try {
+      const response = await fetch(`${baseurl}/discount/check-invoice-eligibility`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId,
+          invoiceAmount
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setEligibility(prev => ({
+          ...prev,
+          ...data,
+          currentSales: data.currentSales,
+          isTargetAchieved: data.isEligible,
+          nextMonthDiscount: data.nextMonthDiscount
+        }));
+        
+        if (onDiscountUpdate) {
+          onDiscountUpdate(data.nextMonthDiscount);
+        }
+      }
+    } catch (err) {
+      console.error('Error checking eligibility with invoice:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (customerId) {
+      fetchEligibility();
+    }
+  }, [customerId]);
+
+  if (loading) return (
+    <Card className="mb-3 border-primary">
+      <Card.Body className="text-center py-3">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <p className="mt-2 mb-0">Loading target status...</p>
+      </Card.Body>
+    </Card>
+  );
+  
+  if (error) return (
+    <Alert variant="danger" className="py-2">
+      <FaInfoCircle className="me-2" />
+      {error}
+    </Alert>
+  );
+  
+  if (!eligibility) return null;
+
+  return (
+    <>
+      <Card className="mb-3 border-primary">
+        <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center py-2">
+          <strong>
+            <FaCrosshairs className="me-2" />
+            Retailer Target Status - {customerName}
+          </strong>
+          <div>
+            <Button 
+              variant="light" 
+              size="sm" 
+              className="me-2"
+              onClick={() => setShowDetails(true)}
+            >
+              Details
+            </Button>
+            <Button variant="light" size="sm" onClick={fetchEligibility}>
+              Refresh
+            </Button>
+          </div>
+        </Card.Header>
+        <Card.Body className="p-3">
+          <Row className="align-items-center">
+            <Col md={8}>
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <span className="fw-bold">Current Month: {formatMonthDisplay(eligibility.currentMonth)}</span>
+                <Badge bg={eligibility.isTargetAchieved ? "success" : "secondary"}>
+                  {eligibility.isTargetAchieved ? "Target Achieved 🎉" : "In Progress"}
+                </Badge>
+              </div>
+              
+              <ProgressBar 
+                now={eligibility.progressPercentage || 0} 
+                variant={eligibility.isTargetAchieved ? "success" : "primary"}
+                className="mb-2"
+                style={{ height: '20px' }}
+              >
+                <ProgressBar 
+                  now={eligibility.progressPercentage || 0} 
+                  label={`${Math.round(eligibility.progressPercentage || 0)}%`}
+                />
+              </ProgressBar>
+              
+              <div className="d-flex justify-content-between text-sm">
+                <small>₹0</small>
+                <small className="fw-bold">Target: ₹{eligibility.target?.toLocaleString() || '0'}</small>
+                <small>₹{eligibility.target?.toLocaleString() || '0'}</small>
+              </div>
+            </Col>
+            
+            <Col md={4} className="text-center border-start">
+              <div className="mb-2">
+                <FaRupeeSign className="text-success" />
+                <strong className="ms-1 fs-5">₹{eligibility.currentSales?.toLocaleString() || '0'}</strong>
+                <div className="text-muted small">Sales Achieved</div>
+              </div>
+              
+              <div className="mb-2">
+                <Badge bg="info" className="fs-6">
+                  {eligibility.currentDiscount || 0}% Current
+                </Badge>
+                <div className="text-muted small">Current Discount</div>
+              </div>
+              
+              <div>
+                <Badge bg={eligibility.nextMonthDiscount > 0 ? "success" : "secondary"} className="fs-6">
+                  {eligibility.nextMonthDiscount || 0}% Next Month
+                </Badge>
+                <div className="text-muted small">Next Month Discount</div>
+              </div>
+            </Col>
+          </Row>
+          
+          {eligibility.isTargetAchieved ? (
+            <Alert variant="success" className="mt-2 mb-0 p-2 d-flex align-items-center">
+              <FaDotCircle className="me-2 fs-5" />
+              <div>
+                <strong>Congratulations!</strong> Target achieved for {formatMonthDisplay(eligibility.currentMonth)}. 
+                <br />
+                <small>You will get <strong>20% discount</strong> from {formatMonthDisplay(eligibility.nextMonth)}</small>
+              </div>
+            </Alert>
+          ) : (
+            <Alert variant="warning" className="mt-2 mb-0 p-2">
+              <strong>Keep going!</strong> Need <strong>₹{eligibility.remainingTarget?.toLocaleString() || '0'}</strong> more to get 20% discount for {formatMonthDisplay(eligibility.nextMonth)}
+            </Alert>
+          )}
+        </Card.Body>
+      </Card>
+
+      {/* Details Modal */}
+      <Modal show={showDetails} onHide={() => setShowDetails(false)} size="lg">
+        <Modal.Header closeButton className="bg-primary text-white">
+          <Modal.Title>
+            <FaBullseye className="me-2" />
+            Target Details - {customerName}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Row>
+            <Col md={6}>
+              <h6>Current Month: {formatMonthDisplay(eligibility.currentMonth)}</h6>
+              <table className="table table-sm">
+                <tbody>
+                  <tr>
+                    <td><strong>Sales Target:</strong></td>
+                    <td className="text-end">₹{eligibility.target?.toLocaleString() || '0'}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Achieved Sales:</strong></td>
+                    <td className="text-end text-success">₹{eligibility.currentSales?.toLocaleString() || '0'}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Remaining Target:</strong></td>
+                    <td className="text-end text-warning">₹{eligibility.remainingTarget?.toLocaleString() || '0'}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Progress:</strong></td>
+                    <td className="text-end">{Math.round(eligibility.progressPercentage || 0)}%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </Col>
+            <Col md={6}>
+              <h6>Next Month: {formatMonthDisplay(eligibility.nextMonth)}</h6>
+              <table className="table table-sm">
+                <tbody>
+                  <tr>
+                    <td><strong>Current Discount:</strong></td>
+                    <td className="text-end">
+                      <Badge bg="info">{eligibility.currentDiscount || 0}%</Badge>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><strong>Next Month Discount:</strong></td>
+                    <td className="text-end">
+                      <Badge bg={eligibility.nextMonthDiscount > 0 ? "success" : "secondary"}>
+                        {eligibility.nextMonthDiscount || 0}%
+                      </Badge>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><strong>Status:</strong></td>
+                    <td className="text-end">
+                      {eligibility.isTargetAchieved ? (
+                        <Badge bg="success">Eligible for 20%</Badge>
+                      ) : (
+                        <Badge bg="warning">Not Eligible</Badge>
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Col>
+          </Row>
+          
+          <div className="mt-3 p-3 bg-light rounded">
+            <h6>How it works:</h6>
+            <ul className="mb-0">
+              <li>Achieve your monthly target to get <strong>20% discount</strong> for the next month</li>
+              <li>Discount is automatically applied from the 1st of next month</li>
+              <li>Check your progress after every sale</li>
+              <li>Target resets every month</li>
+            </ul>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="primary" onClick={() => setShowDetails(false)}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
+  );
+};
 
 const CreateInvoice = ({ user }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -23,7 +314,28 @@ const CreateInvoice = ({ user }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState(null);
   const navigate = useNavigate();
-  const { id } = useParams(); // Get voucher ID from URL if editing
+  const { id } = useParams();
+
+  // Enhanced Discount state with eligible discount support
+  const [discountInfo, setDiscountInfo] = useState({
+    discount: 0,
+    source: 'none',
+    breakdown: {
+      eligibleDiscount: 0,
+      productDiscount: 0,
+      categoryDiscount: 0,
+      companyDiscount: 0,
+      accountDiscount: 0,
+      retailerDiscount: 0
+    },
+    details: {
+      productName: '',
+      categoryId: null,
+      companyId: null,
+      accountId: null,
+      hasEligibleDiscount: false
+    }
+  });
 
   // Load from localStorage on component mount OR fetch existing invoice data if editing
   const [invoiceData, setInvoiceData] = useState(() => {
@@ -101,7 +413,194 @@ const CreateInvoice = ({ user }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
-  // Check if we're in edit mode (has ID parameter)
+  // ==================== ENHANCED DYNAMIC DISCOUNT FUNCTIONS ====================
+
+  const fetchDynamicDiscount = async (productId, accountId) => {
+    if (!productId || !accountId) {
+      console.log('Missing productId or accountId for discount fetch');
+      setDiscountInfo({
+        discount: 0,
+        source: 'none',
+        breakdown: {
+          eligibleDiscount: 0,
+          productDiscount: 0,
+          categoryDiscount: 0,
+          companyDiscount: 0,
+          accountDiscount: 0,
+          retailerDiscount: 0
+        },
+        details: {
+          productName: '',
+          categoryId: null,
+          companyId: null,
+          accountId: null,
+          hasEligibleDiscount: false
+        }
+      });
+      return 0;
+    }
+
+    try {
+      // NEW: First check if retailer has eligible discount for current month
+      const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
+      const eligibleResponse = await fetch(`${baseurl}/discount/eligibility/${accountId}`);
+      const eligibilityData = await eligibleResponse.json();
+      
+      const eligibleDiscount = eligibilityData.nextMonthDiscount || 0;
+      const hasEligibleDiscount = eligibleDiscount > 0;
+
+      // Then get hierarchy discount (eligible discount takes priority)
+      const hierarchyResponse = await fetch(`${baseurl}/discount-hierarchy/${productId}/${accountId}`);
+      
+      if (!hierarchyResponse.ok) {
+        throw new Error('Failed to fetch discount information');
+      }
+      
+      const hierarchyData = await hierarchyResponse.json();
+      
+      if (hierarchyData.success) {
+        // NEW PRIORITY: Eligible discount FIRST, then use hierarchy discount
+        let finalDiscount = 0;
+        let source = 'none';
+        
+        if (hasEligibleDiscount) {
+          finalDiscount = eligibleDiscount;
+          source = 'eligible_discount';
+        } else {
+          finalDiscount = hierarchyData.discount;
+          source = hierarchyData.discountSource;
+        }
+        
+        console.log('Enhanced discount calculation with priority:', {
+          eligibleDiscount,
+          hierarchyDiscount: hierarchyData.discount,
+          finalDiscount,
+          source,
+          hasEligibleDiscount
+        });
+        
+        // Update discount info state
+        setDiscountInfo({
+          discount: finalDiscount,
+          source: source,
+          breakdown: {
+            ...hierarchyData.breakdown,
+            eligibleDiscount: eligibleDiscount,
+            retailerDiscount: hierarchyData.breakdown.accountDiscount
+          },
+          details: {
+            ...hierarchyData.details,
+            hasEligibleDiscount: hasEligibleDiscount
+          }
+        });
+
+        // Show discount source information to user
+        if (finalDiscount > 0) {
+          let sourceMessage = '';
+          if (source === 'eligible_discount') {
+            sourceMessage = `🎯 Target Achievement Reward: ${finalDiscount}% discount applied!`;
+          } else {
+            sourceMessage = `Applied ${finalDiscount}% discount from ${source}`;
+          }
+          
+          setSuccess(sourceMessage);
+          setTimeout(() => setSuccess(false), 4000);
+        }
+        
+        return finalDiscount;
+      } else {
+        throw new Error(hierarchyData.error || 'Failed to fetch discount');
+      }
+    } catch (error) {
+      console.error('Error fetching enhanced dynamic discount:', error);
+      setDiscountInfo({
+        discount: 0,
+        source: 'none',
+        breakdown: {
+          eligibleDiscount: 0,
+          productDiscount: 0,
+          categoryDiscount: 0,
+          companyDiscount: 0,
+          accountDiscount: 0,
+          retailerDiscount: 0
+        },
+        details: {
+          productName: '',
+          categoryId: null,
+          companyId: null,
+          accountId: null,
+          hasEligibleDiscount: false
+        }
+      });
+      return 0;
+    }
+  };
+
+  // Handle retailer discount updates from eligibility component
+  const handleRetailerDiscountUpdate = (newDiscount) => {
+    console.log('Retailer discount updated:', newDiscount);
+    // If we have a product selected, refresh the discount
+    if (itemForm.product_id && selectedSupplierId) {
+      fetchDynamicDiscount(itemForm.product_id, selectedSupplierId);
+    }
+  };
+
+  const handleProductSelection = async (selectedName) => {
+    const selectedProduct = products.find((p) => p.goods_name === selectedName);
+
+    if (selectedProduct) {
+      // Fetch enhanced dynamic discount when product is selected
+      let dynamicDiscount = 0;
+      if (selectedSupplierId) {
+        dynamicDiscount = await fetchDynamicDiscount(selectedProduct.id, selectedSupplierId);
+      }
+
+      setItemForm((prev) => ({
+        ...prev,
+        product: selectedProduct.goods_name,
+        product_id: selectedProduct.id,
+        price: selectedProduct.net_price,
+        gst: parseFloat(selectedProduct.gst_rate) ? selectedProduct.gst_rate.replace("%", "") : 0,
+        description: selectedProduct.description || "",
+        discount: dynamicDiscount // Set the dynamically fetched discount
+      }));
+
+      try {
+        const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
+        const batchData = await res.json();
+        setBatches(batchData);
+        setSelectedBatch("");
+        setSelectedBatchDetails(null);
+      } catch (err) {
+        console.error("Failed to fetch batches:", err);
+        setBatches([]);
+      }
+    }
+  };
+
+  const handleBatchSelection = async (batchNumber) => {
+    setSelectedBatch(batchNumber);
+    const batch = batches.find(b => b.batch_number === batchNumber);
+    setSelectedBatchDetails(batch || null);
+
+    if (batch) {
+      // Fetch enhanced discount when batch is selected
+      let dynamicDiscount = discountInfo.discount;
+      if (itemForm.product_id && selectedSupplierId) {
+        dynamicDiscount = await fetchDynamicDiscount(itemForm.product_id, selectedSupplierId);
+      }
+
+      setItemForm(prev => ({
+        ...prev,
+        batch_id: batch.id,
+        price: batch.selling_price,
+        discount: dynamicDiscount // Update discount even when batch changes
+      }));
+    }
+  };
+
+  // ==================== EXISTING FUNCTIONS (PRESERVED) ====================
+
   useEffect(() => {
     if (id) {
       setIsEditMode(true);
@@ -112,7 +611,6 @@ const CreateInvoice = ({ user }) => {
     }
   }, [id]);
 
-  // Fetch existing invoice data for editing
   const fetchInvoiceDataForEdit = async (voucherId) => {
     try {
       setLoading(true);
@@ -133,7 +631,6 @@ const CreateInvoice = ({ user }) => {
         setSelectedSupplierId(apiData.PartyID);
         setSelected(true);
         
-        // Set the retailer name in the search input
         const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
         if (supplierAccount) {
           setInputName(supplierAccount.business_name);
@@ -153,7 +650,6 @@ const CreateInvoice = ({ user }) => {
     }
   };
 
-  // Transform API data to form format
   const transformApiDataToFormFormat = (apiData) => {
     console.log('Transforming API data for form:', apiData);
     
@@ -170,7 +666,6 @@ const CreateInvoice = ({ user }) => {
       console.error('Error parsing batch details:', error);
     }
 
-    // Transform items for form display
     const items = batchDetails.map((batch, index) => {
       const quantity = parseFloat(batch.quantity) || 0;
       const price = parseFloat(batch.price) || 0;
@@ -178,7 +673,6 @@ const CreateInvoice = ({ user }) => {
       const gst = parseFloat(batch.gst) || 0;
       const cess = parseFloat(batch.cess) || 0;
       
-      // Calculate item total
       const subtotal = quantity * price;
       const discountAmount = subtotal * (discount / 100);
       const amountAfterDiscount = subtotal - discountAmount;
@@ -201,7 +695,13 @@ const CreateInvoice = ({ user }) => {
         total: total.toFixed(2),
         batch: batch.batch || '',
         batch_id: batch.batch_id || '',
-        batchDetails: batch.batchDetails || null
+        batchDetails: batch.batchDetails || null,
+        // Add detailed breakdown
+        subtotal: subtotal.toFixed(2),
+        discountAmount: discountAmount.toFixed(2),
+        taxableAmount: amountAfterDiscount.toFixed(2),
+        gstAmount: gstAmount.toFixed(2),
+        cessAmount: cessAmount.toFixed(2)
       };
     }) || [];
 
@@ -339,7 +839,6 @@ const CreateInvoice = ({ user }) => {
     }
   };
 
-  // Check if states are same for GST calculation
   const isSameState = () => {
     const companyState = invoiceData.companyInfo.state;
     const supplierState = invoiceData.supplierInfo.state;
@@ -351,14 +850,12 @@ const CreateInvoice = ({ user }) => {
     return companyState.toLowerCase() === supplierState.toLowerCase();
   };
 
-  // Save to localStorage whenever invoiceData changes
   useEffect(() => {
     if (hasFetchedInvoiceNumber) {
       localStorage.setItem('draftInvoice', JSON.stringify(invoiceData));
     }
   }, [invoiceData, hasFetchedInvoiceNumber]);
 
-  // Update tax type when supplier info changes
   useEffect(() => {
     const taxType = isSameState() ? "CGST/SGST" : "IGST";
     setInvoiceData(prev => ({
@@ -371,7 +868,6 @@ const CreateInvoice = ({ user }) => {
     }
   }, [invoiceData.supplierInfo.state, invoiceData.companyInfo.state]);
 
-  // Open PDF preview - ONLY after form is submitted
   const handlePreview = () => {
     if (!isPreviewReady) {
       setError("Please submit the invoice first to generate preview");
@@ -460,6 +956,8 @@ const CreateInvoice = ({ user }) => {
     fetchAccounts();
   }, []);
 
+  // ==================== FIXED: INDIVIDUAL PRODUCT CALCULATION ====================
+
   const calculateItemTotal = () => {
     const quantity = parseFloat(itemForm.quantity) || 0;
     const price = parseFloat(itemForm.price) || 0;
@@ -467,6 +965,7 @@ const CreateInvoice = ({ user }) => {
     const gst = parseFloat(itemForm.gst) || 0;
     const cess = parseFloat(itemForm.cess) || 0;
     
+    // Calculate for individual product
     const subtotal = quantity * price;
     const discountAmount = subtotal * (discount / 100);
     const amountAfterDiscount = subtotal - discountAmount;
@@ -494,7 +993,13 @@ const CreateInvoice = ({ user }) => {
       sgst: sgst.toFixed(2),
       igst: igst.toFixed(2),
       cess: cess,
-      batchDetails: selectedBatchDetails
+      batchDetails: selectedBatchDetails,
+      // Add detailed breakdown
+      subtotal: subtotal.toFixed(2),
+      discountAmount: discountAmount.toFixed(2),
+      taxableAmount: amountAfterDiscount.toFixed(2),
+      gstAmount: gstAmount.toFixed(2),
+      cessAmount: cessAmount.toFixed(2)
     };
   };
 
@@ -507,6 +1012,7 @@ const CreateInvoice = ({ user }) => {
       const gst = parseFloat(item.gst) || 0;
       const cess = parseFloat(item.cess) || 0;
       
+      // Calculate for each individual item
       const subtotal = quantity * price;
       const discountAmount = subtotal * (discount / 100);
       const amountAfterDiscount = subtotal - discountAmount;
@@ -531,7 +1037,13 @@ const CreateInvoice = ({ user }) => {
         total: total.toFixed(2),
         cgst: cgst.toFixed(2),
         sgst: sgst.toFixed(2),
-        igst: igst.toFixed(2)
+        igst: igst.toFixed(2),
+        // Update detailed breakdown
+        subtotal: subtotal.toFixed(2),
+        discountAmount: discountAmount.toFixed(2),
+        taxableAmount: amountAfterDiscount.toFixed(2),
+        gstAmount: gstAmount.toFixed(2),
+        cessAmount: cessAmount.toFixed(2)
       };
     });
     
@@ -561,7 +1073,7 @@ const CreateInvoice = ({ user }) => {
       items: [...prev.items, calculatedItem]
     }));
 
-    // Reset form including IDs
+    // Reset form including IDs and discount info
     setItemForm({
       product: "",
       product_id: "",
@@ -582,6 +1094,27 @@ const CreateInvoice = ({ user }) => {
     setBatches([]);
     setSelectedBatch("");
     setSelectedBatchDetails(null);
+    
+    // Reset discount info
+    setDiscountInfo({
+      discount: 0,
+      source: 'none',
+      breakdown: {
+        eligibleDiscount: 0,
+        productDiscount: 0,
+        categoryDiscount: 0,
+        companyDiscount: 0,
+        accountDiscount: 0,
+        retailerDiscount: 0
+      },
+      details: {
+        productName: '',
+        categoryId: null,
+        companyId: null,
+        accountId: null,
+        hasEligibleDiscount: false
+      }
+    });
   };
 
   const removeItem = (index) => {
@@ -591,43 +1124,22 @@ const CreateInvoice = ({ user }) => {
     }));
   };
 
+  // ==================== FIXED: CALCULATE TOTALS WITH INDIVIDUAL PRODUCT GST ====================
+
   const calculateTotals = () => {
+    // Calculate taxable amount for each product separately
     const taxableAmount = invoiceData.items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      return sum + (subtotal - discountAmount);
+      return sum + (parseFloat(item.taxableAmount) || 0);
     }, 0);
     
+    // Calculate GST for each product separately
     const totalGST = invoiceData.items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      const gst = parseFloat(item.gst) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const gstAmount = amountAfterDiscount * (gst / 100);
-      
-      return sum + gstAmount;
+      return sum + (parseFloat(item.gstAmount) || 0);
     }, 0);
     
+    // Calculate Cess for each product separately
     const totalCess = invoiceData.items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      const cess = parseFloat(item.cess) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const cessAmount = amountAfterDiscount * (cess / 100);
-      
-      return sum + cessAmount;
+      return sum + (parseFloat(item.cessAmount) || 0);
     }, 0);
     
     const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
@@ -709,6 +1221,28 @@ const CreateInvoice = ({ user }) => {
     setSelected(false);
     setSelectedSupplierId(null);
     setIsPreviewReady(false);
+    
+    // Reset discount info
+    setDiscountInfo({
+      discount: 0,
+      source: 'none',
+      breakdown: {
+        eligibleDiscount: 0,
+        productDiscount: 0,
+        categoryDiscount: 0,
+        companyDiscount: 0,
+        accountDiscount: 0,
+        retailerDiscount: 0
+      },
+      details: {
+        productName: '',
+        categoryId: null,
+        companyId: null,
+        accountId: null,
+        hasEligibleDiscount: false
+      }
+    });
+    
     setSuccess("Draft cleared successfully!");
     setTimeout(() => setSuccess(false), 3000);
   };
@@ -737,23 +1271,23 @@ const CreateInvoice = ({ user }) => {
       const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
       console.log('Submitting invoice with number:', finalInvoiceNumber);
 
-      // Calculate GST breakdown for backend
       const sameState = isSameState();
       let totalCGST = 0;
       let totalSGST = 0;
       let totalIGST = 0;
 
-      if (sameState) {
-        totalCGST = parseFloat(invoiceData.totalGST) / 2;
-        totalSGST = parseFloat(invoiceData.totalGST) / 2;
-        totalIGST = 0;
-      } else {
-        totalCGST = 0;
-        totalSGST = 0;
-        totalIGST = parseFloat(invoiceData.totalGST);
-      }
+      // Calculate GST breakdown from individual items
+      invoiceData.items.forEach(item => {
+        const gstAmount = parseFloat(item.gstAmount) || 0;
+        
+        if (sameState) {
+          totalCGST += gstAmount / 2;
+          totalSGST += gstAmount / 2;
+        } else {
+          totalIGST += gstAmount;
+        }
+      });
 
-      // Extract batch details from items with ALL data including discount and GST
       const batchDetails = invoiceData.items.map(item => ({
         product: item.product,
         product_id: item.product_id,
@@ -769,10 +1303,15 @@ const CreateInvoice = ({ user }) => {
         igst: parseFloat(item.igst) || 0,
         cess: parseFloat(item.cess) || 0,
         total: parseFloat(item.total) || 0,
-        batchDetails: item.batchDetails
+        batchDetails: item.batchDetails,
+        // Include detailed breakdown for backend if needed
+        subtotal: parseFloat(item.subtotal) || 0,
+        discountAmount: parseFloat(item.discountAmount) || 0,
+        taxableAmount: parseFloat(item.taxableAmount) || 0,
+        gstAmount: parseFloat(item.gstAmount) || 0,
+        cessAmount: parseFloat(item.cessAmount) || 0
       }));
 
-      // Create payload with IDs and proper totals
       const payload = {
         ...invoiceData,
         invoiceNumber: finalInvoiceNumber,
@@ -787,7 +1326,6 @@ const CreateInvoice = ({ user }) => {
         batch_id: invoiceData.items[0]?.batch_id || null
       };
 
-      // Remove unused fields
       delete payload.companyState;
       delete payload.supplierState;
       delete payload.items;
@@ -796,7 +1334,6 @@ const CreateInvoice = ({ user }) => {
 
       let response;
       if (isEditMode && editingVoucherId) {
-        // Update existing invoice
         response = await fetch(`${baseurl}/transactions/${editingVoucherId}`, {
           method: 'PUT',
           headers: {
@@ -805,7 +1342,6 @@ const CreateInvoice = ({ user }) => {
           body: JSON.stringify(payload)
         });
       } else {
-        // Create new invoice
         response = await fetch(`${baseurl}/transaction`, {
           method: 'POST',
           headers: {
@@ -825,7 +1361,6 @@ const CreateInvoice = ({ user }) => {
       setSuccess(isEditMode ? 'Invoice updated successfully!' : 'Invoice submitted successfully!');
       setIsPreviewReady(true);
 
-      // Store preview data with voucher ID
       const previewData = {
         ...invoiceData,
         invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
@@ -833,7 +1368,6 @@ const CreateInvoice = ({ user }) => {
       };
       localStorage.setItem('previewInvoice', JSON.stringify(previewData));
       
-      // Navigate to preview page with voucher ID
       setTimeout(() => {
         navigate(`/sales/invoice-preview/${responseData.voucherId || editingVoucherId}`);
       }, 2000);
@@ -856,6 +1390,8 @@ const CreateInvoice = ({ user }) => {
     const priceWithGst = priceAfterDiscount + (priceAfterDiscount * gst) / 100;
     return (priceWithGst * quantity).toFixed(2);
   };
+
+  // ==================== RENDER ====================
 
   return (
     <div className="admin-layout">
@@ -961,7 +1497,6 @@ const CreateInvoice = ({ user }) => {
                 </Col>
               </Row>
 
-              {/* Rest of your component remains the same */}
               {/* Supplier Info Section */}
               <div className="bg-white rounded border">
                 <Row className="mb-0">
@@ -981,7 +1516,7 @@ const CreateInvoice = ({ user }) => {
                         <Form.Select
                           className="mb-2 border-primary"
                           value={inputName}
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const selectedName = e.target.value;
                             setInputName(selectedName);
                             const supplier = accounts.find(acc => acc.business_name === selectedName);
@@ -1011,6 +1546,11 @@ const CreateInvoice = ({ user }) => {
                                   state: supplier.shipping_state
                                 }
                               }));
+
+                              // Fetch enhanced discount for current product if one is selected
+                              if (itemForm.product_id) {
+                                await fetchDynamicDiscount(itemForm.product_id, supplier.id);
+                              }
                             }
                           }}
                         >
@@ -1072,158 +1612,172 @@ const CreateInvoice = ({ user }) => {
                 </Row>
               </div>
 
-              {/* Item Section */}
+              {/* Retailer Eligibility Component */}
+              {selectedSupplierId && (
+                <RetailerEligibility 
+                  customerId={selectedSupplierId}
+                  customerName={invoiceData.supplierInfo.businessName}
+                  onDiscountUpdate={handleRetailerDiscountUpdate}
+                  invoiceAmount={parseFloat(invoiceData.grandTotal) || 0}
+                />
+              )}
+
+              {/* Item Section with Enhanced Dynamic Discount */}
               <div className="item-section mb-3 mt-3 bg-white p-3 rounded">
                 <h6 className="text-primary mb-3">Add Items</h6>
-            <Row className="align-items-end">
-  <Col md={2}>
-    <div className="d-flex justify-content-between align-items-center mb-1">
-      <Form.Label className="mb-0 fw-bold">Item</Form.Label>
-      <button
-        type="button"
-        className="btn btn-link p-0 text-primary"
-        style={{ textDecoration: "none", fontSize: "14px" }}
-        onClick={() => navigate("/salesitemspage")}
-      >
-        + New Item
-      </button>
-    </div>
-   
-    <Form.Select
-      name="product"
-      value={itemForm.product}
-      onChange={async (e) => {
-        const selectedName = e.target.value;
-        const selectedProduct = products.find(
-          (p) => p.goods_name === selectedName
-        );
+                
+                {/* Enhanced Discount Information Display */}
+                {discountInfo.discount > 0 && (
+                  <Alert 
+                    variant={discountInfo.source === 'eligible_discount' ? "success" : "info"} 
+                    className="p-2 mb-3"
+                  >
+                    <div className="d-flex align-items-center">
+                      <FaInfoCircle className="me-2" />
+                      <div>
+                        <strong>
+                          {discountInfo.source === 'eligible_discount' ? '🎯 ' : ''}
+                          Auto-applied Discount: {discountInfo.discount}%
+                        </strong>
+                        <small className="d-block text-muted">
+                          Source: <Badge bg={discountInfo.source === 'eligible_discount' ? "success" : "primary"}>
+            {discountInfo.source === 'eligible_discount' ? 'Target Reward' : discountInfo.source}
+                          </Badge>
+                          {discountInfo.source === 'eligible_discount' && (
+                            <span className="ms-2">🎉 Congratulations! You achieved your monthly target!</span>
+                          )}
+                        </small>
+                        {discountInfo.source !== 'eligible_discount' && (
+                          <small className="d-block text-muted mt-1">
+                            Breakdown: Eligible({discountInfo.breakdown.eligibleDiscount}%) | 
+                            Product({discountInfo.breakdown.productDiscount}%) | 
+                            Category({discountInfo.breakdown.categoryDiscount}%) | 
+                            Company({discountInfo.breakdown.companyDiscount}%) |
+                            Retailer({discountInfo.breakdown.retailerDiscount}%)
+                          </small>
+                        )}
+                      </div>
+                    </div>
+                  </Alert>
+                )}
 
-        if (selectedProduct) {
-          setItemForm((prev) => ({
-            ...prev,
-            product: selectedProduct.goods_name,
-            product_id: selectedProduct.id,
-            price: selectedProduct.net_price, // Default price from product
-            gst: parseFloat(selectedProduct.gst_rate)
-              ? selectedProduct.gst_rate.replace("%", "")
-              : 0,
-            description: selectedProduct.description || "",
-          }));
+                <Row className="align-items-end">
+                  <Col md={2}>
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <Form.Label className="mb-0 fw-bold">Item</Form.Label>
+                      <button
+                        type="button"
+                        className="btn btn-link p-0 text-primary"
+                        style={{ textDecoration: "none", fontSize: "14px" }}
+                        onClick={() => navigate("/salesitemspage")}
+                      >
+                        + New Item
+                      </button>
+                    </div>
+                   
+                    <Form.Select
+                      name="product"
+                      value={itemForm.product}
+                      onChange={async (e) => {
+                        const selectedName = e.target.value;
+                        await handleProductSelection(selectedName);
+                      }}
+                      className="border-primary"
+                    >
+                      <option value="">Select Product</option>
+                      {products
+                        .filter((p) => p.group_by === "Salescatalog")
+                        .map((p) => (
+                          <option key={p.id} value={p.goods_name}>
+                            {p.goods_name}
+                          </option>
+                        ))}
+                    </Form.Select>
 
-          try {
-            const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
-            const batchData = await res.json();
-            setBatches(batchData);
-            setSelectedBatch("");
-            setSelectedBatchDetails(null);
-          } catch (err) {
-            console.error("Failed to fetch batches:", err);
-            setBatches([]);
-          }
-        }
-      }}
-      className="border-primary"
-    >
-      <option value="">Select Product</option>
-      {products
-        .filter((p) => p.group_by === "Salescatalog")
-        .map((p) => (
-          <option key={p.id} value={p.goods_name}>
-            {p.goods_name}
-          </option>
-        ))}
-    </Form.Select>
+                    <Form.Select
+                      className="mt-2 border-primary"
+                      name="batch"
+                      value={selectedBatch}
+                      onChange={(e) => handleBatchSelection(e.target.value)}
+                    >
+                      <option value="">Select Batch</option>
+                      {batches.map((batch) => (
+                        <option key={batch.id} value={batch.batch_number}>
+                          {batch.batch_number} (Qty: {batch.quantity} )
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Col>
 
-    <Form.Select
-      className="mt-2 border-primary"
-      name="batch"
-      value={selectedBatch}
-      onChange={(e) => {
-        const batchNumber = e.target.value;
-        setSelectedBatch(batchNumber);
-        const batch = batches.find(b => b.batch_number === batchNumber);
-        setSelectedBatchDetails(batch || null);
+                  <Col md={1}>
+                    <Form.Label className="fw-bold">Qty</Form.Label>
+                    <Form.Control
+                      name="quantity"
+                      type="number"
+                      value={itemForm.quantity}
+                      onChange={handleItemChange}
+                      min="1"
+                      className="border-primary"
+                    />
+                  </Col>
 
-        if (batch) {
-          setItemForm(prev => ({
-            ...prev,
-            batch_id: batch.id,
-            price: batch.selling_price // Use selling_price from batch instead of product net_price
-          }));
-        }
-      }}
-    >
-      <option value="">Select Batch</option>
-      {batches.map((batch) => (
-        <option key={batch.id} value={batch.batch_number}>
-          {batch.batch_number} (Qty: {batch.quantity} )
-        </option>
-      ))}
-    </Form.Select>
-  </Col>
+                  <Col md={2}>
+                    <Form.Label className="fw-bold">Price (₹)</Form.Label>
+                    <Form.Control
+                      name="price"
+                      type="number"
+                      value={itemForm.price}
+                      readOnly
+                      className="border-primary bg-light"
+                    />
+                  </Col>
 
-  <Col md={1}>
-    <Form.Label className="fw-bold">Qty</Form.Label>
-    <Form.Control
-      name="quantity"
-      type="number"
-      value={itemForm.quantity}
-      onChange={handleItemChange}
-      min="1"
-      className="border-primary"
-    />
-  </Col>
+                  <Col md={2}>
+                    <Form.Label className="fw-bold">Discount (%)</Form.Label>
+                    <Form.Control
+                      name="discount"
+                      type="number"
+                      value={itemForm.discount}
+                      onChange={handleItemChange}
+                      min="0"
+                      max="100"
+                      className="border-primary"
+                      title="Auto-calculated discount. You can manually override if needed."
+                    />
+                    {discountInfo.discount > 0 && (
+                      <small className="text-muted">
+                        Auto-applied: {discountInfo.discount}%
+                        {discountInfo.source === 'eligible_discount' && ' (Target Reward)'}
+                      </small>
+                    )}
+                  </Col>
 
-  <Col md={2}>
-    <Form.Label className="fw-bold">Price (₹)</Form.Label>
-    <Form.Control
-      name="price"
-      type="number"
-      value={itemForm.price}
-      readOnly
-      className="border-primary bg-light"
-    />
-  </Col>
+                  <Col md={2}>
+                    <Form.Label className="fw-bold">GST (%)</Form.Label>
+                    <Form.Control
+                      name="gst"
+                      type="number"
+                      value={itemForm.gst}
+                      readOnly
+                      className="border-primary bg-light"
+                    />
+                  </Col>
 
-  <Col md={2}>
-    <Form.Label className="fw-bold">Discount (%)</Form.Label>
-    <Form.Control
-      name="discount"
-      type="number"
-      value={itemForm.discount}
-      onChange={handleItemChange}
-      min="0"
-      max="100"
-      className="border-primary"
-    />
-  </Col>
-
-  <Col md={2}>
-    <Form.Label className="fw-bold">GST (%)</Form.Label>
-    <Form.Control
-      name="gst"
-      type="number"
-      value={itemForm.gst}
-      readOnly
-      className="border-primary bg-light"
-    />
-  </Col>
-
-  <Col md={2}>
-    <Form.Label className="fw-bold">Total Price (₹)</Form.Label>
-    <Form.Control
-      type="text"
-      value={calculateTotalPrice()}
-      readOnly
-      className="border-primary bg-light"
-    />
-  </Col>
-  <Col md={1}>
-    <Button variant="success" onClick={addItem} className="w-100">
-      Add
-    </Button>
-  </Col>
-</Row>
+                  <Col md={2}>
+                    <Form.Label className="fw-bold">Total Price (₹)</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={calculateTotalPrice()}
+                      readOnly
+                      className="border-primary bg-light"
+                    />
+                  </Col>
+                  <Col md={1}>
+                    <Button variant="success" onClick={addItem} className="w-100">
+                      Add
+                    </Button>
+                  </Col>
+                </Row>
                 <Row className="mt-2">
                   <Col>
                     <Form.Control
@@ -1238,78 +1792,73 @@ const CreateInvoice = ({ user }) => {
                 </Row>
               </div>
 
-              {/* Items Table */}
+              {/* Items Table with Detailed Breakdown */}
               <div className="bg-white p-3 rounded">
-                <h6 className="text-primary mb-3">Items List</h6>
-                <Table bordered responsive size="sm" className="mb-3">
-                  <thead className="table-dark">
-                    <tr>
-                      <th>PRODUCT</th>
-                      <th>DESCRIPTION</th>
-                      <th>QTY</th>
-                      <th>PRICE</th>
-                      <th>DISCOUNT</th>
-                      <th>GST</th>
-                      <th>CGST</th>
-                      <th>SGST</th>
-                      <th>IGST</th>
-                      <th>CESS</th>
-                      <th>TOTAL</th>
-                      <th>BATCH</th>
-                      <th>BATCH DETAILS</th>
-                      <th>ACTION</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoiceData.items.length === 0 ? (
-                      <tr>
-                        <td colSpan={14} className="text-center text-muted py-3">
-                          No items added. Please add items using the form above.
-                        </td>
-                      </tr>
-                    ) : (
-                      invoiceData.items.map((item, index) => (
-                        <tr key={index}>
-                          <td>{item.product}</td>
-                          <td>{item.description}</td>
-                          <td className="text-center">{item.quantity}</td>
-                          <td className="text-end">₹{item.price}</td>
-                          <td className="text-center">{item.discount}%</td>
-                          <td className="text-center">{item.gst}%</td>
-                          <td className="text-center">{item.cgst}%</td>
-                          <td className="text-center">{item.sgst}%</td>
-                          <td className="text-center">{item.igst}%</td>
-                          <td className="text-center">{item.cess}</td>
-                          <td className="text-end fw-bold">₹{item.total}</td>
-                          <td>{item.batch}</td>
-                          <td>
-                            {item.batchDetails && (
-                             <small>
-  MFG: {item.batchDetails.mfg_date 
-    ? new Date(item.batchDetails.mfg_date).toLocaleDateString('en-GB') 
-    : item.batchDetails.manufacturing_date 
-      ? new Date(item.batchDetails.manufacturing_date).toLocaleDateString('en-GB') 
-      : ''}<br/>
-
-  EXP: {item.batchDetails.exp_date 
-    ? new Date(item.batchDetails.exp_date).toLocaleDateString('en-GB') 
-    : item.batchDetails.expiry_date 
-      ? new Date(item.batchDetails.expiry_date).toLocaleDateString('en-GB') 
-      : ''}
-</small>
-
-                            )}
-                          </td>
-                          <td className="text-center">
-                            <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
-                              <FaTrash />
-                            </Button>
-                          </td>
+                {invoiceData.items.length > 0 && (
+                  <>
+                    <h6 className="text-primary mt-4 mb-3">Items Summary</h6>
+                    <Table bordered responsive size="sm" className="mb-3">
+                      <thead className="table-dark">
+                        <tr>
+                          <th>PRODUCT</th>
+                          <th>QTY</th>
+                          <th>PRICE</th>
+                          <th>DISCOUNT</th>
+                          <th>TAXABLE AMT</th>
+                          <th>GST AMT</th>
+                          <th>TOTAL</th>
+                          <th>BATCH</th>
+                          <th>ACTION</th>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </Table>
+                      </thead>
+                      <tbody>
+                        {invoiceData.items.map((item, index) => (
+                          <tr key={index}>
+                            <td>
+                              <div>
+                                <strong>{item.product}</strong>
+                                <br />
+                                <small className="text-muted">{item.description}</small>
+                              </div>
+                            </td>
+                            <td className="text-center">{item.quantity}</td>
+                            <td className="text-end">₹{item.price}</td>
+                            <td className="text-center">
+                              {item.discount}%<br />
+                              <small className="text-danger">(-₹{item.discountAmount})</small>
+                            </td>
+                            <td className="text-end text-success">
+                              <strong>₹{item.taxableAmount}</strong>
+                            </td>
+                            <td className="text-end text-primary">
+                              <strong>₹{item.gstAmount}</strong>
+                              <br />
+                              <small>
+                                {item.cgst > 0 && `CGST: ${item.cgst}%`}
+                                {item.sgst > 0 && ` SGST: ${item.sgst}%`}
+                                {item.igst > 0 && ` IGST: ${item.igst}%`}
+                              </small>
+                            </td>
+                            <td className="text-end fw-bold">₹{item.total}</td>
+                            <td>{item.batch}</td>
+                            <td className="text-center">
+                              <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
+                                <FaTrash />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </>
+                )}
+
+                {invoiceData.items.length === 0 && (
+                  <div className="text-center text-muted py-4">
+                    <FaInfoCircle size={48} className="mb-2" />
+                    <p>No items added. Please add items using the form above.</p>
+                  </div>
+                )}
               </div>
 
               {/* Totals and Notes Section */}
@@ -1331,42 +1880,57 @@ const CreateInvoice = ({ user }) => {
 
                 <Col md={5}>
                   <h6 className="text-primary mb-3">Amount Summary</h6>
-                  <Row>
-                    <Col md={6} className="d-flex flex-column align-items-start">
-                      <div className="mb-2 fw-bold">Taxable Amount</div>
-                      <div className="mb-2 fw-bold">Total GST</div>
-                      <div className="mb-2 fw-bold">Total Cess</div>
-                      <div className="mb-2 fw-bold">Additional Charges</div>
-                      <div className="mb-2 fw-bold text-success">Grand Total</div>
-                    </Col>
+                  <Card className="border-primary">
+                    <Card.Body>
+                      <Row>
+                        <Col md={6} className="d-flex flex-column align-items-start">
+                          <div className="mb-2 fw-bold">Taxable Amount</div>
+                          <div className="mb-2 fw-bold">Total GST</div>
+                          <div className="mb-2 fw-bold">Total Cess</div>
+                          <div className="mb-2 fw-bold">Additional Charges</div>
+                          <div className="mb-2 fw-bold text-success">Grand Total</div>
+                        </Col>
 
-                    <Col md={6} className="d-flex flex-column align-items-end">
-                      <div className="mb-2">₹{invoiceData.taxableAmount}</div>
-                      <div className="mb-2">₹{invoiceData.totalGST}</div>
-                      <div className="mb-2">₹{invoiceData.totalCess}</div>
+                        <Col md={6} className="d-flex flex-column align-items-end">
+                          <div className="mb-2">₹{invoiceData.taxableAmount}</div>
+                          <div className="mb-2">₹{invoiceData.totalGST}</div>
+                          <div className="mb-2">₹{invoiceData.totalCess}</div>
 
-                      <Form.Select
-                        className="mb-2 border-primary"
-                        style={{ width: "100%" }}
-                        value={invoiceData.additionalCharge || ""}
-                        onChange={(e) => {
-                          handleInputChange(e);
-                          setInvoiceData(prev => ({
-                            ...prev,
-                            additionalChargeAmount: e.target.value ? 100 : 0
-                          }));
-                        }}
-                        name="additionalCharge"
-                      >
-                        <option value="">Select Additional Charges</option>
-                        <option value="Packing">Packing Charges</option>
-                        <option value="Transport">Transport Charges</option>
-                        <option value="Service">Service Charges</option>
-                      </Form.Select>
+                          <Form.Select
+                            className="mb-2 border-primary"
+                            style={{ width: "100%" }}
+                            value={invoiceData.additionalCharge || ""}
+                            onChange={(e) => {
+                              handleInputChange(e);
+                              setInvoiceData(prev => ({
+                                ...prev,
+                                additionalChargeAmount: e.target.value ? 100 : 0
+                              }));
+                            }}
+                            name="additionalCharge"
+                          >
+                            <option value="">Select Additional Charges</option>
+                            <option value="Packing">Packing Charges</option>
+                            <option value="Transport">Transport Charges</option>
+                            <option value="Service">Service Charges</option>
+                          </Form.Select>
 
-                      <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
-                    </Col>
-                  </Row>
+                          <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
+                        </Col>
+                      </Row>
+                      
+                      {/* Breakdown Summary */}
+                      <hr />
+                      <div className="mt-2">
+                        <small className="text-muted">
+                          <strong>Breakdown:</strong> {invoiceData.items.length} item(s) | 
+                          Taxable: ₹{invoiceData.taxableAmount} | 
+                          GST: ₹{invoiceData.totalGST} | 
+                          Total: ₹{invoiceData.grandTotal}
+                        </small>
+                      </div>
+                    </Card.Body>
+                  </Card>
                 </Col>
               </Row>
 
