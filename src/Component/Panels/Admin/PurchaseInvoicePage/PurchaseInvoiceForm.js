@@ -3,7 +3,7 @@ import { Container, Row, Col, Form, Button, Table, Alert } from 'react-bootstrap
 import './PurchaseInvoice.css';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
-import { FaEdit, FaTrash, FaEye } from "react-icons/fa";
+import { FaEdit, FaTrash, FaEye, FaTimes } from "react-icons/fa";
 import { baseurl } from '../../../BaseURL/BaseURL';
 import { useNavigate } from "react-router-dom";
 
@@ -18,6 +18,7 @@ const CreateProductInvoice = ({ user }) => {
   const [products, setProducts] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [nextInvoiceNumber, setNextInvoiceNumber] = useState("PINV001");
+  const [editingIndex, setEditingIndex] = useState(null); // Track which item is being edited
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const [hasFetchedInvoiceNumber, setHasFetchedInvoiceNumber] = useState(false);
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ const CreateProductInvoice = ({ user }) => {
       return parsedData;
     }
     return {
-      invoiceNumber: "PINV001",
+      invoiceNumber: "", // Changed from "PINV001" to empty string
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
@@ -78,6 +79,7 @@ const CreateProductInvoice = ({ user }) => {
 
   const [itemForm, setItemForm] = useState({
     product: "",
+    product_id: null,
     description: "",
     quantity: 1,
     price: 0,
@@ -96,102 +98,16 @@ const CreateProductInvoice = ({ user }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
-  // Fetch next invoice number on component mount
-  useEffect(() => {
-    fetchNextInvoiceNumber();
-  }, []);
-
-  const fetchNextInvoiceNumber = async () => {
-    try {
-      console.log('Fetching next purchase invoice number...');
-      const response = await fetch(`${baseurl}/next-purchase-invoice-number`);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Received next purchase invoice number:', data.nextInvoiceNumber);
-        setNextInvoiceNumber(data.nextInvoiceNumber);
-        
-        setInvoiceData(prev => ({
-          ...prev,
-          invoiceNumber: data.nextInvoiceNumber
-        }));
-        
-        setHasFetchedInvoiceNumber(true);
-        
-        const currentDraft = localStorage.getItem('draftPurchaseInvoice');
-        if (currentDraft) {
-          const draftData = JSON.parse(currentDraft);
-          draftData.invoiceNumber = data.nextInvoiceNumber;
-          localStorage.setItem('draftPurchaseInvoice', JSON.stringify(draftData));
-        }
-      } else {
-        console.error('Failed to fetch next purchase invoice number');
-        generateFallbackInvoiceNumber();
-      }
-    } catch (err) {
-      console.error('Error fetching next purchase invoice number:', err);
-      generateFallbackInvoiceNumber();
-    }
-  };
-
-  const generateFallbackInvoiceNumber = async () => {
-    try {
-      const response = await fetch(`${baseurl}/last-purchase-invoice`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.lastInvoiceNumber) {
-          const lastNumber = data.lastInvoiceNumber;
-          const numberMatch = lastNumber.match(/PINV(\d+)/);
-          if (numberMatch) {
-            const nextNum = parseInt(numberMatch[1]) + 1;
-            const fallbackInvoiceNumber = `PINV${nextNum.toString().padStart(3, '0')}`;
-            setNextInvoiceNumber(fallbackInvoiceNumber);
-            setInvoiceData(prev => ({
-              ...prev,
-              invoiceNumber: fallbackInvoiceNumber
-            }));
-            setHasFetchedInvoiceNumber(true);
-            return;
-          }
-        }
-      }
-      
-      const currentDraft = localStorage.getItem('draftPurchaseInvoice');
-      if (currentDraft) {
-        const draftData = JSON.parse(currentDraft);
-        if (draftData.invoiceNumber && draftData.invoiceNumber !== 'PINV001') {
-          setNextInvoiceNumber(draftData.invoiceNumber);
-          setHasFetchedInvoiceNumber(true);
-          return;
-        }
-      }
-      
-      setNextInvoiceNumber('PINV001');
-      setInvoiceData(prev => ({
-        ...prev,
-        invoiceNumber: 'PINV001'
-      }));
-      setHasFetchedInvoiceNumber(true);
-      
-    } catch (err) {
-      console.error('Error in fallback purchase invoice number generation:', err);
-      setNextInvoiceNumber('PINV001');
-      setInvoiceData(prev => ({
-        ...prev,
-        invoiceNumber: 'PINV001'
-      }));
-      setHasFetchedInvoiceNumber(true);
-    }
-  };
 
   // Check if states are same for GST calculation
   const isSameState = () => {
     const companyState = invoiceData.companyInfo.state;
     const supplierState = invoiceData.supplierInfo.state;
-    
+
     if (!companyState || !supplierState) {
       return true;
     }
-    
+
     return companyState.toLowerCase() === supplierState.toLowerCase();
   };
 
@@ -209,7 +125,7 @@ const CreateProductInvoice = ({ user }) => {
       ...prev,
       taxType: taxType
     }));
-    
+
     if (invoiceData.items.length > 0) {
       recalculateAllItems();
     }
@@ -227,9 +143,9 @@ const CreateProductInvoice = ({ user }) => {
       ...invoiceData,
       invoiceNumber: invoiceData.invoiceNumber || nextInvoiceNumber
     };
-    
+
     localStorage.setItem('previewPurchaseInvoice', JSON.stringify(previewData));
-    
+
     navigate("/purchase/invoice-preview");
   };
 
@@ -285,23 +201,123 @@ const CreateProductInvoice = ({ user }) => {
     fetchAccounts();
   }, []);
 
+
+const editItem = async (index) => {
+  const itemToEdit = invoiceData.items[index];
+  
+  // Set the form data
+  setItemForm({
+    ...itemToEdit,
+    product: itemToEdit.product,
+    product_id: itemToEdit.product_id,
+    batch: itemToEdit.batch,
+    batchDetails: itemToEdit.batchDetails
+  });
+  
+  setSelectedBatch(itemToEdit.batch || "");
+  setSelectedBatchDetails(itemToEdit.batchDetails || null);
+  setEditingIndex(index);
+
+  // Fetch batches for the product being edited
+  if (itemToEdit.product_id) {
+    try {
+      const res = await fetch(`${baseurl}/products/${itemToEdit.product_id}/batches`);
+      if (res.ok) {
+        const batchData = await res.json();
+        setBatches(batchData);
+      } else {
+        console.error("Failed to fetch batches for editing");
+        setBatches([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch batches for editing:", err);
+      setBatches([]);
+    }
+  } else {
+    setBatches([]);
+  }
+};
+
+const updateItem = () => {
+  if (editingIndex === null) return;
+
+  const calculatedItem = {
+    ...calculateItemTotal(),
+    batch: selectedBatch,
+    batchDetails: selectedBatchDetails,
+    product_id: itemForm.product_id
+  };
+
+  setInvoiceData(prev => ({
+    ...prev,
+    items: prev.items.map((item, index) => 
+      index === editingIndex ? calculatedItem : item
+    )
+  }));
+
+  // Reset form and editing state
+  setItemForm({
+    product: "",
+    product_id: null,
+    description: "",
+    quantity: 1,
+    price: 0,
+    discount: 0,
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0,
+    total: 0,
+    batch: "",
+    batchDetails: null
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+  setEditingIndex(null);
+};
+
+const cancelEdit = () => {
+  setItemForm({
+    product: "",
+    product_id: null,
+    description: "",
+    quantity: 1,
+    price: 0,
+    discount: 0,
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0,
+    total: 0,
+    batch: "",
+    batchDetails: null
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+  setEditingIndex(null);
+};
+
   const calculateItemTotal = () => {
     const quantity = parseFloat(itemForm.quantity) || 0;
     const price = parseFloat(itemForm.price) || 0;
     const discount = parseFloat(itemForm.discount) || 0;
     const gst = parseFloat(itemForm.gst) || 0;
     const cess = parseFloat(itemForm.cess) || 0;
-    
+
     const subtotal = quantity * price;
     const discountAmount = subtotal * (discount / 100);
     const amountAfterDiscount = subtotal - discountAmount;
     const gstAmount = amountAfterDiscount * (gst / 100);
     const cessAmount = amountAfterDiscount * (cess / 100);
     const total = amountAfterDiscount + gstAmount + cessAmount;
-    
+
     const sameState = isSameState();
     let cgst, sgst, igst;
-    
+
     if (sameState) {
       cgst = gst / 2;
       sgst = gst / 2;
@@ -311,7 +327,7 @@ const CreateProductInvoice = ({ user }) => {
       sgst = 0;
       igst = gst;
     }
-    
+
     return {
       ...itemForm,
       total: total.toFixed(2),
@@ -331,16 +347,16 @@ const CreateProductInvoice = ({ user }) => {
       const discount = parseFloat(item.discount) || 0;
       const gst = parseFloat(item.gst) || 0;
       const cess = parseFloat(item.cess) || 0;
-      
+
       const subtotal = quantity * price;
       const discountAmount = subtotal * (discount / 100);
       const amountAfterDiscount = subtotal - discountAmount;
       const gstAmount = amountAfterDiscount * (gst / 100);
       const cessAmount = amountAfterDiscount * (cess / 100);
       const total = amountAfterDiscount + gstAmount + cessAmount;
-      
+
       let cgst, sgst, igst;
-      
+
       if (sameState) {
         cgst = gst / 2;
         sgst = gst / 2;
@@ -350,7 +366,7 @@ const CreateProductInvoice = ({ user }) => {
         sgst = 0;
         igst = gst;
       }
-      
+
       return {
         ...item,
         total: total.toFixed(2),
@@ -359,7 +375,7 @@ const CreateProductInvoice = ({ user }) => {
         igst: igst.toFixed(2)
       };
     });
-    
+
     setInvoiceData(prev => ({
       ...prev,
       items: updatedItems
@@ -376,7 +392,8 @@ const CreateProductInvoice = ({ user }) => {
     const calculatedItem = {
       ...calculateItemTotal(),
       batch: selectedBatch,
-      batchDetails: selectedBatchDetails
+      batchDetails: selectedBatchDetails,
+      product_id: itemForm.product_id
     };
 
     setInvoiceData(prev => ({
@@ -386,6 +403,7 @@ const CreateProductInvoice = ({ user }) => {
 
     setItemForm({
       product: "",
+      product_id: null,
       description: "",
       quantity: 1,
       price: 0,
@@ -416,43 +434,43 @@ const CreateProductInvoice = ({ user }) => {
       const quantity = parseFloat(item.quantity) || 0;
       const price = parseFloat(item.price) || 0;
       const discount = parseFloat(item.discount) || 0;
-      
+
       const subtotal = quantity * price;
       const discountAmount = subtotal * (discount / 100);
       return sum + (subtotal - discountAmount);
     }, 0);
-    
+
     const totalGST = invoiceData.items.reduce((sum, item) => {
       const quantity = parseFloat(item.quantity) || 0;
       const price = parseFloat(item.price) || 0;
       const discount = parseFloat(item.discount) || 0;
       const gst = parseFloat(item.gst) || 0;
-      
+
       const subtotal = quantity * price;
       const discountAmount = subtotal * (discount / 100);
       const amountAfterDiscount = subtotal - discountAmount;
       const gstAmount = amountAfterDiscount * (gst / 100);
-      
+
       return sum + gstAmount;
     }, 0);
-    
+
     const totalCess = invoiceData.items.reduce((sum, item) => {
       const quantity = parseFloat(item.quantity) || 0;
       const price = parseFloat(item.price) || 0;
       const discount = parseFloat(item.discount) || 0;
       const cess = parseFloat(item.cess) || 0;
-      
+
       const subtotal = quantity * price;
       const discountAmount = subtotal * (discount / 100);
       const amountAfterDiscount = subtotal - discountAmount;
       const cessAmount = amountAfterDiscount * (cess / 100);
-      
+
       return sum + cessAmount;
     }, 0);
-    
+
     const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
     const grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
-    
+
     setInvoiceData(prev => ({
       ...prev,
       taxableAmount: taxableAmount.toFixed(2),
@@ -474,77 +492,74 @@ const CreateProductInvoice = ({ user }) => {
     }));
   };
 
- const clearDraft = async () => {
-  localStorage.removeItem('draftPurchaseInvoice');
-  
-  // Fetch the latest invoice number
-  await fetchNextInvoiceNumber();
-  
-  const resetData = {
-    invoiceNumber: nextInvoiceNumber, // This will now be the latest number
-    invoiceDate: new Date().toISOString().split('T')[0],
-    validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    companyInfo: {
-      name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-      address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-      email: "sumukhusr7@gmail.com",
-      phone: "3456549876543",
-      gstin: "29AABCD0503B1ZG",
-      state: "Karnataka"
-    },
-    supplierInfo: {
-      name: "",
-      businessName: "",
-      state: "",
-      gstin: ""
-    },
-    billingAddress: {
-      addressLine1: "",
-      addressLine2: "",
-      city: "",
-      pincode: "",
-      state: ""
-    },
-    shippingAddress: {
-      addressLine1: "",
-      addressLine2: "",
-      city: "",
-      pincode: "",
-      state: ""
-    },
-    items: [],
-    note: "",
-    taxableAmount: 0,
-    totalGST: 0,
-    totalCess: 0,
-    grandTotal: 0,
-    transportDetails: "",
-    additionalCharge: "",
-    additionalChargeAmount: 0,
-    otherDetails: "Authorized Signatory",
-    taxType: "CGST/SGST",
-    batchDetails: []
+  const clearDraft = async () => {
+    localStorage.removeItem('draftPurchaseInvoice');
+
+    const resetData = {
+      invoiceNumber: "", // Changed to empty string
+      invoiceDate: new Date().toISOString().split('T')[0],
+      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      companyInfo: {
+        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+        email: "sumukhusr7@gmail.com",
+        phone: "3456549876543",
+        gstin: "29AABCD0503B1ZG",
+        state: "Karnataka"
+      },
+      supplierInfo: {
+        name: "",
+        businessName: "",
+        state: "",
+        gstin: ""
+      },
+      billingAddress: {
+        addressLine1: "",
+        addressLine2: "",
+        city: "",
+        pincode: "",
+        state: ""
+      },
+      shippingAddress: {
+        addressLine1: "",
+        addressLine2: "",
+        city: "",
+        pincode: "",
+        state: ""
+      },
+      items: [],
+      note: "",
+      taxableAmount: 0,
+      totalGST: 0,
+      totalCess: 0,
+      grandTotal: 0,
+      transportDetails: "",
+      additionalCharge: "",
+      additionalChargeAmount: 0,
+      otherDetails: "Authorized Signatory",
+      taxType: "CGST/SGST",
+      batchDetails: []
+    };
+
+    setInvoiceData(resetData);
+    localStorage.setItem('draftPurchaseInvoice', JSON.stringify(resetData));
+
+    setSelected(false);
+    setSelectedSupplierId(null);
+    setIsPreviewReady(false);
+    setSuccess("Draft cleared successfully!");
+    setTimeout(() => setSuccess(false), 3000);
   };
-  
-  setInvoiceData(resetData);
-  localStorage.setItem('draftPurchaseInvoice', JSON.stringify(resetData));
-  
-  setSelected(false);
-  setSelectedSupplierId(null);
-  setIsPreviewReady(false);
-  setSuccess("Draft cleared successfully!");
-  setTimeout(() => setSuccess(false), 3000);
-};
 
 
-const incrementInvoiceNumber = (currentNumber) => {
-  const numberMatch = currentNumber.match(/PINV(\d+)/);
-  if (numberMatch) {
-    const nextNum = parseInt(numberMatch[1]) + 1;
-    return `PINV${nextNum.toString().padStart(3, '0')}`;
-  }
-  return 'PINV001'; // fallback
-};
+  const incrementInvoiceNumber = (currentNumber) => {
+    const numberMatch = currentNumber.match(/PINV(\d+)/);
+    if (numberMatch) {
+      const nextNum = parseInt(numberMatch[1]) + 1;
+      return `PINV${nextNum.toString().padStart(3, '0')}`;
+    }
+    return 'PINV001'; // fallback
+  };
 
 
 
@@ -553,7 +568,7 @@ const handleSubmit = async (e) => {
   setLoading(true);
   setError(null);
   setSuccess(false);
-  
+
   if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
     setError("Please select a supplier");
     setLoading(false);
@@ -572,6 +587,12 @@ const handleSubmit = async (e) => {
     const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
     console.log('Submitting purchase invoice with number:', finalInvoiceNumber);
 
+    // 🔥 ADD PARTYID AND ACCOUNTID CONSOLE LOGS HERE:
+    console.log('🎯 Frontend - PartyID (selectedSupplierId):', selectedSupplierId);
+    console.log('🏦 Frontend - AccountID (from supplierInfo):', invoiceData.supplierInfo.accountId);
+    console.log('📋 Frontend - Complete Supplier Info:', invoiceData.supplierInfo);
+    console.log('🔍 Frontend - All supplierInfo keys:', Object.keys(invoiceData.supplierInfo));
+
     const sameState = isSameState();
     let totalCGST = 0;
     let totalSGST = 0;
@@ -587,64 +608,163 @@ const handleSubmit = async (e) => {
       totalIGST = parseFloat(invoiceData.totalGST);
     }
 
+    // Enhanced debugging for items
+    console.log('🔍 Debugging Items Array Before Processing:');
+    invoiceData.items.forEach((item, index) => {
+      console.log(`Item ${index + 1}:`, {
+        product: item.product,
+        product_id: item.product_id,
+        batch: item.batch,
+        batch_id: item.batch_id,
+        has_product_id: !!item.product_id,
+        has_batch_id: !!item.batch_id
+      });
+    });
+
+    // Extract batch details from items with ALL data including discount and GST
     const batchDetails = invoiceData.items.map(item => ({
       product: item.product,
+      product_id: item.product_id,
+      description: item.description,
       batch: item.batch,
-      quantity: item.quantity,
-      price: item.price,
+      batch_id: item.batch_id,
+      quantity: parseFloat(item.quantity) || 0,
+      price: parseFloat(item.price) || 0,
+      discount: parseFloat(item.discount) || 0,
+      gst: parseFloat(item.gst) || 0,
+      cgst: parseFloat(item.cgst) || 0,
+      sgst: parseFloat(item.sgst) || 0,
+      igst: parseFloat(item.igst) || 0,
+      cess: parseFloat(item.cess) || 0,
+      total: parseFloat(item.total) || 0,
       batchDetails: item.batchDetails
     }));
 
+    console.log('📦 Processed Batch Details:');
+    batchDetails.forEach((detail, index) => {
+      console.log(`Batch Detail ${index + 1}:`, {
+        product_id: detail.product_id,
+        batch_id: detail.batch_id,
+        product: detail.product,
+        batch: detail.batch
+      });
+    });
+
+    // Get product_id and batch_id for logging
+    const firstItemProductId = invoiceData.items[0]?.product_id || null;
+    const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
+    
+    console.log('📦 Product and Batch IDs Summary:');
+    console.log('First item product_id:', firstItemProductId);
+    console.log('First item batch_id:', firstItemBatchId);
+    console.log('All items product_ids:', invoiceData.items.map(item => item.product_id));
+    console.log('All items batch_ids:', invoiceData.items.map(item => item.batch_id));
+
+    // Validate that we have product_id and batch_id
+    const missingProductIds = invoiceData.items.filter(item => !item.product_id);
+    const missingBatchIds = invoiceData.items.filter(item => !item.batch_id);
+    
+    if (missingProductIds.length > 0) {
+      console.warn('⚠️ Items missing product_id:', missingProductIds);
+    }
+    if (missingBatchIds.length > 0) {
+      console.warn('⚠️ Items missing batch_id:', missingBatchIds);
+    }
+
+    // Create payload with IDs and proper totals
     const payload = {
       ...invoiceData,
       invoiceNumber: finalInvoiceNumber,
       selectedSupplierId: selectedSupplierId,
-      type: 'purchase',
+      TransactionType: 'Purchase', // 🔥 CHANGED from transactionType to TransactionType
       totalCGST: totalCGST.toFixed(2),
       totalSGST: totalSGST.toFixed(2),
       totalIGST: totalIGST.toFixed(2),
       taxType: sameState ? "CGST/SGST" : "IGST",
-      batchDetails: JSON.stringify(batchDetails)
+      batchDetails: batchDetails,
+      // Add primary product and batch IDs for voucher table
+      primaryProductId: firstItemProductId,
+      primaryBatchId: firstItemBatchId,
+      // 🔥 ADD PARTYID AND ACCOUNTID TO PAYLOAD:
+      PartyID: selectedSupplierId,
+      AccountID: invoiceData.supplierInfo.accountId,
+      PartyName: invoiceData.supplierInfo.name,
+      AccountName: invoiceData.supplierInfo.businessName || invoiceData.supplierInfo.name,
+      // 🔥 ADD SHIPPING ADDRESS FIELDS:
+      shippingAddress: invoiceData.shippingAddress?.addressLine1 || '',
+      shippingState: invoiceData.shippingAddress?.state || '',
+      shippingCity: invoiceData.shippingAddress?.city || '',
+      shippingPincode: invoiceData.shippingAddress?.pincode || '',
+      // 🔥 ADD BILLING ADDRESS FIELDS:
+      billingAddress: invoiceData.billingAddress?.addressLine1 || '',
+      billingState: invoiceData.billingAddress?.state || '',
+      billingCity: invoiceData.billingAddress?.city || '',
+      billingPincode: invoiceData.billingAddress?.pincode || '',
+      // 🔥 ADD PAYMENT TERMS AND OTHER FIELDS:
+      PaymentTerms: invoiceData.PaymentTerms || "Immediate",
+      Freight: parseFloat(invoiceData.Freight) || 0,
+      BillSundryAmount: parseFloat(invoiceData.BillSundryAmount) || 0,
+      transportDetails: invoiceData.transportDetails || '',
+      note: invoiceData.note || ''
     };
 
+    // Remove unused fields
     delete payload.companyState;
     delete payload.supplierState;
+    delete payload.items;
+
+    // 🔥 LOG THE FINAL PAYLOAD
+    console.log('🚀 Final Purchase Payload with Address Data:', {
+      PartyID: payload.PartyID,
+      AccountID: payload.AccountID,
+      selectedSupplierId: payload.selectedSupplierId,
+      supplierInfo: payload.supplierInfo,
+      shippingAddress: payload.shippingAddress,
+      billingAddress: payload.billingAddress,
+      shippingState: payload.shippingState,
+      billingState: payload.billingState,
+      TransactionType: payload.TransactionType
+    });
+    
+    // Final validation
+    if (!payload.product_id || !payload.batch_id) {
+      console.error('❌ CRITICAL: product_id or batch_id is still undefined in payload!');
+      console.error('Payload structure:', JSON.stringify(payload, null, 2));
+    } else {
+      console.log('✅ SUCCESS: product_id and batch_id are properly set in payload!');
+    }
 
     console.log('Submitting purchase invoice payload with invoice number:', payload.invoiceNumber);
 
-    const response = await fetch(`${baseurl}/purchase-transaction`, {
+    const response = await fetch(`${baseurl}/transaction`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload)
     });
-    
+
     const responseData = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(responseData.error || 'Failed to submit purchase invoice');
     }
-    
+
     // Clear localStorage and set success
     localStorage.removeItem('draftPurchaseInvoice');
     setSuccess('Purchase invoice submitted successfully!');
     setIsPreviewReady(true);
-    
-    // IMPORTANT: Manually increment the invoice number for immediate feedback
-    const newInvoiceNumber = incrementInvoiceNumber(finalInvoiceNumber);
-    setNextInvoiceNumber(newInvoiceNumber);
-    
+
     // Also update invoiceData with the new number
     setInvoiceData(prev => ({
       ...prev,
-      invoiceNumber: newInvoiceNumber
+      // invoiceNumber: newInvoiceNumber
     }));
-    
+
     // Save the new invoice number to localStorage for next time
     const newDraftData = {
       ...invoiceData,
-      invoiceNumber: newInvoiceNumber,
+      // invoiceNumber: newInvoiceNumber,
       items: [],
       taxableAmount: 0,
       totalGST: 0,
@@ -652,31 +772,43 @@ const handleSubmit = async (e) => {
       grandTotal: 0
     };
     localStorage.setItem('draftPurchaseInvoice', JSON.stringify(newDraftData));
-    
+
     const previewData = {
       ...invoiceData,
-      invoiceNumber: finalInvoiceNumber
+      invoiceNumber: finalInvoiceNumber,
+      voucherId: responseData.voucherId
     };
     localStorage.setItem('previewPurchaseInvoice', JSON.stringify(previewData));
-    
+
     setTimeout(() => {
-      navigate("/purchase/invoice-preview");
+      navigate(`/purchase/invoice-preview/${responseData.voucherId}`);
     }, 2000);
-    
+
   } catch (err) {
+    console.error('❌ Error in handleSubmit:', err);
     setError(err.message);
     setTimeout(() => setError(null), 5000);
   } finally {
     setLoading(false);
   }
 };
+    const calculateTotalPrice = () => {
+    const price = parseFloat(itemForm.price) || 0;
+    const gst = parseFloat(itemForm.gst) || 0;
+    const discount = parseFloat(itemForm.discount) || 0;
+    const quantity = parseInt(itemForm.quantity) || 0;
+
+    const priceAfterDiscount = price - (price * discount) / 100;
+    const priceWithGst = priceAfterDiscount + (priceAfterDiscount * gst) / 100;
+    return (priceWithGst * quantity).toFixed(2);
+  };
 
 
   return (
     <div className="admin-layout">
-      <AdminSidebar 
-        isCollapsed={sidebarCollapsed} 
-        setIsCollapsed={setSidebarCollapsed} 
+      <AdminSidebar
+        isCollapsed={sidebarCollapsed}
+        setIsCollapsed={setSidebarCollapsed}
       />
       <div className={`admin-main-content ${sidebarCollapsed ? "collapsed" : ""}`}>
         <AdminHeader
@@ -684,15 +816,15 @@ const handleSubmit = async (e) => {
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           isMobile={window.innerWidth <= 768}
         />
-        
+
         <div className="admin-content-wrapper">
           <Container fluid className="invoice-container">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h3 className="text-primary">Create Purchase Invoice</h3>
               <div>
-                <Button 
-                  variant="info" 
-                  size="sm" 
+                <Button
+                  variant="info"
+                  size="sm"
                   onClick={handlePreview}
                   className="me-2"
                   disabled={!isPreviewReady}
@@ -704,10 +836,10 @@ const handleSubmit = async (e) => {
                 </Button>
               </div>
             </div>
-            
+
             {error && <Alert variant="danger">{error}</Alert>}
             {success && <Alert variant="success">{success}</Alert>}
-            
+
             {/* Tax Type Indicator */}
             {invoiceData.supplierInfo.state && (
               <Alert variant={isSameState() ? "success" : "warning"} className="mb-3">
@@ -719,7 +851,7 @@ const handleSubmit = async (e) => {
                 )}
               </Alert>
             )}
-            
+
             <div className="invoice-box p-3 bg-light rounded">
               <h5 className="section-title text-primary mb-3">Create Purchase Invoice</h5>
 
@@ -737,33 +869,31 @@ const handleSubmit = async (e) => {
                 </Col>
                 <Col md={4}>
                   <Form.Group className="mb-2">
-                    <Form.Control 
-                      name="invoiceNumber" 
-                      value={invoiceData.invoiceNumber || nextInvoiceNumber} 
+                    <Form.Control
+                      name="invoiceNumber"
+                      value={invoiceData.invoiceNumber}
                       onChange={handleInputChange}
                       className="border-primary"
-                      readOnly
+                      placeholder="Enter purchase invoice number"
+                    // Remove readOnly attribute to make it editable
                     />
                     <Form.Label className="fw-bold">Purchase Invoice No</Form.Label>
-                    {!hasFetchedInvoiceNumber && (
-                      <small className="text-muted">Loading invoice number...</small>
-                    )}
                   </Form.Group>
                   <Form.Group className="mb-2">
-                    <Form.Control 
-                      type="date" 
+                    <Form.Control
+                      type="date"
                       name="invoiceDate"
-                      value={invoiceData.invoiceDate} 
+                      value={invoiceData.invoiceDate}
                       onChange={handleInputChange}
                       className="border-primary"
                     />
                     <Form.Label className="fw-bold">Invoice Date</Form.Label>
                   </Form.Group>
                   <Form.Group>
-                    <Form.Control 
-                      type="date" 
+                    <Form.Control
+                      type="date"
                       name="validityDate"
-                      value={invoiceData.validityDate} 
+                      value={invoiceData.validityDate}
                       onChange={handleInputChange}
                       className="border-primary"
                     />
@@ -788,51 +918,51 @@ const handleSubmit = async (e) => {
                             New
                           </Button>
                         </div>
-                       <Form.Select
-  className="mb-2 border-primary"
-  value={inputName}
-  onChange={(e) => {
-    const selectedName = e.target.value;
-    setInputName(selectedName);
-    const supplier = accounts.find(acc => acc.business_name === selectedName);
-    if (supplier) {
-      setSelectedSupplierId(supplier.id);
-      setSelected(true);
-      setInvoiceData(prev => ({
-        ...prev,
-        supplierInfo: {
-          name: supplier.display_name,
-          businessName: supplier.business_name,
-          state: supplier.billing_state,
-          gstin: supplier.gstin
-        },
-        billingAddress: {
-          addressLine1: supplier.billing_address_line1,
-          addressLine2: supplier.billing_address_line2 || "",
-          city: supplier.billing_city,
-          pincode: supplier.billing_pin_code,
-          state: supplier.billing_state
-        },
-        shippingAddress: {
-          addressLine1: supplier.shipping_address_line1,
-          addressLine2: supplier.shipping_address_line2 || "",
-          city: supplier.shipping_city,
-          pincode: supplier.shipping_pin_code,
-          state: supplier.shipping_state
-        }
-      }));
-    }
-  }}
->
-  <option value="">Select Supplier</option> {/* Changed from "Select Customer" */}
-  {accounts
-    .filter(acc => acc.role === "supplier") // ← CHANGED FROM "retailer" TO "supplier"
-    .map(acc => (
-      <option key={acc.id} value={acc.business_name}>
-        {acc.business_name} ({acc.mobile_number})
-      </option>
-    ))}
-</Form.Select>
+                        <Form.Select
+                          className="mb-2 border-primary"
+                          value={inputName}
+                          onChange={(e) => {
+                            const selectedName = e.target.value;
+                            setInputName(selectedName);
+                            const supplier = accounts.find(acc => acc.business_name === selectedName);
+                            if (supplier) {
+                              setSelectedSupplierId(supplier.id);
+                              setSelected(true);
+                              setInvoiceData(prev => ({
+                                ...prev,
+                                supplierInfo: {
+                                  name: supplier.display_name,
+                                  businessName: supplier.business_name,
+                                  state: supplier.billing_state,
+                                  gstin: supplier.gstin
+                                },
+                                billingAddress: {
+                                  addressLine1: supplier.billing_address_line1,
+                                  addressLine2: supplier.billing_address_line2 || "",
+                                  city: supplier.billing_city,
+                                  pincode: supplier.billing_pin_code,
+                                  state: supplier.billing_state
+                                },
+                                shippingAddress: {
+                                  addressLine1: supplier.shipping_address_line1,
+                                  addressLine2: supplier.shipping_address_line2 || "",
+                                  city: supplier.shipping_city,
+                                  pincode: supplier.shipping_pin_code,
+                                  state: supplier.shipping_state
+                                }
+                              }));
+                            }
+                          }}
+                        >
+                          <option value="">Select Supplier</option> {/* Changed from "Select Customer" */}
+                          {accounts
+                            .filter(acc => acc.role === "supplier") // ← CHANGED FROM "retailer" TO "supplier"
+                            .map(acc => (
+                              <option key={acc.id} value={acc.business_name}>
+                                {acc.business_name} ({acc.mobile_number})
+                              </option>
+                            ))}
+                        </Form.Select>
                       </>
                     ) : (
                       <>
@@ -898,70 +1028,124 @@ const handleSubmit = async (e) => {
                         + New Item
                       </button>
                     </div>
-                    <Form.Select
-                      name="product"
-                      value={itemForm.product}
-                      onChange={async (e) => {
-                        const selectedName = e.target.value;
-                        setItemForm((prev) => ({ ...prev, product: selectedName }));
 
-                        const selectedProduct = products.find(
-                          (p) => p.goods_name === selectedName
-                        );
+                  <Form.Select
+  name="product"
+  value={itemForm.product}
+  onChange={async (e) => {
+    const selectedName = e.target.value;
+    const selectedProduct = products.find(
+      (p) => p.goods_name === selectedName
+    );
 
-                        if (selectedProduct) {
-                          setItemForm((prev) => ({
-                            ...prev,
-                            product: selectedProduct.goods_name,
-                            price: selectedProduct.net_price,
-                            gst: parseFloat(selectedProduct.gst_rate)
-                              ? selectedProduct.gst_rate.replace("%", "")
-                              : 0,
-                            description: selectedProduct.description || "",
-                          }));
+    if (selectedProduct) {
+      setItemForm((prev) => ({
+        ...prev,
+        product: selectedProduct.goods_name,
+        product_id: selectedProduct.id,
+        price: selectedProduct.net_price,
+        gst: parseFloat(selectedProduct.gst_rate)
+          ? selectedProduct.gst_rate.replace("%", "")
+          : 0,
+        description: selectedProduct.description || "",
+        batch: "",
+        batch_id: ""
+      }));
 
-                          try {
-                            const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
-                            const batchData = await res.json();
-                            setBatches(batchData);
-                            setSelectedBatch("");
-                            setSelectedBatchDetails(null);
-                          } catch (err) {
-                            console.error("Failed to fetch batches:", err);
-                            setBatches([]);
-                          }
-                        }
-                      }}
-                      className="border-primary"
-                    >
-                      <option value="">Select Product</option>
-                      {products
-                        .filter((p) => p.group_by === "Purchaseditems")
-                        .map((p) => (
-                          <option key={p.id} value={p.goods_name}>
-                            {p.goods_name}
-                          </option>
-                        ))}
-                    </Form.Select>
+      try {
+        const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
+        const batchData = await res.json();
+        setBatches(batchData);
 
-                    <Form.Select
-                      className="mt-2 border-primary"
-                      name="batch"
-                      value={selectedBatch}
-                      onChange={(e) => {
-                        const batchNumber = e.target.value;
-                        setSelectedBatch(batchNumber);
-                        const batch = batches.find(b => b.batch_number === batchNumber);
-                        setSelectedBatchDetails(batch || null);
-                      }}
-                    >
-                      <option value="">Select Batch</option>
-                      {batches.map((batch) => (
-                        <option key={batch.id} value={batch.batch_number}>
-                          {batch.batch_number} (Qty: {batch.quantity})
-                        </option>
-                      ))}
-                    </Form.Select>
+        if (selectedProduct.maintain_batch === 0 && batchData.length > 0) {
+          // Auto-select first batch if maintain_batch is 0
+          const defaultBatch = batchData[0];
+          setSelectedBatch(defaultBatch.batch_number);
+          setSelectedBatchDetails(defaultBatch);
+          setItemForm(prev => ({
+            ...prev,
+            batch: defaultBatch.batch_number,
+            batch_id: defaultBatch.batch_number,
+            price: defaultBatch.selling_price
+          }));
+        } else {
+          // If maintain_batch > 0, let user select batch
+          setSelectedBatch("");
+          setSelectedBatchDetails(null);
+        }
+
+      } catch (err) {
+        console.error("Failed to fetch batches:", err);
+        setBatches([]);
+        setSelectedBatch("");
+        setSelectedBatchDetails(null);
+      }
+    } else {
+      // Reset form if no product selected
+      setItemForm(prev => ({
+        ...prev,
+        product: "",
+        product_id: "",
+        description: "",
+        price: 0,
+        gst: 0,
+        batch: "",
+        batch_id: ""
+      }));
+      setBatches([]);
+      setSelectedBatch("");
+      setSelectedBatchDetails(null);
+    }
+  }}
+  className="border-primary"
+>
+  <option value="">Select Product</option>
+  {products
+    .filter((p) => p.group_by === "Purchaseditems")
+    .map((p) => (
+      <option key={p.id} value={p.goods_name}>
+        {p.goods_name}
+      </option>
+    ))}
+</Form.Select>
+
+{/* Batch Dropdown */}
+{batches.length > 0 && itemForm.maintain_batch !== 0 && (
+  <Form.Select
+    className="mt-2 border-primary"
+    name="batch"
+    value={selectedBatch}
+    onChange={(e) => {
+      const batchNumber = e.target.value;
+      setSelectedBatch(batchNumber);
+      const batch = batches.find(b => b.batch_number === batchNumber);
+      setSelectedBatchDetails(batch || null);
+
+      if (batch) {
+        setItemForm(prev => ({
+          ...prev,
+          batch: batchNumber,
+          batch_id: batch.batch_number,
+          price: batch.selling_price
+        }));
+      } else {
+        setItemForm(prev => ({
+          ...prev,
+          batch: "",
+          batch_id: ""
+        }));
+      }
+    }}
+  >
+    <option value="">Select Batch</option>
+    {batches.map((batch) => (
+      <option key={batch.id} value={batch.batch_number}>
+        {batch.batch_number} (Qty: {batch.quantity})
+      </option>
+    ))}
+  </Form.Select>
+)}
+
                   </Col>
 
                   <Col md={1}>
@@ -1011,11 +1195,32 @@ const handleSubmit = async (e) => {
                     />
                   </Col>
 
-                  <Col md={1}>
-                    <Button variant="success" onClick={addItem} className="w-100">
-                      Add
-                    </Button>
-                  </Col>
+                    <Col md={2}>
+                      <Form.Label className="fw-bold">Total Price (₹)</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={calculateTotalPrice()}
+                        readOnly
+                        className="border-primary bg-light"
+                      />
+                    </Col>
+
+          <Col md={1}>
+  {editingIndex !== null ? (
+    <div className="d-flex">
+      <Button variant="success" onClick={updateItem} className="me-1">
+        Update
+      </Button>
+      <Button variant="secondary" onClick={cancelEdit}>
+        <FaTimes />
+      </Button>
+    </div>
+  ) : (
+    <Button variant="success" onClick={addItem} className="w-100">
+      Add
+    </Button>
+  )}
+</Col>
                 </Row>
 
                 <Row className="mt-2">
@@ -1030,23 +1235,6 @@ const handleSubmit = async (e) => {
                     />
                   </Col>
                 </Row>
-
-                {/* Batch Details Display */}
-                {/* {selectedBatchDetails && (
-                  <Row className="mt-2">
-                    <Col>
-                      <div className="bg-info bg-opacity-10 p-2 rounded border">
-                        <small className="text-muted">Batch Details:</small>
-                        <div className="d-flex justify-content-between">
-                          <span><strong>Batch No:</strong> {selectedBatchDetails.batch_number}</span>
-                          <span><strong>MFG:</strong> {selectedBatchDetails.mfg_date || selectedBatchDetails.manufacturing_date}</span>
-                          <span><strong>EXP:</strong> {selectedBatchDetails.exp_date || selectedBatchDetails.expiry_date}</span>
-                          <span><strong>Available Qty:</strong> {selectedBatchDetails.quantity}</span>
-                        </div>
-                      </div>
-                    </Col>
-                  </Row>
-                )} */}
               </div>
 
               {/* Items Table */}
@@ -1096,16 +1284,25 @@ const handleSubmit = async (e) => {
                           <td>
                             {item.batchDetails && (
                               <small>
-                                MFG: {item.batchDetails.mfg_date || item.batchDetails.manufacturing_date}<br/>
+                                MFG: {item.batchDetails.mfg_date || item.batchDetails.manufacturing_date}<br />
                                 EXP: {item.batchDetails.exp_date || item.batchDetails.expiry_date}
                               </small>
                             )}
                           </td>
-                          <td className="text-center">
-                            <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
-                              <FaTrash />
-                            </Button>
-                          </td>
+                   <td className="text-center ">
+  <Button 
+    variant="warning" 
+    size="sm" 
+    onClick={() => editItem(index)}
+    className="me-1"
+    disabled={editingIndex !== null} // Disable other edit buttons when one is being edited
+  >
+    <FaEdit />
+  </Button>
+  <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
+    <FaTrash />
+  </Button>
+</td>
                         </tr>
                       ))
                     )}
@@ -1175,10 +1372,10 @@ const handleSubmit = async (e) => {
               <Row className="mb-3 bg-white p-3 rounded">
                 <Col md={6}>
                   <h6 className="text-primary">Transportation Details</h6>
-                  <Form.Control 
-                    as="textarea" 
-                    placeholder="Enter transportation details..." 
-                    rows={2} 
+                  <Form.Control
+                    as="textarea"
+                    placeholder="Enter transportation details..."
+                    rows={2}
                     name="transportDetails"
                     value={invoiceData.transportDetails}
                     onChange={handleInputChange}
@@ -1197,16 +1394,16 @@ const handleSubmit = async (e) => {
 
               {/* Action Buttons */}
               <div className="text-center bg-white p-3 rounded">
-                <Button 
-                  variant="primary" 
+                <Button
+                  variant="primary"
                   className="me-3 px-4"
                   onClick={handleSubmit}
                   disabled={loading}
                 >
                   {loading ? 'Submitting...' : 'Submit Purchase Invoice'}
                 </Button>
-                <Button 
-                  variant="info" 
+                <Button
+                  variant="info"
                   className="me-3 px-4"
                   onClick={handlePreview}
                   disabled={!isPreviewReady}

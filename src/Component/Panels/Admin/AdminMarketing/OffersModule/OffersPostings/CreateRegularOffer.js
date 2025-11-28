@@ -2154,6 +2154,7 @@
 
 
 import React, { useState, useEffect } from "react";
+import { baseurl } from "../../../../../BaseURL/BaseURL";
 
 function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -2165,19 +2166,23 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
     description: "",
     image: null,
     category: "",
+    company: "",
     productName: "",
     productId: "",
     offerType: "global"
   });
   const [categories, setCategories] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [companiesLoading, setCompaniesLoading] = useState(false);
   const [productsLoading, setProductsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [removeExistingImage, setRemoveExistingImage] = useState(false);
 
-  const API_BASE = "http://localhost:5000/api";
-  const API_BASE_CAT = "http://localhost:5000";
+  const API_BASE = `${baseurl}/api`;
+  const API_BASE_CAT = `${baseurl}`;
 
   // Function to convert date to YYYY-MM-DD format for HTML date input
   const formatDateForInput = (dateString) => {
@@ -2223,6 +2228,23 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
       console.error('Error fetching categories:', error);
     } finally {
       setCategoriesLoading(false);
+    }
+  };
+
+  const fetchCompanies = async () => {
+    setCompaniesLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_CAT}/companies`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('🏢 Companies loaded:', data);
+      setCompanies(data);
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+    } finally {
+      setCompaniesLoading(false);
     }
   };
 
@@ -2280,6 +2302,7 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
       );
       
       setProducts(productsWithDiscounts);
+      setFilteredProducts(productsWithDiscounts); // Initially show all products
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -2326,6 +2349,18 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
     }
   };
 
+  // Function to filter products by company
+  const filterProductsByCompany = (companyId) => {
+    if (!companyId) {
+      setFilteredProducts(products);
+      return;
+    }
+    
+    const filtered = products.filter(product => product.company_id == companyId);
+    setFilteredProducts(filtered);
+    console.log(`📦 Filtered products for company ${companyId}:`, filtered);
+  };
+
   const createOffer = async (offerData) => {
     const formDataToSend = new FormData();
     
@@ -2347,6 +2382,16 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
       }
     }
     
+    if (offerData.company) {
+      formDataToSend.append('company', offerData.company);
+      
+      // Find and append company name
+      const selectedCompany = companies.find(comp => comp.id == offerData.company);
+      if (selectedCompany) {
+        formDataToSend.append('companyName', selectedCompany.company_name);
+      }
+    }
+    
     if (offerData.productName) {
       formDataToSend.append('productName', offerData.productName);
     }
@@ -2359,7 +2404,10 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
       formDataToSend.append('image', offerData.image);
     }
 
-    console.log('📤 Sending offer data with offerType:', offerData.offerType);
+    console.log('📤 Sending offer data with company:', {
+      companyId: offerData.company,
+      companyName: companies.find(comp => comp.id == offerData.company)?.company_name
+    });
 
     try {
       const response = await fetch(`${API_BASE}/offers`, {
@@ -2406,6 +2454,16 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
       }
     }
     
+    if (offerData.company) {
+      formDataToSend.append('company', offerData.company);
+      
+      // Find and append company name
+      const selectedCompany = companies.find(comp => comp.id == offerData.company);
+      if (selectedCompany) {
+        formDataToSend.append('companyName', selectedCompany.company_name);
+      }
+    }
+    
     if (offerData.productName) {
       formDataToSend.append('productName', offerData.productName);
     }
@@ -2418,7 +2476,10 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
       formDataToSend.append('image', offerData.image);
     }
 
-    console.log('📤 Updating offer data with offerType:', offerData.offerType);
+    console.log('📤 Updating offer data with company:', {
+      companyId: offerData.company,
+      companyName: companies.find(comp => comp.id == offerData.company)?.company_name
+    });
 
     try {
       const response = await fetch(`${API_BASE}/offers/${id}`, {
@@ -2459,6 +2520,7 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
         description: editingOffer.description,
         image: null,
         category: editingOffer.category_id || "",
+        company: editingOffer.company_id || "",
         productName: editingOffer.product_name || "",
         productId: editingOffer.product_id || "",
         offerType: editingOffer.offer_type
@@ -2469,7 +2531,17 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
       if (editingOffer.offer_type === 'category' && editingOffer.category_id) {
         fetchCategories();
       } else if (editingOffer.offer_type === 'product' && editingOffer.product_id) {
-        fetchProducts();
+        fetchCompanies();
+        fetchProducts().then(() => {
+          // After products are loaded, find and set the company for the editing product
+          if (editingOffer.product_id) {
+            const editingProduct = products.find(p => p.id == editingOffer.product_id);
+            if (editingProduct && editingProduct.company_id) {
+              setFormData(prev => ({ ...prev, company: editingProduct.company_id }));
+              filterProductsByCompany(editingProduct.company_id);
+            }
+          }
+        });
       }
     }
   }, [editingOffer]);
@@ -2477,8 +2549,13 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
   useEffect(() => {
     if (formData.offerType === 'category' && categories.length === 0) {
       fetchCategories();
-    } else if (formData.offerType === 'product' && products.length === 0) {
-      fetchProducts();
+    } else if (formData.offerType === 'product') {
+      if (companies.length === 0) {
+        fetchCompanies();
+      }
+      if (products.length === 0) {
+        fetchProducts();
+      }
     }
   }, [formData.offerType]);
 
@@ -2499,6 +2576,7 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
       ...prev, 
       offerType: type,
       category: "",
+      company: "",
       productName: "",
       productId: "",
       discountPercentage: "" // Reset discount when changing type
@@ -2506,8 +2584,13 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
 
     if (type === 'category' && categories.length === 0) {
       fetchCategories();
-    } else if (type === 'product' && products.length === 0) {
-      fetchProducts();
+    } else if (type === 'product') {
+      if (companies.length === 0) {
+        fetchCompanies();
+      }
+      if (products.length === 0) {
+        fetchProducts();
+      }
     }
   };
 
@@ -2518,6 +2601,7 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
     setFormData(prev => ({ 
       ...prev, 
       category: selectedCategoryId,
+      company: "",
       productName: "",
       productId: ""
     }));
@@ -2533,12 +2617,28 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
     }
   };
 
+  const handleCompanyChange = (e) => {
+    const selectedCompanyId = e.target.value;
+    console.log('🏢 Company changed to:', selectedCompanyId);
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      company: selectedCompanyId,
+      productName: "",
+      productId: "",
+      discountPercentage: ""
+    }));
+    
+    // Filter products by selected company
+    filterProductsByCompany(selectedCompanyId);
+  };
+
   const handleProductChange = async (e) => {
     const selectedProductId = e.target.value;
     console.log('🎯 Product changed to:', selectedProductId);
     
     if (selectedProductId) {
-      const selectedProduct = products.find(product => product.id == selectedProductId);
+      const selectedProduct = filteredProducts.find(product => product.id == selectedProductId);
       if (selectedProduct) {
         setFormData(prev => ({ 
           ...prev, 
@@ -2727,40 +2827,68 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
 
         {/* Product Specific Fields */}
         {formData.offerType === 'product' && (
-          <div className="offers-form-group">
-            <label className="offers-form-label">Product *</label>
-            <select
-              name="product"
-              value={formData.productId}
-              onChange={handleProductChange}
-              className="offers-form-select"
-              required
-              disabled={productsLoading}
-            >
-              <option value="">Select Product</option>
-              {productsLoading ? (
-                <option value="" disabled>Loading products...</option>
-              ) : (
-                products.map(product => (
-                  <option key={product.id} value={product.id}>
-                    {product.goods_name} (ID: {product.id})
-                    {/* {product.current_discount_from_history ? 
-                      ` - Current Discount: ${product.current_discount_from_history}%` : 
-                      ' - No discount'
-                    } */}
-                  </option>
-                ))
+        <div className="offers-form-row">
+            <div className="offers-form-group">
+              <label className="offers-form-label">Company *</label>
+              <select
+                name="company"
+                value={formData.company}
+                onChange={handleCompanyChange}
+                className="offers-form-select"
+                required
+                disabled={companiesLoading}
+              >
+                <option value="">Select Company</option>
+                {companiesLoading ? (
+                  <option value="" disabled>Loading companies...</option>
+                ) : (
+                  companies.map(company => (
+                    <option key={company.id} value={company.id}>
+                      {company.company_name}
+                    </option>
+                  ))
+                )}
+              </select>
+              {companiesLoading && (
+                <div className="offers-loading-small">Loading companies...</div>
               )}
-            </select>
-            {productsLoading && (
-              <div className="offers-loading-small">Loading products...</div>
-            )}
-            {formData.productId && (
-              <div className="offers-selected-info">
-                <small>Selected Product: {formData.productName}</small>
-              </div>
-            )}
-          </div>
+            </div>
+
+            <div className="offers-form-group">
+              <label className="offers-form-label">Product *</label>
+              <select
+                name="product"
+                value={formData.productId}
+                onChange={handleProductChange}
+                className="offers-form-select"
+                required
+                disabled={productsLoading || !formData.company}
+              >
+                <option value="">
+                  {!formData.company ? 'Select Company First' : 'Select Product'}
+                </option>
+                {productsLoading ? (
+                  <option value="" disabled>Loading products...</option>
+                ) : filteredProducts.length === 0 ? (
+                  <option value="" disabled>No products found for selected company</option>
+                ) : (
+                  filteredProducts.map(product => (
+                    <option key={product.id} value={product.id}>
+                      {product.goods_name} 
+                    </option>
+                  ))
+                )}
+              </select>
+              {productsLoading && (
+                <div className="offers-loading-small">Loading products...</div>
+              )}
+              {formData.productId && (
+                <div className="offers-selected-info">
+                  <small>Selected Product: {formData.productName}</small>
+                </div>
+              )}
+            </div>
+            </div>
         )}
 
         {/* Validity Period */}
@@ -2818,7 +2946,7 @@ function CreateRegularOffer({ editingOffer, onBack, onSuccess }) {
             <div className="offers-current-image">
               <p>Current Image:</p>
               <img 
-                src={`http://localhost:5000${editingOffer.image_url}`} 
+                src={`${baseurl}${editingOffer.image_url}`} 
                 alt="Current offer" 
                 className="offers-image-preview"
               />

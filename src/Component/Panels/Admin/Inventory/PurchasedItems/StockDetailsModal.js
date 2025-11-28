@@ -53,8 +53,6 @@ const StockDetailsModal = ({ show, onClose, stockData, context = "sales" }) => {
           <div><strong>Price:</strong> ₹{price}</div>
           <div><strong>GST Rate:</strong> {gst}</div>
           <div><strong>Description:</strong> {description}</div>
-          <div><strong>Opening Stock:</strong> {opening_stock}</div>
-          <div><strong>Available Stock:</strong> {balance_stock}</div>
         </div>
 
         <hr />
@@ -72,12 +70,18 @@ const StockDetailsModal = ({ show, onClose, stockData, context = "sales" }) => {
                 <div><strong>Group:</strong> {batch.group_by}</div>
                 <div><strong>MFG Date:</strong> {formatDate(batch.mfg_date)}</div>
                 <div><strong>EXP Date:</strong> {formatDate(batch.exp_date)}</div>
-                <div><strong>Quantity:</strong> {batch.quantity}</div>
-                <div><strong>Cost Price:</strong> {batch.cost_price}</div>
-                <div><strong>Selling Price:</strong> {batch.selling_price}</div>
-                <div><strong>Purchase Price:</strong> {batch.purchase_price}</div>
-                <div><strong>MRP:</strong> {batch.mrp}</div>
-                <div><strong>Batch Price:</strong> {batch.batch_price}</div>
+                {/* <div><strong>Current Quantity:</strong> {batch.quantity}</div> */}
+                
+                <div><strong>Opening Stock:</strong> {batch.opening_stock || "0"}</div>
+                <div><strong>Stock In:</strong> {batch.stock_in || "0"}</div>
+                <div><strong>Stock Out:</strong> {batch.stock_out || "0"}</div>
+                <div><strong>Current Stock:</strong> {batch.current_stock || batch.quantity}</div>
+
+                <div><strong>Cost Price:</strong> ₹{batch.cost_price}</div>
+                <div><strong>Selling Price:</strong> ₹{batch.selling_price}</div>
+                <div><strong>Purchase Price:</strong> ₹{batch.purchase_price}</div>
+                <div><strong>MRP:</strong> ₹{batch.mrp}</div>
+                <div><strong>Batch Price:</strong> ₹{batch.batch_price}</div>
                 <div><strong>Barcode:</strong> {batch.barcode}</div>
                 <div><strong>Created At:</strong> {new Date(batch.created_at).toLocaleString()}</div>
                 <div><strong>Updated At:</strong> {new Date(batch.updated_at).toLocaleString()}</div>

@@ -43,7 +43,6 @@ const SalesItems = ({ user }) => {
     fetchProducts();
   }, []);
 
-  // ✅ Fetch Products
   const fetchProducts = async () => {
     try {
       const response = await axios.get(`${baseurl}/products`);
@@ -95,40 +94,56 @@ const SalesItems = ({ user }) => {
       alert("Failed to delete product");
     }
   };
+const handleAddStock = async (stockData) => {
+  try {
+    const { quantity, remark, batchId } = stockData;
+    
+    console.log('Sending request with:', {
+      productId: selectedProductId,
+      quantity: quantity, 
+      remark: remark || '',
+      batchId: batchId
+    });
 
-  // ✅ Add Stock
-  const handleAddStock = async ({ quantity, remark }) => {
-    try {
-      await axios.post(`${baseurl}/stock/${selectedProductId}`, {
-        stock_in: quantity,
-        stock_out: 0,
-        date: new Date().toISOString().split("T")[0],
-        remark,
-      });
-      fetchProducts();
-      alert("Stock added successfully!");
-    } catch (error) {
-      console.error(error);
-      alert("Failed to add stock");
-    }
-  };
+    await axios.post(`${baseurl}/stock/${selectedProductId}`, {
+      quantity: quantity,
+      remark: remark || '',
+      batchId: batchId
+    });
+    
+    fetchProducts();
+    alert("Stock added successfully!");
+  } catch (error) {
+    console.error('Error adding stock:', error);
+    alert("Failed to add stock: " + (error.response?.data?.message || error.message));
+  }
+};
 
   // ✅ Deduct Stock
-  const handleDeductStock = async ({ quantity, remark }) => {
-    try {
-      await axios.post(`${baseurl}/stock/${selectedProductId}`, {
-        stock_in: 0,
-        stock_out: quantity,
-        date: new Date().toISOString().split("T")[0],
-        remark,
-      });
-      fetchProducts();
-      alert("Stock deducted successfully!");
-    } catch (error) {
-      console.error(error);
-      alert("Failed to deduct stock");
-    }
-  };
+const handleDeductStock = async (stockData) => {
+  try {
+    const { quantity, remark, batchId } = stockData;
+    
+    console.log('Sending deduct stock request:', {
+      productId: selectedProductId,
+      quantity: quantity,
+      remark: remark || '',
+      batchId: batchId,
+    });
+
+    await axios.post(`${baseurl}/stock-deducted/${selectedProductId}`, {
+      quantity: quantity,
+      remark: remark || '',
+      batchId: batchId,
+    });
+    
+    fetchProducts();
+    alert("Stock deducted successfully!");
+  } catch (error) {
+    console.error('Error deducting stock:', error);
+    alert("Failed to deduct stock: " + (error.response?.data?.message || error.message));
+  }
+};
 
   // ✅ Edit Product
   const handleEditClick = (product) => {
@@ -307,17 +322,20 @@ const SalesItems = ({ user }) => {
         onClose={() => setShowServiceModal(false)}
         groupType="Salescatalog"
       />
-      <AddStockModal
-        show={showStockModal}
-        onClose={() => setShowStockModal(false)}
-        currentStock={currentStockData.balance_stock}
-        onSave={handleAddStock}
-      />
+    <AddStockModal
+  show={showStockModal}
+  onClose={() => setShowStockModal(false)}
+  currentStock={currentStockData.balance_stock}
+  onSave={handleAddStock}
+  selectedProductId={selectedProductId} 
+/>
       <DeductStockModal
         show={showDeductModal}
         onClose={() => setShowDeductModal(false)}
         currentStock={currentStockData.balance_stock}
         onSave={handleDeductStock}
+          selectedProductId={selectedProductId} 
+
       />
       <StockDetailsModal
         show={showViewModal}

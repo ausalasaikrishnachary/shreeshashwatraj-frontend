@@ -148,10 +148,18 @@ import Profile from "./Component/Panels/Retailer/RetailerProfile/Profile";
 import RetailerOrders from "./Component/Panels/Retailer/RetailerOrders/RetailerOrders";
 import DeleteProfile from "./Component/Panels/Retailer/RetailerProfile/DeleteProfile";
 import EditProfile from "./Component/Panels/Retailer/RetailerProfile/EditProfile";
+import EditCreditNote from "./Component/Panels/Admin/CreditNote/EditCreditNote";
+import PurchaseInvoiceEdit from "./Component/Panels/Admin/PurchaseInvoicePage/PurchaseInvoiceEdit";
+
 
 import CreditPeriodTable from "./Component/Panels/Admin/CreditPeriod/CreditPeriodTable"
 import AddCreditPeriodFix from './Component/Panels/Admin/CreditPeriod/AddCreditPeriod';
 
+import VoucherView  from "./Component/Panels/Admin/Vochur/VoucherView"
+import Creditsview from "./Component/Panels/Admin/CreditNote/Creditsview";
+import CreateDebitNote from "./Component/Panels/Admin/DebitTable/CreateDebitNote";
+import DebitView from "./Component/Panels/Admin/DebitTable/DebitView";
+import EditDebitNote from "./Component/Panels/Admin/DebitTable/EditDebitNote";
 
 
 
@@ -207,7 +215,8 @@ function App() {
           <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
            <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
          <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
-           <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} />
+           {/* <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} /> */}
+            <Route path="/Purchase/editinvoice/:id" element={<PurchaseInvoiceEdit />} />
  
   
         <Route path="/sales/receipts" element={<AdminReceiptsTable />} />
@@ -235,7 +244,10 @@ function App() {
         <Route path="/purchase/purchase-order" element={<PurchaseOrderTable />} />
         <Route path="/purchase/voucher" element={<VoucherTable />} />
         <Route path="/purchase/debit-note" element={<DebitNoteTable />} />
+        <Route path="/purchase/create_note" element={<CreateDebitNote />} />
+        <Route path="/purchase/debit-note/edit/:id" element={<EditDebitNote />} />
         <Route path="/purchase/payables" element={<PayablesTable />} />
+        <Route path="/voucher_view/:id" element={<VoucherView />} />
 
         <Route path="/add-product" element={<AddProduct />} />
         <Route path="/marketing" element={<AdminMarketing />} />
@@ -296,16 +308,16 @@ function App() {
             <Route path="/units" element={<Units />} />
             <Route path="/ledger" element={<Ledger />} />
 
-            <Route path="sales/create_note" element={<CreateNote />} />
+            <Route path="/sales/credit-note/edit/:id" element={<EditCreditNote />} />
 
 
-
+        <Route path="/sales/create_note" element={<CreateNote />} />
 
             <Route path="/units/:id" element={<Units />} />
 
 
      <Route path="/reports/sales-report-page" element={<SalesReportPage />} />
-
+<Route path="/creditview/:id" element={<Creditsview />} />
 
      <Route path="/credit-period" element={<CreditPeriodTable />} />
      <Route path="/credit-period-fix/add" element={<AddCreditPeriodFix />} />

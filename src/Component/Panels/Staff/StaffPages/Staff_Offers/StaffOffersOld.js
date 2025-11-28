@@ -236,6 +236,7 @@
 import React, { useState, useEffect } from "react";
 import StaffMobileLayout from "../StaffMobileLayout/StaffMobileLayout";
 import "./StaffOffers.css";
+import { baseurl } from "../../../../BaseURL/BaseURL";
 
 function StaffOffers() {
   const [activeTab, setActiveTab] = useState("Offers & Discounts");
@@ -256,7 +257,7 @@ function StaffOffers() {
     }
   });
 
-  const API_BASE = "http://localhost:5000/api";
+  const API_BASE = `${baseurl}/api`;
 
   const tabs = ["Offers & Discounts", "Marketing Campaigns"];
 
@@ -468,7 +469,7 @@ function StaffOffers() {
                     {offer.image_url && (
                       <div className="offer-image">
                         <img 
-                          src={`http://localhost:5000${offer.image_url}`} 
+                          src={`${baseurl}${offer.image_url}`} 
                           alt={offer.title}
                           className="offer-img"
                         />

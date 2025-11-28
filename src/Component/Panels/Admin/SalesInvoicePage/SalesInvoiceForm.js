@@ -3,7 +3,11 @@ import { Container, Row, Col, Form, Button, Table, Alert, Badge, Card, ProgressB
 import './Invoices.css';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
+<<<<<<< HEAD
 import { FaEdit, FaTrash, FaEye, FaInfoCircle, FaRupeeSign, FaTarget, FaTrophy, FaCrosshairs, FaDotCircle, FaBullseye } from "react-icons/fa";
+=======
+import { FaEdit, FaTrash, FaEye, FaSave, FaTimes } from "react-icons/fa";
+>>>>>>> 33e9846e9f835c7777d11e236b96cd8342e15372
 import { baseurl } from '../../../BaseURL/BaseURL';
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -312,6 +316,7 @@ const CreateInvoice = ({ user }) => {
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const [hasFetchedInvoiceNumber, setHasFetchedInvoiceNumber] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [editingItemIndex, setEditingItemIndex] = useState(null);
   const [editingVoucherId, setEditingVoucherId] = useState(null);
   const navigate = useNavigate();
   const { id } = useParams();
@@ -1053,26 +1058,39 @@ const CreateInvoice = ({ user }) => {
     }));
   };
 
-  const addItem = () => {
-    if (!itemForm.product) {
-      setError("Please select a product");
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
+const addItem = () => {
+  if (!itemForm.product) {
+    setError("Please select a product");
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
 
-    const calculatedItem = {
-      ...calculateItemTotal(),
-      batch: selectedBatch,
-      batch_id: itemForm.batch_id,
-      product_id: itemForm.product_id,
-      batchDetails: selectedBatchDetails
-    };
+  const calculatedItem = {
+    ...calculateItemTotal(),
+    batch: selectedBatch,
+    batch_id: itemForm.batch_id,
+    product_id: itemForm.product_id,
+    batchDetails: selectedBatchDetails
+  };
 
+  if (editingItemIndex !== null) {
+    // Update existing item
+    setInvoiceData(prev => ({
+      ...prev,
+      items: prev.items.map((item, index) => 
+        index === editingItemIndex ? calculatedItem : item
+      )
+    }));
+    setEditingItemIndex(null);
+  } else {
+    // Add new item
     setInvoiceData(prev => ({
       ...prev,
       items: [...prev.items, calculatedItem]
     }));
+  }
 
+<<<<<<< HEAD
     // Reset form including IDs and discount info
     setItemForm({
       product: "",
@@ -1116,7 +1134,98 @@ const CreateInvoice = ({ user }) => {
       }
     });
   };
+=======
+  // Reset form
+  setItemForm({
+    product: "",
+    product_id: "",
+    description: "",
+    quantity: 1,
+    price: 0,
+    discount: 0,
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0,
+    total: 0,
+    batch: "",
+    batch_id: "",
+    batchDetails: null
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+};
 
+
+const editItem = (index) => {
+  const itemToEdit = invoiceData.items[index];
+  
+  // Set the form fields with the item data
+  setItemForm({
+    product: itemToEdit.product,
+    product_id: itemToEdit.product_id,
+    description: itemToEdit.description,
+    quantity: itemToEdit.quantity,
+    price: itemToEdit.price,
+    discount: itemToEdit.discount,
+    gst: itemToEdit.gst,
+    cgst: itemToEdit.cgst,
+    sgst: itemToEdit.sgst,
+    igst: itemToEdit.igst,
+    cess: itemToEdit.cess,
+    total: itemToEdit.total,
+    batch: itemToEdit.batch,
+    batch_id: itemToEdit.batch_id,
+    batchDetails: itemToEdit.batchDetails
+  });
+  
+  setSelectedBatch(itemToEdit.batch);
+  setSelectedBatchDetails(itemToEdit.batchDetails);
+  setEditingItemIndex(index);
+  
+  // Fetch batches for the product
+  if (itemToEdit.product_id) {
+    fetchBatchesForProduct(itemToEdit.product_id);
+  }
+};
+
+const fetchBatchesForProduct = async (productId) => {
+  try {
+    const res = await fetch(`${baseurl}/products/${productId}/batches`);
+    const batchData = await res.json();
+    setBatches(batchData);
+  } catch (err) {
+    console.error("Failed to fetch batches:", err);
+    setBatches([]);
+  }
+};
+>>>>>>> 33e9846e9f835c7777d11e236b96cd8342e15372
+
+const cancelEdit = () => {
+  setEditingItemIndex(null);
+  setItemForm({
+    product: "",
+    product_id: "",
+    description: "",
+    quantity: 1,
+    price: 0,
+    discount: 0,
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0,
+    total: 0,
+    batch: "",
+    batch_id: "",
+    batchDetails: null
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+};
   const removeItem = (index) => {
     setInvoiceData(prev => ({
       ...prev,
@@ -1246,20 +1355,53 @@ const CreateInvoice = ({ user }) => {
     setSuccess("Draft cleared successfully!");
     setTimeout(() => setSuccess(false), 3000);
   };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError(null);
+  setSuccess(false);
+  
+  if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
+    setError("Please select a supplier/customer");
+    setLoading(false);
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
-    
-    if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-      setError("Please select a supplier/customer");
-      setLoading(false);
-      setTimeout(() => setError(null), 3000);
-      return;
+  if (invoiceData.items.length === 0) {
+    setError("Please add at least one item to the invoice");
+    setLoading(false);
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
+
+  try {
+    const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
+    console.log('Submitting invoice with number:', finalInvoiceNumber);
+
+    // 🔥 ADD PARTYID AND ACCOUNTID CONSOLE LOGS HERE:
+    console.log('🎯 Frontend - PartyID (selectedSupplierId):', selectedSupplierId);
+    console.log('🏦 Frontend - AccountID (from supplierInfo):', invoiceData.supplierInfo.accountId);
+    console.log('📋 Frontend - Complete Supplier Info:', invoiceData.supplierInfo);
+    console.log('🔍 Frontend - All supplierInfo keys:', Object.keys(invoiceData.supplierInfo));
+
+    // Calculate GST breakdown for backend
+    const sameState = isSameState();
+    let totalCGST = 0;
+    let totalSGST = 0;
+    let totalIGST = 0;
+
+    if (sameState) {
+      totalCGST = parseFloat(invoiceData.totalGST) / 2;
+      totalSGST = parseFloat(invoiceData.totalGST) / 2;
+      totalIGST = 0;
+    } else {
+      totalCGST = 0;
+      totalSGST = 0;
+      totalIGST = parseFloat(invoiceData.totalGST);
     }
 
+<<<<<<< HEAD
     if (invoiceData.items.length === 0) {
       setError("Please add at least one item to the invoice");
       setLoading(false);
@@ -1289,11 +1431,17 @@ const CreateInvoice = ({ user }) => {
       });
 
       const batchDetails = invoiceData.items.map(item => ({
+=======
+    // Enhanced debugging for items
+    console.log('🔍 Debugging Items Array Before Processing:');
+    invoiceData.items.forEach((item, index) => {
+      console.log(`Item ${index + 1}:`, {
+>>>>>>> 33e9846e9f835c7777d11e236b96cd8342e15372
         product: item.product,
         product_id: item.product_id,
-        description: item.description,
         batch: item.batch,
         batch_id: item.batch_id,
+<<<<<<< HEAD
         quantity: parseFloat(item.quantity) || 0,
         price: parseFloat(item.price) || 0,
         discount: parseFloat(item.discount) || 0,
@@ -1329,9 +1477,53 @@ const CreateInvoice = ({ user }) => {
       delete payload.companyState;
       delete payload.supplierState;
       delete payload.items;
+=======
+        has_product_id: !!item.product_id,
+        has_batch_id: !!item.batch_id
+      });
+    });
 
-      console.log('Submitting invoice payload with batchDetails:', payload);
+    // Extract batch details from items with ALL data including discount and GST
+    const batchDetails = invoiceData.items.map(item => ({
+      product: item.product,
+      product_id: item.product_id,
+      description: item.description,
+      batch: item.batch,
+      batch_id: item.batch_id,
+      quantity: parseFloat(item.quantity) || 0,
+      price: parseFloat(item.price) || 0,
+      discount: parseFloat(item.discount) || 0,
+      gst: parseFloat(item.gst) || 0,
+      cgst: parseFloat(item.cgst) || 0,
+      sgst: parseFloat(item.sgst) || 0,
+      igst: parseFloat(item.igst) || 0,
+      cess: parseFloat(item.cess) || 0,
+      total: parseFloat(item.total) || 0,
+      batchDetails: item.batchDetails
+    }));
 
+    console.log('📦 Processed Batch Details:');
+    batchDetails.forEach((detail, index) => {
+      console.log(`Batch Detail ${index + 1}:`, {
+        product_id: detail.product_id,
+        batch_id: detail.batch_id,
+        product: detail.product,
+        batch: detail.batch
+      });
+    });
+>>>>>>> 33e9846e9f835c7777d11e236b96cd8342e15372
+
+    // Get product_id and batch_id for logging
+    const firstItemProductId = invoiceData.items[0]?.product_id || null;
+    const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
+    
+    console.log('📦 Product and Batch IDs Summary:');
+    console.log('First item product_id:', firstItemProductId);
+    console.log('First item batch_id:', firstItemBatchId);
+    console.log('All items product_ids:', invoiceData.items.map(item => item.product_id));
+    console.log('All items batch_ids:', invoiceData.items.map(item => item.batch_id));
+
+<<<<<<< HEAD
       let response;
       if (isEditMode && editingVoucherId) {
         response = await fetch(`${baseurl}/transactions/${editingVoucherId}`, {
@@ -1377,8 +1569,122 @@ const CreateInvoice = ({ user }) => {
       setTimeout(() => setError(null), 5000);
     } finally {
       setLoading(false);
+=======
+    // Validate that we have product_id and batch_id
+    const missingProductIds = invoiceData.items.filter(item => !item.product_id);
+    const missingBatchIds = invoiceData.items.filter(item => !item.batch_id);
+    
+    if (missingProductIds.length > 0) {
+      console.warn('⚠️ Items missing product_id:', missingProductIds);
+>>>>>>> 33e9846e9f835c7777d11e236b96cd8342e15372
     }
-  };
+    if (missingBatchIds.length > 0) {
+      console.warn('⚠️ Items missing batch_id:', missingBatchIds);
+    }
+
+    // Create payload with IDs and proper totals
+    const payload = {
+      ...invoiceData,
+      invoiceNumber: finalInvoiceNumber,
+      selectedSupplierId: selectedSupplierId,
+      type: 'sales',
+      totalCGST: totalCGST.toFixed(2),
+      totalSGST: totalSGST.toFixed(2),
+      totalIGST: totalIGST.toFixed(2),
+      taxType: sameState ? "CGST/SGST" : "IGST",
+      batchDetails: batchDetails,
+      product_id: 123,
+      batch_id: "bth0001",
+      // Add primary product and batch IDs for voucher table
+      primaryProductId: firstItemProductId,
+      primaryBatchId: firstItemBatchId,
+      // 🔥 ADD PARTYID AND ACCOUNTID TO PAYLOAD:
+      PartyID: selectedSupplierId,
+      AccountID: invoiceData.supplierInfo.accountId,
+      PartyName: invoiceData.supplierInfo.name,
+      AccountName: invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.name
+    };
+
+    // Remove unused fields
+    delete payload.companyState;
+    delete payload.supplierState;
+    delete payload.items;
+
+    // 🔥 LOG THE FINAL PAYLOAD
+    console.log('🚀 Final Payload with PartyID and AccountID:', {
+      PartyID: payload.PartyID,
+      AccountID: payload.AccountID,
+      selectedSupplierId: payload.selectedSupplierId,
+      supplierInfo: payload.supplierInfo
+    });
+    
+    // Final validation
+    if (!payload.product_id || !payload.batch_id) {
+      console.error('❌ CRITICAL: product_id or batch_id is still undefined in payload!');
+      console.error('Payload structure:', JSON.stringify(payload, null, 2));
+    } else {
+      console.log('✅ SUCCESS: product_id and batch_id are properly set in payload!');
+    }
+
+    let response;
+    if (isEditMode && editingVoucherId) {
+      console.log('🔄 Updating existing invoice with ID:', editingVoucherId);
+      response = await fetch(`${baseurl}/transactions/${editingVoucherId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      console.log('🆕 Creating new invoice ');
+      response = await fetch(`${baseurl}/transaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+    }
+    
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(responseData.error || 'Failed to submit invoice');
+    }
+    
+    console.log('✅ Server Response:', responseData);
+    console.log('Response voucherId:', responseData.voucherId);
+    console.log('Response product_id:', responseData.product_id);
+    console.log('Response batch_id:', responseData.batch_id);
+    
+    localStorage.removeItem('draftInvoice');
+    setSuccess(isEditMode ? 'Invoice updated successfully!' : 'Invoice submitted successfully!');
+    setIsPreviewReady(true);
+
+    // Store preview data with voucher ID
+    const previewData = {
+      ...invoiceData,
+      invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
+      voucherId: responseData.voucherId || editingVoucherId,
+      product_id: responseData.product_id || firstItemProductId,
+      batch_id: responseData.batch_id || firstItemBatchId
+    };
+    localStorage.setItem('previewInvoice', JSON.stringify(previewData));
+    
+    // Navigate to preview page with voucher ID
+    setTimeout(() => {
+      navigate(`/sales/invoice-preview/${responseData.voucherId || editingVoucherId}`);
+    }, 2000);
+    
+  } catch (err) {
+    console.error('❌ Error in handleSubmit:', err);
+    setError(err.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const calculateTotalPrice = () => {
     const price = parseFloat(itemForm.price) || 0;
@@ -1526,7 +1832,7 @@ const CreateInvoice = ({ user }) => {
                               setInvoiceData(prev => ({
                                 ...prev,
                                 supplierInfo: {
-                                  name: supplier.display_name,
+                                  name: supplier.name,
                                   businessName: supplier.business_name,
                                   state: supplier.billing_state,
                                   gstin: supplier.gstin
@@ -1624,6 +1930,7 @@ const CreateInvoice = ({ user }) => {
 
               {/* Item Section with Enhanced Dynamic Discount */}
               <div className="item-section mb-3 mt-3 bg-white p-3 rounded">
+<<<<<<< HEAD
                 <h6 className="text-primary mb-3">Add Items</h6>
                 
                 {/* Enhanced Discount Information Display */}
@@ -1731,6 +2038,147 @@ const CreateInvoice = ({ user }) => {
                       className="border-primary bg-light"
                     />
                   </Col>
+=======
+              <h6 className="text-primary mb-3">
+  {editingItemIndex !== null ? `Edit Item (${editingItemIndex + 1})` : 'Add Items'}
+</h6>
+            <Row className="align-items-end">
+  <Col md={2}>
+    <div className="d-flex justify-content-between align-items-center mb-1">
+      <Form.Label className="mb-0 fw-bold">Item</Form.Label>
+      <button
+        type="button"
+        className="btn btn-link p-0 text-primary"
+        style={{ textDecoration: "none", fontSize: "14px" }}
+        onClick={() => navigate("/salesitemspage")}
+      >
+        + New Item
+      </button>
+    </div>
+<Form.Select
+  name="product"
+  value={itemForm.product}
+  onChange={async (e) => {
+    const selectedName = e.target.value;
+    const selectedProduct = products.find(
+      (p) => p.goods_name === selectedName
+    );
+
+    if (selectedProduct) {
+      setItemForm((prev) => ({
+        ...prev,
+        product: selectedProduct.goods_name,
+        product_id: selectedProduct.id,
+        price: selectedProduct.net_price,
+        gst: parseFloat(selectedProduct.gst_rate)
+          ? selectedProduct.gst_rate.replace("%", "")
+          : 0,
+        description: selectedProduct.description || "",
+        batch: "",
+        batch_id: ""
+      }));
+
+      try {
+        const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
+        const batchData = await res.json();
+        setBatches(batchData);
+
+        if (selectedProduct.maintain_batch === 0 && batchData.length > 0) {
+          // If maintain_batch is 0, select the first (or default) batch automatically
+          const defaultBatch = batchData[0];
+          setSelectedBatch(defaultBatch.batch_number);
+          setSelectedBatchDetails(defaultBatch);
+          setItemForm(prev => ({
+            ...prev,
+            batch: defaultBatch.batch_number,
+            batch_id: defaultBatch.batch_number,
+            price: defaultBatch.selling_price
+          }));
+        } else {
+          // If maintain_batch > 0, let user choose from dropdown
+          setSelectedBatch("");
+          setSelectedBatchDetails(null);
+        }
+
+      } catch (err) {
+        console.error("Failed to fetch batches:", err);
+        setBatches([]);
+        setSelectedBatch("");
+        setSelectedBatchDetails(null);
+      }
+    } else {
+      // Reset if no product selected
+      setItemForm(prev => ({
+        ...prev,
+        product: "",
+        product_id: "",
+        description: "",
+        price: 0,
+        gst: 0,
+        batch: "",
+        batch_id: ""
+      }));
+      setBatches([]);
+      setSelectedBatch("");
+      setSelectedBatchDetails(null);
+    }
+  }}
+  className="border-primary"
+>
+  <option value="">Select Product</option>
+  {products
+    .filter(
+      (p) =>
+        p.group_by === "Salescatalog" ||
+        p.can_be_sold === 1 ||
+        p.can_be_sold === true
+    )
+    .map((p) => (
+      <option key={p.id} value={p.goods_name}>
+        {p.goods_name}
+      </option>
+    ))}
+</Form.Select>
+
+{/* Batch Dropdown */}
+{batches.length > 0 && itemForm.maintain_batch !== 0 && (
+  <Form.Select
+    className="mt-2 border-primary"
+    name="batch"
+    value={selectedBatch}
+    onChange={(e) => {
+      const batchNumber = e.target.value;
+      setSelectedBatch(batchNumber);
+      const batch = batches.find(b => b.batch_number === batchNumber);
+      setSelectedBatchDetails(batch || null);
+
+      if (batch) {
+        setItemForm(prev => ({
+          ...prev,
+          batch: batchNumber,
+          batch_id: batch.batch_number,
+          price: batch.selling_price
+        }));
+      } else {
+        setItemForm(prev => ({
+          ...prev,
+          batch: "",
+          batch_id: ""
+        }));
+      }
+    }}
+  >
+    <option value="">Select Batch</option>
+    {batches.map((batch) => (
+      <option key={batch.id} value={batch.batch_number}>
+        {batch.batch_number} (Qty: {batch.quantity})
+      </option>
+    ))}
+  </Form.Select>
+)}
+
+  </Col>
+>>>>>>> 33e9846e9f835c7777d11e236b96cd8342e15372
 
                   <Col md={2}>
                     <Form.Label className="fw-bold">Discount (%)</Form.Label>
@@ -1763,6 +2211,7 @@ const CreateInvoice = ({ user }) => {
                     />
                   </Col>
 
+<<<<<<< HEAD
                   <Col md={2}>
                     <Form.Label className="fw-bold">Total Price (₹)</Form.Label>
                     <Form.Control
@@ -1778,6 +2227,60 @@ const CreateInvoice = ({ user }) => {
                     </Button>
                   </Col>
                 </Row>
+=======
+  <Col md={2}>
+    <Form.Label className="fw-bold">Discount (%)</Form.Label>
+    <Form.Control
+      name="discount"
+      type="number"
+      value={itemForm.discount}
+      onChange={handleItemChange}
+      min="0"
+      max="100"
+      className="border-primary"
+    />
+  </Col>
+
+  <Col md={2}>
+    <Form.Label className="fw-bold">GST (%)</Form.Label>
+    <Form.Control
+      name="gst"
+      type="number"
+      value={itemForm.gst}
+      readOnly
+      className="border-primary bg-light"
+    />
+  </Col>
+
+  <Col md={2}>
+    <Form.Label className="fw-bold">Total Price (₹)</Form.Label>
+    <Form.Control
+      type="text"
+      value={calculateTotalPrice()}
+      readOnly
+      className="border-primary bg-light"
+    />
+  </Col>
+ <Col md={1}>
+  <Button 
+    variant={editingItemIndex !== null ? "warning" : "success"} 
+    onClick={addItem} 
+    className="w-100 me-1"
+  >
+    {editingItemIndex !== null ? <FaSave /> : "Add"}
+  </Button>
+  {editingItemIndex !== null && (
+    <Button 
+      variant="secondary" 
+      onClick={cancelEdit} 
+      className="w-100 mt-1"
+    >
+      <FaTimes />
+    </Button>
+  )}
+</Col>
+</Row>
+>>>>>>> 33e9846e9f835c7777d11e236b96cd8342e15372
                 <Row className="mt-2">
                   <Col>
                     <Form.Control
@@ -1794,6 +2297,7 @@ const CreateInvoice = ({ user }) => {
 
               {/* Items Table with Detailed Breakdown */}
               <div className="bg-white p-3 rounded">
+<<<<<<< HEAD
                 {invoiceData.items.length > 0 && (
                   <>
                     <h6 className="text-primary mt-4 mb-3">Items Summary</h6>
@@ -1809,6 +2313,85 @@ const CreateInvoice = ({ user }) => {
                           <th>TOTAL</th>
                           <th>BATCH</th>
                           <th>ACTION</th>
+=======
+                <h6 className="text-primary mb-3">Items List</h6>
+                <Table bordered responsive size="sm" className="mb-3">
+                  <thead className="table-dark">
+                    <tr>
+                      <th>PRODUCT</th>
+                      <th>DESCRIPTION</th>
+                      <th>QTY</th>
+                      <th>PRICE</th>
+                      <th>DISCOUNT</th>
+                      <th>GST</th>
+                      <th>CGST</th>
+                      <th>SGST</th>
+                      <th>IGST</th>
+                      <th>CESS</th>
+                      <th>TOTAL</th>
+                      <th>BATCH</th>
+                      <th>BATCH DETAILS</th>
+                      <th>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoiceData.items.length === 0 ? (
+                      <tr>
+                        <td colSpan={14} className="text-center text-muted py-3">
+                          No items added. Please add items using the form above.
+                        </td>
+                      </tr>
+                    ) : (
+                      invoiceData.items.map((item, index) => (
+                        <tr key={index}>
+                          <td>{item.product}</td>
+                          <td>{item.description}</td>
+                          <td className="text-center">{item.quantity}</td>
+                          <td className="text-end">₹{item.price}</td>
+                          <td className="text-center">{item.discount}%</td>
+                          <td className="text-center">{item.gst}%</td>
+                          <td className="text-center">{item.cgst}%</td>
+                          <td className="text-center">{item.sgst}%</td>
+                          <td className="text-center">{item.igst}%</td>
+                          <td className="text-center">{item.cess}</td>
+                          <td className="text-end fw-bold">₹{item.total}</td>
+                          <td>{item.batch}</td>
+                          <td>
+                            {item.batchDetails && (
+                             <small>
+  MFG: {item.batchDetails.mfg_date 
+    ? new Date(item.batchDetails.mfg_date).toLocaleDateString('en-GB') 
+    : item.batchDetails.manufacturing_date 
+      ? new Date(item.batchDetails.manufacturing_date).toLocaleDateString('en-GB') 
+      : ''}<br/>
+
+  EXP: {item.batchDetails.exp_date 
+    ? new Date(item.batchDetails.exp_date).toLocaleDateString('en-GB') 
+    : item.batchDetails.expiry_date 
+      ? new Date(item.batchDetails.expiry_date).toLocaleDateString('en-GB') 
+      : ''}
+</small>
+
+                            )}
+                          </td>
+                <td className="text-center">
+  <Button 
+    variant="warning" 
+    size="sm" 
+    onClick={() => editItem(index)}
+    className="me-1"
+  >
+    <FaEdit />
+  </Button>
+  <Button 
+    variant="danger" 
+    size="sm" 
+    onClick={() => removeItem(index)}
+  >
+    <FaTrash />
+  </Button>
+</td>
+>>>>>>> 33e9846e9f835c7777d11e236b96cd8342e15372
                         </tr>
                       </thead>
                       <tbody>

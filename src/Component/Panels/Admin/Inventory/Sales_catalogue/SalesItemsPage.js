@@ -102,12 +102,13 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     loadProductData();
   }, [productId, groupType]);
 
-  const fetchProductById = async (id) => {
-    try {
-      const response = await axios.get(`${baseurl}/products/${id}`);
-      const product = response.data;
-      console.log('📦 Fetched product:', product);
+const fetchProductById = async (id) => {
+  try {
+    const response = await axios.get(`${baseurl}/products/${id}`);
+    const product = response.data;
+    console.log('📦 Fetched product:', product);
 
+<<<<<<< HEAD
       setFormData({
         group_by: product.group_by || groupType,
         goods_name: product.goods_name || product.name || '',
@@ -131,14 +132,38 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
         maintain_batch: product.maintain_batch || false,
         discount: product.discount || '' // ADDED DISCOUNT FIELD
       });
+=======
+    setFormData({
+      group_by: product.group_by || groupType,
+      goods_name: product.goods_name || product.name || '',
+      category_id: product.category_id || '',
+      company_id: product.company_id || '',
+      price: product.price || '',
+      inclusive_gst: product.inclusive_gst || '',
+      gst_rate: product.gst_rate || '',
+      non_taxable: product.non_taxable || '',
+      net_price: product.net_price || '',
+      hsn_code: product.hsn_code || '',
+      unit: product.unit || 'UNT-UNITS',
+      cess_rate: product.cess_rate || '',
+      cess_amount: product.cess_amount || '',
+      sku: product.sku || '',
+      opening_stock: product.opening_stock || (product.batches && product.batches[0] ? product.batches[0].opening_stock : ''),
+      opening_stock_date: product.opening_stock_date ? product.opening_stock_date.split('T')[0] : new Date().toISOString().split('T')[0],
+      min_stock_alert: product.min_stock_alert || '',
+      max_stock_alert: product.max_stock_alert || '',
+      description: product.description || '',
+      maintain_batch: product.maintain_batch || false
+    });
+>>>>>>> 33e9846e9f835c7777d11e236b96cd8342e15372
 
-      setMaintainBatch(product.maintain_batch || false);
-      await fetchBatches(id);
-    } catch (error) {
-      console.error('Error fetching product:', error);
-      showAlert('Error fetching product data', 'danger');
-    }
-  };
+    setMaintainBatch(product.maintain_batch || false);
+    await fetchBatches(id);
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    showAlert('Error fetching product data', 'danger');
+  }
+};
 
   const fetchCategories = async () => {
     try {
@@ -166,6 +191,7 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
       return;
     }
 
+<<<<<<< HEAD
     try {
       const response = await axios.get(`${baseurl}/products/${id}/batches`);
       const mappedBatches = response.data?.length
@@ -192,6 +218,34 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
       setBatches([]);
     }
   };
+=======
+  try {
+    const response = await axios.get(`${baseurl}/products/${id}/batches`);
+    const mappedBatches = response.data?.length
+      ? response.data.map(batch => ({
+          id: batch.id,
+          dbId: batch.id,
+          batchNumber: batch.batch_number || '',
+          mfgDate: batch.mfg_date?.split('T')[0] || '',
+          expDate: batch.exp_date?.split('T')[0] || '',
+          quantity: batch.quantity || '',
+          costPrice: batch.cost_price || '',
+            opening_stock: batch.opening_stock || '', // ADD THIS LINE
+          sellingPrice: batch.selling_price || '', // CHANGED: Empty instead of formData.price
+          purchasePrice: batch.purchase_price || '',
+          mrp: batch.mrp || '',
+          barcode: batch.barcode || '',
+          isExisting: true
+        }))
+      : [];
+    console.log('📦 Fetched batches:', mappedBatches);
+    setBatches(mappedBatches);
+  } catch (error) {
+    console.error('Error fetching batches:', error);
+    setBatches([]);
+  }
+};
+>>>>>>> 33e9846e9f835c7777d11e236b96cd8342e15372
 
   const generateUniqueBarcode = async () => {
     let isUnique = false;
@@ -541,6 +595,10 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     }
   };
 
+
+
+
+
   const pageTitle = productId
     ? `Edit Product in Sales Catalog`
     : `Add Product to Sales Catalog`;
@@ -795,19 +853,19 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
                   </div>
                   
                   {/* Conditionally show Opening Stock field */}
-                  {!maintainBatch && (
-                    <div className="col">
-                      <Form.Label>Opening Stock *</Form.Label>
-                      <Form.Control
-                        placeholder="Opening Stock"
-                        name="opening_stock"
-                        type="number"
-                        value={formData.opening_stock}
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
-                  )}
+  {!maintainBatch && (
+  <div className="col">
+    <Form.Label>Opening Stock *</Form.Label>
+    <Form.Control
+      placeholder="Opening Stock"
+      name="opening_stock"
+      type="number"
+      value={formData.opening_stock || (batches.length > 0 ? batches[0].opening_stock : '')}
+      onChange={handleChange}
+      required
+    />
+  </div>
+)}
                   
                   {/* Show calculated stock when batches exist */}
                   {maintainBatch && batches.length > 0 && (

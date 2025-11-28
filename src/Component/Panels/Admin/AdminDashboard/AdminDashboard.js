@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   PieChart,
   Pie,
@@ -16,11 +16,16 @@ import {
 import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
 import DashboardCharts from "./DashboardCard";
+import { baseurl } from "../../../BaseURL/BaseURL";
 import "./AdminDashboard.css";
 
 function AdminDashboard() {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false); // Add mobile state
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [receivables, setReceivables] = useState(0);
+  const [payables, setPayables] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Mock data
   const dashboardData = {
@@ -34,8 +39,79 @@ function AdminDashboard() {
     scoreChange: "+0.3",
   };
 
+  // Fetch receivables data
+  useEffect(() => {
+    const fetchReceivables = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`${baseurl}/api/sales-receipt-totals`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch receivables data');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          setReceivables(result.data.netAmount || 0);
+        } else {
+          throw new Error(result.error || 'Failed to fetch receivables');
+        }
+      } catch (err) {
+        console.error('Error fetching receivables:', err);
+        setError(err.message);
+        // Set default value in case of error
+        setReceivables(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReceivables();
+  }, []);
+
+    useEffect(() => {
+    const fetchReceivables = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`${baseurl}/api/total-payables`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch receivables data');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          setPayables(result.data.netAmount || 0);
+        } else {
+          throw new Error(result.error || 'Failed to fetch receivables');
+        }
+      } catch (err) {
+        console.error('Error fetching receivables:', err);
+        setError(err.message);
+        // Set default value in case of error
+        setPayables(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReceivables();
+  }, []);
+
   const handleToggleMobile = () => {
     setIsMobileOpen(!isMobileOpen);
+  };
+
+  // Format currency in Indian format
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   return (
@@ -43,7 +119,7 @@ function AdminDashboard() {
       <AdminSidebar 
         isCollapsed={isCollapsed} 
         setIsCollapsed={setIsCollapsed}
-        onToggleMobile={isMobileOpen} // Pass mobile state
+        onToggleMobile={isMobileOpen}
       />
 
       <div
@@ -53,7 +129,7 @@ function AdminDashboard() {
       >
         <AdminHeader 
           isCollapsed={isCollapsed} 
-          onToggleSidebar={handleToggleMobile} // Pass toggle function
+          onToggleSidebar={handleToggleMobile}
         />
 
         <div
@@ -62,14 +138,14 @@ function AdminDashboard() {
           }`}
         >
           {/* Welcome Section */}
-          <div className="admin-dashboard-welcome-section">
+          {/* <div className="admin-dashboard-welcome-section">
             <h1 className="admin-dashboard-greeting">
               Good morning, Admin User! 💤
             </h1>
             <p className="admin-dashboard-subtitle">
               Here's what's happening across your retail network today.
             </p>
-          </div>
+          </div> */}
 
           {/* Stats Grid */}
           <div className="admin-dashboard-stats-grid">
@@ -91,6 +167,50 @@ function AdminDashboard() {
               <div className="admin-dashboard-stat-change positive">
                 {dashboardData.salesChange} from last month
               </div>
+            </div>
+
+            {/* Receivables Card */}
+            <div className="admin-dashboard-stat-card">
+              <h3 className="admin-dashboard-stat-label"> Total Recievables</h3>
+              <div className="admin-dashboard-stat-value">
+                {loading ? (
+                  <div className="loading-spinner">Loading...</div>
+                ) : error ? (
+                  <div className="error-text">Error</div>
+                ) : (
+                  formatCurrency(receivables)
+                )}
+              </div>
+              <div className="admin-dashboard-stat-change">
+                {!loading && !error && "Outstanding amount"}
+              </div>
+              {error && (
+                <div className="admin-dashboard-stat-error">
+                  {error}
+                </div>
+              )}
+            </div>
+
+            {/* payables Card */}
+            <div className="admin-dashboard-stat-card">
+              <h3 className="admin-dashboard-stat-label"> Total Payables</h3>
+              <div className="admin-dashboard-stat-value">
+                {loading ? (
+                  <div className="loading-spinner">Loading...</div>
+                ) : error ? (
+                  <div className="error-text">Error</div>
+                ) : (
+                  formatCurrency(payables)
+                )}
+              </div>
+              <div className="admin-dashboard-stat-change">
+                {!loading && !error && "Outstanding amount"}
+              </div>
+              {error && (
+                <div className="admin-dashboard-stat-error">
+                  {error}
+                </div>
+              )}
             </div>
 
             <div className="admin-dashboard-stat-card">

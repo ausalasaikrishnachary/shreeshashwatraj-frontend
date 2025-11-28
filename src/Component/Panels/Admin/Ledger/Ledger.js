@@ -26,18 +26,38 @@ const Ledger = () => {
     }
   };
 
-  // Group ledger strictly by AccountID
+  // Group ledger by PartyID instead of PartyName
   const groupedLedger = ledgerData.reduce((acc, entry) => {
-    const key = entry.AccountID; // group only by AccountID
+    console.log("data", entry);
+
+    const key = entry.PartyID || "Unknown"; // group by PartyID
     if (!acc[key]) {
       acc[key] = {
-        customer: entry.AccountName, // latest name for display
-        account: entry.AccountID,
-        balance: entry.balance_amount, // latest balance
+        partyID: entry.PartyID || "Unknown",
+        partyName: entry.PartyName || "Unknown Party",
         transactions: [],
+        totalDebit: 0,
+        totalCredit: 0,
+        balance: 0,
       };
     }
+
+    // Add transaction to this party
     acc[key].transactions.push(entry);
+
+    // Convert amount safely
+    const amount = parseFloat(entry.Amount || 0);
+
+    // 🧾 Use Amount for total — based on DC (Debit or Credit)
+    if (entry.DC === "D") {
+      acc[key].totalDebit += amount;
+    } else if (entry.DC === "C") {
+      acc[key].totalCredit += amount;
+    }
+
+    // Update balance = totalDebit - totalCredit
+    acc[key].balance = acc[key].totalDebit - acc[key].totalCredit;
+
     return acc;
   }, {});
 
@@ -47,7 +67,7 @@ const Ledger = () => {
   const filteredLedger =
     filter === "All"
       ? groupedArray
-      : groupedArray.filter((item) => item.account === filter);
+      : groupedArray.filter((item) => item.partyID === filter);
 
   return (
     <div className="ledger-wrapper">
@@ -58,12 +78,12 @@ const Ledger = () => {
         <div className="ledger-container">
           {/* Filter */}
           <div className="ledger-filter">
-            <label>Filter by Customer/Supplier: </label>
+            <label>Filter by Party: </label>
             <select value={filter} onChange={(e) => setFilter(e.target.value)}>
               <option value="All">All</option>
               {groupedArray.map((item) => (
-                <option key={item.account} value={item.account}>
-                  {item.customer} ({item.account})
+                <option key={item.partyID} value={item.partyID}>
+                  {item.partyName} (ID: {item.partyID})
                 </option>
               ))}
             </select>
@@ -75,12 +95,13 @@ const Ledger = () => {
           ) : filteredLedger.length === 0 ? (
             <p>No ledger entries found.</p>
           ) : (
-            filteredLedger.map((ledger) => (
-              <div key={ledger.account} className="ledger-section">
+            filteredLedger.map((ledger, index) => (
+              <div key={`${ledger.partyID}-${index}`} className="ledger-section">
                 {/* Header with Balance */}
                 <div className="ledger-header">
-                  {ledger.customer} | {ledger.account} (Balance: {ledger.balance}{" "}
-                  {ledger.balance >= 0 ? "Dr" : "Cr"})
+                  {ledger.partyName} (ID: {ledger.partyID}) — Balance:{" "}
+                  {Math.abs(ledger.balance).toFixed(2)}{" "}
+                  {ledger.balance >= 0 ? "Dr" : "Cr"}
                 </div>
 
                 {/* Table */}
@@ -98,20 +119,25 @@ const Ledger = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {ledger.transactions.map((tx, idx) => (
-                      <tr key={idx}>
-                        <td>{new Date(tx.date).toLocaleDateString()}</td>
-                        <td>{tx.trantype}</td>
-                        <td>{tx.AccountName}</td>
-                        <td>{tx.DC}</td>
-                        <td>{tx.DC === "C" ? tx.Amount : "-"}</td>
-                        <td>{tx.DC === "D" ? tx.Amount : "-"}</td>
-                        <td>{tx.voucherID}</td>
-                        <td>
-                          {new Date(tx.created_at).toLocaleString("en-IN")}
-                        </td>
-                      </tr>
-                    ))}
+                    {ledger.transactions.map((tx, idx) => {
+                      const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
+                      return (
+                        <tr key={tx.id || idx}>
+                          <td>{tx.date ? new Date(tx.date).toLocaleDateString() : "-"}</td>
+                          <td>{tx.trantype || "-"}</td>
+                          <td>{tx.PartyName || "-"}</td>
+                          <td>{dc || "-"}</td>
+                          <td>{dc === "C" ? tx.Amount : "-"}</td>
+                          <td>{dc === "D" ? tx.Amount : "-"}</td>
+                          <td>{tx.voucherID || "-"}</td>
+                          <td>
+                            {tx.created_at
+                              ? new Date(tx.created_at).toLocaleString("en-IN")
+                              : "-"}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

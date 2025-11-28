@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Form, Alert, Spinner, Card } from 'react-bootstrap';
+import { Button, Form, Alert, Spinner } from 'react-bootstrap';
 import { BsPlus } from 'react-icons/bs';
 import AddCompanyModal from './AddCompanyModal';
-import AddCategoryModal from './AddCategoryModal';
+import AddCategoryModal from '../PurchasedItems/AddCategoryModal';
+import AddUnitModal from '../Sales_catalogue/AddUnitsModal';
 import axios from 'axios';
 import { baseurl } from './../../../../BaseURL/BaseURL';
 import AdminSidebar from './../../../../Shared/AdminSidebar/AdminSidebar';
@@ -25,7 +26,8 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'success' });
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-   const [batchCounter, setBatchCounter] = useState(1);
+  const [unitOptions, setUnitOptions] = useState([]);
+  const [showUnitModal, setShowUnitModal] = useState(false);
 
   // Tax calculation function
   const calculateTaxAndNetPrice = (price, gstRate, inclusiveGst) => {
@@ -51,9 +53,26 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     }
   };
 
+  // Calculate total stock from batches
+  const calculateTotalStockFromBatches = () => {
+    if (!batches || batches.length === 0) return 0;
+    return batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
+  };
+
+  const fetchUnits = async () => {
+    try {
+      const response = await axios.get(`${baseurl}/units`);
+      setUnitOptions(response.data);
+    } catch (error) {
+      console.error('Error fetching units:', error);
+      showAlert('Error fetching units', 'danger');
+    }
+  };
+
   useEffect(() => {
     fetchCategories();
     fetchCompanies();
+    fetchUnits();
   }, []);
 
   useEffect(() => {
@@ -95,7 +114,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
         category_id: product.category_id || '',
         company_id: product.company_id || '',
         price: product.price || '',
-        inclusive_gst: product.inclusive_gst || 'Inclusive',
+        inclusive_gst: product.inclusive_gst || '',
         gst_rate: product.gst_rate || '',
         non_taxable: product.non_taxable || '',
         net_price: product.net_price || '',
@@ -104,7 +123,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
         cess_rate: product.cess_rate || '',
         cess_amount: product.cess_amount || '',
         sku: product.sku || '',
-        opening_stock: product.opening_stock || '',
+        opening_stock: product.opening_stock || (product.batches && product.batches[0] ? product.batches[0].opening_stock : ''),
         opening_stock_date: product.opening_stock_date ? product.opening_stock_date.split('T')[0] : new Date().toISOString().split('T')[0],
         min_stock_alert: product.min_stock_alert || '',
         max_stock_alert: product.max_stock_alert || '',
@@ -151,20 +170,20 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
       const response = await axios.get(`${baseurl}/products/${id}/batches`);
       const mappedBatches = response.data?.length
         ? response.data.map(batch => ({
-            id: batch.id,
-            dbId: batch.id,
-            batchNumber: batch.batch_number || '',
-            mfgDate: batch.mfg_date?.split('T')[0] || '',
-            expDate: batch.exp_date?.split('T')[0] || '',
-            quantity: batch.quantity || '',
-           
-            sellingPrice: batch.selling_price || formData.price || '',
-            purchasePrice: batch.purchase_price || '',
-            mrp: batch.mrp || '',
-            batchPrice: batch.batch_price || '',
-            barcode: batch.barcode || '',
-            isExisting: true
-          }))
+          id: batch.id,
+          dbId: batch.id,
+          batchNumber: batch.batch_number || '',
+          mfgDate: batch.mfg_date?.split('T')[0] || '',
+          expDate: batch.exp_date?.split('T')[0] || '',
+          quantity: batch.quantity || '',
+          costPrice: batch.cost_price || '',
+          opening_stock: batch.opening_stock || '', // ADD THIS LINE
+          sellingPrice: batch.selling_price || '', // CHANGED: Empty instead of formData.price
+          purchasePrice: batch.purchase_price || '',
+          mrp: batch.mrp || '',
+          barcode: batch.barcode || '',
+          isExisting: true
+        }))
         : [];
       console.log('📦 Fetched batches:', mappedBatches);
       setBatches(mappedBatches);
@@ -177,66 +196,113 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
   const generateUniqueBarcode = async () => {
     let isUnique = false;
     let newBarcode;
+    let attempts = 0;
+    const maxAttempts = 5;
 
-    while (!isUnique) {
+    while (!isUnique && attempts < maxAttempts) {
+      attempts++;
       const timestamp = Date.now();
-      newBarcode = `B${timestamp}${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+      const randomPart = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+      newBarcode = `B${timestamp}${randomPart}`;
+
       try {
         const response = await axios.get(`${baseurl}/batches/check-barcode/${newBarcode}`);
         if (response.data.available) {
           isUnique = true;
+          console.log('✅ Generated unique barcode:', newBarcode);
+        } else {
+          console.log('🔄 Barcode exists, generating new one...');
         }
       } catch (error) {
         console.error('Error checking barcode:', error);
-        return newBarcode;
+        isUnique = true;
       }
     }
+
+    if (!isUnique) {
+      newBarcode = `B${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
+      console.log('⚠️ Using fallback barcode:', newBarcode);
+    }
+
     return newBarcode;
   };
 
-  // FIXED: Proper batch number fetching with different prefixes
- // FIXED: Proper batch number fetching with different prefixes and current count
-const fetchNextBatchNumber = async (groupBy = 'Purchaseditems', currentCount = 0) => {
-  try {
-    console.log('🔄 Fetching next batch number for group:', groupBy, 'currentCount:', currentCount);
-    const response = await axios.get(`${baseurl}/batches/next-batch-number`, {
-      params: { 
-        group_by: groupBy,
-        current_count: currentCount // ADD THIS PARAMETER
-      }
-    });
-    console.log('📦 Next batch number for', groupBy, ':', response.data.batch_number);
-    return response.data.batch_number;
-  } catch (error) {
-    console.error('Error fetching next batch number:', error);
-    // Fallback: generate sequential number with prefix considering current count
-    const prefix = groupBy === 'Purchaseditems' ? 'P' : 'S';
-    const fallbackNumber = `${prefix}${String(parseInt(currentCount) + 1).padStart(4, '0')}`;
-    console.log('📦 Using fallback batch number:', fallbackNumber);
-    return fallbackNumber;
-  }
-};
 
-const createDefaultBatch = async (currentBatchCount = 0) => {
-  const newBarcode = await generateUniqueBarcode();
-  const batchNumber = await fetchNextBatchNumber(formData.group_by, currentBatchCount);
-  return {
-    id: `temp_${Date.now()}_${Math.random()}`,
-    dbId: null,
-    batchNumber,
-    mfgDate: '',
-    expDate: '',
-    quantity: '',
-    costPrice: '',
-    sellingPrice: formData?.price || '',
-    purchasePrice: '',
-    mrp: '',
-    batchPrice: '',
-    barcode: newBarcode,
-    isExisting: false
+
+
+  const createDefaultBatch = async () => {
+    const newBarcode = await generateUniqueBarcode();
+
+    return {
+      id: `temp_${Date.now()}_${Math.random()}`,
+      dbId: null,
+      batchNumber: '', // Empty for manual entry
+      mfgDate: '',
+      expDate: '',
+      quantity: formData.opening_stock || '',
+      costPrice: '',
+      sellingPrice: '', // CHANGED: Empty instead of formData.price
+      purchasePrice: '',
+      mrp: '',
+      barcode: newBarcode,
+      isExisting: false
+    };
   };
-};
 
+
+
+  // Add this validation function
+  const validateBatchNumber = async (batchNumber, currentBatchId = null) => {
+    if (!batchNumber) return true; // Skip validation if empty
+
+    try {
+      const response = await axios.get(`${baseurl}/batches/check-batch-number`, {
+        params: {
+          batch_number: batchNumber,
+          group_by: formData.group_by || 'Purchaseditems',
+          product_id: productId || '' // Exclude current product for updates
+        }
+      });
+
+      if (response.data.exists) {
+        // Check if this is the same batch (during editing)
+        if (currentBatchId) {
+          const currentBatch = batches.find(b => b.id === currentBatchId);
+          if (currentBatch && currentBatch.batchNumber === batchNumber) {
+            return true; // It's the same batch, allow it
+          }
+        }
+        return false; // Duplicate found
+      }
+      return true; // No duplicate
+    } catch (error) {
+      console.error('Error validating batch number:', error);
+      return true; // Don't block if validation fails
+    }
+  };
+
+  const handleBatchChange = async (index, e) => {
+    const { name, value } = e.target;
+    const updated = [...batches];
+    updated[index][name] = value;
+
+    // Validate batch number when it's changed
+    if (name === 'batchNumber' && value) {
+      const isValid = await validateBatchNumber(value, updated[index].id);
+      if (!isValid) {
+        window.alert(`Batch number "${value}" already exists in ${formData.group_by || 'Purchaseditems'}. Please select another batch number.`);
+        // Revert the change
+        updated[index][name] = batches[index][name];
+      }
+    }
+
+    setBatches(updated);
+
+    // NEW: Calculate and update main price field when sellingPrice changes
+    if (name === 'sellingPrice') {
+      calculateAndUpdateMainPrice(updated);
+    }
+  };
   const [formData, setFormData] = useState({
     group_by: groupType,
     goods_name: '',
@@ -261,110 +327,100 @@ const createDefaultBatch = async (currentBatchCount = 0) => {
     can_be_sold: false
   });
 
-const handleChange = async (e) => {
-  const { name, value, type, checked } = e.target;
-  console.log(`🔄 Handling change: ${name} = ${type === 'checkbox' ? checked : value}`);
+  const handleChange = async (e) => {
+    const { name, value, type, checked } = e.target;
+    console.log(`🔄 Handling change: ${name} = ${type === 'checkbox' ? checked : value}`);
 
-  const updatedFormData = {
-    ...formData,
-    [name]: type === 'checkbox' ? checked : value
-  };
+    const updatedFormData = {
+      ...formData,
+      [name]: type === 'checkbox' ? checked : value
+    };
 
-  if ((name === 'price' || name === 'gst_rate' || name === 'inclusive_gst') &&
+    if ((name === 'price' || name === 'gst_rate' || name === 'inclusive_gst') &&
       updatedFormData.price && updatedFormData.gst_rate) {
-    const { netPrice } = calculateTaxAndNetPrice(
-      updatedFormData.price,
-      updatedFormData.gst_rate,
-      updatedFormData.inclusive_gst
-    );
-    updatedFormData.net_price = netPrice;
-  }
-
-  if (name === 'price' && batches.length > 0) {
-    const updatedBatches = batches.map(batch => ({
-      ...batch,
-      sellingPrice: value || batch.sellingPrice
-    }));
-    setBatches(updatedBatches);
-  }
-
-  if (name === 'maintain_batch') {
-    if (checked && batches.length === 0) {
-      setBatchCounter(1); // Start from 1
-      const defaultBatch = await createDefaultBatch(0); // Pass 0 for first batch
-      setBatches([defaultBatch]);
-    } else if (!checked) {
-      setBatches([]);
-      setBatchCounter(1); // Reset counter when batch is disabled
+      const { netPrice } = calculateTaxAndNetPrice(
+        updatedFormData.price,
+        updatedFormData.gst_rate,
+        updatedFormData.inclusive_gst
+      );
+      updatedFormData.net_price = netPrice;
     }
-    setMaintainBatch(checked);
-  }
 
-  setFormData(updatedFormData);
-};
+    if (name === 'price' && batches.length > 0) {
+      const updatedBatches = batches.map(batch => ({
+        ...batch,
+        sellingPrice: value || batch.sellingPrice
+      }));
+      setBatches(updatedBatches);
+    }
 
-  const handleBatchChange = (index, e) => {
-    const { name, value } = e.target;
-    const updated = [...batches];
-    updated[index][name] = value;
-    setBatches(updated);
+    if (name === 'maintain_batch') {
+      if (checked && batches.length === 0) {
+        const defaultBatch = await createDefaultBatch();
+        setBatches([defaultBatch]);
+      } else if (!checked) {
+        setBatches([]);
+      }
+      setMaintainBatch(checked);
+    }
+
+    setFormData(updatedFormData);
   };
 
-  // Add these useEffects with your other useEffects
+  const calculateAndUpdateMainPrice = (updatedBatches) => {
+    // Calculate TOTAL selling price from all batches (SUM instead of average)
+    const totalSellingPrice = updatedBatches.reduce((sum, batch) => {
+      const sellingPrice = parseFloat(batch.sellingPrice) || 0;
+      return sum + sellingPrice;
+    }, 0);
 
-// Reset counter when batch maintenance is turned off
-useEffect(() => {
-  if (!maintainBatch) {
-    setBatchCounter(1); // Reset to 1 when batch maintenance is turned off
-  }
-}, [maintainBatch]);
+    // Update the main form price field with TOTAL
+    setFormData(prev => ({
+      ...prev,
+      price: totalSellingPrice.toFixed(2)
+    }));
+  };
 
-// Reset counter when editing existing product
-useEffect(() => {
-  if (productId && batches.length > 0) {
-    // When editing existing product, set counter to current batch count + 1
-    setBatchCounter(batches.length + 1);
-    console.log('🔄 Setting batch counter to:', batches.length + 1, 'for editing existing product');
-  }
-}, [productId, batches.length]);
+  const addNewBatch = async () => {
+    try {
+      console.log('➕ Starting to add new batch...');
+      console.log('📊 Current batches count:', batches.length);
+      console.log('📦 Current product ID:', productId);
+      console.log('🏷️ Current batch numbers:', batches.map(b => b.batchNumber));
 
+      const newBatch = await createDefaultBatch();
+      console.log('✅ New batch created:', {
+        batchNumber: newBatch.batchNumber,
+        id: newBatch.id
+      });
 
+      setBatches(prev => {
+        const updated = [...prev, newBatch];
+        console.log('📦 Batches after add:', updated.map(b => b.batchNumber));
 
+        // Calculate main price after adding new batch
+        calculateAndUpdateMainPrice(updated);
 
+        return updated;
+      });
 
-
-
- const addNewBatch = async () => {
-  try {
-    console.log('➕ Starting to add new batch...');
-    console.log('📊 Current batch count:', batchCounter);
-    
-    const newBatch = await createDefaultBatch(batchCounter);
-    console.log('✅ New batch created:', newBatch);
-    
-    setBatches(prev => {
-      const updated = [...prev, newBatch];
-      console.log('📦 Batches after add:', updated);
-      return updated;
-    });
-    
-    // Increment the batch counter for next time
-    setBatchCounter(prev => prev + 1);
-    console.log('🔢 Batch counter incremented to:', batchCounter + 1);
-    
-  } catch (error) {
-    console.error('❌ Error adding new batch:', error);
-    showAlert('Error adding new batch. Please try again.', 'danger');
-  }
-};
+    } catch (error) {
+      console.error('❌ Error adding new batch:', error);
+      showAlert('Error adding new batch. Please try again.', 'danger');
+    }
+  };
 
   const removeBatch = (id) => {
     if (batches.length <= 1 && maintainBatch) {
       showAlert('At least one batch is required when Maintain Batch is enabled.', 'warning');
       return;
     }
+
     const updated = batches.filter((b) => b.id !== id);
     setBatches(updated);
+
+    // Calculate main price after removing batch
+    calculateAndUpdateMainPrice(updated);
   };
 
   const showAlert = (message, variant = 'success') => {
@@ -376,72 +432,171 @@ useEffect(() => {
     e.preventDefault();
     setIsLoading(true);
 
+    // Calculate total stock for batch-managed products
+    const calculateTotalStockFromBatches = () => {
+      if (!batches || batches.length === 0) return 0;
+      const total = batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
+      console.log('📊 Calculated total stock from batches:', total);
+      return total;
+    };
+
+    // Validate batches if maintainBatch is enabled
     if (maintainBatch) {
+      // Check for required fields
       const invalidBatches = batches.filter(
-        (batch) => !batch.quantity || !batch.sellingPrice || !batch.barcode
+        (batch) => !batch.batchNumber || !batch.quantity || !batch.sellingPrice || !batch.barcode
       );
 
       if (invalidBatches.length > 0) {
         showAlert(
-          'Please fill all required fields in batch details (Quantity, Selling Price, and Barcode)',
+          'Please fill all required fields in batch details (Batch Number, Quantity, Selling Price, and Barcode)',
           'danger'
         );
         setIsLoading(false);
         return;
       }
+
+      // Validate unique batch numbers within the same product
+      const batchNumbers = batches.map(b => b.batchNumber);
+      const uniqueBatchNumbers = new Set(batchNumbers);
+      if (batchNumbers.length !== uniqueBatchNumbers.size) {
+        showAlert('Batch numbers must be unique within this product. Please check your batch numbers.', 'danger');
+        setIsLoading(false);
+        return;
+      }
+
+      // NEW VALIDATION: Check if batch number already exists in the same group
+      try {
+        const batchCheckPromises = batches.map(async (batch) => {
+          // Only check for new batches (not existing ones being updated)
+          if (!batch.isExisting) {
+            try {
+              const response = await axios.get(`${baseurl}/batches/check-batch-number`, {
+                params: {
+                  batch_number: batch.batchNumber,
+                  group_by: formData.group_by || 'Purchaseditems',
+                  product_id: productId || '' // Exclude current product for updates
+                }
+              });
+              return response.data.exists;
+            } catch (error) {
+              console.error('Error checking batch number:', error);
+              return false; // Don't block submission if check fails
+            }
+          }
+          return false;
+        });
+
+        const batchCheckResults = await Promise.all(batchCheckPromises);
+        const hasDuplicateBatches = batchCheckResults.some(exists => exists);
+
+        if (hasDuplicateBatches) {
+          showAlert('One or more batch numbers already exist in the same category. Please use unique batch numbers.', 'danger');
+          setIsLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Error during batch number validation:', error);
+      }
     }
 
     try {
-    // Prepare purchase data
-    const purchaseData = {
-      ...formData,
-      group_by: 'Purchaseditems',
-      batches: maintainBatch ? batches.map(batch => ({
-        batch_number: batch.batchNumber,
-        mfg_date: batch.mfgDate || null,
-        exp_date: batch.expDate || null,
-        quantity: parseFloat(batch.quantity) || 0,
-        selling_price: parseFloat(batch.sellingPrice) || 0,
-        purchase_price: parseFloat(batch.purchasePrice) || 0,
-        mrp: parseFloat(batch.mrp) || 0,
-        batch_price: parseFloat(batch.batchPrice) || 0,
-        barcode: batch.barcode,
-        group_by: 'Purchaseditems'
-      })) : [],
-      stock_in: "0",
-      stock_out: "0",
-      balance_stock: formData.opening_stock || "0",
-      can_be_sold: formData.can_be_sold
-    };
+      // Calculate final opening stock
+      let finalOpeningStock = parseFloat(formData.opening_stock) || 0;
+      if (maintainBatch && batches.length > 0) {
+        finalOpeningStock = calculateTotalStockFromBatches();
+        console.log('🔄 Using batch-based opening stock:', finalOpeningStock);
+      }
 
-    console.log('📤 Sending purchase data to backend:', JSON.stringify(purchaseData, null, 2));
+      // Prepare batches for backend
+      const batchesForBackend = maintainBatch
+        ? batches.map((batch) => {
+          const batchData = {
+            batch_number: batch.batchNumber,
+            mfg_date: batch.mfgDate || null,
+            exp_date: batch.expDate || null,
+            quantity: parseFloat(batch.quantity) || 0,
+            cost_price: parseFloat(batch.costPrice) || 0,
+            selling_price: parseFloat(batch.sellingPrice) || 0,
+            purchase_price: parseFloat(batch.purchasePrice) || 0,
+            mrp: parseFloat(batch.mrp) || 0,
+            // batch_price: parseFloat(batch.batchPrice) || 0,
+            barcode: batch.barcode,
+            group_by: formData.group_by || 'Purchaseditems',
+            isExisting: batch.isExisting || false
+          };
 
-    // Use the new backend endpoint for dual product creation
-    const response = await axios.post(`${baseurl}/products/purchase-with-sales`, {
-      ...purchaseData,
-      create_sales_catalog: formData.can_be_sold
-    }, {
-      headers: { 'Content-Type': 'application/json' }
-    });
+          if (batch.isExisting && batch.dbId && !batch.dbId.toString().includes('temp_')) {
+            batchData.id = batch.dbId;
+          }
 
-    console.log('✅ Backend response:', response.data);
+          console.log(`📦 Batch data - ID: ${batch.id}, isExisting: ${batch.isExisting}, sending ID: ${batchData.id}`);
+          return batchData;
+        })
+        : [];
 
-    if (response.data.success) {
-      showAlert(response.data.message || 'Product added successfully!', 'success');
-      
+      // Prepare data for backend with proper stock initialization
+      const dataToSend = {
+        ...formData,
+        group_by: groupType,
+        opening_stock: finalOpeningStock,
+        // Ensure proper stock initialization based on batch management
+        stock_in: maintainBatch ? finalOpeningStock : finalOpeningStock,
+        stock_out: 0,
+        balance_stock: finalOpeningStock,
+        batches: batchesForBackend
+      };
+
+      console.log('📤 Sending data to backend:', {
+        opening_stock: dataToSend.opening_stock,
+        stock_in: dataToSend.stock_in,
+        stock_out: dataToSend.stock_out,
+        balance_stock: dataToSend.balance_stock,
+        maintain_batch: dataToSend.maintain_batch,
+        batch_count: batchesForBackend.length,
+        batch_numbers: batchesForBackend.map(b => b.batch_number)
+      });
+
+      if (productId) {
+        console.log(`🔄 Updating product ID: ${productId}`);
+
+        const response = await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        console.log('✅ Update response:', response.data);
+        showAlert('Product updated successfully!', 'success');
+
+        await fetchBatches(productId);
+      } else {
+        console.log('➕ Creating new product');
+        const response = await axios.post(`${baseurl}/products`, dataToSend, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        showAlert('New product added successfully!', 'success');
+      }
+
       setTimeout(() => navigate('/purchased_items'), 1500);
-    } else {
-      throw new Error(response.data.message || 'Failed to add product');
-    }
+    } catch (error) {
+      console.error('❌ Failed to add/update product:', error);
+      console.error('❌ Error response:', error.response?.data);
 
-  } catch (error) {
-    console.error('❌ Failed to add product:', error);
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to add product';
-    showAlert(errorMessage, 'danger');
-  } finally {
-    setIsLoading(false);
-  }
-};
+      // Handle specific batch number duplicate error from backend
+      let errorMessage = error.response?.data?.message || error.message || 'Failed to add/update product';
+
+      if (errorMessage.includes('batch number') && errorMessage.includes('already exists')) {
+        errorMessage = 'Batch number already exists in this category. Please use a unique batch number.';
+      }
+
+      showAlert(errorMessage, 'danger');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+
+
+
   const pageTitle = productId
     ? `Edit Product in Purchase Catalog`
     : `Add Product to Purchase Catalog`;
@@ -558,7 +713,15 @@ useEffect(() => {
                       value={formData.price}
                       onChange={handleChange}
                       required
+                      disabled={maintainBatch}
+                      className={maintainBatch ? "bg-light" : ""}
                     />
+                    {/* NEW: Help text when disabled */}
+                    {maintainBatch && (
+                      <Form.Text className="text-muted">
+                        Price is auto-calculated from batch selling prices
+                      </Form.Text>
+                    )}
                   </div>
                   <div className="col">
                     <Form.Label>GST Type</Form.Label>
@@ -623,18 +786,32 @@ useEffect(() => {
 
                 <div className="row mb-3">
                   <div className="col">
-                    <Form.Label>Unit</Form.Label>
-                    <Form.Select
-                      name="unit"
-                      value={formData.unit}
-                      onChange={handleChange}
-                    >
-                      <option value="UNT-UNITS">UNT-UNITS</option>
-                      <option value="KG-Kilograms">KG-Kilograms</option>
-                      <option value="L-Liters">L-Liters</option>
-                      <option value="M-Meters">M-Meters</option>
-                    </Form.Select>
+                    <Form.Label>Unit *</Form.Label>
+                    <div className="d-flex">
+                      <Form.Select
+                        className="me-1"
+                        name="unit"
+                        value={formData.unit}
+                        onChange={handleChange}
+                        required
+                      >
+                        <option value="">Select Unit</option>
+                        {unitOptions.map((unit) => (
+                          <option key={unit.id} value={unit.name}>
+                            {unit.name}
+                          </option>
+                        ))}
+                      </Form.Select>
+                      <Button
+                        variant="outline-primary"
+                        size="sm"
+                        onClick={() => setShowUnitModal(true)}
+                      >
+                        <BsPlus />
+                      </Button>
+                    </div>
                   </div>
+
                   <div className="col">
                     <Form.Label>CESS Rate %</Form.Label>
                     <Form.Control
@@ -669,17 +846,38 @@ useEffect(() => {
                       onChange={handleChange}
                     />
                   </div>
-                  <div className="col">
-                    <Form.Label>Opening Stock *</Form.Label>
-                    <Form.Control
-                      placeholder="Opening Stock"
-                      name="opening_stock"
-                      type="number"
-                      value={formData.opening_stock}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
+
+                  {/* Conditionally show Opening Stock field */}
+                  {!maintainBatch && (
+                    <div className="col">
+                      <Form.Label>Opening Stock *</Form.Label>
+                      <Form.Control
+                        placeholder="Opening Stock"
+                        name="opening_stock"
+                        type="number"
+                        value={formData.opening_stock || (batches.length > 0 ? batches[0].opening_stock : '')}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {/* Show calculated stock when batches exist */}
+                  {maintainBatch && batches.length > 0 && (
+                    <div className="col">
+                      <Form.Label>Total Stock (from batches)</Form.Label>
+                      <Form.Control
+                        type="number"
+                        value={calculateTotalStockFromBatches()}
+                        readOnly
+                        className="bg-light"
+                      />
+                      <Form.Text className="text-muted">
+                        Calculated from batch quantities
+                      </Form.Text>
+                    </div>
+                  )}
+
                   <div className="col">
                     <Form.Label>Opening Stock Date</Form.Label>
                     <Form.Control
@@ -747,28 +945,27 @@ useEffect(() => {
                   />
                 </Form.Group>
 
-       {maintainBatch && (
-  <div className="border border-dark p-3 mb-3">
-    <h5>Batch Details (Purchase Only)</h5>
-
-    {batches.map((batch, index) => (
-      <div key={batch.id} className="mb-3 border p-2">
-        <div className="row g-2 mb-2">
-          <div className="col-md-4">
-            <Form.Label>Batch No.*</Form.Label>
-            <Form.Control
-              placeholder="Batch Number"
-              name="batchNumber"
-              value={batch.batchNumber}
-              readOnly
-              required
-            />
-            <Form.Text className="text-muted">
-              Sequential: {batch.batchNumber}
-            </Form.Text>
-          </div>
+                {maintainBatch && (
+                  <div className="border border-dark p-3 mb-3">
+                    <h5>Batch Details</h5>
+                    {batches.map((batch, index) => (
+                      <div key={batch.id} className="mb-3 border p-2">
+                        <div className="row g-2 mb-2">
                           <div className="col-md-4">
-                            <Form.Label>Stock*</Form.Label>
+                            <Form.Label>Batch No.*</Form.Label>
+                            <Form.Control
+                              placeholder="Enter Batch Number"
+                              name="batchNumber"
+                              value={batch.batchNumber}
+                              onChange={(e) => handleBatchChange(index, e)}
+                              required
+                            />
+                            <Form.Text className="text-muted">
+                              Enter unique batch number
+                            </Form.Text>
+                          </div>
+                          <div className="col-md-4">
+                            <Form.Label>Opening Stock*</Form.Label>
                             <Form.Control
                               type="number"
                               name="quantity"
@@ -799,7 +996,7 @@ useEffect(() => {
                             />
                           </div>
                           <div className="col-md-4">
-                            <Form.Label>Sale Price*</Form.Label>
+                            <Form.Label>Purchase Price*</Form.Label>
                             <Form.Control
                               type="number"
                               step="0.01"
@@ -822,7 +1019,6 @@ useEffect(() => {
                         </div>
 
                         <div className="row g-2 mb-2">
-                     
                           <div className="col-md-4">
                             <Form.Label>M.R.P</Form.Label>
                             <Form.Control
@@ -833,7 +1029,7 @@ useEffect(() => {
                               onChange={(e) => handleBatchChange(index, e)}
                             />
                           </div>
-                          <div className="col-md-4">
+                          {/* <div className="col-md-4">
                             <Form.Label>Batch Price</Form.Label>
                             <Form.Control
                               type="number"
@@ -842,8 +1038,8 @@ useEffect(() => {
                               value={batch.batchPrice}
                               onChange={(e) => handleBatchChange(index, e)}
                             />
-                          </div>
-                             <div className="col-md-4">
+                          </div> */}
+                          <div className="col-md-4">
                             <Form.Label>Barcode *</Form.Label>
                             <Form.Control
                               type="text"
@@ -860,15 +1056,13 @@ useEffect(() => {
                           </div>
                         </div>
 
-                        <div className="row g-2 mb-2">
-                       
-                          <div className="text-end">
+                        <div className="row">
+                          <div className="col text-end">
                             <Button
                               variant="danger"
                               size="sm"
                               onClick={() => removeBatch(batch.id)}
                               disabled={batches.length <= 1}
-                              className="mt-4"
                             >
                               Remove
                             </Button>
@@ -880,8 +1074,9 @@ useEffect(() => {
                     <Button variant="primary" onClick={addNewBatch} className="mb-2">
                       Add Batch
                     </Button>
-                 
-                 
+                    <div className="mt-2 text-muted">
+                      <small>* Batch numbers are auto-generated and unique across all products</small>
+                    </div>
                   </div>
                 )}
 
@@ -938,6 +1133,17 @@ useEffect(() => {
                   setShowCategoryModal(false);
                 }}
               />
+
+              <AddUnitModal
+                show={showUnitModal}
+                onClose={() => setShowUnitModal(false)}
+                onSave={(newUnit) => {
+                  fetchUnits();
+                  setFormData((prev) => ({ ...prev, unit: newUnit.name }));
+                  setShowUnitModal(false);
+                }}
+              />
+
             </div>
           </div>
         </div>
