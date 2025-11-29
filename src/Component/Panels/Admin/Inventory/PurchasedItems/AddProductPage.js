@@ -974,24 +974,25 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                               required
                             />
                           </div>
-                          <div className="col-md-4">
-                            <Form.Label>Exp. Date</Form.Label>
-                            <Form.Control
-                              type="date"
-                              name="expDate"
-                              value={batch.expDate}
-                              onChange={(e) => handleBatchChange(index, e)}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="row g-2 mb-2">
-                          <div className="col-md-4">
+                              <div className="col-md-4">
                             <Form.Label>Mfg. Date</Form.Label>
                             <Form.Control
                               type="date"
                               name="mfgDate"
                               value={batch.mfgDate}
+                              onChange={(e) => handleBatchChange(index, e)}
+                            />
+                          </div>
+                        
+                        </div>
+
+                        <div className="row g-2 mb-2">
+                        <div className="col-md-4">
+                            <Form.Label>Exp. Date</Form.Label>
+                            <Form.Control
+                              type="date"
+                              name="expDate"
+                              value={batch.expDate}
                               onChange={(e) => handleBatchChange(index, e)}
                             />
                           </div>
@@ -1006,7 +1007,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                               required
                             />
                           </div>
-                          <div className="col-md-4">
+                          {/* <div className="col-md-4">
                             <Form.Label>Purchase Price</Form.Label>
                             <Form.Control
                               type="number"
@@ -1015,11 +1016,9 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                               value={batch.purchasePrice}
                               onChange={(e) => handleBatchChange(index, e)}
                             />
-                          </div>
-                        </div>
+                          </div> */}
 
-                        <div className="row g-2 mb-2">
-                          <div className="col-md-4">
+                           <div className="col-md-4">
                             <Form.Label>M.R.P</Form.Label>
                             <Form.Control
                               type="number"
@@ -1029,6 +1028,10 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                               onChange={(e) => handleBatchChange(index, e)}
                             />
                           </div>
+                        </div>
+
+                        <div className="row g-2 mb-2">
+                         
                           {/* <div className="col-md-4">
                             <Form.Label>Batch Price</Form.Label>
                             <Form.Control

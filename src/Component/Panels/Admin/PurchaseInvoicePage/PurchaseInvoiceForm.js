@@ -758,13 +758,10 @@ const handleSubmit = async (e) => {
     // Also update invoiceData with the new number
     setInvoiceData(prev => ({
       ...prev,
-      // invoiceNumber: newInvoiceNumber
     }));
 
-    // Save the new invoice number to localStorage for next time
     const newDraftData = {
       ...invoiceData,
-      // invoiceNumber: newInvoiceNumber,
       items: [],
       taxableAmount: 0,
       totalGST: 0,
@@ -954,9 +951,9 @@ const handleSubmit = async (e) => {
                             }
                           }}
                         >
-                          <option value="">Select Supplier</option> {/* Changed from "Select Customer" */}
+                          <option value="">Select Supplier</option> 
                           {accounts
-                            .filter(acc => acc.role === "supplier") // ← CHANGED FROM "retailer" TO "supplier"
+                            .filter(acc => acc.role === "supplier") 
                             .map(acc => (
                               <option key={acc.id} value={acc.business_name}>
                                 {acc.business_name} ({acc.mobile_number})

@@ -315,21 +315,20 @@ const useCreditNoteLogic = () => {
     console.log("Original Invoice:", selectedInvoice);
     console.log("Items to Credit:", items.length);
 
-    const payload = {
-      transactionType: "CreditNote",
-      creditNoteNumber,
-      noteDate,
-      InvoiceNumber: selectedInvoice, // Store original invoice reference
-      items: items.map(item => ({
-        ...item,
-        // Remove calculated fields before saving
-        originalQuantity: undefined,
-        availableQuantity: undefined,
-        soldQuantity: undefined,
-        creditedQuantity: undefined
-      })),
-      customerData,
-    };
+const payload = {
+  transactionType: "CreditNote",
+  creditNoteNumber,
+  noteDate,
+  InvoiceNumber: selectedInvoice,
+  PartyID: customerData?.PartyID || customerData?.customer_id || null,
+  items: items.map(item => ({
+    ...item,
+    originalQuantity: undefined,
+    availableQuantity: undefined,
+    soldQuantity: undefined,
+    creditedQuantity: undefined
+  })),
+};
 
     console.log("📦 FINAL PAYLOAD - Items:", payload.items);
 

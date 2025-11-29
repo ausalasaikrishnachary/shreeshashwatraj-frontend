@@ -144,12 +144,22 @@ const ReceiptsTable = () => {
       style:{textAlign:'center'},
       render:(value) => value || '0'
     },
-    { 
-      key: 'receipt_date', 
-      title: 'DATE', 
-      style: { textAlign: 'center' },
-      render: (value) => value || 'N/A'
-    }
+  {
+  key: 'Date',
+  title: 'DATE',
+  style: { textAlign: 'center' },
+  render: (value) => {
+    if (!value) return 'N/A';
+
+    const dateObj = new Date(value);
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = dateObj.getFullYear();
+
+    return `${day}-${month}-${year}`; // DD-MM-YYYY
+  }
+}
+
   ];
 
   const tabs = [

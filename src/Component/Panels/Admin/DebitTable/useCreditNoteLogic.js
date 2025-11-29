@@ -320,6 +320,8 @@ const useCreditNoteLogic = () => {
       creditNoteNumber,
       noteDate,
       InvoiceNumber: selectedInvoice, // Store original invoice reference
+        PartyID: customerData?.PartyID || customerData?.customer_id || null,
+
       items: items.map(item => ({
         ...item,
         // Remove calculated fields before saving
@@ -328,7 +330,6 @@ const useCreditNoteLogic = () => {
         soldQuantity: undefined,
         creditedQuantity: undefined
       })),
-      customerData,
     };
 
     console.log("📦 FINAL PAYLOAD - Items:", payload.items);

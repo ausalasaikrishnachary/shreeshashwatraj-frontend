@@ -79,7 +79,7 @@ const StockDetailsModal = ({ show, onClose, stockData, context = "sales" }) => {
 
                 <div><strong>Cost Price:</strong> ₹{batch.cost_price}</div>
                 <div><strong>Selling Price:</strong> ₹{batch.selling_price}</div>
-                <div><strong>Purchase Price:</strong> ₹{batch.purchase_price}</div>
+                {/* <div><strong>Purchase Price:</strong> ₹{batch.purchase_price}</div> */}
                 <div><strong>MRP:</strong> ₹{batch.mrp}</div>
                 <div><strong>Batch Price:</strong> ₹{batch.batch_price}</div>
                 <div><strong>Barcode:</strong> {batch.barcode}</div>
