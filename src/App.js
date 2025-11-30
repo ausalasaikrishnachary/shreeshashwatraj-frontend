@@ -335,7 +335,7 @@ function App() {
 <Route path="/kacha_sales" element={<KachaSalesInvoiceForm />} />
 
 <Route path="/kachainvoicepdf/:id" element={<KachaInvoicePDFPreview />} />
-{/* <Route path="/period" element={<Period />} /> */}
+<Route path="/period" element={<Period />} />
       </Routes>
     </Router>
   );
