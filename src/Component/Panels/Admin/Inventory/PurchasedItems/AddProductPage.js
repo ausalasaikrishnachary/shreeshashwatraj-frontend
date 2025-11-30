@@ -719,10 +719,21 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                     {/* NEW: Help text when disabled */}
                     {maintainBatch && (
                       <Form.Text className="text-muted">
-                        Price is auto-calculated from batch selling prices
+                        Price  auto-calculated from batch selling prices
                       </Form.Text>
                     )}
                   </div>
+                     
+                  <div className="col">
+                    <Form.Label>Selling Price</Form.Label>
+                       <Form.Control
+                      placeholder="Selling  Price"
+                      name="goods_name"
+                  
+                      required
+                    />
+                  </div>
+               
                   <div className="col">
                     <Form.Label>GST Type</Form.Label>
                     <Form.Select
@@ -1007,6 +1018,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                               required
                             />
                           </div>
+
                           {/* <div className="col-md-4">
                             <Form.Label>Purchase Price</Form.Label>
                             <Form.Control
@@ -1042,6 +1054,16 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                               onChange={(e) => handleBatchChange(index, e)}
                             />
                           </div> */}
+                               
+                  <div className="col-md-4">
+                    <Form.Label>Selling Price</Form.Label>
+                       <Form.Control
+                      placeholder="Selling  Price"
+                      name="goods_name"
+                  
+                      required
+                    />
+                  </div>
                           <div className="col-md-4">
                             <Form.Label>Barcode *</Form.Label>
                             <Form.Control

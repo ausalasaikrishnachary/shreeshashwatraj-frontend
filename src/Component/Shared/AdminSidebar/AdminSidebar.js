@@ -113,7 +113,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     { path: "/credit-period", name: "Credit Period Fix", icon: <FaCalendarAlt /> }, // Added new path
     { 
   path: "/period", 
-  name: "Period", 
+  name: "Order List", 
   icon: <FaHourglass /> 
 },
 
