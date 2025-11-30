@@ -25,12 +25,12 @@ const Period = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:5000/api/all-orders");
+      const response = await axios.get("http://localhost:5000/orders/all-orders");
       const ordersData = response.data;
 
       const ordersWithItems = await Promise.all(
         ordersData.map(async (order) => {
-          const itemsRes = await axios.get(`http://localhost:5000/api/details/${order.order_number}`);
+          const itemsRes = await axios.get(`http://localhost:5000/orders/details/${order.order_number}`);
           const itemsData = itemsRes.data.items || [];
 
           return {
