@@ -15,6 +15,7 @@ const Salesitems_productsdetails = ({ user }) => {
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [error, setError] = useState(null);
   const [voucherError, setVoucherError] = useState(null);
+  const [stockAlerts, setStockAlerts] = useState([]);
 
   const fetchProduct = async () => {
     try {
@@ -45,6 +46,50 @@ const Salesitems_productsdetails = ({ user }) => {
     }
   };
 
+  // Function to check stock alerts for batches
+  const checkBatchStockAlerts = () => {
+    if (!productData || !productData.batches) return;
+
+    const alerts = [];
+    const minAlert = parseFloat(productData.min_stock_alert) || 0;
+    const maxAlert = parseFloat(productData.max_stock_alert) || 0;
+
+    // Check each batch quantity against min/max alerts
+    productData.batches.forEach(batch => {
+      const batchQuantity = parseFloat(batch.quantity) || 0;
+      const batchNumber = batch.batch_number || 'N/A';
+
+      // Check min stock alert
+      if (minAlert > 0 && batchQuantity <= minAlert) {
+        alerts.push({
+          type: 'min_stock',
+          message: `⚠️ Low Stock Alert! Batch ${batchNumber} of ${productData.goods_name} has only ${batchQuantity} units (Min: ${minAlert})`,
+          level: 'danger',
+          batchNumber: batchNumber
+        });
+      }
+
+      // Check max stock alert  
+      if (maxAlert > 0 && batchQuantity >= maxAlert) {
+        alerts.push({
+          type: 'max_stock',
+          message: `📦 High Stock Alert! Batch ${batchNumber} of ${productData.goods_name} has ${batchQuantity} units (Max: ${maxAlert})`,
+          level: 'warning',
+          batchNumber: batchNumber
+        });
+      }
+    });
+
+    setStockAlerts(alerts);
+
+    // Show alerts for 3 seconds and then remove
+    if (alerts.length > 0) {
+      setTimeout(() => {
+        setStockAlerts([]);
+      }, 3000);
+    }
+  };
+
   useEffect(() => {
     fetchProduct();
   }, [id]);
@@ -52,9 +97,12 @@ const Salesitems_productsdetails = ({ user }) => {
   useEffect(() => {
     if (productData && productData.id) {
       fetchVouchersByProduct(productData.id);
+      // Check batch stock alerts after product data is loaded
+      setTimeout(() => {
+        checkBatchStockAlerts();
+      }, 500);
     }
   }, [productData]);
-
 
   const calculateBatchStock = (batchObj) => {
     console.log("==== Calculating stock for batch ====");
@@ -108,23 +156,6 @@ const Salesitems_productsdetails = ({ user }) => {
       stock_out,
       balance_stock,
       latest_date,
-    };
-  };
-
-
-
-
-
-
-
-  // Function to get product-level stock data
-  const getProductStockData = () => {
-    return {
-      opening_stock: parseFloat(productData.opening_stock) || 0,
-      stock_in: parseFloat(productData.stock_in) || 0,
-      stock_out: parseFloat(productData.stock_out) || 0,
-      balance_stock: parseFloat(productData.balance_stock) || 0,
-      latest_date: productData.opening_stock_date || productData.created_at
     };
   };
 
@@ -204,10 +235,52 @@ const Salesitems_productsdetails = ({ user }) => {
           user={user}
           toggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
+        
+        {/* Stock Alert Notifications */}
+        {stockAlerts.length > 0 && (
+          <div className="stock-alerts-container" style={{
+            position: 'fixed',
+            top: '80px',
+            right: '20px',
+            zIndex: 9999,
+            minWidth: '400px'
+          }}>
+            {stockAlerts.map((alert, index) => (
+              <div
+                key={index}
+                className={`alert ${
+                  alert.level === 'danger' ? 'alert-danger' : 'alert-warning'
+                } stock-alert`}
+                style={{
+                  animation: 'slideIn 0.3s ease-out',
+                  marginBottom: '10px',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                }}
+              >
+                <div className="d-flex align-items-center">
+                  <i className={`fas ${
+                    alert.type === 'min_stock' ? 'fa-exclamation-triangle' : 'fa-boxes'
+                  } me-2`}></i>
+                  <span>{alert.message}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="salesitems-main-content">
           <div className="container-fluid mt-3">
             <div className="card p-3">
               <h1 className="mb-4 fw-bold text-primary">{productData.goods_name}</h1>
+
+              {/* Stock Alert Summary Card */}
+              <div className="row mb-4">
+                <div className="col-12">
+               
+                </div>
+              </div>
 
               <div className="row">
                 {/* LEFT COLUMN: PRODUCT DETAILS */}
@@ -262,61 +335,69 @@ const Salesitems_productsdetails = ({ user }) => {
                     <div className="table-responsive">
                       <table className="salesitems-table">
                         <thead className="table-light">
-                         <tr>
-    <th>Product Name</th>
-    <th>Price</th>
-    <th>Batch Number</th>
-    <th>Opening Stock</th>
-    <th>Stock In</th>
-    <th>Stock Out</th>
-    <th>Balance Stock</th>
-    <th>Date</th>
-  </tr>
+                          <tr>
+                            <th>Product Name</th>
+                            <th>Price</th>
+                            <th>Batch Number</th>
+                            <th>Opening Stock</th>
+                            <th>Stock In</th>
+                            <th>Stock Out</th>
+                            <th>Balance Stock</th>
+                            <th>Date</th>
+                          </tr>
                         </thead>
                         <tbody>
-  {productData.batches && productData.batches.length > 0 ? (
-    productData.batches.map((batch) => {
-      const batchStock = calculateBatchStock(batch);
+                          {productData.batches && productData.batches.length > 0 ? (
+                            productData.batches.map((batch) => {
+                              const batchStock = calculateBatchStock(batch);
+                              const batchQuantity = parseFloat(batch.quantity) || 0;
+                              const minAlert = parseFloat(productData.min_stock_alert) || 0;
+                              const maxAlert = parseFloat(productData.max_stock_alert) || 0;
 
-      console.log(`Batch ${batch.batch_number} Stock:`, batchStock);
-
-      return (
-        <tr key={batch.id}>
-          <td>{productData.goods_name}</td>
-          <td>₹{batch.selling_price || productData.price}</td>
-          <td>{batch.batch_number}</td>
-          <td>{batchStock.opening_stock}</td>
-          <td style={{ color: 'green', fontWeight: '600' }}>
-            {batchStock.stock_in}
-          </td>
-          <td style={{ color: 'red', fontWeight: '600' }}>
-            {batchStock.stock_out}
-          </td>
-          <td style={{ fontWeight: '600' }}>
-            {batchStock.balance_stock}
-          </td>
-          <td>
-            {batchStock.latest_date
-              ? new Date(batchStock.latest_date).toLocaleDateString("en-IN")
-              : new Date(batch.created_at).toLocaleDateString("en-IN")}
-          </td>
-        </tr>
-      );
-    })
-  ) : (
-    <tr>
-      <td colSpan="9" className="text-center text-muted">
-        No batches found for this product.
-      </td>
-    </tr>
-  )}
-</tbody>
-
+                              return (
+                                <tr key={batch.id}>
+                                  <td>{productData.goods_name}</td>
+                                  <td>₹{batch.selling_price || productData.price}</td>
+                                  <td>
+                                    {batch.batch_number}
+                                    {minAlert > 0 && batchQuantity <= minAlert && (
+                                      <span className="badge bg-danger ms-1">Low Stock</span>
+                                    )}
+                                    {maxAlert > 0 && batchQuantity >= maxAlert && (
+                                      <span className="badge bg-warning ms-1">High Stock</span>
+                                    )}
+                                  </td>
+                                  <td>{batchStock.opening_stock}</td>
+                                  <td style={{ color: 'green', fontWeight: '600' }}>
+                                    {batchStock.stock_in}
+                                  </td>
+                                  <td style={{ color: 'red', fontWeight: '600' }}>
+                                    {batchStock.stock_out}
+                                  </td>
+                                  <td style={{ fontWeight: '600' }}>
+                                    {batchStock.balance_stock}
+                                  </td>
+                                  <td>
+                                    {batchStock.latest_date
+                                      ? new Date(batchStock.latest_date).toLocaleDateString("en-IN")
+                                      : new Date(batch.created_at).toLocaleDateString("en-IN")}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan="8" className="text-center text-muted">
+                                No batches found for this product.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
                       </table>
                     </div>
                   </div>
 
-                  {/* Recent Sales Section */}
+                  {/* Rest of your existing code for Recent Sales and Recent Purchases remains the same */}
                   <div className="card mb-4 p-3 shadow-sm border-0">
                     <div className="d-flex justify-content-between align-items-center mb-3">
                       <h5 className="fw-semibold text-secondary mb-0">Recent Sales</h5>
@@ -398,7 +479,6 @@ const Salesitems_productsdetails = ({ user }) => {
                     )}
                   </div>
 
-                  {/* Recent Purchases */}
                   <div className="card mb-4 p-3 shadow-sm border-0">
                     <h5 className="fw-semibold text-secondary">Recent Purchases</h5>
                     <hr className="my-2" />

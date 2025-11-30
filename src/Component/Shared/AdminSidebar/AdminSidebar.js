@@ -32,9 +32,10 @@ import {
   FaFileExport,
   FaMoneyBillWave,
   FaRuler,
-  FaCalendarAlt, // Added for Credit Period Fix
+  FaCalendarAlt, 
+  FaHourglass,
 } from "react-icons/fa";
-import { FiHome } from 'react-icons/fi'; // ✅ Feather icons
+import { FiHome } from 'react-icons/fi'; 
 
 import "./AdminSidebar.css";
 import UserCard from "../../Panels/UserCard/UserCard";
@@ -110,6 +111,12 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     { path: "/staff", name: "Staff", icon: <FaUserTie /> },
     { path: "/sales_visit", name: "Sales Visit", icon: <FaClipboardList /> },
     { path: "/credit-period", name: "Credit Period Fix", icon: <FaCalendarAlt /> }, // Added new path
+    { 
+  path: "/period", 
+  name: "Period", 
+  icon: <FaHourglass /> 
+},
+
     {
       name: "Inventory",
       icon: <FaHandHoldingUsd />,
@@ -134,6 +141,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
         { path: "/sales/receivables", name: "Receivables", icon: <FaHandHoldingUsd /> },
       ],
     },
+ 
     {
       name: "Purchase",
       icon: <FaBox />,
@@ -145,6 +153,22 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
         { path: "/purchase/payables", name: "Payables", icon: <FaHandHoldingUsd /> },
       ],
     },
+
+
+        {
+      name: "Kacha Sales",
+      icon: <FaChartLine />,
+      subMenu: [
+        { path: "/kachinvoicetable", name: "Kacha  Sales Invoices", icon: <FaFileInvoice /> },
+        { path: "/sales/receipts", name: " Kacha Receipts", icon: <FaReceipt /> },
+        { path: "/sales/quotations", name: " kacha Quotations", icon: <FaFileContract /> },
+        { path: "/sales/bill_of_supply", name:  " kacha Bill Of Supply", icon: <FaFileInvoiceDollar /> },
+        { path: "/sales/credit_note", name: " kachaCredit Note", icon: <FaCreditCard /> },
+        { path: "/sales/delivery_challan", name: " kacha Delivery Challan", icon: <FaTruck /> },
+        { path: "/sales/receivables", name: " kacha Receivables", icon: <FaHandHoldingUsd /> },
+      ],
+    },
+
     { path: "/admin_expensive", name: "Expense Requests", icon: <FaMoneyBillWave /> },
         { path: "/ledger", name: "Ledger", icon: <FiHome /> },
 

@@ -160,6 +160,11 @@ import Creditsview from "./Component/Panels/Admin/CreditNote/Creditsview";
 import CreateDebitNote from "./Component/Panels/Admin/DebitTable/CreateDebitNote";
 import DebitView from "./Component/Panels/Admin/DebitTable/DebitView";
 import EditDebitNote from "./Component/Panels/Admin/DebitTable/EditDebitNote";
+import KachaSalesInvoiceForm from "./Component/Panels/Admin/KachaSales/KachaSalesInvoiceForm";
+import KachaInvoiceTable from "./Component/Panels/Admin/KachaSales/KachaInvoiceTable";
+import KachaInvoicePDFPreview from "./Component/Panels/Admin/KachaSales/KachaInvoicePDFPreview";
+import Period from "./Component/Panels/Admin/Period/Period";
+
 
 
 
@@ -325,6 +330,12 @@ function App() {
 
 
 
+||Kacha Sales||
+<Route path="/kachinvoicetable" element={<KachaInvoiceTable />} />
+<Route path="/kacha_sales" element={<KachaSalesInvoiceForm />} />
+
+<Route path="/kachainvoicepdf/:id" element={<KachaInvoicePDFPreview />} />
+<Route path="/period" element={<Period />} />
       </Routes>
     </Router>
   );

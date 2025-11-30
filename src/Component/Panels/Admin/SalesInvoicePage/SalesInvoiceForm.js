@@ -21,12 +21,13 @@ const CreateInvoice = ({ user }) => {
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const [hasFetchedInvoiceNumber, setHasFetchedInvoiceNumber] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [staffMembers, setStaffMembers] = useState([]);
+const [selectedStaffId, setSelectedStaffId] = useState("");
   const [editingItemIndex, setEditingItemIndex] = useState(null);
   const [editingVoucherId, setEditingVoucherId] = useState(null);
   const navigate = useNavigate();
-  const { id } = useParams(); // Get voucher ID from URL if editing
+  const { id } = useParams(); 
 
-  // Load from localStorage on component mount OR fetch existing invoice data if editing
   const [invoiceData, setInvoiceData] = useState(() => {
     const savedData = localStorage.getItem('draftInvoice');
     if (savedData) {
@@ -113,46 +114,50 @@ const CreateInvoice = ({ user }) => {
     }
   }, [id]);
 
-  // Fetch existing invoice data for editing
-  const fetchInvoiceDataForEdit = async (voucherId) => {
-    try {
-      setLoading(true);
-      console.log('Fetching invoice data for editing:', voucherId);
-      
-      const response = await fetch(`${baseurl}/transactions/${voucherId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch invoice data');
-      }
-      
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        const apiData = result.data;
-        const transformedData = transformApiDataToFormFormat(apiData);
-        
-        setInvoiceData(transformedData);
-        setSelectedSupplierId(apiData.PartyID);
-        setSelected(true);
-        
-        // Set the retailer name in the search input
-        const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
-        if (supplierAccount) {
-          setInputName(supplierAccount.business_name);
-        }
-        
-        setSuccess('Invoice loaded for editing');
-        setTimeout(() => setSuccess(false), 3000);
-      } else {
-        throw new Error('No valid data received');
-      }
-    } catch (err) {
-      console.error('Error fetching invoice for edit:', err);
-      setError('Failed to load invoice for editing: ' + err.message);
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setLoading(false);
+const fetchInvoiceDataForEdit = async (voucherId) => {
+  try {
+    setLoading(true);
+    console.log('Fetching invoice data for editing:', voucherId);
+    
+    const response = await fetch(`${baseurl}/transactions/${voucherId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch invoice data');
     }
-  };
+    
+    const result = await response.json();
+    
+    if (result.success && result.data) {
+      const apiData = result.data;
+      const transformedData = transformApiDataToFormFormat(apiData);
+      
+      setInvoiceData(transformedData);
+      setSelectedSupplierId(apiData.PartyID);
+      setSelected(true);
+      
+      // Set the retailer name in the search input
+      const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
+      if (supplierAccount) {
+        setInputName(supplierAccount.business_name);
+      }
+      
+      // 🔥 NEW: Set staff data from API response
+      if (apiData.staffid) {
+        setSelectedStaffId(apiData.staffid);
+      }
+      
+      setSuccess('Invoice loaded for editing');
+      setTimeout(() => setSuccess(false), 3000);
+    } else {
+      throw new Error('No valid data received');
+    }
+  } catch (err) {
+    console.error('Error fetching invoice for edit:', err);
+    setError('Failed to load invoice for editing: ' + err.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Transform API data to form format
   const transformApiDataToFormFormat = (apiData) => {
@@ -453,6 +458,7 @@ const CreateInvoice = ({ user }) => {
       try {
         const res = await fetch(`${baseurl}/accounts`);
         const data = await res.json();
+        debugger
         setAccounts(data);
       } catch (err) {
         console.error("Failed to fetch accounts:", err);
@@ -901,28 +907,27 @@ const handleSubmit = async (e) => {
       console.warn('⚠️ Items missing batch_id:', missingBatchIds);
     }
 
-    // Create payload with IDs and proper totals
-    const payload = {
-      ...invoiceData,
-      invoiceNumber: finalInvoiceNumber,
-      selectedSupplierId: selectedSupplierId,
-      type: 'sales',
-      totalCGST: totalCGST.toFixed(2),
-      totalSGST: totalSGST.toFixed(2),
-      totalIGST: totalIGST.toFixed(2),
-      taxType: sameState ? "CGST/SGST" : "IGST",
-      batchDetails: batchDetails,
-      product_id: 123,
-      batch_id: "bth0001",
-      // Add primary product and batch IDs for voucher table
-      primaryProductId: firstItemProductId,
-      primaryBatchId: firstItemBatchId,
-      // 🔥 ADD PARTYID AND ACCOUNTID TO PAYLOAD:
-      PartyID: selectedSupplierId,
-      AccountID: invoiceData.supplierInfo.accountId,
-      PartyName: invoiceData.supplierInfo.name,
-      AccountName: invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.name
-    };
+const payload = {
+  ...invoiceData,
+  invoiceNumber: finalInvoiceNumber,
+  selectedSupplierId: selectedSupplierId,
+  selectedStaffId: selectedStaffId, // Add selected staff ID
+  assigned_staff: accounts.find(acc => acc.staffid == selectedStaffId)?.assigned_staff, 
+  type: 'sales',
+  totalCGST: totalCGST.toFixed(2),
+  totalSGST: totalSGST.toFixed(2),
+  totalIGST: totalIGST.toFixed(2),
+  taxType: sameState ? "CGST/SGST" : "IGST",
+  batchDetails: batchDetails,
+  product_id: 123,
+  batch_id: "bth0001",
+  primaryProductId: firstItemProductId,
+  primaryBatchId: firstItemBatchId,
+  PartyID: selectedSupplierId,
+  AccountID: invoiceData.supplierInfo.accountId,
+  PartyName: invoiceData.supplierInfo.name,
+  AccountName: invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.name
+};
 
     // Remove unused fields
     delete payload.companyState;
@@ -1124,90 +1129,123 @@ const handleSubmit = async (e) => {
               {/* Supplier Info Section */}
               <div className="bg-white rounded border">
                 <Row className="mb-0">
-                  <Col md={4} className="border-end p-3">
-                    {!selected ? (
-                      <>
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <strong className="text-primary">Retailer Info</strong>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => navigate("/retailers/add")}
-                          >
-                            New
-                          </Button>
-                        </div>
-                        <Form.Select
-                          className="mb-2 border-primary"
-                          value={inputName}
-                          onChange={(e) => {
-                            const selectedName = e.target.value;
-                            setInputName(selectedName);
-                            const supplier = accounts.find(acc => acc.business_name === selectedName);
-                            if (supplier) {
-                              setSelectedSupplierId(supplier.id);
-                              setSelected(true);
-                              setInvoiceData(prev => ({
-                                ...prev,
-                                supplierInfo: {
-                                  name: supplier.name,
-                                  businessName: supplier.business_name,
-                                  state: supplier.billing_state,
-                                  gstin: supplier.gstin
-                                },
-                                billingAddress: {
-                                  addressLine1: supplier.billing_address_line1,
-                                  addressLine2: supplier.billing_address_line2 || "",
-                                  city: supplier.billing_city,
-                                  pincode: supplier.billing_pin_code,
-                                  state: supplier.billing_state
-                                },
-                                shippingAddress: {
-                                  addressLine1: supplier.shipping_address_line1,
-                                  addressLine2: supplier.shipping_address_line2 || "",
-                                  city: supplier.shipping_city,
-                                  pincode: supplier.shipping_pin_code,
-                                  state: supplier.shipping_state
-                                }
-                              }));
-                            }
-                          }}
-                        >
-                          <option value="">Select Retailer</option>
-                          {accounts
-                            .filter(acc => acc.role === "retailer")
-                            .map(acc => (
-                              <option key={acc.id} value={acc.business_name}>
-                                {acc.business_name} ({acc.mobile_number})
-                              </option>
-                            ))}
-                        </Form.Select>
-                      </>
-                    ) : (
-                      <>
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <strong className="text-primary">Supplier Info</strong>
-                          <Button
-                            variant="info"
-                            size="sm"
-                            onClick={() => {
-                              if (selectedSupplierId) {
-                                navigate(`/retailers/edit/${selectedSupplierId}`);
-                              }
-                            }}
-                          >
-                            <FaEdit /> Edit
-                          </Button>
-                        </div>
-                        <div className="bg-light p-2 rounded">
-                          <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
-                          <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
-                          <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
-                          <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
-                        </div>
-                      </>
-                    )}
-                  </Col>
+              <Col md={4} className="border-end p-3">
+  {!selected ? (
+    <>
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <strong className="text-primary">Retailer Info</strong>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => navigate("/retailers/add")}
+        >
+          New
+        </Button>
+      </div>
+      
+      {/* Retailer Dropdown */}
+      <Form.Select
+        className="mb-2 border-primary"
+        value={inputName}
+        onChange={(e) => {
+          const selectedName = e.target.value;
+          setInputName(selectedName);
+          const supplier = accounts.find(acc => acc.business_name === selectedName);
+          if (supplier) {
+            setSelectedSupplierId(supplier.id);
+            setSelected(true);
+            setInvoiceData(prev => ({
+              ...prev,
+              supplierInfo: {
+                name: supplier.name,
+                businessName: supplier.business_name,
+                state: supplier.billing_state,
+                gstin: supplier.gstin,
+                accountId: supplier.id,
+                staffid: supplier.staffid, // Add staffid
+                assigned_staff: supplier.assigned_staff // Add assigned_staff
+              },
+              billingAddress: {
+                addressLine1: supplier.billing_address_line1,
+                addressLine2: supplier.billing_address_line2 || "",
+                city: supplier.billing_city,
+                pincode: supplier.billing_pin_code,
+                state: supplier.billing_state
+              },
+              shippingAddress: {
+                addressLine1: supplier.shipping_address_line1,
+                addressLine2: supplier.shipping_address_line2 || "",
+                city: supplier.shipping_city,
+                pincode: supplier.shipping_pin_code,
+                state: supplier.shipping_state
+              }
+            }));
+            
+            // Auto-select the assigned staff if available
+            if (supplier.staffid) {
+              setSelectedStaffId(supplier.staffid);
+            }
+          }
+        }}
+      >
+        <option value="">Select Retailer</option>
+        {accounts
+          .filter(acc => acc.role === "retailer")
+          .map(acc => (
+            <option key={acc.id} value={acc.business_name}>
+              {acc.business_name} ({acc.mobile_number})
+            </option>
+          ))}
+      </Form.Select>
+
+      {/* Dynamic Staff Dropdown */}
+      <Form.Select
+        className="border-primary"
+        value={selectedStaffId}
+        onChange={(e) => setSelectedStaffId(e.target.value)}
+      >
+        <option value="">Select Assigned Staff</option>
+        {accounts
+          .filter(acc => acc.staffid !== null && acc.assigned_staff !== null) // Filter accounts that have staff data
+          .map(staff => (
+            <option key={staff.staffid} value={staff.staffid}>
+              {staff.assigned_staff} (ID: {staff.staffid})
+            </option>
+          ))}
+      </Form.Select>
+    </>
+  ) : (
+    <>
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <strong className="text-primary">Supplier Info</strong>
+        <Button
+          variant="info"
+          size="sm"
+          onClick={() => {
+            if (selectedSupplierId) {
+              navigate(`/retailers/edit/${selectedSupplierId}`);
+            }
+          }}
+        >
+          <FaEdit /> Edit
+        </Button>
+      </div>
+      <div className="bg-light p-2 rounded">
+        <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
+        <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
+        <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
+        <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
+        {/* Display assigned staff dynamically */}
+        {selectedStaffId && (
+          <div><strong>Assigned Staff:</strong> {
+            accounts.find(acc => acc.staffid == selectedStaffId)?.assigned_staff || 
+            "Not Assigned"
+          }</div>
+        )}
+      </div>
+    </>
+  )}
+</Col>
 
                   <Col md={4} className="border-end p-3">
                     <strong className="text-primary">Billing Address</strong>
