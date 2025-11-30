@@ -455,3 +455,50 @@
   box-sizing: border-box;
   transition: border-color 0.2s;
 }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.full-width {
+  grid-column: span 2;
+}
+
+.section-title {
+  margin-top: 25px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.form-input,
+.form-select,
+textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.add-staff-form-actions {
+  margin-top: 30px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+}
+
+.submit-btn {
+  background: #1a73e8;
+  color: white;
+  padding: 10px 25px;
+  border: none;
+  border-radius: 6px;
+}
+
+.cancel-btn {
+  background: #ccc;
+  padding: 10px 25px;
+  border-radius: 6px;
+}
