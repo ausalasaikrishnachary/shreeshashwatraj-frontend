@@ -1,172 +1,419 @@
-// import React, { useState } from "react";
-// import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
-// import {
-//   Box,
-//   Table,
-//   TableHead,
-//   TableBody,
-//   TableRow,
-//   TableCell,
-//   IconButton,
-//   TextField,
-//   Button,
-//   Paper,
-// } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
+import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
+import './Period.css';
 
-// const Period = () => {
-//   const [openRow, setOpenRow] = useState(null);
+const Period = () => {
+  const [openRow, setOpenRow] = useState(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  
+  // Modal states
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showItemModal, setShowItemModal] = useState(false);
+  const [modalData, setModalData] = useState(null);
 
-//   // Dummy sample data (replace with API response)
-//   const data = [
-//     {
-//       id: 1,
-//       name: "JOHN DOE",
-//       mobile: "9876543210",
-//       email: "john.doe@example.com",
-//       totalInvoices: 3,
-//       totalAmount: 390846,
-//       balanceAmount: 30000,
-//       invoices: [
-//         {
-//           invoiceNo: "INV003",
-//           date: "06-11-2025",
-//           totalAmt: 260541.62,
-//           oldAmt: 0,
-//           schemeAmt: 0,
-//           netAmt: 260542,
-//           paidAmt: 230542,
-//           balAmt: 30000,
-//         },
-//         {
-//           invoiceNo: "INV001",
-//           date: "06-11-2025",
-//           totalAmt: 4635,
-//           oldAmt: 0,
-//           schemeAmt: 0,
-//           netAmt: 4635,
-//           paidAmt: 4635,
-//           balAmt: 0,
-//         },
-//         {
-//           invoiceNo: "INV002",
-//           date: "06-11-2025",
-//           totalAmt: 125669.33,
-//           oldAmt: 0,
-//           schemeAmt: 0,
-//           netAmt: 125669,
-//           paidAmt: 125669,
-//           balAmt: 0,
-//         },
-//       ],
-//     },
-//   ];
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
-//   const toggleRow = (id) => {
-//     setOpenRow(openRow === id ? null : id);
-//   };
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get("http://localhost:5000/api/all-orders");
+      const ordersData = response.data;
 
-//   return (
-//     <Box p={3}>
-//       {/* Search + Date Filter Row */}
-//       <Box display="flex" gap={2} mb={3}>
-//         <TextField label="Search..." size="small" fullWidth />
+      const ordersWithItems = await Promise.all(
+        ordersData.map(async (order) => {
+          const itemsRes = await axios.get(`http://localhost:5000/api/details/${order.order_number}`);
+          const itemsData = itemsRes.data.items || [];
 
-//         <TextField type="date" size="small" />
-//         <TextField type="date" size="small" />
+          return {
+            ...order,
+            items: itemsData.map(item => ({
+              id: item.id,
+              order_number: item.order_number,
+              item_name: item.item_name ?? "N/A",
+              product_id: item.product_id,
+              mrp: item.mrp ?? 0,
+              sale_price: item.sale_price ?? 0,
+              price: item.price ?? 0,
+              quantity: item.quantity ?? 0,
+              total_amount: item.total_amount ?? 0,
+              discount_percentage: item.discount_percentage ?? 0,
+              discount_amount: item.discount_amount ?? 0,
+              taxable_amount: item.taxable_amount ?? 0,
+              tax_percentage: item.tax_percentage ?? 0,
+              tax_amount: item.tax_amount ?? 0,
+              item_total: item.item_total ?? 0,
+              credit_period: item.credit_period ?? 0,
+              credit_percentage: item.credit_percentage ?? 0,
+              sgst_percentage: item.sgst_percentage ?? 0,
+              sgst_amount: item.sgst_amount ?? 0,
+              cgst_percentage: item.cgst_percentage ?? 0,
+              cgst_amount: item.cgst_amount ?? 0,
+              discount_applied_scheme: item.discount_applied_scheme ?? "N/A"
+            }))
+          };
+        })
+      );
 
-//         <Button variant="contained" color="primary">
-//           OK
-//         </Button>
-//       </Box>
+      setOrders(ordersWithItems);
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
+  };
 
-//       <Paper>
-//         <Table>
-//           <TableHead>
-//             <TableRow>
-//               <TableCell />
-//               <TableCell><strong>Account Name</strong></TableCell>
-//               <TableCell><strong>Mobile</strong></TableCell>
-//               <TableCell><strong>Email</strong></TableCell>
-//               <TableCell><strong>Total Invoices</strong></TableCell>
-//               <TableCell><strong>Total Amount</strong></TableCell>
-//               <TableCell><strong>Balance Amount</strong></TableCell>
-//             </TableRow>
-//           </TableHead>
+  const toggleRow = (id) => {
+    setOpenRow(openRow === id ? null : id);
+  };
 
-//           <TableBody>
-//             {data.map((row) => (
-//               <>
-//                 {/* MAIN ROW */}
-//                 <TableRow key={row.id}>
-//                   <TableCell>
-//                     <IconButton onClick={() => toggleRow(row.id)}>
-//                       {openRow === row.id ? (
-//                         <KeyboardArrowUp />
-//                       ) : (
-//                         <KeyboardArrowDown />
-//                       )}
-//                     </IconButton>
-//                   </TableCell>
+  // Open Order Modal with existing data
+  const openOrderModal = (orderId) => {
+    const orderData = orders.find(order => order.id === orderId);
+    if (orderData) {
+      setModalData(orderData);
+      setShowOrderModal(true);
+    }
+  };
 
-//                   <TableCell>{row.name}</TableCell>
-//                   <TableCell>{row.mobile}</TableCell>
-//                   <TableCell>{row.email}</TableCell>
-//                   <TableCell>{row.totalInvoices}</TableCell>
-//                   <TableCell>{row.totalAmount}</TableCell>
-//                   <TableCell>{row.balanceAmount}</TableCell>
-//                 </TableRow>
+  // Open Item Modal with existing data
+  const openItemModal = (orderNumber, itemId) => {
+    const order = orders.find(order => order.order_number === orderNumber);
+    if (order && order.items) {
+      const itemData = order.items.find(item => item.id === itemId);
+      if (itemData) {
+        setModalData(itemData);
+        setShowItemModal(true);
+      }
+    }
+  };
 
-//                 {/* DROPDOWN (Nested Invoice Table) */}
-//                 {openRow === row.id && (
-//                   <TableRow>
-//                     <TableCell colSpan={7} style={{ background: "#fafafa" }}>
-//                       <Box p={2} border="1px solid #e0e0e0" borderRadius={2}>
-//                         <Table size="small">
-//                           <TableHead>
-//                             <TableRow>
-//                               <TableCell>Invoice No.</TableCell>
-//                               <TableCell>Date</TableCell>
-//                               <TableCell>Total Amt</TableCell>
-//                               <TableCell>Old Amt</TableCell>
-//                               <TableCell>Scheme Amt</TableCell>
-//                               <TableCell>Net Amt</TableCell>
-//                               <TableCell>Paid Amt</TableCell>
-//                               <TableCell>Bal Amt</TableCell>
-//                               <TableCell>Receipts</TableCell>
-//                             </TableRow>
-//                           </TableHead>
+  // Close modals
+  const closeModals = () => {
+    setShowOrderModal(false);
+    setShowItemModal(false);
+    setModalData(null);
+  };
 
-//                           <TableBody>
-//                             {row.invoices.map((inv, index) => (
-//                               <TableRow key={index}>
-//                                 <TableCell>{inv.invoiceNo}</TableCell>
-//                                 <TableCell>{inv.date}</TableCell>
-//                                 <TableCell>{inv.totalAmt}</TableCell>
-//                                 <TableCell>{inv.oldAmt}</TableCell>
-//                                 <TableCell>{inv.schemeAmt}</TableCell>
-//                                 <TableCell>{inv.netAmt}</TableCell>
-//                                 <TableCell>{inv.paidAmt}</TableCell>
-//                                 <TableCell>{inv.balAmt}</TableCell>
-//                                 <TableCell>
-//                                   <Button variant="contained" size="small" color="success">
-//                                     Add Receipt
-//                                   </Button>
-//                                 </TableCell>
-//                               </TableRow>
-//                             ))}
-//                           </TableBody>
-//                         </Table>
-//                       </Box>
-//                     </TableCell>
-//                   </TableRow>
-//                 )}
-//               </>
-//             ))}
-//           </TableBody>
-//         </Table>
-//       </Paper>
-//     </Box>
-//   );
-// };
+  // Filter orders by search and date
+  const filteredOrders = orders.filter(order => {
+    const customerMatch = order.customer_name.toLowerCase().includes(search.toLowerCase());
+    let startMatch = true;
+    let endMatch = true;
 
-// export default Period;
+    if (startDate) startMatch = new Date(order.order_date) >= new Date(startDate);
+    if (endDate) endMatch = new Date(order.order_date) <= new Date(endDate);
+
+    return customerMatch && startMatch && endMatch;
+  });
+
+  if (loading) return <div className="p-admin-layout">Loading orders...</div>;
+
+  return (
+    <div className="p-admin-layout">
+      <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+      <div className={`p-admin-main ${isCollapsed ? 'p-sidebar-collapsed' : ''}`}>
+        <AdminHeader isCollapsed={isCollapsed} />
+
+        <div className="p-period-page">
+
+          {/* Filters Section */}
+          <div className="p-filters-section">
+            <div className="p-filter-row">
+              <div className="p-filter-group">
+                <input 
+                  type="text" 
+                  className="p-form-control" 
+                  placeholder="Search Customer Name..." 
+                  value={search} 
+                  onChange={(e) => setSearch(e.target.value)} 
+                />
+              </div>
+              <div className="p-filter-group">
+                <input 
+                  type="date" 
+                  className="p-form-control" 
+                  value={startDate} 
+                  onChange={(e) => setStartDate(e.target.value)} 
+                />
+              </div>
+              <div className="p-filter-group">
+                <input 
+                  type="date" 
+                  className="p-form-control" 
+                  value={endDate} 
+                  onChange={(e) => setEndDate(e.target.value)} 
+                />
+              </div>
+              <div className="p-filter-group">
+                <button className="p-btn p-btn-primary" onClick={() => {}}>Search</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Orders Table */}
+          <div className="p-table-section">
+            <div className="p-table-card">
+              <div className="p-table-header">
+                <h3>Order Records</h3>
+                <span className="p-badge">{filteredOrders.length} Order(s)</span>
+              </div>
+
+              <div className="p-table-container">
+                <table className="p-customers-table">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>Order Number</th>
+                      <th>Customer Name</th>
+                      <th>Order Total</th>
+                      <th>Discount Amount</th>
+                      <th>Created At</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOrders.map((order) => (
+                      <React.Fragment key={order.id}>
+                        <tr className="p-customer-row">
+                          <td>
+                            <button className="p-toggle-btn" onClick={() => toggleRow(order.id)}>
+                              <span className={openRow === order.id ? "p-arrow-up" : "p-arrow-down"}></span>
+                            </button>
+                          </td>
+                          <td>{order.order_number}</td>
+                          <td>{order.customer_name}</td>
+                          <td>₹{(order.order_total ?? 0).toLocaleString()}</td>
+                          <td>₹{(order.discount_amount ?? 0).toLocaleString()}</td>
+                          <td>
+                            {new Date(order.created_at).toLocaleDateString('en-GB')}
+                          </td>
+                          <td>
+                            <button 
+                              className="p-eye-btn"
+                              onClick={() => openOrderModal(order.id)}
+                              title="View Order Details"
+                            >
+                              👁️
+                            </button>
+                          </td>
+                        </tr>
+
+                        {openRow === order.id && (
+                          <tr className="p-invoices-row">
+                            <td colSpan={7}>
+                              <div className="p-invoices-section">
+                                <h4>Order Details</h4>
+                                <table className="p-invoices-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Item Name</th>
+                                      <th>Quantity</th>
+                                      <th>Sale Price</th>
+                                      <th>Price</th>
+                                      <th>Discount Amount</th>
+                                      <th>Credit Period</th>
+                                      <th>Action</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {order.items.map((item) => (
+                                      <tr key={item.id}>
+                                        <td>{item.item_name}</td>
+                                        <td>{item.quantity}</td>
+                                        <td>₹{item.sale_price.toLocaleString()}</td>
+                                        <td>₹{item.price.toLocaleString()}</td>
+                                        <td>₹{item.discount_amount.toLocaleString()}</td>
+                                        <td>{item.credit_period}</td>
+                                        <td>
+                                          <button 
+                                            className="p-eye-btn"
+                                            onClick={() => openItemModal(order.order_number, item.id)}
+                                            title="View Item Details"
+                                          >
+                                            👁️
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Order Details Modal */}
+      {showOrderModal && modalData && (
+        <div className="p-modal-overlay" onClick={closeModals}>
+          <div className="p-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="p-modal-header">
+              <h3>Order Details - {modalData.order_number}</h3>
+              <button className="p-modal-close" onClick={closeModals}>×</button>
+            </div>
+            <div className="p-modal-body">
+              <div className="p-two-column-grid">
+                <div className="p-column">
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Order Number:</span>
+                    <span className="p-detail-value">{modalData.order_number}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Customer Name:</span>
+                    <span className="p-detail-value">{modalData.customer_name}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Customer ID:</span>
+                    <span className="p-detail-value">{modalData.customer_id}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Order Total:</span>
+                    <span className="p-detail-value">₹{(modalData.order_total ?? 0).toLocaleString()}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Discount Amount:</span>
+                    <span className="p-detail-value">₹{(modalData.discount_amount ?? 0).toLocaleString()}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Taxable Amount:</span>
+                    <span className="p-detail-value">₹{(modalData.taxable_amount ?? 0).toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="p-column">
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Tax Amount:</span>
+                    <span className="p-detail-value">₹{(modalData.tax_amount ?? 0).toLocaleString()}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Net Payable:</span>
+                    <span className="p-detail-value">₹{(modalData.net_payable ?? 0).toLocaleString()}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Credit Period:</span>
+                    <span className="p-detail-value">{modalData.credit_period} days</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Invoice Number:</span>
+                    <span className="p-detail-value">{modalData.invoice_number}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Invoice Date:</span>
+                    <span className="p-detail-value">
+                      {modalData.invoice_date ? new Date(modalData.invoice_date).toLocaleDateString('en-GB') : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Order Date:</span>
+                    <span className="p-detail-value">
+                      {modalData.created_at ? new Date(modalData.created_at).toLocaleDateString('en-GB') : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Item Details Modal */}
+      {showItemModal && modalData && (
+        <div className="p-modal-overlay" onClick={closeModals}>
+          <div className="p-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="p-modal-header">
+              <h3>Item Details - {modalData.item_name}</h3>
+              <button className="p-modal-close" onClick={closeModals}>×</button>
+            </div>
+            <div className="p-modal-body">
+              <div className="p-two-column-grid">
+                <div className="p-column">
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Item Name:</span>
+                    <span className="p-detail-value">{modalData.item_name}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Product ID:</span>
+                    <span className="p-detail-value">{modalData.product_id}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">MRP:</span>
+                    <span className="p-detail-value">₹{modalData.mrp.toLocaleString()}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Sale Price:</span>
+                    <span className="p-detail-value">₹{modalData.sale_price.toLocaleString()}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Price:</span>
+                    <span className="p-detail-value">₹{modalData.price.toLocaleString()}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Quantity:</span>
+                    <span className="p-detail-value">{modalData.quantity}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Total Amount:</span>
+                    <span className="p-detail-value">₹{modalData.total_amount.toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="p-column">
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Discount %:</span>
+                    <span className="p-detail-value">{modalData.discount_percentage}%</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Discount Amount:</span>
+                    <span className="p-detail-value">₹{modalData.discount_amount.toLocaleString()}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Taxable Amount:</span>
+                    <span className="p-detail-value">₹{modalData.taxable_amount.toLocaleString()}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Tax %:</span>
+                    <span className="p-detail-value">{modalData.tax_percentage}%</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Tax Amount:</span>
+                    <span className="p-detail-value">₹{modalData.tax_amount.toLocaleString()}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Item Total:</span>
+                    <span className="p-detail-value">₹{modalData.item_total.toLocaleString()}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Credit Period:</span>
+                    <span className="p-detail-value">{modalData.credit_period} days</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Discount Scheme:</span>
+                    <span className="p-detail-value">{modalData.discount_applied_scheme}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Period;

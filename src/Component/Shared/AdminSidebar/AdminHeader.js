@@ -32,7 +32,9 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
     "/purchase/create_note": "Debit Note",
     "/purchase/debit-note/edit":"Debit Note",
     "/purchase/create-purchase-invoice": "Purchase Invoice",
-    "/kacha_sales" : "kacha Sales"
+    "/kacha_sales" : "kacha Sales",
+    "/period": "Order",
+    "/credit-period" : "Credit Period"
   };
 
   const getPageTitle = () => {
