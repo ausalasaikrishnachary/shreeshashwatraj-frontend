@@ -109,8 +109,8 @@ const Period = () => {
     let startMatch = true;
     let endMatch = true;
 
-    if (startDate) startMatch = new Date(order.order_date) >= new Date(startDate);
-    if (endDate) endMatch = new Date(order.order_date) <= new Date(endDate);
+    if (startDate) startMatch = new Date(order.created_at) >= new Date(startDate);
+    if (endDate) endMatch = new Date(order.created_at) <= new Date(endDate);
 
     return customerMatch && startMatch && endMatch;
   });
@@ -261,16 +261,16 @@ const Period = () => {
         </div>
       </div>
 
-      {/* Order Details Modal */}
+      {/* Order Details Modal - Showing ALL orders table data */}
       {showOrderModal && modalData && (
         <div className="p-modal-overlay" onClick={closeModals}>
-          <div className="p-modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="p-modal-content p-wide-modal" onClick={(e) => e.stopPropagation()}>
             <div className="p-modal-header">
               <h3>Order Details - {modalData.order_number}</h3>
               <button className="p-modal-close" onClick={closeModals}>×</button>
             </div>
             <div className="p-modal-body">
-              <div className="p-two-column-grid">
+              <div className="p-three-column-grid">
                 <div className="p-column">
                   <div className="p-detail-row">
                     <span className="p-detail-label">Order Number:</span>
@@ -292,12 +292,12 @@ const Period = () => {
                     <span className="p-detail-label">Discount Amount:</span>
                     <span className="p-detail-value">₹{(modalData.discount_amount ?? 0).toLocaleString()}</span>
                   </div>
+                </div>
+                <div className="p-column">
                   <div className="p-detail-row">
                     <span className="p-detail-label">Taxable Amount:</span>
                     <span className="p-detail-value">₹{(modalData.taxable_amount ?? 0).toLocaleString()}</span>
                   </div>
-                </div>
-                <div className="p-column">
                   <div className="p-detail-row">
                     <span className="p-detail-label">Tax Amount:</span>
                     <span className="p-detail-value">₹{(modalData.tax_amount ?? 0).toLocaleString()}</span>
@@ -310,6 +310,14 @@ const Period = () => {
                     <span className="p-detail-label">Credit Period:</span>
                     <span className="p-detail-value">{modalData.credit_period} days</span>
                   </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Estimated Delivery:</span>
+                    <span className="p-detail-value">
+                      {modalData.estimated_delivery_date ? new Date(modalData.estimated_delivery_date).toLocaleDateString('en-GB') : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                <div className="p-column">
                   <div className="p-detail-row">
                     <span className="p-detail-label">Invoice Number:</span>
                     <span className="p-detail-value">{modalData.invoice_number}</span>
@@ -326,6 +334,16 @@ const Period = () => {
                       {modalData.created_at ? new Date(modalData.created_at).toLocaleDateString('en-GB') : 'N/A'}
                     </span>
                   </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Last Updated:</span>
+                    <span className="p-detail-value">
+                      {modalData.updated_at ? new Date(modalData.updated_at).toLocaleDateString('en-GB') : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Order Mode:</span>
+                    <span className="p-detail-value">{modalData.order_mode || 'N/A'}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -333,16 +351,16 @@ const Period = () => {
         </div>
       )}
 
-      {/* Item Details Modal */}
+      {/* Item Details Modal - Showing ALL order_details table data */}
       {showItemModal && modalData && (
         <div className="p-modal-overlay" onClick={closeModals}>
-          <div className="p-modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="p-modal-content p-wide-modal" onClick={(e) => e.stopPropagation()}>
             <div className="p-modal-header">
               <h3>Item Details - {modalData.item_name}</h3>
               <button className="p-modal-close" onClick={closeModals}>×</button>
             </div>
             <div className="p-modal-body">
-              <div className="p-two-column-grid">
+              <div className="p-three-column-grid">
                 <div className="p-column">
                   <div className="p-detail-row">
                     <span className="p-detail-label">Item Name:</span>
@@ -351,6 +369,10 @@ const Period = () => {
                   <div className="p-detail-row">
                     <span className="p-detail-label">Product ID:</span>
                     <span className="p-detail-value">{modalData.product_id}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Order Number:</span>
+                    <span className="p-detail-value">{modalData.order_number}</span>
                   </div>
                   <div className="p-detail-row">
                     <span className="p-detail-label">MRP:</span>
@@ -368,12 +390,12 @@ const Period = () => {
                     <span className="p-detail-label">Quantity:</span>
                     <span className="p-detail-value">{modalData.quantity}</span>
                   </div>
+                </div>
+                <div className="p-column">
                   <div className="p-detail-row">
                     <span className="p-detail-label">Total Amount:</span>
                     <span className="p-detail-value">₹{modalData.total_amount.toLocaleString()}</span>
                   </div>
-                </div>
-                <div className="p-column">
                   <div className="p-detail-row">
                     <span className="p-detail-label">Discount %:</span>
                     <span className="p-detail-value">{modalData.discount_percentage}%</span>
@@ -398,9 +420,31 @@ const Period = () => {
                     <span className="p-detail-label">Item Total:</span>
                     <span className="p-detail-value">₹{modalData.item_total.toLocaleString()}</span>
                   </div>
+                </div>
+                <div className="p-column">
                   <div className="p-detail-row">
                     <span className="p-detail-label">Credit Period:</span>
                     <span className="p-detail-value">{modalData.credit_period} days</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Credit Percentage:</span>
+                    <span className="p-detail-value">{modalData.credit_percentage}%</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">SGST %:</span>
+                    <span className="p-detail-value">{modalData.sgst_percentage}%</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">SGST Amount:</span>
+                    <span className="p-detail-value">₹{modalData.sgst_amount.toLocaleString()}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">CGST %:</span>
+                    <span className="p-detail-value">{modalData.cgst_percentage}%</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">CGST Amount:</span>
+                    <span className="p-detail-value">₹{modalData.cgst_amount.toLocaleString()}</span>
                   </div>
                   <div className="p-detail-row">
                     <span className="p-detail-label">Discount Scheme:</span>
