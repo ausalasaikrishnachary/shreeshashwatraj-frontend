@@ -17,6 +17,9 @@
 .admin-content-wrapper {
   padding: 20px;
 }
+.purchase-invoice-add{
+  width: 50px !important;
+}
 
 .purchase-invoice-content-area {
   background: #f8f9fa;

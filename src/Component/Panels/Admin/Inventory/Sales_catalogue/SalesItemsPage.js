@@ -192,39 +192,41 @@ const fetchProductById = async (id) => {
   }
 };
 
-  const generateUniqueBarcode = async () => {
-    let isUnique = false;
-    let newBarcode;
-    let attempts = 0;
-    const maxAttempts = 5;
+const generateUniqueBarcode = async () => {
+  let isUnique = false;
+  let newBarcode;
+  let attempts = 0;
+  const maxAttempts = 10; 
 
-    while (!isUnique && attempts < maxAttempts) {
-      attempts++;
-      const timestamp = Date.now();
-      const randomPart = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-      newBarcode = `B${timestamp}${randomPart}`;
-      
-      try {
-        const response = await axios.get(`${baseurl}/batches/check-barcode/${newBarcode}`);
-        if (response.data.available) {
-          isUnique = true;
-          console.log('✅ Generated unique barcode:', newBarcode);
-        } else {
-          console.log('🔄 Barcode exists, generating new one...');
-        }
-      } catch (error) {
-        console.error('Error checking barcode:', error);
+  while (!isUnique && attempts < maxAttempts) {
+    attempts++;
+    
+    // Generate 6-digit number as string
+    newBarcode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    try {
+      const response = await axios.get(`${baseurl}/batches/check-barcode/${newBarcode}`);
+      if (response.data.available) {
         isUnique = true;
+        console.log('✅ Generated unique 6-digit barcode:', newBarcode);
+      } else {
+        console.log('🔄 Barcode exists, generating new one...');
       }
+    } catch (error) {
+      console.error('Error checking barcode:', error);
+      // fallback if API fails
+      isUnique = true;
     }
+  }
 
-    if (!isUnique) {
-      newBarcode = `B${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
-      console.log('⚠️ Using fallback barcode:', newBarcode);
-    }
+  // Fallback if still not unique after max attempts
+  if (!isUnique) {
+    newBarcode = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log('⚠️ Using fallback 6-digit barcode:', newBarcode);
+  }
 
-    return newBarcode;
-  };
+  return newBarcode;
+};
 
 
 

@@ -159,7 +159,6 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
   }
 };
 
-  // Transform API data to form format
   const transformApiDataToFormFormat = (apiData) => {
     console.log('Transforming API data for form:', apiData);
     
@@ -458,7 +457,6 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
       try {
         const res = await fetch(`${baseurl}/accounts`);
         const data = await res.json();
-        debugger
         setAccounts(data);
       } catch (err) {
         console.error("Failed to fetch accounts:", err);
@@ -1125,150 +1123,143 @@ const payload = {
                 </Col>
               </Row>
 
-              {/* Rest of your component remains the same */}
-              {/* Supplier Info Section */}
-              <div className="bg-white rounded border">
-                <Row className="mb-0">
-              <Col md={4} className="border-end p-3">
-  {!selected ? (
-    <>
-      <div className="d-flex justify-content-between align-items-center mb-2">
-        <strong className="text-primary">Retailer Info</strong>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => navigate("/retailers/add")}
-        >
-          New
-        </Button>
-      </div>
-      
-      {/* Retailer Dropdown */}
-      <Form.Select
-        className="mb-2 border-primary"
-        value={inputName}
-        onChange={(e) => {
-          const selectedName = e.target.value;
-          setInputName(selectedName);
-          const supplier = accounts.find(acc => acc.business_name === selectedName);
-          if (supplier) {
-            setSelectedSupplierId(supplier.id);
-            setSelected(true);
-            setInvoiceData(prev => ({
-              ...prev,
-              supplierInfo: {
-                name: supplier.name,
-                businessName: supplier.business_name,
-                state: supplier.billing_state,
-                gstin: supplier.gstin,
-                accountId: supplier.id,
-                staffid: supplier.staffid, // Add staffid
-                assigned_staff: supplier.assigned_staff // Add assigned_staff
-              },
-              billingAddress: {
-                addressLine1: supplier.billing_address_line1,
-                addressLine2: supplier.billing_address_line2 || "",
-                city: supplier.billing_city,
-                pincode: supplier.billing_pin_code,
-                state: supplier.billing_state
-              },
-              shippingAddress: {
-                addressLine1: supplier.shipping_address_line1,
-                addressLine2: supplier.shipping_address_line2 || "",
-                city: supplier.shipping_city,
-                pincode: supplier.shipping_pin_code,
-                state: supplier.shipping_state
+<div className="bg-white rounded border">
+  <Row className="mb-0">
+    <Col md={4} className="border-end p-3">
+      {!selected ? (
+        <>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <strong className="text-primary">Retailer Info</strong>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => navigate("/retailers/add")}
+            >
+              New
+            </Button>
+          </div>
+          
+          {/* Combined Retailer and Staff Dropdown */}
+          <Form.Select
+            className="mb-2 border-primary"
+            value={inputName}
+            onChange={(e) => {
+              const selectedName = e.target.value;
+              setInputName(selectedName);
+              
+              if (selectedName === "") {
+                // Reset if nothing selected
+                setSelected(false);
+                setSelectedSupplierId(null);
+                setSelectedStaffId("");
+                return;
               }
-            }));
+              
+              const supplier = accounts.find(acc => acc.business_name === selectedName);
+              if (supplier) {
+                setSelectedSupplierId(supplier.id);
+                setSelected(true);
+                
+                // Auto-select the assigned staff if available
+                if (supplier.staffid) {
+                  setSelectedStaffId(supplier.staffid);
+                }
+                
+                setInvoiceData(prev => ({
+                  ...prev,
+                  supplierInfo: {
+                    name: supplier.name,
+                    businessName: supplier.business_name,
+                    state: supplier.billing_state,
+                    gstin: supplier.gstin,
+                    accountId: supplier.id,
+                    staffid: supplier.staffid,
+                    assigned_staff: supplier.assigned_staff
+                  },
+                  billingAddress: {
+                    addressLine1: supplier.billing_address_line1,
+                    addressLine2: supplier.billing_address_line2 || "",
+                    city: supplier.billing_city,
+                    pincode: supplier.billing_pin_code,
+                    state: supplier.billing_state
+                  },
+                  shippingAddress: {
+                    addressLine1: supplier.shipping_address_line1,
+                    addressLine2: supplier.shipping_address_line2 || "",
+                    city: supplier.shipping_city,
+                    pincode: supplier.shipping_pin_code,
+                    state: supplier.shipping_state
+                  }
+                }));
+              }
+            }}
+          >
+            <option value="">Select Retailer </option>
+            {accounts
+              .filter(acc => acc.role === "retailer")
+              .map(acc => (
+                <option key={acc.id} value={acc.business_name}>
+                  {acc.business_name} 
             
-            // Auto-select the assigned staff if available
-            if (supplier.staffid) {
-              setSelectedStaffId(supplier.staffid);
-            }
-          }
-        }}
-      >
-        <option value="">Select Retailer</option>
-        {accounts
-          .filter(acc => acc.role === "retailer")
-          .map(acc => (
-            <option key={acc.id} value={acc.business_name}>
-              {acc.business_name} ({acc.mobile_number})
-            </option>
-          ))}
-      </Form.Select>
+                </option>
+              ))}
+          </Form.Select>
+        </>
+      ) : (
+        <>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <strong className="text-primary">Supplier Info</strong>
+            <Button
+              variant="info"
+              size="sm"
+              onClick={() => {
+                if (selectedSupplierId) {
+                  navigate(`/retailers/edit/${selectedSupplierId}`);
+                }
+              }}
+            >
+              <FaEdit /> Edit
+            </Button>
+          </div>
+          <div className="bg-light p-2 rounded">
+            <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
+            <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
+            <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
+            <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
+            {/* Display assigned staff from the selected retailer */}
+            {selectedStaffId && (
+              <div><strong>Assigned Staff:</strong> {
+                accounts.find(acc => acc.staffid == selectedStaffId)?.assigned_staff || 
+                invoiceData.supplierInfo.assigned_staff ||
+                "Not Assigned"
+              }</div>
+            )}
+          </div>
+        </>
+      )}
+    </Col>
 
-      {/* Dynamic Staff Dropdown */}
-      <Form.Select
-        className="border-primary"
-        value={selectedStaffId}
-        onChange={(e) => setSelectedStaffId(e.target.value)}
-      >
-        <option value="">Select Assigned Staff</option>
-        {accounts
-          .filter(acc => acc.staffid !== null && acc.assigned_staff !== null) // Filter accounts that have staff data
-          .map(staff => (
-            <option key={staff.staffid} value={staff.staffid}>
-              {staff.assigned_staff} (ID: {staff.staffid})
-            </option>
-          ))}
-      </Form.Select>
-    </>
-  ) : (
-    <>
-      <div className="d-flex justify-content-between align-items-center mb-2">
-        <strong className="text-primary">Supplier Info</strong>
-        <Button
-          variant="info"
-          size="sm"
-          onClick={() => {
-            if (selectedSupplierId) {
-              navigate(`/retailers/edit/${selectedSupplierId}`);
-            }
-          }}
-        >
-          <FaEdit /> Edit
-        </Button>
+    <Col md={4} className="border-end p-3">
+      <strong className="text-primary">Billing Address</strong>
+      <div className="bg-light p-2 rounded mt-1">
+        <div><strong>Address:</strong> {invoiceData.billingAddress?.addressLine1}</div>
+        <div><strong>City:</strong> {invoiceData.billingAddress?.city}</div>
+        <div><strong>Pincode:</strong> {invoiceData.billingAddress?.pincode}</div>
+        <div><strong>State:</strong> {invoiceData.billingAddress?.state}</div>
       </div>
-      <div className="bg-light p-2 rounded">
-        <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
-        <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
-        <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
-        <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
-        {/* Display assigned staff dynamically */}
-        {selectedStaffId && (
-          <div><strong>Assigned Staff:</strong> {
-            accounts.find(acc => acc.staffid == selectedStaffId)?.assigned_staff || 
-            "Not Assigned"
-          }</div>
-        )}
+    </Col>
+
+    <Col md={4} className="p-3">
+      <strong className="text-primary">Shipping Address</strong>
+      <div className="bg-light p-2 rounded mt-1">
+        <div><strong>Address:</strong> {invoiceData.shippingAddress?.addressLine1}</div>
+        <div><strong>City:</strong> {invoiceData.shippingAddress?.city}</div>
+        <div><strong>Pincode:</strong> {invoiceData.shippingAddress?.pincode}</div>
+        <div><strong>State:</strong> {invoiceData.shippingAddress?.state}</div>
       </div>
-    </>
-  )}
-</Col>
-
-                  <Col md={4} className="border-end p-3">
-                    <strong className="text-primary">Billing Address</strong>
-                    <div className="bg-light p-2 rounded mt-1">
-                      <div><strong>Address:</strong> {invoiceData.billingAddress?.addressLine1}</div>
-                      <div><strong>City:</strong> {invoiceData.billingAddress?.city}</div>
-                      <div><strong>Pincode:</strong> {invoiceData.billingAddress?.pincode}</div>
-                      <div><strong>State:</strong> {invoiceData.billingAddress?.state}</div>
-                    </div>
-                  </Col>
-
-                  <Col md={4} className="p-3">
-                    <strong className="text-primary">Shipping Address</strong>
-                    <div className="bg-light p-2 rounded mt-1">
-                      <div><strong>Address:</strong> {invoiceData.shippingAddress?.addressLine1}</div>
-                      <div><strong>City:</strong> {invoiceData.shippingAddress?.city}</div>
-                      <div><strong>Pincode:</strong> {invoiceData.shippingAddress?.pincode}</div>
-                      <div><strong>State:</strong> {invoiceData.shippingAddress?.state}</div>
-                    </div>
-                  </Col>
-                </Row>
-              </div>
-
+    </Col>
+  </Row>
+</div>
               {/* Item Section */}
               <div className="item-section mb-3 mt-3 bg-white p-3 rounded">
               <h6 className="text-primary mb-3">
@@ -1562,7 +1553,7 @@ const payload = {
 
                             )}
                           </td>
-                <td className="text-center">
+<td className="text-center salesinvoice-edit">
   <Button 
     variant="warning" 
     size="sm" 
@@ -1579,6 +1570,7 @@ const payload = {
     <FaTrash />
   </Button>
 </td>
+
                         </tr>
                       ))
                     )}
@@ -1610,7 +1602,7 @@ const payload = {
                       <div className="mb-2 fw-bold">Taxable Amount</div>
                       <div className="mb-2 fw-bold">Total GST</div>
                       <div className="mb-2 fw-bold">Total Cess</div>
-                      <div className="mb-2 fw-bold">Additional Charges</div>
+                      {/* <div className="mb-2 fw-bold">Additional Charges</div> */}
                       <div className="mb-2 fw-bold text-success">Grand Total</div>
                     </Col>
 
@@ -1619,7 +1611,7 @@ const payload = {
                       <div className="mb-2">₹{invoiceData.totalGST}</div>
                       <div className="mb-2">₹{invoiceData.totalCess}</div>
 
-                      <Form.Select
+                      {/* <Form.Select
                         className="mb-2 border-primary"
                         style={{ width: "100%" }}
                         value={invoiceData.additionalCharge || ""}
@@ -1636,7 +1628,7 @@ const payload = {
                         <option value="Packing">Packing Charges</option>
                         <option value="Transport">Transport Charges</option>
                         <option value="Service">Service Charges</option>
-                      </Form.Select>
+                      </Form.Select> */}
 
                       <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
                     </Col>

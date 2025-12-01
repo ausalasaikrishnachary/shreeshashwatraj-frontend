@@ -16,6 +16,19 @@
 .admin-main-content.collapsed {
   margin-left: 80px;
 }
+.salesinvoice-edit {
+  display: flex;           
+  flex-direction: column;     
+  gap: 0.3rem;              
+  justify-content: center;  
+  align-items: center;      
+}
+
+.salesinvoice-edit .btn {
+  font-size: 0.75rem;     
+}
+
+
 
 .admin-content-wrapper-sales {
   flex: 1;

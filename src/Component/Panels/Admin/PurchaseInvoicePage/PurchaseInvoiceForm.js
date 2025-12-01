@@ -956,7 +956,7 @@ const handleSubmit = async (e) => {
                             .filter(acc => acc.role === "supplier") 
                             .map(acc => (
                               <option key={acc.id} value={acc.business_name}>
-                                {acc.business_name} ({acc.mobile_number})
+                                {acc.business_name} 
                               </option>
                             ))}
                         </Form.Select>
