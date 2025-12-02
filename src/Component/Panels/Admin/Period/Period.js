@@ -318,12 +318,7 @@ const Period = () => {
             </div>
           )}
 
-          {/* Invoice Number Info */}
-          {nextInvoiceNumber && (
-            <div className="p-invoice-info p-alert p-alert-info">
-              <strong>Next Available Invoice Number:</strong> {nextInvoiceNumber}
-            </div>
-          )}
+     
 
           {/* Filters Section */}
           <div className="p-filters-section">
@@ -374,9 +369,12 @@ const Period = () => {
                       <th></th>
                       <th>Order Number</th>
                       <th>Customer Name</th>
+                        
                       <th>Order Total</th>
                       <th>Discount Amount</th>
+
                       <th>Created At</th>
+                    <th>Invoice Number</th>
                       <th>Action</th>
                       <th>Generate Invoice</th>
                     </tr>
@@ -392,12 +390,16 @@ const Period = () => {
                           </td>
                           <td>{order.order_number}</td>
                           <td>{order.customer_name}</td>
+                        
                           <td>₹{(order.order_total ?? 0).toLocaleString()}</td>
                           <td>₹{(order.discount_amount ?? 0).toLocaleString()}</td>
                           <td>
                             {new Date(order.created_at).toLocaleDateString('en-GB')}
                           </td>
+                          <td>{order.invoice_number || "N/A"}</td>
+
                           <td>
+                              
                             <div className="p-action-buttons">
                               <button 
                                 className="p-eye-btn"
@@ -411,21 +413,31 @@ const Period = () => {
                           </td>
                    <td>
   <div className="p-action-buttons">
-    <button 
-      className="p-generate-invoice-btn"
-      onClick={() => generateInvoice(order)}
-      disabled={generatingInvoice || order.invoice_status !== 0}
-      title={order.invoice_status !== 0 ? "Invoice Already Generated" : "Generate Invoice"}
-    >
-      {generatingInvoice ? '⏳' : '🧾'}
-    </button>
-  </div>
+  <button 
+    className="p-generate-invoice-btn"
+    onClick={() => generateInvoice(order)}
+    disabled={generatingInvoice || order.invoice_status !== 0}
+    title={
+      order.invoice_status !== 0 
+        ? "Invoice Already Generated" 
+        : "Generate Invoice"
+    }
+  >
+    {generatingInvoice
+      ? "Generating..."
+      : order.invoice_status !== 0
+        ? "Generated Invoice"
+        : "Generate Invoice"
+    }
+  </button>
+</div>
+
 </td>
                         </tr>
 
                         {openRow === order.id && (
                           <tr className="p-invoices-row">
-                            <td colSpan={7}>
+                            <td colSpan={9 }>
                               <div className="p-invoices-section">
                                 <h4>Order Details</h4>
                                 <table className="p-invoices-table">
