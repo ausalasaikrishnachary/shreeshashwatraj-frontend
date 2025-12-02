@@ -3,6 +3,8 @@ import axios from "axios";
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import './Period.css';
+import { baseurl } from "../../../BaseURL/BaseURL";
+
 
 const Period = () => {
   const [openRow, setOpenRow] = useState(null);
@@ -33,7 +35,7 @@ const Period = () => {
   const fetchNextInvoiceNumber = async () => {
     try {
       console.log('Fetching next invoice number...');
-      const response = await fetch("http://localhost:5000/next-invoice-number");
+const response = await fetch(`${baseurl}/next-invoice-number`);
       
       if (response.ok) {
         const data = await response.json();
@@ -52,7 +54,7 @@ const Period = () => {
   // Fallback invoice number generation
   const generateFallbackInvoiceNumber = async () => {
     try {
-      const response = await fetch("http://localhost:5000/last-invoice");
+const response = await fetch(`${baseurl}/last-invoice`);
       if (response.ok) {
         const data = await response.json();
         if (data.lastInvoiceNumber) {
@@ -78,12 +80,12 @@ const Period = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:5000/orders/all-orders");
+const response = await axios.get(`${baseurl}/orders/all-orders`);
       const ordersData = response.data;
 
       const ordersWithItems = await Promise.all(
         ordersData.map(async (order) => {
-          const itemsRes = await axios.get(`http://localhost:5000/orders/details/${order.order_number}`);
+const itemsRes = await axios.get(`${baseurl}/orders/details/${order.order_number}`);
           const itemsData = itemsRes.data.items || [];
 
           return {
@@ -250,8 +252,8 @@ const Period = () => {
       console.log('Generating invoice with payload:', invoicePayload);
 
       // Send to your backend API
-      const response = await fetch("http://localhost:5000/transaction", {
-        method: "POST",
+const response = await fetch(`${baseurl}/transaction`, {
+          method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
