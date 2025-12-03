@@ -96,7 +96,7 @@ const InvoicePDFPreview = () => {
       
       console.log('Fetching payment data for invoice:', invoiceNumber);
       const response = await fetch(`${baseurl}/invoices/${invoiceNumber}`);
-      
+      debugger
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -148,17 +148,14 @@ const transformPaymentData = (apiData) => {
   
   const totalAmount = parseFloat(salesEntry.TotalAmount) || 0;
   
-  // Calculate total receipts (positive amounts)
   const totalPaid = receiptEntries.reduce((sum, receipt) => {
     return sum + parseFloat(receipt.paid_amount || receipt.TotalAmount || 0);
   }, 0);
   
-  // Calculate total credit notes (negative amounts - these are deductions)
   const totalCreditNotes = creditNoteEntries.reduce((sum, creditnote) => {
     return sum + parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0);
   }, 0);
   
-  // Balance = Original - Receipts - CreditNotes
   const balanceDue = totalAmount - totalPaid - totalCreditNotes;
   
   const invoiceDate = new Date(salesEntry.Date);
@@ -373,13 +370,17 @@ const transformPaymentData = (apiData) => {
         total: total.toFixed(2),
         batch: batch.batch || '',
         batch_id: batch.batch_id || '',
-        product_id: batch.product_id || ''
+        product_id: batch.product_id || '',
+              assigned_staff: batch.assigned_staff  || 'N/A',
+
       };
     }) || [];
 
     const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
     const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
     const grandTotal = parseFloat(apiData.TotalAmount) || 0;
+      const assignedStaff = apiData.assigned_staff || apiData.AssignedStaff || apiData.staff_name || 'N/A';
+
 
     return {
       voucherId: apiData.VoucherID,
@@ -435,7 +436,8 @@ const transformPaymentData = (apiData) => {
         total: grandTotal.toFixed(2),
         batch: '',
         batch_id: '',
-        product_id: ''
+        product_id: '',
+        assigned_staff: assignedStaff // Add this line for fallback item
       }],
       
       taxableAmount: taxableAmount.toFixed(2),
@@ -451,7 +453,9 @@ const transformPaymentData = (apiData) => {
       totalCGST: parseFloat(apiData.CGSTAmount) || 0,
       totalSGST: parseFloat(apiData.SGSTAmount) || 0,
       totalIGST: parseFloat(apiData.IGSTAmount) || 0,
-      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST"
+      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST",
+
+      assigned_staff: assignedStaff
     };
   };
 
@@ -1725,6 +1729,14 @@ const handleOpenReceiptModal = () => {
                         </>
                       )}
                     </div>
+{currentData.assigned_staff && currentData.assigned_staff !== 'N/A' && (
+  <div className="assigned-staff-section mt-3 p-2 bg-light rounded flex-start">
+    <div className="d-flex justify-content-between align-items-center">
+      <span className="text-muted">Sales Person:</span>
+      <strong className="text-primary">{currentData.assigned_staff}</strong>
+    </div>
+  </div>
+)}
                   </Col>
                 </Row>
               </div>

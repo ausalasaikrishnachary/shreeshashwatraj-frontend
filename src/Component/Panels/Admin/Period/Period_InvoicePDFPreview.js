@@ -57,10 +57,8 @@ const Period_InvoicePDFPreview = () => {
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
 
-  // Add this function to handle navigation to edit form
   const handleEditInvoice = () => {
     if (invoiceData && invoiceData.voucherId) {
-      // Navigate to the sales form with the voucher ID for editing
       navigate(`/sales/createinvoice/${invoiceData.voucherId}`);
     } else {
       setError('Cannot edit invoice: Voucher ID not found');
@@ -79,12 +77,10 @@ const Period_InvoicePDFPreview = () => {
       setFromPeriod(true);
       setLoading(false);
       
-      // Transform the Period data to match your invoice format
       const transformedData = transformPeriodDataToInvoiceFormat(periodData);
       setInvoiceData(transformedData);
       setEditedData(transformedData);
       
-      // Fetch payment data if available
       if (periodData.invoiceNumber) {
         fetchPaymentData(periodData.invoiceNumber);
       }
@@ -95,12 +91,14 @@ const Period_InvoicePDFPreview = () => {
     }
   }, [id, location]);
 
-  // Function to transform Period data to invoice format
-// Define the function FIRST
+
+
 const transformPeriodDataToInvoiceFormat = (periodData) => {
   console.log('Transforming Period data to invoice format:', periodData);
   
-  // Transform selected items
+  const accountDetails = periodData.fullAccountDetails || periodData.customerInfo?.account_details;
+  console.log('Account details in transform:', accountDetails);
+  
   const items = periodData.selectedItems.map((item, index) => ({
     id: index + 1,
     product: item.item_name,
@@ -116,22 +114,21 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
     cess: 0,
     total: parseFloat(item.item_total) || 0,
     batch: '',
-    batch_id: item.batch_id || ''
+    batch_id: item.batch_id || '',
+    assigned_staff: item.assigned_staff || periodData.assigned_staff || 'N/A',
+    staff_incentive: item.staff_incentive || 0
   }));
   
-  // Ensure values are numbers before calling toFixed()
   const taxableAmount = parseFloat(periodData.selectedItemsTotal?.taxableAmount) || 0;
   const totalGST = parseFloat(periodData.selectedItemsTotal?.taxAmount) || 0;
   const grandTotal = parseFloat(periodData.selectedItemsTotal?.grandTotal) || 0;
   
   return {
-    // Use the invoice number from Period data or generate one
     invoiceNumber: periodData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`,
     invoiceDate: periodData.invoiceDate || new Date().toISOString().split('T')[0],
     validityDate: periodData.validityDate || 
                   new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     
-    // Company info
     companyInfo: periodData.companyInfo || {
       name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
       address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
@@ -141,17 +138,31 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
       state: "Karnataka"
     },
     
-    // Customer info from Period data
+    // Customer info from account details
     supplierInfo: {
-      name: periodData.customerInfo?.name || periodData.originalOrder?.customer_name,
-      businessName: periodData.customerInfo?.businessName || periodData.originalOrder?.customer_name,
-      gstin: periodData.customerInfo?.gstin || '',
-      state: periodData.customerInfo?.state || '',
-      id: periodData.customerInfo?.id || ''
+      name: accountDetails?.name || periodData.customerInfo?.name || periodData.originalOrder?.customer_name,
+      businessName: accountDetails?.business_name || periodData.customerInfo?.businessName || periodData.originalOrder?.customer_name,
+      gstin: accountDetails?.gstin || periodData.customerInfo?.gstin || '',
+      state: accountDetails?.billing_state || periodData.customerInfo?.state || '',
+      id: periodData.customerInfo?.id || '',
+      email: accountDetails?.email || '',
+      phone: accountDetails?.phone_number || accountDetails?.mobile_number || '',
+      pan: accountDetails?.pan || '',
+      // Add all account details for reference
+      fullDetails: accountDetails
     },
     
-    // Billing address
-    billingAddress: periodData.billingAddress || {
+    // Billing address from account details
+    billingAddress: accountDetails ? {
+      addressLine1: accountDetails.billing_address_line1 || "Address not specified",
+      addressLine2: accountDetails.billing_address_line2 || "",
+      city: accountDetails.billing_city || "City not specified",
+      pincode: accountDetails.billing_pin_code || "000000",
+      state: accountDetails.billing_state || "Karnataka",
+      country: accountDetails.billing_country || "India",
+      gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
+      branch_name: accountDetails.billing_branch_name || ""
+    } : periodData.billingAddress || {
       addressLine1: periodData.originalOrder?.billing_address || "Address not specified",
       addressLine2: "",
       city: periodData.originalOrder?.billing_city || "City not specified",
@@ -159,8 +170,17 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
       state: periodData.originalOrder?.billing_state || "Karnataka"
     },
     
-    // Shipping address
-    shippingAddress: periodData.shippingAddress || periodData.billingAddress || {
+    // Shipping address from account details
+    shippingAddress: accountDetails ? {
+      addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
+      addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
+      city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
+      pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
+      state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
+      country: accountDetails.shipping_country || accountDetails.billing_country || "India",
+      gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
+      branch_name: accountDetails.shipping_branch_name || accountDetails.billing_branch_name || ""
+    } : periodData.shippingAddress || periodData.billingAddress || {
       addressLine1: periodData.originalOrder?.shipping_address || "Address not specified",
       addressLine2: "",
       city: periodData.originalOrder?.shipping_city || "City not specified",
@@ -186,33 +206,34 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
     totalCGST: items.reduce((sum, item) => sum + (item.cgst || 0), 0).toFixed(2),
     totalSGST: items.reduce((sum, item) => sum + (item.sgst || 0), 0).toFixed(2),
     totalIGST: "0.00",
-    taxType: "CGST/SGST"
+    taxType: "CGST/SGST",
+    
+    // Add staff information to the main invoice data
+    assigned_staff: periodData.originalOrder?.assigned_staff || 'N/A',
+    staff_incentive: periodData.originalOrder?.staff_incentive || 0,
+    
+    // Store account details for reference
+    accountDetails: accountDetails
   };
-};
+};;
 
-// THEN use it in useEffect
 useEffect(() => {
-  // CHECK IF COMING FROM PERIOD COMPONENT
   if (location.state && location.state.invoiceData) {
     console.log('📦 Received data from Period component:', location.state.invoiceData);
     
-    // This is from Period component with selected items
     const periodData = location.state.invoiceData;
     setPeriodInvoiceData(periodData);
     setFromPeriod(true);
     setLoading(false);
     
-    // Now transformPeriodDataToInvoiceFormat is defined!
     const transformedData = transformPeriodDataToInvoiceFormat(periodData);
     setInvoiceData(transformedData);
     setEditedData(transformedData);
     
-    // Fetch payment data if available
     if (periodData.invoiceNumber) {
       fetchPaymentData(periodData.invoiceNumber);
     }
   } else {
-    // This is the existing flow (from transaction ID)
     console.log('🔍 Loading from transaction ID:', id);
     fetchTransactionData();
   }
@@ -225,21 +246,20 @@ const handleGenerateInvoice = async () => {
     setErrorMessage('');
     setSuccessMessage('');
 
-    // CHECK IF FROM PERIOD OR EXISTING INVOICE
     if (fromPeriod && periodInvoiceData) {
-      // **CRITICAL FIX: Only use selected items, not all items**
       const selectedItems = periodInvoiceData.selectedItems || [];
       
-      // Check if we have selected items
       if (!selectedItems || selectedItems.length === 0) {
         throw new Error('No selected items found for invoice generation');
       }
       
+      // Get account details
+      const accountDetails = periodInvoiceData.fullAccountDetails || 
+                            periodInvoiceData.customerInfo?.account_details;
+      
       const payload = {
         ...periodInvoiceData,
-        // **ONLY USE SELECTED ITEMS for database storage**
         items: selectedItems.map(item => ({
-          // **ADD: Pass the original item ID for tracking**
           originalItemId: item.id,
           product: item.item_name,
           product_id: item.product_id,
@@ -257,7 +277,7 @@ const handleGenerateInvoice = async () => {
           batch_id: item.batch_id || ''
         })),
 
-        // **ADD: Information about the original order and selected items**
+        // Original order and selected items info
         originalOrderNumber: periodInvoiceData.orderNumber,
         originalOrderId: periodInvoiceData.originalOrderId,
         selectedItemIds: periodInvoiceData.selectedItemIds || [],
@@ -269,30 +289,55 @@ const handleGenerateInvoice = async () => {
         grandTotal: periodInvoiceData.selectedItemsTotal?.grandTotal || 0,
         totalDiscount: periodInvoiceData.selectedItemsTotal?.discountAmount || 0,
         
-        // **FIXED: Proper shipping address**
-        shippingAddress: periodInvoiceData.shippingAddress || periodInvoiceData.billingAddress || {
-          addressLine1: periodInvoiceData.originalOrder?.shipping_address || "Address not specified",
-          addressLine2: "",
-          city: periodInvoiceData.originalOrder?.shipping_city || "City not specified",
-          pincode: periodInvoiceData.originalOrder?.shipping_pincode || "000000",
-          state: periodInvoiceData.originalOrder?.shipping_state || "Karnataka"
+        // Customer details from account
+        customerInfo: {
+          name: accountDetails?.name || periodInvoiceData.customerInfo?.name,
+          businessName: accountDetails?.business_name || periodInvoiceData.customerInfo?.businessName,
+          gstin: accountDetails?.gstin || periodInvoiceData.customerInfo?.gstin,
+          state: accountDetails?.billing_state || periodInvoiceData.customerInfo?.state,
+          id: periodInvoiceData.customerInfo?.id,
+          email: accountDetails?.email || '',
+          phone: accountDetails?.phone_number || accountDetails?.mobile_number || '',
+          pan: accountDetails?.pan || ''
         },
+        
+        // Billing address from account
+        billingAddress: accountDetails ? {
+          addressLine1: accountDetails.billing_address_line1,
+          addressLine2: accountDetails.billing_address_line2 || '',
+          city: accountDetails.billing_city,
+          pincode: accountDetails.billing_pin_code,
+          state: accountDetails.billing_state,
+          country: accountDetails.billing_country,
+          gstin: accountDetails.billing_gstin || accountDetails.gstin
+        } : periodInvoiceData.billingAddress,
+        
+        // Shipping address from account
+        shippingAddress: accountDetails ? {
+          addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1,
+          addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || '',
+          city: accountDetails.shipping_city || accountDetails.billing_city,
+          pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code,
+          state: accountDetails.shipping_state || accountDetails.billing_state,
+          country: accountDetails.shipping_country || accountDetails.billing_country,
+          gstin: accountDetails.shipping_gstin || accountDetails.gstin
+        } : periodInvoiceData.shippingAddress || periodInvoiceData.billingAddress,
         
         // Add required fields
         type: 'sales',
         selectedSupplierId: periodInvoiceData.customerInfo?.id || periodInvoiceData.PartyID,
         PartyID: periodInvoiceData.customerInfo?.id || periodInvoiceData.PartyID,
         AccountID: periodInvoiceData.customerInfo?.id || periodInvoiceData.AccountID,
-        PartyName: periodInvoiceData.customerInfo?.name || periodInvoiceData.PartyName,
-        AccountName: periodInvoiceData.customerInfo?.businessName || periodInvoiceData.AccountName,
+        PartyName: accountDetails?.name || periodInvoiceData.PartyName,
+        AccountName: accountDetails?.business_name || periodInvoiceData.AccountName,
         
-        // **ADD: Flag to indicate partial invoice (selected items only)**
+        // Flag to indicate partial invoice (selected items only)
         isPartialInvoice: true,
         source: 'period_component'
       };
 
-      console.log('Sending invoice payload from Period (SELECTED ITEMS ONLY):', payload);
-      console.log('Number of items being sent:', payload.items.length);
+      console.log('Sending invoice payload:', payload);
+      console.log('Account details in payload:', accountDetails);
 
       const response = await fetch(`${baseurl}/transaction`, {
         method: "POST",
@@ -308,28 +353,6 @@ const handleGenerateInvoice = async () => {
         throw new Error(result.error || "Failed to generate invoice");
       }
 
-      // **ADD: Update the invoice status for the selected items in the original order**
-      if (result.success && periodInvoiceData.selectedItemIds) {
-        try {
-          // Call API to update invoice status for selected items
-          await fetch(`${baseurl}/orders/update-invoice-status`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              orderNumber: periodInvoiceData.orderNumber,
-              itemIds: periodInvoiceData.selectedItemIds,
-              invoiceNumber: result.invoiceNumber || payload.invoiceNumber,
-              invoiceStatus: 1 // Mark as invoiced
-            })
-          });
-        } catch (updateError) {
-          console.error('Failed to update invoice status:', updateError);
-          // Continue anyway - invoice was created successfully
-        }
-      }
-
       setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber || payload.invoiceNumber}`);
       
       // Optionally redirect back to orders page after 3 seconds
@@ -338,7 +361,7 @@ const handleGenerateInvoice = async () => {
       }, 3000);
 
     } else {
-      // This is the existing flow for editing invoices
+      // Existing flow for editing invoices
       if (!invoiceData) {
         throw new Error('No invoice data available');
       }
@@ -500,9 +523,7 @@ const fetchTransactionData = async () => {
   }
 };
 
-// THEN use it in useEffect
 useEffect(() => {
-  // CHECK IF COMING FROM PERIOD COMPONENT
   if (location.state && location.state.invoiceData) {
     console.log('📦 Received data from Period component:', location.state.invoiceData);
     
@@ -524,7 +545,7 @@ useEffect(() => {
   } else {
     // This is the existing flow (from transaction ID)
     console.log('🔍 Loading from transaction ID:', id);
-    fetchTransactionData(); // <-- Now this function is defined!
+    fetchTransactionData(); 
   }
 }, [id, location]);
 
@@ -2069,94 +2090,114 @@ const transformPaymentData = (apiData) => {
                 </Row>
               </div>
 
-              {/* Customer and Address Details */}
-              <div className="address-section mb-4">
-                <Row>
-                  <Col md={6}>
-                    <div className="billing-address bg-light p-3 rounded">
-                      <h5 className="text-primary mb-2">Bill To:</h5>
-                      {isEditMode ? (
-                        <div className="edit-control">
-                          <Form.Control 
-                            className="mb-2"
-                            value={currentData.supplierInfo.name}
-                            onChange={(e) => handleNestedChange('supplierInfo', 'name', e.target.value)}
-                          />
-                          <Form.Control 
-                            className="mb-2"
-                            value={currentData.supplierInfo.businessName}
-                            onChange={(e) => handleNestedChange('supplierInfo', 'businessName', e.target.value)}
-                          />
-                          <Form.Control 
-                            className="mb-2"
-                            placeholder="GSTIN"
-                            value={currentData.supplierInfo.gstin || ''}
-                            onChange={(e) => handleNestedChange('supplierInfo', 'gstin', e.target.value)}
-                          />
-                          <Form.Control 
-                            placeholder="State"
-                            value={currentData.supplierInfo.state || ''}
-                            onChange={(e) => handleNestedChange('supplierInfo', 'state', e.target.value)}
-                          />
-                        </div>
-                      ) : (
-                        <>
-                          <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p>
-                          <p className="mb-1 text-muted">{currentData.supplierInfo.businessName}</p>
-                          <p className="mb-1"><small>GSTIN: {currentData.supplierInfo.gstin || 'N/A'}</small></p>
-                          <p className="mb-0"><small>State: {currentData.supplierInfo.state || 'N/A'}</small></p>
-                        </>
-                      )}
-                    </div>
-                  </Col>
-                  <Col md={6}>
-                    <div className="shipping-address bg-light p-3 rounded">
-                      <h5 className="text-primary mb-2">Ship To:</h5>
-                      {isEditMode ? (
-                        <div className="edit-control">
-                          <Form.Control 
-                            className="mb-2"
-                            placeholder="Address Line 1"
-                            value={currentData.shippingAddress.addressLine1 || ''}
-                            onChange={(e) => handleNestedChange('shippingAddress', 'addressLine1', e.target.value)}
-                          />
-                          <Form.Control 
-                            className="mb-2"
-                            placeholder="Address Line 2"
-                            value={currentData.shippingAddress.addressLine2 || ''}
-                            onChange={(e) => handleNestedChange('shippingAddress', 'addressLine2', e.target.value)}
-                          />
-                          <Form.Control 
-                            className="mb-2"
-                            placeholder="City"
-                            value={currentData.shippingAddress.city || ''}
-                            onChange={(e) => handleNestedChange('shippingAddress', 'city', e.target.value)}
-                          />
-                          <Form.Control 
-                            className="mb-2"
-                            placeholder="Pincode"
-                            value={currentData.shippingAddress.pincode || ''}
-                            onChange={(e) => handleNestedChange('shippingAddress', 'pincode', e.target.value)}
-                          />
-                          <Form.Control 
-                            placeholder="State"
-                            value={currentData.shippingAddress.state || ''}
-                            onChange={(e) => handleNestedChange('shippingAddress', 'state', e.target.value)}
-                          />
-                        </div>
-                      ) : (
-                        <>
-                          <p className="mb-1">{currentData.shippingAddress.addressLine1 || 'N/A'}</p>
-                          <p className="mb-1">{currentData.shippingAddress.addressLine2 || ''}</p>
-                          <p className="mb-1">{currentData.shippingAddress.city || ''} - {currentData.shippingAddress.pincode || ''}</p>
-                          <p className="mb-0">{currentData.shippingAddress.state || ''}</p>
-                        </>
-                      )}
-                    </div>
-                  </Col>
-                </Row>
-              </div>
 
+<div className="address-section mb-4">
+  <Row>
+    <Col md={6}>
+      <div className="billing-address bg-light p-3 rounded">
+        <h5 className="text-primary mb-2">Bill To:</h5>
+        {isEditMode ? (
+          <div className="edit-control">
+            <Form.Control 
+              className="mb-2"
+              value={currentData.supplierInfo.name}
+              onChange={(e) => handleNestedChange('supplierInfo', 'name', e.target.value)}
+            />
+            <Form.Control 
+              className="mb-2"
+              value={currentData.supplierInfo.businessName}
+              onChange={(e) => handleNestedChange('supplierInfo', 'businessName', e.target.value)}
+            />
+            <Form.Control 
+              className="mb-2"
+              placeholder="GSTIN"
+              value={currentData.supplierInfo.gstin || ''}
+              onChange={(e) => handleNestedChange('supplierInfo', 'gstin', e.target.value)}
+            />
+            <Form.Control 
+              className="mb-2"
+              placeholder="State"
+              value={currentData.supplierInfo.state || ''}
+              onChange={(e) => handleNestedChange('supplierInfo', 'state', e.target.value)}
+            />
+          
+            
+          </div>
+        ) : (
+          <>
+            <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p>
+            <p className="mb-1 text-muted">{currentData.supplierInfo.businessName}</p>
+            <p className="mb-1"><small>GSTIN: {currentData.supplierInfo.gstin || 'N/A'}</small></p>
+            <p className="mb-1"><small>State: {currentData.supplierInfo.state || 'N/A'}</small></p>
+            <p className="mb-1"><small>Email: {currentData.supplierInfo.email || 'N/A'}</small></p>
+          </>
+        )}
+      </div>
+      
+  
+    </Col>
+    
+    <Col md={6}>
+      <div className="shipping-address bg-light p-3 rounded">
+        <h5 className="text-primary mb-2">Ship To:</h5>
+        {isEditMode ? (
+          <div className="edit-control">
+            <Form.Control 
+              className="mb-2"
+              placeholder="Address Line 1"
+              value={currentData.shippingAddress.addressLine1 || ''}
+              onChange={(e) => handleNestedChange('shippingAddress', 'addressLine1', e.target.value)}
+            />
+            <Form.Control 
+              className="mb-2"
+              placeholder="Address Line 2"
+              value={currentData.shippingAddress.addressLine2 || ''}
+              onChange={(e) => handleNestedChange('shippingAddress', 'addressLine2', e.target.value)}
+            />
+            <Form.Control 
+              className="mb-2"
+              placeholder="City"
+              value={currentData.shippingAddress.city || ''}
+              onChange={(e) => handleNestedChange('shippingAddress', 'city', e.target.value)}
+            />
+            <Form.Control 
+              className="mb-2"
+              placeholder="Pincode"
+              value={currentData.shippingAddress.pincode || ''}
+              onChange={(e) => handleNestedChange('shippingAddress', 'pincode', e.target.value)}
+            />
+            <Form.Control 
+              placeholder="State"
+              value={currentData.shippingAddress.state || ''}
+              onChange={(e) => handleNestedChange('shippingAddress', 'state', e.target.value)}
+            />
+          </div>
+        ) : (
+          <>
+            <p className="mb-1">{currentData.shippingAddress.addressLine1 || 'N/A'}</p>
+            <p className="mb-1">{currentData.shippingAddress.addressLine2 || ''}</p>
+            <p className="mb-1">{currentData.shippingAddress.city || ''} - {currentData.shippingAddress.pincode || ''}</p>
+            <p className="mb-0">{currentData.shippingAddress.state || ''}, {currentData.shippingAddress.country || 'India'}</p>
+            {currentData.shippingAddress.gstin && (
+              <p className="mb-0 mt-1"><small>Shipping GSTIN: {currentData.shippingAddress.gstin}</small></p>
+            )}
+          </>
+        )}
+      </div>
+      
+      {/* Staff information */}
+      {currentData.assigned_staff && currentData.assigned_staff !== 'N/A' && (
+        <div className="assigned-staff-section mt-3 p-2 bg-light rounded flex-start">
+          <div className="d-flex justify-content-between align-items-center">
+            <span className="text-muted">Sales Person:</span>
+            <strong className="text-primary">{currentData.assigned_staff}</strong>
+          </div>
+       
+        </div>
+      )}
+    </Col>
+  </Row>
+</div>
               {/* Items Table */}
               <div className="items-section mb-4">
                 <div className="d-flex justify-content-between align-items-center mb-2">
