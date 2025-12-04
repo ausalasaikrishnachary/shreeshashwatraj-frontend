@@ -99,6 +99,10 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
   const accountDetails = periodData.fullAccountDetails || periodData.customerInfo?.account_details;
   console.log('Account details in transform:', accountDetails);
   
+  // 🔥 Check if orderNumber is available
+  const orderNumber = periodData.orderNumber || periodData.originalOrder?.order_number;
+  console.log('📋 Order Number in transform:', orderNumber);
+  
   const items = periodData.selectedItems.map((item, index) => ({
     id: index + 1,
     product: item.item_name,
@@ -128,6 +132,10 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
     invoiceDate: periodData.invoiceDate || new Date().toISOString().split('T')[0],
     validityDate: periodData.validityDate || 
                   new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    
+    // 🔥 ADD THIS: Include orderNumber in the transformed data
+    orderNumber: orderNumber,
+    originalOrderNumber: orderNumber,
     
     companyInfo: periodData.companyInfo || {
       name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
@@ -239,7 +247,6 @@ useEffect(() => {
   }
 }, [id, location]);
 
-
 const handleGenerateInvoice = async () => {
   try {
     setGenerating(true);
@@ -249,6 +256,10 @@ const handleGenerateInvoice = async () => {
     if (fromPeriod && periodInvoiceData) {
       const selectedItems = periodInvoiceData.selectedItems || [];
       
+      // 🔥 FIX: Get selectedItemIds from periodInvoiceData
+      const selectedItemIds = periodInvoiceData.selectedItemIds || periodInvoiceData.selected_item_ids || [];
+      
+      // 🔥 FIX THE ERROR: Check selectedItems length, not selectedItemIds
       if (!selectedItems || selectedItems.length === 0) {
         throw new Error('No selected items found for invoice generation');
       }
@@ -257,8 +268,19 @@ const handleGenerateInvoice = async () => {
       const accountDetails = periodInvoiceData.fullAccountDetails || 
                             periodInvoiceData.customerInfo?.account_details;
       
+      // 🔥 CRITICAL: Get the order number from periodInvoiceData 🔥
+      const orderNumber = periodInvoiceData.orderNumber || periodInvoiceData.originalOrder?.order_number;
+      console.log('📋 Order Number from Period data:', orderNumber);
+      console.log('📋 Selected Items Count:', selectedItems.length);
+      console.log('📋 Selected Item IDs:', selectedItemIds);
+      
       const payload = {
         ...periodInvoiceData,
+        
+        // 🔥 ADD THIS: Include orderNumber in the payload 🔥
+        orderNumber: orderNumber, // This is what the backend needs!
+        order_number: orderNumber, // Send it both ways for safety
+        
         items: selectedItems.map(item => ({
           originalItemId: item.id,
           product: item.item_name,
@@ -278,9 +300,9 @@ const handleGenerateInvoice = async () => {
         })),
 
         // Original order and selected items info
-        originalOrderNumber: periodInvoiceData.orderNumber,
+        originalOrderNumber: orderNumber, // Use the orderNumber here too
         originalOrderId: periodInvoiceData.originalOrderId,
-        selectedItemIds: periodInvoiceData.selectedItemIds || [],
+        selectedItemIds: selectedItemIds, // Use the variable we defined
         
         // Use calculated totals from selected items only
         taxableAmount: periodInvoiceData.selectedItemsTotal?.taxableAmount || 0,
@@ -336,8 +358,8 @@ const handleGenerateInvoice = async () => {
         source: 'period_component'
       };
 
-      console.log('Sending invoice payload:', payload);
-      console.log('Account details in payload:', accountDetails);
+      console.log('Sending invoice payload with orderNumber:', orderNumber);
+      console.log('Full payload:', payload);
 
       const response = await fetch(`${baseurl}/transaction`, {
         method: "POST",
