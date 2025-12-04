@@ -215,37 +215,75 @@ const fetchOrders = async () => {
     setOpenRow(openRow === id ? null : id);
   };
 
-  // Handle item selection
-  const handleItemSelect = (orderId, itemId, isSelected) => {
-    setSelectedItems(prev => {
-      const newSelected = { ...prev };
-
-      if (isSelected) {
-        if (!newSelected[orderId]) {
-          newSelected[orderId] = [];
-        }
-        if (!newSelected[orderId].includes(itemId)) {
-          newSelected[orderId] = [...newSelected[orderId], itemId];
-        }
-      } else {
-        if (newSelected[orderId]) {
-          newSelected[orderId] = newSelected[orderId].filter(id => id !== itemId);
-          if (newSelected[orderId].length === 0) {
-            delete newSelected[orderId];
-          }
-        }
-      }
-
-      return newSelected;
-    });
+  // Helper function to get the credit period of selected items
+  const getSelectedCreditPeriod = (orderId) => {
+    const orderSelectedItems = selectedItems[orderId] || [];
+    if (orderSelectedItems.length === 0) return null;
+    
+    const order = orders.find(o => o.id === orderId);
+    if (!order || !order.items) return null;
+    
+    const firstSelectedItem = order.items.find(item => 
+      orderSelectedItems[0] === item.id
+    );
+    
+    return firstSelectedItem?.credit_period || null;
   };
 
-  // Select all items in an order
+// Updated handleItemSelect function with auto-selection for same credit period
+const handleItemSelect = (orderId, itemId, isSelected, itemCreditPeriod) => {
+  setSelectedItems(prev => {
+    const newSelected = { ...prev };
+    const currentSelectedIds = newSelected[orderId] || [];
+    const order = orders.find(o => o.id === orderId);
+    
+    if (!order || !order.items) return prev;
+    
+    if (isSelected) {
+      // Auto-select all eligible items with the same credit period
+      if (currentSelectedIds.length === 0) {
+        // No items selected yet - select all eligible with this credit period
+        const eligibleItems = order.items.filter(item => 
+          item.credit_period === itemCreditPeriod && 
+          item.invoice_status !== 1
+        );
+        newSelected[orderId] = eligibleItems.map(item => item.id);
+      } else {
+        // Some items already selected - check if credit period matches
+        const firstSelectedItemId = currentSelectedIds[0];
+        const firstSelectedItem = order.items.find(item => item.id === firstSelectedItemId);
+        
+        if (firstSelectedItem && firstSelectedItem.credit_period === itemCreditPeriod) {
+          // Same credit period - add all remaining eligible items with this credit period
+          const eligibleItems = order.items.filter(item => 
+            item.credit_period === itemCreditPeriod && 
+            item.invoice_status !== 1 && 
+            !currentSelectedIds.includes(item.id)
+          );
+          newSelected[orderId] = [...currentSelectedIds, ...eligibleItems.map(item => item.id)];
+        } else {
+          // Different credit period - alert and don't select
+          alert(`Cannot select items with different credit periods. Selected items have ${firstSelectedItem?.credit_period} days, this item has ${itemCreditPeriod} days.`);
+          return prev;
+        }
+      }
+    } else {
+      // Deselecting - remove only this specific item
+      if (currentSelectedIds.includes(itemId)) {
+        newSelected[orderId] = currentSelectedIds.filter(id => id !== itemId);
+        if (newSelected[orderId].length === 0) {
+          delete newSelected[orderId];
+        }
+      }
+    }
+    return newSelected;
+  });
+};
+  // Select all items in an order with credit period validation
   const handleSelectAll = (orderId, items) => {
-    const allItemIds = items.map(item => item.id);
-    const isAllSelected = selectedItems[orderId] &&
-      selectedItems[orderId].length === items.length;
-
+    const currentSelectedIds = selectedItems[orderId] || [];
+    const isAllSelected = currentSelectedIds.length === items.length;
+    
     if (isAllSelected) {
       // Deselect all
       setSelectedItems(prev => {
@@ -254,10 +292,17 @@ const fetchOrders = async () => {
         return newSelected;
       });
     } else {
-      // Select all
+      // Check if all items have the same credit period
+      const creditPeriods = [...new Set(items.map(item => item.credit_period))];
+      if (creditPeriods.length > 1) {
+        alert(`Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days. Please select items with the same credit period.`);
+        return;
+      }
+      
+      // Select all (all have same credit period)
       setSelectedItems(prev => ({
         ...prev,
-        [orderId]: allItemIds
+        [orderId]: items.map(item => item.id)
       }));
     }
   };
@@ -433,6 +478,7 @@ const fetchOrders = async () => {
       setGeneratingInvoice(false);
     }
   };
+
   // Helper function to generate invoice with selected items
   const generateInvoiceWithSelectedItems = (order, selectedItemIds) => {
     // Filter items to only include selected ones
@@ -700,6 +746,17 @@ const fetchOrders = async () => {
                                         checked={allItemsSelected}
                                         onChange={() => handleSelectAll(order.id, order.items)}
                                         className="p-item-checkbox"
+                                        disabled={(() => {
+                                          const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
+                                          return creditPeriods.length > 1;
+                                        })()}
+                                        title={(() => {
+                                          const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
+                                          if (creditPeriods.length > 1) {
+                                            return `Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days`;
+                                          }
+                                          return allItemsSelected ? "Deselect all items" : "Select all items";
+                                        })()}
                                       />
                                     </th>
                                     <th>Item Name</th>
@@ -722,20 +779,53 @@ const fetchOrders = async () => {
 
                                     return (
                                       <tr key={item.id}>
-                                        <td>
-                                          {hasInvoiceGenerated ? (
-                                            <span title="Invoice Already Generated">✅</span>
-                                          ) : (
-                                            <input
-                                              type="checkbox"
-                                              checked={isItemSelected}
-                                              onChange={(e) =>
-                                                handleItemSelect(order.id, item.id, e.target.checked)
-                                              }
-                                              className="p-item-checkbox"
-                                            />
-                                          )}
-                                        </td>
+                                      <td>
+  {hasInvoiceGenerated ? (
+    <span title="Invoice Already Generated">✅</span>
+  ) : (
+    (() => {
+      const currentSelectedIds = selectedItems[order.id] || [];
+      
+      // If no items are selected yet, this item is selectable
+      if (currentSelectedIds.length === 0) {
+        return (
+          <input
+            type="checkbox"
+            checked={isItemSelected}
+            onChange={(e) =>
+              handleItemSelect(order.id, item.id, e.target.checked, item.credit_period)
+            }
+            className="p-item-checkbox"
+            title="Select for invoice generation"
+          />
+        );
+      }
+      
+      // Get the credit period of the first selected item
+      const firstSelectedId = currentSelectedIds[0];
+      const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
+      const selectedCreditPeriod = firstSelectedItem?.credit_period;
+      
+      // This item is selectable only if it has the SAME credit period as selected items
+      const isSelectable = selectedCreditPeriod === item.credit_period;
+      
+      return (
+        <input
+          type="checkbox"
+          checked={isItemSelected}
+          onChange={(e) =>
+            handleItemSelect(order.id, item.id, e.target.checked, item.credit_period)
+          }
+          className="p-item-checkbox"
+          disabled={!isSelectable}
+          title={!isSelectable ? 
+            `Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.` : 
+            "Select for invoice generation"}
+        />
+      );
+    })()
+  )}
+</td>
                                         <td>{item.item_name}</td>
                                         <td>{item.quantity}</td>
                                         <td>₹{item.sale_price.toLocaleString()}</td>
@@ -754,21 +844,36 @@ const fetchOrders = async () => {
                                             👁️
                                           </button>
                                         </td>
-                                        <td>
-                                          {hasInvoiceGenerated ? (
-                                            <span className="p-invoice-generated-text" title="Invoice Already Generated">
-                                              Invoice Generated
-                                            </span>
-                                          ) : isItemSelected ? (
-                                            <span className="p-selected-text" title="Selected for invoice">
-                                              Selected ✓
-                                            </span>
-                                          ) : (
-                                            <span className="p-select-prompt-text" title="Select this item to generate invoice">
-                                              Available
-                                            </span>
-                                          )}
-                                        </td>
+                                      <td>
+  {hasInvoiceGenerated ? (
+    <span className="p-invoice-generated-text" title="Invoice Already Generated">
+      Invoice Generated
+    </span>
+  ) : isItemSelected ? (
+    <span className="p-selected-text" title="Selected for invoice">
+      Selected ✓ ({item.credit_period} days)
+    </span>
+  ) : (() => {
+    const currentSelectedIds = selectedItems[order.id] || [];
+    if (currentSelectedIds.length > 0) {
+      const firstSelectedId = currentSelectedIds[0];
+      const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
+      if (firstSelectedItem && firstSelectedItem.credit_period !== item.credit_period) {
+        return (
+          <span className="p-different-period-text" 
+                title={`Different credit period (${item.credit_period} days vs selected ${firstSelectedItem.credit_period} days)`}>
+            Different Period
+          </span>
+        );
+      }
+    }
+    return (
+      <span className="p-select-prompt-text" title="Select this item to generate invoice">
+        Available ({item.credit_period} days)
+      </span>
+    );
+  })()}
+</td>
                                       </tr>
                                     );
                                   })}
@@ -1008,7 +1113,7 @@ const fetchOrders = async () => {
                     <span className="p-detail-value">{modalData.discount_applied_scheme}</span>
                   </div>
                 </div>
-                <div className="p-detail-row">
+                {/* <div className="p-detail-row">
                   <span className="p-detail-label">Staff Id :</span>
                   <span className="p-detail-value">₹{modalData.staff_id}</span>
                 </div>
@@ -1023,7 +1128,7 @@ const fetchOrders = async () => {
                 <div className="p-detail-row">
                   <span className="p-detail-label">Quantity:</span>
                   <span className="p-detail-value">{modalData.quantity}</span>
-                </div>
+                </div> */}
               </div>
 
             </div>

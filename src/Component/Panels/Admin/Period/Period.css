@@ -1048,3 +1048,33 @@
   margin: 0 auto;
   display: block;
 }
+/* Credit period validation styles */
+.p-item-checkbox:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.p-item-checkbox:disabled + td {
+  opacity: 0.7;
+}
+
+.p-different-period-text {
+  color: #ff6b6b;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.p-selected-text {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.p-select-prompt-text {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.p-invoice-generated-text {
+  color: #17a2b8;
+  font-weight: bold;
+}
