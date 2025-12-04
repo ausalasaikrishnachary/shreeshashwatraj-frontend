@@ -125,6 +125,16 @@ const columns = [
   { key: "id", title: "ID", width: "8%" },
   { key: "category", title: "Category", width: "20%" },
   {
+  key: "staff_name",
+  title: "Staff Name",
+  width: "12%",
+  render: (value, row) => {
+    const item = row || value;
+    return item?.staff_name ? item.staff_name : "-";
+  },
+},
+,
+  {
     key: "amount",
     title: "Amount",
     width: "12%",
@@ -275,6 +285,13 @@ const columns = [
             <label>Category</label>
             <div className="AdminExpensiveRequest__view-value">
               {currentExpense?.category || "-"}
+            </div>
+          </div>
+
+          <div className="AdminExpensiveRequest__form-group">
+            <label>Staff Name</label>
+            <div className="AdminExpensiveRequest__view-value">
+              {currentExpense?.staff_name || "-"}
             </div>
           </div>
 
