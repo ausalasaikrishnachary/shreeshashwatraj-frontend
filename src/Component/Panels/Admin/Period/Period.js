@@ -80,7 +80,14 @@ const fetchOrders = async () => {
     setLoading(true);
     const response = await axios.get(`${baseurl}/orders/all-orders`);
     const ordersData = response.data;
-    console.log("ordersData", ordersData);
+    console.log("Raw API ordersData:", ordersData);
+    console.log("First order:", ordersData[0]);
+    
+    // Check what fields we're getting from API
+    if (ordersData.length > 0) {
+      console.log("Available fields in first order:", Object.keys(ordersData[0]));
+      console.log("First order status:", ordersData[0].order_status);
+    }
 
     const ordersWithItems = await Promise.all(
       ordersData.map(async (order) => {
@@ -131,9 +138,18 @@ const fetchOrders = async () => {
             discount_applied_scheme: item.discount_applied_scheme ?? "N/A"
           }));
 
-          // Get assigned_staff and order_status directly from order data (API response)
-          // Use the assigned_staff from the order, not from items aggregation
+          // Debug: Log the exact values from API
+          console.log(`Order ${order.order_number}:`, {
+            order_status: order.order_status,
+            invoice_status: order.invoice_status,
+            invoice_number: order.invoice_number,
+            assigned_staff: order.assigned_staff
+          });
+
+          // Get assigned_staff directly from order data
           const assignedStaff = order.assigned_staff || "N/A";
+          
+          // Get order_status directly from order data - NO CONDITIONS
           const orderStatus = order.order_status || "N/A";
 
           // Calculate aggregated staff incentive from items
@@ -142,18 +158,18 @@ const fetchOrders = async () => {
           return {
             ...order,
             items: items,
-            assigned_staff: assignedStaff, // Use the assigned_staff from order API
-            order_status: orderStatus,     // Add order_status from order API
+            assigned_staff: assignedStaff,
+            order_status: orderStatus, // Directly use order_status from API
             staff_incentive: totalStaffIncentive,
-            account_details: accountDetails // Save account details here
+            account_details: accountDetails
           };
         } catch (error) {
           console.error(`Error processing order ${order.order_number}:`, error);
           return {
             ...order,
             items: [],
-            assigned_staff: order.assigned_staff || "N/A", // Fallback to order data
-            order_status: order.order_status || "N/A",     // Fallback to order data
+            assigned_staff: order.assigned_staff || "N/A",
+            order_status: order.order_status || "N/A", // Use order_status from API
             staff_incentive: 0,
             account_details: null
           };
