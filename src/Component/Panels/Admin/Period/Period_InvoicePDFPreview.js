@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Button, Form, Table, Alert, Card, ProgressBar, Modal, Badge } from 'react-bootstrap';
-import './InvoicePDFPreview.css';
+import './Period_InvoicePDFPreview.css';
 import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, FaCalendar, FaReceipt, FaRegFileAlt, FaExclamationTriangle, FaCheckCircle, FaTrash } from "react-icons/fa";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { baseurl } from "../../../BaseURL/BaseURL";
 
-const InvoicePDFPreview = () => {
+const Period_InvoicePDFPreview = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const location = useLocation();
   const [isEditMode, setIsEditMode] = useState(false);
   const [invoiceData, setInvoiceData] = useState(null);
   const [editedData, setEditedData] = useState(null);
@@ -23,6 +24,14 @@ const InvoicePDFPreview = () => {
   const [deleting, setDeleting] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  
+  // States for Period component data
+  const [fromPeriod, setFromPeriod] = useState(false);
+  const [periodInvoiceData, setPeriodInvoiceData] = useState(null);
+  
   const [receiptFormData, setReceiptFormData] = useState({
     receiptNumber: '',
     retailerId: '',
@@ -40,23 +49,404 @@ const InvoicePDFPreview = () => {
     retailerBusinessName: '',
     invoiceNumber: '',
     transactionProofFile: null,
-      product_id: '', // Add this
-  batch_id: '' ,
-  TransactionType: 'Receipt' // ✅ ADD THIS LINE
+    product_id: '',
+    batch_id: '',
+    TransactionType: 'Receipt'
   });
+  
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
 
-  // Add this function to handle navigation to edit form
   const handleEditInvoice = () => {
     if (invoiceData && invoiceData.voucherId) {
-      // Navigate to the sales form with the voucher ID for editing
       navigate(`/sales/createinvoice/${invoiceData.voucherId}`);
     } else {
       setError('Cannot edit invoice: Voucher ID not found');
       setTimeout(() => setError(null), 3000);
     }
   };
+
+  useEffect(() => {
+    // Check if coming from Period component
+    if (location.state && location.state.invoiceData) {
+      console.log('📦 Received data from Period component:', location.state.invoiceData);
+      
+      // This is from Period component with selected items
+      const periodData = location.state.invoiceData;
+      setPeriodInvoiceData(periodData);
+      setFromPeriod(true);
+      setLoading(false);
+      
+      const transformedData = transformPeriodDataToInvoiceFormat(periodData);
+      setInvoiceData(transformedData);
+      setEditedData(transformedData);
+      
+      if (periodData.invoiceNumber) {
+        fetchPaymentData(periodData.invoiceNumber);
+      }
+    } else {
+      // This is the existing flow (from transaction ID)
+      console.log('🔍 Loading from transaction ID:', id);
+      fetchTransactionData();
+    }
+  }, [id, location]);
+
+
+
+const transformPeriodDataToInvoiceFormat = (periodData) => {
+  console.log('Transforming Period data to invoice format:', periodData);
+  
+  const accountDetails = periodData.fullAccountDetails || periodData.customerInfo?.account_details;
+  console.log('Account details in transform:', accountDetails);
+  
+  const items = periodData.selectedItems.map((item, index) => ({
+    id: index + 1,
+    product: item.item_name,
+    product_id: item.product_id,
+    description: item.item_name,
+    quantity: parseFloat(item.quantity) || 0,
+    price: parseFloat(item.price) || 0,
+    discount: parseFloat(item.discount_percentage) || 0,
+    gst: parseFloat(item.tax_percentage) || 0,
+    cgst: parseFloat(item.cgst_percentage) || 0,
+    sgst: parseFloat(item.sgst_percentage) || 0,
+    igst: 0, // Default for same state
+    cess: 0,
+    total: parseFloat(item.item_total) || 0,
+    batch: '',
+    batch_id: item.batch_id || '',
+    assigned_staff: item.assigned_staff || periodData.assigned_staff || 'N/A',
+    staff_incentive: item.staff_incentive || 0
+  }));
+  
+  const taxableAmount = parseFloat(periodData.selectedItemsTotal?.taxableAmount) || 0;
+  const totalGST = parseFloat(periodData.selectedItemsTotal?.taxAmount) || 0;
+  const grandTotal = parseFloat(periodData.selectedItemsTotal?.grandTotal) || 0;
+  
+  return {
+    invoiceNumber: periodData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`,
+    invoiceDate: periodData.invoiceDate || new Date().toISOString().split('T')[0],
+    validityDate: periodData.validityDate || 
+                  new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    
+    companyInfo: periodData.companyInfo || {
+      name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+      address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+      email: "sumukhusr7@gmail.com",
+      phone: "3456549876543",
+      gstin: "29AABCD0503B1ZG",
+      state: "Karnataka"
+    },
+    
+    // Customer info from account details
+    supplierInfo: {
+      name: accountDetails?.name || periodData.customerInfo?.name || periodData.originalOrder?.customer_name,
+      businessName: accountDetails?.business_name || periodData.customerInfo?.businessName || periodData.originalOrder?.customer_name,
+      gstin: accountDetails?.gstin || periodData.customerInfo?.gstin || '',
+      state: accountDetails?.billing_state || periodData.customerInfo?.state || '',
+      id: periodData.customerInfo?.id || '',
+      email: accountDetails?.email || '',
+      phone: accountDetails?.phone_number || accountDetails?.mobile_number || '',
+      pan: accountDetails?.pan || '',
+      // Add all account details for reference
+      fullDetails: accountDetails
+    },
+    
+    // Billing address from account details
+    billingAddress: accountDetails ? {
+      addressLine1: accountDetails.billing_address_line1 || "Address not specified",
+      addressLine2: accountDetails.billing_address_line2 || "",
+      city: accountDetails.billing_city || "City not specified",
+      pincode: accountDetails.billing_pin_code || "000000",
+      state: accountDetails.billing_state || "Karnataka",
+      country: accountDetails.billing_country || "India",
+      gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
+      branch_name: accountDetails.billing_branch_name || ""
+    } : periodData.billingAddress || {
+      addressLine1: periodData.originalOrder?.billing_address || "Address not specified",
+      addressLine2: "",
+      city: periodData.originalOrder?.billing_city || "City not specified",
+      pincode: periodData.originalOrder?.billing_pincode || "000000",
+      state: periodData.originalOrder?.billing_state || "Karnataka"
+    },
+    
+    // Shipping address from account details
+    shippingAddress: accountDetails ? {
+      addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
+      addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
+      city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
+      pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
+      state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
+      country: accountDetails.shipping_country || accountDetails.billing_country || "India",
+      gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
+      branch_name: accountDetails.shipping_branch_name || accountDetails.billing_branch_name || ""
+    } : periodData.shippingAddress || periodData.billingAddress || {
+      addressLine1: periodData.originalOrder?.shipping_address || "Address not specified",
+      addressLine2: "",
+      city: periodData.originalOrder?.shipping_city || "City not specified",
+      pincode: periodData.originalOrder?.shipping_pincode || "000000",
+      state: periodData.originalOrder?.shipping_state || "Karnataka"
+    },
+    
+    // Items from selected items
+    items: items,
+    
+    // Use parsed numbers with toFixed()
+    taxableAmount: taxableAmount.toFixed(2),
+    totalGST: totalGST.toFixed(2),
+    grandTotal: grandTotal.toFixed(2),
+    totalCess: "0.00",
+    
+    note: periodData.note || "Thank you for your business!",
+    transportDetails: periodData.transportDetails || "Standard delivery",
+    additionalCharge: "",
+    additionalChargeAmount: "0.00",
+    
+    // GST breakdown
+    totalCGST: items.reduce((sum, item) => sum + (item.cgst || 0), 0).toFixed(2),
+    totalSGST: items.reduce((sum, item) => sum + (item.sgst || 0), 0).toFixed(2),
+    totalIGST: "0.00",
+    taxType: "CGST/SGST",
+    
+    // Add staff information to the main invoice data
+    assigned_staff: periodData.originalOrder?.assigned_staff || 'N/A',
+    staff_incentive: periodData.originalOrder?.staff_incentive || 0,
+    
+    // Store account details for reference
+    accountDetails: accountDetails
+  };
+};;
+
+useEffect(() => {
+  if (location.state && location.state.invoiceData) {
+    console.log('📦 Received data from Period component:', location.state.invoiceData);
+    
+    const periodData = location.state.invoiceData;
+    setPeriodInvoiceData(periodData);
+    setFromPeriod(true);
+    setLoading(false);
+    
+    const transformedData = transformPeriodDataToInvoiceFormat(periodData);
+    setInvoiceData(transformedData);
+    setEditedData(transformedData);
+    
+    if (periodData.invoiceNumber) {
+      fetchPaymentData(periodData.invoiceNumber);
+    }
+  } else {
+    console.log('🔍 Loading from transaction ID:', id);
+    fetchTransactionData();
+  }
+}, [id, location]);
+
+
+const handleGenerateInvoice = async () => {
+  try {
+    setGenerating(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    if (fromPeriod && periodInvoiceData) {
+      const selectedItems = periodInvoiceData.selectedItems || [];
+      
+      if (!selectedItems || selectedItems.length === 0) {
+        throw new Error('No selected items found for invoice generation');
+      }
+      
+      // Get account details
+      const accountDetails = periodInvoiceData.fullAccountDetails || 
+                            periodInvoiceData.customerInfo?.account_details;
+      
+      const payload = {
+        ...periodInvoiceData,
+        items: selectedItems.map(item => ({
+          originalItemId: item.id,
+          product: item.item_name,
+          product_id: item.product_id,
+          description: item.item_name,
+          quantity: parseFloat(item.quantity) || 0,
+          price: parseFloat(item.price) || 0,
+          discount: parseFloat(item.discount_percentage) || 0,
+          gst: parseFloat(item.tax_percentage) || 0,
+          cgst: parseFloat(item.cgst_percentage) || 0,
+          sgst: parseFloat(item.sgst_percentage) || 0,
+          igst: 0, // Default for same state
+          cess: 0,
+          total: parseFloat(item.item_total) || 0,
+          batch: '',
+          batch_id: item.batch_id || ''
+        })),
+
+        // Original order and selected items info
+        originalOrderNumber: periodInvoiceData.orderNumber,
+        originalOrderId: periodInvoiceData.originalOrderId,
+        selectedItemIds: periodInvoiceData.selectedItemIds || [],
+        
+        // Use calculated totals from selected items only
+        taxableAmount: periodInvoiceData.selectedItemsTotal?.taxableAmount || 0,
+        totalGST: periodInvoiceData.selectedItemsTotal?.taxAmount || 0,
+        totalCess: 0,
+        grandTotal: periodInvoiceData.selectedItemsTotal?.grandTotal || 0,
+        totalDiscount: periodInvoiceData.selectedItemsTotal?.discountAmount || 0,
+        
+        // Customer details from account
+        customerInfo: {
+          name: accountDetails?.name || periodInvoiceData.customerInfo?.name,
+          businessName: accountDetails?.business_name || periodInvoiceData.customerInfo?.businessName,
+          gstin: accountDetails?.gstin || periodInvoiceData.customerInfo?.gstin,
+          state: accountDetails?.billing_state || periodInvoiceData.customerInfo?.state,
+          id: periodInvoiceData.customerInfo?.id,
+          email: accountDetails?.email || '',
+          phone: accountDetails?.phone_number || accountDetails?.mobile_number || '',
+          pan: accountDetails?.pan || ''
+        },
+        
+        // Billing address from account
+        billingAddress: accountDetails ? {
+          addressLine1: accountDetails.billing_address_line1,
+          addressLine2: accountDetails.billing_address_line2 || '',
+          city: accountDetails.billing_city,
+          pincode: accountDetails.billing_pin_code,
+          state: accountDetails.billing_state,
+          country: accountDetails.billing_country,
+          gstin: accountDetails.billing_gstin || accountDetails.gstin
+        } : periodInvoiceData.billingAddress,
+        
+        // Shipping address from account
+        shippingAddress: accountDetails ? {
+          addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1,
+          addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || '',
+          city: accountDetails.shipping_city || accountDetails.billing_city,
+          pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code,
+          state: accountDetails.shipping_state || accountDetails.billing_state,
+          country: accountDetails.shipping_country || accountDetails.billing_country,
+          gstin: accountDetails.shipping_gstin || accountDetails.gstin
+        } : periodInvoiceData.shippingAddress || periodInvoiceData.billingAddress,
+        
+        // Add required fields
+        type: 'sales',
+        selectedSupplierId: periodInvoiceData.customerInfo?.id || periodInvoiceData.PartyID,
+        PartyID: periodInvoiceData.customerInfo?.id || periodInvoiceData.PartyID,
+        AccountID: periodInvoiceData.customerInfo?.id || periodInvoiceData.AccountID,
+        PartyName: accountDetails?.name || periodInvoiceData.PartyName,
+        AccountName: accountDetails?.business_name || periodInvoiceData.AccountName,
+        
+        // Flag to indicate partial invoice (selected items only)
+        isPartialInvoice: true,
+        source: 'period_component'
+      };
+
+      console.log('Sending invoice payload:', payload);
+      console.log('Account details in payload:', accountDetails);
+
+      const response = await fetch(`${baseurl}/transaction`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to generate invoice");
+      }
+
+      setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber || payload.invoiceNumber}`);
+      
+      // Optionally redirect back to orders page after 3 seconds
+      setTimeout(() => {
+        navigate('/period');
+      }, 3000);
+
+    } else {
+      // Existing flow for editing invoices
+      if (!invoiceData) {
+        throw new Error('No invoice data available');
+      }
+
+      const payload = {
+        orderNumber: invoiceData.orderNumber || invoiceData.invoiceNumber,
+        invoiceNumber: invoiceData.invoiceNumber,
+        invoiceDate: invoiceData.invoiceDate,
+        validityDate: invoiceData.validityDate,
+        
+        companyInfo: invoiceData.companyInfo,
+        supplierInfo: invoiceData.supplierInfo,
+        billingAddress: invoiceData.billingAddress,
+        shippingAddress: invoiceData.shippingAddress,
+        
+        items: invoiceData.items.map(item => ({
+          product: item.product,
+          product_id: item.product_id,
+          description: item.description,
+          quantity: item.quantity,
+          price: item.price,
+          discount: item.discount,
+          gst: item.gst,
+          cgst: item.cgst,
+          sgst: item.sgst,
+          igst: item.igst,
+          cess: item.cess,
+          total: item.total,
+          batch: item.batch,
+          batch_id: item.batch_id
+        })),
+        
+        note: invoiceData.note,
+        taxableAmount: invoiceData.taxableAmount,
+        totalGST: invoiceData.totalGST,
+        totalCess: invoiceData.totalCess,
+        grandTotal: invoiceData.grandTotal,
+        transportDetails: invoiceData.transportDetails,
+        additionalCharge: invoiceData.additionalCharge,
+        additionalChargeAmount: invoiceData.additionalChargeAmount,
+        otherDetails: invoiceData.otherDetails || "Authorized Signatory",
+        taxType: invoiceData.taxType,
+        
+        type: 'sales',
+        selectedSupplierId: invoiceData.supplierInfo?.id,
+        PartyID: invoiceData.supplierInfo?.id,
+        AccountID: invoiceData.supplierInfo?.id,
+        PartyName: invoiceData.supplierInfo?.name,
+        AccountName: invoiceData.supplierInfo?.businessName
+      };
+
+      console.log('Generating invoice with payload:', payload);
+
+      // Send to your backend API
+      const response = await fetch(`${baseurl}/transaction`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to generate invoice");
+      }
+
+      setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber || invoiceData.invoiceNumber}`);
+
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+    }
+  } catch (error) {
+    console.error("Error generating invoice:", error);
+    setErrorMessage(`Failed to generate invoice: ${error.message}`);
+
+    setTimeout(() => {
+      setErrorMessage(null);
+    }, 5000);
+  } finally {
+    setGenerating(false);
+  }
+};
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -79,9 +469,85 @@ const InvoicePDFPreview = () => {
     }
   };
 
-  useEffect(() => {
-    fetchTransactionData();
-  }, [id]);
+const fetchTransactionData = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+    
+    console.log('Fetching transaction data for ID:', id);
+    const apiUrl = `${baseurl}/transactions/${id}`;
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.success && result.data) {
+      const apiData = result.data;
+      const transformedData = transformApiDataToInvoiceFormat(apiData);
+      setInvoiceData(transformedData);
+      setEditedData(transformedData);
+    } else if (result.VoucherID) {
+      const transformedData = transformApiDataToInvoiceFormat(result);
+      setInvoiceData(transformedData);
+      setEditedData(transformedData);
+    } else {
+      throw new Error(result.message || 'No valid data received from API');
+    }
+  } catch (error) {
+    console.error('Error fetching transaction:', error);
+    setError(`API Error: ${error.message}`);
+    
+    const savedData = localStorage.getItem('previewInvoice');
+    if (savedData) {
+      try {
+        const data = JSON.parse(savedData);
+        setInvoiceData(data);
+        setEditedData(data);
+        setError(null);
+      } catch (parseError) {
+        console.error('Error parsing localStorage data:', parseError);
+      }
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => {
+  if (location.state && location.state.invoiceData) {
+    console.log('📦 Received data from Period component:', location.state.invoiceData);
+    
+    // This is from Period component with selected items
+    const periodData = location.state.invoiceData;
+    setPeriodInvoiceData(periodData);
+    setFromPeriod(true);
+    setLoading(false);
+    
+    // Transform the Period data to match your invoice format
+    const transformedData = transformPeriodDataToInvoiceFormat(periodData);
+    setInvoiceData(transformedData);
+    setEditedData(transformedData);
+    
+    // Fetch payment data if available
+    if (periodData.invoiceNumber) {
+      fetchPaymentData(periodData.invoiceNumber);
+    }
+  } else {
+    // This is the existing flow (from transaction ID)
+    console.log('🔍 Loading from transaction ID:', id);
+    fetchTransactionData(); 
+  }
+}, [id, location]);
 
   useEffect(() => {
     if (invoiceData && invoiceData.invoiceNumber) {
@@ -96,7 +562,7 @@ const InvoicePDFPreview = () => {
       
       console.log('Fetching payment data for invoice:', invoiceNumber);
       const response = await fetch(`${baseurl}/invoices/${invoiceNumber}`);
-      debugger
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -136,7 +602,7 @@ const InvoicePDFPreview = () => {
   };
 
 const transformPaymentData = (apiData) => {
-  const salesEntry = apiData.sales;
+  const salesEntry = apiData.sales || {};
   const receiptEntries = apiData.receipts || [];
   const creditNoteEntries = apiData.creditnotes || [];
   
@@ -148,37 +614,40 @@ const transformPaymentData = (apiData) => {
   
   const totalAmount = parseFloat(salesEntry.TotalAmount) || 0;
   
+  // Calculate total receipts (positive amounts)
   const totalPaid = receiptEntries.reduce((sum, receipt) => {
     return sum + parseFloat(receipt.paid_amount || receipt.TotalAmount || 0);
   }, 0);
   
+  // Calculate total credit notes (negative amounts - these are deductions)
   const totalCreditNotes = creditNoteEntries.reduce((sum, creditnote) => {
     return sum + parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0);
   }, 0);
   
+  // Balance = Original - Receipts - CreditNotes
   const balanceDue = totalAmount - totalPaid - totalCreditNotes;
   
   const invoiceDate = new Date(salesEntry.Date);
   const today = new Date();
   const overdueDays = Math.max(0, Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24)));
   
-  // Transform receipts
-  const receipts = receiptEntries.map(receipt => ({
-    receiptNumber: receipt.VchNo || receipt.receipt_number,
+  // Transform receipts - ensure they're always arrays
+  const receipts = Array.isArray(receiptEntries) ? receiptEntries.map(receipt => ({
+    receiptNumber: receipt.VchNo || receipt.receipt_number || 'N/A',
     paidAmount: parseFloat(receipt.paid_amount || receipt.TotalAmount || 0),
-    paidDate: receipt.Date || receipt.paid_date,
+    paidDate: receipt.Date || receipt.paid_date || '',
     status: receipt.status || 'Paid',
     type: 'receipt'
-  }));
+  })) : [];
   
-  // Transform credit notes
-  const creditnotes = creditNoteEntries.map(creditnote => ({
+  // Transform credit notes - ensure they're always arrays
+  const creditnotes = Array.isArray(creditNoteEntries) ? creditNoteEntries.map(creditnote => ({
     receiptNumber: creditnote.VchNo || 'CNOTE',
     paidAmount: parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0),
-    paidDate: creditnote.Date || creditnote.paid_date,
+    paidDate: creditnote.Date || creditnote.paid_date || '',
     status: 'Credit',
     type: 'credit_note'
-  }));
+  })) : [];
   
   let status = 'Pending';
   if (balanceDue === 0) {
@@ -189,8 +658,8 @@ const transformPaymentData = (apiData) => {
   
   const transformedData = {
     invoice: {
-      invoiceNumber: salesEntry.InvoiceNumber,
-      invoiceDate: salesEntry.Date,
+      invoiceNumber: salesEntry.InvoiceNumber || 'N/A',
+      invoiceDate: salesEntry.Date || '',
       totalAmount: totalAmount,
       overdueDays: overdueDays
     },
@@ -258,60 +727,6 @@ const transformPaymentData = (apiData) => {
     }
   };
 
-  const fetchTransactionData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      console.log('Fetching transaction data for ID:', id);
-      const apiUrl = `${baseurl}/transactions/${id}`;
-      
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        const apiData = result.data;
-        const transformedData = transformApiDataToInvoiceFormat(apiData);
-        setInvoiceData(transformedData);
-        setEditedData(transformedData);
-      } else if (result.VoucherID) {
-        const transformedData = transformApiDataToInvoiceFormat(result);
-        setInvoiceData(transformedData);
-        setEditedData(transformedData);
-      } else {
-        throw new Error(result.message || 'No valid data received from API');
-      }
-    } catch (error) {
-      console.error('Error fetching transaction:', error);
-      setError(`API Error: ${error.message}`);
-      
-      const savedData = localStorage.getItem('previewInvoice');
-      if (savedData) {
-        try {
-          const data = JSON.parse(savedData);
-          setInvoiceData(data);
-          setEditedData(data);
-          setError(null);
-        } catch (parseError) {
-          console.error('Error parsing localStorage data:', parseError);
-        }
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const transformApiDataToInvoiceFormat = (apiData) => {
     console.log('Transforming API data:', apiData);
     
@@ -370,17 +785,13 @@ const transformPaymentData = (apiData) => {
         total: total.toFixed(2),
         batch: batch.batch || '',
         batch_id: batch.batch_id || '',
-        product_id: batch.product_id || '',
-              assigned_staff: batch.assigned_staff  || 'N/A',
-
+        product_id: batch.product_id || ''
       };
     }) || [];
 
     const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
     const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
     const grandTotal = parseFloat(apiData.TotalAmount) || 0;
-      const assignedStaff = apiData.assigned_staff || apiData.AssignedStaff || apiData.staff_name || 'N/A';
-
 
     return {
       voucherId: apiData.VoucherID,
@@ -399,7 +810,7 @@ const transformPaymentData = (apiData) => {
       
       supplierInfo: {
         name: apiData.PartyName || 'Customer',
-        businessName: apiData.AccountName || 'Business', // This is the PartyName
+        businessName: apiData.AccountName || 'Business',
         gstin: apiData.gstin || '',
         state: apiData.billing_state || apiData.BillingState || '',
         id: apiData.PartyID || null
@@ -436,8 +847,7 @@ const transformPaymentData = (apiData) => {
         total: grandTotal.toFixed(2),
         batch: '',
         batch_id: '',
-        product_id: '',
-        assigned_staff: assignedStaff // Add this line for fallback item
+        product_id: ''
       }],
       
       taxableAmount: taxableAmount.toFixed(2),
@@ -453,13 +863,11 @@ const transformPaymentData = (apiData) => {
       totalCGST: parseFloat(apiData.CGSTAmount) || 0,
       totalSGST: parseFloat(apiData.SGSTAmount) || 0,
       totalIGST: parseFloat(apiData.IGSTAmount) || 0,
-      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST",
-
-      assigned_staff: assignedStaff
+      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST"
     };
   };
 
-const PaymentStatus = () => {
+ const PaymentStatus = () => {
   if (paymentLoading) {
     return (
       <Card className="shadow-sm mb-3">
@@ -509,6 +917,10 @@ const PaymentStatus = () => {
     summary
   });
 
+  // FIX: Ensure arrays exist before using map
+  const safeReceipts = Array.isArray(receipts) ? receipts : [];
+  const safeCreditnotes = Array.isArray(creditnotes) ? creditnotes : [];
+  
   // Function to format date in Indian format (DD/MM/YYYY)
   const formatIndianDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -524,8 +936,8 @@ const PaymentStatus = () => {
 
   // Combine and sort all transactions by date
   const allTransactions = [
-    ...receipts.map(r => ({ ...r, type: 'receipt' })),
-    ...creditnotes.map(cn => ({ ...cn, type: 'credit_note' }))
+    ...safeReceipts.map(r => ({ ...r, type: 'receipt' })),
+    ...safeCreditnotes.map(cn => ({ ...cn, type: 'credit_note' }))
   ].sort((a, b) => new Date(a.paidDate) - new Date(b.paidDate));
 
   const progressPercentage = invoice.totalAmount > 0 ? 
@@ -592,8 +1004,6 @@ const PaymentStatus = () => {
             </div>
           ))}
 
-     
-
           {/* Balance Due */}
           <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
             <span className="text-danger">
@@ -610,6 +1020,7 @@ const PaymentStatus = () => {
     </Card>
   );
 };
+
   const handlePrint = () => {
     window.print();
   };
@@ -1018,51 +1429,50 @@ const PaymentStatus = () => {
     };
   };
 
-const handleOpenReceiptModal = () => {
-  console.log("🟦 handleOpenReceiptModal TRIGGERED");
+  const handleOpenReceiptModal = () => {
+    console.log("🟦 handleOpenReceiptModal TRIGGERED");
 
-  if (!invoiceData) {
-    console.log("❌ No invoiceData found");
-    return;
-  }
+    if (!invoiceData) {
+      console.log("❌ No invoiceData found");
+      return;
+    }
 
-  const balanceDue = paymentData 
-    ? paymentData.summary.balanceDue 
-    : parseFloat(invoiceData.grandTotal);
+    const balanceDue = paymentData 
+      ? paymentData.summary.balanceDue 
+      : parseFloat(invoiceData.grandTotal);
 
-  console.log("✅ balanceDue:", balanceDue);
+    console.log("✅ balanceDue:", balanceDue);
 
-  const firstItem = invoiceData.items[0];
-  console.log("✅ firstItem:", firstItem);
+    const firstItem = invoiceData.items[0];
+    console.log("✅ firstItem:", firstItem);
 
-  // Debug: Check if batch_id exists in the first item
-  console.log("🔍 First item batch_id:", firstItem?.batch_id);
-  console.log("🔍 All items:", invoiceData.items);
+    // Debug: Check if batch_id exists in the first item
+    console.log("🔍 First item batch_id:", firstItem?.batch_id);
+    console.log("🔍 All items:", invoiceData.items);
 
-  const updatedForm = {
-    retailerBusinessName: invoiceData.supplierInfo.name,
-    retailerId: invoiceData.supplierInfo.id || '',
-    amount: balanceDue,
-    invoiceNumber: invoiceData.invoiceNumber,
-    product_id: firstItem?.product_id || '',
-    batch_id: firstItem?.batch_id || '', // Ensure this is being set
-    TransactionType: 'Receipt'
+    const updatedForm = {
+      retailerBusinessName: invoiceData.supplierInfo.name,
+      retailerId: invoiceData.supplierInfo.id || '',
+      amount: balanceDue,
+      invoiceNumber: invoiceData.invoiceNumber,
+      product_id: firstItem?.product_id || '',
+      batch_id: firstItem?.batch_id || '', // Ensure this is being set
+      TransactionType: 'Receipt'
+    };
+
+    console.log("✅ Updated Receipt Form Data:", updatedForm);
+
+    setReceiptFormData(prev => ({
+      ...prev,
+      ...updatedForm
+    }));
+
+    console.log("📌 Fetching next receipt number...");
+    fetchNextReceiptNumber();
+
+    console.log("📌 Opening Receipt Modal");
+    setShowReceiptModal(true);
   };
-
-  console.log("✅ Updated Receipt Form Data:", updatedForm);
-
-  setReceiptFormData(prev => ({
-    ...prev,
-    ...updatedForm
-  }));
-
-  console.log("📌 Fetching next receipt number...");
-  fetchNextReceiptNumber();
-
-  console.log("📌 Opening Receipt Modal");
-  setShowReceiptModal(true);
-};
-
 
   const handleCloseReceiptModal = () => {
     setShowReceiptModal(false);
@@ -1086,88 +1496,88 @@ const handleOpenReceiptModal = () => {
     if (fileInput) fileInput.value = '';
   };
 
- const handleCreateReceiptFromInvoice = async () => {
-  if (!receiptFormData.amount || parseFloat(receiptFormData.amount) <= 0) {
-    alert('Please enter a valid amount');
-    return;
-  }
-
-  try {
-    setIsCreatingReceipt(true);
-
-    const formDataToSend = new FormData();
-
-    formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
-    formDataToSend.append('retailer_id', receiptFormData.retailerId);
-    formDataToSend.append('TransactionType', receiptFormData.TransactionType);
-    formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
-    formDataToSend.append('amount', receiptFormData.amount);
-    formDataToSend.append('currency', receiptFormData.currency);
-    formDataToSend.append('payment_method', receiptFormData.paymentMethod);
-    formDataToSend.append('receipt_date', receiptFormData.receiptDate);
-    formDataToSend.append('note', receiptFormData.note);
-    formDataToSend.append('bank_name', receiptFormData.bankName);
-    formDataToSend.append('transaction_date', receiptFormData.transactionDate || '');
-    formDataToSend.append('reconciliation_option', receiptFormData.reconciliationOption);
-    formDataToSend.append('invoice_number', receiptFormData.invoiceNumber);
-    formDataToSend.append('retailer_mobile', receiptFormData.retailerMobile);
-    formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
-    formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
-    
-    // FIX: Properly append product_id and batch_id - ensure they have values
-    formDataToSend.append('product_id', receiptFormData.product_id || '');
-    formDataToSend.append('batch_id', receiptFormData.batch_id || '');
-    
-    formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
-    formDataToSend.append('from_invoice', 'true');
-
-    if (receiptFormData.transactionProofFile) {
-      formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
+  const handleCreateReceiptFromInvoice = async () => {
+    if (!receiptFormData.amount || parseFloat(receiptFormData.amount) <= 0) {
+      alert('Please enter a valid amount');
+      return;
     }
 
-    // Debug: Log all FormData entries
-    console.log('FormData entries:');
-    for (let [key, value] of formDataToSend.entries()) {
-      console.log(`${key}:`, value);
-    }
+    try {
+      setIsCreatingReceipt(true);
 
-    const response = await fetch(`${baseurl}/api/receipts`, {
-      method: 'POST',
-      body: formDataToSend,
-    });
+      const formDataToSend = new FormData();
 
-    if (response.ok) {
-      const result = await response.json();
-      console.log('Receipt created successfully:', result);
-      handleCloseReceiptModal();
-      alert('Receipt created successfully!');
+      formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
+      formDataToSend.append('retailer_id', receiptFormData.retailerId);
+      formDataToSend.append('TransactionType', receiptFormData.TransactionType);
+      formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
+      formDataToSend.append('amount', receiptFormData.amount);
+      formDataToSend.append('currency', receiptFormData.currency);
+      formDataToSend.append('payment_method', receiptFormData.paymentMethod);
+      formDataToSend.append('receipt_date', receiptFormData.receiptDate);
+      formDataToSend.append('note', receiptFormData.note);
+      formDataToSend.append('bank_name', receiptFormData.bankName);
+      formDataToSend.append('transaction_date', receiptFormData.transactionDate || '');
+      formDataToSend.append('reconciliation_option', receiptFormData.reconciliationOption);
+      formDataToSend.append('invoice_number', receiptFormData.invoiceNumber);
+      formDataToSend.append('retailer_mobile', receiptFormData.retailerMobile);
+      formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
+      formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
       
-      if (invoiceData && invoiceData.invoiceNumber) {
-        fetchPaymentData(invoiceData.invoiceNumber);
-      }
+      // FIX: Properly append product_id and batch_id - ensure they have values
+      formDataToSend.append('product_id', receiptFormData.product_id || '');
+      formDataToSend.append('batch_id', receiptFormData.batch_id || '');
       
-      if (result.id) {
-        navigate(`/receipts_view/${result.id}`);
+      formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
+      formDataToSend.append('from_invoice', 'true');
+
+      if (receiptFormData.transactionProofFile) {
+        formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
       }
-    } else {
-      const errorText = await response.text();
-      console.error('Failed to create receipt:', errorText);
-      let errorMessage = 'Failed to create receipt. ';
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage += errorData.error || 'Please try again.';
-      } catch {
-        errorMessage += 'Please try again.';
+
+      // Debug: Log all FormData entries
+      console.log('FormData entries:');
+      for (let [key, value] of formDataToSend.entries()) {
+        console.log(`${key}:`, value);
       }
-      alert(errorMessage);
+
+      const response = await fetch(`${baseurl}/api/receipts`, {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Receipt created successfully:', result);
+        handleCloseReceiptModal();
+        alert('Receipt created successfully!');
+        
+        if (invoiceData && invoiceData.invoiceNumber) {
+          fetchPaymentData(invoiceData.invoiceNumber);
+        }
+        
+        if (result.id) {
+          navigate(`/receipts_view/${result.id}`);
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to create receipt:', errorText);
+        let errorMessage = 'Failed to create receipt. ';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage += errorData.error || 'Please try again.';
+        } catch {
+          errorMessage += 'Please try again.';
+        }
+        alert(errorMessage);
+      }
+    } catch (err) {
+      console.error('Error creating receipt:', err);
+      alert('Network error. Please check your connection and try again.');
+    } finally {
+      setIsCreatingReceipt(false);
     }
-  } catch (err) {
-    console.error('Error creating receipt:', err);
-    alert('Network error. Please check your connection and try again.');
-  } finally {
-    setIsCreatingReceipt(false);
-  }
-};
+  };
 
   if (loading) {
     return (
@@ -1191,7 +1601,7 @@ const handleOpenReceiptModal = () => {
               <h5>Error Loading Invoice</h5>
               <p>{error}</p>
               <div className="mt-3">
-                <Button variant="primary" onClick={fetchTransactionData} className="me-2">
+                <Button variant="primary" onClick={() => window.location.reload()} className="me-2">
                   Try Again
                 </Button>
                 <Button variant="secondary" onClick={() => window.history.back()}>
@@ -1220,6 +1630,18 @@ const handleOpenReceiptModal = () => {
             <div>
               {!isEditMode ? (
                 <>
+                  {/* Add Generate Invoice button for Period data */}
+                  {fromPeriod && (
+                    <Button 
+                      variant="primary" 
+                      onClick={handleGenerateInvoice} 
+                      className="me-2"
+                      disabled={generating}
+                    >
+                      {generating ? 'Generating...' : 'Generate Invoice'}
+                    </Button>
+                  )}
+                  
                   <Button variant="info" className="me-2 text-white" onClick={handleOpenReceiptModal}>
                     <FaRegFileAlt className="me-1" /> Create Receipt
                   </Button>
@@ -1299,13 +1721,36 @@ const handleOpenReceiptModal = () => {
             <Alert variant="warning" className="mb-3">
               <Alert.Heading>Using Local Data</Alert.Heading>
               <p className="mb-0">{error}</p>
-              <Button variant="outline-warning" size="sm" onClick={fetchTransactionData} className="mt-2">
+              <Button variant="outline-warning" size="sm" onClick={() => window.location.reload()} className="mt-2">
                 Retry API Connection
               </Button>
             </Alert>
           </Container>
         </div>
       )}
+
+      {/* Success/Error Messages for Generate Invoice */}
+      {successMessage && (
+        <div className="d-print-none no-print">
+          <Container fluid>
+            <Alert variant="success" className="mb-3">
+              {successMessage}
+            </Alert>
+          </Container>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="d-print-none no-print">
+          <Container fluid>
+            <Alert variant="danger" className="mb-3">
+              {errorMessage}
+            </Alert>
+          </Container>
+        </div>
+      )}
+
+    
 
       {/* Delete Confirmation Modal */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
@@ -1645,102 +2090,114 @@ const handleOpenReceiptModal = () => {
                 </Row>
               </div>
 
-              {/* Customer and Address Details */}
-              <div className="address-section mb-4">
-                <Row>
-                  <Col md={6}>
-                    <div className="billing-address bg-light p-3 rounded">
-                      <h5 className="text-primary mb-2">Bill To:</h5>
-                      {isEditMode ? (
-                        <div className="edit-control">
-                          <Form.Control 
-                            className="mb-2"
-                            value={currentData.supplierInfo.name}
-                            onChange={(e) => handleNestedChange('supplierInfo', 'name', e.target.value)}
-                          />
-                          <Form.Control 
-                            className="mb-2"
-                            value={currentData.supplierInfo.businessName}
-                            onChange={(e) => handleNestedChange('supplierInfo', 'businessName', e.target.value)}
-                          />
-                          <Form.Control 
-                            className="mb-2"
-                            placeholder="GSTIN"
-                            value={currentData.supplierInfo.gstin || ''}
-                            onChange={(e) => handleNestedChange('supplierInfo', 'gstin', e.target.value)}
-                          />
-                          <Form.Control 
-                            placeholder="State"
-                            value={currentData.supplierInfo.state || ''}
-                            onChange={(e) => handleNestedChange('supplierInfo', 'state', e.target.value)}
-                          />
-                        </div>
-                      ) : (
-                        <>
-                          <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p>
-                          <p className="mb-1 text-muted">{currentData.supplierInfo.businessName}</p>
-                          <p className="mb-1"><small>GSTIN: {currentData.supplierInfo.gstin || 'N/A'}</small></p>
-                          <p className="mb-0"><small>State: {currentData.supplierInfo.state || 'N/A'}</small></p>
-                        </>
-                      )}
-                    </div>
-                  </Col>
-                  <Col md={6}>
-                    <div className="shipping-address bg-light p-3 rounded">
-                      <h5 className="text-primary mb-2">Ship To:</h5>
-                      {isEditMode ? (
-                        <div className="edit-control">
-                          <Form.Control 
-                            className="mb-2"
-                            placeholder="Address Line 1"
-                            value={currentData.shippingAddress.addressLine1 || ''}
-                            onChange={(e) => handleNestedChange('shippingAddress', 'addressLine1', e.target.value)}
-                          />
-                          <Form.Control 
-                            className="mb-2"
-                            placeholder="Address Line 2"
-                            value={currentData.shippingAddress.addressLine2 || ''}
-                            onChange={(e) => handleNestedChange('shippingAddress', 'addressLine2', e.target.value)}
-                          />
-                          <Form.Control 
-                            className="mb-2"
-                            placeholder="City"
-                            value={currentData.shippingAddress.city || ''}
-                            onChange={(e) => handleNestedChange('shippingAddress', 'city', e.target.value)}
-                          />
-                          <Form.Control 
-                            className="mb-2"
-                            placeholder="Pincode"
-                            value={currentData.shippingAddress.pincode || ''}
-                            onChange={(e) => handleNestedChange('shippingAddress', 'pincode', e.target.value)}
-                          />
-                          <Form.Control 
-                            placeholder="State"
-                            value={currentData.shippingAddress.state || ''}
-                            onChange={(e) => handleNestedChange('shippingAddress', 'state', e.target.value)}
-                          />
-                        </div>
-                      ) : (
-                        <>
-                          <p className="mb-1">{currentData.shippingAddress.addressLine1 || 'N/A'}</p>
-                          <p className="mb-1">{currentData.shippingAddress.addressLine2 || ''}</p>
-                          <p className="mb-1">{currentData.shippingAddress.city || ''} - {currentData.shippingAddress.pincode || ''}</p>
-                          <p className="mb-0">{currentData.shippingAddress.state || ''}</p>
-                        </>
-                      )}
-                    </div>
-{currentData.assigned_staff && currentData.assigned_staff !== 'N/A' && (
-  <div className="assigned-staff-section mt-3 p-2 bg-light rounded flex-start">
-    <div className="d-flex justify-content-between align-items-center">
-      <span className="text-muted">Sales Person:</span>
-      <strong className="text-primary">{currentData.assigned_staff}</strong>
-    </div>
-  </div>
-)}
-                  </Col>
-                </Row>
-              </div>
 
+<div className="address-section mb-4">
+  <Row>
+    <Col md={6}>
+      <div className="billing-address bg-light p-3 rounded">
+        <h5 className="text-primary mb-2">Bill To:</h5>
+        {isEditMode ? (
+          <div className="edit-control">
+            <Form.Control 
+              className="mb-2"
+              value={currentData.supplierInfo.name}
+              onChange={(e) => handleNestedChange('supplierInfo', 'name', e.target.value)}
+            />
+            <Form.Control 
+              className="mb-2"
+              value={currentData.supplierInfo.businessName}
+              onChange={(e) => handleNestedChange('supplierInfo', 'businessName', e.target.value)}
+            />
+            <Form.Control 
+              className="mb-2"
+              placeholder="GSTIN"
+              value={currentData.supplierInfo.gstin || ''}
+              onChange={(e) => handleNestedChange('supplierInfo', 'gstin', e.target.value)}
+            />
+            <Form.Control 
+              className="mb-2"
+              placeholder="State"
+              value={currentData.supplierInfo.state || ''}
+              onChange={(e) => handleNestedChange('supplierInfo', 'state', e.target.value)}
+            />
+          
+            
+          </div>
+        ) : (
+          <>
+            <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p>
+            <p className="mb-1 text-muted">{currentData.supplierInfo.businessName}</p>
+            <p className="mb-1"><small>GSTIN: {currentData.supplierInfo.gstin || 'N/A'}</small></p>
+            <p className="mb-1"><small>State: {currentData.supplierInfo.state || 'N/A'}</small></p>
+            <p className="mb-1"><small>Email: {currentData.supplierInfo.email || 'N/A'}</small></p>
+          </>
+        )}
+      </div>
+      
+  
+    </Col>
+    
+    <Col md={6}>
+      <div className="shipping-address bg-light p-3 rounded">
+        <h5 className="text-primary mb-2">Ship To:</h5>
+        {isEditMode ? (
+          <div className="edit-control">
+            <Form.Control 
+              className="mb-2"
+              placeholder="Address Line 1"
+              value={currentData.shippingAddress.addressLine1 || ''}
+              onChange={(e) => handleNestedChange('shippingAddress', 'addressLine1', e.target.value)}
+            />
+            <Form.Control 
+              className="mb-2"
+              placeholder="Address Line 2"
+              value={currentData.shippingAddress.addressLine2 || ''}
+              onChange={(e) => handleNestedChange('shippingAddress', 'addressLine2', e.target.value)}
+            />
+            <Form.Control 
+              className="mb-2"
+              placeholder="City"
+              value={currentData.shippingAddress.city || ''}
+              onChange={(e) => handleNestedChange('shippingAddress', 'city', e.target.value)}
+            />
+            <Form.Control 
+              className="mb-2"
+              placeholder="Pincode"
+              value={currentData.shippingAddress.pincode || ''}
+              onChange={(e) => handleNestedChange('shippingAddress', 'pincode', e.target.value)}
+            />
+            <Form.Control 
+              placeholder="State"
+              value={currentData.shippingAddress.state || ''}
+              onChange={(e) => handleNestedChange('shippingAddress', 'state', e.target.value)}
+            />
+          </div>
+        ) : (
+          <>
+            <p className="mb-1">{currentData.shippingAddress.addressLine1 || 'N/A'}</p>
+            <p className="mb-1">{currentData.shippingAddress.addressLine2 || ''}</p>
+            <p className="mb-1">{currentData.shippingAddress.city || ''} - {currentData.shippingAddress.pincode || ''}</p>
+            <p className="mb-0">{currentData.shippingAddress.state || ''}, {currentData.shippingAddress.country || 'India'}</p>
+            {currentData.shippingAddress.gstin && (
+              <p className="mb-0 mt-1"><small>Shipping GSTIN: {currentData.shippingAddress.gstin}</small></p>
+            )}
+          </>
+        )}
+      </div>
+      
+      {/* Staff information */}
+      {currentData.assigned_staff && currentData.assigned_staff !== 'N/A' && (
+        <div className="assigned-staff-section mt-3 p-2 bg-light rounded flex-start">
+          <div className="d-flex justify-content-between align-items-center">
+            <span className="text-muted">Sales Person:</span>
+            <strong className="text-primary">{currentData.assigned_staff}</strong>
+          </div>
+       
+        </div>
+      )}
+    </Col>
+  </Row>
+</div>
               {/* Items Table */}
               <div className="items-section mb-4">
                 <div className="d-flex justify-content-between align-items-center mb-2">
@@ -1967,4 +2424,4 @@ const handleOpenReceiptModal = () => {
   );
 };
 
-export default InvoicePDFPreview;
+export default Period_InvoicePDFPreview;

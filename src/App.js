@@ -164,6 +164,7 @@ import KachaSalesInvoiceForm from "./Component/Panels/Admin/KachaSales/KachaSale
 import KachaInvoiceTable from "./Component/Panels/Admin/KachaSales/KachaInvoiceTable";
 import KachaInvoicePDFPreview from "./Component/Panels/Admin/KachaSales/KachaInvoicePDFPreview";
 import Period from "./Component/Panels/Admin/Period/Period";
+import Period_InvoicePDFPreview from "./Component/Panels/Admin/Period/Period_InvoicePDFPreview";
 
 
 
@@ -336,6 +337,9 @@ function App() {
 
 {/* <Route path="/kachainvoicepdf/:id" element={<KachaInvoicePDFPreview />} /> */}
 <Route path="/period" element={<Period />} />
+<Route path="/periodinvoicepreviewpdf" element={<Period_InvoicePDFPreview />} />
+<Route path="/periodinvoicepreviewpdf/:id" element={<Period_InvoicePDFPreview />} />
+
       </Routes>
     </Router>
   );
