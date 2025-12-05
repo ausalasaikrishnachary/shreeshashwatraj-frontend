@@ -11,11 +11,13 @@ import Header from './../../../../Shared/AdminSidebar/AdminHeader';
 import { useNavigate, useParams } from 'react-router-dom';
 import './salesitems.css';
 import Barcode from 'react-barcode';
+import { FaUpload, FaTrash } from 'react-icons/fa';
 
 const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
   const navigate = useNavigate();
   const { productId } = useParams();
-
+  const [images, setImages] = useState([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [companyOptions, setCompanyOptions] = useState([]);
@@ -102,42 +104,131 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     loadProductData();
   }, [productId, groupType]);
 
-const fetchProductById = async (id) => {
-  try {
-    const response = await axios.get(`${baseurl}/products/${id}`);
-    const product = response.data;
-    console.log('📦 Fetched product:', product);
+  const fetchProductById = async (id) => {
+    try {
+      const response = await axios.get(`${baseurl}/products/${id}`);
+      const product = response.data;
+      console.log('📦 Fetched product:', product);
 
-    setFormData({
-      group_by: product.group_by || groupType,
-      goods_name: product.goods_name || product.name || '',
-      category_id: product.category_id || '',
-      company_id: product.company_id || '',
-      price: product.price || '',
-      inclusive_gst: product.inclusive_gst || '',
-      gst_rate: product.gst_rate || '',
-      non_taxable: product.non_taxable || '',
-      net_price: product.net_price || '',
-      hsn_code: product.hsn_code || '',
-      unit: product.unit || 'UNT-UNITS',
-      cess_rate: product.cess_rate || '',
-      cess_amount: product.cess_amount || '',
-      sku: product.sku || '',
-      opening_stock: product.opening_stock || (product.batches && product.batches[0] ? product.batches[0].opening_stock : ''),
-      opening_stock_date: product.opening_stock_date ? product.opening_stock_date.split('T')[0] : new Date().toISOString().split('T')[0],
-      min_stock_alert: product.min_stock_alert || '',
-      max_stock_alert: product.max_stock_alert || '',
-      description: product.description || '',
-      maintain_batch: product.maintain_batch || false
+      setFormData({
+        group_by: product.group_by || groupType,
+        goods_name: product.goods_name || product.name || '',
+        category_id: product.category_id || '',
+        company_id: product.company_id || '',
+        price: product.price || '',
+        inclusive_gst: product.inclusive_gst || '',
+        gst_rate: product.gst_rate || '',
+        non_taxable: product.non_taxable || '',
+        net_price: product.net_price || '',
+        hsn_code: product.hsn_code || '',
+        unit: product.unit || 'UNT-UNITS',
+        cess_rate: product.cess_rate || '',
+        cess_amount: product.cess_amount || '',
+        sku: product.sku || '',
+        opening_stock: product.opening_stock || (product.batches && product.batches[0] ? product.batches[0].opening_stock : ''),
+        opening_stock_date: product.opening_stock_date ? product.opening_stock_date.split('T')[0] : new Date().toISOString().split('T')[0],
+        min_stock_alert: product.min_stock_alert || '',
+        max_stock_alert: product.max_stock_alert || '',
+        description: product.description || '',
+        maintain_batch: product.maintain_batch || false
+      });
+
+      // Load images if they exist
+      if (product.images) {
+        try {
+          const parsedImages = typeof product.images === 'string'
+            ? JSON.parse(product.images)
+            : product.images;
+          setImages(Array.isArray(parsedImages) ? parsedImages : []);
+        } catch (e) {
+          setImages([]);
+        }
+      } else {
+        setImages([]);
+      }
+
+      setMaintainBatch(product.maintain_batch || false);
+      await fetchBatches(id);
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      showAlert('Error fetching product data', 'danger');
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    // Filter for image files
+    const imageFiles = files.filter(file =>
+      file.type.startsWith('image/')
+    );
+
+    if (imageFiles.length === 0) {
+      showAlert('Please select valid image files (JPEG, PNG, GIF, WebP)', 'warning');
+      return;
+    }
+
+    // Check total images won't exceed limit
+    if (images.length + imageFiles.length > 10) {
+      showAlert('Maximum 10 images allowed per product', 'warning');
+      return;
+    }
+
+    setUploadingImages(true);
+
+    const formData = new FormData();
+    imageFiles.forEach(file => {
+      formData.append('images', file);
     });
 
-    setMaintainBatch(product.maintain_batch || false);
-    await fetchBatches(id);
-  } catch (error) {
-    console.error('Error fetching product:', error);
-    showAlert('Error fetching product data', 'danger');
-  }
-};
+    try {
+      const endpoint = productId
+        ? `${baseurl}/products/${productId}/upload-images`
+        : `${baseurl}/products/temp/upload-images`;
+
+      const response = await axios.post(endpoint, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.success) {
+        setImages(response.data.images);
+        showAlert('Images uploaded successfully!', 'success');
+      }
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      showAlert(error.response?.data?.message || 'Failed to upload images', 'danger');
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+
+  const handleDeleteImage = async (imagePath) => {
+    if (!productId) {
+      // If creating new product, just remove from local state
+      setImages(images.filter(img => img !== imagePath));
+      return;
+    }
+
+    if (window.confirm('Are you sure you want to delete this image?')) {
+      try {
+        const response = await axios.delete(`${baseurl}/products/${productId}/image`, {
+          data: { imagePath }
+        });
+
+        if (response.data.success) {
+          setImages(response.data.images);
+          showAlert('Image deleted successfully!', 'success');
+        }
+      } catch (error) {
+        console.error('Error deleting image:', error);
+        showAlert('Failed to delete image', 'danger');
+      }
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -160,15 +251,15 @@ const fetchProductById = async (id) => {
   };
 
   const fetchBatches = async (id = productId) => {
-  if (!id) {
-    setBatches([]);
-    return;
-  }
+    if (!id) {
+      setBatches([]);
+      return;
+    }
 
-  try {
-    const response = await axios.get(`${baseurl}/products/${id}/batches`);
-    const mappedBatches = response.data?.length
-      ? response.data.map(batch => ({
+    try {
+      const response = await axios.get(`${baseurl}/products/${id}/batches`);
+      const mappedBatches = response.data?.length
+        ? response.data.map(batch => ({
           id: batch.id,
           dbId: batch.id,
           batchNumber: batch.batch_number || '',
@@ -176,134 +267,134 @@ const fetchProductById = async (id) => {
           expDate: batch.exp_date?.split('T')[0] || '',
           quantity: batch.quantity || '',
           costPrice: batch.cost_price || '',
-            opening_stock: batch.opening_stock || '', // ADD THIS LINE
+          opening_stock: batch.opening_stock || '', // ADD THIS LINE
           sellingPrice: batch.selling_price || '', // CHANGED: Empty instead of formData.price
           purchasePrice: batch.purchase_price || '',
           mrp: batch.mrp || '',
           barcode: batch.barcode || '',
           isExisting: true
         }))
-      : [];
-    console.log('📦 Fetched batches:', mappedBatches);
-    setBatches(mappedBatches);
-  } catch (error) {
-    console.error('Error fetching batches:', error);
-    setBatches([]);
-  }
-};
+        : [];
+      console.log('📦 Fetched batches:', mappedBatches);
+      setBatches(mappedBatches);
+    } catch (error) {
+      console.error('Error fetching batches:', error);
+      setBatches([]);
+    }
+  };
 
-const generateUniqueBarcode = async () => {
-  let isUnique = false;
-  let newBarcode;
-  let attempts = 0;
-  const maxAttempts = 10; 
+  const generateUniqueBarcode = async () => {
+    let isUnique = false;
+    let newBarcode;
+    let attempts = 0;
+    const maxAttempts = 10;
 
-  while (!isUnique && attempts < maxAttempts) {
-    attempts++;
-    
-    // Generate 6-digit number as string
-    newBarcode = Math.floor(100000 + Math.random() * 900000).toString();
+    while (!isUnique && attempts < maxAttempts) {
+      attempts++;
+
+      // Generate 6-digit number as string
+      newBarcode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      try {
+        const response = await axios.get(`${baseurl}/batches/check-barcode/${newBarcode}`);
+        if (response.data.available) {
+          isUnique = true;
+          console.log('✅ Generated unique 6-digit barcode:', newBarcode);
+        } else {
+          console.log('🔄 Barcode exists, generating new one...');
+        }
+      } catch (error) {
+        console.error('Error checking barcode:', error);
+        // fallback if API fails
+        isUnique = true;
+      }
+    }
+
+    // Fallback if still not unique after max attempts
+    if (!isUnique) {
+      newBarcode = Math.floor(100000 + Math.random() * 900000).toString();
+      console.log('⚠️ Using fallback 6-digit barcode:', newBarcode);
+    }
+
+    return newBarcode;
+  };
+
+
+
+
+  const createDefaultBatch = async () => {
+    const newBarcode = await generateUniqueBarcode();
+
+    return {
+      id: `temp_${Date.now()}_${Math.random()}`,
+      dbId: null,
+      batchNumber: '', // Empty for manual entry
+      mfgDate: '',
+      expDate: '',
+      quantity: formData.opening_stock || '',
+      costPrice: '',
+      sellingPrice: '', // CHANGED: Empty instead of formData.price
+      purchasePrice: '',
+      mrp: '',
+      barcode: newBarcode,
+      isExisting: false
+    };
+  };
+
+
+
+  // Add this validation function
+  const validateBatchNumber = async (batchNumber, currentBatchId = null) => {
+    if (!batchNumber) return true; // Skip validation if empty
 
     try {
-      const response = await axios.get(`${baseurl}/batches/check-barcode/${newBarcode}`);
-      if (response.data.available) {
-        isUnique = true;
-        console.log('✅ Generated unique 6-digit barcode:', newBarcode);
-      } else {
-        console.log('🔄 Barcode exists, generating new one...');
-      }
-    } catch (error) {
-      console.error('Error checking barcode:', error);
-      // fallback if API fails
-      isUnique = true;
-    }
-  }
-
-  // Fallback if still not unique after max attempts
-  if (!isUnique) {
-    newBarcode = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log('⚠️ Using fallback 6-digit barcode:', newBarcode);
-  }
-
-  return newBarcode;
-};
-
-
-
-
-const createDefaultBatch = async () => {
-  const newBarcode = await generateUniqueBarcode();
-
-  return {
-    id: `temp_${Date.now()}_${Math.random()}`,
-    dbId: null,
-    batchNumber: '', // Empty for manual entry
-    mfgDate: '',
-    expDate: '',
-    quantity: formData.opening_stock || '',
-    costPrice: '',
-    sellingPrice: '', // CHANGED: Empty instead of formData.price
-    purchasePrice: '',
-    mrp: '',
-    barcode: newBarcode,
-    isExisting: false
-  };
-};
-
-
-
-// Add this validation function
-const validateBatchNumber = async (batchNumber, currentBatchId = null) => {
-  if (!batchNumber) return true; // Skip validation if empty
-  
-  try {
-    const response = await axios.get(`${baseurl}/batches/check-batch-number`, {
-      params: {
-        batch_number: batchNumber,
-        group_by: formData.group_by || 'Salescatalog',
-        product_id: productId || '' // Exclude current product for updates
-      }
-    });
-    
-    if (response.data.exists) {
-      // Check if this is the same batch (during editing)
-      if (currentBatchId) {
-        const currentBatch = batches.find(b => b.id === currentBatchId);
-        if (currentBatch && currentBatch.batchNumber === batchNumber) {
-          return true; // It's the same batch, allow it
+      const response = await axios.get(`${baseurl}/batches/check-batch-number`, {
+        params: {
+          batch_number: batchNumber,
+          group_by: formData.group_by || 'Salescatalog',
+          product_id: productId || '' // Exclude current product for updates
         }
-      }
-      return false; // Duplicate found
-    }
-    return true; // No duplicate
-  } catch (error) {
-    console.error('Error validating batch number:', error);
-    return true; // Don't block if validation fails
-  }
-};
+      });
 
-const handleBatchChange = async (index, e) => {
-  const { name, value } = e.target;
-  const updated = [...batches];
-  updated[index][name] = value;
-  
-  // Validate batch number when it's changed
-  if (name === 'batchNumber' && value) {
-    const isValid = await validateBatchNumber(value, updated[index].id);
-    if (!isValid) {
-      window.alert(`Batch number "${value}" already exists in ${formData.group_by || 'Salescatalog'}. Please select another batch number.`);
-      // Revert the change
-      updated[index][name] = batches[index][name];
+      if (response.data.exists) {
+        // Check if this is the same batch (during editing)
+        if (currentBatchId) {
+          const currentBatch = batches.find(b => b.id === currentBatchId);
+          if (currentBatch && currentBatch.batchNumber === batchNumber) {
+            return true; // It's the same batch, allow it
+          }
+        }
+        return false; // Duplicate found
+      }
+      return true; // No duplicate
+    } catch (error) {
+      console.error('Error validating batch number:', error);
+      return true; // Don't block if validation fails
     }
-  }
-  
-  setBatches(updated);
-  
-  // NEW: Calculate and update main price field when sellingPrice changes
-  if (name === 'sellingPrice') {
-    calculateAndUpdateMainPrice(updated);
-  }
-};
+  };
+
+  const handleBatchChange = async (index, e) => {
+    const { name, value } = e.target;
+    const updated = [...batches];
+    updated[index][name] = value;
+
+    // Validate batch number when it's changed
+    if (name === 'batchNumber' && value) {
+      const isValid = await validateBatchNumber(value, updated[index].id);
+      if (!isValid) {
+        window.alert(`Batch number "${value}" already exists in ${formData.group_by || 'Salescatalog'}. Please select another batch number.`);
+        // Revert the change
+        updated[index][name] = batches[index][name];
+      }
+    }
+
+    setBatches(updated);
+
+    // NEW: Calculate and update main price field when sellingPrice changes
+    if (name === 'sellingPrice') {
+      calculateAndUpdateMainPrice(updated);
+    }
+  };
   const [formData, setFormData] = useState({
     group_by: groupType,
     goods_name: '',
@@ -337,7 +428,7 @@ const handleBatchChange = async (index, e) => {
     };
 
     if ((name === 'price' || name === 'gst_rate' || name === 'inclusive_gst') &&
-        updatedFormData.price && updatedFormData.gst_rate) {
+      updatedFormData.price && updatedFormData.gst_rate) {
       const { netPrice } = calculateTaxAndNetPrice(
         updatedFormData.price,
         updatedFormData.gst_rate,
@@ -367,150 +458,150 @@ const handleBatchChange = async (index, e) => {
     setFormData(updatedFormData);
   };
 
-const calculateAndUpdateMainPrice = (updatedBatches) => {
-  // Calculate TOTAL selling price from all batches (SUM instead of average)
-  const totalSellingPrice = updatedBatches.reduce((sum, batch) => {
-    const sellingPrice = parseFloat(batch.sellingPrice) || 0;
-    return sum + sellingPrice;
-  }, 0);
-  
-  // Update the main form price field with TOTAL
-  setFormData(prev => ({
-    ...prev,
-    price: totalSellingPrice.toFixed(2)
-  }));
-};
+  const calculateAndUpdateMainPrice = (updatedBatches) => {
+    // Calculate TOTAL selling price from all batches (SUM instead of average)
+    const totalSellingPrice = updatedBatches.reduce((sum, batch) => {
+      const sellingPrice = parseFloat(batch.sellingPrice) || 0;
+      return sum + sellingPrice;
+    }, 0);
 
-const addNewBatch = async () => {
-  try {
-    console.log('➕ Starting to add new batch...');
-    console.log('📊 Current batches count:', batches.length);
-    console.log('📦 Current product ID:', productId);
-    console.log('🏷️ Current batch numbers:', batches.map(b => b.batchNumber));
-    
-    const newBatch = await createDefaultBatch();
-    console.log('✅ New batch created:', {
-      batchNumber: newBatch.batchNumber,
-      id: newBatch.id
-    });
-    
-    setBatches(prev => {
-      const updated = [...prev, newBatch];
-      console.log('📦 Batches after add:', updated.map(b => b.batchNumber));
-      
-      // Calculate main price after adding new batch
-      calculateAndUpdateMainPrice(updated);
-      
-      return updated;
-    });
-    
-  } catch (error) {
-    console.error('❌ Error adding new batch:', error);
-    showAlert('Error adding new batch. Please try again.', 'danger');
-  }
-};
+    // Update the main form price field with TOTAL
+    setFormData(prev => ({
+      ...prev,
+      price: totalSellingPrice.toFixed(2)
+    }));
+  };
 
-const removeBatch = (id) => {
-  if (batches.length <= 1 && maintainBatch) {
-    showAlert('At least one batch is required when Maintain Batch is enabled.', 'warning');
-    return;
-  }
-  
-  const updated = batches.filter((b) => b.id !== id);
-  setBatches(updated);
-  
-  // Calculate main price after removing batch
-  calculateAndUpdateMainPrice(updated);
-};
+  const addNewBatch = async () => {
+    try {
+      console.log('➕ Starting to add new batch...');
+      console.log('📊 Current batches count:', batches.length);
+      console.log('📦 Current product ID:', productId);
+      console.log('🏷️ Current batch numbers:', batches.map(b => b.batchNumber));
+
+      const newBatch = await createDefaultBatch();
+      console.log('✅ New batch created:', {
+        batchNumber: newBatch.batchNumber,
+        id: newBatch.id
+      });
+
+      setBatches(prev => {
+        const updated = [...prev, newBatch];
+        console.log('📦 Batches after add:', updated.map(b => b.batchNumber));
+
+        // Calculate main price after adding new batch
+        calculateAndUpdateMainPrice(updated);
+
+        return updated;
+      });
+
+    } catch (error) {
+      console.error('❌ Error adding new batch:', error);
+      showAlert('Error adding new batch. Please try again.', 'danger');
+    }
+  };
+
+  const removeBatch = (id) => {
+    if (batches.length <= 1 && maintainBatch) {
+      showAlert('At least one batch is required when Maintain Batch is enabled.', 'warning');
+      return;
+    }
+
+    const updated = batches.filter((b) => b.id !== id);
+    setBatches(updated);
+
+    // Calculate main price after removing batch
+    calculateAndUpdateMainPrice(updated);
+  };
 
   const showAlert = (message, variant = 'success') => {
     setAlert({ show: true, message, variant });
     setTimeout(() => setAlert({ show: false, message: '', variant: 'success' }), 5000);
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsLoading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
 
-  // Calculate total stock for batch-managed products
-  const calculateTotalStockFromBatches = () => {
-    if (!batches || batches.length === 0) return 0;
-    const total = batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
-    console.log('📊 Calculated total stock from batches:', total);
-    return total;
-  };
+    // Calculate total stock for batch-managed products
+    const calculateTotalStockFromBatches = () => {
+      if (!batches || batches.length === 0) return 0;
+      const total = batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
+      console.log('📊 Calculated total stock from batches:', total);
+      return total;
+    };
 
-  // Validate batches if maintainBatch is enabled
-  if (maintainBatch) {
-    // Check for required fields
-    const invalidBatches = batches.filter(
-      (batch) => !batch.batchNumber || !batch.quantity || !batch.sellingPrice || !batch.barcode
-    );
-
-    if (invalidBatches.length > 0) {
-      showAlert(
-        'Please fill all required fields in batch details (Batch Number, Quantity, Selling Price, and Barcode)',
-        'danger'
+    // Validate batches if maintainBatch is enabled
+    if (maintainBatch) {
+      // Check for required fields
+      const invalidBatches = batches.filter(
+        (batch) => !batch.batchNumber || !batch.quantity || !batch.sellingPrice || !batch.barcode
       );
-      setIsLoading(false);
-      return;
-    }
 
-    // Validate unique batch numbers within the same product
-    const batchNumbers = batches.map(b => b.batchNumber);
-    const uniqueBatchNumbers = new Set(batchNumbers);
-    if (batchNumbers.length !== uniqueBatchNumbers.size) {
-      showAlert('Batch numbers must be unique within this product. Please check your batch numbers.', 'danger');
-      setIsLoading(false);
-      return;
-    }
-
-    // NEW VALIDATION: Check if batch number already exists in the same group
-    try {
-      const batchCheckPromises = batches.map(async (batch) => {
-        // Only check for new batches (not existing ones being updated)
-        if (!batch.isExisting) {
-          try {
-            const response = await axios.get(`${baseurl}/batches/check-batch-number`, {
-              params: {
-                batch_number: batch.batchNumber,
-                group_by: formData.group_by || 'Salescatalog',
-                product_id: productId || '' // Exclude current product for updates
-              }
-            });
-            return response.data.exists;
-          } catch (error) {
-            console.error('Error checking batch number:', error);
-            return false; // Don't block submission if check fails
-          }
-        }
-        return false;
-      });
-
-      const batchCheckResults = await Promise.all(batchCheckPromises);
-      const hasDuplicateBatches = batchCheckResults.some(exists => exists);
-
-      if (hasDuplicateBatches) {
-        showAlert('One or more batch numbers already exist in the same category. Please use unique batch numbers.', 'danger');
+      if (invalidBatches.length > 0) {
+        showAlert(
+          'Please fill all required fields in batch details (Batch Number, Quantity, Selling Price, and Barcode)',
+          'danger'
+        );
         setIsLoading(false);
         return;
       }
-    } catch (error) {
-      console.error('Error during batch number validation:', error);
-    }
-  }
 
-  try {
-    // Calculate final opening stock
-    let finalOpeningStock = parseFloat(formData.opening_stock) || 0;
-    if (maintainBatch && batches.length > 0) {
-      finalOpeningStock = calculateTotalStockFromBatches();
-      console.log('🔄 Using batch-based opening stock:', finalOpeningStock);
+      // Validate unique batch numbers within the same product
+      const batchNumbers = batches.map(b => b.batchNumber);
+      const uniqueBatchNumbers = new Set(batchNumbers);
+      if (batchNumbers.length !== uniqueBatchNumbers.size) {
+        showAlert('Batch numbers must be unique within this product. Please check your batch numbers.', 'danger');
+        setIsLoading(false);
+        return;
+      }
+
+      // NEW VALIDATION: Check if batch number already exists in the same group
+      try {
+        const batchCheckPromises = batches.map(async (batch) => {
+          // Only check for new batches (not existing ones being updated)
+          if (!batch.isExisting) {
+            try {
+              const response = await axios.get(`${baseurl}/batches/check-batch-number`, {
+                params: {
+                  batch_number: batch.batchNumber,
+                  group_by: formData.group_by || 'Salescatalog',
+                  product_id: productId || '' // Exclude current product for updates
+                }
+              });
+              return response.data.exists;
+            } catch (error) {
+              console.error('Error checking batch number:', error);
+              return false; // Don't block submission if check fails
+            }
+          }
+          return false;
+        });
+
+        const batchCheckResults = await Promise.all(batchCheckPromises);
+        const hasDuplicateBatches = batchCheckResults.some(exists => exists);
+
+        if (hasDuplicateBatches) {
+          showAlert('One or more batch numbers already exist in the same category. Please use unique batch numbers.', 'danger');
+          setIsLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Error during batch number validation:', error);
+      }
     }
 
-    // Prepare batches for backend
-    const batchesForBackend = maintainBatch
-      ? batches.map((batch) => {
+    try {
+      // Calculate final opening stock
+      let finalOpeningStock = parseFloat(formData.opening_stock) || 0;
+      if (maintainBatch && batches.length > 0) {
+        finalOpeningStock = calculateTotalStockFromBatches();
+        console.log('🔄 Using batch-based opening stock:', finalOpeningStock);
+      }
+
+      // Prepare batches for backend
+      const batchesForBackend = maintainBatch
+        ? batches.map((batch) => {
           const batchData = {
             batch_number: batch.batchNumber,
             mfg_date: batch.mfgDate || null,
@@ -533,65 +624,66 @@ const handleSubmit = async (e) => {
           console.log(`📦 Batch data - ID: ${batch.id}, isExisting: ${batch.isExisting}, sending ID: ${batchData.id}`);
           return batchData;
         })
-      : [];
+        : [];
 
-    // Prepare data for backend with proper stock initialization
-    const dataToSend = {
-      ...formData,
-      group_by: groupType,
-      opening_stock: finalOpeningStock,
-      // Ensure proper stock initialization based on batch management
-      stock_in: maintainBatch ? finalOpeningStock : finalOpeningStock,
-      stock_out: 0,
-      balance_stock: finalOpeningStock,
-      batches: batchesForBackend
-    };
+      // Prepare data for backend with proper stock initialization
+      const dataToSend = {
+        ...formData,
+        images: images,
+        group_by: groupType,
+        opening_stock: finalOpeningStock,
+        // Ensure proper stock initialization based on batch management
+        stock_in: maintainBatch ? finalOpeningStock : finalOpeningStock,
+        stock_out: 0,
+        balance_stock: finalOpeningStock,
+        batches: batchesForBackend
+      };
 
-    console.log('📤 Sending data to backend:', {
-      opening_stock: dataToSend.opening_stock,
-      stock_in: dataToSend.stock_in,
-      stock_out: dataToSend.stock_out,
-      balance_stock: dataToSend.balance_stock,
-      maintain_batch: dataToSend.maintain_batch,
-      batch_count: batchesForBackend.length,
-      batch_numbers: batchesForBackend.map(b => b.batch_number)
-    });
-
-    if (productId) {
-      console.log(`🔄 Updating product ID: ${productId}`);
-      
-      const response = await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
-        headers: { 'Content-Type': 'application/json' }
+      console.log('📤 Sending data to backend:', {
+        opening_stock: dataToSend.opening_stock,
+        stock_in: dataToSend.stock_in,
+        stock_out: dataToSend.stock_out,
+        balance_stock: dataToSend.balance_stock,
+        maintain_batch: dataToSend.maintain_batch,
+        batch_count: batchesForBackend.length,
+        batch_numbers: batchesForBackend.map(b => b.batch_number)
       });
-      console.log('✅ Update response:', response.data);
-      showAlert('Product updated successfully!', 'success');
-      
-      await fetchBatches(productId);
-    } else {
-      console.log('➕ Creating new product');
-      const response = await axios.post(`${baseurl}/products`, dataToSend, {
-        headers: { 'Content-Type': 'application/json' }
-      });
-      showAlert('New product added successfully!', 'success');
-    }
 
-    setTimeout(() => navigate('/sale_items'), 1500);
-  } catch (error) {
-    console.error('❌ Failed to add/update product:', error);
-    console.error('❌ Error response:', error.response?.data);
-    
-    // Handle specific batch number duplicate error from backend
-    let errorMessage = error.response?.data?.message || error.message || 'Failed to add/update product';
-    
-    if (errorMessage.includes('batch number') && errorMessage.includes('already exists')) {
-      errorMessage = 'Batch number already exists in this category. Please use a unique batch number.';
+      if (productId) {
+        console.log(`🔄 Updating product ID: ${productId}`);
+
+        const response = await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        console.log('✅ Update response:', response.data);
+        showAlert('Product updated successfully!', 'success');
+
+        await fetchBatches(productId);
+      } else {
+        console.log('➕ Creating new product');
+        const response = await axios.post(`${baseurl}/products`, dataToSend, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        showAlert('New product added successfully!', 'success');
+      }
+
+      setTimeout(() => navigate('/sale_items'), 1500);
+    } catch (error) {
+      console.error('❌ Failed to add/update product:', error);
+      console.error('❌ Error response:', error.response?.data);
+
+      // Handle specific batch number duplicate error from backend
+      let errorMessage = error.response?.data?.message || error.message || 'Failed to add/update product';
+
+      if (errorMessage.includes('batch number') && errorMessage.includes('already exists')) {
+        errorMessage = 'Batch number already exists in this category. Please use a unique batch number.';
+      }
+
+      showAlert(errorMessage, 'danger');
+    } finally {
+      setIsLoading(false);
     }
-    
-    showAlert(errorMessage, 'danger');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
 
 
@@ -703,26 +795,26 @@ const handleSubmit = async (e) => {
                       </Button>
                     </div>
                   </div>
-              <div className="col">
-    <Form.Label>Price *</Form.Label>
-    <Form.Control
-      placeholder="Price"
-      name="price"
-      type="number"
-      step="0.01"
-      value={formData.price}
-      onChange={handleChange}
-      required
-      disabled={maintainBatch}
-      className={maintainBatch ? "bg-light" : ""} 
-    />
-    {/* NEW: Help text when disabled */}
-    {maintainBatch && (
-      <Form.Text className="text-muted">
-        Price is auto-calculated from batch selling prices
-      </Form.Text>
-    )}
-  </div>
+                  <div className="col">
+                    <Form.Label>Price *</Form.Label>
+                    <Form.Control
+                      placeholder="Price"
+                      name="price"
+                      type="number"
+                      step="0.01"
+                      value={formData.price}
+                      onChange={handleChange}
+                      required
+                      disabled={maintainBatch}
+                      className={maintainBatch ? "bg-light" : ""}
+                    />
+                    {/* NEW: Help text when disabled */}
+                    {maintainBatch && (
+                      <Form.Text className="text-muted">
+                        Price is auto-calculated from batch selling prices
+                      </Form.Text>
+                    )}
+                  </div>
                   <div className="col">
                     <Form.Label>GST Type</Form.Label>
                     <Form.Select
@@ -846,22 +938,22 @@ const handleSubmit = async (e) => {
                       onChange={handleChange}
                     />
                   </div>
-                  
+
                   {/* Conditionally show Opening Stock field */}
-  {!maintainBatch && (
-  <div className="col">
-    <Form.Label>Opening Stock *</Form.Label>
-    <Form.Control
-      placeholder="Opening Stock"
-      name="opening_stock"
-      type="number"
-      value={formData.opening_stock || (batches.length > 0 ? batches[0].opening_stock : '')}
-      onChange={handleChange}
-      required
-    />
-  </div>
-)}
-                  
+                  {!maintainBatch && (
+                    <div className="col">
+                      <Form.Label>Opening Stock *</Form.Label>
+                      <Form.Control
+                        placeholder="Opening Stock"
+                        name="opening_stock"
+                        type="number"
+                        value={formData.opening_stock || (batches.length > 0 ? batches[0].opening_stock : '')}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                  )}
+
                   {/* Show calculated stock when batches exist */}
                   {maintainBatch && batches.length > 0 && (
                     <div className="col">
@@ -935,25 +1027,101 @@ const handleSubmit = async (e) => {
                   />
                 </Form.Group>
 
+                {/* Image Upload Section */}
+                <div className="border border-dark p-3 mb-3">
+                  <h5>Product Images</h5>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Upload Images (Max 10, 5MB each)</Form.Label>
+                    <div className="d-flex align-items-center">
+                      <Form.Control
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImageUpload}
+                        disabled={uploadingImages || images.length >= 10}
+                      />
+                      <Button
+                        variant="outline-secondary"
+                        className="ms-2"
+                        onClick={() => document.querySelector('input[type="file"]').click()}
+                        disabled={uploadingImages || images.length >= 10}
+                      >
+                        <FaUpload /> Browse
+                      </Button>
+                    </div>
+                    <Form.Text className="text-muted">
+                      Supported formats: JPEG, PNG, GIF, WebP
+                    </Form.Text>
+                    {uploadingImages && (
+                      <div className="mt-2">
+                        <Spinner animation="border" size="sm" className="me-2" />
+                        Uploading images...
+                      </div>
+                    )}
+                  </Form.Group>
+
+                  {/* Image Preview Grid */}
+                  {images.length > 0 && (
+                    <div className="row">
+                      {images.map((image, index) => (
+                        <div key={index} className="col-md-3 col-sm-4 col-6 mb-3">
+                          <div className="card h-100">
+                            <div className="card-img-top position-relative" style={{ height: '150px', overflow: 'hidden' }}>
+                              <img
+                                src={image.startsWith('/') ? `${baseurl}${image}` : image}
+                                alt={`Product ${index + 1}`}
+                                className="img-fluid h-100 w-100 object-fit-cover"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = 'https://via.placeholder.com/150x150?text=Image+Error';
+                                }}
+                              />
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                className="position-absolute top-0 end-0 m-1"
+                                onClick={() => handleDeleteImage(image)}
+                                title="Delete image"
+                              >
+                                <FaTrash />
+                              </Button>
+                            </div>
+                            <div className="card-body p-2 text-center">
+                              <small className="text-muted">Image {index + 1}</small>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {images.length === 0 && !uploadingImages && (
+                    <div className="text-center py-4 border rounded">
+                      <FaUpload size={48} className="text-muted mb-3" />
+                      <p className="text-muted">No images uploaded yet</p>
+                    </div>
+                  )}
+                </div>
+
                 {maintainBatch && (
                   <div className="border border-dark p-3 mb-3">
                     <h5>Batch Details</h5>
                     {batches.map((batch, index) => (
                       <div key={batch.id} className="mb-3 border p-2">
                         <div className="row g-2 mb-2">
-<div className="col-md-4">
-  <Form.Label>Batch No.*</Form.Label>
-  <Form.Control
-    placeholder="Enter Batch Number"
-    name="batchNumber"
-    value={batch.batchNumber} 
-    onChange={(e) => handleBatchChange(index, e)}
-    required
-  />
-  <Form.Text className="text-muted">
-    Enter unique batch number
-  </Form.Text>
-</div>
+                          <div className="col-md-4">
+                            <Form.Label>Batch No.*</Form.Label>
+                            <Form.Control
+                              placeholder="Enter Batch Number"
+                              name="batchNumber"
+                              value={batch.batchNumber}
+                              onChange={(e) => handleBatchChange(index, e)}
+                              required
+                            />
+                            <Form.Text className="text-muted">
+                              Enter unique batch number
+                            </Form.Text>
+                          </div>
                           <div className="col-md-4">
                             <Form.Label>Opening Stock*</Form.Label>
                             <Form.Control

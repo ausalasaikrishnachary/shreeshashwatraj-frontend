@@ -7,6 +7,7 @@ import {
   FaEye,
   FaShoppingBag,
   FaSearch,
+  FaImages,
 } from "react-icons/fa";
 import AdminSidebar from "./../../../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "./../../../../Shared/AdminSidebar/AdminHeader";
@@ -19,6 +20,7 @@ import { baseurl } from "../../../../BaseURL/BaseURL";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import "./salesitems.css";
+import ProductImagesModal from "./ProductImagesModal"; // We'll create this modal
 
 const SalesItems = ({ user }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -28,7 +30,10 @@ const SalesItems = ({ user }) => {
   const [showStockModal, setShowStockModal] = useState(false);
   const [showDeductModal, setShowDeductModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showImagesModal, setShowImagesModal] = useState(false); // New state for images modal
   const [selectedProductId, setSelectedProductId] = useState(null);
+  const [selectedProductImages, setSelectedProductImages] = useState([]); // New state for product images
+  const [selectedProductName, setSelectedProductName] = useState(""); // New state for product name
   const [currentStockData, setCurrentStockData] = useState({
     opening_stock: 0,
     stock_in: 0,
@@ -75,6 +80,7 @@ const SalesItems = ({ user }) => {
           max_stock_alert: item.max_stock_alert,
           can_be_sold: item.can_be_sold,
           maintain_batch: item.maintain_batch,
+          images: item.images ? (typeof item.images === 'string' ? JSON.parse(item.images) : item.images) : [], // Parse images
         }));
       setItems(formatted);
     } catch (error) {
@@ -94,56 +100,82 @@ const SalesItems = ({ user }) => {
       alert("Failed to delete product");
     }
   };
-const handleAddStock = async (stockData) => {
-  try {
-    const { quantity, remark, batchId } = stockData;
-    
-    console.log('Sending request with:', {
-      productId: selectedProductId,
-      quantity: quantity, 
-      remark: remark || '',
-      batchId: batchId
-    });
 
-    await axios.post(`${baseurl}/stock/${selectedProductId}`, {
-      quantity: quantity,
-      remark: remark || '',
-      batchId: batchId
-    });
-    
-    fetchProducts();
-    alert("Stock added successfully!");
-  } catch (error) {
-    console.error('Error adding stock:', error);
-    alert("Failed to add stock: " + (error.response?.data?.message || error.message));
-  }
-};
+  // ✅ View Product Images
+  const handleViewImages = async (productId, productName) => {
+    try {
+      setSelectedProductId(productId);
+      setSelectedProductName(productName);
+      
+      // Get product details to fetch images
+      const response = await axios.get(`${baseurl}/products/${productId}`);
+      const product = response.data;
+      
+      let images = [];
+      if (product.images) {
+        images = typeof product.images === 'string' 
+          ? JSON.parse(product.images) 
+          : product.images;
+      }
+      
+      setSelectedProductImages(Array.isArray(images) ? images : []);
+      setShowImagesModal(true);
+    } catch (error) {
+      console.error("Error fetching product images:", error);
+      alert("Failed to load product images");
+    }
+  };
+
+  const handleAddStock = async (stockData) => {
+    try {
+      const { quantity, remark, batchId } = stockData;
+      
+      console.log('Sending request with:', {
+        productId: selectedProductId,
+        quantity: quantity, 
+        remark: remark || '',
+        batchId: batchId
+      });
+
+      await axios.post(`${baseurl}/stock/${selectedProductId}`, {
+        quantity: quantity,
+        remark: remark || '',
+        batchId: batchId
+      });
+      
+      fetchProducts();
+      alert("Stock added successfully!");
+    } catch (error) {
+      console.error('Error adding stock:', error);
+      alert("Failed to add stock: " + (error.response?.data?.message || error.message));
+    }
+  };
 
   // ✅ Deduct Stock
-const handleDeductStock = async (stockData) => {
-  try {
-    const { quantity, remark, batchId } = stockData;
-    
-    console.log('Sending deduct stock request:', {
-      productId: selectedProductId,
-      quantity: quantity,
-      remark: remark || '',
-      batchId: batchId,
-    });
+  const handleDeductStock = async (stockData) => {
+    try {
+      const { quantity, remark, batchId } = stockData;
+      
+      console.log('Sending deduct stock request:', {
+        productId: selectedProductId,
+        quantity: quantity,
+        remark: remark || '',
+        batchId: batchId,
+      });
 
-    await axios.post(`${baseurl}/stock-deducted/${selectedProductId}`, {
-      quantity: quantity,
-      remark: remark || '',
-      batchId: batchId,
-    });
-    
-    fetchProducts();
-    alert("Stock deducted successfully!");
-  } catch (error) {
-    console.error('Error deducting stock:', error);
-    alert("Failed to deduct stock: " + (error.response?.data?.message || error.message));
-  }
-};
+      await axios.post(`${baseurl}/stock-deducted/${selectedProductId}`, {
+        quantity: quantity,
+        remark: remark || '',
+        batchId: batchId,
+      });
+      
+      fetchProducts();
+      alert("Stock deducted successfully!");
+    } catch (error) {
+      console.error('Error deducting stock:', error);
+      alert("Failed to deduct stock: " + (error.response?.data?.message || error.message));
+    }
+  };
 
   // ✅ Edit Product
   const handleEditClick = (product) => {
@@ -175,6 +207,14 @@ const handleDeductStock = async (stockData) => {
           </Link>
           <br />
           <span className="text-muted">RS. {record.price}</span>
+          {record.images && record.images.length > 0 && (
+            <div className="mt-1">
+              <small className="text-success">
+                <FaImages className="me-1" size={12} />
+                {record.images.length} image{record.images.length !== 1 ? 's' : ''}
+              </small>
+            </div>
+          )}
         </div>
       ),
     },
@@ -185,14 +225,16 @@ const handleDeductStock = async (stockData) => {
       key: "actions",
       title: "Action",
       render: (_, record) => (
-        <>
+        <div className="d-flex align-items-center">
           <FaEdit
             className="text-success me-2 action-icon"
             onClick={() => handleEditClick(record)}
+            title="Edit Product"
           />
           <FaTrash
             className="text-danger me-2 action-icon"
             onClick={() => handleDeleteProduct(record.id)}
+            title="Delete Product"
           />
           <FaPlusCircle
             className="text-warning me-2 action-icon"
@@ -201,6 +243,7 @@ const handleDeductStock = async (stockData) => {
               setCurrentStockData(record);
               setShowStockModal(true);
             }}
+            title="Add Stock"
           />
           <FaMinusCircle
             className="text-danger me-2 action-icon"
@@ -209,6 +252,16 @@ const handleDeductStock = async (stockData) => {
               setCurrentStockData(record);
               setShowDeductModal(true);
             }}
+            title="Deduct Stock"
+          />
+          <FaImages
+            className="text-info me-2 action-icon"
+            onClick={() => handleViewImages(record.id, record.goods_name)}
+            title="View Images"
+            style={{ 
+              cursor: 'pointer',
+              opacity: record.images && record.images.length > 0 ? 1 : 0.5 
+            }}
           />
           <FaEye
             className="text-primary action-icon"
@@ -216,8 +269,9 @@ const handleDeductStock = async (stockData) => {
               setStockData(record);
               setShowViewModal(true);
             }}
+            title="View Stock Details"
           />
-        </>
+        </div>
       ),
     },
   ];
@@ -322,26 +376,37 @@ const handleDeductStock = async (stockData) => {
         onClose={() => setShowServiceModal(false)}
         groupType="Salescatalog"
       />
-    <AddStockModal
-  show={showStockModal}
-  onClose={() => setShowStockModal(false)}
-  currentStock={currentStockData.balance_stock}
-  onSave={handleAddStock}
-  selectedProductId={selectedProductId} 
-/>
+      <AddStockModal
+        show={showStockModal}
+        onClose={() => setShowStockModal(false)}
+        currentStock={currentStockData.balance_stock}
+        onSave={handleAddStock}
+        selectedProductId={selectedProductId} 
+      />
       <DeductStockModal
         show={showDeductModal}
         onClose={() => setShowDeductModal(false)}
         currentStock={currentStockData.balance_stock}
         onSave={handleDeductStock}
-          selectedProductId={selectedProductId} 
-
+        selectedProductId={selectedProductId} 
       />
       <StockDetailsModal
         show={showViewModal}
         onClose={() => setShowViewModal(false)}
         stockData={stockData}
         context="sales"
+      />
+      
+      {/* Product Images Modal */}
+      <ProductImagesModal
+        show={showImagesModal}
+        onClose={() => setShowImagesModal(false)}
+        productName={selectedProductName}
+        images={selectedProductImages}
+        productId={selectedProductId}
+        onImageDeleted={() => {
+          fetchProducts(); // Refresh the products list
+        }}
       />
     </div>
   );
