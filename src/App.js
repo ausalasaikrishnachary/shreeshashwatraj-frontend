@@ -155,7 +155,7 @@ import PurchaseInvoiceEdit from "./Component/Panels/Admin/PurchaseInvoicePage/Pu
 import CreditPeriodTable from "./Component/Panels/Admin/CreditPeriod/CreditPeriodTable"
 import AddCreditPeriodFix from './Component/Panels/Admin/CreditPeriod/AddCreditPeriod';
 
-import VoucherView  from "./Component/Panels/Admin/Vochur/VoucherView"
+import VoucherView from "./Component/Panels/Admin/Vochur/VoucherView"
 import Creditsview from "./Component/Panels/Admin/CreditNote/Creditsview";
 import CreateDebitNote from "./Component/Panels/Admin/DebitTable/CreateDebitNote";
 import DebitView from "./Component/Panels/Admin/DebitTable/DebitView";
@@ -165,6 +165,9 @@ import KachaInvoiceTable from "./Component/Panels/Admin/KachaSales/KachaInvoiceT
 import KachaInvoicePDFPreview from "./Component/Panels/Admin/KachaSales/KachaInvoicePDFPreview";
 import Period from "./Component/Panels/Admin/Period/Period";
 import Period_InvoicePDFPreview from "./Component/Panels/Admin/Period/Period_InvoicePDFPreview";
+import PlaceSalesOrder from "./Component/Panels/Admin/AdminRetailers/PlaceSalesOrder";
+import CartPage from "./Component/Panels/Admin/AdminRetailers/CartPage";
+import Checkout from "./Component/Panels/Admin/AdminRetailers/Checkout";
 
 
 
@@ -175,8 +178,8 @@ function App() {
       <Routes>
         {/* Public */}
         <Route path="/" element={<Login />} />
-         <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Dashboards */}
         <Route path="/dashboard" element={<DashboardCard />} />
@@ -191,9 +194,9 @@ function App() {
         <Route path="/retailer-profile" element={<RetailerProfile />} />
         <Route path="/profile/:id" element={<Profile />} />
         <Route path="/retailer-orders" element={<RetailerOrders />} />
-{/* <Route path="/retailer-profile/:id?" element={<RetailerProfile />} /> */}
+        {/* <Route path="/retailer-profile/:id?" element={<RetailerProfile />} /> */}
 
-         <Route path="/reports/retailer-report-page" element={<RetailerReportPage />} />
+        <Route path="/reports/retailer-report-page" element={<RetailerReportPage />} />
 
 
 
@@ -205,26 +208,28 @@ function App() {
         <Route path="/staff/expences" element={<StaffExpenses />} />
         <Route path="/staff/add-expense" element={<AddExpense />} />
 
-           
+
 
         {/* Admin  Pages */}
         <Route path="/staff/offers" element={<StaffOffers />} />
-    
+        <Route path="/retailers/place-order" element={<PlaceSalesOrder />} />
+        <Route path="/retailers/cart" element={<CartPage />} />
+        <Route path="/retailers/checkout" element={<Checkout />} />
         <Route path="/staff" element={<AdminStaff />} />
         <Route path="/staff/add" element={<AddStaff />} />
         <Route path="/sale" element={<AdminSales />} />
-         <Route path="/sales/invoices" element={<SalesInvoiceTable />} />
-                  <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
+        <Route path="/sales/invoices" element={<SalesInvoiceTable />} />
+        <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
 
-         <Route path="/sales/createinvoice/:id" element={<SalesInvoiceForm />} />
-         <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
-          <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
-           <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
-         <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
-           {/* <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} /> */}
-            <Route path="/Purchase/editinvoice/:id" element={<PurchaseInvoiceEdit />} />
- 
-  
+        <Route path="/sales/createinvoice/:id" element={<SalesInvoiceForm />} />
+        <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
+        <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
+        <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
+        <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
+        {/* <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} /> */}
+        <Route path="/Purchase/editinvoice/:id" element={<PurchaseInvoiceEdit />} />
+
+
         <Route path="/sales/receipts" element={<AdminReceiptsTable />} />
         {/* <Route path="/createreceipt" element={<CreateReceiptForm />} /> */}
 
@@ -245,7 +250,7 @@ function App() {
 
         <Route path="/purchase/purchase-invoice" element={<PurchaseInvoiceTable />} />
         <Route path="/purchase/create-purchase-invoice" element={<CreatePurchaseInvoiceForm />} />
-          <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
+        <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
 
         <Route path="/purchase/purchase-order" element={<PurchaseOrderTable />} />
         <Route path="/purchase/voucher" element={<VoucherTable />} />
@@ -278,67 +283,67 @@ function App() {
 
         <Route path="/expenses" element={<AdminExpenses />} />
         <Route path="/expenses/add" element={<AddExpenses />} />
-            <Route path="/reports/expense-report-page" element={<ExpenseReportPage />} />
+        <Route path="/reports/expense-report-page" element={<ExpenseReportPage />} />
         <Route path="/reports" element={<AdminReports />} />
         <Route path="/roleaccess" element={<AdminRoleAccess />} />
         <Route path="/sales_visit" element={<SalesVisit />} />
-          <Route path="/sales_visit/edit/:id" element={<SalesVisit mode="edit"/>} />
-             <Route path="/sales_visit/view/:id" element={<SalesVisit mode="view"/>} />
+        <Route path="/sales_visit/edit/:id" element={<SalesVisit mode="edit" />} />
+        <Route path="/sales_visit/view/:id" element={<SalesVisit mode="view" />} />
 
-           <Route path="/purchased_items" element={<PurchasedItems />} />
-           <Route path="/sale_items" element={<SalesItems />} />
-             <Route path='/AddProductPage' element={<AddProductPage />} />
-<Route path="/AddProductPage/:productId" element={<AddProductPage />} />
-            <Route path='/salesitemspage/:productId' element={<SalesItemsPage />} />
-             <Route path='/salesitemspage' element={<SalesItemsPage />} />
-            <Route path="/addcompanymodal " element={<AddCompanyModal />} />
-            <Route path="/addcategorymodal" element={<AddCategoryModal />} />
-            <Route path="/stockdetailsmodule" element={< StockDetailsModal />} />
-            <Route path="/deductstockmodal" element={< DeductStockModal />} />
-            <Route path="/addstockmodal" element={< AddStockModal />} />
-            <Route path="/addservicemodal" element={<AddServiceModal />} />
+        <Route path="/purchased_items" element={<PurchasedItems />} />
+        <Route path="/sale_items" element={<SalesItems />} />
+        <Route path='/AddProductPage' element={<AddProductPage />} />
+        <Route path="/AddProductPage/:productId" element={<AddProductPage />} />
+        <Route path='/salesitemspage/:productId' element={<SalesItemsPage />} />
+        <Route path='/salesitemspage' element={<SalesItemsPage />} />
+        <Route path="/addcompanymodal " element={<AddCompanyModal />} />
+        <Route path="/addcategorymodal" element={<AddCategoryModal />} />
+        <Route path="/stockdetailsmodule" element={< StockDetailsModal />} />
+        <Route path="/deductstockmodal" element={< DeductStockModal />} />
+        <Route path="/addstockmodal" element={< AddStockModal />} />
+        <Route path="/addservicemodal" element={<AddServiceModal />} />
 
-            <Route path="/staff_expensive" element={<Staff_expensive />} />
-            <Route path="/staff_add_expensive" element={<Staff_Add_expensive />} />
-<Route path="/admin_expensive" element={<AdminExpensiveRequest />} />
-<Route path="/admin_expensive/view/:id" element={<AdminExpensiveRequest mode="view"/>} />
-<Route path="/admin_expensive/edit/:id" element={<AdminExpensiveRequest mode="edit"/>} />
-<Route path="/salesitems_productdetails/:id" element={<Salesitems_productsdetails />} />
-<Route path="/receipts_view/:id" element={<ReceiptView />} />
-<Route path="/addunitsmodal" element={<AddUnitModal />} />
+        <Route path="/staff_expensive" element={<Staff_expensive />} />
+        <Route path="/staff_add_expensive" element={<Staff_Add_expensive />} />
+        <Route path="/admin_expensive" element={<AdminExpensiveRequest />} />
+        <Route path="/admin_expensive/view/:id" element={<AdminExpensiveRequest mode="view" />} />
+        <Route path="/admin_expensive/edit/:id" element={<AdminExpensiveRequest mode="edit" />} />
+        <Route path="/salesitems_productdetails/:id" element={<Salesitems_productsdetails />} />
+        <Route path="/receipts_view/:id" element={<ReceiptView />} />
+        <Route path="/addunitsmodal" element={<AddUnitModal />} />
 
-<Route path="/category" element={<Category />} />
-            <Route path="/category/:id" element={<Category />} />
-            <Route path="/company" element={<Company />} />
-            <Route path="/company/:id" element={<Company />} />
-            <Route path="/units" element={<Units />} />
-            <Route path="/ledger" element={<Ledger />} />
+        <Route path="/category" element={<Category />} />
+        <Route path="/category/:id" element={<Category />} />
+        <Route path="/company" element={<Company />} />
+        <Route path="/company/:id" element={<Company />} />
+        <Route path="/units" element={<Units />} />
+        <Route path="/ledger" element={<Ledger />} />
 
-            <Route path="/sales/credit-note/edit/:id" element={<EditCreditNote />} />
+        <Route path="/sales/credit-note/edit/:id" element={<EditCreditNote />} />
 
 
         <Route path="/sales/create_note" element={<CreateNote />} />
 
-            <Route path="/units/:id" element={<Units />} />
+        <Route path="/units/:id" element={<Units />} />
 
 
-     <Route path="/reports/sales-report-page" element={<SalesReportPage />} />
-<Route path="/creditview/:id" element={<Creditsview />} />
+        <Route path="/reports/sales-report-page" element={<SalesReportPage />} />
+        <Route path="/creditview/:id" element={<Creditsview />} />
 
-     <Route path="/credit-period" element={<CreditPeriodTable />} />
-     <Route path="/credit-period-fix/add" element={<AddCreditPeriodFix />} />
-     <Route path="/credit-period-fix/edit/:id" element={<AddCreditPeriodFix />} />
+        <Route path="/credit-period" element={<CreditPeriodTable />} />
+        <Route path="/credit-period-fix/add" element={<AddCreditPeriodFix />} />
+        <Route path="/credit-period-fix/edit/:id" element={<AddCreditPeriodFix />} />
 
 
 
-||Kacha Sales||
-<Route path="/kachinvoicetable" element={<KachaInvoiceTable />} />
-<Route path="/kacha_sales" element={<KachaSalesInvoiceForm />} />
+        ||Kacha Sales||
+        <Route path="/kachinvoicetable" element={<KachaInvoiceTable />} />
+        <Route path="/kacha_sales" element={<KachaSalesInvoiceForm />} />
 
-{/* <Route path="/kachainvoicepdf/:id" element={<KachaInvoicePDFPreview />} /> */}
-<Route path="/period" element={<Period />} />
-<Route path="/periodinvoicepreviewpdf" element={<Period_InvoicePDFPreview />} />
-<Route path="/periodinvoicepreviewpdf/:id" element={<Period_InvoicePDFPreview />} />
+        {/* <Route path="/kachainvoicepdf/:id" element={<KachaInvoicePDFPreview />} /> */}
+        <Route path="/period" element={<Period />} />
+        <Route path="/periodinvoicepreviewpdf" element={<Period_InvoicePDFPreview />} />
+        <Route path="/periodinvoicepreviewpdf/:id" element={<Period_InvoicePDFPreview />} />
 
       </Routes>
     </Router>
