@@ -168,6 +168,8 @@ import Period_InvoicePDFPreview from "./Component/Panels/Admin/Period/Period_Inv
 import PlaceSalesOrder from "./Component/Panels/Admin/AdminRetailers/PlaceSalesOrder";
 import CartPage from "./Component/Panels/Admin/AdminRetailers/CartPage";
 import Checkout from "./Component/Panels/Admin/AdminRetailers/Checkout";
+import InvoicePreview_preview from "./Component/Panels/Admin/Period/InvoicePreview_preview";
+import ReceiptModal_preview from "./Component/Panels/Admin/Period/ReceiptModal_preview";
 
 
 
@@ -344,6 +346,8 @@ function App() {
         <Route path="/period" element={<Period />} />
         <Route path="/periodinvoicepreviewpdf" element={<Period_InvoicePDFPreview />} />
         <Route path="/periodinvoicepreviewpdf/:id" element={<Period_InvoicePDFPreview />} />
+        <Route path="/invoicepreview_preivew" element={<InvoicePreview_preview />} />
+<Route path="/receiptmodal_preview" element={<ReceiptModal_preview />} />
 
       </Routes>
     </Router>

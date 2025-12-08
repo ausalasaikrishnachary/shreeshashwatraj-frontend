@@ -81,8 +81,6 @@ const InvoicesTable = () => {
     return 'Pending';
   };
 
-  // Handle PDF Download
-  // Handle PDF Download
 const handleDownloadPDF = async (invoice) => {
   const voucherId = invoice.originalData?.VoucherID || invoice.id;
   

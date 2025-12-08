@@ -1078,3 +1078,51 @@
   color: #17a2b8;
   font-weight: bold;
 }
+/* Add to Period.css */
+.p-download-invoice-buttons {
+  min-width: 150px;
+}
+
+.p-invoice-loading {
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+}
+
+.p-no-invoice {
+  font-size: 12px;
+  color: #999;
+}
+
+.p-invoice-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.p-download-btn {
+  padding: 3px 6px;
+  font-size: 11px;
+  border: 1px solid #4CAF50;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-radius: 3px;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.p-download-btn:hover {
+  background: #c8e6c9;
+  border-color: #2e7d32;
+}
+
+.p-download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  border-color: #ccc;
+  background: #f5f5f5;
+}

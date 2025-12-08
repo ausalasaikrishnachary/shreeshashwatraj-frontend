@@ -40,17 +40,15 @@ const InvoicePDFPreview = () => {
     retailerBusinessName: '',
     invoiceNumber: '',
     transactionProofFile: null,
-      product_id: '', // Add this
+      product_id: '', 
   batch_id: '' ,
-  TransactionType: 'Receipt' // ✅ ADD THIS LINE
+  TransactionType: 'Receipt' 
   });
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
 
-  // Add this function to handle navigation to edit form
   const handleEditInvoice = () => {
     if (invoiceData && invoiceData.voucherId) {
-      // Navigate to the sales form with the voucher ID for editing
       navigate(`/sales/createinvoice/${invoiceData.voucherId}`);
     } else {
       setError('Cannot edit invoice: Voucher ID not found');
@@ -437,7 +435,7 @@ const transformPaymentData = (apiData) => {
         batch: '',
         batch_id: '',
         product_id: '',
-        assigned_staff: assignedStaff // Add this line for fallback item
+        assigned_staff: assignedStaff 
       }],
       
       taxableAmount: taxableAmount.toFixed(2),
@@ -509,7 +507,6 @@ const PaymentStatus = () => {
     summary
   });
 
-  // Function to format date in Indian format (DD/MM/YYYY)
   const formatIndianDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -522,7 +519,6 @@ const PaymentStatus = () => {
     return `${day}/${month}/${year}`;
   };
 
-  // Combine and sort all transactions by date
   const allTransactions = [
     ...receipts.map(r => ({ ...r, type: 'receipt' })),
     ...creditnotes.map(cn => ({ ...cn, type: 'credit_note' }))
@@ -551,7 +547,6 @@ const PaymentStatus = () => {
         </div>
 
         <div className="payment-amounts mb-3">
-          {/* Original Invoice Amount */}
           <div className="d-flex justify-content-between align-items-center mb-2">
             <span className="text-muted">
               <FaRupeeSign className="me-1" />
@@ -565,7 +560,6 @@ const PaymentStatus = () => {
             </span>
           </div>
 
-          {/* Show all transactions in chronological order */}
           {allTransactions.map((transaction, index) => (
             <div 
               key={`${transaction.type}-${index}`} 
@@ -741,9 +735,8 @@ const PaymentStatus = () => {
     }
   };
 
-  // Replace the existing handleEditToggle with handleEditInvoice
   const handleEditToggle = () => {
-    handleEditInvoice(); // Now this will navigate to the form for editing
+    handleEditInvoice(); 
   };
 
   const handleCancelEdit = () => {
