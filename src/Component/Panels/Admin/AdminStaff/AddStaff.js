@@ -190,9 +190,74 @@ function AddStaff() {
     }
   };
 
+  // Validation functions
+  const validateBankAccountNumber = (value) => {
+    if (!value) return true; // Allow empty
+    const cleaned = value.replace(/\D/g, '');
+    return /^\d{9,16}$/.test(cleaned);
+  };
+
+  const validateIFSCCode = (value) => {
+    if (!value) return true; // Allow empty
+    // Accept only alphanumeric characters, exactly 11 characters
+    return /^[A-Z0-9]{11}$/.test(value.toUpperCase());
+  };
+
+  const validateAadhaarNumber = (value) => {
+    if (!value) return true; // Allow empty
+    const cleaned = value.replace(/\D/g, '');
+    return /^\d{12}$/.test(cleaned);
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    let processedValue = value;
+    
+    // Apply specific validation and formatting based on field type
+    switch (name) {
+      case 'bankAccountNumber':
+        // Remove non-digit characters
+        processedValue = value.replace(/\D/g, '');
+        // Limit to 16 digits
+        processedValue = processedValue.slice(0, 16);
+        break;
+        
+      case 'ifscCode':
+        // Convert to uppercase and remove special characters
+        processedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        // Limit to 11 characters
+        processedValue = processedValue.slice(0, 11);
+        break;
+        
+      case 'aadhaarNumber':
+        // Remove non-digit characters
+        processedValue = value.replace(/\D/g, '');
+        // Limit to 12 digits
+        processedValue = processedValue.slice(0, 12);
+        break;
+        
+      case 'mobileNumber':
+      case 'alternateNumber':
+      case 'emergencyContact':
+        // Remove non-digit characters for phone numbers
+        processedValue = value.replace(/\D/g, '');
+        // Limit to 10 digits
+        processedValue = processedValue.slice(0, 10);
+        break;
+        
+      case 'panNumber':
+        // Convert to uppercase and remove special characters
+        processedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        // Limit to 10 characters
+        processedValue = processedValue.slice(0, 10);
+        break;
+        
+      default:
+        break;
+    }
+    
+    setFormData((prev) => ({ ...prev, [name]: processedValue }));
     if (error) setError("");
   };
 
@@ -211,22 +276,22 @@ function AddStaff() {
         if (!formData.joiningDate) newErrors.push("Joining date is required");
         break;
       case 'bank':
-        if (formData.bankAccountNumber && !/^\d{9,18}$/.test(formData.bankAccountNumber)) {
-          newErrors.push("Invalid bank account number");
+        if (formData.bankAccountNumber && !validateBankAccountNumber(formData.bankAccountNumber)) {
+          newErrors.push("Invalid bank account number (9-16 digits required)");
         }
-        if (formData.ifscCode && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifscCode)) {
-          newErrors.push("Invalid IFSC code format");
+        if (formData.ifscCode && !validateIFSCCode(formData.ifscCode)) {
+          newErrors.push("Invalid IFSC code (11 alphanumeric characters only)");
         }
         break;
       case 'documents':
-        if (formData.aadhaarNumber && !/^\d{12}$/.test(formData.aadhaarNumber)) {
+        if (formData.aadhaarNumber && !validateAadhaarNumber(formData.aadhaarNumber)) {
           newErrors.push("Invalid Aadhaar number (12 digits required)");
         }
         if (formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)) {
-          newErrors.push("Invalid PAN number format");
+          newErrors.push("Invalid PAN number format (e.g., ABCDE1234F)");
         }
         if (formData.emergencyContact && !/^\d{10}$/.test(formData.emergencyContact)) {
-          newErrors.push("Invalid emergency contact number");
+          newErrors.push("Invalid emergency contact number (10 digits required)");
         }
         break;
     }
@@ -270,7 +335,60 @@ function AddStaff() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateCurrentTab()) {
+    // Validate all tabs before submission
+    let allTabsValid = true;
+    const validationErrors = [];
+    
+    // Validate basic tab
+    if (!formData.fullName.trim()) {
+      validationErrors.push("Full name required");
+      allTabsValid = false;
+    }
+    if (!/^\d{10}$/.test(formData.mobileNumber)) {
+      validationErrors.push("Invalid mobile number (10 digits required)");
+      allTabsValid = false;
+    }
+    
+    // Validate job tab
+    if (!formData.designation) {
+      validationErrors.push("Designation is required");
+      allTabsValid = false;
+    }
+    if (!formData.department) {
+      validationErrors.push("Department is required");
+      allTabsValid = false;
+    }
+    if (!formData.joiningDate) {
+      validationErrors.push("Joining date is required");
+      allTabsValid = false;
+    }
+    
+    // Validate bank tab if bank details are provided
+    if (formData.bankAccountNumber && !validateBankAccountNumber(formData.bankAccountNumber)) {
+      validationErrors.push("Invalid bank account number (9-16 digits required)");
+      allTabsValid = false;
+    }
+    if (formData.ifscCode && !validateIFSCCode(formData.ifscCode)) {
+      validationErrors.push("Invalid IFSC code (11 alphanumeric characters only)");
+      allTabsValid = false;
+    }
+    
+    // Validate documents tab
+    if (formData.aadhaarNumber && !validateAadhaarNumber(formData.aadhaarNumber)) {
+      validationErrors.push("Invalid Aadhaar number (12 digits required)");
+      allTabsValid = false;
+    }
+    if (formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)) {
+      validationErrors.push("Invalid PAN number format (e.g., ABCDE1234F)");
+      allTabsValid = false;
+    }
+    if (formData.emergencyContact && !/^\d{10}$/.test(formData.emergencyContact)) {
+      validationErrors.push("Invalid emergency contact number (10 digits required)");
+      allTabsValid = false;
+    }
+    
+    if (!allTabsValid) {
+      setError(validationErrors.join(", "));
       return;
     }
     
@@ -345,7 +463,6 @@ function AddStaff() {
                     label="Mobile Number" 
                     name="mobileNumber" 
                     value={formData.mobileNumber} 
-                    maxLength="10" 
                     onChange={handleInputChange} 
                     disabled={isEditMode}
                     required
@@ -354,7 +471,6 @@ function AddStaff() {
                     label="Alternate Number" 
                     name="alternateNumber" 
                     value={formData.alternateNumber} 
-                    maxLength="10" 
                     onChange={handleInputChange} 
                   />
                   <Input 
@@ -454,14 +570,17 @@ function AddStaff() {
                     label="Bank Account Number" 
                     name="bankAccountNumber" 
                     value={formData.bankAccountNumber} 
-                    onChange={handleInputChange} 
+                    onChange={handleInputChange}
+                    placeholder="9-16 digits only"
+                    title="Enter 9-16 digit account number"
                   />
                   <Input 
                     label="IFSC Code" 
                     name="ifscCode" 
                     value={formData.ifscCode} 
-                    onChange={handleInputChange} 
-                    maxLength="11"
+                    onChange={handleInputChange}
+                    placeholder="11 characters (alphanumeric)"
+                    title="Enter 11 character IFSC code (letters and numbers only)"
                   />
                   <Input 
                     label="Bank Name" 
@@ -499,15 +618,17 @@ function AddStaff() {
                     label="Aadhaar Number" 
                     name="aadhaarNumber" 
                     value={formData.aadhaarNumber} 
-                    onChange={handleInputChange} 
-                    maxLength="12"
+                    onChange={handleInputChange}
+                    placeholder="12 digits only"
+                    title="Enter 12 digit Aadhaar number"
                   />
                   <Input 
                     label="PAN Number" 
                     name="panNumber" 
                     value={formData.panNumber} 
-                    onChange={handleInputChange} 
-                    maxLength="10"
+                    onChange={handleInputChange}
+                    placeholder="ABCDE1234F"
+                    title="Enter PAN in format: ABCDE1234F"
                   />
                   <Input 
                     label="Blood Group" 
@@ -519,8 +640,8 @@ function AddStaff() {
                     label="Emergency Contact" 
                     name="emergencyContact" 
                     value={formData.emergencyContact} 
-                    maxLength="10" 
-                    onChange={handleInputChange} 
+                    onChange={handleInputChange}
+                    placeholder="10 digits only"
                   />
                   <Select 
                     label="Status" 

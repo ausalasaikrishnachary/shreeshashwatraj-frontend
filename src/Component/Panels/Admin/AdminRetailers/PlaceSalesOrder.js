@@ -621,9 +621,9 @@ function PlaceSalesOrder() {
                                 <div className="product-info">
                                     <h3>{product.name}</h3>
                                     <p className="product-category">{product.category}</p>
-                                    {product.supplier && (
+                                    {/* {product.supplier && (
                                         <p className="product-supplier">Supplier: {product.supplier}</p>
-                                    )}
+                                    )} */}
                                     <p className="product-price">₹{parseFloat(product.price || 0).toLocaleString()} / {product.unit || 'unit'}</p>
                                     <div className="product-stock-info">
                                         <p className="product-gst">GST: {product.gst_rate || 0}%</p>

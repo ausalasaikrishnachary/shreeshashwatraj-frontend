@@ -427,6 +427,7 @@ function Checkout() {
           breakdown: breakdown
         });
         setOrderPlaced(true);
+        navigate('/period');
       } else {
         throw new Error(result.error || result.details || result.message || "Failed to place order");
       }

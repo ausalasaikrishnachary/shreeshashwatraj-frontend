@@ -14,8 +14,8 @@ const Period = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-    const [downloading, setDownloading] = useState({});
-  
+  const [downloading, setDownloading] = useState({});
+
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const navigate = useNavigate();
@@ -78,57 +78,57 @@ const Period = () => {
 
   const handleDownloadPDF = async (invoice) => {
     const voucherId = invoice.originalData?.VoucherID || invoice.id;
-    
+
     try {
       setDownloading(prev => ({ ...prev, [voucherId]: true }));
-      
+
       const downloadResponse = await fetch(`${baseurl}/transactions/${voucherId}/download-pdf`);
-      
+
       if (downloadResponse.ok) {
         const pdfBlob = await downloadResponse.blob();
-        
+
         // Create download link
         const url = window.URL.createObjectURL(pdfBlob);
         const link = document.createElement('a');
         link.href = url;
-        
+
         // Get filename from response headers or use default
         const contentDisposition = downloadResponse.headers.get('content-disposition');
         let filename = `Invoice_${invoice.number}.pdf`;
-        
+
         if (contentDisposition) {
           const filenameMatch = contentDisposition.match(/filename="(.+)"/);
           if (filenameMatch) {
             filename = filenameMatch[1];
           }
         }
-        
+
         link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        
+
         console.log('PDF downloaded successfully');
-        
+
       } else if (downloadResponse.status === 404) {
         // PDF doesn't exist, generate it first
         console.log('PDF not found, generating new PDF...');
-        
+
         const generateResponse = await fetch(`${baseurl}/transactions/${voucherId}/store-pdf`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           }
         });
-        
+
         if (generateResponse.ok) {
           const result = await generateResponse.json();
           console.log('PDF generated successfully:', result);
-          
+
           // After generation, try downloading again
           const retryDownload = await fetch(`${baseurl}/transactions/${voucherId}/download-pdf`);
-          
+
           if (retryDownload.ok) {
             const pdfBlob = await retryDownload.blob();
             const url = window.URL.createObjectURL(pdfBlob);
@@ -139,7 +139,7 @@ const Period = () => {
             link.click();
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
-            
+
             console.log('PDF downloaded after generation');
           } else {
             throw new Error('Failed to download PDF after generation');
@@ -170,7 +170,7 @@ const Period = () => {
       console.log("First order:", ordersData[0]);
       if (ordersData.length > 0) {
         console.log("Available fields in first order:", Object.keys(ordersData[0]));
-        console.log("First order staff_id:", ordersData[0].staff_id); 
+        console.log("First order staff_id:", ordersData[0].staff_id);
         console.log("First order status:", ordersData[0].order_status);
       }
 
@@ -180,7 +180,7 @@ const Period = () => {
             // Fetch order items
             const itemsRes = await axios.get(`${baseurl}/orders/details/${order.order_number}`);
             const itemsData = itemsRes.data.items || [];
-                 const orderMode = order.order_mode || "Pakka"; 
+            const orderMode = order.order_mode || "Pakka";
 
             // Fetch account details by customer ID
             let accountDetails = null;
@@ -193,49 +193,65 @@ const Period = () => {
               accountDetails = null;
             }
 
-            const items = itemsData.map(item => ({
-              id: item.id,
-              order_number: item.order_number,
-              item_name: item.item_name ?? "N/A",
-              product_id: item.product_id,
-              mrp: item.mrp ?? 0,
-              sale_price: item.sale_price ?? 0,
-              price: item.price ?? 0,
-              quantity: item.quantity ?? 0,
-              total_amount: item.total_amount ?? 0,
-              discount_percentage: item.discount_percentage ?? 0,
-              discount_amount: item.discount_amount ?? 0,
-              taxable_amount: item.taxable_amount ?? 0,
-              tax_percentage: item.tax_percentage ?? 0,
-              tax_amount: item.tax_amount ?? 0,
-              item_total: item.item_total ?? 0,
-              credit_period: item.credit_period ?? 0,
-              invoice_number: item.invoice_number ?? 0,
-              invoice_status: item.invoice_status ?? 0,
-              staff_id: item.staff_id ?? order.staff_id ?? 0, 
-              assigned_staff: item.assigned_staff ?? order.assigned_staff ?? null,
-              staff_incentive: item.staff_incentive ?? 0,
-              invoice_date: item.invoce_date ?? 0,
-              credit_percentage: item.credit_percentage ?? 0,
-              sgst_percentage: item.sgst_percentage ?? 0,
-              sgst_amount: item.sgst_amount ?? 0,
-              cgst_percentage: item.cgst_percentage ?? 0,
-              cgst_amount: item.cgst_amount ?? 0,
-              discount_applied_scheme: item.discount_applied_scheme ?? "N/A"
-            }));
+            const items = await Promise.all(
+              itemsData.map(async (item) => {
+                let min_sale_price = 0;
+
+                // Fetch min_sale_price from products table
+                try {
+                  const productRes = await axios.get(`${baseurl}/products/${item.product_id}`);
+                  min_sale_price = productRes.data.min_sale_price || 0;
+                } catch (productErr) {
+                  console.warn(`Could not fetch product details for product ID ${item.product_id}:`, productErr.message);
+                  min_sale_price = 0;
+                }
+
+                return {
+                  id: item.id,
+                  order_number: item.order_number,
+                  item_name: item.item_name ?? "N/A",
+                  product_id: item.product_id,
+                  mrp: item.mrp ?? 0,
+                  sale_price: item.sale_price ?? 0,
+                  min_sale_price: min_sale_price, // Add this line
+                  price: item.price ?? 0,
+                  quantity: item.quantity ?? 0,
+                  total_amount: item.total_amount ?? 0,
+                  discount_percentage: item.discount_percentage ?? 0,
+                  discount_amount: item.discount_amount ?? 0,
+                  taxable_amount: item.taxable_amount ?? 0,
+                  tax_percentage: item.tax_percentage ?? 0,
+                  tax_amount: item.tax_amount ?? 0,
+                  item_total: item.item_total ?? 0,
+                  credit_period: item.credit_period ?? 0,
+                  invoice_number: item.invoice_number ?? 0,
+                  invoice_status: item.invoice_status ?? 0,
+                  staff_id: item.staff_id ?? order.staff_id ?? 0,
+                  assigned_staff: item.assigned_staff ?? order.assigned_staff ?? null,
+                  staff_incentive: item.staff_incentive ?? 0,
+                  invoice_date: item.invoce_date ?? 0,
+                  credit_percentage: item.credit_percentage ?? 0,
+                  sgst_percentage: item.sgst_percentage ?? 0,
+                  sgst_amount: item.sgst_amount ?? 0,
+                  cgst_percentage: item.cgst_percentage ?? 0,
+                  cgst_amount: item.cgst_amount ?? 0,
+                  discount_applied_scheme: item.discount_applied_scheme ?? "N/A"
+                };
+              })
+            );
 
             console.log(`Order ${order.order_number}:`, {
               order_status: order.order_status,
               invoice_status: order.invoice_status,
               invoice_number: order.invoice_number,
               assigned_staff: order.assigned_staff,
-              staff_id: order.staff_id 
+              staff_id: order.staff_id
             });
 
             const assignedStaff = order.assigned_staff || "N/A";
-            
+
             const staffId = order.staff_id || "N/A";
-            
+
             const orderStatus = order.order_status || "N/A";
 
             const totalStaffIncentive = items.reduce((sum, item) => sum + (item.staff_incentive || 0), 0);
@@ -244,8 +260,8 @@ const Period = () => {
               ...order,
               items: items,
               assigned_staff: assignedStaff,
-              staff_id: staffId, 
-              order_status: orderStatus, 
+              staff_id: staffId,
+              order_status: orderStatus,
               staff_incentive: totalStaffIncentive,
               account_details: accountDetails,
               order_mode: orderMode // Add this
@@ -259,7 +275,7 @@ const Period = () => {
               staff_id: order.staff_id || "N/A",
               order_status: order.order_status || "N/A", // Use order_status from API
               account_details: null,
-                order_mode: order.order_mode || "Pakka" // Add this
+              order_mode: order.order_mode || "Pakka" // Add this
             };
           }
         })
@@ -287,15 +303,15 @@ const Period = () => {
       const newSelected = { ...prev };
       const currentSelectedIds = newSelected[orderId] || [];
       const order = orders.find(o => o.id === orderId);
-      
+
       if (!order || !order.items) return prev;
-      
+
       if (isSelected) {
         // Auto-select all eligible items with the same credit period
         if (currentSelectedIds.length === 0) {
           // No items selected yet - select all eligible with this credit period
-          const eligibleItems = order.items.filter(item => 
-            item.credit_period === itemCreditPeriod && 
+          const eligibleItems = order.items.filter(item =>
+            item.credit_period === itemCreditPeriod &&
             item.invoice_status !== 1
           );
           newSelected[orderId] = eligibleItems.map(item => item.id);
@@ -303,12 +319,12 @@ const Period = () => {
           // Some items already selected - check if credit period matches
           const firstSelectedItemId = currentSelectedIds[0];
           const firstSelectedItem = order.items.find(item => item.id === firstSelectedItemId);
-          
+
           if (firstSelectedItem && firstSelectedItem.credit_period === itemCreditPeriod) {
             // Same credit period - add all remaining eligible items with this credit period
-            const eligibleItems = order.items.filter(item => 
-              item.credit_period === itemCreditPeriod && 
-              item.invoice_status !== 1 && 
+            const eligibleItems = order.items.filter(item =>
+              item.credit_period === itemCreditPeriod &&
+              item.invoice_status !== 1 &&
               !currentSelectedIds.includes(item.id)
             );
             newSelected[orderId] = [...currentSelectedIds, ...eligibleItems.map(item => item.id)];
@@ -335,7 +351,7 @@ const Period = () => {
   const handleSelectAll = (orderId, items) => {
     const currentSelectedIds = selectedItems[orderId] || [];
     const isAllSelected = currentSelectedIds.length === items.length;
-    
+
     if (isAllSelected) {
       // Deselect all
       setSelectedItems(prev => {
@@ -350,7 +366,7 @@ const Period = () => {
         alert(`Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days. Please select items with the same credit period.`);
         return;
       }
-      
+
       // Select all (all have same credit period)
       setSelectedItems(prev => ({
         ...prev,
@@ -514,7 +530,7 @@ const Period = () => {
 
         // Add staff_id to invoice data
         staff_id: staffId,
-  order_mode: order.order_mode || "Pakka",
+        order_mode: order.order_mode || "Pakka",
         // Pass the complete account details object
         fullAccountDetails: accountDetails
       };
@@ -628,7 +644,7 @@ const Period = () => {
                         <td>₹{(order.order_total ?? 0).toLocaleString()}</td>
                         <td>₹{(order.discount_amount ?? 0).toLocaleString()}</td>
                         <td>{order.assigned_staff || "N/A"}</td>
-                        <td>{order.order_status || "N/A"}</td> 
+                        <td>{order.order_status || "N/A"}</td>
                         <td>
                           {new Date(order.created_at).toLocaleDateString('en-GB')}
                         </td>
@@ -643,28 +659,28 @@ const Period = () => {
                             </button>
                           </div>
                         </td>
-                    <td>
-  <button
-    className={`p-btn p-btn-pdf ${order.hasPDF ? 'p-btn-success' : 'p-btn-warning'}`}
-    onClick={() => handleDownloadPDF(order)}
-    disabled={downloading[order.id]}
-    title={order.hasPDF ? 'Download PDF' : 'Generate and Download PDF'}
-  >
-    {downloading[order.id] ? (
-      <span className="p-download-spinner">Loading...</span>
-    ) : order.hasPDF ? (
-      <>
-        <FaDownload className="p-icon" />
-        Download
-      </>
-    ) : (
-      <>
-        <FaFilePdf className="p-icon" />
-        Generate PDF
-      </>
-    )}
-  </button>
-</td>
+                        <td>
+                          <button
+                            className={`p-btn p-btn-pdf ${order.hasPDF ? 'p-btn-success' : 'p-btn-warning'}`}
+                            onClick={() => handleDownloadPDF(order)}
+                            disabled={downloading[order.id]}
+                            title={order.hasPDF ? 'Download PDF' : 'Generate and Download PDF'}
+                          >
+                            {downloading[order.id] ? (
+                              <span className="p-download-spinner">Loading...</span>
+                            ) : order.hasPDF ? (
+                              <>
+                                <FaDownload className="p-icon" />
+                                Download
+                              </>
+                            ) : (
+                              <>
+                                <FaFilePdf className="p-icon" />
+                                Generate PDF
+                              </>
+                            )}
+                          </button>
+                        </td>
                       </tr>
 
                       {isOrderOpen && (
@@ -709,6 +725,7 @@ const Period = () => {
                                     <th>Item Name</th>
                                     <th>Quantity</th>
                                     <th>Sale Price</th>
+                                    <th>Min Sale Price</th> {/* Add this column */}
                                     <th>Price</th>
                                     <th>Discount Amount</th>
                                     <th>Credit Period</th>
@@ -730,7 +747,7 @@ const Period = () => {
                                           ) : (
                                             (() => {
                                               const currentSelectedIds = selectedItems[order.id] || [];
-                                              
+
                                               if (currentSelectedIds.length === 0) {
                                                 return (
                                                   <input
@@ -744,13 +761,13 @@ const Period = () => {
                                                   />
                                                 );
                                               }
-                                              
+
                                               const firstSelectedId = currentSelectedIds[0];
                                               const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
                                               const selectedCreditPeriod = firstSelectedItem?.credit_period;
-                                              
+
                                               const isSelectable = selectedCreditPeriod === item.credit_period;
-                                              
+
                                               return (
                                                 <input
                                                   type="checkbox"
@@ -760,8 +777,8 @@ const Period = () => {
                                                   }
                                                   className="p-item-checkbox"
                                                   disabled={!isSelectable}
-                                                  title={!isSelectable ? 
-                                                    `Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.` : 
+                                                  title={!isSelectable ?
+                                                    `Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.` :
                                                     "Select for invoice generation"}
                                                 />
                                               );
@@ -771,6 +788,7 @@ const Period = () => {
                                         <td>{item.item_name}</td>
                                         <td>{item.quantity}</td>
                                         <td>₹{item.sale_price.toLocaleString()}</td>
+                                        <td>₹{item.min_sale_price.toLocaleString()}</td> {/* Add this line */}
                                         <td>₹{item.price.toLocaleString()}</td>
                                         <td>₹{item.discount_amount.toLocaleString()}</td>
                                         <td>{item.credit_period}</td>
@@ -791,7 +809,7 @@ const Period = () => {
                                             </span>
                                           ) : isItemSelected ? (
                                             <span className="p-selected-text" title="Selected for invoice">
-                                              Selected ✓ 
+                                              Selected ✓
                                             </span>
                                           ) : (() => {
                                             const currentSelectedIds = selectedItems[order.id] || [];
@@ -800,8 +818,8 @@ const Period = () => {
                                               const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
                                               if (firstSelectedItem && firstSelectedItem.credit_period !== item.credit_period) {
                                                 return (
-                                                  <span className="p-different-period-text" 
-                                                        title={`Different credit period (${item.credit_period} days vs selected ${firstSelectedItem.credit_period} days)`}>
+                                                  <span className="p-different-period-text"
+                                                    title={`Different credit period (${item.credit_period} days vs selected ${firstSelectedItem.credit_period} days)`}>
                                                     Different Period
                                                   </span>
                                                 );
@@ -809,7 +827,7 @@ const Period = () => {
                                             }
                                             return (
                                               <span className="p-select-prompt-text" title="Select this item to generate invoice">
-                                                Available 
+                                                Available
                                               </span>
                                             );
                                           })()}
@@ -992,6 +1010,10 @@ const Period = () => {
                   <div className="p-detail-row">
                     <span className="p-detail-label">Invoice Number:</span>
                     <span className="p-detail-value">{modalData.invoice_number || "N/A"}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Min Sale Price:</span>
+                    <span className="p-detail-value">₹{modalData.min_sale_price?.toLocaleString() || '0'}</span>
                   </div>
                   <div className="p-detail-row">
                     <span className="p-detail-label">Price:</span>

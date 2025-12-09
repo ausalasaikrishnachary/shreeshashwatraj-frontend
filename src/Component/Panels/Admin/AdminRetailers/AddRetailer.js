@@ -803,7 +803,7 @@
 //           const response = await axios.get(`${baseurl}/accounts/${id}`);
 //           setFormData(response.data);
 //           setIsEditing(true);
-          
+
 //           const isSameAddress = 
 //             response.data.billing_address_line1 === response.data.shipping_address_line1 &&
 //             response.data.billing_address_line2 === response.data.shipping_address_line2 &&
@@ -813,7 +813,7 @@
 //             response.data.billing_country === response.data.shipping_country &&
 //             response.data.billing_branch_name === response.data.shipping_branch_name &&
 //             response.data.billing_gstin === response.data.shipping_gstin;
-            
+
 //           setSameAsShipping(isSameAddress);
 //         } catch (err) {
 //           console.error('Failed to fetch customer data', err);
@@ -826,7 +826,7 @@
 //   const handleGstinChange = async (e) => {
 //     const { name, value } = e.target;
 //     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
 //     // Clear error when user starts typing
 //     if (errors[name]) {
 //       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -837,17 +837,17 @@
 //       try {
 //         setIsLoadingGstin(true);
 //         setGstinError(null);
-        
+
 //         const response = await axios.post(`${baseurl}/gstin-details`, { gstin: value });
-        
+
 //         if (response.data.success && response.data.result) {
 //           const result = response.data.result;
 //           const addr = result.pradr?.addr || {};
-          
+
 //           // Construct address lines
 //           const addressLine1 = `${addr.bno || ''}${addr.bno && addr.flno ? ', ' : ''}${addr.flno || ''}`.trim();
 //           const addressLine2 = `${addr.st || ''}${addr.st && addr.bnm ? ', ' : ''}${addr.bnm || ''}${(addr.st || addr.bnm) && addr.loc ? ', ' : ''}${addr.loc || ''}`.trim();
-          
+
 //           // Update form data with the fetched values
 //           setFormData(prev => ({
 //             ...prev,
@@ -869,7 +869,7 @@
 //             billing_state: addr.stcd || '',
 //             billing_country: 'India'
 //           }));
-          
+
 //           // Set same as shipping address to true since we're populating both
 //           setSameAsShipping(true);
 //         }
@@ -904,7 +904,7 @@
 
 //   const validateCurrentTab = () => {
 //     const newErrors = {};
-    
+
 //     switch (activeTab) {
 //       case 'information':
 //         const infoFields = ['title', 'name', 'entity_type', 'group', 'mobile_number', 'email', 'display_name'];
@@ -913,7 +913,7 @@
 //             newErrors[field] = 'This field is required';
 //           }
 //         });
-        
+
 //         // Email validation
 //         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
 //           newErrors.email = 'Invalid email format';
@@ -924,7 +924,7 @@
 //           newErrors.mobile_number = 'Invalid mobile number (10 digits required)';
 //         }
 //         break;
-        
+
 //       case 'banking':
 //         const bankingFields = ['account_number', 'account_name', 'bank_name', 'account_type', 'ifsc_code', 'branch_name', 'pan', 'currency', 'terms_of_payment', 'reverse_charge', 'export_sez'];
 //         bankingFields.forEach(field => {
@@ -933,7 +933,7 @@
 //           }
 //         });
 //         break;
-        
+
 //       case 'shipping':
 //         const shippingFields = ['shipping_address_line1', 'shipping_city', 'shipping_pin_code', 'shipping_state', 'shipping_country'];
 //         shippingFields.forEach(field => {
@@ -941,13 +941,13 @@
 //             newErrors[field] = 'This field is required';
 //           }
 //         });
-        
+
 //         // PIN code validation
 //         if (formData.shipping_pin_code && !/^[0-9]{6}$/.test(formData.shipping_pin_code)) {
 //           newErrors.shipping_pin_code = 'Invalid PIN code (6 digits required)';
 //         }
 //         break;
-        
+
 //       case 'billing':
 //         if (!sameAsShipping) {
 //           const billingFields = ['billing_address_line1', 'billing_city', 'billing_pin_code', 'billing_state', 'billing_country'];
@@ -956,14 +956,14 @@
 //               newErrors[field] = 'This field is required';
 //             }
 //           });
-          
+
 //           if (formData.billing_pin_code && !/^[0-9]{6}$/.test(formData.billing_pin_code)) {
 //             newErrors.billing_pin_code = 'Invalid PIN code (6 digits required)';
 //           }
 //         }
 //         break;
 //     }
-    
+
 //     setErrors(newErrors);
 //     return Object.keys(newErrors).length === 0;
 //   };
@@ -972,7 +972,7 @@
 //     if (!validateCurrentTab()) {
 //       return;
 //     }
-    
+
 //     const currentIndex = tabs.findIndex(tab => tab.id === activeTab);
 //     if (currentIndex < tabs.length - 1) {
 //       setActiveTab(tabs[currentIndex + 1].id);
@@ -988,7 +988,7 @@
 
 //   const handleSubmit = async (e) => {
 //     e.preventDefault();
-    
+
 //     if (!validateCurrentTab()) {
 //       return;
 //     }
@@ -1078,7 +1078,7 @@
 //                   </div>
 //                 </div>
 
-             
+
 //                <div className="mb-3">
 //                   <label className="customer-form-label">Group Type*</label>
 //                   <select 
@@ -1181,7 +1181,7 @@
 //               </div>
 
 
-               
+
 //             </div>
 //           </FormSection>
 //         );
@@ -1576,10 +1576,10 @@
 
 
 
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect } from 'react';
 import FormLayout, { FormSection } from '../../../Layouts/FormLayout/FormLayout';
 import "./AddRetailer.css";
-import axios from 'axios'; 
+import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { baseurl } from './../../../BaseURL/BaseURL';
 
@@ -1598,7 +1598,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [loading, setLoading] = useState(mode !== 'add');
   const [staffList, setStaffList] = useState([]);
-  
+
   const [formData, setFormData] = useState({
     title: "",
     entity_type: "",
@@ -1611,8 +1611,9 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     assigned_staff: "",
     staffid: "",
     password: "",
-     discount: 0, // Added discount field
+    discount: 0, // Added discount field
     Target: 100000, // Added Target field
+    credit_limit: "",
     gstin: "",
     gst_registered_name: "",
     business_name: "",
@@ -1673,12 +1674,12 @@ const RetailerForm = ({ user, mode = 'add' }) => {
           setLoading(true);
           const response = await axios.get(`${baseurl}/accounts/${id}`);
           const data = response.data;
-          
+
           setFormData(data);
           setIsEditing(mode === 'edit');
           setIsViewing(mode === 'view');
-          
-          const isSameAddress = 
+
+          const isSameAddress =
             data.billing_address_line1 === data.shipping_address_line1 &&
             data.billing_address_line2 === data.shipping_address_line2 &&
             data.billing_city === data.shipping_city &&
@@ -1687,7 +1688,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
             data.billing_country === data.shipping_country &&
             data.billing_branch_name === data.shipping_branch_name &&
             data.billing_gstin === data.shipping_gstin;
-            
+
           setSameAsShipping(isSameAddress);
         } catch (err) {
           console.error('Failed to fetch retailer data', err);
@@ -1774,10 +1775,10 @@ const RetailerForm = ({ user, mode = 'add' }) => {
 
   const handleChange = (e) => {
     if (isViewing) return;
-    
+
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -1795,25 +1796,25 @@ const RetailerForm = ({ user, mode = 'add' }) => {
 
   const validateCurrentTab = () => {
     if (isViewing) return true;
-    
+
     const newErrors = {};
-    
+
     switch (activeTab) {
       case 'information':
         // Base required fields for all groups
         const baseInfoFields = ['title', 'name', 'group', 'mobile_number', 'email', 'display_name', 'password'];
-        
+
         // Additional fields only for non-SUPPLIERS groups
         if (formData.group !== 'SUPPLIERS') {
           baseInfoFields.push('role', 'entity_type', 'assigned_staff');
         }
-        
+
         baseInfoFields.forEach(field => {
           if (!formData[field]) {
             newErrors[field] = 'This field is required';
           }
         });
-        
+
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
           newErrors.email = 'Invalid email format';
         }
@@ -1822,7 +1823,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
           newErrors.mobile_number = 'Invalid mobile number (10 digits required)';
         }
         break;
-        
+
       case 'banking':
         const bankingFields = ['account_number', 'account_name', 'bank_name', 'account_type', 'ifsc_code', 'branch_name', 'pan', 'currency', 'terms_of_payment'];
         bankingFields.forEach(field => {
@@ -1831,7 +1832,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
           }
         });
         break;
-        
+
       case 'shipping':
         const shippingFields = ['shipping_address_line1', 'shipping_city', 'shipping_pin_code', 'shipping_state', 'shipping_country'];
         shippingFields.forEach(field => {
@@ -1839,12 +1840,12 @@ const RetailerForm = ({ user, mode = 'add' }) => {
             newErrors[field] = 'This field is required';
           }
         });
-        
+
         if (formData.shipping_pin_code && !/^[0-9]{6}$/.test(formData.shipping_pin_code)) {
           newErrors.shipping_pin_code = 'Invalid PIN code (6 digits required)';
         }
         break;
-        
+
       case 'billing':
         if (!sameAsShipping) {
           const billingFields = ['billing_address_line1', 'billing_city', 'billing_pin_code', 'billing_state', 'billing_country'];
@@ -1853,14 +1854,14 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               newErrors[field] = 'This field is required';
             }
           });
-          
+
           if (formData.billing_pin_code && !/^[0-9]{6}$/.test(formData.billing_pin_code)) {
             newErrors.billing_pin_code = 'Invalid PIN code (6 digits required)';
           }
         }
         break;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -1870,7 +1871,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       alert('Please fill all required fields in the current tab.');
       return;
     }
-    
+
     const currentIndex = tabs.findIndex(tab => tab.id === activeTab);
     if (currentIndex < tabs.length - 1) {
       setActiveTab(tabs[currentIndex + 1].id);
@@ -1899,15 +1900,15 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       navigate('/retailers');
       return;
     }
-    
+
     if (!validateCurrentTab()) {
       return;
     }
 
     // Auto-generate password as Name@123
-    let finalData = { 
-      ...formData, 
-      password: `${formData.name}@123` 
+    let finalData = {
+      ...formData,
+      password: `${formData.name}@123`
     };
 
     // Conditionally remove fields for SUPPLIERS group
@@ -1932,35 +1933,35 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       };
     }
 
-  const isSupplier = formData.group === "SUPPLIERS";
+    const isSupplier = formData.group === "SUPPLIERS";
 
-try {
-  if (isEditing) {
-    await axios.put(`${baseurl}/accounts/${id}`, finalData);
+    try {
+      if (isEditing) {
+        await axios.put(`${baseurl}/accounts/${id}`, finalData);
 
-    if (isSupplier) {
-      alert("Supplier updated successfully!");
-    } else {
-      alert("Retailer updated successfully!");
+        if (isSupplier) {
+          alert("Supplier updated successfully!");
+        } else {
+          alert("Retailer updated successfully!");
+        }
+
+      } else {
+        await axios.post(`${baseurl}/accounts`, finalData);
+
+        if (isSupplier) {
+          alert("Supplier added successfully!");
+        } else {
+          alert("Retailer added successfully!");
+        }
+      }
+
+      navigate('/retailers');
+
+    } catch (err) {
+      console.error(err);
+
+      alert(`Failed to ${isEditing ? 'update' : 'add'} ${isSupplier ? 'supplier' : 'retailer'}`);
     }
-
-  } else {
-    await axios.post(`${baseurl}/accounts`, finalData);
-
-    if (isSupplier) {
-      alert("Supplier added successfully!");
-    } else {
-      alert("Retailer added successfully!");
-    }
-  }
-
-  navigate('/retailers');
-
-} catch (err) {
-  console.error(err);
-
-  alert(`Failed to ${isEditing ? 'update' : 'add'} ${isSupplier ? 'supplier' : 'retailer'}`);
-}
 
   };
 
@@ -2005,12 +2006,12 @@ try {
 
   const renderField = (fieldConfig) => {
     const { type = 'text', name, label, required = true, options, onChange: customOnChange, ...props } = fieldConfig;
-    
+
     if (isViewing) {
-      const displayValue = (name === 'staffid' && formData.assigned_staff) 
-        ? formData.assigned_staff 
+      const displayValue = (name === 'staffid' && formData.assigned_staff)
+        ? formData.assigned_staff
         : (formData[name] || 'N/A');
-      
+
       return (
         <div className="mb-3">
           <label className="customer-form-label view-mode-label">{label}</label>
@@ -2020,7 +2021,7 @@ try {
     }
 
     // Conditionally hide fields for SUPPLIERS group
-    if (formData.group === 'SUPPLIERS' && ['role',  'assigned_staff', 'staffid'].includes(name)) {
+    if (formData.group === 'SUPPLIERS' && ['role', 'assigned_staff', 'staffid'].includes(name)) {
       return null;
     }
 
@@ -2028,11 +2029,11 @@ try {
       return (
         <div className="mb-3">
           <label className="customer-form-label">{label}{required && '*'}</label>
-          <select 
-            className={getSelectClass(name)} 
-            name={name} 
-            value={formData[name]} 
-            onChange={handleChange} 
+          <select
+            className={getSelectClass(name)}
+            name={name}
+            value={formData[name]}
+            onChange={handleChange}
             required={required}
             {...props}
           >
@@ -2051,12 +2052,12 @@ try {
     return (
       <div className="mb-3">
         <label className="customer-form-label">{label}{required && '*'}</label>
-        <input 
-          type={type} 
-          name={name} 
-          value={formData[name]} 
-          className={getInputClass(name)} 
-          onChange={customOnChange || handleChange} 
+        <input
+          type={type}
+          name={name}
+          value={formData[name]}
+          className={getInputClass(name)}
+          onChange={customOnChange || handleChange}
           required={required}
           {...props}
         />
@@ -2072,304 +2073,320 @@ try {
 
     switch (activeTab) {
       case 'information':
-       return (
-  <FormSection
-    id="information"
-    activeTab={activeTab}
-    title="Information"
-    onBack={null}
-    onNext={handleNext}
-    nextLabel="Banking & Taxes"
-    isViewing={isViewing}
-    onCancel={handleCancel}
-  >
-    <div className="row">
-      <div className="col-md-6">
-        <div className="row">
-          <div className="col-md-4">
-            {renderField({
-              type: 'select',
-              name: 'title',
-              label: 'Title',
-              options: [
-                { value: 'Mr.', label: 'Mr.' },
-                { value: 'Mrs.', label: 'Mrs.' },
-                { value: 'Ms.', label: 'Ms.' },
-                { value: 'Dr.', label: 'Dr.' }
-              ]
-            })}
-          </div>
-          <div className="col-md-8">
-            {renderField({
-              name: 'name',
-              label: 'Name'
-            })}
-          </div>
-        </div>
-      </div>
-      <div className="col-md-6">
-        {renderField({
-          type: 'select',
-          name: 'entity_type',
-          label: 'Entity Type',
-          options: [
-            { value: 'Individual', label: 'Individual' },
-            { value: 'Company', label: 'Company' },
-            { value: 'Partnership', label: 'Partnership' }
-          ]
-        })}
-      </div>
-    </div>
+        return (
+          <FormSection
+            id="information"
+            activeTab={activeTab}
+            title="Information"
+            onBack={null}
+            onNext={handleNext}
+            nextLabel="Banking & Taxes"
+            isViewing={isViewing}
+            onCancel={handleCancel}
+          >
+            <div className="row">
+              <div className="col-md-6">
+                <div className="row">
+                  <div className="col-md-4">
+                    {renderField({
+                      type: 'select',
+                      name: 'title',
+                      label: 'Title',
+                      options: [
+                        { value: 'Mr.', label: 'Mr.' },
+                        { value: 'Mrs.', label: 'Mrs.' },
+                        { value: 'Ms.', label: 'Ms.' },
+                        { value: 'Dr.', label: 'Dr.' }
+                      ]
+                    })}
+                  </div>
+                  <div className="col-md-8">
+                    {renderField({
+                      name: 'name',
+                      label: 'Name'
+                    })}
+                  </div>
+                </div>
+              </div>
+              <div className="col-md-6">
+                {renderField({
+                  type: 'select',
+                  name: 'entity_type',
+                  label: 'Entity Type',
+                  options: [
+                    { value: 'Individual', label: 'Individual' },
+                    { value: 'Company', label: 'Company' },
+                    { value: 'Partnership', label: 'Partnership' }
+                  ]
+                })}
+              </div>
+            </div>
 
-    <div className="row">
-      <div className="col-md-6">
-        {renderField({
-          type: 'select',
-          name: 'group',
-          label: 'Group Type',
-          options: accountGroups.map(group => ({
-            value: group.AccountsGroupName,
-            label: group.AccountsGroupName
-          }))
-        })}
-      </div>
-      <div className="col-md-6">
-        {renderField({
-          name: 'gstin',
-          label: 'Customer GSTIN',
-          type: 'text',
-          maxLength: 15,
-          pattern: "^[0-9A-Z]{15}$",
-          title: "GSTIN must be exactly 15 characters (A-Z, 0-9 only)",
-          onChange: handleGstinChange
-        })}
-        {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
-        {gstinError && <div className="text-danger small">{gstinError}</div>}
-      </div>
-    </div>
+            <div className="row">
+              <div className="col-md-6">
+                {renderField({
+                  type: 'select',
+                  name: 'group',
+                  label: 'Group Type',
+                  options: accountGroups.map(group => ({
+                    value: group.AccountsGroupName,
+                    label: group.AccountsGroupName
+                  }))
+                })}
+              </div>
+              <div className="col-md-6">
+                {renderField({
+                  name: 'gstin',
+                  label: 'Customer GSTIN',
+                  type: 'text',
+                  maxLength: 15,
+                  pattern: "^[0-9A-Z]{15}$",
+                  title: "GSTIN must be exactly 15 characters (A-Z, 0-9 only)",
+                  onChange: handleGstinChange
+                })}
+                {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
+                {gstinError && <div className="text-danger small">{gstinError}</div>}
+              </div>
+            </div>
 
-    {/* Email and Assign Staff Row - Fixed Layout */}
-    <div className="row">
-      <div className="col-md-6">
-        {renderField({
-          type: 'email',
-          name: 'email',
-          label: 'Email'
-        })}
-      </div>
-      
-      {/* Conditionally show Assign Staff field */}
-      {formData.group !== 'SUPPLIERS' ? (
-        <div className="col-md-6">
-          {renderField({
-            type: 'select',
-            name: 'staffid',
-            label: 'Assign staff',
-            options: staffList
-          })}
-        </div>
-      ) : (
-        <div className="col-md-6">
-          {renderField({
-            name: 'business_name',
-            label: 'Business Name'
-          })}
-        </div>
-      )}
-    </div>
+            {/* Email and Assign Staff Row - Fixed Layout */}
+            <div className="row">
+              <div className="col-md-6">
+                {renderField({
+                  type: 'email',
+                  name: 'email',
+                  label: 'Email'
+                })}
+              </div>
 
-    {/* Business Name and Display Name Row - Adjusted based on group */}
-    <div className="row">
-      {formData.group !== 'SUPPLIERS' ? (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              name: 'business_name',
-              label: 'Business Name'
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              name: 'display_name',
-              label: 'Display Name'
-            })}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              name: 'display_name',
-              label: 'Display Name'
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              name: 'gst_registered_name',
-              label: 'Customer GST Registered Name'
-            })}
-          </div>
-        </>
-      )}
-    </div>
+              {/* Conditionally show Assign Staff field */}
+              {formData.group !== 'SUPPLIERS' ? (
+                <div className="col-md-6">
+                  {renderField({
+                    type: 'select',
+                    name: 'staffid',
+                    label: 'Assign staff',
+                    options: staffList
+                  })}
+                </div>
+              ) : (
+                <div className="col-md-6">
+                  {renderField({
+                    name: 'business_name',
+                    label: 'Business Name'
+                  })}
+                </div>
+              )}
+            </div>
 
-    {/* GST Registered Name and Additional Business Name Row - Adjusted based on group */}
-    <div className="row">
-      {formData.group !== 'SUPPLIERS' ? (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              name: 'gst_registered_name',
-              label: 'Customer GST Registered Name'
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              name: 'additional_business_name',
-              label: 'Additional Business Name'
-            })}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              name: 'additional_business_name',
-              label: 'Additional Business Name'
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              type: 'tel',
-              name: 'phone_number',
-              label: 'Phone Number'
-            })}
-          </div>
-        </>
-      )}
-    </div>
+            {/* Business Name and Display Name Row - Adjusted based on group */}
+            <div className="row">
+              {formData.group !== 'SUPPLIERS' ? (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'business_name',
+                      label: 'Business Name'
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'display_name',
+                      label: 'Display Name'
+                    })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'display_name',
+                      label: 'Display Name'
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'gst_registered_name',
+                      label: 'Customer GST Registered Name'
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
 
-    {/* Phone Number and Fax Row - Adjusted based on group */}
-    <div className="row">
-      {formData.group !== 'SUPPLIERS' ? (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              type: 'tel',
-              name: 'phone_number',
-              label: 'Phone Number'
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              name: 'fax',
-              label: 'Fax'
-            })}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              name: 'fax',
-              label: 'Fax'
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              type: 'tel',
-              name: 'mobile_number',
-              label: 'Mobile Number'
-            })}
-          </div>
-        </>
-      )}
-    </div>
+            {/* GST Registered Name and Additional Business Name Row - Adjusted based on group */}
+            <div className="row">
+              {formData.group !== 'SUPPLIERS' ? (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'gst_registered_name',
+                      label: 'Customer GST Registered Name'
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'additional_business_name',
+                      label: 'Additional Business Name'
+                    })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'additional_business_name',
+                      label: 'Additional Business Name'
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'tel',
+                      name: 'phone_number',
+                      label: 'Phone Number'
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
 
-    {/* Mobile Number and Password Row - Adjusted based on group */}
-    <div className="row">
-      {formData.group !== 'SUPPLIERS' ? (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              type: 'tel',
-              name: 'mobile_number',
-              label: 'Mobile Number'
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              type: 'text',
-              name: 'password',
-              label: 'Password',
-              value: formData.password,
-              disabled: true
-            })}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              type: 'text',
-              name: 'password',
-              label: 'Password',
-              value: formData.password,
-              disabled: true
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              type: 'number',
-              name: 'discount',
-              label: 'Discount (%)',
-              min: 0,
-              max: 100,
-              step: 0.1
-            })}
-          </div>
-        </>
-      )}
-    </div>
+            {/* Phone Number and Fax Row - Adjusted based on group */}
+            <div className="row">
+              {formData.group !== 'SUPPLIERS' ? (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'tel',
+                      name: 'phone_number',
+                      label: 'Phone Number'
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'fax',
+                      label: 'Fax'
+                    })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'fax',
+                      label: 'Fax'
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'tel',
+                      name: 'mobile_number',
+                      label: 'Mobile Number'
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
 
-    {/* Discount and Target Row - Adjusted based on group */}
-    <div className="row">
-      {formData.group !== 'SUPPLIERS' ? (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              type: 'number',
-              name: 'discount',
-              label: 'Discount (%)',
-              min: 0,
-              max: 100,
-              step: 0.1
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              type: 'number',
-              name: 'Target',
-              label: 'Target (₹)',
-              min: 0,
-              step: 1000
-            })}
-          </div>
-        </>
-      ) : (
-        <div className="col-md-6">
-          {renderField({
-            type: 'number',
-            name: 'Target',
-            label: 'Target (₹)',
-            min: 0,
-            step: 1000
-          })}
-        </div>
-      )}
-    </div>
-  </FormSection>
-);
+            {/* Mobile Number and Password Row - Adjusted based on group */}
+            <div className="row">
+              {formData.group !== 'SUPPLIERS' ? (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'tel',
+                      name: 'mobile_number',
+                      label: 'Mobile Number'
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'text',
+                      name: 'password',
+                      label: 'Password',
+                      value: formData.password,
+                      disabled: true
+                    })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'text',
+                      name: 'password',
+                      label: 'Password',
+                      value: formData.password,
+                      disabled: true
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'number',
+                      name: 'discount',
+                      label: 'Discount (%)',
+                      min: 0,
+                      max: 100,
+                      step: 0.1
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Discount and Target Row - Adjusted based on group */}
+            {/* Discount and Target Row - Adjusted based on group */}
+            <div className="row">
+              {formData.group !== 'SUPPLIERS' ? (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'number',
+                      name: 'discount',
+                      label: 'Discount (%)',
+                      min: 0,
+                      max: 100,
+                      step: 0.1
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'number',
+                      name: 'Target',
+                      label: 'Target (₹)',
+                      min: 0,
+                      step: 1000
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="col-md-6">
+                  {renderField({
+                    type: 'number',
+                    name: 'Target',
+                    label: 'Target (₹)',
+                    min: 0,
+                    step: 1000
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Credit Limit Field - Only show when Retailer is selected */}
+            {formData.group === 'Retailer' && (
+              <div className="row">
+                <div className="col-md-6">
+                  {renderField({
+                    type: 'number',
+                    name: 'credit_limit',
+                    label: 'Credit Limit (₹)',
+                    min: 0,
+                    step: 1000
+                  })}
+                </div>
+              </div>
+            )}
+          </FormSection>
+        );
 
       case 'banking':
         return (
@@ -2614,7 +2631,7 @@ try {
                   label: 'Branch Name'
                 })}
               </div>
-              
+
               <div className="col-md-6">
                 {renderField({
                   name: 'shipping_gstin',

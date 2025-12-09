@@ -129,6 +129,7 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
         opening_stock_date: product.opening_stock_date ? product.opening_stock_date.split('T')[0] : new Date().toISOString().split('T')[0],
         min_stock_alert: product.min_stock_alert || '',
         max_stock_alert: product.max_stock_alert || '',
+        min_sale_price: product.min_sale_price || '',
         description: product.description || '',
         maintain_batch: product.maintain_batch || false
       });
@@ -414,6 +415,7 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     opening_stock_date: new Date().toISOString().split('T')[0],
     min_stock_alert: '',
     max_stock_alert: '',
+    min_sale_price: '',
     description: '',
     maintain_batch: false
   });
@@ -1000,6 +1002,17 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
                       name="max_stock_alert"
                       type="number"
                       value={formData.max_stock_alert}
+                      onChange={handleChange}
+                    />
+                  </div>
+                  <div className="col">
+                    <Form.Label>Minimum Sale Price</Form.Label>
+                    <Form.Control
+                      placeholder="Minimum Sale Price"
+                      name="min_sale_price"
+                      type="number"
+                      step="0.01"
+                      value={formData.min_sale_price}
                       onChange={handleChange}
                     />
                   </div>
