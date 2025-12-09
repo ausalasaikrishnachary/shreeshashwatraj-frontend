@@ -12,10 +12,8 @@ const InvoicePreview_preview = ({
   isSameState,
   onOrderModeChange
 }) => {
-  // Use local state for dropdown to make it immediately responsive
   const [localOrderMode, setLocalOrderMode] = useState("PAKKA");
 
-  // Initialize when invoiceData changes
   useEffect(() => {
     if (invoiceData && invoiceData.order_mode) {
       const mode = invoiceData.order_mode.toUpperCase();
@@ -23,14 +21,11 @@ const InvoicePreview_preview = ({
     }
   }, [invoiceData]);
 
-  // Calculate item taxable amount based on database values or calculate it
   const calculateItemTaxableAmount = (item) => {
-    // First try to get from item.taxable_amount (from database)
     if (item.taxable_amount !== undefined && item.taxable_amount !== null) {
       return parseFloat(item.taxable_amount) || 0;
     }
     
-    // If not available, calculate it
     const quantity = parseFloat(item.quantity) || 0;
     const price = parseFloat(item.price) || 0;
     const discount = parseFloat(item.discount) || 0;
@@ -45,17 +40,14 @@ const InvoicePreview_preview = ({
     const taxableAmount = calculateItemTaxableAmount(item);
     
     if (localOrderMode === "KACHA") {
-      // For KACHA mode, GST should be 0, so total = taxable amount
       return taxableAmount;
     } else {
-      // For PAKKA mode, use item.total or calculate with GST
       const gst = parseFloat(item.gst) || 0;
       const taxAmount = taxableAmount * (gst / 100);
       return taxableAmount + taxAmount;
     }
   };
 
-  // Calculate GST breakdown based on order mode
   const calculateAdjustedGSTBreakdown = () => {
     if (!invoiceData || !invoiceData.items) return {
       totalCGST: "0.00",
@@ -102,7 +94,6 @@ const InvoicePreview_preview = ({
 
   const adjustedGstBreakdown = calculateAdjustedGSTBreakdown();
   
-  // Calculate adjusted totals based on order mode by SUMMING ALL ITEMS
   const getAdjustedTotals = () => {
     if (!invoiceData || !invoiceData.items) return {
       taxableAmount: "0.00",
@@ -114,7 +105,6 @@ const InvoicePreview_preview = ({
     let totalGSTAmount = 0;
     let totalGrandTotal = 0;
     
-    // Sum up all items
     invoiceData.items.forEach(item => {
       const taxableAmount = calculateItemTaxableAmount(item);
       const itemTotal = calculateItemTotal(item);
@@ -141,18 +131,15 @@ const InvoicePreview_preview = ({
 
   const adjustedTotals = getAdjustedTotals();
 
-  // Handle dropdown change
   const handleOrderModeChange = (value) => {
     const normalizedValue = value.toUpperCase();
     setLocalOrderMode(normalizedValue);
     
-    // Call parent handler if provided
     if (onOrderModeChange) {
       onOrderModeChange(normalizedValue);
     }
   };
 
-  // Return null if no invoiceData - MUST BE AFTER HOOKS
   if (!invoiceData) return null;
 
   return (

@@ -160,119 +160,107 @@ const Period = () => {
 
 
 
+const fetchOrders = async () => {
+  try {
+    setLoading(true);
+    const response = await axios.get(`${baseurl}/orders/all-orders`);
+    const ordersData = response.data;
+    console.log("Raw API ordersData:", ordersData);
 
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${baseurl}/orders/all-orders`);
-      const ordersData = response.data;
-      console.log("Raw API ordersData:", ordersData);
-      console.log("First order:", ordersData[0]);
-      if (ordersData.length > 0) {
-        console.log("Available fields in first order:", Object.keys(ordersData[0]));
-        console.log("First order staff_id:", ordersData[0].staff_id); 
-        console.log("First order status:", ordersData[0].order_status);
-      }
+    const ordersWithItems = await Promise.all(
+      ordersData.map(async (order) => {
+        try {
+          // Fetch order items
+          const itemsRes = await axios.get(`${baseurl}/orders/details/${order.order_number}`);
+          const itemsData = itemsRes.data.items || [];
+          const orderMode = order.order_mode || "Pakka";
 
-      const ordersWithItems = await Promise.all(
-        ordersData.map(async (order) => {
+          // Fetch account details by customer ID
+          let accountDetails = null;
           try {
-            // Fetch order items
-            const itemsRes = await axios.get(`${baseurl}/orders/details/${order.order_number}`);
-            const itemsData = itemsRes.data.items || [];
-                 const orderMode = order.order_mode || "Pakka"; 
-
-            // Fetch account details by customer ID
-            let accountDetails = null;
-            try {
-              const accountRes = await axios.get(`${baseurl}/accounts/${order.customer_id}`);
-              console.log(`Account response for customer ${order.customer_id}:`, accountRes.data);
-              accountDetails = accountRes.data;
-            } catch (accountErr) {
-              console.warn(`Could not fetch account details for customer ID ${order.customer_id}:`, accountErr.message);
-              accountDetails = null;
-            }
-
-            const items = itemsData.map(item => ({
-              id: item.id,
-              order_number: item.order_number,
-              item_name: item.item_name ?? "N/A",
-              product_id: item.product_id,
-              mrp: item.mrp ?? 0,
-              sale_price: item.sale_price ?? 0,
-              price: item.price ?? 0,
-              quantity: item.quantity ?? 0,
-              total_amount: item.total_amount ?? 0,
-              discount_percentage: item.discount_percentage ?? 0,
-              discount_amount: item.discount_amount ?? 0,
-              taxable_amount: item.taxable_amount ?? 0,
-              tax_percentage: item.tax_percentage ?? 0,
-              tax_amount: item.tax_amount ?? 0,
-              item_total: item.item_total ?? 0,
-              credit_period: item.credit_period ?? 0,
-              invoice_number: item.invoice_number ?? 0,
-              invoice_status: item.invoice_status ?? 0,
-              staff_id: item.staff_id ?? order.staff_id ?? 0, 
-              assigned_staff: item.assigned_staff ?? order.assigned_staff ?? null,
-              staff_incentive: item.staff_incentive ?? 0,
-              invoice_date: item.invoce_date ?? 0,
-              credit_percentage: item.credit_percentage ?? 0,
-              sgst_percentage: item.sgst_percentage ?? 0,
-              sgst_amount: item.sgst_amount ?? 0,
-              cgst_percentage: item.cgst_percentage ?? 0,
-              cgst_amount: item.cgst_amount ?? 0,
-              discount_applied_scheme: item.discount_applied_scheme ?? "N/A"
-            }));
-
-            console.log(`Order ${order.order_number}:`, {
-              order_status: order.order_status,
-              invoice_status: order.invoice_status,
-              invoice_number: order.invoice_number,
-              assigned_staff: order.assigned_staff,
-              staff_id: order.staff_id 
-            });
-
-            const assignedStaff = order.assigned_staff || "N/A";
-            
-            const staffId = order.staff_id || "N/A";
-            
-            const orderStatus = order.order_status || "N/A";
-
-            const totalStaffIncentive = items.reduce((sum, item) => sum + (item.staff_incentive || 0), 0);
-
-            return {
-              ...order,
-              items: items,
-              assigned_staff: assignedStaff,
-              staff_id: staffId, 
-              order_status: orderStatus, 
-              staff_incentive: totalStaffIncentive,
-              account_details: accountDetails,
-              order_mode: orderMode // Add this
-            };
-          } catch (error) {
-            console.error(`Error processing order ${order.order_number}:`, error);
-            return {
-              ...order,
-              items: [],
-              assigned_staff: order.assigned_staff || "N/A",
-              staff_id: order.staff_id || "N/A",
-              order_status: order.order_status || "N/A", // Use order_status from API
-              account_details: null,
-                order_mode: order.order_mode || "Pakka" // Add this
-            };
+            const accountRes = await axios.get(`${baseurl}/accounts/${order.customer_id}`);
+            accountDetails = accountRes.data;
+          } catch (accountErr) {
+            console.warn(`Could not fetch account details for customer ID ${order.customer_id}:`, accountErr.message);
+            accountDetails = null;
           }
-        })
-      );
 
-      setOrders(ordersWithItems);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  };
+          const items = itemsData.map(item => ({
+            id: item.id,
+            order_number: item.order_number,
+            item_name: item.item_name ?? "N/A",
+            product_id: item.product_id,
+            mrp: item.mrp ?? 0,
+            sale_price: item.sale_price ?? 0,
+            price: item.price ?? 0,
+            quantity: item.quantity ?? 0,
+            total_amount: item.total_amount ?? 0,
+            discount_percentage: item.discount_percentage ?? 0,
+            discount_amount: item.discount_amount ?? 0,
+            taxable_amount: item.taxable_amount ?? 0,
+            tax_percentage: item.tax_percentage ?? 0,
+            tax_amount: item.tax_amount ?? 0,
+            item_total: item.item_total ?? 0,
+            credit_period: item.credit_period ?? 0,
+            invoice_number: item.invoice_number ?? 0,
+            invoice_status: item.invoice_status ?? 0,
+            staff_id: item.staff_id ?? order.staff_id ?? 0,
+            assigned_staff: item.assigned_staff ?? order.assigned_staff ?? null,
+            // Remove staff_incentive from items since it's not in order_items table
+            invoice_date: item.invoce_date ?? 0,
+            credit_percentage: item.credit_percentage ?? 0,
+            sgst_percentage: item.sgst_percentage ?? 0,
+            sgst_amount: item.sgst_amount ?? 0,
+            cgst_percentage: item.cgst_percentage ?? 0,
+            cgst_amount: item.cgst_amount ?? 0,
+            discount_applied_scheme: item.discount_applied_scheme ?? "N/A"
+          }));
 
+          const assignedStaff = order.assigned_staff || "N/A";
+          const staffId = order.staff_id || "N/A";
+          const orderStatus = order.order_status || "N/A";
+
+          // FIX: Get staff_incentive directly from order data
+          const staffIncentive = order.staff_incentive ? 
+            (typeof order.staff_incentive === 'string' ? 
+              parseFloat(order.staff_incentive) : 
+              order.staff_incentive) : 0;
+
+          console.log(`Order ${order.order_number} staff_incentive:`, staffIncentive);
+
+          return {
+            ...order,
+            items: items,
+            assigned_staff: assignedStaff,
+            staff_id: staffId,
+            order_status: orderStatus,
+            staff_incentive: staffIncentive, // This comes from the order data
+            account_details: accountDetails,
+            order_mode: orderMode
+          };
+        } catch (error) {
+          console.error(`Error processing order ${order.order_number}:`, error);
+          return {
+            ...order,
+            items: [],
+            assigned_staff: order.assigned_staff || "N/A",
+            staff_id: order.staff_id || "N/A",
+            order_status: order.order_status || "N/A",
+            staff_incentive: order.staff_incentive || 0, // Keep staff_incentive
+            account_details: null,
+            order_mode: order.order_mode || "Pakka"
+          };
+        }
+      })
+    );
+
+    setOrders(ordersWithItems);
+    setLoading(false);
+  } catch (err) {
+    console.error(err);
+    setLoading(false);
+  }
+};
 
 
   const toggleRow = (id) => {
@@ -281,7 +269,6 @@ const Period = () => {
 
 
 
-  // Updated handleItemSelect function with auto-selection for same credit period
   const handleItemSelect = (orderId, itemId, isSelected, itemCreditPeriod) => {
     setSelectedItems(prev => {
       const newSelected = { ...prev };
@@ -331,7 +318,6 @@ const Period = () => {
     });
   };
 
-  // Select all items in an order with credit period validation
   const handleSelectAll = (orderId, items) => {
     const currentSelectedIds = selectedItems[orderId] || [];
     const isAllSelected = currentSelectedIds.length === items.length;
@@ -359,7 +345,6 @@ const Period = () => {
     }
   };
 
-  // Open Order Modal with existing data
   const openOrderModal = (orderId) => {
     const orderData = orders.find(order => order.id === orderId);
     if (orderData) {
@@ -515,7 +500,7 @@ const Period = () => {
         // Add staff_id to invoice data
         staff_id: staffId,
   order_mode: order.order_mode || "Pakka",
-        // Pass the complete account details object
+         staff_incentive: order.staff_incentive || 0, // Add this line
         fullAccountDetails: accountDetails
       };
 
@@ -856,7 +841,7 @@ const Period = () => {
                     <span className="p-detail-value">{modalData.customer_id}</span>
                   </div>
                   <div className="p-detail-row">
-                    <span className="p-detail-label">Staff ID:</span> {/* New Field */}
+                    <span className="p-detail-label">Staff ID:</span> 
                     <span className="p-detail-value">{modalData.staff_id || "N/A"}</span>
                   </div>
                   <div className="p-detail-row">
@@ -941,12 +926,12 @@ const Period = () => {
                     </div>
                   </div>
                   <div className="p-column">
-                    <div className="p-detail-row">
-                      <span className="p-detail-label">Staff Incentive:</span>
-                      <span className="p-detail-value incentive-highlight">
-                        ₹{parseFloat(modalData.staff_incentive) || 0}
-                      </span>
-                    </div>
+        <div className="p-detail-row">
+        <span className="p-detail-label">Staff Incentive:</span>
+        <span className="p-detail-value incentive-highlight">
+          {modalData.staff_incentive || 0}%
+        </span>
+      </div>
                   </div>
                 </div>
               </div>
