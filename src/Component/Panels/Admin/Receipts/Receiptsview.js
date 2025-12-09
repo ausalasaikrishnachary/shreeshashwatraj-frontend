@@ -35,17 +35,11 @@ const fetchReceipt = async () => {
       
       console.log('🔍 FULL API RESPONSE:', data);
       console.log('🔍 Available fields:', Object.keys(data));
-      
-      // Look for retailer ID in different possible field names
-      console.log('🔍 Possible retailer ID fields:');
-      console.log('- PartyID:', data.PartyID);
-      console.log('- retailer_id:', data.retailer_id);
-      console.log('- retailerId:', data.retailerId);
-      console.log('- retailerID:', data.retailerID);
+      console.log('🔍 Transaction proof field:', data.transaction_proof); // Add this
       
       // Update edit form data with correct retailer ID
       setEditFormData({
-        retailer_id: data.PartyID || data.retailer_id || '', // Use the correct field
+        retailer_id: data.PartyID || data.retailer_id || '',
         paid_amount: data.paid_amount || data.TotalAmount || '',
         currency: data.currency || 'INR',
         payment_method: data.AccountName || '',
@@ -54,7 +48,8 @@ const fetchReceipt = async () => {
         bank_name: data.BankName || '',
         transaction_date: data.paid_date ? data.paid_date.split('T')[0] : '',
         reconciliation_option: data.status || '',
-        invoiceNumber: data.invoiceNumber || data.InvoiceNumber || data.invoice_number || data.Invoice_Number || data.inv_number || data.invoice_no || data.InvoiceNo || ''
+        invoiceNumber: data.invoiceNumber || data.InvoiceNumber || data.invoice_number || data.Invoice_Number || data.inv_number || data.invoice_no || data.InvoiceNo || '',
+        transaction_proof: data.transaction_proof || data.transaction_proof_filename || '' // Add this
       });
 
       // Fetch retailer details using the correct ID field
@@ -552,98 +547,141 @@ const fetchAllAccountsAndFindRetailer = async (retailerId) => {
                   </div>
                 </div>
                 
-                {/* Transaction Proof Document Section */}
-                <div className="row mb-3">
-                  <div className="col-6">
-                    <div className="mb-3">
-                      <label className="form-label">Transaction Proof Document</label>
-                      <input 
-                        type="file" 
-                        className="form-control" 
-                        onChange={handleFileChange}
-                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                      />
-                      <small className="text-muted">
-                        {transactionProofFile ? transactionProofFile.name : 'No file chosen'}
-                      </small>
-                      
-                      {/* Show selected file info */}
-                      {transactionProofFile && (
-                        <div className="mt-2">
-                          <div className="d-flex align-items-center">
-                            <span className="badge bg-success me-2">
-                              <i className="bi bi-file-earmark-check"></i>
-                            </span>
-                            <span className="small">
-                              {transactionProofFile.name} 
-                              ({Math.round(transactionProofFile.size / 1024)} KB)
-                            </span>
-                            <button 
-                              type="button" 
-                              className="btn btn-sm btn-outline-danger ms-2"
-                              onClick={handleRemoveFile}
-                            >
-                              <i className="bi bi-x"></i>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Show existing file if available */}
-                   {receipt.transaction_proof_filename && !transactionProofFile && (
-  <div className="mt-2">
-    <div className="d-flex align-items-center">
-      <span className="badge bg-info me-2">
-        <i className="bi bi-file-earmark-text"></i>
-      </span>
-      <span className="small">
-        Current file: 
-      </span>
-      <button 
-  type="button" 
-  className="btn btn-sm btn-outline-primary ms-2"
-  onClick={() => handleDownloadProof(false)}
->
-  <i className="bi bi-download me-1"></i> Download
-</button>
-<button 
-  type="button" 
-  className="btn btn-sm btn-outline-success ms-1"
-  onClick={() => handleDownloadProof(true)}
->
-  <i className="bi bi-eye me-1"></i> View
-</button>
+<div className="row mb-3">
+  <div className="col-12">
+    <div className="mb-3">
+      <label className="form-label">Transaction Proof Document</label>
+      
+      {/* Show existing file if available */}
+      {receipt.transaction_proof && !transactionProofFile && (
+        <div className="mb-3 p-1 border rounded bg-light">
+          <div className="d-flex align-items-center justify-content-between">
+            <div>
+              <span className="badge bg-info me-2">
+                <i className="bi bi-file-earmark-text"></i>
+              </span>
+              <span className="small">
+                <strong>Current file:</strong> {receipt.transaction_proof}
+              </span>
+            </div>
+            {/* <div>
+              <button 
+                type="button" 
+                className="btn btn-sm btn-outline-primary me-1"
+                onClick={() => handleDownloadProof(false)}
+              >
+                <i className="bi bi-download me-1"></i> Download
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-sm btn-outline-success"
+                onClick={() => handleDownloadProof(true)}
+              >
+                <i className="bi bi-eye me-1"></i> View
+              </button>
+            </div> */}
+          </div>
+          
+          {/* Show preview if it's an image */}
+          {receipt.transaction_proof.match(/\.(jpg|jpeg|png|gif)$/i) && (
+            <div className="mt-3">
+              <p><strong>Preview:</strong></p>
+              <img 
+                src={`${baseurl}/uploads/${receipt.transaction_proof}`} 
+                alt="Transaction proof" 
+                style={{ 
+                  maxWidth: '200px', 
+                  maxHeight: '200px', 
+                  border: '1px solid #ddd',
+                  padding: '5px',
+                  backgroundColor: '#f8f9fa'
+                }}
+                onError={(e) => {
+                  console.log('Image failed to load');
+                  e.target.style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+          
+          {/* Show PDF preview link */}
+          {receipt.transaction_proof.match(/\.(pdf)$/i) && (
+            <div className="mt-3">
+              <p><strong>Document Type:</strong> PDF</p>
+              <button 
+                type="button" 
+                className="btn btn-sm btn-outline-info"
+                onClick={() => window.open(`${baseurl}/uploads/${receipt.transaction_proof}`, '_blank')}
+              >
+                <i className="bi bi-file-earmark-pdf me-1"></i> Open PDF in new tab
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* File input for uploading new file */}
+      <div className="mt-3">
+        <label className="form-label">
+          <strong>{transactionProofFile ? 'Replace File:' : 'Upload New File:'}</strong>
+        </label>
+        <input 
+          type="file" 
+          className="form-control" 
+          onChange={handleFileChange}
+          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+          id="transactionProofFile"
+        />
+        <div className="form-text">
+          <small>
+            <i className="bi bi-info-circle me-1"></i>
+            Supported formats: PDF, JPG, PNG, DOC, DOCX (Max 5MB)
+          </small>
+        </div>
+        
+        {/* Show selected new file info */}
+        {transactionProofFile && (
+          <div className="mt-2">
+            <div className="d-flex align-items-center">
+              <span className="badge bg-warning me-2">
+                <i className="bi bi-file-earmark-plus"></i>
+              </span>
+              <span className="small">
+                <strong>New file:</strong> {transactionProofFile.name} 
+                ({Math.round(transactionProofFile.size / 1024)} KB)
+              </span>
+              <button 
+                type="button" 
+                className="btn btn-sm btn-outline-danger ms-2"
+                onClick={handleRemoveFile}
+              >
+                <i className="bi bi-x"></i> Remove
+              </button>
+            </div>
+            
+            {/* Show preview of new image if selected */}
+            {transactionProofFile.type.match('image.*') && (
+              <div className="mt-3">
+                <p><strong>Preview:</strong></p>
+                <img 
+                  src={URL.createObjectURL(transactionProofFile)} 
+                  alt="Preview" 
+                  style={{ 
+                    maxWidth: '200px', 
+                    maxHeight: '200px', 
+                    border: '1px solid #ddd',
+                    padding: '5px',
+                    backgroundColor: '#f8f9fa'
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   </div>
-)}
-                      
-                      {/* File requirements */}
-                      {/* <div className="form-text">
-                        <small>
-                          <i className="bi bi-info-circle me-1"></i>
-                          Supported formats: PDF, JPG, PNG, DOC, DOCX (Max 5MB)
-                        </small>
-                      </div> */}
-                    </div>
-                  </div>
-             
-
-            
-                  <div className="col-md-6">
-                    <div className="mb-3">
-                      <label className="form-label">Reconciliation Option</label>
-                      <select
-                        className="form-select"
-                        name="reconciliation_option"
-                        value={editFormData.reconciliation_option || 'Do Not Reconcile'}
-                        onChange={handleEditInputChange}
-                      >
-                        <option value="Do Not Reconcile">Do Not Reconcile</option>
-                        <option value="Customer Reconcile">Customer Reconcile</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
+</div>
                 <div className="row mb-3">
   <div className="col-md-6">
     <div className="mb-3">

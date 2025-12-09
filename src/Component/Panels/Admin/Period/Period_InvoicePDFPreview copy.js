@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Button, Alert, Modal, Card } from 'react-bootstrap';
+import React, { useState, useEffect, useRef } from 'react';
+import { Container, Row, Col, Button, Alert, Modal } from 'react-bootstrap';
 import './Period_InvoicePDFPreview.css';
-import { FaFilePdf, FaEdit, FaArrowLeft, FaSave, FaQrcode } from "react-icons/fa";
+import { FaFilePdf, FaEdit, FaArrowLeft, FaRegFileAlt, FaSave, FaQrcode } from "react-icons/fa";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { baseurl } from "../../../BaseURL/BaseURL";
+import ReceiptModal_preview from './ReceiptModal_preview';
 import InvoicePreview_preview from './InvoicePreview_preview';
 import { QRCodeCanvas } from "qrcode.react";
 
@@ -14,9 +15,13 @@ const Period_InvoicePDFPreview = () => {
   
   // State management
   const [invoiceData, setInvoiceData] = useState(null);
+  const [paymentData, setPaymentData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [paymentLoading, setPaymentLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [paymentError, setPaymentError] = useState(null);
   const [downloading, setDownloading] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -30,9 +35,33 @@ const Period_InvoicePDFPreview = () => {
   const [fromPeriod, setFromPeriod] = useState(false);
   const [periodInvoiceData, setPeriodInvoiceData] = useState(null);
   const [editableOrderMode, setEditableOrderMode] = useState('');
-  const [qrData, setQrData] = useState(''); // For QR code data
-
-  // Removed receipt and payment related states
+  const [showQRModal, setShowQRModal] = useState(false); // State for QR code modal
+  const [qrCodeData, setQRCodeData] = useState(''); // State to store QR code data
+  
+  // Receipt form data
+  const [receiptFormData, setReceiptFormData] = useState({
+    receiptNumber: '',
+    retailerId: '',
+    amount: '',
+    currency: 'INR',
+    paymentMethod: 'Direct Deposit',
+    receiptDate: new Date().toISOString().split('T')[0],
+    note: '',
+    bankName: '',
+    transactionDate: '',
+    reconciliationOption: 'Do Not Reconcile',
+    retailerMobile: '',
+    retailerEmail: '',
+    retailerGstin: '',
+    retailerBusinessName: '',
+    invoiceNumber: '',
+    transactionProofFile: null,
+    product_id: '',
+    batch_id: '',
+    TransactionType: 'Receipt'
+  });
+  
+  const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
 
 const transformPeriodDataToInvoiceFormat = (periodData) => {
   const accountDetails = periodData.fullAccountDetails || periodData.customerInfo?.account_details;
@@ -85,10 +114,6 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
   const taxAmount = parseFloat(periodData.selectedItemsTotal?.taxAmount) || totalTaxAmount;
   const grandTotal = parseFloat(periodData.selectedItemsTotal?.grandTotal) || totalGrandTotal;
   
-  console.log("📊 IN TRANSFORM FUNCTION:");
-  console.log("Calculated Taxable Amount (sum):", totalTaxableAmount);
-  console.log("From selectedItemsTotal:", periodData.selectedItemsTotal?.taxableAmount);
-  console.log("Final Taxable Amount to use:", taxableAmount);
   
   return {
     invoiceNumber: periodData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`,
@@ -191,32 +216,8 @@ useEffect(() => {
       ? mode.toUpperCase() 
       : "PAKKA";
     setEditableOrderMode(normalizedMode);
-    
-    // Generate QR code data when invoice data is available
-    if (invoiceData.grandTotal) {
-      generateQRCodeData();
-    }
   }
 }, [invoiceData]);
-
-// Generate QR code data
-// Updated generateQRCodeData function
-const generateQRCodeData = () => {
-  if (!invoiceData) return '';
-  
-  const amount = calculateGrandTotalForQR(); // Use the correct amount based on order mode
-  const upiId = 'bharathsiripuram98@okicici';
-  const merchantName = invoiceData.companyInfo?.name || 'Business';
-  const invoiceNumber = invoiceData.invoiceNumber || 'INV001';
-  const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
-  
-  // Create UPI payment URL
-  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(merchantName)}&am=${amount}&tn=${encodeURIComponent(`Payment for Invoice ${invoiceNumber} (${orderMode})`)}&cu=INR`;
-  
-  setQrData(upiUrl);
-  
-  return upiUrl;
-};
 
 const handleOrderModeChange = (value) => {
   const normalizedValue = value.toUpperCase();
@@ -231,6 +232,224 @@ const handleOrderModeChange = (value) => {
   }
 };
 
+  // Function to generate QR code data
+ // Replace the generateQRCodeData function with this:
+
+// Function to generate QR code data in mobile-friendly format
+const generateQRCodeData = () => {
+  if (!invoiceData) return '';
+  
+  // Option 1: Create a URL with invoice details (Best for mobile scanning)
+  const baseUrl = window.location.origin;
+  const invoiceUrl = `${baseUrl}/invoice-view/${invoiceData.invoiceNumber}`;
+  
+  // Option 2: Create human-readable text format (shows directly when scanned)
+  const readableText = `
+INVOICE DETAILS
+================
+Invoice No: ${invoiceData.invoiceNumber}
+Date: ${invoiceData.invoiceDate}
+Customer: ${invoiceData.supplierInfo?.name || 'N/A'}
+Business: ${invoiceData.supplierInfo?.businessName || 'N/A'}
+
+ITEMS:
+${invoiceData.items?.map((item, index) => 
+  `${index + 1}. ${item.product || 'Item'} - Qty: ${item.quantity} × ₹${item.price} = ₹${item.total}`
+).join('\n')}
+
+AMOUNT SUMMARY:
+Taxable Amount: ₹${invoiceData.taxableAmount || '0.00'}
+Total GST: ₹${invoiceData.totalGST || '0.00'}
+Grand Total: ₹${invoiceData.grandTotal || '0.00'}
+
+Company: ${invoiceData.companyInfo?.name || 'N/A'}
+GSTIN: ${invoiceData.companyInfo?.gstin || 'N/A'}
+Order Mode: ${invoiceData.order_mode || 'PAKKA'}
+Order No: ${invoiceData.orderNumber || 'N/A'}
+  `.trim();
+  
+  // Option 3: Create a URL with encoded data
+  const encodedData = encodeURIComponent(JSON.stringify({
+    type: 'invoice',
+    invoiceNumber: invoiceData.invoiceNumber,
+    date: invoiceData.invoiceDate,
+    customer: invoiceData.supplierInfo?.name,
+    total: invoiceData.grandTotal,
+    items: invoiceData.items?.map(item => ({
+      name: item.product,
+      qty: item.quantity,
+      price: item.price,
+      total: item.total
+    }))
+  }));
+  
+  return readableText;
+  
+};
+
+const QRCodeModal = () => {
+  const [qrFormat, setQrFormat] = useState('text'); // 'text' or 'url'
+  
+  const getQRCodeValue = () => {
+    if (!invoiceData) return '';
+    
+    if (qrFormat === 'url') {
+      // Create a shareable URL
+      const baseUrl = window.location.origin;
+      return `${baseUrl}/invoice/${invoiceData.invoiceNumber}`;
+    } else {
+      // Create human-readable text
+      return `
+INVOICE
+=======
+Invoice: ${invoiceData.invoiceNumber}
+Date: ${invoiceData.invoiceDate}
+Customer: ${invoiceData.supplierInfo?.name || 'N/A'}
+
+ITEMS:
+${invoiceData.items?.slice(0, 3).map((item, index) => 
+  `• ${item.product}: ${item.quantity} × ₹${item.price} = ₹${item.total}`
+).join('\n')}
+${invoiceData.items?.length > 3 ? `...and ${invoiceData.items.length - 3} more items` : ''}
+
+TOTAL: ₹${invoiceData.grandTotal || '0.00'}
+Mode: ${invoiceData.order_mode || 'PAKKA'}
+Order: ${invoiceData.orderNumber || 'N/A'}
+
+Scan with any QR scanner app
+      `.trim();
+    }
+  };
+  
+  return (
+    <Modal show={showQRModal} onHide={() => setShowQRModal(false)} size="lg">
+      <Modal.Header closeButton>
+        <Modal.Title>
+          <FaQrcode className="me-2" />
+          Invoice QR Code - {invoiceData?.invoiceNumber || 'Invoice'}
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <div className="mb-3">
+          <div className="btn-group w-100 mb-3">
+            <Button 
+              variant={qrFormat === 'text' ? 'primary' : 'outline-primary'}
+              onClick={() => setQrFormat('text')}
+              size="sm"
+            >
+              Text Format
+            </Button>
+            <Button 
+              variant={qrFormat === 'url' ? 'primary' : 'outline-primary'}
+              onClick={() => setQrFormat('url')}
+              size="sm"
+            >
+              URL Format
+            </Button>
+          </div>
+          
+          <Alert variant="info" className="mb-3">
+            <div className="d-flex align-items-start">
+              <FaQrcode className="me-2 mt-1" />
+              <div>
+                <strong>How to scan:</strong>
+                <ul className="mb-0 mt-1">
+                  <li>Open camera or QR scanner app on your phone</li>
+                  <li>Point camera at this QR code</li>
+                  <li>{qrFormat === 'text' 
+                    ? 'Text will appear directly on your phone screen' 
+                    : 'Click the link to open invoice details'
+                  }</li>
+                </ul>
+              </div>
+            </div>
+          </Alert>
+        </div>
+        
+        {invoiceData ? (
+          <div className="text-center">
+            <div className="qr-code-container mb-3 p-3 bg-white rounded shadow-sm">
+              <QRCodeCanvas 
+                value={getQRCodeValue()}
+                size={220}
+                level="H"
+                includeMargin={true}
+                renderAs="canvas"
+              />
+            </div>
+            
+            <div className="qr-code-details mt-3">
+              <h6>Invoice Summary:</h6>
+              <div className="row">
+                <div className="col-md-6">
+                  <p><strong>Invoice No:</strong> {invoiceData.invoiceNumber}</p>
+                  <p><strong>Date:</strong> {invoiceData.invoiceDate}</p>
+                  <p><strong>Customer:</strong> {invoiceData.supplierInfo?.name || 'N/A'}</p>
+                </div>
+                <div className="col-md-6">
+                  <p><strong>Items:</strong> {invoiceData.items?.length || 0}</p>
+                  <p><strong>Taxable Amt:</strong> ₹{invoiceData.taxableAmount || '0.00'}</p>
+                  <p><strong>Total:</strong> ₹{invoiceData.grandTotal || '0.00'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <Alert variant="warning">
+            No invoice data available for QR code generation
+          </Alert>
+        )}
+      </Modal.Body>
+      <Modal.Footer>
+        <div className="w-100 d-flex justify-content-between">
+          <div>
+            <Button variant="outline-secondary" onClick={() => setShowQRModal(false)}>
+              Close
+            </Button>
+          </div>
+          <div>
+            <Button 
+              variant="primary"
+              onClick={() => {
+                const canvas = document.querySelector('canvas');
+                if (canvas) {
+                  const link = document.createElement('a');
+                  link.download = `Invoice_${invoiceData?.invoiceNumber || 'QR'}_${qrFormat}.png`;
+                  link.href = canvas.toDataURL('image/png');
+                  link.click();
+                }
+              }}
+              className="me-2"
+            >
+              Download QR
+            </Button>
+            <Button 
+              variant="success"
+              onClick={() => {
+                // Copy QR code data to clipboard
+                const textToCopy = getQRCodeValue();
+                navigator.clipboard.writeText(textToCopy)
+                  .then(() => alert('QR code text copied to clipboard!'))
+                  .catch(err => console.error('Failed to copy: ', err));
+              }}
+            >
+              Copy Text
+            </Button>
+          </div>
+        </div>
+      </Modal.Footer>
+    </Modal>
+  );
+};
+
+  // Function to show QR code modal
+  const handleShowQRCode = () => {
+    const data = generateQRCodeData();
+    setQRCodeData(data);
+    setShowQRModal(true);
+  };
+
+  // Transform API data to invoice format
 const transformApiDataToInvoiceFormat = (apiData) => {
   console.log('Transforming API data:', apiData);
   
@@ -300,7 +519,7 @@ const transformApiDataToInvoiceFormat = (apiData) => {
       batch: batch.batch || '',
       batch_id: batch.batch_id || '',
       product_id: batch.product_id || '',
-      taxable_amount: taxableAmount 
+      taxable_amount: taxableAmount // Add taxable amount
     };
   }) || [];
 
@@ -384,6 +603,69 @@ const transformApiDataToInvoiceFormat = (apiData) => {
   };
 };
 
+  // Transform payment data
+  const transformPaymentData = (apiData) => {
+    const salesEntry = apiData.sales || {};
+    const receiptEntries = apiData.receipts || [];
+    const creditNoteEntries = apiData.creditnotes || [];
+    
+    const totalAmount = parseFloat(salesEntry.TotalAmount) || 0;
+    
+    const totalPaid = receiptEntries.reduce((sum, receipt) => {
+      return sum + parseFloat(receipt.paid_amount || receipt.TotalAmount || 0);
+    }, 0);
+    
+    const totalCreditNotes = creditNoteEntries.reduce((sum, creditnote) => {
+      return sum + parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0);
+    }, 0);
+    
+    const balanceDue = totalAmount - totalPaid - totalCreditNotes;
+    
+    const invoiceDate = new Date(salesEntry.Date);
+    const today = new Date();
+    const overdueDays = Math.max(0, Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24)));
+    
+    const receipts = Array.isArray(receiptEntries) ? receiptEntries.map(receipt => ({
+      receiptNumber: receipt.VchNo || receipt.receipt_number || 'N/A',
+      paidAmount: parseFloat(receipt.paid_amount || receipt.TotalAmount || 0),
+      paidDate: receipt.Date || receipt.paid_date || '',
+      status: receipt.status || 'Paid',
+      type: 'receipt'
+    })) : [];
+    
+    const creditnotes = Array.isArray(creditNoteEntries) ? creditNoteEntries.map(creditnote => ({
+      receiptNumber: creditnote.VchNo || 'CNOTE',
+      paidAmount: parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0),
+      paidDate: creditnote.Date || creditnote.paid_date || '',
+      status: 'Credit',
+      type: 'credit_note'
+    })) : [];
+    
+    let status = 'Pending';
+    if (balanceDue === 0) {
+      status = 'Paid';
+    } else if (totalPaid > 0 || totalCreditNotes > 0) {
+      status = 'Partial';
+    }
+    
+    return {
+      invoice: {
+        invoiceNumber: salesEntry.InvoiceNumber || 'N/A',
+        invoiceDate: salesEntry.Date || '',
+        totalAmount: totalAmount,
+        overdueDays: overdueDays
+      },
+      receipts: receipts,
+      creditnotes: creditnotes,
+      summary: {
+        totalPaid: totalPaid,
+        totalCreditNotes: totalCreditNotes,
+        balanceDue: balanceDue,
+        status: status
+      }
+    };
+  };
+
   // Fetch transaction data
   const fetchTransactionData = async () => {
     try {
@@ -453,6 +735,104 @@ const transformApiDataToInvoiceFormat = (apiData) => {
     }
   };
 
+  // Fetch payment data
+  const fetchPaymentData = async (invoiceNumber) => {
+    try {
+      setPaymentLoading(true);
+      setPaymentError(null);
+      
+      console.log('Fetching payment data for invoice:', invoiceNumber);
+      const response = await fetch(`${baseurl}/invoices/${invoiceNumber}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const transformedData = transformPaymentData(result.data);
+        setPaymentData(transformedData);
+      } else {
+        throw new Error(result.message || 'No payment data received');
+      }
+    } catch (error) {
+      console.error('Error fetching payment data:', error);
+      setPaymentError(error.message);
+      if (invoiceData) {
+        const fallbackPaymentData = {
+          invoice: {
+            invoiceNumber: invoiceData.invoiceNumber,
+            invoiceDate: invoiceData.invoiceDate,
+            totalAmount: parseFloat(invoiceData.grandTotal) || 0,
+            overdueDays: 0
+          },
+          receipts: [],
+          summary: {
+            totalPaid: 0,
+            balanceDue: parseFloat(invoiceData.grandTotal) || 0,
+            status: 'Pending'
+          }
+        };
+        setPaymentData(fallbackPaymentData);
+      }
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  // Fetch next receipt number
+  const fetchNextReceiptNumber = async () => {
+    try {
+      const response = await fetch(`${baseurl}/api/next-receipt-number`);
+      if (response.ok) {
+        const data = await response.json();
+        setReceiptFormData(prev => ({
+          ...prev,
+          receiptNumber: data.nextReceiptNumber
+        }));
+      } else {
+        await generateFallbackReceiptNumber();
+      }
+    } catch (err) {
+      console.error('Error fetching next receipt number:', err);
+      await generateFallbackReceiptNumber();
+    }
+  };
+
+  // Generate fallback receipt number
+  const generateFallbackReceiptNumber = async () => {
+    try {
+      const response = await fetch(`${baseurl}/api/last-receipt`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.lastReceiptNumber) {
+          const lastNumber = data.lastReceiptNumber;
+          const numberMatch = lastNumber.match(/REC(\d+)/);
+          if (numberMatch) {
+            const nextNum = parseInt(numberMatch[1], 10) + 1;
+            const fallbackReceiptNumber = `REC${nextNum.toString().padStart(3, '0')}`;
+            setReceiptFormData(prev => ({
+              ...prev,
+              receiptNumber: fallbackReceiptNumber
+            }));
+            return;
+          }
+        }
+      }
+      setReceiptFormData(prev => ({
+        ...prev,
+        receiptNumber: 'REC001'
+      }));
+    } catch (err) {
+      setReceiptFormData(prev => ({
+        ...prev,
+        receiptNumber: 'REC001'
+      }));
+    }
+  };
+
+  // Calculate GST breakdown
   const calculateGSTBreakdown = () => {
     if (!invoiceData || !invoiceData.items) return { totalCGST: 0, totalSGST: 0, totalIGST: 0 };
     
@@ -627,13 +1007,6 @@ const handleGenerateInvoice = async () => {
                      periodInvoiceData.originalOrder?.staff_id || 
                      null;
       
-      // CRITICAL FIX: Get staff_incentive from periodInvoiceData
-      const staffIncentive = periodInvoiceData.staff_incentive || 
-                            periodInvoiceData.originalOrder?.staff_incentive || 
-                            0;
-      
-      console.log("💰 Staff Incentive for invoice:", staffIncentive);
-      
       // Calculate totals by SUMMING ALL ITEMS from database
       let taxableAmount = 0;
       let totalGST = 0;
@@ -669,7 +1042,6 @@ const handleGenerateInvoice = async () => {
       console.log("Taxable Amount (sum of all items):", taxableAmount);
       console.log("Total GST (sum of all items):", totalGST);
       console.log("Grand Total (sum of all items):", grandTotal);
-      console.log("Staff Incentive:", staffIncentive);
       
       // Show breakdown of each item
       selectedItems.forEach((item, index) => {
@@ -677,7 +1049,6 @@ const handleGenerateInvoice = async () => {
         console.log(`  Taxable Amount: ${item.taxable_amount}`);
         console.log(`  Tax Amount: ${item.tax_amount}`);
         console.log(`  Item Total: ${item.item_total}`);
-        console.log(`  Staff Incentive: ${item.staff_incentive || 'N/A'}`);
       });
       
       const payload = {
@@ -710,8 +1081,7 @@ const handleGenerateInvoice = async () => {
             : parseFloat(item.item_total) || 0,     // Use total with GST for PAKKA
           batch: '',
           batch_id: item.batch_id || '',
-          item_total: parseFloat(item.item_total) || 0, // Keep original item total
-          staff_incentive: item.staff_incentive || 0 // Add staff_incentive per item if available
+          item_total: parseFloat(item.item_total) || 0 // Keep original item total
         })),
 
         originalOrderNumber: orderNumber,
@@ -731,8 +1101,7 @@ const handleGenerateInvoice = async () => {
           totalTaxAmount: totalGST,
           totalGrandTotal: grandTotal,
           totalDiscountAmount: totalDiscount,
-          itemCount: selectedItems.length,
-          staffIncentive: staffIncentive // Include staff incentive in calculated totals
+          itemCount: selectedItems.length
         },
         
         // Add BasicAmount for voucher table
@@ -786,7 +1155,6 @@ const handleGenerateInvoice = async () => {
         assigned_staff: assignedStaff,
         staffid: staffId,
         staff_id: staffId,
-        staff_incentive: staffIncentive, // CRITICAL: Add staff_incentive to payload
         
         isPartialInvoice: true,
         source: 'period_component',
@@ -801,7 +1169,6 @@ const handleGenerateInvoice = async () => {
       };
 
       console.log("📦 ORDER MODE in payload:", payload.order_mode);
-      console.log("📦 STAFF INCENTIVE in payload:", payload.staff_incentive);
       console.log("📦 CALCULATED TOTALS in payload:", payload.calculatedTotals);
       console.log("📦 FULL INVOICE PAYLOAD BEING SENT:", JSON.stringify(payload, null, 2));
 
@@ -966,31 +1333,6 @@ const handleGenerateInvoice = async () => {
     }
   };
 
-
-  // Added this function to calculate KACHA/PAKKA grand total
-const calculateGrandTotalForQR = () => {
-  if (!invoiceData) return 0;
-  
-  const grandTotal = parseFloat(invoiceData.grandTotal) || 0;
-  const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
-  
-  // If KACHA mode, calculate without GST
-  if (orderMode.toUpperCase() === "KACHA") {
-    // Calculate total taxable amount from all items
-    let totalTaxableAmount = 0;
-    if (invoiceData.items && invoiceData.items.length > 0) {
-      totalTaxableAmount = invoiceData.items.reduce((sum, item) => {
-        const taxableAmount = parseFloat(item.taxable_amount) || 
-          (parseFloat(item.quantity) * parseFloat(item.price) * 
-           (1 - (parseFloat(item.discount) / 100))) || 0;
-        return sum + taxableAmount;
-      }, 0);
-    }
-    return totalTaxableAmount;
-  }
-  
-  return grandTotal; // For PAKKA mode, use full amount with GST
-};
   // Handle delete invoice
   const handleDeleteInvoice = async () => {
     if (!invoiceData || !invoiceData.voucherId) return;
@@ -1024,6 +1366,293 @@ const calculateGrandTotalForQR = () => {
     }
   };
 
+  // Handle open receipt modal
+  const handleOpenReceiptModal = () => {
+    if (!invoiceData) return;
+
+    const balanceDue = paymentData 
+      ? paymentData.summary.balanceDue 
+      : parseFloat(invoiceData.grandTotal);
+
+    const firstItem = invoiceData.items[0];
+
+    const updatedForm = {
+      retailerBusinessName: invoiceData.supplierInfo.name,
+      retailerId: invoiceData.supplierInfo.id || '',
+      amount: balanceDue,
+      invoiceNumber: invoiceData.invoiceNumber,
+      product_id: firstItem?.product_id || '',
+      batch_id: firstItem?.batch_id || '',
+      TransactionType: 'Receipt'
+    };
+
+    setReceiptFormData(prev => ({
+      ...prev,
+      ...updatedForm
+    }));
+
+    fetchNextReceiptNumber();
+    setShowReceiptModal(true);
+  };
+
+  // Handle close receipt modal
+  const handleCloseReceiptModal = () => {
+    setShowReceiptModal(false);
+    setIsCreatingReceipt(false);
+  };
+
+  // Handle receipt input change
+  const handleReceiptInputChange = (e) => {
+    const { name, value } = e.target;
+    setReceiptFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle file change
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size should be less than 5MB');
+        return;
+      }
+      
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please select a valid file type (PDF, JPG, PNG, DOC, DOCX)');
+        return;
+      }
+      
+      setReceiptFormData(prev => ({
+        ...prev,
+        transactionProofFile: file
+      }));
+    }
+  };
+
+  // Handle remove file
+  const handleRemoveFile = () => {
+    setReceiptFormData(prev => ({
+      ...prev,
+      transactionProofFile: null
+    }));
+    const fileInput = document.querySelector('input[type="file"]');
+    if (fileInput) fileInput.value = '';
+  };
+
+  // Handle create receipt from invoice
+  const handleCreateReceiptFromInvoice = async () => {
+    if (!receiptFormData.amount || parseFloat(receiptFormData.amount) <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+
+    try {
+      setIsCreatingReceipt(true);
+
+      const formDataToSend = new FormData();
+
+      formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
+      formDataToSend.append('retailer_id', receiptFormData.retailerId);
+      formDataToSend.append('TransactionType', receiptFormData.TransactionType);
+      formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
+      formDataToSend.append('amount', receiptFormData.amount);
+      formDataToSend.append('currency', receiptFormData.currency);
+      formDataToSend.append('payment_method', receiptFormData.paymentMethod);
+      formDataToSend.append('receipt_date', receiptFormData.receiptDate);
+      formDataToSend.append('note', receiptFormData.note);
+      formDataToSend.append('bank_name', receiptFormData.bankName);
+      formDataToSend.append('transaction_date', receiptFormData.transactionDate || '');
+      formDataToSend.append('reconciliation_option', receiptFormData.reconciliationOption);
+      formDataToSend.append('invoice_number', receiptFormData.invoiceNumber);
+      formDataToSend.append('retailer_mobile', receiptFormData.retailerMobile);
+      formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
+      formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
+      
+      formDataToSend.append('product_id', receiptFormData.product_id || '');
+      formDataToSend.append('batch_id', receiptFormData.batch_id || '');
+      
+      formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
+      formDataToSend.append('from_invoice', 'true');
+
+      if (receiptFormData.transactionProofFile) {
+        formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
+      }
+
+      const response = await fetch(`${baseurl}/api/receipts`, {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        handleCloseReceiptModal();
+        alert('Receipt created successfully!');
+        
+        if (invoiceData && invoiceData.invoiceNumber) {
+          fetchPaymentData(invoiceData.invoiceNumber);
+        }
+        
+        if (result.id) {
+          navigate(`/receipts_view/${result.id}`);
+        }
+      } else {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to create receipt. ';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage += errorData.error || 'Please try again.';
+        } catch {
+          errorMessage += 'Please try again.';
+        }
+        alert(errorMessage);
+      }
+    } catch (err) {
+      console.error('Error creating receipt:', err);
+      alert('Network error. Please check your connection and try again.');
+    } finally {
+      setIsCreatingReceipt(false);
+    }
+  };
+
+  // Payment Status Component
+  const PaymentStatus = () => {
+    if (paymentLoading) {
+      return (
+        <div className="card shadow-sm mb-3">
+          <div className="card-header bg-primary text-white">
+            <h5 className="mb-0">
+              <i className="bi bi-receipt me-2"></i>
+              Payment Status
+            </h5>
+          </div>
+          <div className="card-body">
+            <div className="text-center">
+              <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              Loading payment status...
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (!paymentData) {
+      return (
+        <div className="card shadow-sm mb-3">
+          <div className="card-header bg-primary text-white">
+            <h5 className="mb-0">
+              <i className="bi bi-receipt me-2"></i>
+              Payment Status
+            </h5>
+          </div>
+          <div className="card-body">
+            <div className="text-center text-muted">
+              <i className="bi bi-exclamation-triangle mb-2"></i>
+              <p>No payment data available</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const { invoice, receipts, creditnotes, summary } = paymentData;
+
+    const safeReceipts = Array.isArray(receipts) ? receipts : [];
+    const safeCreditnotes = Array.isArray(creditnotes) ? creditnotes : [];
+    
+    const formatIndianDate = (dateString) => {
+      if (!dateString) return 'N/A';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      
+      return `${day}/${month}/${year}`;
+    };
+
+    const allTransactions = [
+      ...safeReceipts.map(r => ({ ...r, type: 'receipt' })),
+      ...safeCreditnotes.map(cn => ({ ...cn, type: 'credit_note' }))
+    ].sort((a, b) => new Date(a.paidDate) - new Date(b.paidDate));
+
+    return (
+      <div className="card shadow-sm mb-3">
+        <div className="card-header bg-primary text-white">
+          <h5 className="mb-0">
+            <i className="bi bi-receipt me-2"></i>
+            Payment Status
+          </h5>
+        </div>
+        <div className="card-body">
+          <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+            <span className="fw-bold">Status:</span>
+            <span className={`badge ${
+              summary.status === 'Paid' ? 'bg-success' :
+              summary.status === 'Partial' ? 'bg-warning' : 'bg-danger'
+            }`}>
+              {summary.status}
+            </span>
+          </div>
+
+          <div className="payment-amounts mb-3">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <span className="text-muted">
+                <i className="bi bi-currency-rupee me-1"></i>
+                Original Invoice:
+              </span>
+              <small className="text-muted ms-1">
+                (On {formatIndianDate(invoice.invoiceDate)})
+              </small>
+              <span className="fw-bold text-primary">
+                ₹{invoice.totalAmount.toFixed(2)}
+              </span>
+            </div>
+
+            {allTransactions.map((transaction, index) => (
+              <div 
+                key={`${transaction.type}-${index}`} 
+                className={`d-flex justify-content-between align-items-center mb-2 ps-3 border-start ${
+                  transaction.type === 'receipt' ? 'border-success' : 'border-warning'
+                }`}
+              >
+                <span className={transaction.type === 'receipt' ? 'text-success' : 'text-warning'}>
+                  <i className={`bi ${transaction.type === 'receipt' ? 'bi-check-circle' : 'bi-x-circle'} me-1`}></i>
+                  {transaction.type === 'receipt' ? ' Receipt:' : 'Credit Note:'}
+                </span>
+                <small className="text-muted ms-1">
+                  (On {formatIndianDate(transaction.paidDate)}) – {transaction.receiptNumber}
+                </small>
+                <span className={`fw-bold ${
+                  transaction.type === 'receipt' ? 'text-success' : 'text-warning'
+                }`}>
+                  ₹{transaction.paidAmount.toFixed(2)}
+                </span>
+              </div>
+            ))}
+
+            <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
+              <span className="text-danger">
+                <i className="bi bi-exclamation-triangle me-1"></i>
+                Balance Due:
+              </span>
+              <span className="fw-bold text-danger">
+                ₹{summary.balanceDue.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+
+
   // Use Effects
   useEffect(() => {
     if (location.state && location.state.invoiceData) {
@@ -1045,51 +1674,22 @@ const calculateGrandTotalForQR = () => {
       setEditableDescriptions(descObj);
       setEditableNote(transformedData.note || '');
       
+      if (periodData.invoiceNumber) {
+        fetchPaymentData(periodData.invoiceNumber);
+      }
     } else {
       console.log('🔍 Loading from transaction ID:', id);
       fetchTransactionData(); 
     }
   }, [id, location]);
-// Updated QRCodeGenerator component
-const QRCodeGenerator = () => {
-  if (!invoiceData) return null;
-  
-  const grandTotal = calculateGrandTotalForQR(); // Get correct amount
-  const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
-  
-  return (
-    <Card className="shadow-sm border-0 mb-3">
-      <Card.Header className="bg-primary text-white">
-        <h6 className="mb-0"><FaQrcode className="me-2" /> Scan to Pay via UPI</h6>
-      </Card.Header>
-      <Card.Body className="text-center">
-        <div className="qr-code-box mb-3">
-          <QRCodeCanvas 
-            value={qrData || generateQRCodeData()}
-            size={180}
-            level="H"
-            includeMargin={true}
-          />
-        </div>
-        
-        <div className="payment-details">
-          <div className="mb-2">
-            <span className={`badge ${orderMode === "KACHA" ? "bg-warning" : "bg-success"}`}>
-              {orderMode} ORDER
-            </span>
-          </div>
-          <h5 className="text-success mb-2">
-            ₹{grandTotal.toFixed(2)}
-          </h5>
-          
-     
-        </div>
-      </Card.Body>
-     
-    </Card>
-  );
-};
 
+  useEffect(() => {
+    if (invoiceData && invoiceData.invoiceNumber) {
+      fetchPaymentData(invoiceData.invoiceNumber);
+    }
+  }, [invoiceData]);
+
+  // Loading state
   if (loading) {
     return (
       <div className="invoice-preview-page">
@@ -1139,6 +1739,15 @@ const QRCodeGenerator = () => {
           <div className="d-flex justify-content-between align-items-center">
             <h4 className="mb-0">Invoice Preview - {displayInvoiceNumber}</h4>
             <div>
+              {/* QR Code Button */}
+              <Button 
+                variant="outline-primary" 
+                onClick={handleShowQRCode} 
+                className="me-2"
+              >
+                <FaQrcode className="me-1" /> Show QR Code
+              </Button>
+              
               {fromPeriod && (
                 <Button 
                   variant="primary" 
@@ -1150,6 +1759,11 @@ const QRCodeGenerator = () => {
                 </Button>
               )}
               
+              <Button variant="info" className="me-2 text-white" onClick={handleOpenReceiptModal}>
+                <FaRegFileAlt className="me-1" /> Create Receipt
+              </Button>
+              
+              {/* Single Edit Button for both Note and Description */}
               {isEditing ? (
                 <>
                   <Button 
@@ -1289,30 +1903,42 @@ const QRCodeGenerator = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* Main Content with QR Code on Right Side */}
-      <Container fluid className="invoice-preview-container-order">
+      {/* QR Code Modal */}
+      <QRCodeModal />
+
+      {/* Receipt Modal */}
+      <ReceiptModal_preview
+        show={showReceiptModal}
+        onHide={handleCloseReceiptModal}
+        receiptFormData={receiptFormData}
+        onInputChange={handleReceiptInputChange}
+        onFileChange={handleFileChange}
+        onRemoveFile={handleRemoveFile}
+        onCreateReceipt={handleCreateReceiptFromInvoice}
+        isCreatingReceipt={isCreatingReceipt}
+      />
+
+      {/* Main Content */}
+      <Container fluid className="invoice-preview-container">
         <Row>
-          {/* Left Column - Invoice Preview (8 columns) */}
+          {/* Invoice Content */}
           <Col lg={8}>
             <InvoicePreview_preview
               invoiceData={invoiceData}
-              isEditing={isEditing} 
+              isEditing={isEditing} // Pass combined edit state
               editableNote={editableNote}
               editableDescriptions={editableDescriptions}
               onNoteChange={handleNoteChange}
               onDescriptionChange={handleDescriptionChange}
               gstBreakdown={gstBreakdown}
               isSameState={isSameState}
-              onOrderModeChange={handleOrderModeChange} 
+              onOrderModeChange={handleOrderModeChange} // Add this prop
             />
           </Col>
-          
-          <Col lg={4}>
-            <div className="sticky-top" style={{ top: '80px' }}>
-              <QRCodeGenerator />
-              
-             
-            </div>
+
+          {/* Payment Sidebar */}
+          <Col lg={4} className="d-print-none no-print">
+            <PaymentStatus />
           </Col>
         </Row>
       </Container>

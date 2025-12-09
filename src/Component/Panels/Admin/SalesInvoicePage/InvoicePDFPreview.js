@@ -1465,7 +1465,7 @@ const handleOpenReceiptModal = () => {
                 />
               </div>
               <div className="mb-3">
-                <label className="form-label">Transaction Proof Document</label>
+                <label className="form-label">Transaction Proof</label>
                 <input 
                   type="file" 
                   className="form-control" 
