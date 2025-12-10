@@ -270,13 +270,29 @@ const fetchOrders = async () => {
     const ordersData = response.data;
     console.log("Raw API ordersData:", ordersData);
     
-    if (ordersData.length > 0) {
-      console.log("Available fields in first order:", Object.keys(ordersData[0]));
-      console.log("First order staff_incentive from orders table:", ordersData[0].staff_incentive);
+    // Filter orders based on approval_status and order_status
+    const filteredOrdersData = ordersData.filter(order => {
+      const approvalStatus = order.approval_status?.toString().toLowerCase();
+      const orderStatus = order.order_status?.toString().toLowerCase();
+      
+      // Condition 1: approval_status should be "approved" (case insensitive)
+      const isApproved = approvalStatus === "approved";
+      
+      // Condition 2: order_status should NOT be "cancelled" (case insensitive)
+      const isNotCancelled = orderStatus !== "cancelled";
+      
+      return isApproved && isNotCancelled;
+    });
+    
+    console.log(`Filtered orders: ${filteredOrdersData.length} out of ${ordersData.length}`);
+    
+    if (filteredOrdersData.length > 0) {
+      console.log("Available fields in first filtered order:", Object.keys(filteredOrdersData[0]));
+      console.log("First order staff_incentive from orders table:", filteredOrdersData[0].staff_incentive);
     }
 
     const ordersWithItems = await Promise.all(
-      ordersData.map(async (order) => {
+      filteredOrdersData.map(async (order) => {
         try {
           // Fetch order items
           const itemsRes = await axios.get(`${baseurl}/orders/details/${order.order_number}`);
@@ -396,7 +412,6 @@ const fetchOrders = async () => {
     setLoading(false);
   }
 };
-
 
 
   const toggleRow = (id) => {
