@@ -591,12 +591,12 @@ const handleGenerateInvoice = (order) => {
       },
 
       companyInfo: {
-         name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-      email: "spmathur56@gmail.com",
-      phone: "9801049700",
-      gstin: "10AAOCS1541B1ZZ",
-      state: "Bihar"
+        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+        email: "sumukhusr7@gmail.com",
+        phone: "3456549876543",
+        gstin: "29AABCD0503B1ZG",
+        state: "Karnataka"
       },
 
       customerInfo: {
