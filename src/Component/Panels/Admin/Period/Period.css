@@ -25,7 +25,7 @@
   padding: 25px 30px;
   border-radius: 12px;
   margin-bottom: 25px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   border-left: 4px solid #007bff;
 }
 
@@ -48,7 +48,7 @@
   padding: 20px 25px;
   border-radius: 12px;
   margin-bottom: 25px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 }
 
 .p-filter-row {
@@ -78,7 +78,7 @@
 
 .p-form-control:focus {
   border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
   outline: none;
 }
 
@@ -177,7 +177,7 @@
   background: white;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   margin-top: 20px;
 }
 
@@ -204,6 +204,7 @@
   font-size: 13px;
   font-weight: 600;
 }
+
 /* Main Table */
 .p-table-container {
   overflow-x: auto;
@@ -257,7 +258,7 @@
 
 .p-customers-table tbody tr:hover {
   background-color: #f8f9fa;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Customer Rows */
@@ -300,6 +301,7 @@
   color: #555;
   flex: 1;
 }
+
 .p-customer-row:hover {
   background: #f8f9fa;
 }
@@ -374,7 +376,7 @@
   background: white;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .p-invoices-table thead {
@@ -437,6 +439,7 @@
     opacity: 0;
     transform: translateY(-30px) scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -568,7 +571,7 @@
   color: #6c757d;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 }
 
 /* Empty State */
@@ -578,12 +581,191 @@
   color: #6c757d;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 }
 
 .p-empty-state h4 {
   margin: 0 0 10px 0;
   color: #2c3e50;
+}
+
+
+/* Invoice Dropdown Styles */
+.p-invoice-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.p-dropdown-toggle {
+  position: relative;
+}
+
+/* Main PDF Button */
+.p-btn-pdf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  padding: 6px 12px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.2s;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.p-btn-pdf.p-btn-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.p-btn-pdf:hover {
+  background-color: #218838;
+}
+
+.p-btn-pdf.p-btn-warning:hover {
+  background-color: #e0a800;
+}
+
+.p-btn-pdf:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Dropdown arrow */
+.p-dropdown-arrow {
+  margin-left: 4px;
+  font-size: 10px;
+}
+
+/* Dropdown Menu */
+.p-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 280px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  margin-top: 5px;
+  max-height: 350px;
+  overflow-y: auto;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dropdown Header */
+.p-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #ddd;
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+}
+
+.p-close-dropdown {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 6px;
+  color: #666;
+  line-height: 1;
+}
+
+.p-close-dropdown:hover {
+  color: #333;
+  background-color: #e9ecef;
+  border-radius: 3px;
+}
+
+/* Dropdown Items */
+.p-dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s;
+  min-height: 40px;
+}
+
+.p-dropdown-item:hover {
+  background-color: #f8f9fa;
+}
+
+.p-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.p-invoice-filename {
+  flex: 1;
+  margin: 0 10px;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #495057;
+}
+
+.p-icon-sm {
+  font-size: 13px;
+  min-width: 13px;
+}
+
+.p-download-icon {
+  color: #6c757d;
+  transition: color 0.2s;
+}
+
+.p-dropdown-item:hover .p-download-icon {
+  color: #28a745;
+}
+
+/* Loading spinner */
+.p-download-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.p-btn-warning .p-download-spinner {
+  border: 2px solid rgba(33,37,41,0.3);
+  border-top-color: #212529;
+}
+
+/* Icons */
+.p-icon {
+  font-size: 14px;
 }
 
 /* Responsive Design */
@@ -597,19 +779,19 @@
   .p-admin-main {
     margin-left: 0;
   }
-  
+
   .p-admin-main.p-sidebar-collapsed {
     margin-left: 0;
   }
-  
+
   .p-filter-row {
     flex-wrap: wrap;
   }
-  
+
   .p-filter-group {
     flex: 1 1 calc(50% - 10px);
   }
-  
+
   .p-customers-table th,
   .p-customers-table td {
     padding: 14px 8px;
@@ -621,91 +803,91 @@
   .p-period-page {
     padding: 15px;
   }
-  
+
   .p-page-header {
     padding: 20px;
   }
-  
+
   .p-page-header h1 {
     font-size: 24px;
   }
-  
+
   .p-filters-section {
     padding: 15px;
   }
-  
+
   .p-filter-group {
     flex: 1 1 100%;
     min-width: 100%;
   }
-  
+
   .p-table-header {
     padding: 15px 20px;
     flex-direction: column;
     gap: 10px;
     align-items: flex-start;
   }
-  
+
   .p-invoices-section {
     padding: 15px;
   }
-  
+
   .p-invoices-table {
     font-size: 12px;
   }
-  
+
   .p-invoices-table th,
   .p-invoices-table td {
     padding: 8px 6px;
   }
-  
+
   .p-three-column-grid {
     grid-template-columns: 1fr;
     gap: 15px;
   }
-  
+
   .p-wide-modal {
     width: 95% !important;
     margin: 20px;
   }
-  
+
   .p-detail-row {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
     padding: 10px 0;
   }
-  
+
   .p-detail-value {
     text-align: left;
     margin-left: 0;
     width: 100%;
   }
-  
+
   .p-modal-header {
     padding: 15px 20px;
   }
-  
+
   .p-modal-body {
     padding: 20px;
   }
-  
+
   .p-modal-header h3 {
     font-size: 18px;
   }
-  
+
   /* Stack action buttons on mobile */
   .p-action-buttons {
     flex-direction: column;
     gap: 6px;
   }
-  
+
   .p-generate-invoice-btn,
   .p-eye-btn {
     width: 100%;
     min-height: 40px;
   }
-  
+
   /* Hide some columns on mobile */
   .p-customers-table th:nth-child(5),
   .p-customers-table td:nth-child(5),
@@ -721,43 +903,43 @@
   .p-period-page {
     padding: 10px;
   }
-  
+
   .p-page-header {
     padding: 15px;
   }
-  
+
   .p-page-header h1 {
     font-size: 20px;
   }
-  
+
   .p-filters-section {
     padding: 12px;
   }
-  
+
   .p-filter-row {
     gap: 10px;
   }
-  
+
   .p-table-header {
     padding: 12px 15px;
   }
-  
+
   .p-customers-table th,
   .p-customers-table td {
     padding: 12px 6px;
     font-size: 12px;
   }
-  
+
   .p-invoices-section {
     padding: 12px;
   }
-  
+
   .p-modal-content {
     width: 95%;
     margin: 10px;
     padding: 0;
   }
-  
+
   /* Hide more columns on very small screens */
   .p-customers-table th:nth-child(4),
   .p-customers-table td:nth-child(4),
@@ -765,7 +947,7 @@
   .p-customers-table td:nth-child(7) {
     display: none;
   }
-  
+
   .p-invoices-table th:nth-child(3),
   .p-invoices-table td:nth-child(3),
   .p-invoices-table th:nth-child(5),
@@ -778,6 +960,7 @@
 
 /* Print Styles */
 @media print {
+
   .p-admin-sidebar,
   .p-admin-header,
   .p-filters-section,
@@ -788,20 +971,20 @@
   .p-generate-invoice-btn {
     display: none !important;
   }
-  
+
   .p-admin-main {
     margin-left: 0 !important;
   }
-  
+
   .p-table-section {
     box-shadow: none !important;
     border: 1px solid #ddd !important;
   }
-  
+
   .p-customer-row {
     break-inside: avoid;
   }
-  
+
   .p-period-page {
     padding: 0 !important;
   }
@@ -820,15 +1003,37 @@
   text-align: left;
 }
 
-.p-mb-1 { margin-bottom: 8px; }
-.p-mb-2 { margin-bottom: 16px; }
-.p-mb-3 { margin-bottom: 24px; }
-.p-mb-4 { margin-bottom: 32px; }
+.p-mb-1 {
+  margin-bottom: 8px;
+}
 
-.p-mt-1 { margin-top: 8px; }
-.p-mt-2 { margin-top: 16px; }
-.p-mt-3 { margin-top: 24px; }
-.p-mt-4 { margin-top: 32px; }
+.p-mb-2 {
+  margin-bottom: 16px;
+}
+
+.p-mb-3 {
+  margin-bottom: 24px;
+}
+
+.p-mb-4 {
+  margin-bottom: 32px;
+}
+
+.p-mt-1 {
+  margin-top: 8px;
+}
+
+.p-mt-2 {
+  margin-top: 16px;
+}
+
+.p-mt-3 {
+  margin-top: 24px;
+}
+
+.p-mt-4 {
+  margin-top: 32px;
+}
 
 /* Scrollbar Styling */
 .p-table-container::-webkit-scrollbar,
@@ -861,7 +1066,7 @@
 
 .p-customers-table tbody tr:hover {
   background-color: #f8f9fa;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Status Indicators */
@@ -893,7 +1098,7 @@
   background: white;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   margin-bottom: 20px;
 }
 
@@ -922,8 +1127,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Invoice Generated Status */
@@ -1006,7 +1216,7 @@
 .p-bulk-btn:hover {
   background-color: #45a049;
   transform: translateY(-1px);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .p-bulk-btn:disabled {
@@ -1048,13 +1258,14 @@
   margin: 0 auto;
   display: block;
 }
+
 /* Credit period validation styles */
 .p-item-checkbox:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.p-item-checkbox:disabled + td {
+.p-item-checkbox:disabled+td {
   opacity: 0.7;
 }
 
@@ -1078,6 +1289,7 @@
   color: #17a2b8;
   font-weight: bold;
 }
+
 /* Add to Period.css */
 .p-download-invoice-buttons {
   min-width: 150px;

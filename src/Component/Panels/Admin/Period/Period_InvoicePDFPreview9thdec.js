@@ -32,6 +32,7 @@ const Period_InvoicePDFPreview = () => {
   const [editableOrderMode, setEditableOrderMode] = useState('');
   const [qrData, setQrData] = useState(''); // For QR code data
 
+  // Removed receipt and payment related states
 
 const transformPeriodDataToInvoiceFormat = (periodData) => {
   const accountDetails = periodData.fullAccountDetails || periodData.customerInfo?.account_details;
@@ -41,8 +42,6 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
   let totalTaxableAmount = 0;
   let totalTaxAmount = 0;
   let totalGrandTotal = 0;
-  let totalSGST = 0;
-  let totalCGST = 0;
   
   const items = (periodData.selectedItems || []).map((item, index) => {
     const itemTaxableAmount = parseFloat(item.taxable_amount) || 0;
@@ -52,19 +51,13 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
     const price = parseFloat(item.price) || 0;
     const discount = parseFloat(item.discount_percentage) || 0;
     const gst = parseFloat(item.tax_percentage) || 0;
-    
-    // Use ACTUAL values from database
-    const actualCGSTPercentage = parseFloat(item.cgst_percentage) || 0;
-    const actualSGSTPercentage = parseFloat(item.sgst_percentage) || 0;
-    const actualCGSTAmount = parseFloat(item.cgst_amount) || 0;
-    const actualSGSTAmount = parseFloat(item.sgst_amount) || 0;
+    const cgst = parseFloat(item.cgst_percentage) || 0;
+    const sgst = parseFloat(item.sgst_percentage) || 0;
     
     // Add to totals
     totalTaxableAmount += itemTaxableAmount;
     totalTaxAmount += itemTaxAmount;
     totalGrandTotal += itemTotal;
-    totalSGST += actualSGSTAmount;
-    totalCGST += actualCGSTAmount;
     
     return {
       id: index + 1,
@@ -74,13 +67,8 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
       price: price,
       discount: discount,
       gst: gst,
-      
-      // Use actual values from DB instead of calculating
-      cgst: actualCGSTPercentage,
-      sgst: actualSGSTPercentage,
-      cgst_amount: actualCGSTAmount,
-      sgst_amount: actualSGSTAmount,
-      
+      cgst: cgst,
+      sgst: sgst,
       igst: 0,
       cess: 0,
       total: itemTotal.toFixed(2),
@@ -89,13 +77,7 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
       assigned_staff: item.assigned_staff || periodData.assigned_staff || 'N/A',
       staff_incentive: item.staff_incentive || 0,
       taxable_amount: itemTaxableAmount, 
-      tax_amount: itemTaxAmount,
-      
-      // Store original DB values
-      original_sgst_percentage: item.sgst_percentage,
-      original_sgst_amount: item.sgst_amount,
-      original_cgst_percentage: item.cgst_percentage,
-      original_cgst_amount: item.cgst_amount
+      tax_amount: itemTaxAmount 
     };
   });
   
@@ -103,11 +85,10 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
   const taxAmount = parseFloat(periodData.selectedItemsTotal?.taxAmount) || totalTaxAmount;
   const grandTotal = parseFloat(periodData.selectedItemsTotal?.grandTotal) || totalGrandTotal;
   
-  console.log("📊 Database SGST/CGST Totals:", {
-    totalSGST: totalSGST,
-    totalCGST: totalCGST,
-    totalTaxAmount: taxAmount
-  });
+  console.log("📊 IN TRANSFORM FUNCTION:");
+  console.log("Calculated Taxable Amount (sum):", totalTaxableAmount);
+  console.log("From selectedItemsTotal:", periodData.selectedItemsTotal?.taxableAmount);
+  console.log("Final Taxable Amount to use:", taxableAmount);
   
   return {
     invoiceNumber: periodData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`,
@@ -176,6 +157,7 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
     
     items: items,
     
+    // Use calculated totals - ensure they are numbers before toFixed
     taxableAmount: (typeof taxableAmount === 'number' ? taxableAmount : parseFloat(taxableAmount) || 0).toFixed(2),
     totalGST: (typeof taxAmount === 'number' ? taxAmount : parseFloat(taxAmount) || 0).toFixed(2),
     grandTotal: (typeof grandTotal === 'number' ? grandTotal : parseFloat(grandTotal) || 0).toFixed(2),
@@ -186,9 +168,9 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
     additionalCharge: "",
     additionalChargeAmount: "0.00",
     
-    // Use actual SGST/CGST totals from database
-    totalCGST: totalCGST.toFixed(2),
-    totalSGST: totalSGST.toFixed(2),
+    // Calculate GST totals from all items
+    totalCGST: items.reduce((sum, item) => sum + (parseFloat(item.cgst) || 0), 0).toFixed(2),
+    totalSGST: items.reduce((sum, item) => sum + (parseFloat(item.sgst) || 0), 0).toFixed(2),
     totalIGST: "0.00",
     taxType: "CGST/SGST",
     
@@ -217,7 +199,24 @@ useEffect(() => {
   }
 }, [invoiceData]);
 
-
+// Generate QR code data
+// Updated generateQRCodeData function
+const generateQRCodeData = () => {
+  if (!invoiceData) return '';
+  
+  const amount = calculateGrandTotalForQR(); // Use the correct amount based on order mode
+  const upiId = 'bharathsiripuram98@okicici';
+  const merchantName = invoiceData.companyInfo?.name || 'Business';
+  const invoiceNumber = invoiceData.invoiceNumber || 'INV001';
+  const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
+  
+  // Create UPI payment URL
+  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(merchantName)}&am=${amount}&tn=${encodeURIComponent(`Payment for Invoice ${invoiceNumber} (${orderMode})`)}&cu=INR`;
+  
+  setQrData(upiUrl);
+  
+  return upiUrl;
+};
 
 const handleOrderModeChange = (value) => {
   const normalizedValue = value.toUpperCase();
@@ -583,109 +582,6 @@ const transformApiDataToInvoiceFormat = (apiData) => {
     setEditableDescriptions(descObj);
   };
 
-
-  // Add this function to handle PDF generation and storage
-const generateAndStorePDF = async (voucherId) => {
-  try {
-    if (!invoiceData) {
-      throw new Error('No invoice data available');
-    }
-
-    let pdf;
-    let InvoicePDFDocument;
-    
-    try {
-      const reactPdf = await import('@react-pdf/renderer');
-      pdf = reactPdf.pdf;
-      
-      const pdfModule = await import('../SalesInvoicePage/InvoicePDFDocument');
-      InvoicePDFDocument = pdfModule.default;
-    } catch (importError) {
-      console.error('Error importing PDF modules:', importError);
-      throw new Error('Failed to load PDF generation libraries');
-    }
-
-    const gstBreakdown = calculateGSTBreakdown();
-    const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
-
-    // Generate PDF document
-    let pdfDoc;
-    try {
-      pdfDoc = (
-        <InvoicePDFDocument 
-          invoiceData={invoiceData}
-          invoiceNumber={invoiceData.invoiceNumber}
-          gstBreakdown={gstBreakdown}
-          isSameState={isSameState}
-        />
-      );
-    } catch (componentError) {
-      console.error('Error creating PDF component:', componentError);
-      throw new Error('Failed to create PDF document structure');
-    }
-
-    // Convert to blob
-    let blob;
-    try {
-      blob = await pdf(pdfDoc).toBlob();
-    } catch (pdfError) {
-      console.error('Error generating PDF blob:', pdfError);
-      throw new Error('Failed to generate PDF file');
-    }
-    
-    const filename = `Invoice_${invoiceData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
-
-    // Convert blob to base64
-    const base64data = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-
-    // Store PDF in database
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-      const storeResponse = await fetch(`${baseurl}/transactions/${voucherId}/pdf`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          pdfData: base64data,
-          fileName: filename
-        }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!storeResponse.ok) {
-        const errorText = await storeResponse.text();
-        throw new Error(`Server error: ${storeResponse.status} - ${errorText}`);
-      }
-
-      const storeResult = await storeResponse.json();
-      
-      if (storeResult.success) {
-        console.log('✅ PDF stored successfully in database for voucher:', voucherId);
-        return storeResult;
-      } else {
-        throw new Error(storeResult.message || 'Failed to store PDF');
-      }
-    } catch (storeError) {
-      console.error('Error storing PDF:', storeError);
-      throw new Error('Failed to store PDF in database');
-    }
-
-  } catch (error) {
-    console.error('Error in PDF generation and storage:', error);
-    throw error;
-  }
-};
-
 const handleGenerateInvoice = async () => {
   try {
     setGenerating(true);
@@ -695,6 +591,7 @@ const handleGenerateInvoice = async () => {
     const firstDescription = editableDescriptions[invoiceData?.items[0]?.id || 0] || 
                             invoiceData?.items[0]?.description || '';
 
+    // CRITICAL FIX: Get order_mode from local state, not from periodInvoiceData
     const orderMode = editableOrderMode || 
                       periodInvoiceData?.order_mode || 
                       periodInvoiceData?.originalOrder?.order_mode || 
@@ -715,41 +612,49 @@ const handleGenerateInvoice = async () => {
       
       const orderNumber = periodInvoiceData.orderNumber || periodInvoiceData.originalOrder?.order_number;
       
+      // Get description from editableDescriptions or use first item description
       const firstItemDescription = editableDescriptions[invoiceData?.items[0]?.id || 0] || 
                                   selectedItems[0]?.description || '';
       
+      // Get assigned_staff from periodInvoiceData
       const assignedStaff = periodInvoiceData.assigned_staff || 
                            periodInvoiceData.originalOrder?.assigned_staff || 
                            'N/A';
       
+      // Get staff_id/staffid from periodInvoiceData
       const staffId = periodInvoiceData.staff_id || 
                      periodInvoiceData.staffid || 
                      periodInvoiceData.originalOrder?.staff_id || 
                      null;
       
+      // CRITICAL FIX: Get staff_incentive from periodInvoiceData
       const staffIncentive = periodInvoiceData.staff_incentive || 
                             periodInvoiceData.originalOrder?.staff_incentive || 
                             0;
       
       console.log("💰 Staff Incentive for invoice:", staffIncentive);
       
-      // Calculate totals
+      // Calculate totals by SUMMING ALL ITEMS from database
       let taxableAmount = 0;
       let totalGST = 0;
       let grandTotal = 0;
       let totalDiscount = 0;
       
+      // Loop through all items and sum their values from DB
       selectedItems.forEach(item => {
+        // Get values from database (these already have proper calculations)
         const itemTaxableAmount = parseFloat(item.taxable_amount) || 0;
         const itemTaxAmount = parseFloat(item.tax_amount) || 0;
         const itemTotal = parseFloat(item.item_total) || 0;
         const itemDiscountAmount = parseFloat(item.discount_amount) || 0;
         
         if (orderMode.toUpperCase() === "KACHA") {
+          // For KACHA mode, GST should be 0
           taxableAmount += itemTaxableAmount;
           totalGST += 0;
-          grandTotal += itemTaxableAmount;
+          grandTotal += itemTaxableAmount; // Only taxable amount
         } else {
+          // For PAKKA mode, use original GST values from DB
           taxableAmount += itemTaxableAmount;
           totalGST += itemTaxAmount;
           grandTotal += itemTotal;
@@ -758,13 +663,31 @@ const handleGenerateInvoice = async () => {
         totalDiscount += itemDiscountAmount;
       });
       
+      // Debug: Log the calculated totals
+      console.log("📊 CALCULATED TOTALS FROM DATABASE:");
+      console.log("Total Items:", selectedItems.length);
+      console.log("Taxable Amount (sum of all items):", taxableAmount);
+      console.log("Total GST (sum of all items):", totalGST);
+      console.log("Grand Total (sum of all items):", grandTotal);
+      console.log("Staff Incentive:", staffIncentive);
+      
+      // Show breakdown of each item
+      selectedItems.forEach((item, index) => {
+        console.log(`Item ${index + 1}: ${item.item_name}`);
+        console.log(`  Taxable Amount: ${item.taxable_amount}`);
+        console.log(`  Tax Amount: ${item.tax_amount}`);
+        console.log(`  Item Total: ${item.item_total}`);
+        console.log(`  Staff Incentive: ${item.staff_incentive || 'N/A'}`);
+      });
+      
       const payload = {
         ...periodInvoiceData,
         
         orderNumber: orderNumber,
         order_number: orderNumber,
-        order_mode: orderMode.toUpperCase(),
+        order_mode: orderMode.toUpperCase(), // Ensure uppercase
         
+        // Include ALL items with their individual values
         items: selectedItems.map(item => ({
           originalItemId: item.id,
           product: item.item_name,
@@ -774,46 +697,51 @@ const handleGenerateInvoice = async () => {
           price: parseFloat(item.price) || 0,
           discount: parseFloat(item.discount_percentage) || 0,
           discount_amount: parseFloat(item.discount_amount) || 0,
-          taxable_amount: parseFloat(item.taxable_amount) || 0,
-          tax_amount: parseFloat(item.tax_amount) || 0,
+          taxable_amount: parseFloat(item.taxable_amount) || 0, // Include taxable amount
+          tax_amount: parseFloat(item.tax_amount) || 0, // Include tax amount
+          // CRITICAL: Set GST to 0 for KACHA mode
           gst: orderMode.toUpperCase() === "KACHA" ? 0 : parseFloat(item.tax_percentage) || 0,
           cgst: orderMode.toUpperCase() === "KACHA" ? 0 : parseFloat(item.cgst_percentage) || 0,
           sgst: orderMode.toUpperCase() === "KACHA" ? 0 : parseFloat(item.sgst_percentage) || 0,
           igst: 0,
           cess: 0,
           total: orderMode.toUpperCase() === "KACHA" 
-            ? parseFloat(item.taxable_amount) || 0
-            : parseFloat(item.item_total) || 0,
+            ? parseFloat(item.taxable_amount) || 0  // Use taxable amount for KACHA
+            : parseFloat(item.item_total) || 0,     // Use total with GST for PAKKA
           batch: '',
           batch_id: item.batch_id || '',
-          item_total: parseFloat(item.item_total) || 0,
-          staff_incentive: item.staff_incentive || 0
+          item_total: parseFloat(item.item_total) || 0, // Keep original item total
+          staff_incentive: item.staff_incentive || 0 // Add staff_incentive per item if available
         })),
 
         originalOrderNumber: orderNumber,
         originalOrderId: periodInvoiceData.originalOrderId,
         selectedItemIds: selectedItemIds,
         
+        // Use our calculated totals that SUM ALL ITEMS
         taxableAmount: taxableAmount,
         totalGST: totalGST,
         totalCess: 0,
         grandTotal: grandTotal,
         totalDiscount: totalDiscount,
         
+        // Also send individual sums for verification
         calculatedTotals: {
           totalTaxableAmount: taxableAmount,
           totalTaxAmount: totalGST,
           totalGrandTotal: grandTotal,
           totalDiscountAmount: totalDiscount,
           itemCount: selectedItems.length,
-          staffIncentive: staffIncentive
+          staffIncentive: staffIncentive // Include staff incentive in calculated totals
         },
         
+        // Add BasicAmount for voucher table
         BasicAmount: taxableAmount,
         
         note: editableNote || periodInvoiceData.note || "",
         note_preview: (editableNote || periodInvoiceData.note || "").substring(0, 200),
         
+        // Use the correct description from editableDescriptions
         description_preview: firstItemDescription.substring(0, 200),
         
         customerInfo: {
@@ -854,22 +782,28 @@ const handleGenerateInvoice = async () => {
         PartyName: accountDetails?.name || periodInvoiceData.PartyName,
         AccountName: accountDetails?.business_name || periodInvoiceData.AccountName,
         
+        // ADD THESE FIELDS TO THE PAYLOAD
         assigned_staff: assignedStaff,
         staffid: staffId,
         staff_id: staffId,
-        staff_incentive: staffIncentive,
+        staff_incentive: staffIncentive, // CRITICAL: Add staff_incentive to payload
         
         isPartialInvoice: true,
         source: 'period_component',
         
+        // Add TaxSystem field for backend
         TaxSystem: orderMode.toUpperCase() === "KACHA" ? "KACHA_NO_GST" : "GST",
         
+        // Send explicit amount fields for voucher table
         TotalAmount: grandTotal,
         TaxAmount: totalGST,
         Subtotal: taxableAmount
       };
 
-      console.log("📦 Sending invoice creation request...");
+      console.log("📦 ORDER MODE in payload:", payload.order_mode);
+      console.log("📦 STAFF INCENTIVE in payload:", payload.staff_incentive);
+      console.log("📦 CALCULATED TOTALS in payload:", payload.calculatedTotals);
+      console.log("📦 FULL INVOICE PAYLOAD BEING SENT:", JSON.stringify(payload, null, 2));
 
       const response = await fetch(`${baseurl}/transaction`, {
         method: "POST",
@@ -885,46 +819,14 @@ const handleGenerateInvoice = async () => {
         throw new Error(result.error || "Failed to generate invoice");
       }
 
-      // ✅ NEW: Generate and store PDF after successful invoice creation
-      if (result.voucherId) {
-        try {
-          // Update invoice data with the voucher ID
-          const updatedInvoiceData = {
-            ...invoiceData,
-            voucherId: result.voucherId
-          };
-          
-          // Generate and store PDF
-          const pdfResult = await generateAndStorePDF(result.voucherId);
-          
-          if (pdfResult.success) {
-            console.log('✅ PDF stored successfully with result:', pdfResult);
-            setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber}. PDF has been stored.`);
-          }
-        } catch (pdfError) {
-          console.warn('⚠️ Invoice created but PDF storage failed:', pdfError.message);
-          // Don't fail the whole process if PDF storage fails
-          setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber} (PDF storage failed: ${pdfError.message})`);
-        }
-      } else {
-        setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber || payload.invoiceNumber}`);
-      }
-
-      // ✅ Also update the local invoiceData with voucherId if available
-      if (result.voucherId) {
-        setInvoiceData(prev => ({
-          ...prev,
-          voucherId: result.voucherId
-        }));
-      }
-
+      setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber || payload.invoiceNumber}`);
+      
       setTimeout(() => {
         navigate('/period');
       }, 3000);
 
     } else {
       // Handle non-period invoice generation...
-      throw new Error('Invalid invoice data source');
     }
   } catch (error) {
     console.error("Error generating invoice:", error);
@@ -1065,62 +967,29 @@ const handleGenerateInvoice = async () => {
   };
 
 
-// Updated calculateGrandTotalForQR function
+  // Added this function to calculate KACHA/PAKKA grand total
 const calculateGrandTotalForQR = () => {
   if (!invoiceData) return 0;
   
+  const grandTotal = parseFloat(invoiceData.grandTotal) || 0;
   const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
   
   // If KACHA mode, calculate without GST
   if (orderMode.toUpperCase() === "KACHA") {
-    // For KACHA: Sum of all taxable amounts (without GST)
+    // Calculate total taxable amount from all items
     let totalTaxableAmount = 0;
     if (invoiceData.items && invoiceData.items.length > 0) {
-      invoiceData.items.forEach(item => {
-        // Use the stored taxable_amount from database if available
-        const taxableAmount = parseFloat(item.taxable_amount) || 0;
-        totalTaxableAmount += taxableAmount;
-      });
+      totalTaxableAmount = invoiceData.items.reduce((sum, item) => {
+        const taxableAmount = parseFloat(item.taxable_amount) || 
+          (parseFloat(item.quantity) * parseFloat(item.price) * 
+           (1 - (parseFloat(item.discount) / 100))) || 0;
+        return sum + taxableAmount;
+      }, 0);
     }
     return totalTaxableAmount;
   }
   
-  // For PAKKA mode: Use the actual grand total from database
-  // This should include GST for all items
-  const grandTotal = parseFloat(invoiceData.grandTotal) || 0;
-  
-  // Verify the total by calculating from items if needed
-  if (invoiceData.items && invoiceData.items.length > 0) {
-    let calculatedTotal = 0;
-    invoiceData.items.forEach(item => {
-      // For PAKKA, include GST in the total
-      const itemTotal = parseFloat(item.total) || 0;
-      calculatedTotal += itemTotal;
-    });
-    
-    // Use whichever is larger to ensure payment covers full amount
-    return Math.max(grandTotal, calculatedTotal);
-  }
-  
-  return grandTotal;
-};
-
-// Also update the generateQRCodeData function to ensure proper encoding:
-const generateQRCodeData = () => {
-  if (!invoiceData) return '';
-  
-  const amount = calculateGrandTotalForQR().toFixed(2); // Ensure 2 decimal places
-  const upiId = 'bharathsiripuram98@okicici';
-  const merchantName = invoiceData.companyInfo?.name || 'Business';
-  const invoiceNumber = invoiceData.invoiceNumber || 'INV001';
-  const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
-  
-  // Create properly encoded UPI payment URL
-  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(merchantName)}&am=${amount}&tn=${encodeURIComponent(`Payment for Invoice ${invoiceNumber} (${orderMode})`)}&cu=INR`;
-  
-  setQrData(upiUrl);
-  
-  return upiUrl;
+  return grandTotal; // For PAKKA mode, use full amount with GST
 };
   // Handle delete invoice
   const handleDeleteInvoice = async () => {
@@ -1155,17 +1024,6 @@ const generateQRCodeData = () => {
     }
   };
 
-  // Add this useEffect to regenerate QR code when data changes
-useEffect(() => {
-  if (invoiceData && invoiceData.items) {
-    // Small delay to ensure all calculations are complete
-    const timer = setTimeout(() => {
-      generateQRCodeData();
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }
-}, [invoiceData, editableOrderMode]);
   // Use Effects
   useEffect(() => {
     if (location.state && location.state.invoiceData) {
@@ -1192,27 +1050,12 @@ useEffect(() => {
       fetchTransactionData(); 
     }
   }, [id, location]);
-
-// Updated QRCodeGenerator component with better error handling
+// Updated QRCodeGenerator component
 const QRCodeGenerator = () => {
   if (!invoiceData) return null;
   
   const grandTotal = calculateGrandTotalForQR(); // Get correct amount
   const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
-  
-  // Debug logging to check the amount
-  console.log("QR Code Details:", {
-    orderMode,
-    grandTotal,
-    itemCount: invoiceData.items?.length || 0,
-    items: invoiceData.items?.map(item => ({
-      product: item.product,
-      quantity: item.quantity,
-      price: item.price,
-      total: item.total,
-      taxable_amount: item.taxable_amount
-    }))
-  });
   
   return (
     <Card className="shadow-sm border-0 mb-3">
@@ -1221,20 +1064,12 @@ const QRCodeGenerator = () => {
       </Card.Header>
       <Card.Body className="text-center">
         <div className="qr-code-box mb-3">
-          {qrData ? (
-            <QRCodeCanvas 
-              value={qrData}
-              size={180}
-              level="H"
-              includeMargin={true}
-            />
-          ) : (
-            <div className="text-center p-3">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Generating QR Code...</span>
-              </div>
-            </div>
-          )}
+          <QRCodeCanvas 
+            value={qrData || generateQRCodeData()}
+            size={180}
+            level="H"
+            includeMargin={true}
+          />
         </div>
         
         <div className="payment-details">
@@ -1242,17 +1077,15 @@ const QRCodeGenerator = () => {
             <span className={`badge ${orderMode === "KACHA" ? "bg-warning" : "bg-success"}`}>
               {orderMode} ORDER
             </span>
-            {/* <span className="badge bg-secondary ms-1">
-              {invoiceData.items?.length || 0} Items
-            </span> */}
           </div>
           <h5 className="text-success mb-2">
             ₹{grandTotal.toFixed(2)}
           </h5>
           
-         
+     
         </div>
       </Card.Body>
+     
     </Card>
   );
 };

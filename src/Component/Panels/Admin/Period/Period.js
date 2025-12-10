@@ -15,11 +15,12 @@ const Period = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [downloading, setDownloading] = useState({});
-
+  const [orderInvoices, setOrderInvoices] = useState({}); // Store invoices per order
+  const [loadingInvoices, setLoadingInvoices] = useState({});
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const navigate = useNavigate();
-
+  const [openDropdown, setOpenDropdown] = useState(null); // Track which dropdown is open
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
   const [modalData, setModalData] = useState(null);
@@ -32,6 +33,28 @@ const Period = () => {
     fetchOrders();
     fetchNextInvoiceNumber();
   }, []);
+
+  useEffect(() => {
+    if (orders.length > 0) {
+      orders.forEach(order => {
+        fetchInvoicesForOrder(order.order_number);
+      });
+    }
+  }, [orders]);
+
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openDropdown && !event.target.closest('.p-invoice-dropdown')) {
+        setOpenDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdown]);
 
   const fetchNextInvoiceNumber = async () => {
     try {
@@ -75,14 +98,80 @@ const Period = () => {
     }
   };
 
+  const fetchInvoicesForOrder = async (orderNumber) => {
+    try {
+      setLoadingInvoices(prev => ({ ...prev, [orderNumber]: true }));
+
+      const response = await fetch(`${baseurl}/transactions/download-pdf?order_number=${encodeURIComponent(orderNumber)}`);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`Fetched invoices for ${orderNumber}:`, data.pdfs);
+
+        setOrderInvoices(prev => ({
+          ...prev,
+          [orderNumber]: data.pdfs || []
+        }));
+      } else {
+        console.error(`Failed to fetch invoices for ${orderNumber}:`, response.status);
+        setOrderInvoices(prev => ({
+          ...prev,
+          [orderNumber]: []
+        }));
+      }
+    } catch (error) {
+      console.error(`Error fetching invoices for ${orderNumber}:`, error);
+      setOrderInvoices(prev => ({
+        ...prev,
+        [orderNumber]: []
+      }));
+    } finally {
+      setLoadingInvoices(prev => ({ ...prev, [orderNumber]: false }));
+    }
+  };
+
+  const handleDownloadSpecificPDF = async (orderNumber, pdfData) => {
+    try {
+      // Decode base64 PDF data
+      const binaryString = window.atob(pdfData.data);
+      const bytes = new Uint8Array(binaryString.length);
+
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      const pdfBlob = new Blob([bytes], { type: 'application/pdf' });
+
+      // Create download link
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = pdfData.fileName || `Invoice_${orderNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      console.log(`Downloaded PDF: ${pdfData.fileName}`);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Error downloading PDF: ' + error.message);
+    }
+  };
 
   const handleDownloadPDF = async (invoice) => {
-    const voucherId = invoice.originalData?.VoucherID || invoice.id;
+    const orderNumber = invoice.order_number || invoice.originalData?.order_number;
+
+    if (!orderNumber) {
+      alert('Order number not found for this invoice');
+      return;
+    }
 
     try {
-      setDownloading(prev => ({ ...prev, [voucherId]: true }));
+      setDownloading(prev => ({ ...prev, [orderNumber]: true }));
 
-      const downloadResponse = await fetch(`${baseurl}/transactions/${voucherId}/download-pdf`);
+      // First, try to download the existing PDF using order_number
+      const downloadResponse = await fetch(`${baseurl}/transactions/download-pdf?order_number=${encodeURIComponent(orderNumber)}`);
 
       if (downloadResponse.ok) {
         const pdfBlob = await downloadResponse.blob();
@@ -94,7 +183,7 @@ const Period = () => {
 
         // Get filename from response headers or use default
         const contentDisposition = downloadResponse.headers.get('content-disposition');
-        let filename = `Invoice_${invoice.number}.pdf`;
+        let filename = `Invoice_${invoice.number || orderNumber}.pdf`;
 
         if (contentDisposition) {
           const filenameMatch = contentDisposition.match(/filename="(.+)"/);
@@ -115,11 +204,13 @@ const Period = () => {
         // PDF doesn't exist, generate it first
         console.log('PDF not found, generating new PDF...');
 
-        const generateResponse = await fetch(`${baseurl}/transactions/${voucherId}/store-pdf`, {
+        // Note: You'll also need to update the generate-pdf endpoint to accept order_number
+        const generateResponse = await fetch(`${baseurl}/transactions/generate-pdf`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-          }
+          },
+          body: JSON.stringify({ order_number: orderNumber })
         });
 
         if (generateResponse.ok) {
@@ -127,14 +218,26 @@ const Period = () => {
           console.log('PDF generated successfully:', result);
 
           // After generation, try downloading again
-          const retryDownload = await fetch(`${baseurl}/transactions/${voucherId}/download-pdf`);
+          const retryDownload = await fetch(`${baseurl}/transactions/download-pdf?order_number=${encodeURIComponent(orderNumber)}`);
 
           if (retryDownload.ok) {
             const pdfBlob = await retryDownload.blob();
             const url = window.URL.createObjectURL(pdfBlob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `Invoice_${invoice.number}.pdf`;
+
+            // Get filename for the retry download as well
+            const retryContentDisposition = retryDownload.headers.get('content-disposition');
+            let retryFilename = `Invoice_${invoice.number || orderNumber}.pdf`;
+
+            if (retryContentDisposition) {
+              const filenameMatch = retryContentDisposition.match(/filename="(.+)"/);
+              if (filenameMatch) {
+                retryFilename = filenameMatch[1];
+              }
+            }
+
+            link.download = retryFilename;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -154,140 +257,145 @@ const Period = () => {
       console.error('Error downloading PDF:', error);
       alert('Error downloading PDF: ' + error.message);
     } finally {
-      setDownloading(prev => ({ ...prev, [voucherId]: false }));
+      setDownloading(prev => ({ ...prev, [orderNumber]: false }));
     }
   };
 
 
 
+const fetchOrders = async () => {
+  try {
+    setLoading(true);
+    const response = await axios.get(`${baseurl}/orders/all-orders`);
+    const ordersData = response.data;
+    console.log("Raw API ordersData:", ordersData);
+    
+    if (ordersData.length > 0) {
+      console.log("Available fields in first order:", Object.keys(ordersData[0]));
+      console.log("First order staff_incentive from orders table:", ordersData[0].staff_incentive);
+    }
 
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${baseurl}/orders/all-orders`);
-      const ordersData = response.data;
-      console.log("Raw API ordersData:", ordersData);
-      console.log("First order:", ordersData[0]);
-      if (ordersData.length > 0) {
-        console.log("Available fields in first order:", Object.keys(ordersData[0]));
-        console.log("First order staff_id:", ordersData[0].staff_id);
-        console.log("First order status:", ordersData[0].order_status);
-      }
+    const ordersWithItems = await Promise.all(
+      ordersData.map(async (order) => {
+        try {
+          // Fetch order items
+          const itemsRes = await axios.get(`${baseurl}/orders/details/${order.order_number}`);
+          const itemsData = itemsRes.data.items || [];
+          const orderMode = order.order_mode || "Pakka";
 
-      const ordersWithItems = await Promise.all(
-        ordersData.map(async (order) => {
+          // Get staff_incentive from ORDERS TABLE (not calculating from items)
+          const staffIncentive = parseFloat(order.staff_incentive) || 0;
+          console.log(`Order ${order.order_number}: staff_incentive from orders table = ${staffIncentive}`);
+
+          // Fetch account details by customer ID
+          let accountDetails = null;
           try {
-            // Fetch order items
-            const itemsRes = await axios.get(`${baseurl}/orders/details/${order.order_number}`);
-            const itemsData = itemsRes.data.items || [];
-            const orderMode = order.order_mode || "Pakka";
-
-            // Fetch account details by customer ID
-            let accountDetails = null;
-            try {
-              const accountRes = await axios.get(`${baseurl}/accounts/${order.customer_id}`);
-              console.log(`Account response for customer ${order.customer_id}:`, accountRes.data);
-              accountDetails = accountRes.data;
-            } catch (accountErr) {
-              console.warn(`Could not fetch account details for customer ID ${order.customer_id}:`, accountErr.message);
-              accountDetails = null;
-            }
-
-            const items = await Promise.all(
-              itemsData.map(async (item) => {
-                let min_sale_price = 0;
-
-                // Fetch min_sale_price from products table
-                try {
-                  const productRes = await axios.get(`${baseurl}/products/${item.product_id}`);
-                  min_sale_price = productRes.data.min_sale_price || 0;
-                } catch (productErr) {
-                  console.warn(`Could not fetch product details for product ID ${item.product_id}:`, productErr.message);
-                  min_sale_price = 0;
-                }
-
-                return {
-                  id: item.id,
-                  order_number: item.order_number,
-                  item_name: item.item_name ?? "N/A",
-                  product_id: item.product_id,
-                  mrp: item.mrp ?? 0,
-                  sale_price: item.sale_price ?? 0,
-                  min_sale_price: min_sale_price, // Add this line
-                  price: item.price ?? 0,
-                  quantity: item.quantity ?? 0,
-                  total_amount: item.total_amount ?? 0,
-                  discount_percentage: item.discount_percentage ?? 0,
-                  discount_amount: item.discount_amount ?? 0,
-                  taxable_amount: item.taxable_amount ?? 0,
-                  tax_percentage: item.tax_percentage ?? 0,
-                  tax_amount: item.tax_amount ?? 0,
-                  item_total: item.item_total ?? 0,
-                  credit_period: item.credit_period ?? 0,
-                  invoice_number: item.invoice_number ?? 0,
-                  invoice_status: item.invoice_status ?? 0,
-                  staff_id: item.staff_id ?? order.staff_id ?? 0,
-                  assigned_staff: item.assigned_staff ?? order.assigned_staff ?? null,
-                  staff_incentive: item.staff_incentive ?? 0,
-                  invoice_date: item.invoce_date ?? 0,
-                  credit_percentage: item.credit_percentage ?? 0,
-                  sgst_percentage: item.sgst_percentage ?? 0,
-                  sgst_amount: item.sgst_amount ?? 0,
-                  cgst_percentage: item.cgst_percentage ?? 0,
-                  cgst_amount: item.cgst_amount ?? 0,
-                  discount_applied_scheme: item.discount_applied_scheme ?? "N/A"
-                };
-              })
-            );
-
-            console.log(`Order ${order.order_number}:`, {
-              order_status: order.order_status,
-              invoice_status: order.invoice_status,
-              invoice_number: order.invoice_number,
-              assigned_staff: order.assigned_staff,
-              staff_id: order.staff_id
-            });
-
-            const assignedStaff = order.assigned_staff || "N/A";
-
-            const staffId = order.staff_id || "N/A";
-
-            const orderStatus = order.order_status || "N/A";
-
-            const totalStaffIncentive = items.reduce((sum, item) => sum + (item.staff_incentive || 0), 0);
-
-            return {
-              ...order,
-              items: items,
-              assigned_staff: assignedStaff,
-              staff_id: staffId,
-              order_status: orderStatus,
-              staff_incentive: totalStaffIncentive,
-              account_details: accountDetails,
-              order_mode: orderMode // Add this
-            };
-          } catch (error) {
-            console.error(`Error processing order ${order.order_number}:`, error);
-            return {
-              ...order,
-              items: [],
-              assigned_staff: order.assigned_staff || "N/A",
-              staff_id: order.staff_id || "N/A",
-              order_status: order.order_status || "N/A", // Use order_status from API
-              account_details: null,
-              order_mode: order.order_mode || "Pakka" // Add this
-            };
+            const accountRes = await axios.get(`${baseurl}/accounts/${order.customer_id}`);
+            console.log(`Account response for customer ${order.customer_id}:`, accountRes.data);
+            accountDetails = accountRes.data;
+          } catch (accountErr) {
+            console.warn(`Could not fetch account details for customer ID ${order.customer_id}:`, accountErr.message);
+            accountDetails = null;
           }
-        })
-      );
 
-      setOrders(ordersWithItems);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  };
+          const items = await Promise.all(
+            itemsData.map(async (item) => {
+              let min_sale_price = 0;
+
+              // Fetch min_sale_price from products table
+              try {
+                const productRes = await axios.get(`${baseurl}/products/${item.product_id}`);
+                min_sale_price = productRes.data.min_sale_price || 0;
+              } catch (productErr) {
+                console.warn(`Could not fetch product details for product ID ${item.product_id}:`, productErr.message);
+                min_sale_price = 0;
+              }
+
+              return {
+                id: item.id,
+                order_number: item.order_number,
+                item_name: item.item_name ?? "N/A",
+                product_id: item.product_id,
+                mrp: item.mrp ?? 0,
+                sale_price: item.sale_price ?? 0,
+                min_sale_price: min_sale_price,
+                price: item.price ?? 0,
+                quantity: item.quantity ?? 0,
+                total_amount: item.total_amount ?? 0,
+                discount_percentage: item.discount_percentage ?? 0,
+                discount_amount: item.discount_amount ?? 0,
+                taxable_amount: item.taxable_amount ?? 0,
+                tax_percentage: item.tax_percentage ?? 0,
+                tax_amount: item.tax_amount ?? 0,
+                item_total: item.item_total ?? 0,
+                credit_period: item.credit_period ?? 0,
+                invoice_number: item.invoice_number ?? 0,
+                invoice_status: item.invoice_status ?? 0,
+                staff_id: item.staff_id ?? order.staff_id ?? 0,
+                assigned_staff: item.assigned_staff ?? order.assigned_staff ?? null,
+                // Do NOT calculate staff_incentive from items
+                // Use the value from orders table instead
+                staff_incentive: item.staff_incentive ?? 0, // Keep item level incentive if needed separately
+                invoice_date: item.invoce_date ?? 0,
+                credit_percentage: item.credit_percentage ?? 0,
+                sgst_percentage: item.sgst_percentage ?? 0,
+                sgst_amount: item.sgst_amount ?? 0,
+                cgst_percentage: item.cgst_percentage ?? 0,
+                cgst_amount: item.cgst_amount ?? 0,
+                discount_applied_scheme: item.discount_applied_scheme ?? "N/A"
+              };
+            })
+          );
+
+          console.log(`Order ${order.order_number}:`, {
+            order_status: order.order_status,
+            invoice_status: order.invoice_status,
+            invoice_number: order.invoice_number,
+            assigned_staff: order.assigned_staff,
+            staff_id: order.staff_id,
+            staff_incentive_from_orders: staffIncentive // Log the value
+          });
+
+          const assignedStaff = order.assigned_staff || "N/A";
+          const staffId = order.staff_id || "N/A";
+          const orderStatus = order.order_status || "N/A";
+
+          // Use staff_incentive from ORDERS TABLE directly
+          const totalStaffIncentive = staffIncentive;
+
+          return {
+            ...order,
+            items: items,
+            assigned_staff: assignedStaff,
+            staff_id: staffId,
+            order_status: orderStatus,
+            staff_incentive: totalStaffIncentive, // This is from orders table
+            account_details: accountDetails,
+            order_mode: orderMode
+          };
+        } catch (error) {
+          console.error(`Error processing order ${order.order_number}:`, error);
+          return {
+            ...order,
+            items: [],
+            assigned_staff: order.assigned_staff || "N/A",
+            staff_id: order.staff_id || "N/A",
+            order_status: order.order_status || "N/A",
+            staff_incentive: parseFloat(order.staff_incentive) || 0, // Keep from orders table
+            account_details: null,
+            order_mode: order.order_mode || "Pakka"
+          };
+        }
+      })
+    );
+
+    setOrders(ordersWithItems);
+    setLoading(false);
+  } catch (err) {
+    console.error(err);
+    setLoading(false);
+  }
+};
 
 
 
@@ -403,155 +511,158 @@ const Period = () => {
     setModalData(null);
   };
 
-  const handleGenerateInvoice = (order) => {
-    try {
-      setGeneratingInvoice(true);
+  // In Period.js, update ONLY the handleGenerateInvoice function:
+const handleGenerateInvoice = (order) => {
+  try {
+    setGeneratingInvoice(true);
 
-      const orderSelectedItems = selectedItems[order.id] || [];
-      if (orderSelectedItems.length === 0) {
-        alert("Please select at least one item to generate invoice!");
-        setGeneratingInvoice(false);
-        return;
-      }
-
-      const selectedItemsData = order.items.filter(item =>
-        orderSelectedItems.includes(item.id)
-      );
-
-      const itemsWithInvoice = selectedItemsData.filter(item => item.invoice_status === 1);
-      if (itemsWithInvoice.length > 0) {
-        alert(`Some selected items already have invoices generated: ${itemsWithInvoice.map(i => i.item_name).join(', ')}`);
-        setGeneratingInvoice(false);
-        return;
-      }
-
-      let invoiceNumber = nextInvoiceNumber;
-      if (!invoiceNumber) {
-        invoiceNumber = `INV${order.order_number.replace('ORD', '')}`;
-      }
-
-      // Use account_details if available, otherwise fallback to order data
-      const accountDetails = order.account_details;
-
-      // Get staff_id from the first selected item or order
-      const staffId = selectedItemsData[0]?.staff_id || order.staff_id || 0;
-
-      const invoiceData = {
-        orderNumber: order.order_number,
-        invoiceNumber: invoiceNumber,
-        invoiceDate: new Date().toISOString().split('T')[0],
-        validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-
-        originalOrder: {
-          ...order,
-          items: undefined
-        },
-
-        // Pass only selected items
-        selectedItems: selectedItemsData,
-        selectedItemIds: orderSelectedItems,
-
-        selectedItemsTotal: {
-          taxableAmount: selectedItemsData.reduce((sum, item) => sum + (item.taxable_amount || 0), 0),
-          taxAmount: selectedItemsData.reduce((sum, item) => sum + (item.tax_amount || 0), 0),
-          discountAmount: selectedItemsData.reduce((sum, item) => sum + (item.discount_amount || 0), 0),
-          grandTotal: selectedItemsData.reduce((sum, item) => sum + (item.item_total || 0), 0)
-        },
-
-        companyInfo: {
-          name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-          address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-          email: "sumukhusr7@gmail.com",
-          phone: "3456549876543",
-          gstin: "29AABCD0503B1ZG",
-          state: "Karnataka"
-        },
-
-        customerInfo: {
-          name: accountDetails?.name || order.customer_name,
-          businessName: accountDetails?.business_name || order.customer_name,
-          state: accountDetails?.billing_state || order.billing_state || "Karnataka",
-          gstin: accountDetails?.gstin || order.gstin || "29AABCD0503B1ZG",
-          id: order.customer_id,
-          // Add all account details
-          account_details: accountDetails
-        },
-
-        // Billing address from account details
-        billingAddress: accountDetails ? {
-          addressLine1: accountDetails.billing_address_line1 || "Address not specified",
-          addressLine2: accountDetails.billing_address_line2 || "",
-          city: accountDetails.billing_city || "City not specified",
-          pincode: accountDetails.billing_pin_code || "000000",
-          state: accountDetails.billing_state || "Karnataka",
-          gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
-          country: accountDetails.billing_country || "India"
-        } : {
-          addressLine1: order.billing_address || "Address not specified",
-          addressLine2: "",
-          city: order.billing_city || "City not specified",
-          pincode: order.billing_pincode || "000000",
-          state: order.billing_state || "Karnataka"
-        },
-
-        // Shipping address from account details
-        shippingAddress: accountDetails ? {
-          addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
-          addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
-          city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
-          pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
-          state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
-          gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
-          country: accountDetails.shipping_country || "India"
-        } : {
-          addressLine1: order.shipping_address || order.billing_address || "Address not specified",
-          addressLine2: "",
-          city: order.shipping_city || order.billing_city || "City not specified",
-          pincode: order.shipping_pincode || order.billing_pincode || "000000",
-          state: order.shipping_state || order.billing_state || "Karnataka"
-        },
-
-        note: "Thank you for your business!",
-        transportDetails: "Standard delivery",
-        otherDetails: "Authorized Signatory",
-        taxType: "CGST/SGST",
-
-        type: 'sales',
-        selectedSupplierId: order.customer_id,
-        PartyID: order.customer_id,
-        AccountID: order.customer_id,
-        PartyName: order.customer_name,
-        AccountName: order.customer_name,
-
-        isSingleItemInvoice: orderSelectedItems.length === 1,
-        selectedItemId: orderSelectedItems.length === 1 ? orderSelectedItems[0] : null,
-        originalOrderId: order.id,
-        isMultiSelect: orderSelectedItems.length > 1,
-
-        // Add staff_id to invoice data
-        staff_id: staffId,
-        order_mode: order.order_mode || "Pakka",
-        // Pass the complete account details object
-        fullAccountDetails: accountDetails
-      };
-
-      console.log("📋 Invoice data being passed:", invoiceData);
-      console.log("📋 Staff ID in invoice:", staffId);
-      console.log("📋 Account details:", accountDetails);
-
-      navigate(`/periodinvoicepreviewpdf/${order.id}`, {
-        state: {
-          invoiceData,
-          selectedItemIds: orderSelectedItems
-        }
-      });
-
-    } catch (error) {
-      console.error("Error preparing invoice:", error);
-      alert("Failed to prepare invoice data. Please try again.");
+    const orderSelectedItems = selectedItems[order.id] || [];
+    if (orderSelectedItems.length === 0) {
+      alert("Please select at least one item to generate invoice!");
       setGeneratingInvoice(false);
+      return;
     }
-  };
+
+    const selectedItemsData = order.items.filter(item =>
+      orderSelectedItems.includes(item.id)
+    );
+
+    const itemsWithInvoice = selectedItemsData.filter(item => item.invoice_status === 1);
+    if (itemsWithInvoice.length > 0) {
+      alert(`Some selected items already have invoices generated: ${itemsWithInvoice.map(i => i.item_name).join(', ')}`);
+      setGeneratingInvoice(false);
+      return;
+    }
+
+    let invoiceNumber = nextInvoiceNumber;
+    if (!invoiceNumber) {
+      invoiceNumber = `INV${order.order_number.replace('ORD', '')}`;
+    }
+
+    const accountDetails = order.account_details;
+    const staffId = selectedItemsData[0]?.staff_id || order.staff_id || 0;
+    
+    // Get staff_incentive from ORDERS TABLE (not calculating from items)
+    const staffIncentive = order.staff_incentive || 0;
+    console.log("Staff Incentive from orders table:", staffIncentive);
+
+    const invoiceData = {
+      orderNumber: order.order_number,
+      invoiceNumber: invoiceNumber,
+      invoiceDate: new Date().toISOString().split('T')[0],
+      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+
+      originalOrder: {
+        ...order,
+        items: undefined
+      },
+
+      // Pass only selected items WITH SGST/CGST DATA
+      selectedItems: selectedItemsData.map(item => ({
+        ...item,
+        // Ensure SGST/CGST data is explicitly included
+        sgst_percentage: item.sgst_percentage || 0,
+        sgst_amount: item.sgst_amount || 0,
+        cgst_percentage: item.cgst_percentage || 0,
+        cgst_amount: item.cgst_amount || 0
+      })),
+      selectedItemIds: orderSelectedItems,
+
+      selectedItemsTotal: {
+        taxableAmount: selectedItemsData.reduce((sum, item) => sum + (item.taxable_amount || 0), 0),
+        taxAmount: selectedItemsData.reduce((sum, item) => sum + (item.tax_amount || 0), 0),
+        discountAmount: selectedItemsData.reduce((sum, item) => sum + (item.discount_amount || 0), 0),
+        grandTotal: selectedItemsData.reduce((sum, item) => sum + (item.item_total || 0), 0)
+      },
+
+      companyInfo: {
+        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+        email: "sumukhusr7@gmail.com",
+        phone: "3456549876543",
+        gstin: "29AABCD0503B1ZG",
+        state: "Karnataka"
+      },
+
+      customerInfo: {
+        name: accountDetails?.name || order.customer_name,
+        businessName: accountDetails?.business_name || order.customer_name,
+        state: accountDetails?.billing_state || order.billing_state || "Karnataka",
+        gstin: accountDetails?.gstin || order.gstin || "29AABCD0503B1ZG",
+        id: order.customer_id,
+        account_details: accountDetails
+      },
+
+      billingAddress: accountDetails ? {
+        addressLine1: accountDetails.billing_address_line1 || "Address not specified",
+        addressLine2: accountDetails.billing_address_line2 || "",
+        city: accountDetails.billing_city || "City not specified",
+        pincode: accountDetails.billing_pin_code || "000000",
+        state: accountDetails.billing_state || "Karnataka",
+        gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
+        country: accountDetails.billing_country || "India"
+      } : {
+        addressLine1: order.billing_address || "Address not specified",
+        addressLine2: "",
+        city: order.billing_city || "City not specified",
+        pincode: order.billing_pincode || "000000",
+        state: order.billing_state || "Karnataka"
+      },
+
+      shippingAddress: accountDetails ? {
+        addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
+        addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
+        city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
+        pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
+        state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
+        gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
+        country: accountDetails.shipping_country || "India"
+      } : {
+        addressLine1: order.shipping_address || order.billing_address || "Address not specified",
+        addressLine2: "",
+        city: order.shipping_city || order.billing_city || "City not specified",
+        pincode: order.shipping_pincode || order.billing_pincode || "000000",
+        state: order.shipping_state || order.billing_state || "Karnataka"
+      },
+
+      note: "Thank you for your business!",
+      transportDetails: "Standard delivery",
+      otherDetails: "Authorized Signatory",
+      taxType: "CGST/SGST",
+
+      type: 'sales',
+      selectedSupplierId: order.customer_id,
+      PartyID: order.customer_id,
+      AccountID: order.customer_id,
+      PartyName: order.customer_name,
+      AccountName: order.customer_name,
+
+      isSingleItemInvoice: orderSelectedItems.length === 1,
+      selectedItemId: orderSelectedItems.length === 1 ? orderSelectedItems[0] : null,
+      originalOrderId: order.id,
+      isMultiSelect: orderSelectedItems.length > 1,
+
+      staff_id: staffId,
+      staff_incentive: staffIncentive, // Use from orders table
+      order_mode: order.order_mode || "Pakka",
+      fullAccountDetails: accountDetails
+    };
+
+    console.log("📋 Invoice data with staff_incentive:", staffIncentive);
+
+    navigate(`/periodinvoicepreviewpdf/${order.id}`, {
+      state: {
+        invoiceData,
+        selectedItemIds: orderSelectedItems
+      }
+    });
+
+  } catch (error) {
+    console.error("Error preparing invoice:", error);
+    alert("Failed to prepare invoice data. Please try again.");
+    setGeneratingInvoice(false);
+  }
+};
 
   // Filter orders by search and date
   const filteredOrders = orders.filter(order => {
@@ -660,26 +771,75 @@ const Period = () => {
                           </div>
                         </td>
                         <td>
-                          <button
-                            className={`p-btn p-btn-pdf ${order.hasPDF ? 'p-btn-success' : 'p-btn-warning'}`}
-                            onClick={() => handleDownloadPDF(order)}
-                            disabled={downloading[order.id]}
-                            title={order.hasPDF ? 'Download PDF' : 'Generate and Download PDF'}
-                          >
-                            {downloading[order.id] ? (
-                              <span className="p-download-spinner">Loading...</span>
-                            ) : order.hasPDF ? (
-                              <>
-                                <FaDownload className="p-icon" />
-                                Download
-                              </>
-                            ) : (
-                              <>
-                                <FaFilePdf className="p-icon" />
-                                Generate PDF
-                              </>
-                            )}
-                          </button>
+                          <div className="p-invoice-dropdown">
+                            <div className="p-dropdown-toggle">
+                              <button
+                                className={`p-btn p-btn-pdf ${orderInvoices[order.order_number]?.length > 0 ? 'p-btn-success' : 'p-btn-warning'}`}
+                                disabled={loadingInvoices[order.order_number]}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!orderInvoices[order.order_number]) {
+                                    fetchInvoicesForOrder(order.order_number);
+                                  }
+                                  // Toggle dropdown
+                                  setOpenDropdown(openDropdown === order.order_number ? null : order.order_number);
+                                }}
+                                title={orderInvoices[order.order_number]?.length > 0
+                                  ? `Click to view ${orderInvoices[order.order_number].length} invoice(s)`
+                                  : "Generate PDF"}
+                              >
+                                {loadingInvoices[order.order_number] ? (
+                                  <span className="p-download-spinner">Loading...</span>
+                                ) : orderInvoices[order.order_number]?.length > 0 ? (
+                                  <>
+                                    <FaDownload className="p-icon" />
+                                    {orderInvoices[order.order_number].length} Invoice(s)
+                                    <span className="p-dropdown-arrow">▼</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <FaFilePdf className="p-icon" />
+                                    Generate PDF
+                                  </>
+                                )}
+                              </button>
+
+                              {/* Dropdown Menu - Only shown when this dropdown is open */}
+                              {openDropdown === order.order_number && orderInvoices[order.order_number]?.length > 0 && (
+                                <div className="p-dropdown-menu">
+                                  <div className="p-dropdown-header">
+                                    <span>Available Invoices</span>
+                                    <button
+                                      className="p-close-dropdown"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenDropdown(null);
+                                      }}
+                                      title="Close"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                  {orderInvoices[order.order_number].map((pdf, index) => (
+                                    <div
+                                      key={index}
+                                      className="p-dropdown-item"
+                                      onClick={() => {
+                                        handleDownloadSpecificPDF(order.order_number, pdf);
+                                        setOpenDropdown(null); // Close dropdown after download
+                                      }}
+                                    >
+                                      <FaFilePdf className="p-icon-sm" />
+                                      <span className="p-invoice-filename">
+                                        {pdf.fileName || `Invoice_${index + 1}.pdf`}
+                                      </span>
+                                      <FaDownload className="p-icon-sm p-download-icon" />
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </td>
                       </tr>
 
@@ -725,7 +885,7 @@ const Period = () => {
                                     <th>Item Name</th>
                                     <th>Quantity</th>
                                     <th>Sale Price</th>
-                                    <th>Min Sale Price</th> {/* Add this column */}
+                                    <th>Min Sale Price</th> 
                                     <th>Price</th>
                                     <th>Discount Amount</th>
                                     <th>Credit Period</th>
