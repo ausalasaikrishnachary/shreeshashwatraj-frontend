@@ -166,40 +166,33 @@ function Retailers() {
     </span>
   );
 
-  const renderActionsCell = (item) => (
+const renderActionsCell = (item) => (
     <div className="retailers-table__actions">
-      <button
-        className="retailers-table__action-btn retailers-table__action-btn--order"
-        onClick={() => handlePlaceOrder(item)}
-        title="Place Order"
-      >
-        🛒 Order
-      </button>
-      <button
-        className="retailers-table__action-btn retailers-table__action-btn--view"
-        onClick={() => handleView(item.id)}
-        title="View"
-      >
-        👁️
-      </button>
-      <button
-        className="retailers-table__action-btn retailers-table__action-btn--edit"
-        onClick={() => handleEdit(item.id)}
-        title="Edit"
-      >
-        ✏️
-      </button>
-      <button
-        className="retailers-table__action-btn retailers-table__action-btn--delete"
-        onClick={() => handleDelete(item.id, item.business_name || item.name)}
-        title="Delete"
-      >
-        🗑️
-      </button>
+        <button
+            className="retailers-table__action-btn retailers-table__action-btn--view"
+            onClick={() => handleView(item.id)}
+            title="View"
+        >
+            👁️
+        </button>
+        <button
+            className="retailers-table__action-btn retailers-table__action-btn--edit"
+            onClick={() => handleEdit(item.id)}
+            title="Edit"
+        >
+            ✏️
+        </button>
+        <button
+            className="retailers-table__action-btn retailers-table__action-btn--delete"
+            onClick={() => handleDelete(item.id, item.business_name || item.name)}
+            title="Delete"
+        >
+            🗑️
+        </button>
     </div>
-  );
+);
 
-  const columns = [
+const columns = [
     { key: "__item", title: selectedRole === "retailer" ? "Retailer" : "Supplier", render: (value, item) => renderRetailerCell(item) },
     { key: "__item", title: "Contact", render: (value, item) => renderContactCell(item) },
     { key: "__item", title: "Type & Location", render: (value, item) => renderTypeLocationCell(item) },
@@ -207,8 +200,49 @@ function Retailers() {
     { key: "__item", title: "Group Type", render: (value, item) => renderGroupTypeCell(item) },
     { key: "__item", title: "Performance", render: (value, item) => renderPerformanceCell(item) },
     { key: "__item", title: "Status", render: (value, item) => renderStatusCell(item) },
-    { key: "__item", title: "Actions", render: (value, item) => renderActionsCell(item) }
-  ];
+    { 
+        key: "__item", 
+        title: "Place Order", 
+        render: (value, item) => (
+            <button
+                className="retailers-table__order-btn"
+                onClick={() => handlePlaceOrder(item)}
+                title="Place Order"
+            >
+                🛒 Order
+            </button>
+        )
+    },
+    { 
+        key: "__item", 
+        title: "Actions", 
+        render: (value, item) => (
+            <div className="retailers-table__actions">
+                <button
+                    className="retailers-table__action-btn retailers-table__action-btn--view"
+                    onClick={() => handleView(item.id)}
+                    title="View"
+                >
+                    👁️
+                </button>
+                <button
+                    className="retailers-table__action-btn retailers-table__action-btn--edit"
+                    onClick={() => handleEdit(item.id)}
+                    title="Edit"
+                >
+                    ✏️
+                </button>
+                <button
+                    className="retailers-table__action-btn retailers-table__action-btn--delete"
+                    onClick={() => handleDelete(item.id, item.business_name || item.name)}
+                    title="Delete"
+                >
+                    🗑️
+                </button>
+            </div>
+        )
+    }
+];
 
   const getTitle = () => {
     return selectedRole === "retailer" ? "All Contacts" : "All Suppliers";
