@@ -117,6 +117,7 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
         company_id: product.company_id || '',
         price: product.price || '',
         inclusive_gst: product.inclusive_gst || '',
+        purchase_price:product.purchase_price || '',
         gst_rate: product.gst_rate || '',
         non_taxable: product.non_taxable || '',
         net_price: product.net_price || '',
@@ -374,28 +375,45 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     }
   };
 
-  const handleBatchChange = async (index, e) => {
-    const { name, value } = e.target;
-    const updated = [...batches];
-    updated[index][name] = value;
+const handleBatchChange = async (index, e) => {
+  const { name, value } = e.target;
+  const updated = [...batches];
+  updated[index][name] = value;
 
-    // Validate batch number when it's changed
-    if (name === 'batchNumber' && value) {
-      const isValid = await validateBatchNumber(value, updated[index].id);
-      if (!isValid) {
-        window.alert(`Batch number "${value}" already exists in ${formData.group_by || 'Salescatalog'}. Please select another batch number.`);
-        // Revert the change
-        updated[index][name] = batches[index][name];
-      }
+  // Validate batch number when it's changed
+  if (name === 'batchNumber' && value) {
+    const isValid = await validateBatchNumber(value, updated[index].id);
+    if (!isValid) {
+      window.alert(`Batch number "${value}" already exists in ${formData.group_by || 'Salescatalog'}. Please select another batch number.`);
+      // Revert the change
+      updated[index][name] = batches[index][name];
     }
+  }
 
-    setBatches(updated);
+  setBatches(updated);
 
-    // NEW: Calculate and update main price field when sellingPrice changes
-    if (name === 'sellingPrice') {
-      calculateAndUpdateMainPrice(updated);
-    }
-  };
+  if (name === 'sellingPrice') {
+    calculateAndUpdateMainPrice(updated);
+  }
+  
+  if (name === 'purchasePrice') {
+    calculateAndUpdateMainPurchasePrice(updated);
+  }
+};
+
+const calculateAndUpdateMainPurchasePrice = (updatedBatches) => {
+  // Calculate TOTAL purchase price from all batches
+  const totalPurchasePrice = updatedBatches.reduce((sum, batch) => {
+    const purchasePrice = parseFloat(batch.purchasePrice) || 0;
+    return sum + purchasePrice;
+  }, 0);
+
+  // Update the main form purchase_price field with TOTAL
+  setFormData(prev => ({
+    ...prev,
+    purchase_price: totalPurchasePrice.toFixed(2)
+  }));
+};
   const [formData, setFormData] = useState({
     group_by: groupType,
     goods_name: '',
@@ -420,101 +438,113 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     maintain_batch: false
   });
 
-  const handleChange = async (e) => {
-    const { name, value, type, checked } = e.target;
-    console.log(`🔄 Handling change: ${name} = ${type === 'checkbox' ? checked : value}`);
+const handleChange = async (e) => {
+  const { name, value, type, checked } = e.target;
+  console.log(`🔄 Handling change: ${name} = ${type === 'checkbox' ? checked : value}`);
 
-    const updatedFormData = {
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value
-    };
-
-    if ((name === 'price' || name === 'gst_rate' || name === 'inclusive_gst') &&
-      updatedFormData.price && updatedFormData.gst_rate) {
-      const { netPrice } = calculateTaxAndNetPrice(
-        updatedFormData.price,
-        updatedFormData.gst_rate,
-        updatedFormData.inclusive_gst
-      );
-      updatedFormData.net_price = netPrice;
-    }
-
-    if (name === 'price' && batches.length > 0) {
-      const updatedBatches = batches.map(batch => ({
-        ...batch,
-        sellingPrice: value || batch.sellingPrice
-      }));
-      setBatches(updatedBatches);
-    }
-
-    if (name === 'maintain_batch') {
-      if (checked && batches.length === 0) {
-        const defaultBatch = await createDefaultBatch();
-        setBatches([defaultBatch]);
-      } else if (!checked) {
-        setBatches([]);
-      }
-      setMaintainBatch(checked);
-    }
-
-    setFormData(updatedFormData);
+  const updatedFormData = {
+    ...formData,
+    [name]: type === 'checkbox' ? checked : value
   };
 
-  const calculateAndUpdateMainPrice = (updatedBatches) => {
-    // Calculate TOTAL selling price from all batches (SUM instead of average)
-    const totalSellingPrice = updatedBatches.reduce((sum, batch) => {
-      const sellingPrice = parseFloat(batch.sellingPrice) || 0;
-      return sum + sellingPrice;
-    }, 0);
+  if ((name === 'price' || name === 'gst_rate' || name === 'inclusive_gst') &&
+    updatedFormData.price && updatedFormData.gst_rate) {
+    const { netPrice } = calculateTaxAndNetPrice(
+      updatedFormData.price,
+      updatedFormData.gst_rate,
+      updatedFormData.inclusive_gst
+    );
+    updatedFormData.net_price = netPrice;
+  }
 
-    // Update the main form price field with TOTAL
-    setFormData(prev => ({
-      ...prev,
-      price: totalSellingPrice.toFixed(2)
+  if (name === 'price' && batches.length > 0) {
+    const updatedBatches = batches.map(batch => ({
+      ...batch,
+      sellingPrice: value || batch.sellingPrice
     }));
-  };
+    setBatches(updatedBatches);
+  }
+  
+  // ADD THIS: Sync main purchase price to batches
+  if (name === 'purchase_price' && batches.length > 0) {
+    const updatedBatches = batches.map(batch => ({
+      ...batch,
+      purchasePrice: value || batch.purchasePrice
+    }));
+    setBatches(updatedBatches);
+  }
 
-  const addNewBatch = async () => {
-    try {
-      console.log('➕ Starting to add new batch...');
-      console.log('📊 Current batches count:', batches.length);
-      console.log('📦 Current product ID:', productId);
-      console.log('🏷️ Current batch numbers:', batches.map(b => b.batchNumber));
-
-      const newBatch = await createDefaultBatch();
-      console.log('✅ New batch created:', {
-        batchNumber: newBatch.batchNumber,
-        id: newBatch.id
-      });
-
-      setBatches(prev => {
-        const updated = [...prev, newBatch];
-        console.log('📦 Batches after add:', updated.map(b => b.batchNumber));
-
-        // Calculate main price after adding new batch
-        calculateAndUpdateMainPrice(updated);
-
-        return updated;
-      });
-
-    } catch (error) {
-      console.error('❌ Error adding new batch:', error);
-      showAlert('Error adding new batch. Please try again.', 'danger');
+  if (name === 'maintain_batch') {
+    if (checked && batches.length === 0) {
+      const defaultBatch = await createDefaultBatch();
+      setBatches([defaultBatch]);
+    } else if (!checked) {
+      setBatches([]);
     }
-  };
+    setMaintainBatch(checked);
+  }
 
-  const removeBatch = (id) => {
-    if (batches.length <= 1 && maintainBatch) {
-      showAlert('At least one batch is required when Maintain Batch is enabled.', 'warning');
-      return;
-    }
+  setFormData(updatedFormData);
+};
 
-    const updated = batches.filter((b) => b.id !== id);
-    setBatches(updated);
+const calculateAndUpdateMainPrice = (updatedBatches) => {
+  // Calculate TOTAL selling price from all batches (SUM instead of average)
+  const totalSellingPrice = updatedBatches.reduce((sum, batch) => {
+    const sellingPrice = parseFloat(batch.sellingPrice) || 0;
+    return sum + sellingPrice;
+  }, 0);
 
-    // Calculate main price after removing batch
-    calculateAndUpdateMainPrice(updated);
-  };
+  // Update the main form price field with TOTAL
+  setFormData(prev => ({
+    ...prev,
+    price: totalSellingPrice.toFixed(2)
+  }));
+  
+  // ALSO calculate purchase price when batches change
+  calculateAndUpdateMainPurchasePrice(updatedBatches);
+};
+
+ const addNewBatch = async () => {
+  try {
+    console.log('➕ Starting to add new batch...');
+    console.log('📊 Current batches count:', batches.length);
+    console.log('📦 Current product ID:', productId);
+    console.log('🏷️ Current batch numbers:', batches.map(b => b.batchNumber));
+
+    const newBatch = await createDefaultBatch();
+    console.log('✅ New batch created:', {
+      batchNumber: newBatch.batchNumber,
+      id: newBatch.id
+    });
+
+    setBatches(prev => {
+      const updated = [...prev, newBatch];
+      console.log('📦 Batches after add:', updated.map(b => b.batchNumber));
+
+      // Calculate main price after adding new batch
+      calculateAndUpdateMainPrice(updated);
+
+      return updated;
+    });
+
+  } catch (error) {
+    console.error('❌ Error adding new batch:', error);
+    showAlert('Error adding new batch. Please try again.', 'danger');
+  }
+};
+
+ const removeBatch = (id) => {
+  if (batches.length <= 1 && maintainBatch) {
+    showAlert('At least one batch is required when Maintain Batch is enabled.', 'warning');
+    return;
+  }
+
+  const updated = batches.filter((b) => b.id !== id);
+  setBatches(updated);
+
+  // Calculate main price after removing batch
+  calculateAndUpdateMainPrice(updated);
+};
 
   const showAlert = (message, variant = 'success') => {
     setAlert({ show: true, message, variant });
@@ -638,7 +668,8 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
         stock_in: maintainBatch ? finalOpeningStock : finalOpeningStock,
         stock_out: 0,
         balance_stock: finalOpeningStock,
-        batches: batchesForBackend
+        batches: batchesForBackend,
+          purchase_price: formData.purchase_price // ADD THIS LINE
       };
 
       console.log('📤 Sending data to backend:', {
@@ -798,9 +829,9 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
                     </div>
                   </div>
                   <div className="col">
-                    <Form.Label>Price *</Form.Label>
+                    <Form.Label> Selling Price *</Form.Label>
                     <Form.Control
-                      placeholder="Price"
+                      placeholder=" Selling Price"
                       name="price"
                       type="number"
                       step="0.01"
@@ -817,6 +848,27 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
                       </Form.Text>
                     )}
                   </div>
+
+<div className="col">
+  <Form.Label>Purchase Price *</Form.Label>
+  <Form.Control
+    placeholder="Purchase Price"
+    name="purchase_price"
+    type="number"
+    step="0.01"
+    value={formData.purchase_price}
+    onChange={handleChange}
+    required
+    disabled={maintainBatch} // ADD THIS
+    className={maintainBatch ? "bg-light" : ""} // ADD THIS
+  />
+  {maintainBatch && ( // ADD THIS
+    <Form.Text className="text-muted">
+      Purchase price is auto-calculated from batch purchase prices
+    </Form.Text>
+  )}
+</div>
+
                   <div className="col">
                     <Form.Label>GST Type</Form.Label>
                     <Form.Select

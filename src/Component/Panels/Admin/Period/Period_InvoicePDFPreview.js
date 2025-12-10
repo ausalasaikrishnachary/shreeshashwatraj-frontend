@@ -32,7 +32,6 @@ const Period_InvoicePDFPreview = () => {
   const [editableOrderMode, setEditableOrderMode] = useState('');
   const [qrData, setQrData] = useState(''); // For QR code data
 
-  // Removed receipt and payment related states
 
 const transformPeriodDataToInvoiceFormat = (periodData) => {
   const accountDetails = periodData.fullAccountDetails || periodData.customerInfo?.account_details;
@@ -42,6 +41,8 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
   let totalTaxableAmount = 0;
   let totalTaxAmount = 0;
   let totalGrandTotal = 0;
+  let totalSGST = 0;
+  let totalCGST = 0;
   
   const items = (periodData.selectedItems || []).map((item, index) => {
     const itemTaxableAmount = parseFloat(item.taxable_amount) || 0;
@@ -51,13 +52,19 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
     const price = parseFloat(item.price) || 0;
     const discount = parseFloat(item.discount_percentage) || 0;
     const gst = parseFloat(item.tax_percentage) || 0;
-    const cgst = parseFloat(item.cgst_percentage) || 0;
-    const sgst = parseFloat(item.sgst_percentage) || 0;
+    
+    // Use ACTUAL values from database
+    const actualCGSTPercentage = parseFloat(item.cgst_percentage) || 0;
+    const actualSGSTPercentage = parseFloat(item.sgst_percentage) || 0;
+    const actualCGSTAmount = parseFloat(item.cgst_amount) || 0;
+    const actualSGSTAmount = parseFloat(item.sgst_amount) || 0;
     
     // Add to totals
     totalTaxableAmount += itemTaxableAmount;
     totalTaxAmount += itemTaxAmount;
     totalGrandTotal += itemTotal;
+    totalSGST += actualSGSTAmount;
+    totalCGST += actualCGSTAmount;
     
     return {
       id: index + 1,
@@ -67,8 +74,13 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
       price: price,
       discount: discount,
       gst: gst,
-      cgst: cgst,
-      sgst: sgst,
+      
+      // Use actual values from DB instead of calculating
+      cgst: actualCGSTPercentage,
+      sgst: actualSGSTPercentage,
+      cgst_amount: actualCGSTAmount,
+      sgst_amount: actualSGSTAmount,
+      
       igst: 0,
       cess: 0,
       total: itemTotal.toFixed(2),
@@ -77,7 +89,13 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
       assigned_staff: item.assigned_staff || periodData.assigned_staff || 'N/A',
       staff_incentive: item.staff_incentive || 0,
       taxable_amount: itemTaxableAmount, 
-      tax_amount: itemTaxAmount 
+      tax_amount: itemTaxAmount,
+      
+      // Store original DB values
+      original_sgst_percentage: item.sgst_percentage,
+      original_sgst_amount: item.sgst_amount,
+      original_cgst_percentage: item.cgst_percentage,
+      original_cgst_amount: item.cgst_amount
     };
   });
   
@@ -85,10 +103,11 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
   const taxAmount = parseFloat(periodData.selectedItemsTotal?.taxAmount) || totalTaxAmount;
   const grandTotal = parseFloat(periodData.selectedItemsTotal?.grandTotal) || totalGrandTotal;
   
-  console.log("📊 IN TRANSFORM FUNCTION:");
-  console.log("Calculated Taxable Amount (sum):", totalTaxableAmount);
-  console.log("From selectedItemsTotal:", periodData.selectedItemsTotal?.taxableAmount);
-  console.log("Final Taxable Amount to use:", taxableAmount);
+  console.log("📊 Database SGST/CGST Totals:", {
+    totalSGST: totalSGST,
+    totalCGST: totalCGST,
+    totalTaxAmount: taxAmount
+  });
   
   return {
     invoiceNumber: periodData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`,
@@ -157,7 +176,6 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
     
     items: items,
     
-    // Use calculated totals - ensure they are numbers before toFixed
     taxableAmount: (typeof taxableAmount === 'number' ? taxableAmount : parseFloat(taxableAmount) || 0).toFixed(2),
     totalGST: (typeof taxAmount === 'number' ? taxAmount : parseFloat(taxAmount) || 0).toFixed(2),
     grandTotal: (typeof grandTotal === 'number' ? grandTotal : parseFloat(grandTotal) || 0).toFixed(2),
@@ -168,9 +186,9 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
     additionalCharge: "",
     additionalChargeAmount: "0.00",
     
-    // Calculate GST totals from all items
-    totalCGST: items.reduce((sum, item) => sum + (parseFloat(item.cgst) || 0), 0).toFixed(2),
-    totalSGST: items.reduce((sum, item) => sum + (parseFloat(item.sgst) || 0), 0).toFixed(2),
+    // Use actual SGST/CGST totals from database
+    totalCGST: totalCGST.toFixed(2),
+    totalSGST: totalSGST.toFixed(2),
     totalIGST: "0.00",
     taxType: "CGST/SGST",
     
@@ -199,24 +217,7 @@ useEffect(() => {
   }
 }, [invoiceData]);
 
-// Generate QR code data
-// Updated generateQRCodeData function
-const generateQRCodeData = () => {
-  if (!invoiceData) return '';
-  
-  const amount = calculateGrandTotalForQR(); // Use the correct amount based on order mode
-  const upiId = 'bharathsiripuram98@okicici';
-  const merchantName = invoiceData.companyInfo?.name || 'Business';
-  const invoiceNumber = invoiceData.invoiceNumber || 'INV001';
-  const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
-  
-  // Create UPI payment URL
-  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(merchantName)}&am=${amount}&tn=${encodeURIComponent(`Payment for Invoice ${invoiceNumber} (${orderMode})`)}&cu=INR`;
-  
-  setQrData(upiUrl);
-  
-  return upiUrl;
-};
+
 
 const handleOrderModeChange = (value) => {
   const normalizedValue = value.toUpperCase();
@@ -1064,29 +1065,62 @@ const handleGenerateInvoice = async () => {
   };
 
 
-  // Added this function to calculate KACHA/PAKKA grand total
+// Updated calculateGrandTotalForQR function
 const calculateGrandTotalForQR = () => {
   if (!invoiceData) return 0;
   
-  const grandTotal = parseFloat(invoiceData.grandTotal) || 0;
   const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
   
   // If KACHA mode, calculate without GST
   if (orderMode.toUpperCase() === "KACHA") {
-    // Calculate total taxable amount from all items
+    // For KACHA: Sum of all taxable amounts (without GST)
     let totalTaxableAmount = 0;
     if (invoiceData.items && invoiceData.items.length > 0) {
-      totalTaxableAmount = invoiceData.items.reduce((sum, item) => {
-        const taxableAmount = parseFloat(item.taxable_amount) || 
-          (parseFloat(item.quantity) * parseFloat(item.price) * 
-           (1 - (parseFloat(item.discount) / 100))) || 0;
-        return sum + taxableAmount;
-      }, 0);
+      invoiceData.items.forEach(item => {
+        // Use the stored taxable_amount from database if available
+        const taxableAmount = parseFloat(item.taxable_amount) || 0;
+        totalTaxableAmount += taxableAmount;
+      });
     }
     return totalTaxableAmount;
   }
   
-  return grandTotal; // For PAKKA mode, use full amount with GST
+  // For PAKKA mode: Use the actual grand total from database
+  // This should include GST for all items
+  const grandTotal = parseFloat(invoiceData.grandTotal) || 0;
+  
+  // Verify the total by calculating from items if needed
+  if (invoiceData.items && invoiceData.items.length > 0) {
+    let calculatedTotal = 0;
+    invoiceData.items.forEach(item => {
+      // For PAKKA, include GST in the total
+      const itemTotal = parseFloat(item.total) || 0;
+      calculatedTotal += itemTotal;
+    });
+    
+    // Use whichever is larger to ensure payment covers full amount
+    return Math.max(grandTotal, calculatedTotal);
+  }
+  
+  return grandTotal;
+};
+
+// Also update the generateQRCodeData function to ensure proper encoding:
+const generateQRCodeData = () => {
+  if (!invoiceData) return '';
+  
+  const amount = calculateGrandTotalForQR().toFixed(2); // Ensure 2 decimal places
+  const upiId = 'bharathsiripuram98@okicici';
+  const merchantName = invoiceData.companyInfo?.name || 'Business';
+  const invoiceNumber = invoiceData.invoiceNumber || 'INV001';
+  const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
+  
+  // Create properly encoded UPI payment URL
+  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(merchantName)}&am=${amount}&tn=${encodeURIComponent(`Payment for Invoice ${invoiceNumber} (${orderMode})`)}&cu=INR`;
+  
+  setQrData(upiUrl);
+  
+  return upiUrl;
 };
   // Handle delete invoice
   const handleDeleteInvoice = async () => {
@@ -1121,6 +1155,17 @@ const calculateGrandTotalForQR = () => {
     }
   };
 
+  // Add this useEffect to regenerate QR code when data changes
+useEffect(() => {
+  if (invoiceData && invoiceData.items) {
+    // Small delay to ensure all calculations are complete
+    const timer = setTimeout(() => {
+      generateQRCodeData();
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }
+}, [invoiceData, editableOrderMode]);
   // Use Effects
   useEffect(() => {
     if (location.state && location.state.invoiceData) {
@@ -1147,12 +1192,27 @@ const calculateGrandTotalForQR = () => {
       fetchTransactionData(); 
     }
   }, [id, location]);
-// Updated QRCodeGenerator component
+
+// Updated QRCodeGenerator component with better error handling
 const QRCodeGenerator = () => {
   if (!invoiceData) return null;
   
   const grandTotal = calculateGrandTotalForQR(); // Get correct amount
   const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
+  
+  // Debug logging to check the amount
+  console.log("QR Code Details:", {
+    orderMode,
+    grandTotal,
+    itemCount: invoiceData.items?.length || 0,
+    items: invoiceData.items?.map(item => ({
+      product: item.product,
+      quantity: item.quantity,
+      price: item.price,
+      total: item.total,
+      taxable_amount: item.taxable_amount
+    }))
+  });
   
   return (
     <Card className="shadow-sm border-0 mb-3">
@@ -1161,12 +1221,20 @@ const QRCodeGenerator = () => {
       </Card.Header>
       <Card.Body className="text-center">
         <div className="qr-code-box mb-3">
-          <QRCodeCanvas 
-            value={qrData || generateQRCodeData()}
-            size={180}
-            level="H"
-            includeMargin={true}
-          />
+          {qrData ? (
+            <QRCodeCanvas 
+              value={qrData}
+              size={180}
+              level="H"
+              includeMargin={true}
+            />
+          ) : (
+            <div className="text-center p-3">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Generating QR Code...</span>
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="payment-details">
@@ -1174,15 +1242,17 @@ const QRCodeGenerator = () => {
             <span className={`badge ${orderMode === "KACHA" ? "bg-warning" : "bg-success"}`}>
               {orderMode} ORDER
             </span>
+            {/* <span className="badge bg-secondary ms-1">
+              {invoiceData.items?.length || 0} Items
+            </span> */}
           </div>
           <h5 className="text-success mb-2">
             ₹{grandTotal.toFixed(2)}
           </h5>
           
-     
+         
         </div>
       </Card.Body>
-     
     </Card>
   );
 };

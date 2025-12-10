@@ -35,7 +35,48 @@ const InvoicePreview_preview = ({
     return subtotal - discountAmount;
   };
 
-  // Calculate item total based on order mode
+  // Use actual CGST/SGST amounts from database
+  const getItemCGSTAmount = (item) => {
+    // First try to use actual value from database
+    if (item.cgst_amount !== undefined && item.cgst_amount !== null) {
+      return parseFloat(item.cgst_amount) || 0;
+    }
+    
+    // Fallback: use percentage calculation if amount not available
+    const taxableAmount = calculateItemTaxableAmount(item);
+    const cgstRate = parseFloat(item.cgst) || 0;
+    return taxableAmount * (cgstRate / 100);
+  };
+
+  const getItemSGSTAmount = (item) => {
+    // First try to use actual value from database
+    if (item.sgst_amount !== undefined && item.sgst_amount !== null) {
+      return parseFloat(item.sgst_amount) || 0;
+    }
+    
+    // Fallback: use percentage calculation if amount not available
+    const taxableAmount = calculateItemTaxableAmount(item);
+    const sgstRate = parseFloat(item.sgst) || 0;
+    return taxableAmount * (sgstRate / 100);
+  };
+
+  const getItemGSTAmount = (item) => {
+    // For KACHA mode, no GST
+    if (localOrderMode === "KACHA") {
+      return 0;
+    }
+    
+    // Try to get actual tax_amount from database
+    if (item.tax_amount !== undefined && item.tax_amount !== null) {
+      return parseFloat(item.tax_amount) || 0;
+    }
+    
+    // Fallback: calculate from CGST + SGST
+    const cgstAmount = getItemCGSTAmount(item);
+    const sgstAmount = getItemSGSTAmount(item);
+    return cgstAmount + sgstAmount;
+  };
+
   const calculateItemTotal = (item) => {
     const taxableAmount = calculateItemTaxableAmount(item);
     
@@ -47,50 +88,49 @@ const InvoicePreview_preview = ({
       return taxableAmount + taxAmount;
     }
   };
-
-  const calculateAdjustedGSTBreakdown = () => {
-    if (!invoiceData || !invoiceData.items) return {
-      totalCGST: "0.00",
-      totalSGST: "0.00", 
-      totalIGST: "0.00",
-      totalGST: "0.00"
-    };
-    
-    if (localOrderMode === "KACHA") {
-      return {
-        totalCGST: "0.00",
-        totalSGST: "0.00", 
-        totalIGST: "0.00",
-        totalGST: "0.00"
-      };
-    }
-    
-    // Calculate totals from all items
-    let totalCGST = 0;
-    let totalSGST = 0;
-    let totalIGST = 0;
-    let totalGST = 0;
-    
-    invoiceData.items.forEach(item => {
-      const taxableAmount = calculateItemTaxableAmount(item);
-      const cgstRate = parseFloat(item.cgst) || 0;
-      const sgstRate = parseFloat(item.sgst) || 0;
-      const igstRate = parseFloat(item.igst) || 0;
-      const gstRate = parseFloat(item.gst) || 0;
-      
-      totalCGST += taxableAmount * (cgstRate / 100);
-      totalSGST += taxableAmount * (sgstRate / 100);
-      totalIGST += taxableAmount * (igstRate / 100);
-      totalGST += taxableAmount * (gstRate / 100);
-    });
-    
-    return {
-      totalCGST: totalCGST.toFixed(2),
-      totalSGST: totalSGST.toFixed(2),
-      totalIGST: totalIGST.toFixed(2),
-      totalGST: totalGST.toFixed(2)
-    };
+// Replace the existing calculateAdjustedGSTBreakdown function with this:
+const calculateAdjustedGSTBreakdown = () => {
+  if (!invoiceData || !invoiceData.items) return {
+    totalTaxableAmount: "0.00",
+    totalCGST: "0.00",
+    totalSGST: "0.00", 
+    totalIGST: "0.00",
+    totalGST: "0.00"
   };
+  
+  let totalTaxableAmount = 0;
+  let totalCGST = 0;
+  let totalSGST = 0;
+  let totalGST = 0;
+  
+  // Calculate from all items
+  invoiceData.items.forEach(item => {
+    // Calculate taxable amount for this item
+    const taxableAmount = calculateItemTaxableAmount(item);
+    totalTaxableAmount += taxableAmount;
+    
+    // Calculate GST for this item (only for PAKKA mode)
+    if (localOrderMode === "PAKKA") {
+      const cgstAmount = getItemCGSTAmount(item);
+      const sgstAmount = getItemSGSTAmount(item);
+      const gstAmount = getItemGSTAmount(item);
+      
+      totalCGST += cgstAmount;
+      totalSGST += sgstAmount;
+      totalGST += gstAmount;
+    }
+  });
+  
+  return {
+    totalTaxableAmount: totalTaxableAmount.toFixed(2),
+    totalCGST: localOrderMode === "PAKKA" ? totalCGST.toFixed(2) : "0.00",
+    totalSGST: localOrderMode === "PAKKA" ? totalSGST.toFixed(2) : "0.00",
+    totalIGST: "0.00",
+    totalGST: localOrderMode === "PAKKA" ? totalGST.toFixed(2) : "0.00"
+  };
+};
+
+
 
   const adjustedGstBreakdown = calculateAdjustedGSTBreakdown();
   
@@ -236,162 +276,247 @@ const InvoicePreview_preview = ({
         </Row>
       </div>
 
-      {/* Items Table */}
+      {/* Items Table - With GST Amount, CGST and SGST columns using DB values */}
       <div className="items-section mb-4">
         <div className="d-flex justify-content-between align-items-center mb-2">
           <h6 className="text-primary mb-0">Items Details</h6>
         </div>
-        <table className="items-table table table-bordered table-sm">
-          <thead className="table-dark">
-            <tr>
-              <th width="5%">#</th>
-              <th width="20%">Product</th>
-              <th width="25%">Description</th>
-              <th width="10%">Qty</th>
-              <th width="15%">Price</th>
-              <th width="10%">GST %</th>
-              <th width="10%">Taxable Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoiceData.items.map((item, index) => {
-              // Calculate item values
-              const taxableAmount = calculateItemTaxableAmount(item);
-              const itemTotal = calculateItemTotal(item);
-              const gstPercentage = localOrderMode === "KACHA" ? 0 : (parseFloat(item.gst) || 0);
-              
-              return (
-                <tr key={index}>
-                  <td className="text-center">{index + 1}</td>
-                  <td>{item.product}</td>
-                  <td>
-                    {isEditing ? (
-                      <Form.Control
-                        as="textarea"
-                        rows={2}
-                        value={editableDescriptions[item.id || index] || item.description || ''}
-                        onChange={(e) => onDescriptionChange(item.id || index, e.target.value)}
-                        placeholder="Enter description..."
-                      />
-                    ) : (
-                      item.description || 'No description'
-                    )}
-                  </td>
-                  <td className="text-center">{item.quantity}</td>
-                  <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
-                  <td className="text-center">
-                    {localOrderMode === "KACHA" ? "0%" : `${gstPercentage}%`}
-                  </td>
-                  <td className="text-end fw-bold">
-                    ₹{taxableAmount.toFixed(2)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-          {/* Add a total row at the bottom of the table */}
-          <tfoot>
-            <tr className="table-secondary">
-              <td colSpan="6" className="text-end fw-bold">Total Taxable Amount:</td>
-              <td className="text-end fw-bold text-primary">
-                ₹{adjustedTotals.taxableAmount}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+        <div className="table-responsive">
+          <table className="items-table table table-bordered mb-0">
+            <thead className="table-dark">
+              <tr>
+                <th className="text-center" style={{ width: '3%' }}>#</th>
+                <th style={{ width: '13%' }}>Product</th>
+                <th style={{ width: '18%' }}>Description</th>
+                <th className="text-center" style={{ width: '5%' }}>Qty</th>
+                <th className="text-end" style={{ width: '9%' }}>Price</th>
+                <th className="text-center" style={{ width: '6%' }}>GST %</th>
+                <th className="text-end" style={{ width: '8%' }}>GST Amt</th>
+                
+                {/* CGST and SGST columns */}
+                <th className="text-end" style={{ width: '8%' }}>CGST Amt</th>
+                <th className="text-end" style={{ width: '8%' }}>SGST Amt</th>
+                
+                <th className="text-end" style={{ width: '10%' }}>Taxable Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoiceData.items.map((item, index) => {
+                const taxableAmount = calculateItemTaxableAmount(item);
+                const gstAmount = getItemGSTAmount(item);
+                const gstPercentage = localOrderMode === "KACHA" ? 0 : (parseFloat(item.gst) || 0);
+                const cgstAmount = getItemCGSTAmount(item);
+                const sgstAmount = getItemSGSTAmount(item);
+                
+                return (
+                  <tr key={index}>
+                    <td className="text-center align-middle">{index + 1}</td>
+                    <td className="align-middle">
+                      <div className="fw-medium">{item.product}</div>
+                    </td>
+                    <td className="align-middle">
+                      {isEditing ? (
+                        <Form.Control
+                          as="textarea"
+                          rows={1}
+                          value={editableDescriptions[item.id || index] || item.description || ''}
+                          onChange={(e) => onDescriptionChange(item.id || index, e.target.value)}
+                          placeholder="Enter description..."
+                          className="form-control-sm"
+                        />
+                      ) : (
+                        <div className="small text-muted">{item.description || 'No description'}</div>
+                      )}
+                    </td>
+                    <td className="text-center align-middle">{item.quantity}</td>
+                    <td className="text-end align-middle">
+                      <div className="fw-medium">₹{parseFloat(item.price).toFixed(2)}</div>
+                    </td>
+                    <td className="text-center align-middle">
+                      <span className={`badge ${localOrderMode === "KACHA" ? "bg-secondary" : "bg-primary"}`}>
+                        {localOrderMode === "KACHA" ? "0%" : `${gstPercentage}%`}
+                      </span>
+                    </td>
+                    
+                    {/* GST Amount Column - Using database value */}
+                    <td className="text-end align-middle">
+                      <div className="fw-medium">
+                        {localOrderMode === "KACHA" ? "₹0.00" : `₹${gstAmount.toFixed(2)}`}
+                      </div>
+                    </td>
+                    
+                    {/* CGST Column - Using database value */}
+                    <td className="text-end align-middle">
+                      <div className="fw-medium">
+                        {localOrderMode === "KACHA" ? "₹0.00" : `₹${cgstAmount.toFixed(2)}`}
+                      </div>
+                      {item.cgst && item.cgst > 0 && (
+                        <div className="text-muted small">
+                          {item.cgst}%
+                        </div>
+                      )}
+                    </td>
+                    
+                    {/* SGST Column - Using database value */}
+                    <td className="text-end align-middle">
+                      <div className="fw-medium">
+                        {localOrderMode === "KACHA" ? "₹0.00" : `₹${sgstAmount.toFixed(2)}`}
+                      </div>
+                      {item.sgst && item.sgst > 0 && (
+                        <div className="text-muted small">
+                          {item.sgst}%
+                        </div>
+                      )}
+                    </td>
+                    
+                    <td className="text-end align-middle">
+                      <div className="fw-bold text-primary">₹{taxableAmount.toFixed(2)}</div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot className="table-active">
+            
+              {/* Add Total GST Row */}
+              <tr>
+                <td colSpan={9} className="text-end fw-bold">
+                  Total GST:
+                </td>
+                <td className="text-end fw-bold text-success">
+                  ₹{adjustedGstBreakdown.totalGST}
+                </td>
+              </tr>
+              {/* Add Grand Total Row */}
+              <tr>
+                <td colSpan={9} className="text-end fw-bold">
+                  Grand Total:
+                </td>
+                <td className="text-end fw-bold text-danger fs-5">
+                  ₹{adjustedTotals.grandTotal}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
 
       {/* Totals Section */}
-      <div className="totals-section mb-4">
-        <Row>
-          <Col md={7}>
-            <div className="notes-section">
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <h6 className="text-primary">Notes:</h6>
-              </div>
-              
-              {isEditing ? (
-                <div className="mb-3">
-                  <Form.Control
-                    as="textarea"
-                    rows={3}
-                    value={editableNote}
-                    onChange={(e) => onNoteChange(e.target.value)}
-                    placeholder="Enter note..."
-                  />
-                </div>
-              ) : (
-                <div className="bg-light p-3 rounded min-h-100" style={{ whiteSpace: 'pre-wrap' }}>
-                  {invoiceData.note || 'No note added'}
-                </div>
-              )}
-              
-              <h6 className="text-primary mt-3">Transportation Details:</h6>
-              <p className="bg-light p-2 rounded">
-                {invoiceData.transportDetails}
-              </p>
-            </div>
-          </Col>
-          <Col md={5}>
-            <div className="amount-breakdown bg-light p-3 rounded">
-              <h6 className="text-primary mb-3">Amount Summary</h6>
-              <table className="amount-table w-100">
-                <tbody>
-                  <tr>
-                    <td className="pb-2">Taxable Amount:</td>
-                    <td className="text-end pb-2">₹{adjustedTotals.taxableAmount}</td>
-                  </tr>
-                  
-                  {localOrderMode === "KACHA" ? (
-                    <tr>
-                      <td className="pb-2 text-muted">GST (KACHA):</td>
-                      <td className="text-end pb-2 text-muted">₹0.00</td>
-                    </tr>
-                  ) : isSameState ? (
-                    <>
-                      <tr>
-                        <td className="pb-2">CGST:</td>
-                        <td className="text-end pb-2">₹{adjustedGstBreakdown.totalCGST}</td>
-                      </tr>
-                      <tr>
-                        <td className="pb-2">SGST:</td>
-                        <td className="text-end pb-2">₹{adjustedGstBreakdown.totalSGST}</td>
-                      </tr>
-                    </>
-                  ) : (
-                    <tr>
-                      <td className="pb-2">IGST:</td>
-                      <td className="text-end pb-2">₹{adjustedGstBreakdown.totalIGST}</td>
-                    </tr>
-                  )}
-                  
-                  {localOrderMode === "KACHA" ? (
-                    <tr>
-                      <td className="pb-2 text-danger">Total GST (KACHA):</td>
-                      <td className="text-end pb-2 text-danger">₹0.00</td>
-                    </tr>
-                  ) : (
-                    <tr>
-                      <td className="pb-2">Total GST:</td>
-                      <td className="text-end pb-2">₹{adjustedTotals.totalGST}</td>
-                    </tr>
-                  )}
-                  
-                  <tr className="grand-total border-top pt-2">
-                    <td><strong>Grand Total:</strong></td>
-                    <td className="text-end">
-                      <strong className={localOrderMode === "KACHA" ? "text-primary" : "text-success"}>
-                        ₹{adjustedTotals.grandTotal}
-                      </strong>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </Col>
-        </Row>
+   {/* Totals Section */}
+<div className="totals-section mb-4">
+  <Row>
+    <Col md={7}>
+      {/* Notes section remains the same */}
+      <div className="notes-section">
+        <div className="d-flex justify-content-between align-items-center mb-2">
+          <h6 className="text-primary">Notes:</h6>
+        </div>
+        
+        {isEditing ? (
+          <div className="mb-3">
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={editableNote}
+              onChange={(e) => onNoteChange(e.target.value)}
+              placeholder="Enter note..."
+            />
+          </div>
+        ) : (
+          <div className="bg-light p-3 rounded min-h-100" style={{ whiteSpace: 'pre-wrap', minHeight: '100px' }}>
+            {invoiceData.note || 'No note added'}
+          </div>
+        )}
+        
+        <h6 className="text-primary mt-3">Transportation Details:</h6>
+        <p className="bg-light p-2 rounded">
+          {invoiceData.transportDetails}
+        </p>
       </div>
-
+    </Col>
+    
+    <Col md={5}>
+      <div className="amount-breakdown bg-light p-3 rounded border">
+        <h6 className="text-primary mb-3 border-bottom pb-2">Amount Summary</h6>
+        
+     
+        
+        <table className="amount-table w-100">
+          <tbody>
+            {/* 1. Taxable Amount */}
+            <tr>
+              <td className="pb-2 pt-1">
+                <strong>Taxable Amount:</strong>
+              </td>
+              <td className="text-end pb-2 pt-1">
+                <strong>₹{adjustedGstBreakdown.totalTaxableAmount}</strong>
+              </td>
+            </tr>
+            
+            {/* 2. GST Breakdown - only show for PAKKA */}
+            {localOrderMode === "PAKKA" && (
+              <>
+                {/* CGST */}
+                <tr>
+                  <td className="pb-1">
+                    <span className="text-muted">CGST:</span>
+                  </td>
+                  <td className="text-end pb-1">
+                    <span className="text-muted">₹{adjustedGstBreakdown.totalCGST}</span>
+                  </td>
+                </tr>
+                
+                {/* SGST */}
+                <tr>
+                  <td className="pb-2">
+                    <span className="text-muted">SGST:</span>
+                  </td>
+                  <td className="text-end pb-2">
+                    <span className="text-muted">₹{adjustedGstBreakdown.totalSGST}</span>
+                  </td>
+                </tr>
+                
+                {/* Total GST */}
+                <tr>
+                  <td className="pb-2 pt-1">
+                    <strong>Total GST:</strong>
+                  </td>
+                  <td className="text-end pb-2 pt-1">
+                    <strong className="text-success">₹{adjustedGstBreakdown.totalGST}</strong>
+                  </td>
+                </tr>
+              </>
+            )}
+            
+            {/* 3. Grand Total with clear separation */}
+            <tr className="border-top">
+              <td className="pt-3">
+                <strong className="fs-5">Grand Total:</strong>
+              </td>
+              <td className="text-end pt-3">
+                <strong className={`fs-5 ${localOrderMode === "KACHA" ? "text-primary" : "text-success"}`}>
+                  ₹{adjustedTotals.grandTotal}
+                </strong>
+              </td>
+            </tr>
+            
+            {/* Show calculation breakdown in small text */}
+            <tr>
+              <td colSpan={2} className="pt-1">
+                <small className="text-muted">
+                  {localOrderMode === "KACHA" ? 
+                    "Taxable Amount = Grand Total (No GST)" : 
+                    `Taxable Amount (₹${adjustedGstBreakdown.totalTaxableAmount}) + GST (₹${adjustedGstBreakdown.totalGST}) = Grand Total`
+                  }
+                </small>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </Col>
+  </Row>
+</div>
       {/* Footer */}
       <div className="invoice-footer border-top pt-3">
         <Row>
