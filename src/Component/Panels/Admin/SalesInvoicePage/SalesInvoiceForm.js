@@ -39,12 +39,12 @@ const [selectedStaffId, setSelectedStaffId] = useState("");
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
-        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-        email: "sumukhusr7@gmail.com",
-        phone: "3456549876543",
-        gstin: "29AABCD0503B1ZG",
-        state: "Karnataka"
+           name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+      email: "spmathur56@gmail.com",
+      phone: "9801049700",
+      gstin: "10AAOCS1541B1ZZ",
+      state: "Bihar"
       },
       supplierInfo: {
         name: "",
@@ -217,12 +217,12 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
       validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       
       companyInfo: {
-        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-        email: "sumukhusr7@gmail.com",
-        phone: "3456549876543",
-        gstin: "29AABCD0503B1ZG",
-        state: "Karnataka"
+         name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+      email: "spmathur56@gmail.com",
+      phone: "9801049700",
+      gstin: "10AAOCS1541B1ZZ",
+      state: "Bihar"
       },
       
       supplierInfo: {
@@ -746,12 +746,12 @@ const cancelEdit = () => {
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
-        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-        email: "sumukhusr7@gmail.com",
-        phone: "3456549876543",
-        gstin: "29AABCD0503B1ZG",
-        state: "Karnataka"
+         name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+      email: "spmathur56@gmail.com",
+      phone: "9801049700",
+      gstin: "10AAOCS1541B1ZZ",
+      state: "Bihar"
       },
       supplierInfo: {
         name: "",

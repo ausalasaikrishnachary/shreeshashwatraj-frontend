@@ -153,12 +153,12 @@ const handleInvoiceNumberClick = async (invoice) => {
       invoiceDate: invoiceDetails.Date || invoice.created,
       validityDate: new Date(new Date(invoiceDetails.Date || invoice.created).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
-        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-        email: "sumukhuri7@gmail.com",
-        phone: "3456548878543",
-        gstin: "ZAAABCD0508B1ZG",
-        state: "Karnataka"
+              name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+      email: "spmathur56@gmail.com",
+      phone: "9801049700",
+      gstin: "10AAOCS1541B1ZZ",
+      state: "Bihar"
       },
       supplierInfo: {
         name: invoiceDetails.PartyName || 'N/A',
@@ -214,12 +214,12 @@ const handleInvoiceNumberClick = async (invoice) => {
       invoiceDate: invoice.created,
       validityDate: new Date(new Date(invoice.created).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
-        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-        email: "sumukhuri7@gmail.com",
-        phone: "3456548878543",
-        gstin: "ZAAABCD0508B1ZG",
-        state: "Karnataka"
+                name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+      email: "spmathur56@gmail.com",
+      phone: "9801049700",
+      gstin: "10AAOCS1541B1ZZ",
+      state: "Bihar"
       },
       supplierInfo: {
         name: invoice.originalData?.PartyName || 'John A',

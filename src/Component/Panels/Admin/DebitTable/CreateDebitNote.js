@@ -781,16 +781,27 @@ const CreateDebitNote = () => {
             <div className="row g-0 align-items-start">
 
               {/* LEFT */}
-              <div className="col-lg-8 col-md-7 border-end p-3">
-                <strong>Navkar Exports</strong>
-                <div style={{ fontSize: 13, marginTop: 6, whiteSpace: "pre-line" }}>
-                  NO.63/603 AND 64/604, NEAR JAIN TEMPLE, T DASARAHALLI{"\n"}
-                  Email: akshay555.ak@gmail.com{"\n"}
-                  Phone: 09880900431{"\n"}
-                  GSTIN: 29AAMPC7994B1ZE
-                </div>
-              </div>
-
+                   <div className="col-lg-8 col-md-7 border-end p-3">
+  <strong className="d-block mb-2">Navkar Exports</strong>
+  <div className="company-details" style={{ fontSize: '13px' }}>
+    <div className="mb-1">
+      <strong>Name:</strong> SHREE SHASHWAT RAJ AGRO PVT.LTD.
+    </div>
+    <div className="mb-1">
+      <strong>Address:</strong> NO.PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD,
+      BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113
+    </div>
+    <div className="mb-1">
+      <strong>Email:</strong> spmathur56@gmail.com
+    </div>
+    <div className="mb-1">
+      <strong>Phone:</strong> 9801049700
+    </div>
+    <div className="mb-1">
+      <strong>GSTIN:</strong> 10AAOCS1541B1ZZ
+    </div>
+  </div>
+</div>
               {/* RIGHT */}
               <div className="col-lg-4 col-md-5 p-3">
                 <label className="form-label small">Credit Note No</label>
