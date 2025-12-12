@@ -20,7 +20,7 @@ const DebitView = () => {
   const fetchCreditNote = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${baseurl}/api/creditnotes/${id}`);
+      const response = await fetch(`${baseurl}/api/debitnotes/${id}`);
       
       if (response.ok) {
         const data = await response.json(); 
@@ -32,11 +32,11 @@ const DebitView = () => {
           fetchCustomerDetails(customerId);
         }
       } else {
-        setError('Failed to load credit note');
+        setError('Failed to load Debit Note');
       }
     } catch (err) {
-      console.error('Error fetching credit note:', err);
-      setError('Error loading credit note');
+      console.error('Error fetching Debit Note:', err);
+      setError('Error loading Debit Note');
     } finally {
       setIsLoading(false);
     }
@@ -47,7 +47,7 @@ const DebitView = () => {
   };
 
   const handleBack = () => {
-    navigate('/sales/credit_note');
+    navigate('/purchase/debit-note');
   };
 
   const toggleDropdown = () => {
@@ -56,15 +56,15 @@ const DebitView = () => {
 
   const handleEdit = () => {
     setShowDropdown(false);
-    navigate(`/sales/credit-note/edit/${id}`);
+    navigate(`/purchase/debit-note/edit/${id}`);
   };
 
   // Fixed handleDelete function with your API
   const handleDelete = async () => {
-    if (window.confirm(`Are you sure you want to delete credit note ${creditNote?.VchNo || 'unknown'}?`)) {
+    if (window.confirm(`Are you sure you want to delete Debit Note ${creditNote?.VchNo || 'unknown'}?`)) {
       try {
         setIsSubmitting(true);
-        console.log('Delete credit note ID:', id);
+        console.log('Delete Debit Note ID:', id);
         
         // Using your existing transactions API
         const response = await fetch(`${baseurl}/transactions/${id}`, {
@@ -74,18 +74,18 @@ const DebitView = () => {
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
-            alert('Credit note deleted successfully!');
+            alert('Debit Note deleted successfully!');
             navigate('/sales/credit_note');
           } else {
-            alert('Failed to delete credit note: ' + (result.message || 'Unknown error'));
+            alert('Failed to delete Debit Note: ' + (result.message || 'Unknown error'));
           }
         } else {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to delete credit note');
+          throw new Error(errorData.error || 'Failed to delete Debit Note');
         }
       } catch (err) {
-        console.error('Error deleting credit note:', err);
-        alert('Error deleting credit note. Please try again.');
+        console.error('Error deleting Debit Note:', err);
+        alert('Error deleting Debit Note. Please try again.');
       } finally {
         setIsSubmitting(false);
       }
@@ -163,7 +163,7 @@ const DebitView = () => {
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
-          <p className="mt-2">Loading credit note...</p>
+          <p className="mt-2">Loading Debit Note...</p>
         </div>
       </div>
     );
@@ -176,7 +176,7 @@ const DebitView = () => {
           <h4>Error</h4>
           <p>{error}</p>
           <button className="btn btn-primary" onClick={handleBack}>
-            Back to Credit Notes
+            Back to Debit Notes
           </button>
         </div>
       </div>
@@ -187,10 +187,10 @@ const DebitView = () => {
     return (
       <div className="creditnote-view-container">
         <div className="alert alert-warning text-center">
-          <h4>Credit Note Not Found</h4>
-          <p>The requested credit note could not be found.</p>
+          <h4>Debit Note Not Found</h4>
+          <p>The requested Debit Note could not be found.</p>
           <button className="btn btn-primary" onClick={handleBack}>
-            Back to Credit Notes
+            Back to Debit Notes
           </button>
         </div>
       </div>
@@ -202,7 +202,7 @@ const DebitView = () => {
       {/* Header Actions */}
       <div className="creditnote-view-header">
         <button className="btn btn-outline-secondary" onClick={handleBack}>
-          <i className="bi bi-arrow-left me-2"></i> Back to Credit Notes
+          <i className="bi bi-arrow-left me-2"></i> Back to Debit Notes
         </button>
         <div className="creditnote-view-actions">
           <div className="dropdown" style={{ position: 'relative', display: 'inline-block' }}>
@@ -239,14 +239,14 @@ const DebitView = () => {
 
     
 
-      {/* Credit Note View */}
+      {/* Debit Note View */}
       <div className="creditnote-container">
         <div className="creditnote-paper">
           <div className="creditnote-header">
-            <h1 className="creditnote-main-title">CREDIT NOTE</h1>
-            <div className="creditnote-customer-section">
-              <h2 className="creditnote-customer-title">Customer: {creditNote.PartyName || 'N/A'}</h2>
-            </div>
+            <h1 className="creditnote-main-title">Debit Note</h1>
+                  <div className="creditnote-customer-section">
+  <h2 className="creditnote-customer-title">Customer: {creditNote.payee_name || 'N/A'}</h2>
+</div>
             <hr className="creditnote-divider" />
           </div>
 
@@ -271,11 +271,10 @@ const DebitView = () => {
 
           <hr className="creditnote-divider" />
 
-          {/* Credit Note Details */}
+          {/* Debit Note Details */}
           <div className="creditnote-details">
             <div className="creditnote-meta">
-              <p><strong>Credit Note Date:</strong> {creditNote.Date ? new Date(creditNote.Date).toLocaleDateString('en-IN') : 'N/A'}</p>
-              <p><strong>Created by:</strong> IIIQ bets</p>
+              <p><strong>Debit Note Date:</strong> {creditNote.Date ? new Date(creditNote.Date).toLocaleDateString('en-IN') : 'N/A'}</p>
             </div>
           </div>
 
@@ -316,7 +315,7 @@ const DebitView = () => {
           <div className="creditnote-additional-info">
             <div className="row">
               <div className="col-md-6">
-                <p><strong>Credit Note Number:</strong> {creditNote.VchNo || 'N/A'}</p>
+                <p><strong>Debit Note Number:</strong> {creditNote.VchNo || 'N/A'}</p>
               </div>
               <div className="col-md-6">
                 <p><strong>Voucher ID:</strong> {creditNote.VoucherID || 'N/A'}</p>

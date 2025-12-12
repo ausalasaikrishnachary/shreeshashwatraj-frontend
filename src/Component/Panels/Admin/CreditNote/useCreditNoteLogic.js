@@ -70,8 +70,6 @@ const useCreditNoteLogic = () => {
     const originalSalesQty = parseFloat(salesItem.quantity) || 0;
     console.log("✅ Original Sales Quantity:", originalSalesQty);
     
-    // Find all credit notes for this invoice
-    // IMPORTANT: Credit notes use InvoiceNumber field to reference the original invoice
     const creditNotes = allTransactions.filter(t => 
       t.TransactionType === "CreditNote" && 
       t.InvoiceNumber === invoiceNumber  // Changed from originalInvoiceNumber to InvoiceNumber
@@ -102,9 +100,6 @@ const useCreditNoteLogic = () => {
     return availableQty;
   };
 
-  // ------------------------------------------------------------------------------------
-  // FETCH CREDIT NOTE NUMBER + INVOICE LIST
-  // ------------------------------------------------------------------------------------
   useEffect(() => {
     const init = async () => {
       try {

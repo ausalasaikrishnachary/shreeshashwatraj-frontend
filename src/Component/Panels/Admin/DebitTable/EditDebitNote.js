@@ -250,11 +250,11 @@ const EditDebitNote = () => {
     console.log("Backend Response:", response.data);
 
     if(response.data){
-      window.alert("✅ Credit Note updated successfully!");
+      window.alert("✅ Debit Note updated successfully!");
       navigate("/purchase/debit-note");
     }
   } catch (err) {
-    console.error("Error updating credit note:", err);
+    console.error("Error updating Debit note:", err);
     
     // Check if it's a quantity exceed error
     if (err.response && err.response.data && err.response.data.message) {
@@ -266,13 +266,13 @@ const EditDebitNote = () => {
       } else if (errorMessage.includes("No purchase voucher found")) {
         window.alert(`❌ purchase Not Found: ${errorMessage}`);
       } else {
-        window.alert(`❌ Failed to update credit note: ${errorMessage}`);
+        window.alert(`❌ Failed to update Debit note: ${errorMessage}`);
       }
     } else if (err.message && err.message.includes("Quantity exceeds purchase quantity")) {
       // Handle case where error is in err.message directly
       window.alert(`❌ Quantity Error: ${err.message}`);
     } else {
-      window.alert("❌ Failed to update credit note");
+      window.alert("❌ Failed to update Debit note");
     }
   }
 };
@@ -320,7 +320,7 @@ const EditDebitNote = () => {
 
               <div className="col-lg-4 col-md-5 p-3">
                 <div className="mb-2">
-                  <label className="form-label small mb-1">Credit Note No</label>
+                  <label className="form-label small mb-1">Debit Note No</label>
                   <div className="position-relative">
                     <input 
                       className="form-control form-control-sm" 
@@ -587,7 +587,7 @@ const EditDebitNote = () => {
                 onClick={handleUpdateCreditNote}
                 disabled={!selectedInvoice || items.length === 0 || !creditNoteNumber}
               >
-                📝 Update Credit Note
+                📝 Update Debit Note
               </button>
             </div>
           </div>

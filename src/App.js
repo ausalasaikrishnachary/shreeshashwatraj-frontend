@@ -258,7 +258,7 @@ function App() {
         <Route path="/purchase/purchase-order" element={<PurchaseOrderTable />} />
         <Route path="/purchase/voucher" element={<VoucherTable />} />
         <Route path="/purchase/debit-note" element={<DebitNoteTable />} />
-        <Route path="/purchase/create_note" element={<CreateDebitNote />} />
+        <Route path="/purchase/debit_note" element={<CreateDebitNote />} />
         <Route path="/purchase/debit-note/edit/:id" element={<EditDebitNote />} />
         <Route path="/purchase/payables" element={<PayablesTable />} />
         <Route path="/voucher_view/:id" element={<VoucherView />} />
@@ -350,6 +350,7 @@ function App() {
         <Route path="/invoicepreview_preivew" element={<InvoicePreview_preview />} />
 <Route path="/receiptmodal_preview" element={<ReceiptModal_preview />} />
 <Route path="/QRCodeGenerator" element={<QRCodeGenerator />} />
+<Route path="/debitnote_view/:id" element={<DebitView />} />
 
       </Routes>
     </Router>

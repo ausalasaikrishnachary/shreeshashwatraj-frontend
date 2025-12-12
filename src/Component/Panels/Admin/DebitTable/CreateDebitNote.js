@@ -804,7 +804,7 @@ const CreateDebitNote = () => {
 </div>
               {/* RIGHT */}
               <div className="col-lg-4 col-md-5 p-3">
-                <label className="form-label small">Credit Note No</label>
+                <label className="form-label small">Debit Note No</label>
                 <input
                   className="form-control form-control-sm"
                   value={creditNoteNumber}
@@ -893,7 +893,7 @@ const CreateDebitNote = () => {
                 onClick={handleCreateCreditNote}
                 disabled={!selectedInvoice || items.length === 0}
               >
-                + Create Credit Note
+                + Create Debit Note
               </button>
             </div>
           </div>

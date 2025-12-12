@@ -73,10 +73,10 @@ const fetchCreditNotes = async () => {
       alert('Cannot view debit note: Invalid ID');
       return;
     }
-    navigate(`/creditview/${creditNoteId}`);
+    navigate(`/debitnote_view/${creditNoteId}`);
   };
 
-  const handleCreateClick = () => navigate("/purchase/create_note");
+  const handleCreateClick = () => navigate("/purchase/debit_note");
 
   // Define tabs with their corresponding routes
   const tabs = [
@@ -190,20 +190,20 @@ const fetchCreditNotes = async () => {
       title: 'CUSTOMER NAME',
       style: { textAlign: 'left' }
     },
-    // {
-    //   key: 'noteNumber',
-    //   title: 'DEBIT NOTE NUMBER',
-    //   render: (value, row) => (
-    //     <button
-    //       className="btn btn-link p-0 text-primary text-decoration-none"
-    //       onClick={() => handleViewCreditNote(row.id)} // Use row.id which contains VoucherID
-    //       title="Click to view debit note"
-    //     >
-    //       {value || 'N/A'}
-    //     </button>
-    //   ),
-    //   style: { textAlign: 'center' }
-    // },
+    {
+      key: 'noteNumber',
+      title: 'DEBIT NOTE NUMBER',
+      render: (value, row) => (
+        <button
+          className="btn btn-link p-0 text-primary text-decoration-none"
+          onClick={() => handleViewCreditNote(row.id)} // Use row.id which contains VoucherID
+          title="Click to view debit note"
+        >
+          {value || 'N/A'}
+        </button>
+      ),
+      style: { textAlign: 'center' }
+    },
     {
       key: 'document',
       title: 'Invoice Number',

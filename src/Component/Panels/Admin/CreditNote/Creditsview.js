@@ -244,9 +244,9 @@ const Creditsview = () => {
         <div className="creditnote-paper">
           <div className="creditnote-header">
             <h1 className="creditnote-main-title">CREDIT NOTE</h1>
-            <div className="creditnote-customer-section">
-              <h2 className="creditnote-customer-title">Customer: {creditNote.PartyName || 'N/A'}</h2>
-            </div>
+          <div className="creditnote-customer-section">
+  <h2 className="creditnote-customer-title">Customer: {creditNote.payee_name || 'N/A'}</h2>
+</div>
             <hr className="creditnote-divider" />
           </div>
 
@@ -275,7 +275,6 @@ const Creditsview = () => {
           <div className="creditnote-details">
             <div className="creditnote-meta">
               <p><strong>Credit Note Date:</strong> {creditNote.Date ? new Date(creditNote.Date).toLocaleDateString('en-IN') : 'N/A'}</p>
-              <p><strong>Created by:</strong> IIIQ bets</p>
             </div>
           </div>
 

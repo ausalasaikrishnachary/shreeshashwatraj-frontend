@@ -1208,7 +1208,7 @@ const payload = {
       ) : (
         <>
           <div className="d-flex justify-content-between align-items-center mb-2">
-            <strong className="text-primary">Supplier Info</strong>
+            <strong className="text-primary">Retailer Info</strong>
             <Button
               variant="info"
               size="sm"

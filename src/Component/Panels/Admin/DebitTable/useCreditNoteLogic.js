@@ -336,7 +336,7 @@ const useCreditNoteLogic = () => {
 
     await axios.post(`${baseurl}/transaction`, payload);
 
-    alert("Credit Note Created!");
+    alert("Debit Note Created!");
     navigate("/purchase/debit-note");
   };
 
