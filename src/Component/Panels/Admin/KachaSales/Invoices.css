@@ -93,12 +93,15 @@
 .invoices-stat-card--total {
   border-left: 5px solid #007bff;
 }
+
 .invoices-stat-card--paid {
   border-left: 5px solid #28a745;
 }
+
 .invoices-stat-card--pending {
   border-left: 5px solid #ffc107;
 }
+
 .invoices-stat-card--overdue {
   border-left: 5px solid #dc3545;
 }
@@ -198,20 +201,29 @@ input.form-control {
   .admin-content-wrapper {
     padding: 15px;
   }
+
   .invoices-main-title {
     font-size: 1.5rem;
   }
+
   .invoices-stats-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
 
 @media (max-width: 768px) {
+
+  select.form-select,
+  input.form-control {
+    height: 50px;
+    font-size: 0.95rem;
+  }
+
   .invoices-stats-grid {
     grid-template-columns: 1fr;
   }
 
-  .row.g-3 > .col-md-auto {
+  .row.g-3>.col-md-auto {
     width: 100%;
   }
 
@@ -276,7 +288,7 @@ input.form-control {
     overflow-x: auto;
     flex-wrap: nowrap;
   }
-  
+
   .invoices-tab {
     padding: 10px 16px;
     font-size: 13px;
@@ -331,22 +343,23 @@ input.form-control {
 
 /* Print Styles */
 @media print {
+
   .modal-header,
   .modal-footer,
   .btn {
     display: none !important;
   }
-  
+
   .modal-body {
     padding: 0 !important;
   }
-  
+
   .invoice-pdf-preview {
     box-shadow: none !important;
     padding: 0 !important;
     margin: 0 !important;
   }
-  
+
   body {
     background: white !important;
   }
@@ -376,11 +389,11 @@ input.form-control {
   .invoice-pdf-preview {
     padding: 10px !important;
   }
-  
+
   .company-name {
     font-size: 1.25rem;
   }
-  
+
   .items-table {
     font-size: 0.7rem;
   }

@@ -5,7 +5,7 @@ import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import './Period.css';
 import { baseurl } from "../../../BaseURL/BaseURL";
-import { FaFilePdf, FaTrash, FaDownload } from 'react-icons/fa';
+import { FaFilePdf, FaTrash, FaDownload, FaCheck, FaTimes } from 'react-icons/fa';
 
 
 const Period = () => {
@@ -29,6 +29,9 @@ const Period = () => {
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
   const [nextInvoiceNumber, setNextInvoiceNumber] = useState("");
 
+  // New state for approval status
+  const [itemApprovalStatus, setItemApprovalStatus] = useState({}); // itemId -> status: "pending" | "approved" | "rejected"
+
   useEffect(() => {
     fetchOrders();
     fetchNextInvoiceNumber();
@@ -41,7 +44,6 @@ const Period = () => {
       });
     }
   }, [orders]);
-
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -261,8 +263,6 @@ const Period = () => {
     }
   };
 
-
-
 const fetchOrders = async () => {
   try {
     setLoading(true);
@@ -286,11 +286,6 @@ const fetchOrders = async () => {
     
     console.log(`Filtered orders: ${filteredOrdersData.length} out of ${ordersData.length}`);
     
-    if (filteredOrdersData.length > 0) {
-      console.log("Available fields in first filtered order:", Object.keys(filteredOrdersData[0]));
-      console.log("First order staff_incentive from orders table:", filteredOrdersData[0].staff_incentive);
-    }
-
     const ordersWithItems = await Promise.all(
       filteredOrdersData.map(async (order) => {
         try {
@@ -299,15 +294,13 @@ const fetchOrders = async () => {
           const itemsData = itemsRes.data.items || [];
           const orderMode = order.order_mode || "Pakka";
 
-          // Get staff_incentive from ORDERS TABLE (not calculating from items)
+          // Get staff_incentive from ORDERS TABLE
           const staffIncentive = parseFloat(order.staff_incentive) || 0;
-          console.log(`Order ${order.order_number}: staff_incentive from orders table = ${staffIncentive}`);
 
           // Fetch account details by customer ID
           let accountDetails = null;
           try {
             const accountRes = await axios.get(`${baseurl}/accounts/${order.customer_id}`);
-            console.log(`Account response for customer ${order.customer_id}:`, accountRes.data);
             accountDetails = accountRes.data;
           } catch (accountErr) {
             console.warn(`Could not fetch account details for customer ID ${order.customer_id}:`, accountErr.message);
@@ -326,6 +319,9 @@ const fetchOrders = async () => {
                 console.warn(`Could not fetch product details for product ID ${item.product_id}:`, productErr.message);
                 min_sale_price = 0;
               }
+
+              // Check if item needs approval (sale_price < min_sale_price)
+              const needsApproval = parseFloat(item.sale_price) < parseFloat(min_sale_price);
 
               return {
                 id: item.id,
@@ -349,35 +345,24 @@ const fetchOrders = async () => {
                 invoice_status: item.invoice_status ?? 0,
                 staff_id: item.staff_id ?? order.staff_id ?? 0,
                 assigned_staff: item.assigned_staff ?? order.assigned_staff ?? null,
-                // Do NOT calculate staff_incentive from items
-                // Use the value from orders table instead
-                staff_incentive: item.staff_incentive ?? 0, // Keep item level incentive if needed separately
+                staff_incentive: item.staff_incentive ?? 0,
                 invoice_date: item.invoce_date ?? 0,
                 credit_percentage: item.credit_percentage ?? 0,
                 sgst_percentage: item.sgst_percentage ?? 0,
                 sgst_amount: item.sgst_amount ?? 0,
                 cgst_percentage: item.cgst_percentage ?? 0,
                 cgst_amount: item.cgst_amount ?? 0,
-                discount_applied_scheme: item.discount_applied_scheme ?? "N/A"
+                discount_applied_scheme: item.discount_applied_scheme ?? "N/A",
+                needs_approval: needsApproval,
+                // IMPORTANT: Use the approval_status from the API response, default to "pending"
+                approval_status: item.approval_status || "pending"
               };
             })
           );
 
-          console.log(`Order ${order.order_number}:`, {
-            order_status: order.order_status,
-            invoice_status: order.invoice_status,
-            invoice_number: order.invoice_number,
-            assigned_staff: order.assigned_staff,
-            staff_id: order.staff_id,
-            staff_incentive_from_orders: staffIncentive // Log the value
-          });
-
           const assignedStaff = order.assigned_staff || "N/A";
           const staffId = order.staff_id || "N/A";
           const orderStatus = order.order_status || "N/A";
-
-          // Use staff_incentive from ORDERS TABLE directly
-          const totalStaffIncentive = staffIncentive;
 
           return {
             ...order,
@@ -385,7 +370,7 @@ const fetchOrders = async () => {
             assigned_staff: assignedStaff,
             staff_id: staffId,
             order_status: orderStatus,
-            staff_incentive: totalStaffIncentive, // This is from orders table
+            staff_incentive: staffIncentive,
             account_details: accountDetails,
             order_mode: orderMode
           };
@@ -397,7 +382,7 @@ const fetchOrders = async () => {
             assigned_staff: order.assigned_staff || "N/A",
             staff_id: order.staff_id || "N/A",
             order_status: order.order_status || "N/A",
-            staff_incentive: parseFloat(order.staff_incentive) || 0, // Keep from orders table
+            staff_incentive: parseFloat(order.staff_incentive) || 0,
             account_details: null,
             order_mode: order.order_mode || "Pakka"
           };
@@ -413,15 +398,20 @@ const fetchOrders = async () => {
   }
 };
 
-
   const toggleRow = (id) => {
     setOpenRow(openRow === id ? null : id);
   };
 
-
-
-  // Updated handleItemSelect function with auto-selection for same credit period
+  // Updated handleItemSelect function with approval check
   const handleItemSelect = (orderId, itemId, isSelected, itemCreditPeriod) => {
+    const item = orders.find(o => o.id === orderId)?.items?.find(i => i.id === itemId);
+    
+    // Check if item needs approval and is not approved
+    if (item && item.needs_approval && item.approval_status !== "approved") {
+      alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
+      return;
+    }
+
     setSelectedItems(prev => {
       const newSelected = { ...prev };
       const currentSelectedIds = newSelected[orderId] || [];
@@ -435,7 +425,8 @@ const fetchOrders = async () => {
           // No items selected yet - select all eligible with this credit period
           const eligibleItems = order.items.filter(item =>
             item.credit_period === itemCreditPeriod &&
-            item.invoice_status !== 1
+            item.invoice_status !== 1 &&
+            (!item.needs_approval || item.approval_status === "approved") // Check approval
           );
           newSelected[orderId] = eligibleItems.map(item => item.id);
         } else {
@@ -448,7 +439,8 @@ const fetchOrders = async () => {
             const eligibleItems = order.items.filter(item =>
               item.credit_period === itemCreditPeriod &&
               item.invoice_status !== 1 &&
-              !currentSelectedIds.includes(item.id)
+              !currentSelectedIds.includes(item.id) &&
+              (!item.needs_approval || item.approval_status === "approved") // Check approval
             );
             newSelected[orderId] = [...currentSelectedIds, ...eligibleItems.map(item => item.id)];
           } else {
@@ -470,7 +462,7 @@ const fetchOrders = async () => {
     });
   };
 
-  // Select all items in an order with credit period validation
+  // Select all items in an order with credit period validation and approval check
   const handleSelectAll = (orderId, items) => {
     const currentSelectedIds = selectedItems[orderId] || [];
     const isAllSelected = currentSelectedIds.length === items.length;
@@ -490,13 +482,108 @@ const fetchOrders = async () => {
         return;
       }
 
-      // Select all (all have same credit period)
+      // Filter items that are eligible (no invoice generated and approved if needed)
+      const eligibleItems = items.filter(item => {
+        if (item.invoice_status === 1) return false; // Skip items with existing invoice
+        if (item.needs_approval && item.approval_status !== "approved") return false; // Skip items needing approval but not approved
+        return true;
+      });
+
+      if (eligibleItems.length === 0) {
+        alert("No items available for selection. All items either have invoices generated or require approval.");
+        return;
+      }
+
+      // Select all eligible items
       setSelectedItems(prev => ({
         ...prev,
-        [orderId]: items.map(item => item.id)
+        [orderId]: eligibleItems.map(item => item.id)
       }));
     }
   };
+
+  // Handle item approval
+// Handle item approval
+const handleApproveItem = async (itemId, orderId) => {
+  try {
+    // Find the item
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    
+    const item = order.items.find(i => i.id === itemId);
+    if (!item) return;
+    
+    // Call API to update approval status - FIXED ENDPOINT
+    const response = await axios.put(`${baseurl}/orders/items/${itemId}/approve`, {
+      approval_status: "approved"
+    });
+    
+    if (response.data.success) {
+      // Update local state
+      setOrders(prevOrders => 
+        prevOrders.map(order => {
+          if (order.id === orderId) {
+            return {
+              ...order,
+              items: order.items.map(item => 
+                item.id === itemId 
+                  ? { ...item, approval_status: "approved" }
+                  : item
+              )
+            };
+          }
+          return order;
+        })
+      );
+      
+      alert("Item approved successfully!");
+    }
+  } catch (error) {
+    console.error("Error approving item:", error);
+    alert(`Failed to approve item: ${error.response?.data?.error || error.message}`);
+  }
+};
+
+// Handle item rejection
+const handleRejectItem = async (itemId, orderId) => {
+  try {
+    // Find the item
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    
+    const item = order.items.find(i => i.id === itemId);
+    if (!item) return;
+    
+    // Call API to update approval status - FIXED ENDPOINT
+    const response = await axios.put(`${baseurl}/orders/items/${itemId}/approve`, {
+      approval_status: "rejected"
+    });
+    
+    if (response.data.success) {
+      // Update local state
+      setOrders(prevOrders => 
+        prevOrders.map(order => {
+          if (order.id === orderId) {
+            return {
+              ...order,
+              items: order.items.map(item => 
+                item.id === itemId 
+                  ? { ...item, approval_status: "rejected" }
+                  : item
+              )
+            };
+          }
+          return order;
+        })
+      );
+      
+      alert("Item rejected successfully!");
+    }
+  } catch (error) {
+    console.error("Error rejecting item:", error);
+    alert(`Failed to reject item: ${error.response?.data?.error || error.message}`);
+  }
+};
 
   // Open Order Modal with existing data
   const openOrderModal = (orderId) => {
@@ -526,158 +613,173 @@ const fetchOrders = async () => {
     setModalData(null);
   };
 
-  // In Period.js, update ONLY the handleGenerateInvoice function:
-const handleGenerateInvoice = (order) => {
-  try {
-    setGeneratingInvoice(true);
+  // Handle invoice generation with approval check
+  const handleGenerateInvoice = (order) => {
+    try {
+      setGeneratingInvoice(true);
 
-    const orderSelectedItems = selectedItems[order.id] || [];
-    if (orderSelectedItems.length === 0) {
-      alert("Please select at least one item to generate invoice!");
-      setGeneratingInvoice(false);
-      return;
-    }
-
-    const selectedItemsData = order.items.filter(item =>
-      orderSelectedItems.includes(item.id)
-    );
-
-    const itemsWithInvoice = selectedItemsData.filter(item => item.invoice_status === 1);
-    if (itemsWithInvoice.length > 0) {
-      alert(`Some selected items already have invoices generated: ${itemsWithInvoice.map(i => i.item_name).join(', ')}`);
-      setGeneratingInvoice(false);
-      return;
-    }
-
-    let invoiceNumber = nextInvoiceNumber;
-    if (!invoiceNumber) {
-      invoiceNumber = `INV${order.order_number.replace('ORD', '')}`;
-    }
-
-    const accountDetails = order.account_details;
-    const staffId = selectedItemsData[0]?.staff_id || order.staff_id || 0;
-    
-    // Get staff_incentive from ORDERS TABLE (not calculating from items)
-    const staffIncentive = order.staff_incentive || 0;
-    console.log("Staff Incentive from orders table:", staffIncentive);
-
-    const invoiceData = {
-      orderNumber: order.order_number,
-      invoiceNumber: invoiceNumber,
-      invoiceDate: new Date().toISOString().split('T')[0],
-      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-
-      originalOrder: {
-        ...order,
-        items: undefined
-      },
-
-      // Pass only selected items WITH SGST/CGST DATA
-      selectedItems: selectedItemsData.map(item => ({
-        ...item,
-        // Ensure SGST/CGST data is explicitly included
-        sgst_percentage: item.sgst_percentage || 0,
-        sgst_amount: item.sgst_amount || 0,
-        cgst_percentage: item.cgst_percentage || 0,
-        cgst_amount: item.cgst_amount || 0
-      })),
-      selectedItemIds: orderSelectedItems,
-
-      selectedItemsTotal: {
-        taxableAmount: selectedItemsData.reduce((sum, item) => sum + (item.taxable_amount || 0), 0),
-        taxAmount: selectedItemsData.reduce((sum, item) => sum + (item.tax_amount || 0), 0),
-        discountAmount: selectedItemsData.reduce((sum, item) => sum + (item.discount_amount || 0), 0),
-        grandTotal: selectedItemsData.reduce((sum, item) => sum + (item.item_total || 0), 0)
-      },
-
-      companyInfo: {
-        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-        email: "sumukhusr7@gmail.com",
-        phone: "3456549876543",
-        gstin: "29AABCD0503B1ZG",
-        state: "Karnataka"
-      },
-
-      customerInfo: {
-        name: accountDetails?.name || order.customer_name,
-        businessName: accountDetails?.business_name || order.customer_name,
-        state: accountDetails?.billing_state || order.billing_state || "Karnataka",
-        gstin: accountDetails?.gstin || order.gstin || "29AABCD0503B1ZG",
-        id: order.customer_id,
-        account_details: accountDetails
-      },
-
-      billingAddress: accountDetails ? {
-        addressLine1: accountDetails.billing_address_line1 || "Address not specified",
-        addressLine2: accountDetails.billing_address_line2 || "",
-        city: accountDetails.billing_city || "City not specified",
-        pincode: accountDetails.billing_pin_code || "000000",
-        state: accountDetails.billing_state || "Karnataka",
-        gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
-        country: accountDetails.billing_country || "India"
-      } : {
-        addressLine1: order.billing_address || "Address not specified",
-        addressLine2: "",
-        city: order.billing_city || "City not specified",
-        pincode: order.billing_pincode || "000000",
-        state: order.billing_state || "Karnataka"
-      },
-
-      shippingAddress: accountDetails ? {
-        addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
-        addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
-        city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
-        pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
-        state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
-        gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
-        country: accountDetails.shipping_country || "India"
-      } : {
-        addressLine1: order.shipping_address || order.billing_address || "Address not specified",
-        addressLine2: "",
-        city: order.shipping_city || order.billing_city || "City not specified",
-        pincode: order.shipping_pincode || order.billing_pincode || "000000",
-        state: order.shipping_state || order.billing_state || "Karnataka"
-      },
-
-      note: "Thank you for your business!",
-      transportDetails: "Standard delivery",
-      otherDetails: "Authorized Signatory",
-      taxType: "CGST/SGST",
-
-      type: 'sales',
-      selectedSupplierId: order.customer_id,
-      PartyID: order.customer_id,
-      AccountID: order.customer_id,
-      PartyName: order.customer_name,
-      AccountName: order.customer_name,
-
-      isSingleItemInvoice: orderSelectedItems.length === 1,
-      selectedItemId: orderSelectedItems.length === 1 ? orderSelectedItems[0] : null,
-      originalOrderId: order.id,
-      isMultiSelect: orderSelectedItems.length > 1,
-
-      staff_id: staffId,
-      staff_incentive: staffIncentive, // Use from orders table
-      order_mode: order.order_mode || "Pakka",
-      fullAccountDetails: accountDetails
-    };
-
-    console.log("📋 Invoice data with staff_incentive:", staffIncentive);
-
-    navigate(`/periodinvoicepreviewpdf/${order.id}`, {
-      state: {
-        invoiceData,
-        selectedItemIds: orderSelectedItems
+      const orderSelectedItems = selectedItems[order.id] || [];
+      if (orderSelectedItems.length === 0) {
+        alert("Please select at least one item to generate invoice!");
+        setGeneratingInvoice(false);
+        return;
       }
-    });
 
-  } catch (error) {
-    console.error("Error preparing invoice:", error);
-    alert("Failed to prepare invoice data. Please try again.");
-    setGeneratingInvoice(false);
-  }
-};
+      // Check if any selected item needs approval but is not approved
+      const itemsWithApprovalIssue = orderSelectedItems.map(itemId => {
+        const item = order.items.find(i => i.id === itemId);
+        return item;
+      }).filter(item => 
+        item.needs_approval && item.approval_status !== "approved"
+      );
+
+      if (itemsWithApprovalIssue.length > 0) {
+        const itemNames = itemsWithApprovalIssue.map(i => i.item_name).join(', ');
+        alert(`Cannot generate invoice for the following items because they require approval but are not approved: ${itemNames}`);
+        setGeneratingInvoice(false);
+        return;
+      }
+
+      const selectedItemsData = order.items.filter(item =>
+        orderSelectedItems.includes(item.id)
+      );
+
+      const itemsWithInvoice = selectedItemsData.filter(item => item.invoice_status === 1);
+      if (itemsWithInvoice.length > 0) {
+        alert(`Some selected items already have invoices generated: ${itemsWithInvoice.map(i => i.item_name).join(', ')}`);
+        setGeneratingInvoice(false);
+        return;
+      }
+
+      let invoiceNumber = nextInvoiceNumber;
+      if (!invoiceNumber) {
+        invoiceNumber = `INV${order.order_number.replace('ORD', '')}`;
+      }
+
+      const accountDetails = order.account_details;
+      const staffId = selectedItemsData[0]?.staff_id || order.staff_id || 0;
+      
+      // Get staff_incentive from ORDERS TABLE (not calculating from items)
+      const staffIncentive = order.staff_incentive || 0;
+      console.log("Staff Incentive from orders table:", staffIncentive);
+
+      const invoiceData = {
+        orderNumber: order.order_number,
+        invoiceNumber: invoiceNumber,
+        invoiceDate: new Date().toISOString().split('T')[0],
+        validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+
+        originalOrder: {
+          ...order,
+          items: undefined
+        },
+
+        // Pass only selected items WITH SGST/CGST DATA
+        selectedItems: selectedItemsData.map(item => ({
+          ...item,
+          // Ensure SGST/CGST data is explicitly included
+          sgst_percentage: item.sgst_percentage || 0,
+          sgst_amount: item.sgst_amount || 0,
+          cgst_percentage: item.cgst_percentage || 0,
+          cgst_amount: item.cgst_amount || 0
+        })),
+        selectedItemIds: orderSelectedItems,
+
+        selectedItemsTotal: {
+          taxableAmount: selectedItemsData.reduce((sum, item) => sum + (item.taxable_amount || 0), 0),
+          taxAmount: selectedItemsData.reduce((sum, item) => sum + (item.tax_amount || 0), 0),
+          discountAmount: selectedItemsData.reduce((sum, item) => sum + (item.discount_amount || 0), 0),
+          grandTotal: selectedItemsData.reduce((sum, item) => sum + (item.item_total || 0), 0)
+        },
+
+        companyInfo: {
+          name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+          address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+          email: "sumukhusr7@gmail.com",
+          phone: "3456549876543",
+          gstin: "29AABCD0503B1ZG",
+          state: "Karnataka"
+        },
+
+        customerInfo: {
+          name: accountDetails?.name || order.customer_name,
+          businessName: accountDetails?.business_name || order.customer_name,
+          state: accountDetails?.billing_state || order.billing_state || "Karnataka",
+          gstin: accountDetails?.gstin || order.gstin || "29AABCD0503B1ZG",
+          id: order.customer_id,
+          account_details: accountDetails
+        },
+
+        billingAddress: accountDetails ? {
+          addressLine1: accountDetails.billing_address_line1 || "Address not specified",
+          addressLine2: accountDetails.billing_address_line2 || "",
+          city: accountDetails.billing_city || "City not specified",
+          pincode: accountDetails.billing_pin_code || "000000",
+          state: accountDetails.billing_state || "Karnataka",
+          gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
+          country: accountDetails.billing_country || "India"
+        } : {
+          addressLine1: order.billing_address || "Address not specified",
+          addressLine2: "",
+          city: order.billing_city || "City not specified",
+          pincode: order.billing_pincode || "000000",
+          state: order.billing_state || "Karnataka"
+        },
+
+        shippingAddress: accountDetails ? {
+          addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
+          addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
+          city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
+          pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
+          state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
+          gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
+          country: accountDetails.shipping_country || "India"
+        } : {
+          addressLine1: order.shipping_address || order.billing_address || "Address not specified",
+          addressLine2: "",
+          city: order.shipping_city || order.billing_city || "City not specified",
+          pincode: order.shipping_pincode || order.billing_pincode || "000000",
+          state: order.shipping_state || order.billing_state || "Karnataka"
+        },
+
+        note: "Thank you for your business!",
+        transportDetails: "Standard delivery",
+        otherDetails: "Authorized Signatory",
+        taxType: "CGST/SGST",
+
+        type: 'sales',
+        selectedSupplierId: order.customer_id,
+        PartyID: order.customer_id,
+        AccountID: order.customer_id,
+        PartyName: order.customer_name,
+        AccountName: order.customer_name,
+
+        isSingleItemInvoice: orderSelectedItems.length === 1,
+        selectedItemId: orderSelectedItems.length === 1 ? orderSelectedItems[0] : null,
+        originalOrderId: order.id,
+        isMultiSelect: orderSelectedItems.length > 1,
+
+        staff_id: staffId,
+        staff_incentive: staffIncentive,
+        order_mode: order.order_mode || "Pakka",
+        fullAccountDetails: accountDetails
+      };
+
+      console.log("📋 Invoice data with staff_incentive:", staffIncentive);
+
+      navigate(`/periodinvoicepreviewpdf/${order.id}`, {
+        state: {
+          invoiceData,
+          selectedItemIds: orderSelectedItems
+        }
+      });
+
+    } catch (error) {
+      console.error("Error preparing invoice:", error);
+      alert("Failed to prepare invoice data. Please try again.");
+      setGeneratingInvoice(false);
+    }
+  };
 
   // Filter orders by search and date
   const filteredOrders = orders.filter(order => {
@@ -905,6 +1007,7 @@ const handleGenerateInvoice = (order) => {
                                     <th>Discount Amount</th>
                                     <th>Credit Period</th>
                                     <th>Invoice Number</th>
+                                    <th>Approval Status</th>
                                     <th>Action</th>
                                     <th>Status</th>
                                   </tr>
@@ -913,6 +1016,8 @@ const handleGenerateInvoice = (order) => {
                                   {order.items.map((item) => {
                                     const isItemSelected = orderSelectedItems.includes(item.id);
                                     const hasInvoiceGenerated = item.invoice_status === 1;
+                                    const needsApproval = item.needs_approval;
+                                    const approvalStatus = item.approval_status;
 
                                     return (
                                       <tr key={item.id}>
@@ -924,15 +1029,24 @@ const handleGenerateInvoice = (order) => {
                                               const currentSelectedIds = selectedItems[order.id] || [];
 
                                               if (currentSelectedIds.length === 0) {
+                                                // Check if item can be selected based on approval
+                                                const canSelect = !needsApproval || approvalStatus === "approved";
                                                 return (
                                                   <input
                                                     type="checkbox"
-                                                    checked={isItemSelected}
-                                                    onChange={(e) =>
-                                                      handleItemSelect(order.id, item.id, e.target.checked, item.credit_period)
-                                                    }
+                                                    checked={isItemSelected && canSelect}
+                                                    onChange={(e) => {
+                                                      if (!canSelect) {
+                                                        alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
+                                                        return;
+                                                      }
+                                                      handleItemSelect(order.id, item.id, e.target.checked, item.credit_period);
+                                                    }}
                                                     className="p-item-checkbox"
-                                                    title="Select for invoice generation"
+                                                    disabled={!canSelect}
+                                                    title={!canSelect ? 
+                                                      "Item requires approval before selection" : 
+                                                      "Select for invoice generation"}
                                                   />
                                                 );
                                               }
@@ -942,18 +1056,29 @@ const handleGenerateInvoice = (order) => {
                                               const selectedCreditPeriod = firstSelectedItem?.credit_period;
 
                                               const isSelectable = selectedCreditPeriod === item.credit_period;
+                                              const canSelect = isSelectable && (!needsApproval || approvalStatus === "approved");
 
                                               return (
                                                 <input
                                                   type="checkbox"
-                                                  checked={isItemSelected}
-                                                  onChange={(e) =>
-                                                    handleItemSelect(order.id, item.id, e.target.checked, item.credit_period)
-                                                  }
+                                                  checked={isItemSelected && canSelect}
+                                                  onChange={(e) => {
+                                                    if (!canSelect) {
+                                                      if (!isSelectable) {
+                                                        alert(`Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.`);
+                                                      } else {
+                                                        alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
+                                                      }
+                                                      return;
+                                                    }
+                                                    handleItemSelect(order.id, item.id, e.target.checked, item.credit_period);
+                                                  }}
                                                   className="p-item-checkbox"
-                                                  disabled={!isSelectable}
-                                                  title={!isSelectable ?
-                                                    `Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.` :
+                                                  disabled={!canSelect}
+                                                  title={!canSelect ? 
+                                                    (!isSelectable ? 
+                                                      `Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.` :
+                                                      "Item requires approval before selection") :
                                                     "Select for invoice generation"}
                                                 />
                                               );
@@ -963,11 +1088,43 @@ const handleGenerateInvoice = (order) => {
                                         <td>{item.item_name}</td>
                                         <td>{item.quantity}</td>
                                         <td>₹{item.sale_price.toLocaleString()}</td>
-                                        <td>₹{item.min_sale_price.toLocaleString()}</td> {/* Add this line */}
+                                        <td>₹{item.min_sale_price.toLocaleString()}</td>
                                         <td>₹{item.price.toLocaleString()}</td>
                                         <td>₹{item.discount_amount.toLocaleString()}</td>
                                         <td>{item.credit_period}</td>
                                         <td>{item.invoice_number || "N/A"}</td>
+                                        <td>
+                                          {needsApproval ? (
+                                            <div className="p-approval-status">
+                                              <span className={`p-approval-badge p-${approvalStatus}`}>
+                                                {approvalStatus === "approved" ? "Approved" : 
+                                                 approvalStatus === "rejected" ? "Rejected" : "Pending"}
+                                              </span>
+                                              {approvalStatus === "pending" && (
+                                                <div className="p-approval-buttons">
+                                                  <button
+                                                    className="p-btn p-btn-approve"
+                                                    onClick={() => handleApproveItem(item.id, order.id)}
+                                                    title="Approve this item"
+                                                  >
+                                                    <FaCheck />
+                                                  </button>
+                                                  <button
+                                                    className="p-btn p-btn-reject"
+                                                    onClick={() => handleRejectItem(item.id, order.id)}
+                                                    title="Reject this item"
+                                                  >
+                                                    <FaTimes />
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            <span className="p-approval-badge p-not-required">
+                                              Not Required
+                                            </span>
+                                          )}
+                                        </td>
                                         <td>
                                           <button
                                             className="p-eye-btn"
@@ -1000,6 +1157,17 @@ const handleGenerateInvoice = (order) => {
                                                 );
                                               }
                                             }
+                                            
+                                            // Check approval status for availability
+                                            if (needsApproval && approvalStatus !== "approved") {
+                                              return (
+                                                <span className="p-requires-approval-text"
+                                                  title={`Requires approval. Sale price (₹${item.sale_price}) < Min price (₹${item.min_sale_price})`}>
+                                                  Requires Approval
+                                                </span>
+                                              );
+                                            }
+                                            
                                             return (
                                               <span className="p-select-prompt-text" title="Select this item to generate invoice">
                                                 Available
@@ -1049,7 +1217,7 @@ const handleGenerateInvoice = (order) => {
                     <span className="p-detail-value">{modalData.customer_id}</span>
                   </div>
                   <div className="p-detail-row">
-                    <span className="p-detail-label">Staff ID:</span> {/* New Field */}
+                    <span className="p-detail-label">Staff ID:</span>
                     <span className="p-detail-value">{modalData.staff_id || "N/A"}</span>
                   </div>
                   <div className="p-detail-row">
@@ -1163,7 +1331,7 @@ const handleGenerateInvoice = (order) => {
                     <span className="p-detail-value">{modalData.item_name}</span>
                   </div>
                   <div className="p-detail-row">
-                    <span className="p-detail-label">Staff ID:</span> {/* New Field */}
+                    <span className="p-detail-label">Staff ID:</span>
                     <span className="p-detail-value">{modalData.staff_id || "N/A"}</span>
                   </div>
                   <div className="p-detail-row">
@@ -1253,6 +1421,19 @@ const handleGenerateInvoice = (order) => {
                   <div className="p-detail-row">
                     <span className="p-detail-label">Discount Scheme:</span>
                     <span className="p-detail-value">{modalData.discount_applied_scheme}</span>
+                  </div>
+                  <div className="p-detail-row">
+                    <span className="p-detail-label">Approval Status:</span>
+                    <span className="p-detail-value">
+                      {modalData.needs_approval ? (
+                        <span className={`p-approval-badge p-${modalData.approval_status}`}>
+                          {modalData.approval_status === "approved" ? "Approved" : 
+                           modalData.approval_status === "rejected" ? "Rejected" : "Pending"}
+                        </span>
+                      ) : (
+                        <span className="p-approval-badge p-not-required">Not Required</span>
+                      )}
+                    </span>
                   </div>
                 </div>
               </div>

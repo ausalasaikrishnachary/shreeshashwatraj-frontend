@@ -378,7 +378,7 @@
 /* Responsive */
 @media (max-width: 768px) {
   .sidebar-toggle {
-    display: block;
+    /* display: block; */
   }
 
   .sidebar.mobile {
