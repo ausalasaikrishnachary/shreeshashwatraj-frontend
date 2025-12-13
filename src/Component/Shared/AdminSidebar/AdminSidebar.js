@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   FaTachometerAlt,
+  FaStar,
   FaUsers,
   FaUserTie,
   FaChartBar,
@@ -32,10 +33,10 @@ import {
   FaFileExport,
   FaMoneyBillWave,
   FaRuler,
-  FaCalendarAlt, 
+  FaCalendarAlt,
   FaHourglass,
 } from "react-icons/fa";
-import { FiHome } from 'react-icons/fi'; 
+import { FiHome } from 'react-icons/fi';
 
 import "./AdminSidebar.css";
 import UserCard from "../../Panels/UserCard/UserCard";
@@ -111,12 +112,12 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     { path: "/staff", name: "Staff", icon: <FaUserTie /> },
     { path: "/sales_visit", name: "Sales Visit", icon: <FaClipboardList /> },
     { path: "/credit-period", name: "Credit Period Fix", icon: <FaCalendarAlt /> }, // Added new path
-    { 
-  path: "/period", 
-  name: "Order List", 
-  icon: <FaHourglass /> 
-},
-
+    {
+      path: "/period",
+      name: "Order List",
+      icon: <FaHourglass />
+    },
+    { path: "/retailersscore", name: "Retailer Score", icon: <FaStar /> },
     {
       name: "Inventory",
       icon: <FaHandHoldingUsd />,
@@ -141,7 +142,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
         { path: "/sales/receivables", name: "Receivables", icon: <FaHandHoldingUsd /> },
       ],
     },
- 
+
     {
       name: "Purchase",
       icon: <FaBox />,
@@ -155,14 +156,14 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     },
 
 
-        {
+    {
       name: "Kacha Sales",
       icon: <FaChartLine />,
       subMenu: [
         { path: "/kachinvoicetable", name: "Kacha  Sales Invoices", icon: <FaFileInvoice /> },
         { path: "/sales/receipts", name: " Kacha Receipts", icon: <FaReceipt /> },
         { path: "/sales/quotations", name: " kacha Quotations", icon: <FaFileContract /> },
-        { path: "/sales/bill_of_supply", name:  " kacha Bill Of Supply", icon: <FaFileInvoiceDollar /> },
+        { path: "/sales/bill_of_supply", name: " kacha Bill Of Supply", icon: <FaFileInvoiceDollar /> },
         { path: "/sales/credit_note", name: " kachaCredit Note", icon: <FaCreditCard /> },
         { path: "/sales/delivery_challan", name: " kacha Delivery Challan", icon: <FaTruck /> },
         { path: "/sales/receivables", name: " kacha Receivables", icon: <FaHandHoldingUsd /> },
@@ -170,7 +171,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     },
 
     { path: "/admin_expensive", name: "Expense Requests", icon: <FaMoneyBillWave /> },
-        { path: "/ledger", name: "Ledger", icon: <FiHome /> },
+    { path: "/ledger", name: "Ledger", icon: <FiHome /> },
 
     // { path: "/marketing", name: "Offers & Marketing", icon: <FaTags /> },
     { path: "/expenses", name: "Expenses", icon: <FaMoneyBill /> },
@@ -197,9 +198,8 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       )}
 
       <div
-        className={`sidebar ${isCollapsed ? "collapsed" : ""} ${
-          isMobileOpen ? "open" : ""
-        } ${isMobile ? "mobile" : ""} ${isTablet ? "tablet" : ""}`}
+        className={`sidebar ${isCollapsed ? "collapsed" : ""} ${isMobileOpen ? "open" : ""
+          } ${isMobile ? "mobile" : ""} ${isTablet ? "tablet" : ""}`}
       >
         <div className="sidebar-header">
           <h2
@@ -233,21 +233,19 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
                 {item.subMenu ? (
                   <>
                     <button
-                      className={`dropdown-btn-link ${
-                        openDropdown === item.name ? "open" : ""
-                      } ${
-                        (item.name === "Inventory" &&
+                      className={`dropdown-btn-link ${openDropdown === item.name ? "open" : ""
+                        } ${(item.name === "Inventory" &&
                           (location.pathname.startsWith("/sale_items") ||
                             location.pathname.startsWith("/purchased_items") ||
                             location.pathname.startsWith("/category") ||
                             location.pathname.startsWith("/company") ||
                             location.pathname.startsWith("/units"))) ||
-                        (item.name === "Sales" &&
-                          location.pathname.startsWith("/sales/")) ||
-                        (item.name === "Purchase" && isPurchaseActive)
+                          (item.name === "Sales" &&
+                            location.pathname.startsWith("/sales/")) ||
+                          (item.name === "Purchase" && isPurchaseActive)
                           ? "active"
                           : ""
-                      }`}
+                        }`}
                       onClick={() => toggleDropdown(item.name)}
                     >
                       <span className="icon">{item.icon}</span>

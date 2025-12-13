@@ -10,6 +10,7 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
     "/admindashboard": "Dashboard",
     "/retailers": "Contact",
     "/retailers/add": "Add Contact",
+    "/retailersscore": "Score",
     "/staff": "Staff",
     "/sales": "Sale Catalogue",
     "/AddProductPage":"Purchase Catalogue",
