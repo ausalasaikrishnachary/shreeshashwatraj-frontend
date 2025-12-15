@@ -1583,6 +1583,19 @@ import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { baseurl } from './../../../BaseURL/BaseURL';
 
+// Helper function to convert state code to state name
+const getStateName = (stateCode) => {
+  const stateMap = {
+    '36': 'Telangana',
+    '28': 'Andhra Pradesh',
+    '32': 'Kerala',
+    '29': 'Karnataka',
+    'TGC022': 'Telangana',
+    // Add more state codes as needed
+  };
+  return stateMap[stateCode] || stateCode || '';
+};
+
 const RetailerForm = ({ user, mode = 'add' }) => {
   const { id } = useParams();
   const [isEditing, setIsEditing] = useState(mode === 'edit');
@@ -1611,8 +1624,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     assigned_staff: "",
     staffid: "",
     password: "",
-    discount: 0, // Added discount field
-    Target: 100000, // Added Target field
+    discount: 0,
+    Target: 100000,
     credit_limit: "",
     gstin: "",
     gst_registered_name: "",
@@ -1701,7 +1714,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     }
   }, [id, mode]);
 
-  // Sync assigned_staff name when staffid changes or staffList loads
   useEffect(() => {
     if (formData.staffid && staffList.length > 0) {
       const selectedOption = staffList.find(option => option.value == formData.staffid);
@@ -1726,24 +1738,37 @@ const RetailerForm = ({ user, mode = 'add' }) => {
 
         if (response.data.success && response.data.result) {
           const result = response.data.result;
-
+          
+          console.log("GSTIN API Response:", result);
+          
+          // Extract data based on your API response structure
+          const businessName = result.lgnm || result.tradeNam || '';
+          const address = result.pradr?.addr || {};
+          
+          // Build address lines
+          const addressLine1 = [address.bno, address.bnm, address.st].filter(Boolean).join(', ');
+          const addressLine2 = [address.loc, address.dst].filter(Boolean).join(', ');
+          
+          // Get state name from state code
+          const stateName = getStateName(result.stjCd || address.stcd);
+          
           setFormData(prev => ({
             ...prev,
-            gst_registered_name: result.gst_registered_name || '',
-            business_name: result.business_name || '',
-            additional_business_name: result.additional_business_name || '',
-            display_name: result.display_name || '',
-            shipping_address_line1: result.shipping_address_line1 || '',
-            shipping_address_line2: result.shipping_address_line2 || '',
-            shipping_city: result.shipping_city || '',
-            shipping_pin_code: result.shipping_pin_code || '',
-            shipping_state: result.shipping_state || '',
+            gst_registered_name: result.lgnm || '',
+            business_name: businessName,
+            additional_business_name: result.tradeNam || '',
+            display_name: businessName,
+            shipping_address_line1: addressLine1 || '',
+            shipping_address_line2: addressLine2 || '',
+            shipping_city: address.loc || address.dst || '',
+            shipping_pin_code: address.pncd || '',
+            shipping_state: stateName,
             shipping_country: 'India',
-            billing_address_line1: result.billing_address_line1 || '',
-            billing_address_line2: result.billing_address_line2 || '',
-            billing_city: result.billing_city || '',
-            billing_pin_code: result.billing_pin_code || '',
-            billing_state: result.billing_state || '',
+            billing_address_line1: addressLine1 || '',
+            billing_address_line2: addressLine2 || '',
+            billing_city: address.loc || address.dst || '',
+            billing_pin_code: address.pncd || '',
+            billing_state: stateName,
             billing_country: 'India'
           }));
 
@@ -1783,7 +1808,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
 
-    // Special handling for staffid
     if (name === 'staffid') {
       const selectedOption = staffList.find(option => option.value === value);
       if (selectedOption) {
@@ -1801,10 +1825,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
 
     switch (activeTab) {
       case 'information':
-        // Base required fields for all groups
         const baseInfoFields = ['title', 'name', 'group', 'mobile_number', 'email', 'display_name', 'password'];
 
-        // Additional fields only for non-SUPPLIERS groups
         if (formData.group !== 'SUPPLIERS') {
           baseInfoFields.push('role', 'entity_type', 'assigned_staff');
         }
@@ -1886,7 +1908,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
   };
 
   useEffect(() => {
-    // Auto-fill password when name changes
     setFormData(prev => ({
       ...prev,
       password: prev.name ? `${prev.name}@123` : ''
@@ -1905,13 +1926,11 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       return;
     }
 
-    // Auto-generate password as Name@123
     let finalData = {
       ...formData,
       password: `${formData.name}@123`
     };
 
-    // Conditionally remove fields for SUPPLIERS group
     if (formData.group === 'SUPPLIERS') {
       const fieldsToRemove = ['assigned_staff', 'staffid', 'role', 'entity_type'];
       fieldsToRemove.forEach(field => {
@@ -2020,7 +2039,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       );
     }
 
-    // Conditionally hide fields for SUPPLIERS group
     if (formData.group === 'SUPPLIERS' && ['role', 'assigned_staff', 'staffid'].includes(name)) {
       return null;
     }
@@ -2032,7 +2050,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
           <select
             className={getSelectClass(name)}
             name={name}
-            value={formData[name]}
+            value={formData[name] || ''}
             onChange={handleChange}
             required={required}
             {...props}
@@ -2055,14 +2073,14 @@ const RetailerForm = ({ user, mode = 'add' }) => {
         <input
           type={type}
           name={name}
-          value={formData[name]}
+          value={formData[name] || ''}
           className={getInputClass(name)}
           onChange={customOnChange || handleChange}
           required={required}
           {...props}
         />
         {renderError(name)}
-      </div>
+    </div>
     );
   };
 
@@ -2084,6 +2102,14 @@ const RetailerForm = ({ user, mode = 'add' }) => {
             isViewing={isViewing}
             onCancel={handleCancel}
           >
+            {/* Debug section - remove in production */}
+            <div style={{ background: '#f0f0f0', padding: '10px', margin: '10px 0', border: '1px solid #ccc' }}>
+              <h6>Debug Info:</h6>
+              <p>Business Name: <strong>{formData.business_name || 'Empty'}</strong></p>
+              <p>GST Registered Name: <strong>{formData.gst_registered_name || 'Empty'}</strong></p>
+              <p>Display Name: <strong>{formData.display_name || 'Empty'}</strong></p>
+            </div>
+
             <div className="row">
               <div className="col-md-6">
                 <div className="row">
@@ -2109,7 +2135,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                 </div>
               </div>
               <div className="col-md-6">
-                {renderField({
+                {formData.group !== 'SUPPLIERS' && renderField({
                   type: 'select',
                   name: 'entity_type',
                   label: 'Entity Type',
@@ -2135,21 +2161,26 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                 })}
               </div>
               <div className="col-md-6">
-                {renderField({
-                  name: 'gstin',
-                  label: 'Customer GSTIN',
-                  type: 'text',
-                  maxLength: 15,
-                  pattern: "^[0-9A-Z]{15}$",
-                  title: "GSTIN must be exactly 15 characters (A-Z, 0-9 only)",
-                  onChange: handleGstinChange
-                })}
-                {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
-                {gstinError && <div className="text-danger small">{gstinError}</div>}
+                <div className="mb-3">
+                  <label className="customer-form-label">Customer GSTIN*</label>
+                  <input
+                    type="text"
+                    name="gstin"
+                    value={formData.gstin || ''}
+                    className={getInputClass('gstin')}
+                    onChange={handleGstinChange}
+                    maxLength={15}
+                    pattern="^[0-9A-Z]{15}$"
+                    title="GSTIN must be exactly 15 characters (A-Z, 0-9 only)"
+                    required
+                  />
+                  {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
+                  {gstinError && <div className="text-danger small">{gstinError}</div>}
+                  {renderError('gstin')}
+                </div>
               </div>
             </div>
 
-            {/* Email and Assign Staff Row - Fixed Layout */}
             <div className="row">
               <div className="col-md-6">
                 {renderField({
@@ -2159,7 +2190,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                 })}
               </div>
 
-              {/* Conditionally show Assign Staff field */}
               {formData.group !== 'SUPPLIERS' ? (
                 <div className="col-md-6">
                   {renderField({
@@ -2179,7 +2209,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               )}
             </div>
 
-            {/* Business Name and Display Name Row - Adjusted based on group */}
             <div className="row">
               {formData.group !== 'SUPPLIERS' ? (
                 <>
@@ -2214,7 +2243,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               )}
             </div>
 
-            {/* GST Registered Name and Additional Business Name Row - Adjusted based on group */}
             <div className="row">
               {formData.group !== 'SUPPLIERS' ? (
                 <>
@@ -2250,7 +2278,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               )}
             </div>
 
-            {/* Phone Number and Fax Row - Adjusted based on group */}
             <div className="row">
               {formData.group !== 'SUPPLIERS' ? (
                 <>
@@ -2287,7 +2314,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               )}
             </div>
 
-            {/* Mobile Number and Password Row - Adjusted based on group */}
             <div className="row">
               {formData.group !== 'SUPPLIERS' ? (
                 <>
@@ -2333,8 +2359,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               )}
             </div>
 
-            {/* Discount and Target Row - Adjusted based on group */}
-            {/* Discount and Target Row - Adjusted based on group */}
             <div className="row">
               {formData.group !== 'SUPPLIERS' ? (
                 <>
@@ -2371,7 +2395,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               )}
             </div>
 
-            {/* Credit Limit Field - Only show when Retailer is selected */}
             {formData.group === 'Retailer' && (
               <div className="row">
                 <div className="col-md-6">
