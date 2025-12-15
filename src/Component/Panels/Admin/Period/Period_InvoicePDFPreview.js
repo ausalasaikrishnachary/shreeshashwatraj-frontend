@@ -110,6 +110,9 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
   });
   
   return {
+    // Static transaction type
+    transactionType: 'stock transfer',
+    
     invoiceNumber: periodData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`,
     invoiceDate: periodData.invoiceDate || new Date().toISOString().split('T')[0],
     validityDate: periodData.validityDate || 
@@ -685,7 +688,6 @@ const generateAndStorePDF = async (voucherId) => {
     throw error;
   }
 };
-
 const handleGenerateInvoice = async () => {
   try {
     setGenerating(true);
@@ -759,6 +761,9 @@ const handleGenerateInvoice = async () => {
       });
       
       const payload = {
+        // Static transaction type - always 'stock transfer'
+        transactionType: 'stock transfer',
+        
         ...periodInvoiceData,
         
         orderNumber: orderNumber,
@@ -847,7 +852,9 @@ const handleGenerateInvoice = async () => {
           gstin: accountDetails.shipping_gstin || accountDetails.gstin
         } : periodInvoiceData.shippingAddress || periodInvoiceData.billingAddress,
         
-        type: 'sales',
+        // Always 'stock transfer'
+        transactionType: 'stock transfer',
+        
         selectedSupplierId: periodInvoiceData.customerInfo?.id || periodInvoiceData.PartyID,
         PartyID: periodInvoiceData.customerInfo?.id || periodInvoiceData.PartyID,
         AccountID: periodInvoiceData.customerInfo?.id || periodInvoiceData.AccountID,
@@ -869,7 +876,7 @@ const handleGenerateInvoice = async () => {
         Subtotal: taxableAmount
       };
 
-      console.log("📦 Sending invoice creation request...");
+      console.log("📦 Sending invoice creation request with transactionType:", payload.transactionType);
 
       const response = await fetch(`${baseurl}/transaction`, {
         method: "POST",
@@ -885,10 +892,8 @@ const handleGenerateInvoice = async () => {
         throw new Error(result.error || "Failed to generate invoice");
       }
 
-      // ✅ NEW: Generate and store PDF after successful invoice creation
       if (result.voucherId) {
         try {
-          // Update invoice data with the voucher ID
           const updatedInvoiceData = {
             ...invoiceData,
             voucherId: result.voucherId
@@ -903,7 +908,6 @@ const handleGenerateInvoice = async () => {
           }
         } catch (pdfError) {
           console.warn('⚠️ Invoice created but PDF storage failed:', pdfError.message);
-          // Don't fail the whole process if PDF storage fails
           setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber} (PDF storage failed: ${pdfError.message})`);
         }
       } else {
@@ -1073,11 +1077,9 @@ const calculateGrandTotalForQR = () => {
   
   // If KACHA mode, calculate without GST
   if (orderMode.toUpperCase() === "KACHA") {
-    // For KACHA: Sum of all taxable amounts (without GST)
     let totalTaxableAmount = 0;
     if (invoiceData.items && invoiceData.items.length > 0) {
       invoiceData.items.forEach(item => {
-        // Use the stored taxable_amount from database if available
         const taxableAmount = parseFloat(item.taxable_amount) || 0;
         totalTaxableAmount += taxableAmount;
       });
@@ -1085,27 +1087,21 @@ const calculateGrandTotalForQR = () => {
     return totalTaxableAmount;
   }
   
-  // For PAKKA mode: Use the actual grand total from database
-  // This should include GST for all items
   const grandTotal = parseFloat(invoiceData.grandTotal) || 0;
   
-  // Verify the total by calculating from items if needed
   if (invoiceData.items && invoiceData.items.length > 0) {
     let calculatedTotal = 0;
     invoiceData.items.forEach(item => {
-      // For PAKKA, include GST in the total
       const itemTotal = parseFloat(item.total) || 0;
       calculatedTotal += itemTotal;
     });
     
-    // Use whichever is larger to ensure payment covers full amount
     return Math.max(grandTotal, calculatedTotal);
   }
   
   return grandTotal;
 };
 
-// Also update the generateQRCodeData function to ensure proper encoding:
 const generateQRCodeData = () => {
   if (!invoiceData) return '';
   
@@ -1155,10 +1151,8 @@ const generateQRCodeData = () => {
     }
   };
 
-  // Add this useEffect to regenerate QR code when data changes
 useEffect(() => {
   if (invoiceData && invoiceData.items) {
-    // Small delay to ensure all calculations are complete
     const timer = setTimeout(() => {
       generateQRCodeData();
     }, 100);
@@ -1166,7 +1160,6 @@ useEffect(() => {
     return () => clearTimeout(timer);
   }
 }, [invoiceData, editableOrderMode]);
-  // Use Effects
   useEffect(() => {
     if (location.state && location.state.invoiceData) {
       console.log('📦 Received data from Period component:', location.state.invoiceData);
@@ -1179,7 +1172,6 @@ useEffect(() => {
       const transformedData = transformPeriodDataToInvoiceFormat(periodData);
       setInvoiceData(transformedData);
       
-      // Initialize editable descriptions and note
       const descObj = {};
       transformedData.items.forEach((item, index) => {
         descObj[item.id || index] = item.description || '';
@@ -1193,14 +1185,12 @@ useEffect(() => {
     }
   }, [id, location]);
 
-// Updated QRCodeGenerator component with better error handling
 const QRCodeGenerator = () => {
   if (!invoiceData) return null;
   
   const grandTotal = calculateGrandTotalForQR(); // Get correct amount
   const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
   
-  // Debug logging to check the amount
   console.log("QR Code Details:", {
     orderMode,
     grandTotal,
@@ -1456,10 +1446,8 @@ const QRCodeGenerator = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* Main Content with QR Code on Right Side */}
       <Container fluid className="invoice-preview-container-order">
         <Row>
-          {/* Left Column - Invoice Preview (8 columns) */}
           <Col lg={8}>
             <InvoicePreview_preview
               invoiceData={invoiceData}

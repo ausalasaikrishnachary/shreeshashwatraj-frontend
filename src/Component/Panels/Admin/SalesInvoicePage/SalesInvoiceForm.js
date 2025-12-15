@@ -28,58 +28,58 @@ const [selectedStaffId, setSelectedStaffId] = useState("");
   const navigate = useNavigate();
   const { id } = useParams(); 
 
-  const [invoiceData, setInvoiceData] = useState(() => {
-    const savedData = localStorage.getItem('draftInvoice');
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      return parsedData;
-    }
-    return {
-      invoiceNumber: "INV001",
-      invoiceDate: new Date().toISOString().split('T')[0],
-      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      companyInfo: {
-           name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+const [invoiceData, setInvoiceData] = useState(() => {
+  const savedData = localStorage.getItem('draftInvoice');
+  if (savedData) {
+    const parsedData = JSON.parse(savedData);
+    return parsedData;
+  }
+  return {
+    invoiceNumber: "INV001",
+    invoiceDate: new Date().toISOString().split('T')[0],
+    validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    companyInfo: {
+      name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
       address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
       email: "spmathur56@gmail.com",
       phone: "9801049700",
       gstin: "10AAOCS1541B1ZZ",
       state: "Bihar"
-      },
-      supplierInfo: {
-        name: "",
-        businessName: "",
-        state: "",
-        gstin: ""
-      },
-      billingAddress: {
-        addressLine1: "",
-        addressLine2: "",
-        city: "",
-        pincode: "",
-        state: ""
-      },
-      shippingAddress: {
-        addressLine1: "",
-        addressLine2: "",
-        city: "",
-        pincode: "",
-        state: ""
-      },
-      items: [],
-      note: "",
-      taxableAmount: 0,
-      totalGST: 0,
-      totalCess: 0,
-      grandTotal: 0,
-      transportDetails: "",
-      additionalCharge: "",
-      additionalChargeAmount: 0,
-      otherDetails: "Authorized Signatory",
-      taxType: "CGST/SGST",
-      batchDetails: []
-    };
-  });
+    },
+    supplierInfo: {
+      name: "",
+      business_name: "", // ✅ Add this field
+      state: "",
+      gstin: ""
+    },
+    billingAddress: {
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      pincode: "",
+      state: ""
+    },
+    shippingAddress: {
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      pincode: "",
+      state: ""
+    },
+    items: [],
+    note: "",
+    taxableAmount: 0,
+    totalGST: 0,
+    totalCess: 0,
+    grandTotal: 0,
+    transportDetails: "",
+    additionalCharge: "",
+    additionalChargeAmount: 0,
+    otherDetails: "Authorized Signatory",
+    taxType: "CGST/SGST",
+    batchDetails: []
+  };
+});
 
   const [itemForm, setItemForm] = useState({
     product: "",
@@ -159,108 +159,111 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
   }
 };
 
-  const transformApiDataToFormFormat = (apiData) => {
-    console.log('Transforming API data for form:', apiData);
-    
-    let batchDetails = [];
-    try {
-      if (apiData.batch_details && typeof apiData.batch_details === 'string') {
-        batchDetails = JSON.parse(apiData.batch_details);
-      } else if (Array.isArray(apiData.batch_details)) {
-        batchDetails = apiData.batch_details;
-      } else if (apiData.BatchDetails && typeof apiData.BatchDetails === 'string') {
-        batchDetails = JSON.parse(apiData.BatchDetails);
-      }
-    } catch (error) {
-      console.error('Error parsing batch details:', error);
+const transformApiDataToFormFormat = (apiData) => {
+  console.log('Transforming API data for form:', apiData);
+  
+  let batchDetails = [];
+  try {
+    if (apiData.batch_details && typeof apiData.batch_details === 'string') {
+      batchDetails = JSON.parse(apiData.batch_details);
+    } else if (Array.isArray(apiData.batch_details)) {
+      batchDetails = apiData.batch_details;
+    } else if (apiData.BatchDetails && typeof apiData.BatchDetails === 'string') {
+      batchDetails = JSON.parse(apiData.BatchDetails);
     }
+  } catch (error) {
+    console.error('Error parsing batch details:', error);
+  }
 
-    // Transform items for form display
-    const items = batchDetails.map((batch, index) => {
-      const quantity = parseFloat(batch.quantity) || 0;
-      const price = parseFloat(batch.price) || 0;
-      const discount = parseFloat(batch.discount) || 0;
-      const gst = parseFloat(batch.gst) || 0;
-      const cess = parseFloat(batch.cess) || 0;
-      
-      // Calculate item total
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const gstAmount = amountAfterDiscount * (gst / 100);
-      const cessAmount = amountAfterDiscount * (cess / 100);
-      const total = amountAfterDiscount + gstAmount + cessAmount;
-
-      return {
-        product: batch.product || 'Product',
-        product_id: batch.product_id || '',
-        description: batch.description || '',
-        quantity: quantity,
-        price: price,
-        discount: discount,
-        gst: gst,
-        cgst: parseFloat(batch.cgst) || 0,
-        sgst: parseFloat(batch.sgst) || 0,
-        igst: parseFloat(batch.igst) || 0,
-        cess: cess,
-        total: total.toFixed(2),
-        batch: batch.batch || '',
-        batch_id: batch.batch_id || '',
-        batchDetails: batch.batchDetails || null
-      };
-    }) || [];
+  // Transform items for form display
+  const items = batchDetails.map((batch, index) => {
+    const quantity = parseFloat(batch.quantity) || 0;
+    const price = parseFloat(batch.price) || 0;
+    const discount = parseFloat(batch.discount) || 0;
+    const gst = parseFloat(batch.gst) || 0;
+    const cess = parseFloat(batch.cess) || 0;
+    
+    // Calculate item total
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    const amountAfterDiscount = subtotal - discountAmount;
+    const gstAmount = amountAfterDiscount * (gst / 100);
+    const cessAmount = amountAfterDiscount * (cess / 100);
+    const total = amountAfterDiscount + gstAmount + cessAmount;
 
     return {
-      voucherId: apiData.VoucherID,
-      invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
-      invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      
-      companyInfo: {
-         name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+      product: batch.product || 'Product',
+      product_id: batch.product_id || '',
+      description: batch.description || '',
+      quantity: quantity,
+      price: price,
+      discount: discount,
+      gst: gst,
+      cgst: parseFloat(batch.cgst) || 0,
+      sgst: parseFloat(batch.sgst) || 0,
+      igst: parseFloat(batch.igst) || 0,
+      cess: cess,
+      total: total.toFixed(2),
+      batch: batch.batch || '',
+      batch_id: batch.batch_id || '',
+      batchDetails: batch.batchDetails || null
+    };
+  }) || [];
+
+  // Find the account details to get business_name
+  const account = accounts.find(acc => acc.id === apiData.PartyID);
+  
+  return {
+    voucherId: apiData.VoucherID,
+    invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
+    invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    
+    companyInfo: {
+      name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
       address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
       email: "spmathur56@gmail.com",
       phone: "9801049700",
       gstin: "10AAOCS1541B1ZZ",
       state: "Bihar"
-      },
-      
-      supplierInfo: {
-        name: apiData.PartyName || 'Customer',
-        businessName: apiData.AccountName || 'Business',
-        gstin: apiData.gstin || '',
-        state: apiData.billing_state || apiData.BillingState || '',
-        id: apiData.PartyID || null
-      },
-      
-      billingAddress: {
-        addressLine1: apiData.billing_address_line1 || apiData.BillingAddress || '',
-        addressLine2: apiData.billing_address_line2 || '',
-        city: apiData.billing_city || apiData.BillingCity || '',
-        pincode: apiData.billing_pin_code || apiData.BillingPincode || '',
-        state: apiData.billing_state || apiData.BillingState || ''
-      },
-      
-      shippingAddress: {
-        addressLine1: apiData.shipping_address_line1 || apiData.ShippingAddress || apiData.billing_address_line1 || apiData.BillingAddress || '',
-        addressLine2: apiData.shipping_address_line2 || apiData.billing_address_line2 || '',
-        city: apiData.shipping_city || apiData.ShippingCity || apiData.billing_city || apiData.BillingCity || '',
-        pincode: apiData.shipping_pin_code || apiData.ShippingPincode || apiData.billing_pin_code || apiData.BillingPincode || '',
-        state: apiData.shipping_state || apiData.ShippingState || apiData.billing_state || apiData.BillingState || ''
-      },
-      
-      items: items,
-      note: apiData.Notes || "Thank you for your business!",
-      taxableAmount: parseFloat(apiData.BasicAmount) || 0,
-      totalGST: parseFloat(apiData.TaxAmount) || 0,
-      grandTotal: parseFloat(apiData.TotalAmount) || 0,
-      totalCess: "0.00",
-      transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
-      additionalCharge: "",
-      additionalChargeAmount: "0.00",
-      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST"
-    };
+    },
+    
+    supplierInfo: {
+      name: apiData.PartyName || 'Customer',
+      business_name: account?.business_name || apiData.AccountName || 'Business', // ✅ Add both fields
+      gstin: apiData.gstin || '',
+      state: apiData.billing_state || apiData.BillingState || '',
+      id: apiData.PartyID || null
+    },
+    
+    billingAddress: {
+      addressLine1: apiData.billing_address_line1 || apiData.BillingAddress || '',
+      addressLine2: apiData.billing_address_line2 || '',
+      city: apiData.billing_city || apiData.BillingCity || '',
+      pincode: apiData.billing_pin_code || apiData.BillingPincode || '',
+      state: apiData.billing_state || apiData.BillingState || ''
+    },
+    
+    shippingAddress: {
+      addressLine1: apiData.shipping_address_line1 || apiData.ShippingAddress || apiData.billing_address_line1 || apiData.BillingAddress || '',
+      addressLine2: apiData.shipping_address_line2 || apiData.billing_address_line2 || '',
+      city: apiData.shipping_city || apiData.ShippingCity || apiData.billing_city || apiData.BillingCity || '',
+      pincode: apiData.shipping_pin_code || apiData.ShippingPincode || apiData.billing_pin_code || apiData.BillingPincode || '',
+      state: apiData.shipping_state || apiData.ShippingState || apiData.billing_state || apiData.BillingState || ''
+    },
+    
+    items: items,
+    note: apiData.Notes || "Thank you for your business!",
+    taxableAmount: parseFloat(apiData.BasicAmount) || 0,
+    totalGST: parseFloat(apiData.TaxAmount) || 0,
+    grandTotal: parseFloat(apiData.TotalAmount) || 0,
+    totalCess: "0.00",
+    transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
+    additionalCharge: "",
+    additionalChargeAmount: "0.00",
+    taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST"
   };
+};
 
   const fetchNextInvoiceNumber = async () => {
     try {
@@ -820,11 +823,10 @@ const handleSubmit = async (e) => {
     const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
     console.log('Submitting invoice with number:', finalInvoiceNumber);
 
-    // 🔥 ADD PARTYID AND ACCOUNTID CONSOLE LOGS HERE:
-    console.log('🎯 Frontend - PartyID (selectedSupplierId):', selectedSupplierId);
-    console.log('🏦 Frontend - AccountID (from supplierInfo):', invoiceData.supplierInfo.accountId);
-    console.log('📋 Frontend - Complete Supplier Info:', invoiceData.supplierInfo);
-    console.log('🔍 Frontend - All supplierInfo keys:', Object.keys(invoiceData.supplierInfo));
+    // 🔥 ADD LOGS FOR STAFFID DEBUGGING:
+    console.log('👤 Frontend - Staff ID (selectedStaffId):', selectedStaffId);
+    console.log('👤 Frontend - Staff ID from supplierInfo:', invoiceData.supplierInfo.staffid);
+    console.log('👤 Frontend - Staff ID from accounts:', accounts.find(acc => acc.staffid == selectedStaffId)?.staffid);
 
     // Calculate GST breakdown for backend
     const sameState = isSameState();
@@ -842,20 +844,7 @@ const handleSubmit = async (e) => {
       totalIGST = parseFloat(invoiceData.totalGST);
     }
 
-    // Enhanced debugging for items
-    console.log('🔍 Debugging Items Array Before Processing:');
-    invoiceData.items.forEach((item, index) => {
-      console.log(`Item ${index + 1}:`, {
-        product: item.product,
-        product_id: item.product_id,
-        batch: item.batch,
-        batch_id: item.batch_id,
-        has_product_id: !!item.product_id,
-        has_batch_id: !!item.batch_id
-      });
-    });
-
-    // Extract batch details from items with ALL data including discount and GST
+    // Extract batch details from items
     const batchDetails = invoiceData.items.map(item => ({
       product: item.product,
       product_id: item.product_id,
@@ -874,43 +863,23 @@ const handleSubmit = async (e) => {
       batchDetails: item.batchDetails
     }));
 
-    console.log('📦 Processed Batch Details:');
-    batchDetails.forEach((detail, index) => {
-      console.log(`Batch Detail ${index + 1}:`, {
-        product_id: detail.product_id,
-        batch_id: detail.batch_id,
-        product: detail.product,
-        batch: detail.batch
-      });
-    });
-
     // Get product_id and batch_id for logging
     const firstItemProductId = invoiceData.items[0]?.product_id || null;
     const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
     
-    console.log('📦 Product and Batch IDs Summary:');
-    console.log('First item product_id:', firstItemProductId);
-    console.log('First item batch_id:', firstItemBatchId);
-    console.log('All items product_ids:', invoiceData.items.map(item => item.product_id));
-    console.log('All items batch_ids:', invoiceData.items.map(item => item.batch_id));
-
-    // Validate that we have product_id and batch_id
-    const missingProductIds = invoiceData.items.filter(item => !item.product_id);
-    const missingBatchIds = invoiceData.items.filter(item => !item.batch_id);
-    
-    if (missingProductIds.length > 0) {
-      console.warn('⚠️ Items missing product_id:', missingProductIds);
-    }
-    if (missingBatchIds.length > 0) {
-      console.warn('⚠️ Items missing batch_id:', missingBatchIds);
-    }
+    // Find staff name from accounts if staffid exists
+    const staffAccount = accounts.find(acc => acc.staffid == selectedStaffId);
+    const staffName = staffAccount?.assigned_staff || 
+                     invoiceData.supplierInfo.assigned_staff || 
+                     accounts.find(acc => acc.id == selectedSupplierId)?.assigned_staff;
 
 const payload = {
   ...invoiceData,
   invoiceNumber: finalInvoiceNumber,
   selectedSupplierId: selectedSupplierId,
-  selectedStaffId: selectedStaffId, // Add selected staff ID
-  assigned_staff: accounts.find(acc => acc.staffid == selectedStaffId)?.assigned_staff, 
+  staffid: selectedStaffId,
+  staffName: staffName,
+  assigned_staff: staffName,
   type: 'sales',
   totalCGST: totalCGST.toFixed(2),
   totalSGST: totalSGST.toFixed(2),
@@ -923,31 +892,33 @@ const payload = {
   primaryBatchId: firstItemBatchId,
   PartyID: selectedSupplierId,
   AccountID: invoiceData.supplierInfo.accountId,
-  PartyName: invoiceData.supplierInfo.name,
-  AccountName: invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.name
+  PartyName: invoiceData.supplierInfo.name, // This stays as name
+  AccountName: invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName || invoiceData.supplierInfo.name // ✅ Use business_name here
 };
+
+// 🔥 LOG THE FINAL PAYLOAD
+console.log('🚀 Final Payload for AccountName:', {
+  PartyName: payload.PartyName, // Should be personal name
+  AccountName: payload.AccountName, // Should be business_name
+  business_name: invoiceData.supplierInfo.business_name,
+  businessName: invoiceData.supplierInfo.businessName,
+  staffid: payload.staffid
+});
 
     // Remove unused fields
     delete payload.companyState;
     delete payload.supplierState;
     delete payload.items;
 
-    // 🔥 LOG THE FINAL PAYLOAD
-    console.log('🚀 Final Payload with PartyID and AccountID:', {
+    // 🔥 LOG THE FINAL PAYLOAD WITH STAFFID
+    console.log('🚀 Final Payload with Staff ID:', {
+      staffid: payload.staffid,
+      staffName: payload.staffName,
+      assigned_staff: payload.assigned_staff,
       PartyID: payload.PartyID,
-      AccountID: payload.AccountID,
-      selectedSupplierId: payload.selectedSupplierId,
-      supplierInfo: payload.supplierInfo
+      AccountID: payload.AccountID
     });
     
-    // Final validation
-    if (!payload.product_id || !payload.batch_id) {
-      console.error('❌ CRITICAL: product_id or batch_id is still undefined in payload!');
-      console.error('Payload structure:', JSON.stringify(payload, null, 2));
-    } else {
-      console.log('✅ SUCCESS: product_id and batch_id are properly set in payload!');
-    }
-
     let response;
     if (isEditMode && editingVoucherId) {
       console.log('🔄 Updating existing invoice with ID:', editingVoucherId);
@@ -959,7 +930,7 @@ const payload = {
         body: JSON.stringify(payload)
       });
     } else {
-      console.log('🆕 Creating new invoice ');
+      console.log('🆕 Creating new invoice with staffid:', selectedStaffId);
       response = await fetch(`${baseurl}/transaction`, {
         method: 'POST',
         headers: {
@@ -976,9 +947,7 @@ const payload = {
     }
     
     console.log('✅ Server Response:', responseData);
-    console.log('Response voucherId:', responseData.voucherId);
-    console.log('Response product_id:', responseData.product_id);
-    console.log('Response batch_id:', responseData.batch_id);
+    console.log('Response staffid:', responseData.staffid);
     
     localStorage.removeItem('draftInvoice');
     setSuccess(isEditMode ? 'Invoice updated successfully!' : 'Invoice submitted successfully!');
@@ -990,7 +959,8 @@ const payload = {
       invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
       voucherId: responseData.voucherId || editingVoucherId,
       product_id: responseData.product_id || firstItemProductId,
-      batch_id: responseData.batch_id || firstItemBatchId
+      batch_id: responseData.batch_id || firstItemBatchId,
+      staffid: responseData.staffid || selectedStaffId // ✅ Include staffid in preview
     };
     localStorage.setItem('previewInvoice', JSON.stringify(previewData));
     
@@ -1138,62 +1108,60 @@ const payload = {
               New
             </Button>
           </div>
-          
-          {/* Combined Retailer and Staff Dropdown */}
-          <Form.Select
-            className="mb-2 border-primary"
-            value={inputName}
-            onChange={(e) => {
-              const selectedName = e.target.value;
-              setInputName(selectedName);
-              
-              if (selectedName === "") {
-                // Reset if nothing selected
-                setSelected(false);
-                setSelectedSupplierId(null);
-                setSelectedStaffId("");
-                return;
-              }
-              
-              const supplier = accounts.find(acc => acc.business_name === selectedName);
-              if (supplier) {
-                setSelectedSupplierId(supplier.id);
-                setSelected(true);
-                
-                // Auto-select the assigned staff if available
-                if (supplier.staffid) {
-                  setSelectedStaffId(supplier.staffid);
-                }
-                
-                setInvoiceData(prev => ({
-                  ...prev,
-                  supplierInfo: {
-                    name: supplier.name,
-                    businessName: supplier.business_name,
-                    state: supplier.billing_state,
-                    gstin: supplier.gstin,
-                    accountId: supplier.id,
-                    staffid: supplier.staffid,
-                    assigned_staff: supplier.assigned_staff
-                  },
-                  billingAddress: {
-                    addressLine1: supplier.billing_address_line1,
-                    addressLine2: supplier.billing_address_line2 || "",
-                    city: supplier.billing_city,
-                    pincode: supplier.billing_pin_code,
-                    state: supplier.billing_state
-                  },
-                  shippingAddress: {
-                    addressLine1: supplier.shipping_address_line1,
-                    addressLine2: supplier.shipping_address_line2 || "",
-                    city: supplier.shipping_city,
-                    pincode: supplier.shipping_pin_code,
-                    state: supplier.shipping_state
-                  }
-                }));
-              }
-            }}
-          >
+      <Form.Select
+  className="mb-2 border-primary"
+  value={inputName}
+  onChange={(e) => {
+    const selectedName = e.target.value;
+    setInputName(selectedName);
+    
+    if (selectedName === "") {
+      setSelected(false);
+      setSelectedSupplierId(null);
+      setSelectedStaffId("");
+      return;
+    }
+    
+    const supplier = accounts.find(acc => acc.business_name === selectedName);
+    if (supplier) {
+      setSelectedSupplierId(supplier.id);
+      setSelected(true);
+      
+      // Auto-select the assigned staff if available
+      if (supplier.staffid) {
+        setSelectedStaffId(supplier.staffid);
+      }
+      
+      setInvoiceData(prev => ({
+        ...prev,
+        supplierInfo: {
+          name: supplier.name,
+          businessName: supplier.business_name, // ✅ This will be used for AccountName
+          business_name: supplier.business_name, // ✅ Add this field
+          state: supplier.billing_state,
+          gstin: supplier.gstin,
+          accountId: supplier.id,
+          staffid: supplier.staffid,
+          assigned_staff: supplier.assigned_staff
+        },
+        billingAddress: {
+          addressLine1: supplier.billing_address_line1,
+          addressLine2: supplier.billing_address_line2 || "",
+          city: supplier.billing_city,
+          pincode: supplier.billing_pin_code,
+          state: supplier.billing_state
+        },
+        shippingAddress: {
+          addressLine1: supplier.shipping_address_line1,
+          addressLine2: supplier.shipping_address_line2 || "",
+          city: supplier.shipping_city,
+          pincode: supplier.shipping_pin_code,
+          state: supplier.shipping_state
+        }
+      }));
+    }
+  }}
+>
             <option value="">Select Retailer </option>
             {accounts
               .filter(acc => acc.role === "retailer")

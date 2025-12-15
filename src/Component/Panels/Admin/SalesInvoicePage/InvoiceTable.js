@@ -27,43 +27,47 @@ const InvoicesTable = () => {
     fetchInvoices();
   }, []);
 
-  const fetchInvoices = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${baseurl}/transactions`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch invoices');
-      }
-      
-      const data = await response.json();
-      
-      // Filter transactions where TransactionType is 'Sales'
-      const salesInvoices = data.filter(transaction => 
-        transaction.TransactionType === 'Sales'
-      );
-      
-      // Transform the data to match your table structure
-      const transformedInvoices = salesInvoices.map(invoice => ({
-        id: invoice.VoucherID,
-        customerName: invoice.PartyName || 'N/A',
-        number: invoice.InvoiceNumber || `INV-${invoice.VoucherID}`,
-        totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-        payment: getPaymentStatus(invoice),
-        created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
-        originalData: invoice,
-        hasPDF: !!invoice.pdf_data // Check if PDF exists
-      }));
-      
-      setInvoices(transformedInvoices);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching invoices:', err);
-      setError(err.message);
-      setLoading(false);
+const fetchInvoices = async () => {
+  try {
+    setLoading(true);
+    const response = await fetch(`${baseurl}/transactions`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch invoices');
     }
-  };
-
+    
+    const data = await response.json();
+    
+    // Filter transactions where TransactionType is either 'Stock Transfer' OR 'Sales'
+    const filteredTransactions = data.filter(transaction => 
+      transaction.TransactionType === 'stock transfer' || 
+      transaction.TransactionType === 'Sales'
+    );
+    
+    // Transform the data to match your table structure
+    const transformedInvoices = filteredTransactions.map(invoice => ({
+      id: invoice.VoucherID,
+      transactionType: invoice.TransactionType, // Add transaction type column
+      customerName: invoice.PartyName || 'N/A',
+      number: invoice.InvoiceNumber || 
+        (invoice.TransactionType === 'stock transfer' 
+          ? `ST-${invoice.VoucherID}` 
+          : `INV-${invoice.VoucherID}`),
+      totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+      payment: getPaymentStatus(invoice),
+      created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
+      originalData: invoice,
+      hasPDF: !!invoice.pdf_data // Check if PDF exists
+    }));
+    
+    setInvoices(transformedInvoices);
+    setLoading(false);
+  } catch (err) {
+    console.error('Error fetching invoices:', err);
+    setError(err.message);
+    setLoading(false);
+  }
+};
   // Helper function to determine payment status
   const getPaymentStatus = (invoice) => {
     if (invoice.ChequeNo && invoice.ChequeNo !== 'NULL') {

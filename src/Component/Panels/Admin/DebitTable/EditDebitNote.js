@@ -245,8 +245,7 @@ const EditDebitNote = () => {
 
     console.log("Credit Note Update Data:", requestData);
 
-    const response = await axios.put(`${baseurl}/debitnoteupdate/${id}`, requestData);
-
+const response = await axios.put(`${baseurl}/debitnoteupdate/${id}`, requestData);
     console.log("Backend Response:", response.data);
 
     if(response.data){

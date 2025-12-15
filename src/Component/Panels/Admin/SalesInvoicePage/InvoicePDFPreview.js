@@ -134,15 +134,39 @@ const InvoicePDFPreview = () => {
   };
 
 const transformPaymentData = (apiData) => {
-  const salesEntry = apiData.sales;
+  // FIX: Handle both Sales AND Stock Transfer
+  const salesEntry = apiData.sales || apiData.stocktransfer || {};
   const receiptEntries = apiData.receipts || [];
   const creditNoteEntries = apiData.creditnotes || [];
   
   console.log('Raw API data for payment transformation:', {
-    sales: salesEntry,
+    sales: apiData.sales,
+    stocktransfer: apiData.stocktransfer,
     receipts: receiptEntries,
-    creditnotes: creditNoteEntries
+    creditnotes: creditNoteEntries,
+    allEntries: apiData.allEntries // For debugging
   });
+  
+  // FIX: Check if we have valid transaction data
+  if (!salesEntry || Object.keys(salesEntry).length === 0) {
+    console.warn('No sales or stock transfer data found, creating empty response');
+    return {
+      invoice: {
+        invoiceNumber: 'N/A',
+        invoiceDate: new Date().toISOString(),
+        totalAmount: 0,
+        overdueDays: 0
+      },
+      receipts: [],
+      creditnotes: [],
+      summary: {
+        totalPaid: 0,
+        totalCreditNotes: 0,
+        balanceDue: 0,
+        status: 'Pending'
+      }
+    };
+  }
   
   const totalAmount = parseFloat(salesEntry.TotalAmount) || 0;
   
@@ -169,8 +193,8 @@ const transformPaymentData = (apiData) => {
     type: 'receipt'
   }));
   
-  // Transform credit notes
-  const creditnotes = creditNoteEntries.map(creditnote => ({
+  // FIX: This was causing the error - ensure creditNoteEntries is always an array
+  const creditnotes = (creditNoteEntries || []).map(creditnote => ({
     receiptNumber: creditnote.VchNo || 'CNOTE',
     paidAmount: parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0),
     paidDate: creditnote.Date || creditnote.paid_date,
@@ -187,13 +211,13 @@ const transformPaymentData = (apiData) => {
   
   const transformedData = {
     invoice: {
-      invoiceNumber: salesEntry.InvoiceNumber,
-      invoiceDate: salesEntry.Date,
+      invoiceNumber: salesEntry.InvoiceNumber || 'N/A',
+      invoiceDate: salesEntry.Date || new Date().toISOString(),
       totalAmount: totalAmount,
       overdueDays: overdueDays
     },
     receipts: receipts,
-    creditnotes: creditnotes,
+    creditnotes: creditnotes, // Now this is always an array
     summary: {
       totalPaid: totalPaid,
       totalCreditNotes: totalCreditNotes,
@@ -206,7 +230,6 @@ const transformPaymentData = (apiData) => {
   
   return transformedData;
 };
-
   const fetchNextReceiptNumber = async () => {
     try {
       const response = await fetch(`${baseurl}/api/next-receipt-number`);
