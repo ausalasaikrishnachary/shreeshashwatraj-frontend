@@ -45,6 +45,7 @@ const Period = () => {
     }
   }, [orders]);
 
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (openDropdown && !event.target.closest('.p-invoice-dropdown')) {
@@ -263,6 +264,8 @@ const Period = () => {
     }
   };
 
+
+
 const fetchOrders = async () => {
   try {
     setLoading(true);
@@ -286,6 +289,11 @@ const fetchOrders = async () => {
     
     console.log(`Filtered orders: ${filteredOrdersData.length} out of ${ordersData.length}`);
     
+    if (filteredOrdersData.length > 0) {
+      console.log("Available fields in first filtered order:", Object.keys(filteredOrdersData[0]));
+      console.log("First order staff_incentive from orders table:", filteredOrdersData[0].staff_incentive);
+    }
+
     const ordersWithItems = await Promise.all(
       filteredOrdersData.map(async (order) => {
         try {
@@ -294,13 +302,15 @@ const fetchOrders = async () => {
           const itemsData = itemsRes.data.items || [];
           const orderMode = order.order_mode || "Pakka";
 
-          // Get staff_incentive from ORDERS TABLE
+          // Get staff_incentive from ORDERS TABLE (not calculating from items)
           const staffIncentive = parseFloat(order.staff_incentive) || 0;
+          console.log(`Order ${order.order_number}: staff_incentive from orders table = ${staffIncentive}`);
 
           // Fetch account details by customer ID
           let accountDetails = null;
           try {
             const accountRes = await axios.get(`${baseurl}/accounts/${order.customer_id}`);
+            console.log(`Account response for customer ${order.customer_id}:`, accountRes.data);
             accountDetails = accountRes.data;
           } catch (accountErr) {
             console.warn(`Could not fetch account details for customer ID ${order.customer_id}:`, accountErr.message);
@@ -345,7 +355,9 @@ const fetchOrders = async () => {
                 invoice_status: item.invoice_status ?? 0,
                 staff_id: item.staff_id ?? order.staff_id ?? 0,
                 assigned_staff: item.assigned_staff ?? order.assigned_staff ?? null,
-                staff_incentive: item.staff_incentive ?? 0,
+                // Do NOT calculate staff_incentive from items
+                // Use the value from orders table instead
+                staff_incentive: item.staff_incentive ?? 0, // Keep item level incentive if needed separately
                 invoice_date: item.invoce_date ?? 0,
                 credit_percentage: item.credit_percentage ?? 0,
                 sgst_percentage: item.sgst_percentage ?? 0,
@@ -360,9 +372,21 @@ const fetchOrders = async () => {
             })
           );
 
+          console.log(`Order ${order.order_number}:`, {
+            order_status: order.order_status,
+            invoice_status: order.invoice_status,
+            invoice_number: order.invoice_number,
+            assigned_staff: order.assigned_staff,
+            staff_id: order.staff_id,
+            staff_incentive_from_orders: staffIncentive // Log the value
+          });
+
           const assignedStaff = order.assigned_staff || "N/A";
           const staffId = order.staff_id || "N/A";
           const orderStatus = order.order_status || "N/A";
+
+          // Use staff_incentive from ORDERS TABLE directly
+          const totalStaffIncentive = staffIncentive;
 
           return {
             ...order,
@@ -370,7 +394,7 @@ const fetchOrders = async () => {
             assigned_staff: assignedStaff,
             staff_id: staffId,
             order_status: orderStatus,
-            staff_incentive: staffIncentive,
+            staff_incentive: totalStaffIncentive, // This is from orders table
             account_details: accountDetails,
             order_mode: orderMode
           };
@@ -382,7 +406,7 @@ const fetchOrders = async () => {
             assigned_staff: order.assigned_staff || "N/A",
             staff_id: order.staff_id || "N/A",
             order_status: order.order_status || "N/A",
-            staff_incentive: parseFloat(order.staff_incentive) || 0,
+            staff_incentive: parseFloat(order.staff_incentive) || 0, // Keep from orders table
             account_details: null,
             order_mode: order.order_mode || "Pakka"
           };
@@ -398,9 +422,12 @@ const fetchOrders = async () => {
   }
 };
 
+
   const toggleRow = (id) => {
     setOpenRow(openRow === id ? null : id);
   };
+
+
 
   // Updated handleItemSelect function with approval check
   const handleItemSelect = (orderId, itemId, isSelected, itemCreditPeriod) => {
@@ -503,89 +530,87 @@ const fetchOrders = async () => {
   };
 
   // Handle item approval
-// Handle item approval
-const handleApproveItem = async (itemId, orderId) => {
-  try {
-    // Find the item
-    const order = orders.find(o => o.id === orderId);
-    if (!order) return;
-    
-    const item = order.items.find(i => i.id === itemId);
-    if (!item) return;
-    
-    // Call API to update approval status - FIXED ENDPOINT
-    const response = await axios.put(`${baseurl}/orders/items/${itemId}/approve`, {
-      approval_status: "approved"
-    });
-    
-    if (response.data.success) {
-      // Update local state
-      setOrders(prevOrders => 
-        prevOrders.map(order => {
-          if (order.id === orderId) {
-            return {
-              ...order,
-              items: order.items.map(item => 
-                item.id === itemId 
-                  ? { ...item, approval_status: "approved" }
-                  : item
-              )
-            };
-          }
-          return order;
-        })
-      );
+  const handleApproveItem = async (itemId, orderId) => {
+    try {
+      // Find the item
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
       
-      alert("Item approved successfully!");
-    }
-  } catch (error) {
-    console.error("Error approving item:", error);
-    alert(`Failed to approve item: ${error.response?.data?.error || error.message}`);
-  }
-};
-
-// Handle item rejection
-const handleRejectItem = async (itemId, orderId) => {
-  try {
-    // Find the item
-    const order = orders.find(o => o.id === orderId);
-    if (!order) return;
-    
-    const item = order.items.find(i => i.id === itemId);
-    if (!item) return;
-    
-    // Call API to update approval status - FIXED ENDPOINT
-    const response = await axios.put(`${baseurl}/orders/items/${itemId}/approve`, {
-      approval_status: "rejected"
-    });
-    
-    if (response.data.success) {
-      // Update local state
-      setOrders(prevOrders => 
-        prevOrders.map(order => {
-          if (order.id === orderId) {
-            return {
-              ...order,
-              items: order.items.map(item => 
-                item.id === itemId 
-                  ? { ...item, approval_status: "rejected" }
-                  : item
-              )
-            };
-          }
-          return order;
-        })
-      );
+      const item = order.items.find(i => i.id === itemId);
+      if (!item) return;
       
-      alert("Item rejected successfully!");
+      // Call API to update approval status
+      const response = await axios.put(`${baseurl}/orders/items/${itemId}/approve`, {
+        approval_status: "approved"
+      });
+      
+      if (response.data.success) {
+        // Update local state
+        setOrders(prevOrders => 
+          prevOrders.map(order => {
+            if (order.id === orderId) {
+              return {
+                ...order,
+                items: order.items.map(item => 
+                  item.id === itemId 
+                    ? { ...item, approval_status: "approved" }
+                    : item
+                )
+              };
+            }
+            return order;
+          })
+        );
+        
+        alert("Item approved successfully!");
+      }
+    } catch (error) {
+      console.error("Error approving item:", error);
+      alert(`Failed to approve item: ${error.response?.data?.error || error.message}`);
     }
-  } catch (error) {
-    console.error("Error rejecting item:", error);
-    alert(`Failed to reject item: ${error.response?.data?.error || error.message}`);
-  }
-};
+  };
 
-  // Open Order Modal with existing data
+  // Handle item rejection
+  const handleRejectItem = async (itemId, orderId) => {
+    try {
+      // Find the item
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+      
+      const item = order.items.find(i => i.id === itemId);
+      if (!item) return;
+      
+      // Call API to update approval status
+      const response = await axios.put(`${baseurl}/orders/items/${itemId}/approve`, {
+        approval_status: "rejected"
+      });
+      
+      if (response.data.success) {
+        // Update local state
+        setOrders(prevOrders => 
+          prevOrders.map(order => {
+            if (order.id === orderId) {
+              return {
+                ...order,
+                items: order.items.map(item => 
+                  item.id === itemId 
+                    ? { ...item, approval_status: "rejected" }
+                    : item
+                )
+              };
+            }
+            return order;
+          })
+        );
+        
+        alert("Item rejected successfully!");
+      }
+    } catch (error) {
+      console.error("Error rejecting item:", error);
+      alert(`Failed to reject item: ${error.response?.data?.error || error.message}`);
+    }
+  };
+
   const openOrderModal = (orderId) => {
     const orderData = orders.find(order => order.id === orderId);
     if (orderData) {
@@ -594,7 +619,6 @@ const handleRejectItem = async (itemId, orderId) => {
     }
   };
 
-  // Open Item Modal with existing data
   const openItemModal = (orderNumber, itemId) => {
     const order = orders.find(order => order.order_number === orderNumber);
     if (order && order.items) {
@@ -659,11 +683,12 @@ const handleRejectItem = async (itemId, orderId) => {
       const accountDetails = order.account_details;
       const staffId = selectedItemsData[0]?.staff_id || order.staff_id || 0;
       
-      // Get staff_incentive from ORDERS TABLE (not calculating from items)
       const staffIncentive = order.staff_incentive || 0;
       console.log("Staff Incentive from orders table:", staffIncentive);
 
       const invoiceData = {
+        transactionType: 'stock transfer',
+        
         orderNumber: order.order_number,
         invoiceNumber: invoiceNumber,
         invoiceDate: new Date().toISOString().split('T')[0],
@@ -674,10 +699,8 @@ const handleRejectItem = async (itemId, orderId) => {
           items: undefined
         },
 
-        // Pass only selected items WITH SGST/CGST DATA
         selectedItems: selectedItemsData.map(item => ({
           ...item,
-          // Ensure SGST/CGST data is explicitly included
           sgst_percentage: item.sgst_percentage || 0,
           sgst_amount: item.sgst_amount || 0,
           cgst_percentage: item.cgst_percentage || 0,
@@ -693,12 +716,12 @@ const handleRejectItem = async (itemId, orderId) => {
         },
 
         companyInfo: {
-          name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-          address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-          email: "sumukhusr7@gmail.com",
-          phone: "3456549876543",
-          gstin: "29AABCD0503B1ZG",
-          state: "Karnataka"
+          name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+          address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+          email: "spmathur56@gmail.com",
+          phone: "9801049700",
+          gstin: "10AAOCS1541B1ZZ",
+          state: "Bihar"
         },
 
         customerInfo: {
@@ -747,7 +770,8 @@ const handleRejectItem = async (itemId, orderId) => {
         otherDetails: "Authorized Signatory",
         taxType: "CGST/SGST",
 
-        type: 'sales',
+        // Stock transfer specific fields
+        transactionType: 'stock transfer', // Static value
         selectedSupplierId: order.customer_id,
         PartyID: order.customer_id,
         AccountID: order.customer_id,
@@ -765,7 +789,7 @@ const handleRejectItem = async (itemId, orderId) => {
         fullAccountDetails: accountDetails
       };
 
-      console.log("📋 Invoice data with staff_incentive:", staffIncentive);
+      console.log("📋 Invoice data with static transactionType:", invoiceData.transactionType);
 
       navigate(`/periodinvoicepreviewpdf/${order.id}`, {
         state: {
