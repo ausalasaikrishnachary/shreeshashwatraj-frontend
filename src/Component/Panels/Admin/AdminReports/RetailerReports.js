@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
-import { FaChartBar, FaChartPie, FaSearch, FaFilePdf, FaFileExcel } from "react-icons/fa";
+import { FaChartBar, FaChartPie, FaSearch, FaFilePdf, FaFileExcel, FaFilter } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import { Bar, Pie } from "react-chartjs-2";
@@ -35,24 +35,32 @@ function RetailerReports({ loading, setLoading }) {
     activeRetailers: 0,
     newThisMonth: 0,
     growthRate: 0,
+    previousMonthCount: 0,
+    currentMonthCount: 0,
   });
   const [searchTerm, setSearchTerm] = useState("");
   
-  // New state for date filtering and report generation
+  // Date filtering
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [reportFormat, setReportFormat] = useState("pdf");
   const [generatingReport, setGeneratingReport] = useState(false);
 
-  // Static pie chart data
-  const [pieChartData] = useState({
-    labels: ["Active Retailers", "Inactive Retailers", "New Retailers"],
+  // State distribution pie chart data
+  const [stateChartData, setStateChartData] = useState({
+    labels: [],
     datasets: [
       {
-        data: [65, 20, 15],
-        backgroundColor: ["#4F81FF", "#FF6384", "#36A2EB"],
-        hoverBackgroundColor: ["#3A6DE0", "#FF4D6D", "#2B8CD9"],
+        data: [],
+        backgroundColor: [
+          "#4F81FF", "#FF6384", "#36A2EB", "#FFCE56", "#9966FF", 
+          "#FF9F40", "#4BC0C0", "#FF6B6B", "#54D169", "#FFD166"
+        ],
+        hoverBackgroundColor: [
+          "#3A6DE0", "#FF4D6D", "#2B8CD9", "#FFC145", "#8A5AFF",
+          "#FF8A24", "#3BA9A9", "#FF5252", "#45C159", "#FFC145"
+        ],
         borderWidth: 1,
       },
     ],
@@ -67,41 +75,85 @@ function RetailerReports({ loading, setLoading }) {
       setLoading(true);
       const url = `${baseurl}/api/reports/retailer-report`;
       const params = {};
-      if (fromDate && toDate) {
-        params.fromDate = fromDate;
-        params.toDate = toDate;
-      }
+      if (fromDate) params.fromDate = fromDate;
+      if (toDate) params.toDate = toDate;
       
-      console.log("📌 Fetching Retailers:", url);
+      console.log("📌 Fetching Retailers with params:", params);
       const res = await axios.get(url, { params });
 
       if (res.data && Array.isArray(res.data)) {
         setRetailerData(res.data);
 
+        // Calculate statistics
         const totalRetailers = res.data.length;
         const activeRetailers = totalRetailers;
-        const newThisMonth = Math.floor(Math.random() * 10) + 1;
-        const growthRate =
-          totalRetailers > 0
-            ? ((newThisMonth / totalRetailers) * 100).toFixed(1)
-            : 0;
+        
+        // Get current month and previous month
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+        
+        // Count retailers created in current month
+        const currentMonthRetailers = res.data.filter(retailer => {
+          const createdDate = new Date(retailer.created_at);
+          return createdDate.getMonth() === currentMonth && 
+                 createdDate.getFullYear() === currentYear;
+        }).length;
+        
+        // Count retailers created in previous month
+        const previousMonthRetailers = res.data.filter(retailer => {
+          const createdDate = new Date(retailer.created_at);
+          return createdDate.getMonth() === previousMonth && 
+                 createdDate.getFullYear() === previousYear;
+        }).length;
+        
+        // Calculate growth rate
+        let growthRate = 0;
+        if (previousMonthRetailers > 0) {
+          growthRate = (((currentMonthRetailers - previousMonthRetailers) / previousMonthRetailers) * 100).toFixed(1);
+        } else if (currentMonthRetailers > 0) {
+          growthRate = 100; // If no retailers last month, growth is 100%
+        }
 
         setStats({
           totalRetailers,
           activeRetailers,
-          newThisMonth,
+          newThisMonth: currentMonthRetailers,
           growthRate,
+          previousMonthCount: previousMonthRetailers,
+          currentMonthCount: currentMonthRetailers,
         });
 
+        prepareStateChartData(res.data);
         prepareBarChartData(res.data);
       } else {
         setRetailerData([]);
         setBarChartData(null);
+        setStateChartData({
+          labels: [],
+          datasets: [{
+            data: [],
+            backgroundColor: [],
+            hoverBackgroundColor: [],
+            borderWidth: 1,
+          }]
+        });
       }
     } catch (err) {
       console.error("❌ Error fetching Retailers:", err);
       setRetailerData([]);
       setBarChartData(null);
+      setStateChartData({
+        labels: [],
+        datasets: [{
+          data: [],
+          backgroundColor: [],
+          hoverBackgroundColor: [],
+          borderWidth: 1,
+        }]
+      });
     } finally {
       setLoading(false);
     }
@@ -116,6 +168,45 @@ function RetailerReports({ loading, setLoading }) {
   useEffect(() => {
     fetchRetailersData();
   }, [fromDate, toDate]);
+
+  // Prepare state distribution chart data
+  const prepareStateChartData = (data) => {
+    const stateCount = {};
+    data.forEach((retailer) => {
+      const state = retailer.billing_state || "Unknown State";
+      stateCount[state] = (stateCount[state] || 0) + 1;
+    });
+
+    const sortedEntries = Object.entries(stateCount).sort(
+      (a, b) => b[1] - a[1]
+    );
+
+    const labels = sortedEntries.map(([state]) => state);
+    const counts = sortedEntries.map(([, count]) => count);
+
+    const colors = [
+      "#4F81FF", "#FF6384", "#36A2EB", "#FFCE56", "#9966FF", 
+      "#FF9F40", "#4BC0C0", "#FF6B6B", "#54D169", "#FFD166"
+    ];
+
+    setStateChartData({
+      labels: labels,
+      datasets: [
+        {
+          data: counts,
+          backgroundColor: labels.map((_, index) => colors[index % colors.length]),
+          hoverBackgroundColor: labels.map((_, index) => {
+            const baseColor = colors[index % colors.length];
+            // Darken color for hover effect
+            return baseColor.replace(/^#/, '').replace(/../g, color => 
+              ('0' + Math.min(255, Math.max(0, parseInt(color, 16) - 20)).toString(16)).slice(-2)
+            );
+          }),
+          borderWidth: 1,
+        },
+      ],
+    });
+  };
 
   // Prepare bar chart data
   const prepareBarChartData = (data) => {
@@ -162,21 +253,22 @@ function RetailerReports({ loading, setLoading }) {
       business_name: retailer.business_name || "N/A",
       gstin: retailer.gstin || "N/A",
       gst_registered_name: retailer.gst_registered_name || "N/A",
+      assigned_staff: retailer.assigned_staff || "N/A",
+      created_at: retailer.created_at ? new Date(retailer.created_at).toLocaleDateString() : "N/A",
+      billing_state: retailer.billing_state || "N/A",
     }));
   };
 
-  // Filtered data
-  const filteredRetailerData = searchTerm
-    ? formatRetailerData(retailerData).filter(
-        (item) =>
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.mobile.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.business_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.gstin.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.gst_registered_name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : formatRetailerData(retailerData);
+  // Filter data based on search term (only name and assigned_staff)
+  const filteredRetailerData = formatRetailerData(retailerData).filter(item => {
+    if (!searchTerm) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      item.name.toLowerCase().includes(searchLower) ||
+      item.assigned_staff.toLowerCase().includes(searchLower)
+    );
+  });
 
   // Table columns
   const topRetailersColumns = [
@@ -191,7 +283,9 @@ function RetailerReports({ loading, setLoading }) {
     { key: "email", title: "Email", style: { textAlign: "center" } },
     { key: "business_name", title: "Business Name", style: { textAlign: "center" } },
     { key: "gstin", title: "GSTIN", style: { textAlign: "center" } },
-    { key: "gst_registered_name", title: "GST Registered Name", style: { textAlign: "center" } },
+    { key: "assigned_staff", title: "Assigned Staff", style: { textAlign: "center" } },
+    { key: "created_at", title: "Created Date", style: { textAlign: "center" } },
+    { key: "billing_state", title: "State", style: { textAlign: "center" } },
   ];
 
   // Generate report function
@@ -248,15 +342,17 @@ function RetailerReports({ loading, setLoading }) {
           boxWidth: 12,
           padding: 15,
           font: { size: 12 },
+          usePointStyle: true,
         },
       },
       tooltip: {
         callbacks: {
           label: function (context) {
-            let label = context.label || "";
-            if (label) label += ": ";
-            label += context.parsed + "%";
-            return label;
+            const label = context.label || "";
+            const value = context.parsed;
+            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = Math.round((value / total) * 100);
+            return `${label}: ${value} (${percentage}%)`;
           },
         },
       },
@@ -304,6 +400,12 @@ function RetailerReports({ loading, setLoading }) {
     },
   };
 
+  // Clear date filters
+  const clearDateFilters = () => {
+    setFromDate("");
+    setToDate("");
+  };
+
   return (
     <div className="ret-rep">
       {/* Stats Cards */}
@@ -312,23 +414,27 @@ function RetailerReports({ loading, setLoading }) {
           <h4>Total Retailers</h4>
           <div className="ret-rep-stat-number">{stats.totalRetailers}</div>
           <div className="ret-rep-stat-period">
-            {fromDate && toDate ? `${fromDate} to ${toDate}` : 'All time'}
+            {fromDate && toDate ? `${fromDate} to ${toDate}` : 'All retailers'}
           </div>
         </div>
         <div className="ret-rep-stat-card">
-          <h4>Active</h4>
+          <h4>Active Retailers</h4>
           <div className="ret-rep-stat-number">{stats.activeRetailers}</div>
           <div className="ret-rep-stat-period">Currently active</div>
         </div>
         <div className="ret-rep-stat-card">
           <h4>New This Month</h4>
           <div className="ret-rep-stat-number">{stats.newThisMonth}</div>
-          <div className="ret-rep-stat-period">Recent additions</div>
+          <div className="ret-rep-stat-period">Added in current month</div>
         </div>
         <div className="ret-rep-stat-card">
-          <h4>Growth Rate</h4>
-          <div className="ret-rep-stat-number ret-rep-positive">+{stats.growthRate}%</div>
-          <div className="ret-rep-stat-period">Monthly growth</div>
+          <h4>Monthly Growth</h4>
+          <div className={`ret-rep-stat-number ${stats.growthRate >= 0 ? 'ret-rep-positive' : 'ret-rep-negative'}`}>
+            {stats.growthRate >= 0 ? '+' : ''}{stats.growthRate}%
+          </div>
+          <div className="ret-rep-stat-period">
+            {stats.previousMonthCount} → {stats.currentMonthCount}
+          </div>
         </div>
         <Link to="/reports/retailer-report-page" className="ret-rep-stat-card">
           <div className="ret-rep-icon-container">
@@ -342,25 +448,35 @@ function RetailerReports({ loading, setLoading }) {
       {/* Charts Section */}
       <div className="ret-rep-charts-section">
         <div className="ret-rep-charts-container">
-          {/* Pie Chart */}
+          {/* State Distribution Pie Chart */}
           <div className="ret-rep-chart-card">
             <div className="ret-rep-chart-header">
               <FaChartPie className="ret-rep-chart-icon" />
-              <h3>Retailer Status Distribution</h3>
-              <span className="ret-rep-chart-subtitle">Static Overview</span>
+              <h3>Retailers by State</h3>
+              <span className="ret-rep-chart-subtitle">
+                Based on billing address ({stateChartData.labels.length} states)
+              </span>
             </div>
             <div className="ret-rep-chart-wrapper">
-              <Pie data={pieChartData} options={pieOptions} />
+              {loading ? (
+                <div className="ret-rep-chart-loading">Loading chart data...</div>
+              ) : stateChartData.labels.length > 0 ? (
+                <Pie data={stateChartData} options={pieOptions} />
+              ) : (
+                <div className="ret-rep-chart-no-data">
+                  No state data available for chart
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Bar Chart */}
+          {/* Business Type Bar Chart */}
           <div className="ret-rep-chart-card">
             <div className="ret-rep-chart-header">
               <FaChartBar className="ret-rep-chart-icon" />
               <h3>Retailers by Business Type</h3>
               <span className="ret-rep-chart-subtitle">
-                Dynamic based on {retailerData.length} retailers
+                Top 8 business types
               </span>
             </div>
             <div className="ret-rep-chart-wrapper">
@@ -386,13 +502,13 @@ function RetailerReports({ loading, setLoading }) {
         
         {/* Search and Filter Row */}
         <div className="ret-rep-filter-row">
-          {/* Search on left */}
+          {/* Search on left - Only name and assigned staff */}
           <div className="ret-rep-search-left">
             <div className="ret-rep-search-box">
               <FaSearch className="ret-rep-search-icon" />
               <input
                 type="text"
-                placeholder="Search by name, mobile, email, business, GSTIN..."
+                placeholder="Search by name or assigned staff..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="ret-rep-search-input"
@@ -408,27 +524,38 @@ function RetailerReports({ loading, setLoading }) {
             </div>
           </div>
           
-          {/* Date filters and generate button on right */}
+          {/* Date filters on right */}
           <div className="ret-rep-date-right">
             <div className="ret-rep-date-group">
               <div className="ret-rep-date-field">
-                <label>From:</label>
+                <label>From Date:</label>
                 <input
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
                   className="ret-rep-date-input"
+                  max={toDate || undefined}
                 />
               </div>
               <div className="ret-rep-date-field">
-                <label>To:</label>
+                <label>To Date:</label>
                 <input
                   type="date"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
                   className="ret-rep-date-input"
+                  min={fromDate || undefined}
                 />
               </div>
+              {(fromDate || toDate) && (
+                <button
+                  className="ret-rep-clear-filter-btn"
+                  onClick={clearDateFilters}
+                  title="Clear date filters"
+                >
+                  <FaFilter /> Clear
+                </button>
+              )}
               <button
                 className="ret-rep-generate-btn"
                 onClick={() => setShowGenerateModal(true)}
@@ -447,7 +574,7 @@ function RetailerReports({ loading, setLoading }) {
             title=""
             data={filteredRetailerData}
             columns={topRetailersColumns}
-            initialEntriesPerPage={5}
+            initialEntriesPerPage={10}
             searchPlaceholder=""
             showEntries={true}
             showSearch={false}

@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell
 } from 'recharts';
 import { Link } from "react-router-dom";
-import { FaChartLine, FaSearch, FaFilePdf, FaFileExcel } from "react-icons/fa";
+import { FaChartLine, FaSearch, FaFilePdf, FaFileExcel, FaFilter } from "react-icons/fa";
 import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
@@ -23,15 +23,17 @@ const SalesReport = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   
-  // State for date filtering and search
+  // State for filtering
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [transactionType, setTransactionType] = useState("all"); // "all", "pakka", "kacha"
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [reportFormat, setReportFormat] = useState("pdf");
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [showTransactionDropdown, setShowTransactionDropdown] = useState(false);
 
-  // Filtered data based on dates and search
+  // Filtered data
   const [filteredVoucherData, setFilteredVoucherData] = useState([]);
 
   // Fetch all data initially
@@ -43,7 +45,6 @@ const SalesReport = () => {
       if (response.data.success) {
         const data = response.data.data;
         setVoucherDetails(data);
-        // Initially, show all data
         setFilteredVoucherData(data);
         processData(data);
       } else {
@@ -59,39 +60,42 @@ const SalesReport = () => {
 
   // Process data for charts and summary
   const processData = (data) => {
-    // Calculate summary
+    // Calculate summary with transaction type filtering
     const totals = data.reduce((acc, item) => {
       const total = parseFloat(item.total) || 0;
       const orderMode = (item.order_mode || "").toLowerCase();
+      const transactionType = (item.TransactionType || "").toLowerCase();
       
       acc.totalSales += total;
       
-      if (orderMode === "kacha") {
+      if (orderMode === "kacha" || transactionType === "kacha") {
         acc.kachaSales += total;
-      } else if (orderMode === "pakka") {
+      } else if (orderMode === "pakka" || transactionType === "pakka" || transactionType === "sales") {
         acc.pakkaSales += total;
       }
       
       return acc;
     }, { totalSales: 0, kachaSales: 0, pakkaSales: 0 });
 
+    // Calculate monthly growth based on invoice_date
+    const monthlyGrowth = calculateMonthlyGrowth(data);
+    
     setSummary({
       totalSales: totals.totalSales,
-      monthlyGrowth: 0,
+      monthlyGrowth: monthlyGrowth,
       kachaSales: totals.kachaSales,
       pakkaSales: totals.pakkaSales
     });
 
-    // Prepare monthly data
+    // Prepare monthly data for chart
     const monthlyMap = {};
     data.forEach(item => {
       if (item.invoice_date) {
         try {
-          // Parse the date (it might be in DD/MM/YYYY format from the API)
           const dateParts = item.invoice_date.split('/');
           if (dateParts.length === 3) {
             const date = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
-            const month = date.toLocaleString('default', { month: 'short' });
+            const month = date.toLocaleString('default', { month: 'short' }) + ' ' + dateParts[2].slice(-2);
             const total = parseFloat(item.total) || 0;
             
             if (!monthlyMap[month]) {
@@ -108,7 +112,16 @@ const SalesReport = () => {
     const monthlyArray = Object.keys(monthlyMap).map(key => ({
       month: key,
       sales: monthlyMap[key]
-    })).slice(-4);
+    })).sort((a, b) => {
+      // Sort by date properly
+      const getMonthIndex = (monthStr) => {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const [month, year] = monthStr.split(' ');
+        return parseInt(year) * 12 + months.indexOf(month);
+      };
+      return getMonthIndex(a.month) - getMonthIndex(b.month);
+    }).slice(-6);
 
     setSalesData(monthlyArray);
 
@@ -132,7 +145,48 @@ const SalesReport = () => {
     setStaffData(staffArray);
   };
 
-  // Filter data based on selected dates and search term
+  // Calculate monthly growth based on invoice_date
+  const calculateMonthlyGrowth = (data) => {
+    if (data.length === 0) return 0;
+
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+    let currentMonthSales = 0;
+    let previousMonthSales = 0;
+
+    data.forEach(item => {
+      if (item.invoice_date) {
+        try {
+          const dateParts = item.invoice_date.split('/');
+          if (dateParts.length === 3) {
+            const date = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
+            const month = date.getMonth();
+            const year = date.getFullYear();
+            const total = parseFloat(item.total) || 0;
+
+            if (month === currentMonth && year === currentYear) {
+              currentMonthSales += total;
+            } else if (month === previousMonth && year === previousYear) {
+              previousMonthSales += total;
+            }
+          }
+        } catch (err) {
+          console.error("Error parsing date for growth calculation:", item.invoice_date);
+        }
+      }
+    });
+
+    if (previousMonthSales === 0) {
+      return currentMonthSales > 0 ? 100 : 0;
+    }
+
+    return (((currentMonthSales - previousMonthSales) / previousMonthSales) * 100).toFixed(1);
+  };
+
+  // Filter data based on selected dates, search term, and transaction type
   useEffect(() => {
     if (!voucherDetails.length) {
       setFilteredVoucherData([]);
@@ -140,6 +194,21 @@ const SalesReport = () => {
     }
 
     let filtered = [...voucherDetails];
+
+    // Apply transaction type filter
+    if (transactionType !== "all") {
+      filtered = filtered.filter((item) => {
+        const orderMode = (item.order_mode || "").toLowerCase();
+        const transType = (item.TransactionType || "").toLowerCase();
+        
+        if (transactionType === "pakka") {
+          return orderMode === "pakka" || transType === "sales" || transType === "pakka";
+        } else if (transactionType === "kacha") {
+          return orderMode === "kacha" || transType === "kacha";
+        }
+        return true;
+      });
+    }
 
     // Apply date filter if dates are selected
     if (fromDate || toDate) {
@@ -152,7 +221,7 @@ const SalesReport = () => {
           const dateParts = itemDate.split('/');
           if (dateParts.length === 3) {
             const date = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
-            const itemDateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+            const itemDateStr = date.toISOString().split('T')[0];
 
             // Check if date is within range
             if (fromDate && toDate) {
@@ -194,7 +263,7 @@ const SalesReport = () => {
     if (filtered.length > 0) {
       processData(filtered);
     }
-  }, [voucherDetails, fromDate, toDate, searchTerm]);
+  }, [voucherDetails, fromDate, toDate, searchTerm, transactionType]);
 
   // Initial fetch
   useEffect(() => {
@@ -242,11 +311,28 @@ const SalesReport = () => {
     }
   };
 
-  // Clear date filters
-  const clearDateFilters = () => {
+  // Clear all filters
+  const clearFilters = () => {
     setFromDate("");
     setToDate("");
+    setSearchTerm("");
+    setTransactionType("all");
+    setShowTransactionDropdown(false);
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showTransactionDropdown && !event.target.closest('.transaction-dropdown-container')) {
+        setShowTransactionDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTransactionDropdown]);
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -286,18 +372,29 @@ const SalesReport = () => {
     assigned_staff: item.assigned_staff || "Not Assigned",
     staff_address: item.staff_address || "Not Available",
     order_mode: item.order_mode || "-",
-    retailer: item.retailer || "N/A"
+    retailer: item.retailer || "N/A",
+    TransactionType: item.TransactionType || item.order_mode || "-"
   }));
 
   const staffColors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042'];
 
+  // Get transaction type display name
+  const getTransactionTypeDisplay = (type) => {
+    switch(type) {
+      case 'all': return 'All Transactions';
+      case 'pakka': return 'Pakka/Sales';
+      case 'kacha': return 'Kacha Sales';
+      default: return 'All Transactions';
+    }
+  };
+
   if (loading) {
-    return <div className="text-center">Loading sales data...</div>;
+    return <div className="sales-report-loading">Loading sales data...</div>;
   }
 
   return (
     <div className="sales-report">
-      {/* Header with date filters and generate button */}
+      {/* Header */}
       <div className="sales-report-header">
         <div className="sales-report-header-left">
           <h2 className="sales-report-title">Sales Report Dashboard</h2>
@@ -306,48 +403,52 @@ const SalesReport = () => {
       </div>
 
       {/* Stats Cards Section */}
-      <div className="stats-grid">
-        <div className="stat-card">
+      <div className="sales-stats-grid">
+        <div className="sales-stat-card">
           <h3>Total Sales</h3>
-          <div className="stat-value">{formatCurrency(summary.totalSales)}</div>
-          <p className="stat-period">
+          <div className="sales-stat-value">{formatCurrency(summary.totalSales)}</div>
+          <p className="sales-stat-period">
             {fromDate && toDate ? `${fromDate} to ${toDate}` : 'All time'}
+            {transactionType !== "all" && ` • ${getTransactionTypeDisplay(transactionType)}`}
           </p>
         </div>
         
-        <div className="stat-card">
+        <div className="sales-stat-card">
           <h3>Monthly Growth</h3>
-          <div className="stat-value positive">+{summary.monthlyGrowth}%</div>
-          <p className="stat-period">Current month</p>
+          <div className={`sales-stat-value ${summary.monthlyGrowth >= 0 ? 'sales-positive' : 'sales-negative'}`}>
+            {summary.monthlyGrowth >= 0 ? '+' : ''}{summary.monthlyGrowth}%
+          </div>
+          <p className="sales-stat-period">Based on invoice dates</p>
         </div>
         
-        <div className="stat-card">
+        <div className="sales-stat-card">
           <h3>Kacha Sales</h3>
-          <div className="stat-value">{formatCurrency(summary.kachaSales)}</div>
-          <p className="stat-period">Provisional orders</p>
+          <div className="sales-stat-value">{formatCurrency(summary.kachaSales)}</div>
+          <p className="sales-stat-period">Kacha Transaction Type</p>
         </div>
         
-        <div className="stat-card">
+        <div className="sales-stat-card">
           <h3>Pakka Sales</h3>
-          <div className="stat-value">{formatCurrency(summary.pakkaSales)}</div>
-          <p className="stat-period">Confirmed orders</p>
+          <div className="sales-stat-value">{formatCurrency(summary.pakkaSales)}</div>
+          <p className="sales-stat-period">Pakka/Sales Transaction Type</p>
         </div>
 
-        <Link to="/reports/sales-report-page" className="stat-card link-card">
-          <div className="icon-container">
-            <FaChartLine className="icon" />
+        <Link to="/reports/sales-report-page" className="sales-stat-card sales-link-card">
+          <div className="sales-icon-container">
+            <FaChartLine className="sales-icon" />
           </div>
-          <h4 className="mt-3">View Detailed Report</h4>
-          <p className="stat-period">Full transaction details</p>
+          <h4 className="sales-mt-3">View Detailed Report</h4>
+          <p className="sales-stat-period">Full transaction details</p>
         </Link>
       </div>
 
+
       {/* Charts Section */}
-      <div className="charts-container">
-        <div className="chart-card">
+      <div className="sales-charts-container">
+        <div className="sales-chart-card">
           <h3>Sales Trend</h3>
           <p>Monthly sales performance</p>
-          <div className="chart-wrapper">
+          <div className="sales-chart-wrapper">
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={salesData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -373,10 +474,10 @@ const SalesReport = () => {
           </div>
         </div>
 
-        <div className="chart-card">
+        <div className="sales-chart-card">
           <h3>Staff Performance</h3>
           <p>Sales by team members</p>
-          <div className="chart-wrapper">
+          <div className="sales-chart-wrapper">
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={staffData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -401,79 +502,111 @@ const SalesReport = () => {
       </div>
 
       {/* Voucher Table Section */}
-      <div className="voucher-table-section">
-<div className="filter-controls-section">
-  <div className="filter-header">
-    <h3>Sales Transactions</h3>
-    <div className="results-count">
-      Showing {filteredVoucherData.length} of {voucherDetails.length} records
-      {(fromDate || toDate) && " (filtered by date)"}
-    </div>
-  </div>
-  
-  <div className="filters-row">
-    {/* Left side: Date filters and Generate button */}
-    <div className="left-controls-group">
-      <div className="date-filters-container">
-        <div className="date-input-pair">
-          <div className="date-input-wrapper">
-            <label htmlFor="from-date">From Date</label>
-            <input
-              id="from-date"
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="date-input"
-            />
-          </div>
-          
-          <div className="date-input-wrapper">
-            <label htmlFor="to-date">To Date</label>
-            <input
-              id="to-date"
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="date-input"
-            />
-          </div>
-          
-          {(fromDate || toDate) && (
-            <button
-              className="clear-date-btn"
-              onClick={clearDateFilters}
-              title="Clear date filters"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      </div>
+      <div className="sales-voucher-table-section">
+        <div className="sales-filter-controls-section">
+          <div className="sales-filter-header">
+            <h3>Sales Transactions</h3>
       
-      <button
-        className="generate-report-btn"
-        onClick={() => setShowGenerateModal(true)}
-      >
-        <FaFilePdf className="btn-icon" />
-        <span>Generate Report</span>
-      </button>
-    </div>
-    
-    {/* Right side: Search field */}
-       <div className="right-search">
-              <div className="search-filter">
-                <div className="search-input-group">
-                  <FaSearch className="search-icon" />
+
+                  {/* Transaction Type Filter Section with Dropdown */}
+        <div className="sales-filter-card">
+          <h3>Filter Options</h3>
+          <div className="sales-filter-controls">
+            {/* Transaction Type Dropdown */}
+            <div className="transaction-dropdown-container">
+              <div 
+                className="transaction-dropdown-toggle"
+                onClick={() => setShowTransactionDropdown(!showTransactionDropdown)}
+              >
+                <FaFilter className="dropdown-icon" />
+                <span className="dropdown-label">
+                  {getTransactionTypeDisplay(transactionType)}
+                </span>
+                <span className={`dropdown-arrow ${showTransactionDropdown ? 'rotate' : ''}`}>
+                  ▼
+                </span>
+              </div>
+              
+              {showTransactionDropdown && (
+                <div className="transaction-dropdown-menu">
+                  <div 
+                    className={`dropdown-item ${transactionType === 'all' ? 'active' : ''}`}
+                    onClick={() => {
+                      setTransactionType('all');
+                      setShowTransactionDropdown(false);
+                    }}
+                  >
+                    <span className="item-label">All Transactions</span>
+                    <span className="item-count">{voucherDetails.length}</span>
+                  </div>
+                  <div 
+                    className={`dropdown-item ${transactionType === 'pakka' ? 'active' : ''}`}
+                    onClick={() => {
+                      setTransactionType('pakka');
+                      setShowTransactionDropdown(false);
+                    }}
+                  >
+                    <span className="item-label">Pakka/Sales</span>
+                    <span className="item-count pakka-count">
+                      {voucherDetails.filter(item => {
+                        const orderMode = (item.order_mode || "").toLowerCase();
+                        const transType = (item.TransactionType || "").toLowerCase();
+                        return orderMode === "pakka" || transType === "sales" || transType === "pakka";
+                      }).length}
+                    </span>
+                  </div>
+                  <div 
+                    className={`dropdown-item ${transactionType === 'kacha' ? 'active' : ''}`}
+                    onClick={() => {
+                      setTransactionType('kacha');
+                      setShowTransactionDropdown(false);
+                    }}
+                  >
+                    <span className="item-label">Kacha Sales</span>
+                    <span className="item-count kacha-count">
+                      {voucherDetails.filter(item => {
+                        const orderMode = (item.order_mode || "").toLowerCase();
+                        const transType = (item.TransactionType || "").toLowerCase();
+                        return orderMode === "kacha" || transType === "kacha";
+                      }).length}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Clear All Filters Button */}
+            {(fromDate || toDate || searchTerm || transactionType !== 'all') && (
+              <button
+                className="sales-clear-all-btn"
+                onClick={clearFilters}
+              >
+                Clear All Filters
+              </button>
+            )}
+          </div>
+        </div>
+  
+
+          </div>
+          
+          {/* Filters Row: Search on left, Date filters and Generate button on right */}
+          <div className="sales-filters-row">
+            {/* Left side: Search field */}
+            <div className="sales-search-left">
+              <div className="sales-search-container">
+                <div className="sales-search-input-wrapper">
+                  <FaSearch className="sales-search-icon" />
                   <input
                     type="text"
                     placeholder="Search Product, Name, staff, address..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="search-input-field"
+                    className="sales-search-input"
                   />
                   {searchTerm && (
                     <button 
-                      className="clear-search-btn" 
+                      className="sales-clear-search-btn" 
                       onClick={() => setSearchTerm("")}
                       title="Clear search"
                     >
@@ -481,16 +614,62 @@ const SalesReport = () => {
                     </button>
                   )}
                 </div>
-            
               </div>
             </div>
-  </div>
-</div>
+            
+            {/* Right side: Date filters and Generate button */}
+            <div className="sales-date-controls-right">
+              <div className="sales-date-filters-group">
+                <div className="sales-date-input-wrapper">
+                  <label htmlFor="sales-from-date">From Date</label>
+                  <input
+                    id="sales-from-date"
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    className="sales-date-input"
+                    max={toDate || undefined}
+                  />
+                </div>
+                
+                <div className="sales-date-input-wrapper">
+                  <label htmlFor="sales-to-date">To Date</label>
+                  <input
+                    id="sales-to-date"
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    className="sales-date-input"
+                    min={fromDate || undefined}
+                  />
+                </div>
+                
+                {(fromDate || toDate) && (
+                  <button
+                    className="sales-clear-date-btn"
+                    onClick={() => { setFromDate(""); setToDate(""); }}
+                    title="Clear date filters"
+                  >
+                    Clear Dates
+                  </button>
+                )}
+              </div>
+              
+              <button
+                className="sales-generate-report-btn"
+                onClick={() => setShowGenerateModal(true)}
+              >
+                <FaFilePdf className="sales-btn-icon" />
+                <span>Generate Report</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Voucher Details Table */}
-        <div className="table-section">
+        <div className="sales-table-section">
           {error ? (
-            <div className="text-center text-danger">{error}</div>
+            <div className="sales-error-message">{error}</div>
           ) : (
             <ReusableTable
               title=""
@@ -508,21 +687,22 @@ const SalesReport = () => {
 
       {/* Generate Report Modal */}
       {showGenerateModal && (
-        <div className="generate-report-modal">
-          <div className="generate-report-modal-content">
+        <div className="sales-generate-report-modal">
+          <div className="sales-modal-content">
             <button
-              className="close-modal-btn"
+              className="sales-close-modal-btn"
               onClick={() => setShowGenerateModal(false)}
             >
               ✖
             </button>
-            <div className="modal-title">Generate Sales Report</div>
-            <div className="modal-subtitle">
+            <div className="sales-modal-title">Generate Sales Report</div>
+            <div className="sales-modal-subtitle">
               {fromDate && toDate ? `Period: ${fromDate} to ${toDate}` : 'All sales data'}
+              {transactionType !== 'all' && ` • ${getTransactionTypeDisplay(transactionType)}`}
             </div>
 
-            <div className="format-options">
-              <label className={`format-option ${reportFormat === 'pdf' ? 'selected' : ''}`}>
+            <div className="sales-format-options">
+              <label className={`sales-format-option ${reportFormat === 'pdf' ? 'sales-selected' : ''}`}>
                 <input
                   type="radio"
                   name="format"
@@ -530,10 +710,10 @@ const SalesReport = () => {
                   checked={reportFormat === "pdf"}
                   onChange={(e) => setReportFormat(e.target.value)}
                 />
-                <FaFilePdf className="format-icon" />
+                <FaFilePdf className="sales-format-icon" />
                 <span>PDF Format</span>
               </label>
-              <label className={`format-option ${reportFormat === 'excel' ? 'selected' : ''}`}>
+              <label className={`sales-format-option ${reportFormat === 'excel' ? 'sales-selected' : ''}`}>
                 <input
                   type="radio"
                   name="format"
@@ -541,20 +721,20 @@ const SalesReport = () => {
                   checked={reportFormat === "excel"}
                   onChange={(e) => setReportFormat(e.target.value)}
                 />
-                <FaFileExcel className="format-icon" />
+                <FaFileExcel className="sales-format-icon" />
                 <span>Excel Format</span>
               </label>
             </div>
 
             <button 
-              className="generate-btn"
+              className="sales-generate-btn"
               onClick={handleGenerateReport}
               disabled={generatingReport}
             >
               {generatingReport ? 'Generating...' : 'Generate Report'}
             </button>
             
-            <div className="modal-footer">
+            <div className="sales-modal-footer">
               <p>Report will include all filtered data and statistics</p>
             </div>
           </div>
@@ -564,7 +744,7 @@ const SalesReport = () => {
   );
 };
 
-// UPDATED Voucher details columns - Show Subtotal instead of price and invoice_date
+// Updated voucher details columns
 const voucherDetailsColumns = [
   { 
     key: "sl_no",
@@ -593,23 +773,26 @@ const voucherDetailsColumns = [
     style: { textAlign: "center" } 
   },
   { 
-    key: "assigned_staff", 
-    title: "Staff", 
-    style: { textAlign: "center" } 
+    key: "TransactionType", 
+    title: "Type", 
+    style: { textAlign: "center" },
+    render: (value) => {
+      const type = (value || "").toLowerCase();
+      if (type === "kacha") return <span className="sales-kacha-badge">Kacha</span>;
+      if (type === "pakka" || type === "sales") return <span className="sales-pakka-badge">Pakka</span>;
+      return value || "-";
+    }
   },
   { 
-    key: "staff_address", 
-    title: "Address", 
+    key: "assigned_staff", 
+    title: "Staff", 
     style: { textAlign: "center" } 
   },
   {
     key: "invoice_date",
     title: "Date",
     style: { textAlign: "center" },
-    render: (value) => {
-      if (!value) return "-";
-      return value;
-    }
+    render: (value) => value || "-"
   },
 ];
 
