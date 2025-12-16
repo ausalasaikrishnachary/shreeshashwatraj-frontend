@@ -1855,7 +1855,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
           'name',
           'entity_type',
           'group',
-          'gstin',
           'email',
           'display_name',
           'phone_number',
@@ -1990,7 +1989,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
           'name',
           'entity_type',
           'group',
-          'gstin',
           'email',
           'display_name',
           'phone_number',
@@ -2293,7 +2291,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               </div>
               <div className="col-md-6">
                 <div className="mb-3">
-                  <label className="customer-form-label">Customer GSTIN*</label>
+                  <label className="customer-form-label">Customer GSTIN</label>
                   <input
                     type="text"
                     name="gstin"
