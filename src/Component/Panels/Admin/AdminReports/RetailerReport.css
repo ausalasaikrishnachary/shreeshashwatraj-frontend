@@ -307,10 +307,10 @@
 /* ========== RETAILER REPORT FILTER ROW STYLES ========== */
 .ret-rep-filter-row {
   display: flex;
-  justify-content: space-between;
+  justify-content: space-around;
   align-items: center;
   margin-bottom: 20px;
-  gap: 20px;
+  gap: 6px;
   flex-wrap: wrap;
   padding: 15px 0;
   border-bottom: 1px solid #e5e7eb;
@@ -318,7 +318,7 @@
 
 .ret-rep-search-left {
   flex: 1;
-  min-width: 300px;
+  min-width: 200px;
 }
 
 .ret-rep-date-right {

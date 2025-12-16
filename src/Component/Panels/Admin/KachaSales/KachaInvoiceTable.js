@@ -80,27 +80,21 @@ const KachaInvoiceTable = () => {
     return 'Pending';
   };
 
-  // Handle PDF Download
-  // Handle PDF Download
 const handleDownloadPDF = async (invoice) => {
   const voucherId = invoice.originalData?.VoucherID || invoice.id;
   
   try {
     setDownloading(prev => ({ ...prev, [voucherId]: true }));
     
-    // First, try to download the existing PDF
     const downloadResponse = await fetch(`${baseurl}/transactions/${voucherId}/download-pdf`);
     
     if (downloadResponse.ok) {
-      // Get the PDF blob from response
       const pdfBlob = await downloadResponse.blob();
       
-      // Create download link
       const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;
       
-      // Get filename from response headers or use default
       const contentDisposition = downloadResponse.headers.get('content-disposition');
       let filename = `Invoice_${invoice.number}.pdf`;
       
@@ -120,7 +114,6 @@ const handleDownloadPDF = async (invoice) => {
       console.log('PDF downloaded successfully');
       
     } else if (downloadResponse.status === 404) {
-      // PDF doesn't exist, generate it first
       console.log('PDF not found, generating new PDF...');
       
       const generateResponse = await fetch(`${baseurl}/transactions/${voucherId}/generate-pdf`, {
@@ -263,12 +256,12 @@ const handleDownloadPDF = async (invoice) => {
         invoiceDate: invoiceDetails.data.Date || invoice.created,
         validityDate: new Date(new Date(invoiceDetails.data.Date || invoice.created).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         companyInfo: {
-          name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-          address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-          email: "sumukhuri7@gmail.com",
-          phone: "3456548878543",
-          gstin: "ZAAABCD0508B1ZG",
-          state: "Karnataka"
+       name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+          address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+          email: "spmathur56@gmail.com",
+          phone: "9801049700",
+          gstin: "10AAOCS1541B1ZZ",
+          state: "Bihar"
         },
         supplierInfo: {
           name: invoiceDetails.data.PartyName || 'N/A',
@@ -322,12 +315,12 @@ const handleDownloadPDF = async (invoice) => {
         invoiceDate: invoice.created,
         validityDate: new Date(new Date(invoice.created).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         companyInfo: {
-          name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-          address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-          email: "sumukhuri7@gmail.com",
-          phone: "3456548878543",
-          gstin: "ZAAABCD0508B1ZG",
-          state: "Karnataka"
+        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+          address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+          email: "spmathur56@gmail.com",
+          phone: "9801049700",
+          gstin: "10AAOCS1541B1ZZ",
+          state: "Bihar"
         },
         supplierInfo: {
           name: invoice.originalData?.PartyName || 'John A',

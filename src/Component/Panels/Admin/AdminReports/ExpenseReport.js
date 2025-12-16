@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
   Legend
 } from "recharts";
-import { FaClipboard, FaCalendarAlt, FaCheckSquare, FaTimesCircle, FaMoneyBillAlt, FaSearch, FaFilePdf } from "react-icons/fa";
+import { FaClipboard, FaCalendarAlt, FaCheckSquare, FaTimesCircle, FaMoneyBillAlt, FaSearch, FaFilePdf, FaFilter } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import "./ExpenseReports.css";
 import axios from "axios";
@@ -348,6 +348,11 @@ const ExpenseReportDashboard = () => {
     );
   }
 
+   const clearDateFilters = () => {
+    setFromDate("");
+    setToDate("");
+  };
+
   return (
     <div className="expense-report-dashboard">
       {/* Top Summary Cards */}
@@ -404,15 +409,7 @@ const ExpenseReportDashboard = () => {
           </div>
         </div>
         
-        <Link to="/reports/expense-report-page" className="expense-stat-card link-card">
-          <div className="expense-icon-container gradient">
-            <FaMoneyBillAlt className="expense-icon" />
-          </div>
-          <div className="expense-stat-content">
-            <h4>View Detailed Report</h4>
-            <p className="expense-stat-subtext">Complete expense analysis</p>
-          </div>
-        </Link>
+     
       </div>
 
       {/* Charts Section */}
@@ -542,6 +539,15 @@ const ExpenseReportDashboard = () => {
                   className="exp_rep-date-input"
                 />
               </div>
+               {(fromDate || toDate) && (
+                              <button
+                                className="ret-rep-clear-filter-btn"
+                                onClick={clearDateFilters}
+                                title="Clear date filters"
+                              >
+                                <FaFilter /> Clear
+                              </button>
+                            )}
               <button
                 className="exp_rep-generate-btn"
                 onClick={() => setShowGenerateModal(true)}
