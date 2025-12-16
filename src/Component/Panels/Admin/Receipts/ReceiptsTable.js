@@ -139,7 +139,7 @@ const ReceiptsTable = () => {
       render: (value) => value || 'N/A'
     },
     {
-      key:'invoice_numbers',
+      key:'InvoiceNumber',
       title:'Accounting',
       style:{textAlign:'center'},
       render:(value) => value || '0'

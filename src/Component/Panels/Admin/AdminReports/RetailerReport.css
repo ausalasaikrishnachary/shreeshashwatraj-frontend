@@ -605,3 +605,59 @@
     font-size: 11px;
   }
 }
+/* Add to RetailerReport.css */
+
+/* Clear filter button */
+.ret-rep-clear-filter-btn {
+  background: #e5e7eb;
+  color: #374151;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.3s ease;
+}
+
+.ret-rep-clear-filter-btn:hover {
+  background: #d1d5db;
+}
+
+/* Negative growth style */
+.ret-rep-negative {
+  color: #ef4444 !important;
+}
+
+/* Chart improvements */
+.ret-rep-chart-subtitle {
+  font-size: 0.85rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 4px 10px;
+  border-radius: 12px;
+  margin-left: auto;
+}
+
+.ret-rep-chart-no-data {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6b7280;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Search box improvements */
+.ret-rep-search-input {
+  padding: 12px 45px 12px 40px !important;
+}
+
+.ret-rep-search-icon {
+  left: 12px !important;
+}
