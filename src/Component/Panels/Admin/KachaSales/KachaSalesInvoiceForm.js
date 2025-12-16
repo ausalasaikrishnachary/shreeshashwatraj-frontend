@@ -17,12 +17,14 @@ const KachaSalesInvoiceForm = ({ user }) => {
   const [selectedBatchDetails, setSelectedBatchDetails] = useState(null);
   const [products, setProducts] = useState([]);
   const [accounts, setAccounts] = useState([]);
-  const [nextInvoiceNumber, setNextInvoiceNumber] = useState("KAC001");
+  const [nextInvoiceNumber, setNextInvoiceNumber] = useState("INV001");
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const [hasFetchedInvoiceNumber, setHasFetchedInvoiceNumber] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingItemIndex, setEditingItemIndex] = useState(null);
   const [editingVoucherId, setEditingVoucherId] = useState(null);
+  const [selectedStaffId, setSelectedStaffId] = useState("");
+  const [staffMembers, setStaffMembers] = useState([]);
   const navigate = useNavigate();
   const { id } = useParams();
 
@@ -34,15 +36,16 @@ const KachaSalesInvoiceForm = ({ user }) => {
       return parsedData;
     }
     return {
-      invoiceNumber: "KAC001",
+      invoiceNumber: "INV001",
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
-        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-        email: "sumukhusr7@gmail.com",
-        phone: "3456549876543",
-        state: "Karnataka"
+        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+        address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+        email: "spmathur56@gmail.com",
+        phone: "9801049700",
+        gstin: "10AAOCS1541B1ZZ",
+        state: "Bihar"
       },
       supplierInfo: {
         name: "",
@@ -103,6 +106,22 @@ const KachaSalesInvoiceForm = ({ user }) => {
     }
   }, [id]);
 
+  // Fetch staff members from accounts
+  useEffect(() => {
+    const fetchStaffMembers = async () => {
+      try {
+        const response = await fetch(`${baseurl}/accounts`);
+        const data = await response.json();
+        const staffs = data.filter(acc => acc.role === "staff" || acc.staffid);
+        setStaffMembers(staffs);
+        console.log("Staff members loaded:", staffs);
+      } catch (err) {
+        console.error("Failed to fetch staff members:", err);
+      }
+    };
+    fetchStaffMembers();
+  }, []);
+
   // Fetch existing invoice data for editing
   const fetchInvoiceDataForEdit = async (voucherId) => {
     try {
@@ -128,6 +147,11 @@ const KachaSalesInvoiceForm = ({ user }) => {
         const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
         if (supplierAccount) {
           setInputName(supplierAccount.business_name);
+        }
+        
+        // Set staff ID if available in API response
+        if (apiData.staffid) {
+          setSelectedStaffId(apiData.staffid);
         }
         
         setSuccess('Invoice loaded for editing');
@@ -188,23 +212,28 @@ const KachaSalesInvoiceForm = ({ user }) => {
 
     return {
       voucherId: apiData.VoucherID,
-      invoiceNumber: apiData.InvoiceNumber || `KAC${apiData.VoucherID}`,
+      invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
       invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       
       companyInfo: {
-        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-        email: "sumukhusr7@gmail.com",
-        phone: "3456549876543",
-        state: "Karnataka"
+        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+        address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+        email: "spmathur56@gmail.com",
+        phone: "9801049700",
+        gstin: "10AAOCS1541B1ZZ",
+        state: "Bihar"
       },
       
       supplierInfo: {
         name: apiData.PartyName || 'Customer',
         businessName: apiData.AccountName || 'Business',
         state: apiData.billing_state || apiData.BillingState || '',
-        id: apiData.PartyID || null
+        id: apiData.PartyID || null,
+ gstin: apiData.gstin || '',   
+     assigned_staff: apiData.assigned_staff || ''
+
+
       },
       
       billingAddress: {
@@ -233,10 +262,10 @@ const KachaSalesInvoiceForm = ({ user }) => {
     };
   };
 
-  // FIXED: Generate KAC format invoice numbers
+  // FIXED: Generate INV format invoice numbers
   const fetchNextInvoiceNumber = async () => {
     try {
-      console.log('Fetching next KAC invoice number...');
+      console.log('Fetching next INV invoice number...');
       
       // First try to get the last invoice number from API
       const response = await fetch(`${baseurl}/last-invoice`);
@@ -244,29 +273,29 @@ const KachaSalesInvoiceForm = ({ user }) => {
         const data = await response.json();
         console.log('Received last invoice data:', data);
         
-        let nextNumber = "KAC001"; // Default starting point
+        let nextNumber = "INV001"; // Default starting point
         
         if (data.lastInvoiceNumber) {
           const lastNumber = data.lastInvoiceNumber;
           console.log('Last invoice number found:', lastNumber);
           
-          // Extract number from KAC format
-          const kacMatch = lastNumber.match(/KAC(\d+)/i);
+          // Extract number from INV format
+          const kacMatch = lastNumber.match(/INV(\d+)/i);
           if (kacMatch) {
             const nextNum = parseInt(kacMatch[1]) + 1;
-            nextNumber = `KAC${nextNum.toString().padStart(3, '0')}`;
+            nextNumber = `INV${nextNum.toString().padStart(3, '0')}`;
           } 
-          // Extract number from INV format and convert to KAC
+          // Extract number from INV format and convert to INV
           else if (lastNumber.match(/INV/i)) {
             const invMatch = lastNumber.match(/INV(\d+)/i);
             if (invMatch) {
               const nextNum = parseInt(invMatch[1]) + 1;
-              nextNumber = `KAC${nextNum.toString().padStart(3, '0')}`;
+              nextNumber = `INV${nextNum.toString().padStart(3, '0')}`;
             }
           }
-          // If no recognizable format, start from KAC001
+          // If no recognizable format, start from INV001
           else {
-            nextNumber = "KAC001";
+            nextNumber = "INV001";
           }
         }
         
@@ -288,21 +317,21 @@ const KachaSalesInvoiceForm = ({ user }) => {
           localStorage.setItem('draftInvoice', JSON.stringify(draftData));
         }
       } else {
-        console.log('API call failed, using default KAC001');
-        setNextInvoiceNumber("KAC001");
+        console.log('API call failed, using default INV001');
+        setNextInvoiceNumber("INV001");
         setInvoiceData(prev => ({
           ...prev,
-          invoiceNumber: "KAC001"
+          invoiceNumber: "INV001"
         }));
         setHasFetchedInvoiceNumber(true);
       }
     } catch (err) {
       console.error('Error fetching next invoice number:', err);
-      // Fallback to KAC001
-      setNextInvoiceNumber("KAC001");
+      // Fallback to INV001
+      setNextInvoiceNumber("INV001");
       setInvoiceData(prev => ({
         ...prev,
-        invoiceNumber: "KAC001"
+        invoiceNumber: "INV001"
       }));
       setHasFetchedInvoiceNumber(true);
     }
@@ -334,38 +363,6 @@ const KachaSalesInvoiceForm = ({ user }) => {
       navigate(`/sales/invoice-preview/${editingVoucherId}`);
     } else {
       navigate("/sales/invoice-preview");
-    }
-  };
-
-  const handleSearch = () => {
-    if (inputName.trim().toLowerCase() === "dummy") {
-      setSelected(true);
-      setInvoiceData(prev => ({
-        ...prev,
-        supplierInfo: {
-          name: "Vamshi",
-          businessName: "business name",
-          state: "Telangana",
-        },
-        billingAddress: {
-          addressLine1: "5-300001, Jyoti Nagar, chandrampet, Rajanna sircilla",
-          addressLine2: "Address Line2",
-          city: "Hyderabad-501505",
-          pincode: "501505",
-          state: "Telangana"
-        },
-        shippingAddress: {
-          addressLine1: "5-300001, Jyoti Nagar, chandrampet, Rajanna sircilla",
-          addressLine2: "Address Line2",
-          city: "Hyderabad-501505",
-          pincode: "501505",
-          state: "Telangana"
-        }
-      }));
-    } else {
-      setSelected(false);
-      setError("Supplier not found");
-      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -596,11 +593,12 @@ const KachaSalesInvoiceForm = ({ user }) => {
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
-        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
-        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
-        email: "sumukhusr7@gmail.com",
-        phone: "3456549876543",
-        state: "Karnataka"
+        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+        address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+        email: "spmathur56@gmail.com",
+        phone: "9801049700",
+        gstin: "10AAOCS1541B1ZZ",
+        state: "Bihar"
       },
       supplierInfo: {
         name: "",
@@ -637,6 +635,7 @@ const KachaSalesInvoiceForm = ({ user }) => {
     
     setSelected(false);
     setSelectedSupplierId(null);
+    setSelectedStaffId("");
     setIsPreviewReady(false);
     setSuccess("Draft cleared successfully!");
     setTimeout(() => setSuccess(false), 3000);
@@ -683,11 +682,17 @@ const KachaSalesInvoiceForm = ({ user }) => {
       const firstItemProductId = invoiceData.items[0]?.product_id || null;
       const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
 
+      // Find staff name from selected staff ID
+      const selectedStaff = staffMembers.find(staff => staff.staffid == selectedStaffId);
+      const staffName = selectedStaff?.name || selectedStaff?.assigned_staff || "";
+
       const payload = {
         ...invoiceData,
         TransactionType: "stock transfer",
         invoiceNumber: finalInvoiceNumber,
         selectedSupplierId: selectedSupplierId,
+     staffid: selectedStaffId, // Send staffid
+  assigned_staff: staffName, // Send assigned_staff name
         type: 'stock transfer',
         batchDetails: batchDetails,
         product_id: firstItemProductId,
@@ -697,7 +702,9 @@ const KachaSalesInvoiceForm = ({ user }) => {
         PartyID: selectedSupplierId,
         AccountID: invoiceData.supplierInfo.accountId,
         PartyName: invoiceData.supplierInfo.name,
-        AccountName: invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.name
+        AccountName: invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.name,
+        staff_incentive: invoiceData.supplierInfo.staff_incentive || 0 ,
+         gstin: invoiceData.supplierInfo.gstin || "" // ✅ Add GSTIN to payload
       };
 
       // Remove unused fields
@@ -705,10 +712,12 @@ const KachaSalesInvoiceForm = ({ user }) => {
       delete payload.supplierState;
       delete payload.items;
 
-      console.log('🚀 Final Payload with TransactionType:', {
+      console.log('🚀 Final Payload with Staff Info:', {
         TransactionType: payload.TransactionType,
         PartyID: payload.PartyID,
-        AccountID: payload.AccountID
+        staffid: payload.staffid,
+        assigned_staff: payload.assigned_staff,
+        staff_incentive: payload.staff_incentive
       });
 
       let response;
@@ -748,7 +757,9 @@ const KachaSalesInvoiceForm = ({ user }) => {
         invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
         voucherId: responseData.voucherId || editingVoucherId,
         product_id: responseData.product_id || firstItemProductId,
-        batch_id: responseData.batch_id || firstItemBatchId
+        batch_id: responseData.batch_id || firstItemBatchId,
+        staffid: responseData.staffid || selectedStaffId,
+        assigned_staff: responseData.assigned_staff || staffName
       };
       localStorage.setItem('previewInvoice', JSON.stringify(previewData));
       
@@ -866,7 +877,7 @@ const KachaSalesInvoiceForm = ({ user }) => {
                 </Col>
               </Row>
 
-              {/* Supplier Info Section */}
+              {/* Retailer Info Section */}
               <div className="bg-white rounded border">
                 <Row className="mb-0">
                   <Col md={4} className="border-end p-3">
@@ -882,74 +893,98 @@ const KachaSalesInvoiceForm = ({ user }) => {
                             New
                           </Button>
                         </div>
-                        <Form.Select
-                          className="mb-2 border-primary"
-                          value={inputName}
-                          onChange={(e) => {
-                            const selectedName = e.target.value;
-                            setInputName(selectedName);
-                            const supplier = accounts.find(acc => acc.business_name === selectedName);
-                            if (supplier) {
-                              setSelectedSupplierId(supplier.id);
-                              setSelected(true);
-                              setInvoiceData(prev => ({
-                                ...prev,
-                                supplierInfo: {
-                                  name: supplier.name,
-                                  businessName: supplier.business_name,
-                                  state: supplier.billing_state
-                                },
-                                billingAddress: {
-                                  addressLine1: supplier.billing_address_line1,
-                                  addressLine2: supplier.billing_address_line2 || "",
-                                  city: supplier.billing_city,
-                                  pincode: supplier.billing_pin_code,
-                                  state: supplier.billing_state
-                                },
-                                shippingAddress: {
-                                  addressLine1: supplier.shipping_address_line1,
-                                  addressLine2: supplier.shipping_address_line2 || "",
-                                  city: supplier.shipping_city,
-                                  pincode: supplier.shipping_pin_code,
-                                  state: supplier.shipping_state
-                                }
-                              }));
-                            }
-                          }}
-                        >
-                          <option value="">Select Retailer</option>
-                          {accounts
-                            .filter(acc => acc.role === "retailer")
-                            .map(acc => (
-                              <option key={acc.id} value={acc.business_name}>
-                                {acc.business_name} ({acc.mobile_number})
-                              </option>
-                            ))}
-                        </Form.Select>
+<Form.Select
+  className="mb-2 border-primary"
+  value={inputName}
+  onChange={(e) => {
+    const selectedName = e.target.value;
+    setInputName(selectedName);
+    const supplier = accounts.find(acc => acc.business_name === selectedName);
+    if (supplier) {
+      setSelectedSupplierId(supplier.id);
+      setSelected(true);
+      
+      // Auto-select staff if retailer has assigned staff
+      if (supplier.staffid) {
+        setSelectedStaffId(supplier.staffid);
+      }
+    setInvoiceData(prev => ({
+  ...prev,
+  supplierInfo: {
+    name: supplier.name,
+    businessName: supplier.business_name,
+    state: supplier.billing_state,
+    staffid: supplier.staffid,
+    gstin: supplier.gstin || '', // ✅ CORRECT: Use supplier.gstin
+    assigned_staff: supplier.assigned_staff,
+    staff_incentive: supplier.staff_incentive || 0
+  },
+        billingAddress: {
+          addressLine1: supplier.billing_address_line1,
+          addressLine2: supplier.billing_address_line2 || "",
+          city: supplier.billing_city,
+          pincode: supplier.billing_pin_code,
+          state: supplier.billing_state
+        },
+        shippingAddress: {
+          addressLine1: supplier.shipping_address_line1,
+          addressLine2: supplier.shipping_address_line2 || "",
+          city: supplier.shipping_city,
+          pincode: supplier.shipping_pin_code,
+          state: supplier.shipping_state
+        }
+      }));
+    }
+  }}
+>
+  <option value="">Select Retailer</option>
+  {accounts
+    .filter(acc => acc.role === "retailer")
+    .map(acc => (
+      <option key={acc.id} value={acc.business_name}>
+        {acc.business_name} 
+      
+        
+      </option>
+    ))}
+</Form.Select>
+                        
+                     
                       </>
-                    ) : (
-                      <>
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <strong className="text-primary">Supplier Info</strong>
-                          <Button
-                            variant="info"
-                            size="sm"
-                            onClick={() => {
-                              if (selectedSupplierId) {
-                                navigate(`/retailers/edit/${selectedSupplierId}`);
-                              }
-                            }}
-                          >
-                            <FaEdit /> Edit
-                          </Button>
-                        </div>
-                        <div className="bg-light p-2 rounded">
-                          <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
-                          <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
-                          <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
-                        </div>
-                      </>
-                    )}
+) : (
+  <>
+    <div className="d-flex justify-content-between align-items-center mb-2">
+      <strong className="text-primary">Retailer Info</strong>
+      <Button
+        variant="info"
+        size="sm"
+        onClick={() => {
+          if (selectedSupplierId) {
+            navigate(`/retailers/edit/${selectedSupplierId}`);
+          }
+        }}
+      >
+        <FaEdit /> Edit
+      </Button>
+    </div>
+    <div className="bg-light p-2 rounded">
+      <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
+      <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
+      <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin || "Not Available"}</div>
+      <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
+      
+      {/* Display Assigned Staff as text (NOT dropdown) */}
+      {selectedStaffId && (
+        <div><strong>Assigned Staff:</strong> 
+          {staffMembers.find(s => s.staffid == selectedStaffId)?.name || 
+           staffMembers.find(s => s.staffid == selectedStaffId)?.assigned_staff || 
+           invoiceData.supplierInfo.assigned_staff ||
+           "Not Assigned"}
+        </div>
+      )}
+    </div>
+  </>
+)}
                   </Col>
 
                   <Col md={4} className="border-end p-3">

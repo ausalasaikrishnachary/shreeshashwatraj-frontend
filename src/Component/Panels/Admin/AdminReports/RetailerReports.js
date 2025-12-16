@@ -284,8 +284,17 @@ function RetailerReports({ loading, setLoading }) {
     { key: "business_name", title: "Business Name", style: { textAlign: "center" } },
     { key: "gstin", title: "GSTIN", style: { textAlign: "center" } },
     { key: "assigned_staff", title: "Assigned Staff", style: { textAlign: "center" } },
-    { key: "created_at", title: "Created Date", style: { textAlign: "center" } },
-    { key: "billing_state", title: "State", style: { textAlign: "center" } },
+{ 
+  key: "created_at", 
+  title: "Created Date", 
+  style: { textAlign: "center" },
+  render: (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    // Indian format: dd/mm/yyyy
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+  }
+},    { key: "billing_state", title: "State", style: { textAlign: "center" } },
   ];
 
   // Generate report function
@@ -436,13 +445,7 @@ function RetailerReports({ loading, setLoading }) {
             {stats.previousMonthCount} → {stats.currentMonthCount}
           </div>
         </div>
-        <Link to="/reports/retailer-report-page" className="ret-rep-stat-card">
-          <div className="ret-rep-icon-container">
-            <FaChartBar className="ret-rep-icon" />
-          </div>
-          <h4 className="ret-rep-mt-3">View Retailer Report</h4>
-          <div className="ret-rep-stat-period">Full detailed report</div>
-        </Link>
+
       </div>
 
       {/* Charts Section */}
@@ -453,9 +456,7 @@ function RetailerReports({ loading, setLoading }) {
             <div className="ret-rep-chart-header">
               <FaChartPie className="ret-rep-chart-icon" />
               <h3>Retailers by State</h3>
-              <span className="ret-rep-chart-subtitle">
-                Based on billing address ({stateChartData.labels.length} states)
-              </span>
+           
             </div>
             <div className="ret-rep-chart-wrapper">
               {loading ? (
@@ -475,9 +476,7 @@ function RetailerReports({ loading, setLoading }) {
             <div className="ret-rep-chart-header">
               <FaChartBar className="ret-rep-chart-icon" />
               <h3>Retailers by Business Type</h3>
-              <span className="ret-rep-chart-subtitle">
-                Top 8 business types
-              </span>
+          
             </div>
             <div className="ret-rep-chart-wrapper">
               {loading ? (
@@ -500,9 +499,7 @@ function RetailerReports({ loading, setLoading }) {
           <h2>All Retailers</h2>
         </div>
         
-        {/* Search and Filter Row */}
         <div className="ret-rep-filter-row">
-          {/* Search on left - Only name and assigned staff */}
           <div className="ret-rep-search-left">
             <div className="ret-rep-search-box">
               <FaSearch className="ret-rep-search-icon" />
