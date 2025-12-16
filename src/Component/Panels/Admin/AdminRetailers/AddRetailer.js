@@ -1665,6 +1665,31 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     billing_gstin: ""
   });
 
+  // List of mandatory fields
+  const mandatoryFields = [
+    'name',
+    'entity_type',
+    'group',
+    'gstin',
+    'email',
+    'display_name',
+    'phone_number',
+    'mobile_number',
+    'shipping_state',
+    'shipping_country',
+    'billing_state',
+    'billing_country'
+  ];
+
+  // Conditional mandatory fields based on group type
+  const getConditionalMandatoryFields = () => {
+    const fields = [];
+    if (formData.group !== 'SUPPLIERS') {
+      fields.push('staffid', 'assigned_staff');
+    }
+    return fields;
+  };
+
   useEffect(() => {
     const fetchAccountGroups = async () => {
       try {
@@ -1822,21 +1847,29 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     if (isViewing) return true;
 
     const newErrors = {};
+    const conditionalMandatoryFields = getConditionalMandatoryFields();
 
     switch (activeTab) {
       case 'information':
-        const baseInfoFields = ['title', 'name', 'group', 'mobile_number', 'email', 'display_name', 'password'];
+        const informationMandatoryFields = [
+          'name',
+          'entity_type',
+          'group',
+          'gstin',
+          'email',
+          'display_name',
+          'phone_number',
+          'mobile_number',
+          ...conditionalMandatoryFields
+        ];
 
-        if (formData.group !== 'SUPPLIERS') {
-          baseInfoFields.push('role', 'entity_type', 'assigned_staff');
-        }
-
-        baseInfoFields.forEach(field => {
+        informationMandatoryFields.forEach(field => {
           if (!formData[field]) {
             newErrors[field] = 'This field is required';
           }
         });
 
+        // Field-specific validations
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
           newErrors.email = 'Invalid email format';
         }
@@ -1844,41 +1877,62 @@ const RetailerForm = ({ user, mode = 'add' }) => {
         if (formData.mobile_number && !/^[0-9]{10}$/.test(formData.mobile_number)) {
           newErrors.mobile_number = 'Invalid mobile number (10 digits required)';
         }
+
+        if (formData.phone_number && !/^[0-9]{10,15}$/.test(formData.phone_number)) {
+          newErrors.phone_number = 'Invalid phone number (10-15 digits required)';
+        }
+
+        if (formData.gstin && !/^[0-9A-Z]{15}$/.test(formData.gstin)) {
+          newErrors.gstin = 'Invalid GSTIN (15 characters required)';
+        }
         break;
 
       case 'banking':
-        const bankingFields = ['account_number', 'account_name', 'bank_name', 'account_type', 'ifsc_code', 'branch_name', 'pan', 'currency', 'terms_of_payment'];
-        bankingFields.forEach(field => {
-          if (!formData[field]) {
-            newErrors[field] = 'This field is required';
-          }
-        });
+        // No mandatory fields in banking tab
+        // Only validate if field is filled (optional validation)
+        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+          newErrors.email = 'Invalid email format';
+        }
         break;
 
       case 'shipping':
-        const shippingFields = ['shipping_address_line1', 'shipping_city', 'shipping_pin_code', 'shipping_state', 'shipping_country'];
-        shippingFields.forEach(field => {
-          if (!formData[field]) {
-            newErrors[field] = 'This field is required';
-          }
-        });
+        // Only state and country are mandatory
+        if (!formData.shipping_state) {
+          newErrors.shipping_state = 'This field is required';
+        }
 
+        if (!formData.shipping_country) {
+          newErrors.shipping_country = 'This field is required';
+        }
+
+        // Optional field validation if filled
         if (formData.shipping_pin_code && !/^[0-9]{6}$/.test(formData.shipping_pin_code)) {
           newErrors.shipping_pin_code = 'Invalid PIN code (6 digits required)';
+        }
+
+        if (formData.shipping_gstin && !/^[0-9A-Z]{0,15}$/.test(formData.shipping_gstin)) {
+          newErrors.shipping_gstin = 'Invalid GSTIN (max 15 characters)';
         }
         break;
 
       case 'billing':
         if (!sameAsShipping) {
-          const billingFields = ['billing_address_line1', 'billing_city', 'billing_pin_code', 'billing_state', 'billing_country'];
-          billingFields.forEach(field => {
-            if (!formData[field]) {
-              newErrors[field] = 'This field is required';
-            }
-          });
+          // Only state and country are mandatory
+          if (!formData.billing_state) {
+            newErrors.billing_state = 'This field is required';
+          }
 
+          if (!formData.billing_country) {
+            newErrors.billing_country = 'This field is required';
+          }
+
+          // Optional field validation if filled
           if (formData.billing_pin_code && !/^[0-9]{6}$/.test(formData.billing_pin_code)) {
             newErrors.billing_pin_code = 'Invalid PIN code (6 digits required)';
+          }
+
+          if (formData.billing_gstin && !/^[0-9A-Z]{0,15}$/.test(formData.billing_gstin)) {
+            newErrors.billing_gstin = 'Invalid GSTIN (max 15 characters)';
           }
         }
         break;
@@ -1922,7 +1976,77 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       return;
     }
 
-    if (!validateCurrentTab()) {
+    // Validate all tabs before final submission
+    let allTabsValid = true;
+    const allErrors = {};
+
+    // Check each tab's validation
+    tabs.forEach(tab => {
+      const tempErrors = {};
+      const conditionalMandatoryFields = getConditionalMandatoryFields();
+
+      if (tab.id === 'information') {
+        const informationMandatoryFields = [
+          'name',
+          'entity_type',
+          'group',
+          'gstin',
+          'email',
+          'display_name',
+          'phone_number',
+          'mobile_number',
+          ...conditionalMandatoryFields
+        ];
+
+        informationMandatoryFields.forEach(field => {
+          if (!formData[field]) {
+            tempErrors[field] = 'This field is required';
+          }
+        });
+
+        // Field-specific validations
+        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+          tempErrors.email = 'Invalid email format';
+        }
+
+        if (formData.mobile_number && !/^[0-9]{10}$/.test(formData.mobile_number)) {
+          tempErrors.mobile_number = 'Invalid mobile number (10 digits required)';
+        }
+
+        if (formData.phone_number && !/^[0-9]{10,15}$/.test(formData.phone_number)) {
+          tempErrors.phone_number = 'Invalid phone number (10-15 digits required)';
+        }
+
+        if (formData.gstin && !/^[0-9A-Z]{15}$/.test(formData.gstin)) {
+          tempErrors.gstin = 'Invalid GSTIN (15 characters required)';
+        }
+      } else if (tab.id === 'shipping') {
+        if (!formData.shipping_state) {
+          tempErrors.shipping_state = 'This field is required';
+        }
+
+        if (!formData.shipping_country) {
+          tempErrors.shipping_country = 'This field is required';
+        }
+      } else if (tab.id === 'billing' && !sameAsShipping) {
+        if (!formData.billing_state) {
+          tempErrors.billing_state = 'This field is required';
+        }
+
+        if (!formData.billing_country) {
+          tempErrors.billing_country = 'This field is required';
+        }
+      }
+
+      if (Object.keys(tempErrors).length > 0) {
+        allTabsValid = false;
+        Object.assign(allErrors, tempErrors);
+      }
+    });
+
+    if (!allTabsValid) {
+      setErrors(allErrors);
+      alert('Please fill all required fields before submitting.');
       return;
     }
 
@@ -2024,7 +2148,11 @@ const RetailerForm = ({ user, mode = 'add' }) => {
   };
 
   const renderField = (fieldConfig) => {
-    const { type = 'text', name, label, required = true, options, onChange: customOnChange, ...props } = fieldConfig;
+    const { type = 'text', name, label, required = false, options, onChange: customOnChange, ...props } = fieldConfig;
+
+    // Check if field is mandatory based on our rules
+    const isFieldMandatory = mandatoryFields.includes(name) || 
+      (formData.group !== 'SUPPLIERS' && ['staffid', 'assigned_staff'].includes(name));
 
     if (isViewing) {
       const displayValue = (name === 'staffid' && formData.assigned_staff)
@@ -2046,13 +2174,13 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     if (type === 'select') {
       return (
         <div className="mb-3">
-          <label className="customer-form-label">{label}{required && '*'}</label>
+          <label className="customer-form-label">{label}{isFieldMandatory && '*'}</label>
           <select
             className={getSelectClass(name)}
             name={name}
             value={formData[name] || ''}
             onChange={handleChange}
-            required={required}
+            required={isFieldMandatory}
             {...props}
           >
             <option value="">Select</option>
@@ -2069,14 +2197,14 @@ const RetailerForm = ({ user, mode = 'add' }) => {
 
     return (
       <div className="mb-3">
-        <label className="customer-form-label">{label}{required && '*'}</label>
+        <label className="customer-form-label">{label}{isFieldMandatory && '*'}</label>
         <input
           type={type}
           name={name}
           value={formData[name] || ''}
           className={getInputClass(name)}
           onChange={customOnChange || handleChange}
-          required={required}
+          required={isFieldMandatory}
           {...props}
         />
         {renderError(name)}
@@ -2103,12 +2231,12 @@ const RetailerForm = ({ user, mode = 'add' }) => {
             onCancel={handleCancel}
           >
             {/* Debug section - remove in production */}
-            <div style={{ background: '#f0f0f0', padding: '10px', margin: '10px 0', border: '1px solid #ccc' }}>
+            {/* <div style={{ background: '#f0f0f0', padding: '10px', margin: '10px 0', border: '1px solid #ccc' }}>
               <h6>Debug Info:</h6>
               <p>Business Name: <strong>{formData.business_name || 'Empty'}</strong></p>
               <p>GST Registered Name: <strong>{formData.gst_registered_name || 'Empty'}</strong></p>
               <p>Display Name: <strong>{formData.display_name || 'Empty'}</strong></p>
-            </div>
+            </div> */}
 
             <div className="row">
               <div className="col-md-6">
@@ -2129,7 +2257,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                   <div className="col-md-8">
                     {renderField({
                       name: 'name',
-                      label: 'Name'
+                      label: 'Name',
+                      required: true
                     })}
                   </div>
                 </div>
@@ -2139,6 +2268,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                   type: 'select',
                   name: 'entity_type',
                   label: 'Entity Type',
+                  required: true,
                   options: [
                     { value: 'Individual', label: 'Individual' },
                     { value: 'Company', label: 'Company' },
@@ -2154,6 +2284,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                   type: 'select',
                   name: 'group',
                   label: 'Group Type',
+                  required: true,
                   options: accountGroups.map(group => ({
                     value: group.AccountsGroupName,
                     label: group.AccountsGroupName
@@ -2186,7 +2317,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                 {renderField({
                   type: 'email',
                   name: 'email',
-                  label: 'Email'
+                  label: 'Email',
+                  required: true
                 })}
               </div>
 
@@ -2196,6 +2328,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                     type: 'select',
                     name: 'staffid',
                     label: 'Assign staff',
+                    required: true,
                     options: staffList
                   })}
                 </div>
@@ -2221,7 +2354,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                   <div className="col-md-6">
                     {renderField({
                       name: 'display_name',
-                      label: 'Display Name'
+                      label: 'Display Name',
+                      required: true
                     })}
                   </div>
                 </>
@@ -2230,7 +2364,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                   <div className="col-md-6">
                     {renderField({
                       name: 'display_name',
-                      label: 'Display Name'
+                      label: 'Display Name',
+                      required: true
                     })}
                   </div>
                   <div className="col-md-6">
@@ -2271,7 +2406,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                     {renderField({
                       type: 'tel',
                       name: 'phone_number',
-                      label: 'Phone Number'
+                      label: 'Phone Number',
+                      required: true
                     })}
                   </div>
                 </>
@@ -2285,7 +2421,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                     {renderField({
                       type: 'tel',
                       name: 'phone_number',
-                      label: 'Phone Number'
+                      label: 'Phone Number',
+                      required: true
                     })}
                   </div>
                   <div className="col-md-6">
@@ -2307,7 +2444,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                     {renderField({
                       type: 'tel',
                       name: 'mobile_number',
-                      label: 'Mobile Number'
+                      label: 'Mobile Number',
+                      required: true
                     })}
                   </div>
                 </>
@@ -2321,7 +2459,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                     {renderField({
                       type: 'tel',
                       name: 'mobile_number',
-                      label: 'Mobile Number'
+                      label: 'Mobile Number',
+                      required: true
                     })}
                   </div>
                   <div className="col-md-6">
@@ -2624,6 +2763,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                   type: 'select',
                   name: 'shipping_state',
                   label: 'State',
+                  required: true,
                   options: [
                     { value: 'Telangana', label: 'Telangana' },
                     { value: 'Andhra Pradesh', label: 'Andhra Pradesh' },
@@ -2637,6 +2777,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                   type: 'select',
                   name: 'shipping_country',
                   label: 'Country',
+                  required: true,
                   options: [
                     { value: 'India', label: 'India' },
                     { value: 'Bangladesh', label: 'Bangladesh' },
@@ -2662,8 +2803,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                   type: 'text',
                   maxLength: 15,
                   pattern: "^[0-9A-Z]{15}$",
-                  title: "GSTIN must be exactly 15 characters long (A-Z, 0-9 only)",
-                  required: true
+                  title: "GSTIN must be exactly 15 characters long (A-Z, 0-9 only)"
                 })}
               </div>
             </div>
@@ -2739,6 +2879,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                       type: 'select',
                       name: 'billing_state',
                       label: 'State',
+                      required: true,
                       options: [
                         { value: 'Telangana', label: 'Telangana' },
                         { value: 'Andhra Pradesh', label: 'Andhra Pradesh' },
@@ -2752,6 +2893,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                       type: 'select',
                       name: 'billing_country',
                       label: 'Country',
+                      required: true,
                       options: [
                         { value: 'India', label: 'India' },
                         { value: 'Bangladesh', label: 'Bangladesh' },
@@ -2776,8 +2918,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                       type: 'text',
                       maxLength: 15,
                       pattern: "^[0-9A-Z]{15}$",
-                      title: "GSTIN must be exactly 15 characters long (A-Z, 0-9 only)",
-                      required: true
+                      title: "GSTIN must be exactly 15 characters long (A-Z, 0-9 only)"
                     })}
                   </div>
                 </div>
