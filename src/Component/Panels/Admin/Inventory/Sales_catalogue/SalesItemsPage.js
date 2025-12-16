@@ -301,7 +301,7 @@ const fetchBatches = async (id = productId) => {
         mfgDate: batch.mfg_date?.split('T')[0] || '',
         expDate: batch.exp_date?.split('T')[0] || '',
         quantity: batch.quantity || '',
-        costPrice: batch.cost_price || '',
+        min_sale_price: batch.min_sale_price || '',
         opening_stock: batch.opening_stock || '',
         sellingPrice: batch.selling_price || '',
         purchasePrice: batch.purchase_price || '',
@@ -380,7 +380,7 @@ const fetchBatches = async (id = productId) => {
       mfgDate: '',
       expDate: '',
       quantity: formData.opening_stock || '',
-      costPrice: '',
+      min_sale_price: '',
       sellingPrice: '',
       purchasePrice: '',
       mrp: formData.mrp || '', // ADDED: Default MRP from form
@@ -750,7 +750,7 @@ const handleSubmit = async (e) => {
           mfg_date: batch.mfgDate || null,
           exp_date: batch.expDate || null,
           quantity: parseFloat(batch.quantity) || 0,
-          cost_price: parseFloat(batch.costPrice) || 0,
+          min_sale_price: parseFloat(batch.min_sale_price) || 0,
           selling_price: parseFloat(batch.sellingPrice) || 0,
           purchase_price: parseFloat(batch.purchasePrice) || 0,
           mrp: parseFloat(batch.mrp) || 0,
@@ -1383,12 +1383,12 @@ const handleSubmit = async (e) => {
                             />
                           </div>
                           <div className="col-md-4">
-                            <Form.Label>Cost Price</Form.Label>
+                            <Form.Label>Min Sale Price</Form.Label>
                             <Form.Control
                               type="number"
                               step="0.01"
-                              name="costPrice"
-                              value={batch.costPrice}
+                              name="min_sale_price"
+                              value={batch.min_sale_price}
                               onChange={(e) => handleBatchChange(index, e)}
                             />
                           </div>
