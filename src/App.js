@@ -343,8 +343,9 @@ function App() {
         ||Kacha Sales||
         <Route path="/kachinvoicetable" element={<KachaInvoiceTable />} />
         <Route path="/kacha_sales" element={<KachaSalesInvoiceForm />} />
+        <Route path="/kacha_sales/:id" element={<KachaSalesInvoiceForm />} />
 
-        {/* <Route path="/kachainvoicepdf/:id" element={<KachaInvoicePDFPreview />} /> */}
+        <Route path="/kachainvoicepdf/:id" element={<KachaInvoicePDFPreview />} />
         <Route path="/period" element={<Period />} />
         <Route path="/periodinvoicepreviewpdf" element={<Period_InvoicePDFPreview />} />
         <Route path="/periodinvoicepreviewpdf/:id" element={<Period_InvoicePDFPreview />} />

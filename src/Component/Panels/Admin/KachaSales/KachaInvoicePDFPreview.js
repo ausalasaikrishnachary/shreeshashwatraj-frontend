@@ -5,7 +5,7 @@ import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, 
 import { useNavigate, useParams } from "react-router-dom";
 import { baseurl } from "../../../BaseURL/BaseURL";
 
-const KachaInvoicePDFPreview = () => {
+const InvoicePDFPreview = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [isEditMode, setIsEditMode] = useState(false);
@@ -40,16 +40,16 @@ const KachaInvoicePDFPreview = () => {
     retailerBusinessName: '',
     invoiceNumber: '',
     transactionProofFile: null,
-      product_id: '', // Add this
+      product_id: '', 
   batch_id: '' ,
-  TransactionType: 'Receipt' // ✅ ADD THIS LINE
+  TransactionType: 'Receipt' 
   });
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
 
   const handleEditInvoice = () => {
     if (invoiceData && invoiceData.voucherId) {
-      navigate(`/kachainvoicepdf/${invoiceData.voucherId}`);
+      navigate(`/kacha_sales/${invoiceData.voucherId}`);
     } else {
       setError('Cannot edit invoice: Voucher ID not found');
       setTimeout(() => setError(null), 3000);
@@ -94,7 +94,7 @@ const KachaInvoicePDFPreview = () => {
       
       console.log('Fetching payment data for invoice:', invoiceNumber);
       const response = await fetch(`${baseurl}/invoices/${invoiceNumber}`);
-      
+      debugger
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -134,29 +134,50 @@ const KachaInvoicePDFPreview = () => {
   };
 
 const transformPaymentData = (apiData) => {
-  const salesEntry = apiData.sales;
+  // FIX: Handle both Sales AND Stock Transfer
+  const salesEntry = apiData.sales || apiData.stocktransfer || {};
   const receiptEntries = apiData.receipts || [];
   const creditNoteEntries = apiData.creditnotes || [];
   
   console.log('Raw API data for payment transformation:', {
-    sales: salesEntry,
+    sales: apiData.sales,
+    stocktransfer: apiData.stocktransfer,
     receipts: receiptEntries,
-    creditnotes: creditNoteEntries
+    creditnotes: creditNoteEntries,
+    allEntries: apiData.allEntries // For debugging
   });
+  
+  // FIX: Check if we have valid transaction data
+  if (!salesEntry || Object.keys(salesEntry).length === 0) {
+    console.warn('No sales or stock transfer data found, creating empty response');
+    return {
+      invoice: {
+        invoiceNumber: 'N/A',
+        invoiceDate: new Date().toISOString(),
+        totalAmount: 0,
+        overdueDays: 0
+      },
+      receipts: [],
+      creditnotes: [],
+      summary: {
+        totalPaid: 0,
+        totalCreditNotes: 0,
+        balanceDue: 0,
+        status: 'Pending'
+      }
+    };
+  }
   
   const totalAmount = parseFloat(salesEntry.TotalAmount) || 0;
   
-  // Calculate total receipts (positive amounts)
   const totalPaid = receiptEntries.reduce((sum, receipt) => {
     return sum + parseFloat(receipt.paid_amount || receipt.TotalAmount || 0);
   }, 0);
   
-  // Calculate total credit notes (negative amounts - these are deductions)
   const totalCreditNotes = creditNoteEntries.reduce((sum, creditnote) => {
     return sum + parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0);
   }, 0);
   
-  // Balance = Original - Receipts - CreditNotes
   const balanceDue = totalAmount - totalPaid - totalCreditNotes;
   
   const invoiceDate = new Date(salesEntry.Date);
@@ -172,8 +193,8 @@ const transformPaymentData = (apiData) => {
     type: 'receipt'
   }));
   
-  // Transform credit notes
-  const creditnotes = creditNoteEntries.map(creditnote => ({
+  // FIX: This was causing the error - ensure creditNoteEntries is always an array
+  const creditnotes = (creditNoteEntries || []).map(creditnote => ({
     receiptNumber: creditnote.VchNo || 'CNOTE',
     paidAmount: parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0),
     paidDate: creditnote.Date || creditnote.paid_date,
@@ -190,13 +211,13 @@ const transformPaymentData = (apiData) => {
   
   const transformedData = {
     invoice: {
-      invoiceNumber: salesEntry.InvoiceNumber,
-      invoiceDate: salesEntry.Date,
+      invoiceNumber: salesEntry.InvoiceNumber || 'N/A',
+      invoiceDate: salesEntry.Date || new Date().toISOString(),
       totalAmount: totalAmount,
       overdueDays: overdueDays
     },
     receipts: receipts,
-    creditnotes: creditnotes,
+    creditnotes: creditnotes, // Now this is always an array
     summary: {
       totalPaid: totalPaid,
       totalCreditNotes: totalCreditNotes,
@@ -209,7 +230,6 @@ const transformPaymentData = (apiData) => {
   
   return transformedData;
 };
-
   const fetchNextReceiptNumber = async () => {
     try {
       const response = await fetch(`${baseurl}/api/next-receipt-number`);
@@ -371,13 +391,17 @@ const transformPaymentData = (apiData) => {
         total: total.toFixed(2),
         batch: batch.batch || '',
         batch_id: batch.batch_id || '',
-        product_id: batch.product_id || ''
+        product_id: batch.product_id || '',
+              assigned_staff: batch.assigned_staff  || 'N/A',
+
       };
     }) || [];
 
     const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
     const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
     const grandTotal = parseFloat(apiData.TotalAmount) || 0;
+      const assignedStaff = apiData.assigned_staff || apiData.AssignedStaff || apiData.staff_name || 'N/A';
+
 
     return {
       voucherId: apiData.VoucherID,
@@ -386,12 +410,12 @@ const transformPaymentData = (apiData) => {
       validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       
       companyInfo: {
-     name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-          address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-          email: "spmathur56@gmail.com",
-          phone: "9801049700",
-          gstin: "10AAOCS1541B1ZZ",
-          state: "Bihar"
+           name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+      email: "spmathur56@gmail.com",
+      phone: "9801049700",
+      gstin: "10AAOCS1541B1ZZ",
+      state: "Bihar"
       },
       
       supplierInfo: {
@@ -433,7 +457,8 @@ const transformPaymentData = (apiData) => {
         total: grandTotal.toFixed(2),
         batch: '',
         batch_id: '',
-        product_id: ''
+        product_id: '',
+        assigned_staff: assignedStaff 
       }],
       
       taxableAmount: taxableAmount.toFixed(2),
@@ -449,7 +474,9 @@ const transformPaymentData = (apiData) => {
       totalCGST: parseFloat(apiData.CGSTAmount) || 0,
       totalSGST: parseFloat(apiData.SGSTAmount) || 0,
       totalIGST: parseFloat(apiData.IGSTAmount) || 0,
-      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST"
+      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST",
+
+      assigned_staff: assignedStaff
     };
   };
 
@@ -515,16 +542,13 @@ const PaymentStatus = () => {
     return `${day}/${month}/${year}`;
   };
 
-  const safeCreditnotes = creditnotes || [];
-  const safeReceipts = receipts || [];
-
   const allTransactions = [
-    ...safeReceipts.map(r => ({ ...r, type: 'receipt' })),
-    ...safeCreditnotes.map(cn => ({ ...cn, type: 'credit_note' }))
+    ...receipts.map(r => ({ ...r, type: 'receipt' })),
+    ...creditnotes.map(cn => ({ ...cn, type: 'credit_note' }))
   ].sort((a, b) => new Date(a.paidDate) - new Date(b.paidDate));
 
-  const progressPercentage = invoice && invoice.totalAmount > 0 ? 
-    ((summary.totalPaid - (summary.totalCreditNotes || 0)) / invoice.totalAmount) * 100 : 0;
+  const progressPercentage = invoice.totalAmount > 0 ? 
+    ((summary.totalPaid - summary.totalCreditNotes) / invoice.totalAmount) * 100 : 0;
 
   return (
     <Card className="shadow-sm mb-3">
@@ -546,21 +570,19 @@ const PaymentStatus = () => {
         </div>
 
         <div className="payment-amounts mb-3">
-          {/* Original Invoice Amount */}
           <div className="d-flex justify-content-between align-items-center mb-2">
             <span className="text-muted">
               <FaRupeeSign className="me-1" />
               Original Invoice:
             </span>
             <small className="text-muted ms-1">
-              (On {formatIndianDate(invoice?.invoiceDate)})
+              (On {formatIndianDate(invoice.invoiceDate)})
             </small>
             <span className="fw-bold text-primary">
-              ₹{invoice?.totalAmount?.toFixed(2) || '0.00'}
+              ₹{invoice.totalAmount.toFixed(2)}
             </span>
           </div>
 
-          {/* Show all transactions in chronological order */}
           {allTransactions.map((transaction, index) => (
             <div 
               key={`${transaction.type}-${index}`} 
@@ -582,10 +604,12 @@ const PaymentStatus = () => {
               <span className={`fw-bold ${
                 transaction.type === 'receipt' ? 'text-success' : 'text-warning'
               }`}>
-                {transaction.type === 'receipt' ? '' : ''}₹{transaction.paidAmount?.toFixed(2) || '0.00'}
+                {transaction.type === 'receipt' ? '' : ''}₹{transaction.paidAmount.toFixed(2)}
               </span>
             </div>
           ))}
+
+     
 
           {/* Balance Due */}
           <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
@@ -594,7 +618,7 @@ const PaymentStatus = () => {
               Balance Due:
             </span>
             <span className="fw-bold text-danger">
-              ₹{summary?.balanceDue?.toFixed(2) || '0.00'}
+              ₹{summary.balanceDue.toFixed(2)}
             </span>
           </div>
         </div>
@@ -734,9 +758,8 @@ const PaymentStatus = () => {
     }
   };
 
-  // Replace the existing handleEditToggle with handleEditInvoice
   const handleEditToggle = () => {
-    handleEditInvoice(); // Now this will navigate to the form for editing
+    handleEditInvoice(); 
   };
 
   const handleCancelEdit = () => {
@@ -1465,7 +1488,7 @@ const handleOpenReceiptModal = () => {
                 />
               </div>
               <div className="mb-3">
-                <label className="form-label">Transaction Proof Document</label>
+                <label className="form-label">Transaction Proof</label>
                 <input 
                   type="file" 
                   className="form-control" 
@@ -1722,6 +1745,14 @@ const handleOpenReceiptModal = () => {
                         </>
                       )}
                     </div>
+{currentData.assigned_staff && currentData.assigned_staff !== 'N/A' && (
+  <div className="assigned-staff-section mt-3 p-2 bg-light rounded flex-start">
+    <div className="d-flex justify-content-between align-items-center">
+      <span className="text-muted">Sales Person:</span>
+      <strong className="text-primary">{currentData.assigned_staff}</strong>
+    </div>
+  </div>
+)}
                   </Col>
                 </Row>
               </div>
@@ -1745,7 +1776,7 @@ const handleOpenReceiptModal = () => {
                         <th width="20%">Description</th>
                         <th width="10%">Qty</th>
                         <th width="15%">Price</th>
-                        {/* <th width="10%">GST %</th> */}
+                        <th width="10%">GST %</th>
                         <th width="15%"> Amount (₹)</th>
                         <th width="5%">Action</th>
                       </tr>
@@ -1784,14 +1815,14 @@ const handleOpenReceiptModal = () => {
                               onChange={(e) => handleItemChange(index, 'price', e.target.value)}
                             />
                           </td>
-                          {/* <td>
+                          <td>
                             <Form.Control 
                               type="number"
                               size="sm"
                               value={item.gst}
                               onChange={(e) => handleItemChange(index, 'gst', e.target.value)}
                             />
-                          </td> */}
+                          </td>
                           <td className="text-end">₹{parseFloat(item.total).toFixed(2)}</td>
                           <td className="text-center">
                             <Button 
@@ -1815,7 +1846,7 @@ const handleOpenReceiptModal = () => {
                         <th width="25%">Description</th>
                         <th width="10%">Qty</th>
                         <th width="15%">Price</th>
-                        {/* <th width="10%">GST %</th> */}
+                        <th width="10%">GST %</th>
                         <th width="10%"> Taxable Amount (₹)</th>
                       </tr>
                     </thead>
@@ -1827,7 +1858,7 @@ const handleOpenReceiptModal = () => {
                           <td>{item.description}</td>
                           <td className="text-center">{item.quantity}</td>
                           <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
-                          {/* <td className="text-center">{item.gst}%</td> */}
+                          <td className="text-center">{item.gst}%</td>
                           <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
                         </tr>
                       ))}
@@ -1882,7 +1913,7 @@ const handleOpenReceiptModal = () => {
                             <td className="text-end pb-2">₹{currentData.taxableAmount}</td>
                           </tr>
                           
-                          {/* {isSameState ? (
+                          {isSameState ? (
                             <>
                               <tr>
                                 <td className="pb-2">CGST:</td>
@@ -1904,7 +1935,7 @@ const handleOpenReceiptModal = () => {
                             <td className="pb-2">Total GST:</td>
                             <td className="text-end pb-2">₹{currentData.totalGST}</td>
                           </tr>
-                           */}
+                          
                           <tr className="grand-total border-top pt-2">
                             <td><strong>Grand Total:</strong></td>
                             <td className="text-end"><strong className="text-success">₹{currentData.grandTotal}</strong></td>
@@ -1952,4 +1983,4 @@ const handleOpenReceiptModal = () => {
   );
 };
 
-export default KachaInvoicePDFPreview;
+export default InvoicePDFPreview;

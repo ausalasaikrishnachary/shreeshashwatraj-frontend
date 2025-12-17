@@ -1682,13 +1682,13 @@ const RetailerForm = ({ user, mode = 'add' }) => {
   ];
 
   // Conditional mandatory fields based on group type
-  const getConditionalMandatoryFields = () => {
-    const fields = [];
-    if (formData.group !== 'SUPPLIERS') {
-      fields.push('staffid', 'assigned_staff');
-    }
-    return fields;
-  };
+const getConditionalMandatoryFields = () => {
+  const fields = [];
+  if (formData.group !== 'SUPPLIERS') {
+    fields.push('staffid', 'assigned_staff');
+  }
+  return fields;
+};
 
   useEffect(() => {
     const fetchAccountGroups = async () => {
@@ -1843,31 +1843,40 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     }
   };
 
-  const validateCurrentTab = () => {
-    if (isViewing) return true;
+const validateCurrentTab = () => {
+  if (isViewing) return true;
 
-    const newErrors = {};
-    const conditionalMandatoryFields = getConditionalMandatoryFields();
+  const newErrors = {};
+  const conditionalMandatoryFields = getConditionalMandatoryFields();
 
-    switch (activeTab) {
-      case 'information':
-        const informationMandatoryFields = [
-          'name',
-          'entity_type',
-          'group',
-          'email',
-          'display_name',
-          'phone_number',
-          'mobile_number',
-          ...conditionalMandatoryFields
-        ];
+  switch (activeTab) {
+    case 'information':
+      // Base mandatory fields for all
+      const informationMandatoryFields = [
+        'name',
+        'group',
+        'email',
+        'display_name',
+        'phone_number',
+        'mobile_number',
+        ...conditionalMandatoryFields
+      ];
+      
+      // Add entity_type only if NOT SUPPLIERS
+      if (formData.group !== 'SUPPLIERS') {
+        informationMandatoryFields.push('entity_type');
+      }
 
-        informationMandatoryFields.forEach(field => {
-          if (!formData[field]) {
-            newErrors[field] = 'This field is required';
-          }
-        });
+      // Add GSTIN for suppliers (mandatory for suppliers)
+      if (formData.group === 'SUPPLIERS') {
+        informationMandatoryFields.push('gstin');
+      }
 
+      informationMandatoryFields.forEach(field => {
+        if (!formData[field]) {
+          newErrors[field] = 'This field is required';
+        }
+      });
         // Field-specific validations
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
           newErrors.email = 'Invalid email format';
@@ -1967,40 +1976,50 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     }));
   }, [formData.name]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (isViewing) {
-      navigate('/retailers');
-      return;
-    }
+  if (isViewing) {
+    navigate('/retailers');
+    return;
+  }
 
-    // Validate all tabs before final submission
-    let allTabsValid = true;
-    const allErrors = {};
+  // Validate all tabs before final submission
+  let allTabsValid = true;
+  const allErrors = {};
 
-    // Check each tab's validation
-    tabs.forEach(tab => {
-      const tempErrors = {};
-      const conditionalMandatoryFields = getConditionalMandatoryFields();
+  // Check each tab's validation
+  tabs.forEach(tab => {
+    const tempErrors = {};
+    const conditionalMandatoryFields = getConditionalMandatoryFields();
 
-      if (tab.id === 'information') {
-        const informationMandatoryFields = [
-          'name',
-          'entity_type',
-          'group',
-          'email',
-          'display_name',
-          'phone_number',
-          'mobile_number',
-          ...conditionalMandatoryFields
-        ];
+    if (tab.id === 'information') {
+      // Base mandatory fields
+      const informationMandatoryFields = [
+        'name',
+        'group',
+        'email',
+        'display_name',
+        'phone_number',
+        'mobile_number',
+        ...conditionalMandatoryFields
+      ];
+      
+      // Add entity_type only if NOT SUPPLIERS
+      if (formData.group !== 'SUPPLIERS') {
+        informationMandatoryFields.push('entity_type');
+      }
 
-        informationMandatoryFields.forEach(field => {
-          if (!formData[field]) {
-            tempErrors[field] = 'This field is required';
-          }
-        });
+      // Add GSTIN for suppliers
+      if (formData.group === 'SUPPLIERS') {
+        informationMandatoryFields.push('gstin');
+      }
+
+      informationMandatoryFields.forEach(field => {
+        if (!formData[field]) {
+          tempErrors[field] = 'This field is required';
+        }
+      });
 
         // Field-specific validations
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -2145,29 +2164,31 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     return `form-select customer-form-input ${errors[fieldName] ? 'is-invalid' : ''} ${isViewing ? 'view-mode' : ''}`;
   };
 
-  const renderField = (fieldConfig) => {
-    const { type = 'text', name, label, required = false, options, onChange: customOnChange, ...props } = fieldConfig;
+const renderField = (fieldConfig) => {
+  const { type = 'text', name, label, required = false, options, onChange: customOnChange, ...props } = fieldConfig;
 
-    // Check if field is mandatory based on our rules
-    const isFieldMandatory = mandatoryFields.includes(name) || 
-      (formData.group !== 'SUPPLIERS' && ['staffid', 'assigned_staff'].includes(name));
+  // Check if field is mandatory based on our rules
+  const isFieldMandatory = mandatoryFields.includes(name) || 
+    (formData.group !== 'SUPPLIERS' && ['staffid', 'assigned_staff', 'entity_type'].includes(name)) ||
+    (formData.group === 'SUPPLIERS' && name === 'gstin');
 
-    if (isViewing) {
-      const displayValue = (name === 'staffid' && formData.assigned_staff)
-        ? formData.assigned_staff
-        : (formData[name] || 'N/A');
+  if (isViewing) {
+    const displayValue = (name === 'staffid' && formData.assigned_staff)
+      ? formData.assigned_staff
+      : (formData[name] || 'N/A');
 
-      return (
-        <div className="mb-3">
-          <label className="customer-form-label view-mode-label">{label}</label>
-          <div className="view-mode-value">{displayValue}</div>
-        </div>
-      );
-    }
+    return (
+      <div className="mb-3">
+        <label className="customer-form-label view-mode-label">{label}</label>
+        <div className="view-mode-value">{displayValue}</div>
+      </div>
+    );
+  }
 
-    if (formData.group === 'SUPPLIERS' && ['role', 'assigned_staff', 'staffid'].includes(name)) {
-      return null;
-    }
+  // Hide role, assigned_staff, staffid for SUPPLIERS
+  if (formData.group === 'SUPPLIERS' && ['role', 'assigned_staff', 'staffid'].includes(name)) {
+    return null;
+  }
 
     if (type === 'select') {
       return (
