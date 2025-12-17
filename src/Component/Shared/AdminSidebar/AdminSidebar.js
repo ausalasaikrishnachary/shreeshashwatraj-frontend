@@ -117,7 +117,15 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       name: "Order List",
       icon: <FaHourglass />
     },
-    { path: "/retailersscore", name: "Retailer Score", icon: <FaStar /> },
+    // { path: "/retailersscore", name: "Retailer Score", icon: <FaStar /> },
+    {
+      name: "Scores",
+      icon: <FaStar />,
+      subMenu: [
+        { path: "/retailersscore", name: "Retailer Score", icon: <FaStar /> },
+        { path: "/salesmanscore", name: "Salesperson Score", icon: <FaStar /> },
+      ],
+    },
     {
       name: "Inventory",
       icon: <FaHandHoldingUsd />,
