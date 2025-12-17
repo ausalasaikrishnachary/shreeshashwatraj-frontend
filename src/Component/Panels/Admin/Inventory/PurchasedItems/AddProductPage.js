@@ -32,54 +32,54 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
   const [unitOptions, setUnitOptions] = useState([]);
   const [showUnitModal, setShowUnitModal] = useState(false);
 
-const calculateTaxAndNetPrice = (price, gstRate, inclusiveGst) => {
-  if (!price || !gstRate) return { netPrice: price || '', taxAmount: 0 };
+  const calculateTaxAndNetPrice = (price, gstRate, inclusiveGst) => {
+    if (!price || !gstRate) return { netPrice: price || '', taxAmount: 0 };
 
-  const numericPrice = parseFloat(price);
-  const numericGstRate = parseFloat(gstRate) / 100;
+    const numericPrice = parseFloat(price);
+    const numericGstRate = parseFloat(gstRate) / 100;
 
-  if (inclusiveGst === 'Inclusive') {
-    const taxAmount = (numericPrice * numericGstRate) / (1 + numericGstRate);
-    const netPrice = numericPrice - taxAmount;
-    return {
-      netPrice: netPrice.toFixed(2),
-      taxAmount: taxAmount.toFixed(2)
-    };
-  } else {
-    const taxAmount = numericPrice * numericGstRate;
-    const netPrice = numericPrice + taxAmount;
-    return {
-      netPrice: netPrice.toFixed(2),
-      taxAmount: taxAmount.toFixed(2)
-    };
-  }
-};
+    if (inclusiveGst === 'Inclusive') {
+      const taxAmount = (numericPrice * numericGstRate) / (1 + numericGstRate);
+      const netPrice = numericPrice - taxAmount;
+      return {
+        netPrice: netPrice.toFixed(2),
+        taxAmount: taxAmount.toFixed(2)
+      };
+    } else {
+      const taxAmount = numericPrice * numericGstRate;
+      const netPrice = numericPrice + taxAmount;
+      return {
+        netPrice: netPrice.toFixed(2),
+        taxAmount: taxAmount.toFixed(2)
+      };
+    }
+  };
 
   // Calculate total stock from batches
   const calculateTotalStockFromBatches = () => {
     if (!batches || batches.length === 0) return 0;
     return batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
   };
-// Calculate total MRP from batches
-const calculateTotalMRPFromBatches = () => {
-  if (!batches || batches.length === 0) return 0;
-  const totalMRP = batches.reduce((total, batch) => total + (parseFloat(batch.mrp) || 0), 0);
-  return totalMRP > 0 ? totalMRP : 0;
-};
+  // Calculate total MRP from batches
+  const calculateTotalMRPFromBatches = () => {
+    if (!batches || batches.length === 0) return 0;
+    const totalMRP = batches.reduce((total, batch) => total + (parseFloat(batch.mrp) || 0), 0);
+    return totalMRP > 0 ? totalMRP : 0;
+  };
 
-// Calculate total selling price from batches
-const calculateTotalSellingPriceFromBatches = () => {
-  if (!batches || batches.length === 0) return 0;
-  const totalSellingPrice = batches.reduce((total, batch) => total + (parseFloat(batch.sellingPrice) || 0), 0);
-  return totalSellingPrice > 0 ? totalSellingPrice : 0;
-};
+  // Calculate total selling price from batches
+  const calculateTotalSellingPriceFromBatches = () => {
+    if (!batches || batches.length === 0) return 0;
+    const totalSellingPrice = batches.reduce((total, batch) => total + (parseFloat(batch.sellingPrice) || 0), 0);
+    return totalSellingPrice > 0 ? totalSellingPrice : 0;
+  };
 
-// Calculate total purchase price from batches
-const calculateTotalPurchasePriceFromBatches = () => {
-  if (!batches || batches.length === 0) return 0;
-  const totalPurchasePrice = batches.reduce((total, batch) => total + (parseFloat(batch.purchasePrice) || 0), 0);
-  return totalPurchasePrice > 0 ? totalPurchasePrice : 0;
-};
+  // Calculate total purchase price from batches
+  const calculateTotalPurchasePriceFromBatches = () => {
+    if (!batches || batches.length === 0) return 0;
+    const totalPurchasePrice = batches.reduce((total, batch) => total + (parseFloat(batch.purchasePrice) || 0), 0);
+    return totalPurchasePrice > 0 ? totalPurchasePrice : 0;
+  };
 
   const fetchUnits = async () => {
     try {
@@ -124,98 +124,98 @@ const calculateTotalPurchasePriceFromBatches = () => {
     loadProductData();
   }, [productId, groupType]);
 
-const fetchProductById = async (id) => {
-  try {
-    const response = await axios.get(`${baseurl}/products/${id}`);
-    const product = response.data;
-    console.log('📦 Fetched product:', product);
+  const fetchProductById = async (id) => {
+    try {
+      const response = await axios.get(`${baseurl}/products/${id}`);
+      const product = response.data;
+      console.log('📦 Fetched product:', product);
 
-    // Handle images
-    if (product.images) {
-      try {
-        const parsedImages = typeof product.images === 'string'
-          ? JSON.parse(product.images)
-          : product.images;
-        setImages(Array.isArray(parsedImages) ? parsedImages : []);
-      } catch (e) {
+      // Handle images
+      if (product.images) {
+        try {
+          const parsedImages = typeof product.images === 'string'
+            ? JSON.parse(product.images)
+            : product.images;
+          setImages(Array.isArray(parsedImages) ? parsedImages : []);
+        } catch (e) {
+          setImages([]);
+        }
+      } else {
         setImages([]);
       }
-    } else {
-      setImages([]);
+
+      // Fetch batches first to get accurate pricing
+      await fetchBatches(id);
+
+      // Wait a moment for batches to be set in state
+      setTimeout(() => {
+        // Now calculate prices based on batches or product data
+        let finalPurchasePrice = product.purchase_price || 0;
+        let finalSellingPrice = product.selling_price || 0;
+        let finalMRP = product.mrp || 0;
+
+        // If batch management is enabled and we have batches, calculate from batches
+        if (product.maintain_batch && batches.length > 0) {
+          // Calculate sums from all batches
+          const totalPurchasePrice = batches.reduce((sum, batch) => {
+            return sum + (parseFloat(batch.purchasePrice) || 0);
+          }, 0);
+
+          const totalSellingPrice = batches.reduce((sum, batch) => {
+            return sum + (parseFloat(batch.sellingPrice) || 0);
+          }, 0);
+
+          const totalMRP = batches.reduce((sum, batch) => {
+            return sum + (parseFloat(batch.mrp) || 0);
+          }, 0);
+
+          // Use batch totals if available, otherwise use product values
+          finalPurchasePrice = totalPurchasePrice > 0 ? totalPurchasePrice : product.purchase_price || 0;
+          finalSellingPrice = totalSellingPrice > 0 ? totalSellingPrice : product.selling_price || 0;
+          finalMRP = totalMRP > 0 ? totalMRP : product.mrp || 0;
+        }
+
+        console.log('💰 Calculated prices:', {
+          purchase: finalPurchasePrice,
+          selling: finalSellingPrice,
+          mrp: finalMRP,
+          hasBatches: batches.length,
+          maintainBatch: product.maintain_batch
+        });
+
+        setFormData({
+          group_by: product.group_by || groupType,
+          goods_name: product.goods_name || product.name || '',
+          category_id: product.category_id || '',
+          company_id: product.company_id || '',
+          purchase_price: finalPurchasePrice,
+          selling_price: finalSellingPrice,
+          mrp: finalMRP,
+          inclusive_gst: product.inclusive_gst || '',
+          gst_rate: product.gst_rate || '',
+          non_taxable: product.non_taxable || '',
+          net_price: product.net_price || '',
+          hsn_code: product.hsn_code || '',
+          unit: product.unit || 'UNT-UNITS',
+          cess_rate: product.cess_rate || '',
+          cess_amount: product.cess_amount || '',
+          sku: product.sku || '',
+          opening_stock: product.opening_stock || '',
+          opening_stock_date: product.opening_stock_date ? product.opening_stock_date.split('T')[0] : new Date().toISOString().split('T')[0],
+          min_stock_alert: product.min_stock_alert || '',
+          max_stock_alert: product.max_stock_alert || '',
+          description: product.description || '',
+          maintain_batch: product.maintain_batch || false,
+          can_be_sold: product.can_be_sold || false,
+        });
+
+        setMaintainBatch(product.maintain_batch || false);
+      }, 100);
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      showAlert('Error fetching product data', 'danger');
     }
-
-    // Fetch batches first to get accurate pricing
-    await fetchBatches(id);
-    
-    // Wait a moment for batches to be set in state
-    setTimeout(() => {
-      // Now calculate prices based on batches or product data
-      let finalPurchasePrice = product.purchase_price || 0;
-      let finalSellingPrice = product.selling_price || 0;
-      let finalMRP = product.mrp || 0;
-
-      // If batch management is enabled and we have batches, calculate from batches
-      if (product.maintain_batch && batches.length > 0) {
-        // Calculate sums from all batches
-        const totalPurchasePrice = batches.reduce((sum, batch) => {
-          return sum + (parseFloat(batch.purchasePrice) || 0);
-        }, 0);
-        
-        const totalSellingPrice = batches.reduce((sum, batch) => {
-          return sum + (parseFloat(batch.sellingPrice) || 0);
-        }, 0);
-        
-        const totalMRP = batches.reduce((sum, batch) => {
-          return sum + (parseFloat(batch.mrp) || 0);
-        }, 0);
-
-        // Use batch totals if available, otherwise use product values
-        finalPurchasePrice = totalPurchasePrice > 0 ? totalPurchasePrice : product.purchase_price || 0;
-        finalSellingPrice = totalSellingPrice > 0 ? totalSellingPrice : product.selling_price || 0;
-        finalMRP = totalMRP > 0 ? totalMRP : product.mrp || 0;
-      }
-
-      console.log('💰 Calculated prices:', {
-        purchase: finalPurchasePrice,
-        selling: finalSellingPrice,
-        mrp: finalMRP,
-        hasBatches: batches.length,
-        maintainBatch: product.maintain_batch
-      });
-
-      setFormData({
-        group_by: product.group_by || groupType,
-        goods_name: product.goods_name || product.name || '',
-        category_id: product.category_id || '',
-        company_id: product.company_id || '',
-        purchase_price: finalPurchasePrice,
-        selling_price: finalSellingPrice,
-        mrp: finalMRP,
-        inclusive_gst: product.inclusive_gst || '',
-        gst_rate: product.gst_rate || '',
-        non_taxable: product.non_taxable || '',
-        net_price: product.net_price || '',
-        hsn_code: product.hsn_code || '',
-        unit: product.unit || 'UNT-UNITS',
-        cess_rate: product.cess_rate || '',
-        cess_amount: product.cess_amount || '',
-        sku: product.sku || '',
-        opening_stock: product.opening_stock || '',
-        opening_stock_date: product.opening_stock_date ? product.opening_stock_date.split('T')[0] : new Date().toISOString().split('T')[0],
-        min_stock_alert: product.min_stock_alert || '',
-        max_stock_alert: product.max_stock_alert || '',
-        description: product.description || '',
-        maintain_batch: product.maintain_batch || false,
-        can_be_sold: product.can_be_sold || false,
-      });
-
-      setMaintainBatch(product.maintain_batch || false);
-    }, 100);
-  } catch (error) {
-    console.error('Error fetching product:', error);
-    showAlert('Error fetching product data', 'danger');
-  }
-};
+  };
 
   const fetchCategories = async () => {
     try {
@@ -237,59 +237,60 @@ const fetchProductById = async (id) => {
     }
   };
 
-const fetchBatches = async (id = productId) => {
-  if (!id) {
-    setBatches([]);
-    return;
-  }
-
-  try {
-    const response = await axios.get(`${baseurl}/products/${id}/batches`);
-    const mappedBatches = response.data?.length
-      ? response.data.map(batch => ({
-        id: batch.id,
-        dbId: batch.id,
-        batchNumber: batch.batch_number || '',
-        mfgDate: batch.mfg_date?.split('T')[0] || '',
-        expDate: batch.exp_date?.split('T')[0] || '',
-        quantity: batch.quantity || '',
-        costPrice: batch.cost_price || '',
-        opening_stock: batch.opening_stock || '',
-        sellingPrice: batch.selling_price || '',
-        purchasePrice: batch.purchase_price || '',
-        mrp: batch.mrp || '',
-        barcode: batch.barcode || '',
-        isExisting: true
-      }))
-      : [];
-    console.log('📦 Fetched batches:', mappedBatches);
-    setBatches(mappedBatches);
-
-    // Calculate totals from batches
-    if (mappedBatches.length > 0) {
-      const totalPurchasePrice = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.purchasePrice) || 0), 0);
-      const totalSellingPrice = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.sellingPrice) || 0), 0);
-      const totalMRP = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.mrp) || 0), 0);
-
-      console.log('💰 Batch totals:', {
-        purchase: totalPurchasePrice,
-        selling: totalSellingPrice,
-        mrp: totalMRP
-      });
-
-      // Update form data with batch totals
-      setFormData(prev => ({
-        ...prev,
-        purchase_price: totalPurchasePrice > 0 ? totalPurchasePrice : prev.purchase_price,
-        selling_price: totalSellingPrice > 0 ? totalSellingPrice : prev.selling_price,
-        mrp: totalMRP > 0 ? totalMRP : prev.mrp
-      }));
+  const fetchBatches = async (id = productId) => {
+    if (!id) {
+      setBatches([]);
+      return;
     }
-  } catch (error) {
-    console.error('Error fetching batches:', error);
-    setBatches([]);
-  }
-};
+
+    try {
+      const response = await axios.get(`${baseurl}/products/${id}/batches`);
+      const mappedBatches = response.data?.length
+        ? response.data.map(batch => ({
+          id: batch.id,
+          dbId: batch.id,
+          batchNumber: batch.batch_number || '',
+          mfgDate: batch.mfg_date?.split('T')[0] || '',
+          expDate: batch.exp_date?.split('T')[0] || '',
+          quantity: batch.quantity || '',
+          min_sale_price: batch.cost_price || '',
+          opening_stock: batch.opening_stock || '',
+          sellingPrice: batch.selling_price || '',
+          min_sale_price: batch.min_sale_price || '',
+          purchasePrice: batch.purchase_price || '',
+          mrp: batch.mrp || '',
+          barcode: batch.barcode || '',
+          isExisting: true
+        }))
+        : [];
+      console.log('📦 Fetched batches:', mappedBatches);
+      setBatches(mappedBatches);
+
+      // Calculate totals from batches
+      if (mappedBatches.length > 0) {
+        const totalPurchasePrice = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.purchasePrice) || 0), 0);
+        const totalSellingPrice = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.sellingPrice) || 0), 0);
+        const totalMRP = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.mrp) || 0), 0);
+
+        console.log('💰 Batch totals:', {
+          purchase: totalPurchasePrice,
+          selling: totalSellingPrice,
+          mrp: totalMRP
+        });
+
+        // Update form data with batch totals
+        setFormData(prev => ({
+          ...prev,
+          purchase_price: totalPurchasePrice > 0 ? totalPurchasePrice : prev.purchase_price,
+          selling_price: totalSellingPrice > 0 ? totalSellingPrice : prev.selling_price,
+          mrp: totalMRP > 0 ? totalMRP : prev.mrp
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching batches:', error);
+      setBatches([]);
+    }
+  };
 
   const generateUniqueBarcode = async () => {
     let isUnique = false;
@@ -326,24 +327,24 @@ const fetchBatches = async (id = productId) => {
 
     return newBarcode;
   };
-const createDefaultBatch = async () => {
-  const newBarcode = await generateUniqueBarcode();
+  const createDefaultBatch = async () => {
+    const newBarcode = await generateUniqueBarcode();
 
-  return {
-    id: `temp_${Date.now()}_${Math.random()}`,
-    dbId: null,
-    batchNumber: '', // Empty for manual entry
-    mfgDate: '',
-    expDate: '',
-    quantity: '', // Empty initially
-    costPrice: '',
-    sellingPrice: '', // Empty initially
-    purchasePrice: '', // Empty initially
-    mrp: '', // Empty initially
-    barcode: newBarcode,
-    isExisting: false
+    return {
+      id: `temp_${Date.now()}_${Math.random()}`,
+      dbId: null,
+      batchNumber: '', // Empty for manual entry
+      mfgDate: '',
+      expDate: '',
+      quantity: '', // Empty initially
+      min_sale_price: '',
+      sellingPrice: '', // Empty initially
+      purchasePrice: '', // Empty initially
+      mrp: '', // Empty initially
+      barcode: newBarcode,
+      isExisting: false
+    };
   };
-};
 
   // Add this validation function
   const validateBatchNumber = async (batchNumber, currentBatchId = null) => {
@@ -406,50 +407,50 @@ const createDefaultBatch = async () => {
     }
   };
 
-const calculateAndUpdateMainPurchasePrice = (updatedBatches) => {
-  // Calculate SUM of all batch purchase prices
-  const totalPurchasePrice = updatedBatches.reduce((sum, batch) => {
-    return sum + (parseFloat(batch.purchasePrice) || 0);
-  }, 0);
+  const calculateAndUpdateMainPurchasePrice = (updatedBatches) => {
+    // Calculate SUM of all batch purchase prices
+    const totalPurchasePrice = updatedBatches.reduce((sum, batch) => {
+      return sum + (parseFloat(batch.purchasePrice) || 0);
+    }, 0);
 
-  // Update the main form purchase_price field with total value
-  if (totalPurchasePrice > 0) {
-    setFormData(prev => ({
-      ...prev,
-      purchase_price: totalPurchasePrice.toFixed(2)
-    }));
-  }
-};
+    // Update the main form purchase_price field with total value
+    if (totalPurchasePrice > 0) {
+      setFormData(prev => ({
+        ...prev,
+        purchase_price: totalPurchasePrice.toFixed(2)
+      }));
+    }
+  };
 
-const calculateAndUpdateMainSellingPrice = (updatedBatches) => {
-  // Calculate SUM of all batch selling prices
-  const totalSellingPrice = updatedBatches.reduce((sum, batch) => {
-    return sum + (parseFloat(batch.sellingPrice) || 0);
-  }, 0);
+  const calculateAndUpdateMainSellingPrice = (updatedBatches) => {
+    // Calculate SUM of all batch selling prices
+    const totalSellingPrice = updatedBatches.reduce((sum, batch) => {
+      return sum + (parseFloat(batch.sellingPrice) || 0);
+    }, 0);
 
-  // Update the main form selling_price field with total value
-  if (totalSellingPrice > 0) {
-    setFormData(prev => ({
-      ...prev,
-      selling_price: totalSellingPrice.toFixed(2)
-    }));
-  }
-};
+    // Update the main form selling_price field with total value
+    if (totalSellingPrice > 0) {
+      setFormData(prev => ({
+        ...prev,
+        selling_price: totalSellingPrice.toFixed(2)
+      }));
+    }
+  };
 
-const calculateAndUpdateMainMRP = (updatedBatches) => {
-  // Calculate SUM of all batch MRPs
-  const totalMRP = updatedBatches.reduce((sum, batch) => {
-    return sum + (parseFloat(batch.mrp) || 0);
-  }, 0);
+  const calculateAndUpdateMainMRP = (updatedBatches) => {
+    // Calculate SUM of all batch MRPs
+    const totalMRP = updatedBatches.reduce((sum, batch) => {
+      return sum + (parseFloat(batch.mrp) || 0);
+    }, 0);
 
-  // Update the main form MRP field with total value
-  if (totalMRP > 0) {
-    setFormData(prev => ({
-      ...prev,
-      mrp: totalMRP.toFixed(2)
-    }));
-  }
-};
+    // Update the main form MRP field with total value
+    if (totalMRP > 0) {
+      setFormData(prev => ({
+        ...prev,
+        mrp: totalMRP.toFixed(2)
+      }));
+    }
+  };
 
   // Add these functions after showAlert function
 
@@ -552,130 +553,130 @@ const calculateAndUpdateMainMRP = (updatedBatches) => {
     maintain_batch: false,
     can_be_sold: false,
   });
-const handleChange = async (e) => {
-  const { name, value, type, checked } = e.target;
+  const handleChange = async (e) => {
+    const { name, value, type, checked } = e.target;
 
-  const updatedFormData = {
-    ...formData,
-    [name]: type === 'checkbox' ? checked : value
+    const updatedFormData = {
+      ...formData,
+      [name]: type === 'checkbox' ? checked : value
+    };
+
+    // Update tax calculation based on "Can be Sold" checkbox
+    if ((name === 'purchase_price' || name === 'selling_price' || name === 'gst_rate' || name === 'inclusive_gst' || name === 'can_be_sold') &&
+      (updatedFormData.gst_rate && (updatedFormData.purchase_price || updatedFormData.selling_price))) {
+
+      // Determine which price to use for tax calculation
+      const priceToUse = updatedFormData.can_be_sold && updatedFormData.selling_price
+        ? updatedFormData.selling_price
+        : updatedFormData.purchase_price;
+
+      if (priceToUse) {
+        const { netPrice } = calculateTaxAndNetPrice(
+          priceToUse,
+          updatedFormData.gst_rate,
+          updatedFormData.inclusive_gst
+        );
+        updatedFormData.net_price = netPrice;
+      }
+    }
+
+    // Sync main prices to batches
+    if (batches.length > 0) {
+      const updatedBatches = batches.map(batch => ({
+        ...batch,
+        purchasePrice: name === 'purchase_price' ? value : batch.purchasePrice,
+        sellingPrice: name === 'selling_price' ? value : batch.sellingPrice,
+        mrp: name === 'mrp' ? value : batch.mrp,
+        quantity: name === 'opening_stock' ? value : batch.quantity
+      }));
+      setBatches(updatedBatches);
+    }
+
+    if (name === 'maintain_batch') {
+      if (checked && batches.length === 0) {
+        const defaultBatch = await createDefaultBatch();
+        setBatches([defaultBatch]);
+      } else if (!checked) {
+        const defaultBatch = {
+          id: `temp_${Date.now()}_${Math.random()}`,
+          dbId: null,
+          batchNumber: 'DEFAULT',
+          mfgDate: '',
+          expDate: '',
+          quantity: updatedFormData.opening_stock || '',
+          min_sale_price: '',
+          sellingPrice: '', // Empty when switching off batch mode
+          purchasePrice: '', // Empty when switching off batch mode
+          mrp: '', // Empty when switching off batch mode
+          barcode: '',
+          isExisting: false
+        };
+        setBatches([defaultBatch]);
+      }
+      setMaintainBatch(checked);
+    }
+
+    // When "Can be Sold" is checked, ensure selling price is populated from purchase price if empty
+    if (name === 'can_be_sold' && checked && !formData.selling_price && formData.purchase_price) {
+      updatedFormData.selling_price = formData.purchase_price;
+
+      // Recalculate tax with selling price
+      if (updatedFormData.gst_rate) {
+        const { netPrice } = calculateTaxAndNetPrice(
+          updatedFormData.selling_price,
+          updatedFormData.gst_rate,
+          updatedFormData.inclusive_gst
+        );
+        updatedFormData.net_price = netPrice;
+      }
+    }
+
+    setFormData(updatedFormData);
   };
 
-  // Update tax calculation based on "Can be Sold" checkbox
-  if ((name === 'purchase_price' || name === 'selling_price' || name === 'gst_rate' || name === 'inclusive_gst' || name === 'can_be_sold') &&
-    (updatedFormData.gst_rate && (updatedFormData.purchase_price || updatedFormData.selling_price))) {
-    
+  // Add this function after handleChange
+  const handleGstRateChange = (e) => {
+    const { value } = e.target;
+    const updatedFormData = { ...formData, gst_rate: value };
+
     // Determine which price to use for tax calculation
-    const priceToUse = updatedFormData.can_be_sold && updatedFormData.selling_price
-      ? updatedFormData.selling_price 
-      : updatedFormData.purchase_price;
-    
-    if (priceToUse) {
+    const priceToUse = formData.can_be_sold && formData.selling_price
+      ? formData.selling_price
+      : formData.purchase_price;
+
+    if (priceToUse && value) {
       const { netPrice } = calculateTaxAndNetPrice(
         priceToUse,
-        updatedFormData.gst_rate,
-        updatedFormData.inclusive_gst
+        value,
+        formData.inclusive_gst
       );
       updatedFormData.net_price = netPrice;
     }
-  }
 
-  // Sync main prices to batches
-  if (batches.length > 0) {
-    const updatedBatches = batches.map(batch => ({
-      ...batch,
-      purchasePrice: name === 'purchase_price' ? value : batch.purchasePrice,
-      sellingPrice: name === 'selling_price' ? value : batch.sellingPrice,
-      mrp: name === 'mrp' ? value : batch.mrp,
-      quantity: name === 'opening_stock' ? value : batch.quantity
-    }));
-    setBatches(updatedBatches);
-  }
+    setFormData(updatedFormData);
+  };
 
- if (name === 'maintain_batch') {
-  if (checked && batches.length === 0) {
-    const defaultBatch = await createDefaultBatch();
-    setBatches([defaultBatch]);
-  } else if (!checked) {
-    const defaultBatch = {
-      id: `temp_${Date.now()}_${Math.random()}`,
-      dbId: null,
-      batchNumber: 'DEFAULT',
-      mfgDate: '',
-      expDate: '',
-      quantity: updatedFormData.opening_stock || '',
-      costPrice: '',
-      sellingPrice: '', // Empty when switching off batch mode
-      purchasePrice: '', // Empty when switching off batch mode
-      mrp: '', // Empty when switching off batch mode
-      barcode: '',
-      isExisting: false
-    };
-    setBatches([defaultBatch]);
-  }
-  setMaintainBatch(checked);
-}
+  // Add this function after handleGstRateChange
+  const handleGstTypeChange = (e) => {
+    const { value } = e.target;
+    const updatedFormData = { ...formData, inclusive_gst: value };
 
-  // When "Can be Sold" is checked, ensure selling price is populated from purchase price if empty
-  if (name === 'can_be_sold' && checked && !formData.selling_price && formData.purchase_price) {
-    updatedFormData.selling_price = formData.purchase_price;
-    
-    // Recalculate tax with selling price
-    if (updatedFormData.gst_rate) {
+    // Determine which price to use for tax calculation
+    const priceToUse = formData.can_be_sold && formData.selling_price
+      ? formData.selling_price
+      : formData.purchase_price;
+
+    if (priceToUse && formData.gst_rate) {
       const { netPrice } = calculateTaxAndNetPrice(
-        updatedFormData.selling_price,
-        updatedFormData.gst_rate,
-        updatedFormData.inclusive_gst
+        priceToUse,
+        formData.gst_rate,
+        value
       );
       updatedFormData.net_price = netPrice;
     }
-  }
 
-  setFormData(updatedFormData);
-};
-
-// Add this function after handleChange
-const handleGstRateChange = (e) => {
-  const { value } = e.target;
-  const updatedFormData = { ...formData, gst_rate: value };
-  
-  // Determine which price to use for tax calculation
-  const priceToUse = formData.can_be_sold && formData.selling_price 
-    ? formData.selling_price 
-    : formData.purchase_price;
-  
-  if (priceToUse && value) {
-    const { netPrice } = calculateTaxAndNetPrice(
-      priceToUse,
-      value,
-      formData.inclusive_gst
-    );
-    updatedFormData.net_price = netPrice;
-  }
-  
-  setFormData(updatedFormData);
-};
-
-// Add this function after handleGstRateChange
-const handleGstTypeChange = (e) => {
-  const { value } = e.target;
-  const updatedFormData = { ...formData, inclusive_gst: value };
-  
-  // Determine which price to use for tax calculation
-  const priceToUse = formData.can_be_sold && formData.selling_price 
-    ? formData.selling_price 
-    : formData.purchase_price;
-  
-  if (priceToUse && formData.gst_rate) {
-    const { netPrice } = calculateTaxAndNetPrice(
-      priceToUse,
-      formData.gst_rate,
-      value
-    );
-    updatedFormData.net_price = netPrice;
-  }
-  
-  setFormData(updatedFormData);
-};
+    setFormData(updatedFormData);
+  };
 
   const addNewBatch = async () => {
     try {
@@ -721,262 +722,262 @@ const handleGstTypeChange = (e) => {
     setAlert({ show: true, message, variant });
     setTimeout(() => setAlert({ show: false, message: '', variant: 'success' }), 5000);
   };
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsLoading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
 
-  // NEW VALIDATION: Check if selling price is required when "Can be Sold" is checked
-  if (formData.can_be_sold) {
-    const sellingPrice = parseFloat(formData.selling_price);
-    
-    if (!sellingPrice || sellingPrice <= 0) {
-      showAlert('Selling Price is required when "Can be Sold" is checked', 'danger');
-      setIsLoading(false);
-      return;
-    }
-    
-    // Also validate that selling price is not less than purchase price
-    const purchasePrice = parseFloat(formData.purchase_price);
-    if (sellingPrice < purchasePrice) {
-      showAlert('Selling Price cannot be less than Purchase Price', 'danger');
-      setIsLoading(false);
-      return;
-    }
-  }
+    // NEW VALIDATION: Check if selling price is required when "Can be Sold" is checked
+    if (formData.can_be_sold) {
+      const sellingPrice = parseFloat(formData.selling_price);
 
-  // Calculate total stock for batch-managed products
-  const calculateTotalStockFromBatches = () => {
-    if (!batches || batches.length === 0) return 0;
-    const total = batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
-    console.log('📊 Calculated total stock from batches:', total);
-    return total;
-  };
-
-  if (maintainBatch) {
-    // Check for required fields
-    const invalidBatches = batches.filter(
-      (batch) => !batch.batchNumber || !batch.quantity || !batch.purchasePrice || !batch.barcode
-    );
-
-    if (invalidBatches.length > 0) {
-      showAlert(
-        'Please fill all required fields in batch details (Batch Number, Quantity, Purchase Price, and Barcode)',
-        'danger'
-      );
-      setIsLoading(false);
-      return;
-    }
-
-    // Validate unique batch numbers within the same product
-    const batchNumbers = batches.map(b => b.batchNumber);
-    const uniqueBatchNumbers = new Set(batchNumbers);
-    if (batchNumbers.length !== uniqueBatchNumbers.size) {
-      showAlert('Batch numbers must be unique within this product. Please check your batch numbers.', 'danger');
-      setIsLoading(false);
-      return;
-    }
-
-    // Check if batch number already exists in the same group
-    try {
-      const batchCheckPromises = batches.map(async (batch) => {
-        if (!batch.isExisting) {
-          try {
-            const response = await axios.get(`${baseurl}/batches/check-batch-number`, {
-              params: {
-                batch_number: batch.batchNumber,
-                group_by: formData.group_by || 'Purchaseditems',
-                product_id: productId || ''
-              }
-            });
-            return response.data.exists;
-          } catch (error) {
-            console.error('Error checking batch number:', error);
-            return false;
-          }
-        }
-        return false;
-      });
-
-      const batchCheckResults = await Promise.all(batchCheckPromises);
-      const hasDuplicateBatches = batchCheckResults.some(exists => exists);
-
-      if (hasDuplicateBatches) {
-        showAlert('One or more batch numbers already exist in the same category. Please use unique batch numbers.', 'danger');
+      if (!sellingPrice || sellingPrice <= 0) {
+        showAlert('Selling Price is required when "Can be Sold" is checked', 'danger');
         setIsLoading(false);
         return;
       }
-    } catch (error) {
-      console.error('Error during batch number validation:', error);
-    }
-  }
 
-  try {
-    // Calculate final opening stock
-    let finalOpeningStock = parseFloat(formData.opening_stock) || 0;
-    if (maintainBatch && batches.length > 0) {
-      finalOpeningStock = calculateTotalStockFromBatches();
-      console.log('🔄 Using batch-based opening stock:', finalOpeningStock);
-    }
-
-    // Calculate final purchase price from batches or form
-let finalPurchasePrice = parseFloat(formData.purchase_price) || 0;
-if (maintainBatch && batches.length > 0) {
-  const totalPurchasePrice = batches.reduce((sum, batch) => {
-    return sum + (parseFloat(batch.purchasePrice) || 0);
-  }, 0);
-  finalPurchasePrice = totalPurchasePrice || 0;
-  console.log('🔄 Using batch-based purchase price (total):', finalPurchasePrice);
-}
-
-// Calculate final selling price and MRP
-let finalSellingPrice = parseFloat(formData.selling_price) || 0;
-let finalMRP = parseFloat(formData.mrp) || 0;
-
-if (maintainBatch && batches.length > 0) {
-  // Get total selling price and MRP from batches
-  const totalSellingPrice = batches.reduce((sum, batch) => {
-    return sum + (parseFloat(batch.sellingPrice) || 0);
-  }, 0);
-  
-  const totalMRP = batches.reduce((sum, batch) => {
-    return sum + (parseFloat(batch.mrp) || 0);
-  }, 0);
-  
-  finalSellingPrice = totalSellingPrice;
-  finalMRP = totalMRP;
-  
-  console.log('🔄 Using batch-based selling price (total):', finalSellingPrice);
-  console.log('🔄 Using batch-based MRP (total):', finalMRP);
-}
-    if (maintainBatch && batches.length > 0) {
-      // Get max selling price and MRP from batches
-      const batchSellingPrices = batches.map(batch => parseFloat(batch.sellingPrice) || 0);
-      const batchMRPs = batches.map(batch => parseFloat(batch.mrp) || 0);
-      
-      finalSellingPrice = Math.max(...batchSellingPrices);
-      finalMRP = Math.max(...batchMRPs);
-      
-      console.log('🔄 Using batch-based selling price:', finalSellingPrice);
-      console.log('🔄 Using batch-based MRP:', finalMRP);
-    }
-
-    // Generate barcodes
-    let defaultBarcode = null;
-    if (!maintainBatch) {
-      defaultBarcode = await generateUniqueBarcode();
-    }
-
-    // Prepare batches for backend
-    const batchesForBackend = await Promise.all(batches.map(async (batch) => {
-      const batchData = {
-        batch_number: maintainBatch ? batch.batchNumber : 'DEFAULT',
-        mfg_date: maintainBatch ? (batch.mfgDate || null) : null,
-        exp_date: maintainBatch ? (batch.expDate || null) : null,
-        quantity: maintainBatch ? (parseFloat(batch.quantity) || 0) : finalOpeningStock,
-        cost_price: parseFloat(batch.costPrice) || 0,
-        selling_price: parseFloat(batch.sellingPrice) || finalSellingPrice,
-        purchase_price: parseFloat(batch.purchasePrice) || finalPurchasePrice,
-        mrp: parseFloat(batch.mrp) || finalMRP,
-        barcode: maintainBatch ? batch.barcode : defaultBarcode || await generateUniqueBarcode(),
-        group_by: formData.group_by || 'Purchaseditems',
-        isExisting: batch.isExisting || false
-      };
-
-      // For non-batch items, use a default batch structure
-      if (!maintainBatch) {
-        batchData.batch_number = 'DEFAULT';
-        batchData.quantity = finalOpeningStock;
-        batchData.purchase_price = finalPurchasePrice;
-        batchData.selling_price = finalSellingPrice; // From main form
-        batchData.mrp = finalMRP; // From main form
+      // Also validate that selling price is not less than purchase price
+      const purchasePrice = parseFloat(formData.purchase_price);
+      if (sellingPrice < purchasePrice) {
+        showAlert('Selling Price cannot be less than Purchase Price', 'danger');
+        setIsLoading(false);
+        return;
       }
-
-      if (batch.isExisting && batch.dbId && !batch.dbId.toString().includes('temp_')) {
-        batchData.id = batch.dbId;
-      }
-
-      console.log(`📦 Batch data - Selling Price: ${batchData.selling_price}, MRP: ${batchData.mrp}`);
-      return batchData;
-    }));
-
-    // If no batches exist, create a default batch
-    if (batchesForBackend.length === 0) {
-      const barcode = defaultBarcode || await generateUniqueBarcode();
-      batchesForBackend.push({
-        batch_number: 'DEFAULT',
-        mfg_date: null,
-        exp_date: null,
-        quantity: finalOpeningStock,
-        cost_price: 0,
-        selling_price: finalSellingPrice,
-        purchase_price: finalPurchasePrice,
-        mrp: finalMRP,
-        barcode: barcode,
-        group_by: formData.group_by || 'Purchaseditems',
-        isExisting: false
-      });
     }
 
-    // Prepare data for backend - KEEP selling_price and mrp in product data
-    const dataToSend = {
-      ...formData,
-      images: images,
-      group_by: groupType,
-      opening_stock: finalOpeningStock,
-      purchase_price: finalPurchasePrice,
-      selling_price: finalSellingPrice, // KEEP in product data
-      mrp: finalMRP, // KEEP in product data
-      stock_in: finalOpeningStock,
-      stock_out: 0,
-      balance_stock: finalOpeningStock,
-      batches: batchesForBackend,
-      maintain_batch: maintainBatch
+    // Calculate total stock for batch-managed products
+    const calculateTotalStockFromBatches = () => {
+      if (!batches || batches.length === 0) return 0;
+      const total = batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
+      console.log('📊 Calculated total stock from batches:', total);
+      return total;
     };
 
-    console.log('📤 Sending data to backend:', {
-      maintain_batch: maintainBatch,
-      product_purchase_price: dataToSend.purchase_price,
-      product_selling_price: dataToSend.selling_price, // In products table
-      product_mrp: dataToSend.mrp, // In products table
-      batch_count: batchesForBackend.length,
-      selling_price_in_batches: batchesForBackend.map(b => b.selling_price),
-      mrp_in_batches: batchesForBackend.map(b => b.mrp)
-    });
+    if (maintainBatch) {
+      // Check for required fields
+      const invalidBatches = batches.filter(
+        (batch) => !batch.batchNumber || !batch.quantity || !batch.purchasePrice || !batch.barcode
+      );
 
-    if (productId) {
-      console.log(`🔄 Updating product ID: ${productId}`);
+      if (invalidBatches.length > 0) {
+        showAlert(
+          'Please fill all required fields in batch details (Batch Number, Quantity, Purchase Price, and Barcode)',
+          'danger'
+        );
+        setIsLoading(false);
+        return;
+      }
 
-      const response = await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
-        headers: { 'Content-Type': 'application/json' }
-      });
-      console.log('✅ Update response:', response.data);
-      showAlert('Product updated successfully!', 'success');
+      // Validate unique batch numbers within the same product
+      const batchNumbers = batches.map(b => b.batchNumber);
+      const uniqueBatchNumbers = new Set(batchNumbers);
+      if (batchNumbers.length !== uniqueBatchNumbers.size) {
+        showAlert('Batch numbers must be unique within this product. Please check your batch numbers.', 'danger');
+        setIsLoading(false);
+        return;
+      }
 
-      await fetchBatches(productId);
-    } else {
-      console.log('➕ Creating new product');
-      const response = await axios.post(`${baseurl}/products`, dataToSend, {
-        headers: { 'Content-Type': 'application/json' }
-      });
-      showAlert('New product added successfully!', 'success');
+      // Check if batch number already exists in the same group
+      try {
+        const batchCheckPromises = batches.map(async (batch) => {
+          if (!batch.isExisting) {
+            try {
+              const response = await axios.get(`${baseurl}/batches/check-batch-number`, {
+                params: {
+                  batch_number: batch.batchNumber,
+                  group_by: formData.group_by || 'Purchaseditems',
+                  product_id: productId || ''
+                }
+              });
+              return response.data.exists;
+            } catch (error) {
+              console.error('Error checking batch number:', error);
+              return false;
+            }
+          }
+          return false;
+        });
+
+        const batchCheckResults = await Promise.all(batchCheckPromises);
+        const hasDuplicateBatches = batchCheckResults.some(exists => exists);
+
+        if (hasDuplicateBatches) {
+          showAlert('One or more batch numbers already exist in the same category. Please use unique batch numbers.', 'danger');
+          setIsLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Error during batch number validation:', error);
+      }
     }
 
-    setTimeout(() => navigate('/purchased_items'), 1500);
-  } catch (error) {
-    console.error('❌ Failed to add/update product:', error);
-    console.error('❌ Error response:', error.response?.data);
+    try {
+      // Calculate final opening stock
+      let finalOpeningStock = parseFloat(formData.opening_stock) || 0;
+      if (maintainBatch && batches.length > 0) {
+        finalOpeningStock = calculateTotalStockFromBatches();
+        console.log('🔄 Using batch-based opening stock:', finalOpeningStock);
+      }
 
-    let errorMessage = error.response?.data?.message || error.message || 'Failed to add/update product';
+      // Calculate final purchase price from batches or form
+      let finalPurchasePrice = parseFloat(formData.purchase_price) || 0;
+      if (maintainBatch && batches.length > 0) {
+        const totalPurchasePrice = batches.reduce((sum, batch) => {
+          return sum + (parseFloat(batch.purchasePrice) || 0);
+        }, 0);
+        finalPurchasePrice = totalPurchasePrice || 0;
+        console.log('🔄 Using batch-based purchase price (total):', finalPurchasePrice);
+      }
 
-    if (errorMessage.includes('batch number') && errorMessage.includes('already exists')) {
-      errorMessage = 'Batch number already exists in this category. Please use a unique batch number.';
+      // Calculate final selling price and MRP
+      let finalSellingPrice = parseFloat(formData.selling_price) || 0;
+      let finalMRP = parseFloat(formData.mrp) || 0;
+
+      if (maintainBatch && batches.length > 0) {
+        // Get total selling price and MRP from batches
+        const totalSellingPrice = batches.reduce((sum, batch) => {
+          return sum + (parseFloat(batch.sellingPrice) || 0);
+        }, 0);
+
+        const totalMRP = batches.reduce((sum, batch) => {
+          return sum + (parseFloat(batch.mrp) || 0);
+        }, 0);
+
+        finalSellingPrice = totalSellingPrice;
+        finalMRP = totalMRP;
+
+        console.log('🔄 Using batch-based selling price (total):', finalSellingPrice);
+        console.log('🔄 Using batch-based MRP (total):', finalMRP);
+      }
+      if (maintainBatch && batches.length > 0) {
+        // Get max selling price and MRP from batches
+        const batchSellingPrices = batches.map(batch => parseFloat(batch.sellingPrice) || 0);
+        const batchMRPs = batches.map(batch => parseFloat(batch.mrp) || 0);
+
+        finalSellingPrice = Math.max(...batchSellingPrices);
+        finalMRP = Math.max(...batchMRPs);
+
+        console.log('🔄 Using batch-based selling price:', finalSellingPrice);
+        console.log('🔄 Using batch-based MRP:', finalMRP);
+      }
+
+      // Generate barcodes
+      let defaultBarcode = null;
+      if (!maintainBatch) {
+        defaultBarcode = await generateUniqueBarcode();
+      }
+
+      // Prepare batches for backend
+      const batchesForBackend = await Promise.all(batches.map(async (batch) => {
+        const batchData = {
+          batch_number: maintainBatch ? batch.batchNumber : 'DEFAULT',
+          mfg_date: maintainBatch ? (batch.mfgDate || null) : null,
+          exp_date: maintainBatch ? (batch.expDate || null) : null,
+          quantity: maintainBatch ? (parseFloat(batch.quantity) || 0) : finalOpeningStock,
+          min_sale_price: parseFloat(batch.min_sale_price) || 0,
+          selling_price: parseFloat(batch.sellingPrice) || finalSellingPrice,
+          purchase_price: parseFloat(batch.purchasePrice) || finalPurchasePrice,
+          mrp: parseFloat(batch.mrp) || finalMRP,
+          barcode: maintainBatch ? batch.barcode : defaultBarcode || await generateUniqueBarcode(),
+          group_by: formData.group_by || 'Purchaseditems',
+          isExisting: batch.isExisting || false
+        };
+
+        // For non-batch items, use a default batch structure
+        if (!maintainBatch) {
+          batchData.batch_number = 'DEFAULT';
+          batchData.quantity = finalOpeningStock;
+          batchData.purchase_price = finalPurchasePrice;
+          batchData.selling_price = finalSellingPrice; // From main form
+          batchData.mrp = finalMRP; // From main form
+        }
+
+        if (batch.isExisting && batch.dbId && !batch.dbId.toString().includes('temp_')) {
+          batchData.id = batch.dbId;
+        }
+
+        console.log(`📦 Batch data - Selling Price: ${batchData.selling_price}, MRP: ${batchData.mrp}`);
+        return batchData;
+      }));
+
+      // If no batches exist, create a default batch
+      if (batchesForBackend.length === 0) {
+        const barcode = defaultBarcode || await generateUniqueBarcode();
+        batchesForBackend.push({
+          batch_number: 'DEFAULT',
+          mfg_date: null,
+          exp_date: null,
+          quantity: finalOpeningStock,
+          cost_price: 0,
+          selling_price: finalSellingPrice,
+          purchase_price: finalPurchasePrice,
+          mrp: finalMRP,
+          barcode: barcode,
+          group_by: formData.group_by || 'Purchaseditems',
+          isExisting: false
+        });
+      }
+
+      // Prepare data for backend - KEEP selling_price and mrp in product data
+      const dataToSend = {
+        ...formData,
+        images: images,
+        group_by: groupType,
+        opening_stock: finalOpeningStock,
+        purchase_price: finalPurchasePrice,
+        selling_price: finalSellingPrice, // KEEP in product data
+        mrp: finalMRP, // KEEP in product data
+        stock_in: finalOpeningStock,
+        stock_out: 0,
+        balance_stock: finalOpeningStock,
+        batches: batchesForBackend,
+        maintain_batch: maintainBatch
+      };
+
+      console.log('📤 Sending data to backend:', {
+        maintain_batch: maintainBatch,
+        product_purchase_price: dataToSend.purchase_price,
+        product_selling_price: dataToSend.selling_price, // In products table
+        product_mrp: dataToSend.mrp, // In products table
+        batch_count: batchesForBackend.length,
+        selling_price_in_batches: batchesForBackend.map(b => b.selling_price),
+        mrp_in_batches: batchesForBackend.map(b => b.mrp)
+      });
+
+      if (productId) {
+        console.log(`🔄 Updating product ID: ${productId}`);
+
+        const response = await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        console.log('✅ Update response:', response.data);
+        showAlert('Product updated successfully!', 'success');
+
+        await fetchBatches(productId);
+      } else {
+        console.log('➕ Creating new product');
+        const response = await axios.post(`${baseurl}/products`, dataToSend, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        showAlert('New product added successfully!', 'success');
+      }
+
+      setTimeout(() => navigate('/purchased_items'), 1500);
+    } catch (error) {
+      console.error('❌ Failed to add/update product:', error);
+      console.error('❌ Error response:', error.response?.data);
+
+      let errorMessage = error.response?.data?.message || error.message || 'Failed to add/update product';
+
+      if (errorMessage.includes('batch number') && errorMessage.includes('already exists')) {
+        errorMessage = 'Batch number already exists in this category. Please use a unique batch number.';
+      }
+
+      showAlert(errorMessage, 'danger');
+    } finally {
+      setIsLoading(false);
     }
-
-    showAlert(errorMessage, 'danger');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const pageTitle = productId
     ? `Edit Product in Purchase Catalog`
@@ -1098,37 +1099,37 @@ if (maintainBatch && batches.length > 0) {
                       className={maintainBatch ? "bg-light" : ""}
                     />
                     {maintainBatch && (
-  <Form.Text className="text-muted">
-    Purchase price is auto-calculated as total of all batch purchase prices
-  </Form.Text>
-)}
+                      <Form.Text className="text-muted">
+                        Purchase price is auto-calculated as total of all batch purchase prices
+                      </Form.Text>
+                    )}
                   </div>
-<div className="col">
-  <Form.Label>
-    Selling Price {formData.can_be_sold && '*'}
-  </Form.Label>
-  <Form.Control
-    placeholder="Selling Price"
-    name="selling_price"
-    type="number"
-    step="0.01"
-    value={formData.selling_price}
-    onChange={handleChange}
-    disabled={maintainBatch}
-    className={maintainBatch ? "bg-light" : ""}
-    required={formData.can_be_sold}
-  />
- {maintainBatch && (
-  <Form.Text className="text-muted">
-    Selling price is auto-calculated as total of all batch selling prices
-  </Form.Text>
-)}
-  {formData.can_be_sold && !maintainBatch && (
-    <Form.Text className="text-warning">
-      Required for items that can be sold
-    </Form.Text>
-  )}
-</div>
+                  <div className="col">
+                    <Form.Label>
+                      Selling Price {formData.can_be_sold && '*'}
+                    </Form.Label>
+                    <Form.Control
+                      placeholder="Selling Price"
+                      name="selling_price"
+                      type="number"
+                      step="0.01"
+                      value={formData.selling_price}
+                      onChange={handleChange}
+                      disabled={maintainBatch}
+                      className={maintainBatch ? "bg-light" : ""}
+                      required={formData.can_be_sold}
+                    />
+                    {maintainBatch && (
+                      <Form.Text className="text-muted">
+                        Selling price is auto-calculated as total of all batch selling prices
+                      </Form.Text>
+                    )}
+                    {formData.can_be_sold && !maintainBatch && (
+                      <Form.Text className="text-warning">
+                        Required for items that can be sold
+                      </Form.Text>
+                    )}
+                  </div>
 
                   <div className="col">
                     <Form.Label>MRP</Form.Label>
@@ -1143,69 +1144,69 @@ if (maintainBatch && batches.length > 0) {
                       className={maintainBatch ? "bg-light" : ""}
                     />
                     {maintainBatch && (
-  <Form.Text className="text-muted">
-    MRP is auto-calculated as total of all batch MRPs
-  </Form.Text>
-)}
+                      <Form.Text className="text-muted">
+                        MRP is auto-calculated as total of all batch MRPs
+                      </Form.Text>
+                    )}
                   </div>
                 </div>
 
-             <div className="row mb-3">
-  <div className="col">
-    <Form.Label>GST Type</Form.Label>
-    <Form.Select
-      name="inclusive_gst"
-      value={formData.inclusive_gst}
-      onChange={handleGstTypeChange}
-    >
-      <option value="Inclusive">Inclusive of GST</option>
-      <option value="Exclusive">Exclusive of GST</option>
-    </Form.Select>
-  </div>
-  <div className="col">
-    <Form.Label>GST Rate</Form.Label>
-    <Form.Select
-      name="gst_rate"
-      value={formData.gst_rate}
-      onChange={handleGstRateChange}
-    >
-      <option value="">Select GST Rate</option>
-      <option value="18">GST Rate 18%</option>
-      <option value="12">GST Rate 12%</option>
-      <option value="5">GST Rate 5%</option>
-      <option value="0">GST Rate 0%</option>
-    </Form.Select>
-  </div>
-  <div className="col">
-    <Form.Label>Non Taxable</Form.Label>
-    <Form.Control
-      placeholder="Non Taxable"
-      name="non_taxable"
-      type="text"
-      value={formData.non_taxable}
-      onChange={handleChange}
-    />
-  </div>
-  <div className="col">
-    <Form.Label>
-      {formData.can_be_sold ? 'Net Price (from Selling)' : 'Net Price (from Purchase)'}
-    </Form.Label>
-    <Form.Control
-      placeholder="Net Price | GST"
-      name="net_price"
-      type="number"
-      step="0.01"
-      value={formData.net_price}
-      onChange={handleChange}
-      readOnly
-    />
-    <Form.Text className="text-muted">
-      {formData.can_be_sold 
-        ? 'Calculated from Selling Price' 
-        : 'Calculated from Purchase Price'}
-    </Form.Text>
-  </div>
-</div>
+                <div className="row mb-3">
+                  <div className="col">
+                    <Form.Label>GST Type</Form.Label>
+                    <Form.Select
+                      name="inclusive_gst"
+                      value={formData.inclusive_gst}
+                      onChange={handleGstTypeChange}
+                    >
+                      <option value="Inclusive">Inclusive of GST</option>
+                      <option value="Exclusive">Exclusive of GST</option>
+                    </Form.Select>
+                  </div>
+                  <div className="col">
+                    <Form.Label>GST Rate</Form.Label>
+                    <Form.Select
+                      name="gst_rate"
+                      value={formData.gst_rate}
+                      onChange={handleGstRateChange}
+                    >
+                      <option value="">Select GST Rate</option>
+                      <option value="18">GST Rate 18%</option>
+                      <option value="12">GST Rate 12%</option>
+                      <option value="5">GST Rate 5%</option>
+                      <option value="0">GST Rate 0%</option>
+                    </Form.Select>
+                  </div>
+                  <div className="col">
+                    <Form.Label>Non Taxable</Form.Label>
+                    <Form.Control
+                      placeholder="Non Taxable"
+                      name="non_taxable"
+                      type="text"
+                      value={formData.non_taxable}
+                      onChange={handleChange}
+                    />
+                  </div>
+                  <div className="col">
+                    <Form.Label>
+                      {formData.can_be_sold ? 'Net Price (from Selling)' : 'Net Price (from Purchase)'}
+                    </Form.Label>
+                    <Form.Control
+                      placeholder="Net Price | GST"
+                      name="net_price"
+                      type="number"
+                      step="0.01"
+                      value={formData.net_price}
+                      onChange={handleChange}
+                      readOnly
+                    />
+                    <Form.Text className="text-muted">
+                      {formData.can_be_sold
+                        ? 'Calculated from Selling Price'
+                        : 'Calculated from Purchase Price'}
+                    </Form.Text>
+                  </div>
+                </div>
 
                 <div className="row mb-3">
                   <div className="col">
@@ -1455,12 +1456,12 @@ if (maintainBatch && batches.length > 0) {
                 {maintainBatch && (
                   <div className="border border-dark p-3 mb-3">
                     <h5>Batch Details</h5>
-                    
+
                     <div className="alert alert-info mb-3">
-                      <strong>Note:</strong> Selling Price and MRP entered above will be applied to all batches. 
+                      <strong>Note:</strong> Selling Price and MRP entered above will be applied to all batches.
                       You can also set individual prices for each batch below.
                     </div>
-                    
+
                     {batches.map((batch, index) => (
                       <div key={batch.id} className="mb-3 border p-2">
                         <div className="row g-2 mb-2">
@@ -1477,17 +1478,17 @@ if (maintainBatch && batches.length > 0) {
                               Enter unique batch number
                             </Form.Text>
                           </div>
-                      <div className="col-md-4">
-  <Form.Label>Opening Stock*</Form.Label>
-  <Form.Control
-    type="number"
-    name="quantity"
-    value={batch.quantity}
-    onChange={(e) => handleBatchChange(index, e)}
-    required
-    placeholder="Enter quantity"
-  />
-</div>
+                          <div className="col-md-4">
+                            <Form.Label>Opening Stock*</Form.Label>
+                            <Form.Control
+                              type="number"
+                              name="quantity"
+                              value={batch.quantity}
+                              onChange={(e) => handleBatchChange(index, e)}
+                              required
+                              placeholder="Enter quantity"
+                            />
+                          </div>
                           <div className="col-md-4">
                             <Form.Label>Mfg. Date</Form.Label>
                             <Form.Control
@@ -1509,54 +1510,54 @@ if (maintainBatch && batches.length > 0) {
                               onChange={(e) => handleBatchChange(index, e)}
                             />
                           </div>
-                         <div className="col-md-4">
-  <Form.Label>Purchase Price*</Form.Label>
-  <Form.Control
-    type="number"
-    step="0.01"
-    name="purchasePrice"
-    value={batch.purchasePrice}
-    onChange={(e) => handleBatchChange(index, e)}
-    required
-    placeholder="Enter purchase price"
-  />
-</div>
-                        <div className="col-md-4">
-  <Form.Label>Selling Price</Form.Label>
-  <Form.Control
-    type="number"
-    step="0.01"
-    name="sellingPrice"
-    value={batch.sellingPrice}
-    onChange={(e) => handleBatchChange(index, e)}
-    placeholder={formData.selling_price ? `Main: ${formData.selling_price}` : 'Enter selling price'}
-  />
-</div>
+                          <div className="col-md-4">
+                            <Form.Label>Purchase Price*</Form.Label>
+                            <Form.Control
+                              type="number"
+                              step="0.01"
+                              name="purchasePrice"
+                              value={batch.purchasePrice}
+                              onChange={(e) => handleBatchChange(index, e)}
+                              required
+                              placeholder="Enter purchase price"
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <Form.Label>Selling Price</Form.Label>
+                            <Form.Control
+                              type="number"
+                              step="0.01"
+                              name="sellingPrice"
+                              value={batch.sellingPrice}
+                              onChange={(e) => handleBatchChange(index, e)}
+                              placeholder={formData.selling_price ? `Main: ${formData.selling_price}` : 'Enter selling price'}
+                            />
+                          </div>
                         </div>
 
                         <div className="row g-2 mb-2">
-                       <div className="col-md-4">
-  <Form.Label>M.R.P</Form.Label>
-  <Form.Control
-    type="number"
-    step="0.01"
-    name="mrp"
-    value={batch.mrp}
-    onChange={(e) => handleBatchChange(index, e)}
-    placeholder={formData.mrp ? `Main: ${formData.mrp}` : 'Enter MRP'}
-  />
-</div>
-                         <div className="col-md-4">
-  <Form.Label>Cost Price</Form.Label>
-  <Form.Control
-    type="number"
-    step="0.01"
-    name="costPrice"
-    value={batch.costPrice}
-    onChange={(e) => handleBatchChange(index, e)}
-    placeholder="Enter cost price"
-  />
-</div>
+                          <div className="col-md-4">
+                            <Form.Label>M.R.P</Form.Label>
+                            <Form.Control
+                              type="number"
+                              step="0.01"
+                              name="mrp"
+                              value={batch.mrp}
+                              onChange={(e) => handleBatchChange(index, e)}
+                              placeholder={formData.mrp ? `Main: ${formData.mrp}` : 'Enter MRP'}
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <Form.Label>Min Sale Price</Form.Label>
+                            <Form.Control
+                              type="number"
+                              step="0.01"
+                              name="min_sale_price"
+                              value={batch.min_sale_price}
+                              onChange={(e) => handleBatchChange(index, e)}
+                              placeholder="Enter cost price"
+                            />
+                          </div>
                           <div className="col-md-4">
                             <Form.Label>Barcode *</Form.Label>
                             <Form.Control
