@@ -1024,13 +1024,13 @@ const fetchOrders = async () => {
                                       />
                                     </th>
                                     <th>Item Name</th>
-                                    <th>Quantity</th>
+                                    <th>Qty</th>
                                     <th>Sale Price</th>
-                                    <th>Min Sale Price</th> 
+                                    <th>MSP</th> 
                                     <th>Price</th>
-                                    <th>Discount Amount</th>
-                                    <th>Credit Period</th>
-                                    <th>Invoice Number</th>
+                                    <th>Dst Amnt</th>
+                                    <th>CP</th>
+                                    <th>Inv No</th>
                                     <th>Approval Status</th>
                                     <th>Action</th>
                                     <th>Status</th>
