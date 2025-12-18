@@ -38,30 +38,32 @@ const fetchInvoices = async () => {
     
     const data = await response.json();
     
-    // Filter transactions where TransactionType is either 'Stock Transfer' OR 'Sales'
     const filteredTransactions = data.filter(transaction => 
-      transaction.TransactionType === 'stock transfer' || 
       transaction.TransactionType === 'Sales'
     );
     
-    // Transform the data to match your table structure
     const transformedInvoices = filteredTransactions.map(invoice => ({
       id: invoice.VoucherID,
-      transactionType: invoice.TransactionType, // Add transaction type column
+      transactionType: invoice.TransactionType,
       customerName: invoice.PartyName || 'N/A',
-      number: invoice.InvoiceNumber || 
-        (invoice.TransactionType === 'stock transfer' 
-          ? `ST-${invoice.VoucherID}` 
-          : `INV-${invoice.VoucherID}`),
+      number: invoice.InvoiceNumber || `INV-${invoice.VoucherID}`,
       totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
       payment: getPaymentStatus(invoice),
       created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
       originalData: invoice,
-      hasPDF: !!invoice.pdf_data // Check if PDF exists
+      hasPDF: !!invoice.pdf_data,
+      orderNumber: invoice.order_number || 'No Order',
+      hasOrder: !!invoice.order_number // Boolean for easy filtering
     }));
     
     setInvoices(transformedInvoices);
     setLoading(false);
+    
+    // Log summary
+    const withOrder = filteredTransactions.filter(t => t.order_number).length;
+    const withoutOrder = filteredTransactions.filter(t => !t.order_number).length;
+    
+    
   } catch (err) {
     console.error('Error fetching invoices:', err);
     setError(err.message);
@@ -417,7 +419,7 @@ const columns = [
   },
   { key: 'totalAmount', title: 'TOTAL AMOUNT', style: { textAlign: 'right' } },
   {
-    key: 'payment',
+    key: 'status',
     title: 'PAYMENT STATUS',
     style: { textAlign: 'center' },
     render: (value) => {

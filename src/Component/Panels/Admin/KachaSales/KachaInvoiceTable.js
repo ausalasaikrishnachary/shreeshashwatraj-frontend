@@ -27,42 +27,59 @@ const KachaInvoiceTable = () => {
     fetchInvoices();
   }, []);
 
-  const fetchInvoices = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${baseurl}/transactions`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch invoices');
-      }
-      
-      const data = await response.json();
-      
-      const salesInvoices = data.filter(transaction => 
-        transaction.TransactionType === 'stock transfer'
-      );
-      
-      // Transform the data to match your table structure
-      const transformedInvoices = salesInvoices.map(invoice => ({
-        id: invoice.VoucherID,
-        customerName: invoice.PartyName || 'N/A',
-        number: invoice.InvoiceNumber || `INV-${invoice.VoucherID}`,
-        totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-        payment: getPaymentStatus(invoice),
-        created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
-        originalData: invoice,
-        hasPDF: !!invoice.pdf_data // Check if PDF exists
-      }));
-      
-      setInvoices(transformedInvoices);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching invoices:', err);
-      setError(err.message);
-      setLoading(false);
+const fetchInvoices = async () => {
+  try {
+    setLoading(true);
+    const response = await fetch(`${baseurl}/transactions`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch invoices');
     }
-  };
-
+    
+    const data = await response.json();
+    
+    // Filter: Only 'stock transfer' transactions (case-insensitive), exclude 'Sales'
+    const filteredTransactions = data.filter(transaction => {
+      const transactionType = String(transaction.TransactionType || '').toLowerCase().trim();
+      
+      // Include 'stock transfer' and variations, exclude 'sales'
+      return transactionType.includes('stock') || transactionType.includes('transfer');
+    });
+    
+    // Transform the data
+    const transformedInvoices = filteredTransactions.map(invoice => ({
+      id: invoice.VoucherID,
+      transactionType: invoice.TransactionType, // Keep original case
+      customerName: invoice.PartyName || 'N/A',
+      number: invoice.InvoiceNumber || `ST-${invoice.VoucherID}`, // ST prefix for stock transfer
+      totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+      payment: getPaymentStatus(invoice),
+      created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
+      originalData: invoice,
+      hasPDF: !!invoice.pdf_data,
+      // Show order number if exists
+      orderNumber: invoice.order_number || 'No Order',
+      hasOrder: !!invoice.order_number // Boolean for easy filtering
+    }));
+    
+    setInvoices(transformedInvoices);
+    setLoading(false);
+    
+    // Log summary
+    const withOrder = filteredTransactions.filter(t => t.order_number).length;
+    const withoutOrder = filteredTransactions.filter(t => !t.order_number).length;
+    
+    console.log(`✅ Fetched ${filteredTransactions.length} Stock Transfer transactions`);
+    console.log(`   📋 With order number: ${withOrder}`);
+    console.log(`   📋 Without order number: ${withoutOrder}`);
+    console.log(`   🚫 Excluded ${data.length - filteredTransactions.length} Sales transactions`);
+    
+  } catch (err) {
+    console.error('Error fetching invoices:', err);
+    setError(err.message);
+    setLoading(false);
+  }
+};
   // Helper function to determine payment status
   const getPaymentStatus = (invoice) => {
     if (invoice.ChequeNo && invoice.ChequeNo !== 'NULL') {

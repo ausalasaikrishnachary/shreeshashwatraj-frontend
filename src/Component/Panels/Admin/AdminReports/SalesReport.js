@@ -58,15 +58,15 @@ const SalesReport = () => {
     }
   };
 
-  // Determine if a record is Kacha - Use sales_type from backend
-  const isKachaRecord = (item) => {
-    return item.sales_type === "kacha";
-  };
+// Determine if a record is Kacha - Use sales_type from backend
+const isKachaRecord = (item) => {
+  return item.sales_type === "kacha";
+};
 
-  // Determine if a record is Pakka - Use sales_type from backend
-  const isPakkaRecord = (item) => {
-    return item.sales_type === "pakka";
-  };
+// Determine if a record is Pakka - Use sales_type from backend
+const isPakkaRecord = (item) => {
+  return item.sales_type === "pakka";
+};
 
   // Process data for charts and summary
   const processData = (data) => {

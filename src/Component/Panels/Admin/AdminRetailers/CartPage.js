@@ -25,6 +25,7 @@ function CartPage() {
   const [isMobileView, setIsMobileView] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [assignedStaffInfo, setAssignedStaffInfo] = useState({ id: null, name: null });
 
   // Get logged-in user
   useEffect(() => {
@@ -101,6 +102,42 @@ function CartPage() {
     fetchRetailerInfo();
   }, [retailerId, staffId, customerName, displayName, discount]);
 
+useEffect(() => {
+  if (!retailerId) return;
+  
+  const fetchAssignedStaffInfo = async () => {
+    try {
+      const response = await fetch(`${baseurl}/accounts/${retailerId}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result) {
+        // Use staffid (lowercase) from the API response
+        setAssignedStaffInfo({
+          id: result.staffid, // Note: lowercase 'staffid'
+          name: result.assigned_staff
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching assigned staff info:", err);
+      // Fallback to logged-in user info
+      const storedData = localStorage.getItem("user");
+      if (storedData) {
+        const user = JSON.parse(storedData);
+        setAssignedStaffInfo({
+          id: user.id,
+          name: user.name || user.username || "Staff"
+        });
+      }
+    }
+  };
+  
+  fetchAssignedStaffInfo();
+}, [retailerId, baseurl]);
   // Fetch product details for cart items
   useEffect(() => {
     const fetchProductDetails = async () => {
@@ -422,51 +459,53 @@ function CartPage() {
   };
 
   // Proceed to checkout
-  const handleProceedToCheckout = () => {
-    if (cartItems.length === 0) {
-      alert("Cart is empty. Add items before checkout.");
-      return;
-    }
+// Update the navigate to checkout function
+const handleProceedToCheckout = () => {
+  if (cartItems.length === 0) {
+    alert("Cart is empty. Add items before checkout.");
+    return;
+  }
 
-    // Prepare cart items with full breakdown for checkout
-    const checkoutItems = cartItems.map(item => {
-      const breakdown = calculateItemBreakdown(item);
-      const product = productDetails[item.product_id] || {};
-      
-      return {
-        ...item,
-        item_name: product.name || `Product ${item.product_id}`,
-        price: product.price || item.price || 0,
-        gst_rate: product.gst_rate || 0,
-        inclusive_gst: product.inclusive_gst || "Exclusive",
-        breakdown: {
-          ...breakdown,
-          productDetails: product
-        }
-      };
-    });
-
-    navigate("/retailers/checkout", {
-      state: {
-        retailerId,
-        customerName: retailerInfo.name,
-        displayName: retailerInfo.displayName,
-        discount,
-        cartItems: checkoutItems,
-        staffId: userRole === 'staff' ? staffId : null,
-        userRole,
-        totals: totals,
-        creditBreakdown: {
-          subtotal: totals.subtotal,
-          totalCreditCharges: totals.totalCreditCharges,
-          totalDiscount: totals.totalDiscount,
-          totalTax: totals.totalTax,
-          userDiscount: discount,
-          finalTotal: totals.finalTotal
-        }
+  // Prepare cart items with full breakdown for checkout
+  const checkoutItems = cartItems.map(item => {
+    const breakdown = calculateItemBreakdown(item);
+    const product = productDetails[item.product_id] || {};
+    
+    return {
+      ...item,
+      item_name: product.name || `Product ${item.product_id}`,
+      price: product.price || item.price || 0,
+      gst_rate: product.gst_rate || 0,
+      inclusive_gst: product.inclusive_gst || "Exclusive",
+      breakdown: {
+        ...breakdown,
+        productDetails: product
       }
-    });
-  };
+    };
+  });
+
+  navigate("/retailers/checkout", {
+    state: {
+      retailerId,
+      customerName: retailerInfo.name,
+      displayName: retailerInfo.displayName || displayName,
+      discount,
+      cartItems: checkoutItems,
+      staffId: assignedStaffInfo.id, // Use assigned staff ID
+      assignedStaffName: assignedStaffInfo.name, // Pass assigned staff name
+      userRole,
+      totals: totals,
+      creditBreakdown: {
+        subtotal: totals.subtotal,
+        totalCreditCharges: totals.totalCreditCharges,
+        totalDiscount: totals.totalDiscount,
+        totalTax: totals.totalTax,
+        userDiscount: discount,
+        finalTotal: totals.finalTotal
+      }
+    }
+  });
+};
 
   // Go back to retailers page
   const handleBackToRetailers = () => {

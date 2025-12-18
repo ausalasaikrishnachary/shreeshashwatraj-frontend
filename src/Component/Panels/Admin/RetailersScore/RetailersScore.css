@@ -211,7 +211,7 @@
 
 .rs-retailers-table th {
   padding: 16px 12px;
-  color: white;
+  color: black;
   font-weight: 600;
   text-align: left;
   font-size: 14px;
@@ -393,7 +393,8 @@
 .rs-retailers-page {
   padding: 20px;
   overflow-y: auto;
-  height: calc(100vh - 80px); /* Adjust based on your header height */
+  height: calc(100vh - 80px);
+  /* Adjust based on your header height */
   flex: 1;
 }
 
@@ -549,6 +550,7 @@
 
 /* Print Styles */
 @media print {
+
   .rs-admin-sidebar,
   .rs-admin-header,
   .rs-filters-section,
@@ -585,12 +587,14 @@
 
 /* Update responsive media queries for the Contact Info column */
 @media (max-width: 768px) {
+
   /* Hide Contact Info column on mobile */
-  .rs-retailers-table th:nth-child(12), /* Contact Info column */
+  .rs-retailers-table th:nth-child(12),
+  /* Contact Info column */
   .rs-retailers-table td:nth-child(12) {
     display: none;
   }
-  
+
   /* Show email in retailer name on mobile */
   .rs-retailer-name small {
     display: block;
@@ -601,10 +605,13 @@
 }
 
 @media (max-width: 480px) {
+
   /* Adjust which columns to hide */
-  .rs-retailers-table th:nth-child(6), /* Assigned Staff */
+  .rs-retailers-table th:nth-child(6),
+  /* Assigned Staff */
   .rs-retailers-table td:nth-child(6),
-  .rs-retailers-table th:nth-child(10), /* Orders */
+  .rs-retailers-table th:nth-child(10),
+  /* Orders */
   .rs-retailers-table td:nth-child(10) {
     display: none;
   }
