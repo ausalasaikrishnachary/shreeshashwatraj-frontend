@@ -33,177 +33,178 @@ const Period_InvoicePDFPreview = () => {
   const [qrData, setQrData] = useState(''); // For QR code data
 
 
-const transformPeriodDataToInvoiceFormat = (periodData) => {
-  const accountDetails = periodData.fullAccountDetails || periodData.customerInfo?.account_details;
-  const orderNumber = periodData.orderNumber || periodData.originalOrder?.order_number;
-  const orderMode = periodData.order_mode || periodData.originalOrder?.order_mode || "Pakka";
-  
-  let totalTaxableAmount = 0;
-  let totalTaxAmount = 0;
-  let totalGrandTotal = 0;
-  let totalSGST = 0;
-  let totalCGST = 0;
-  
-  const items = (periodData.selectedItems || []).map((item, index) => {
-    const itemTaxableAmount = parseFloat(item.taxable_amount) || 0;
-    const itemTaxAmount = parseFloat(item.tax_amount) || 0;
-    const itemTotal = parseFloat(item.item_total) || 0;
-    const quantity = parseFloat(item.quantity) || 0;
-    const price = parseFloat(item.price) || 0;
-    const discount = parseFloat(item.discount_percentage) || 0;
-    const gst = parseFloat(item.tax_percentage) || 0;
+  const transformPeriodDataToInvoiceFormat = (periodData) => {
+    const accountDetails = periodData.fullAccountDetails || periodData.customerInfo?.account_details;
+    const orderNumber = periodData.orderNumber || periodData.originalOrder?.order_number;
+    const orderMode = periodData.order_mode || periodData.originalOrder?.order_mode || "Pakka";
+
+  const transactionType = orderMode.toUpperCase() === "PAKKA" ? "Sales" : "stock transfer";  
+
+    let totalTaxableAmount = 0;
+    let totalTaxAmount = 0;
+    let totalGrandTotal = 0;
+    let totalSGST = 0;
+    let totalCGST = 0;
     
-    // Use ACTUAL values from database
-    const actualCGSTPercentage = parseFloat(item.cgst_percentage) || 0;
-    const actualSGSTPercentage = parseFloat(item.sgst_percentage) || 0;
-    const actualCGSTAmount = parseFloat(item.cgst_amount) || 0;
-    const actualSGSTAmount = parseFloat(item.sgst_amount) || 0;
+    const items = (periodData.selectedItems || []).map((item, index) => {
+      const itemTaxableAmount = parseFloat(item.taxable_amount) || 0;
+      const itemTaxAmount = parseFloat(item.tax_amount) || 0;
+      const itemTotal = parseFloat(item.item_total) || 0;
+      const quantity = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.price) || 0;
+      const discount = parseFloat(item.discount_percentage) || 0;
+      const gst = parseFloat(item.tax_percentage) || 0;
+      
+      // Use ACTUAL values from database
+      const actualCGSTPercentage = parseFloat(item.cgst_percentage) || 0;
+      const actualSGSTPercentage = parseFloat(item.sgst_percentage) || 0;
+      const actualCGSTAmount = parseFloat(item.cgst_amount) || 0;
+      const actualSGSTAmount = parseFloat(item.sgst_amount) || 0;
+      
+      // Add to totals
+      totalTaxableAmount += itemTaxableAmount;
+      totalTaxAmount += itemTaxAmount;
+      totalGrandTotal += itemTotal;
+      totalSGST += actualSGSTAmount;
+      totalCGST += actualCGSTAmount;
+      
+      return {
+        id: index + 1,
+        product: item.item_name || `Item ${index + 1}`,
+        product_id: item.product_id || '',
+        quantity: quantity,
+        price: price,
+        discount: discount,
+        gst: gst,
+        
+        // Use actual values from DB instead of calculating
+        cgst: actualCGSTPercentage,
+        sgst: actualSGSTPercentage,
+        cgst_amount: actualCGSTAmount,
+        sgst_amount: actualSGSTAmount,
+        
+        igst: 0,
+        cess: 0,
+        total: itemTotal.toFixed(2),
+        batch: '',
+        batch_id: item.batch_id || '',
+        assigned_staff: item.assigned_staff || periodData.assigned_staff || 'N/A',
+        staff_incentive: item.staff_incentive || 0,
+        taxable_amount: itemTaxableAmount, 
+        tax_amount: itemTaxAmount,
+        
+        // Store original DB values
+        original_sgst_percentage: item.sgst_percentage,
+        original_sgst_amount: item.sgst_amount,
+        original_cgst_percentage: item.cgst_percentage,
+        original_cgst_amount: item.cgst_amount
+      };
+    });
     
-    // Add to totals
-    totalTaxableAmount += itemTaxableAmount;
-    totalTaxAmount += itemTaxAmount;
-    totalGrandTotal += itemTotal;
-    totalSGST += actualSGSTAmount;
-    totalCGST += actualCGSTAmount;
+    const taxableAmount = parseFloat(periodData.selectedItemsTotal?.taxableAmount) || totalTaxableAmount;
+    const taxAmount = parseFloat(periodData.selectedItemsTotal?.taxAmount) || totalTaxAmount;
+    const grandTotal = parseFloat(periodData.selectedItemsTotal?.grandTotal) || totalGrandTotal;
+    
+    console.log("📊 Database SGST/CGST Totals:", {
+      totalSGST: totalSGST,
+      totalCGST: totalCGST,
+      totalTaxAmount: taxAmount
+    });
     
     return {
-      id: index + 1,
-      product: item.item_name || `Item ${index + 1}`,
-      product_id: item.product_id || '',
-      quantity: quantity,
-      price: price,
-      discount: discount,
-      gst: gst,
+      // Dynamic transaction type based on order mode
+      transactionType: transactionType,
       
-      // Use actual values from DB instead of calculating
-      cgst: actualCGSTPercentage,
-      sgst: actualSGSTPercentage,
-      cgst_amount: actualCGSTAmount,
-      sgst_amount: actualSGSTAmount,
+      invoiceNumber: periodData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`,
+      invoiceDate: periodData.invoiceDate || new Date().toISOString().split('T')[0],
+      validityDate: periodData.validityDate || 
+                    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       
-      igst: 0,
-      cess: 0,
-      total: itemTotal.toFixed(2),
-      batch: '',
-      batch_id: item.batch_id || '',
-      assigned_staff: item.assigned_staff || periodData.assigned_staff || 'N/A',
-      staff_incentive: item.staff_incentive || 0,
-      taxable_amount: itemTaxableAmount, 
-      tax_amount: itemTaxAmount,
+      orderNumber: orderNumber,
+      originalOrderNumber: orderNumber,
+      order_mode: orderMode,
       
-      // Store original DB values
-      original_sgst_percentage: item.sgst_percentage,
-      original_sgst_amount: item.sgst_amount,
-      original_cgst_percentage: item.cgst_percentage,
-      original_cgst_amount: item.cgst_amount
+      companyInfo: periodData.companyInfo || {
+        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+        address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+        email: "spmathur56@gmail.com",
+        phone: "9801049700",
+        gstin: "10AAOCS1541B1ZZ",
+        state: "Bihar"
+      },
+      
+      supplierInfo: {
+        name: accountDetails?.name || periodData.customerInfo?.name || periodData.originalOrder?.customer_name || 'Customer',
+        businessName: accountDetails?.business_name || periodData.customerInfo?.businessName || periodData.originalOrder?.customer_name || 'Business',
+        gstin: accountDetails?.gstin || periodData.customerInfo?.gstin || '',
+        state: accountDetails?.billing_state || periodData.customerInfo?.state || '',
+        id: periodData.customerInfo?.id || '',
+        email: accountDetails?.email || '',
+        phone: accountDetails?.phone_number || accountDetails?.mobile_number || '',
+        pan: accountDetails?.pan || '',
+        fullDetails: accountDetails
+      },
+      
+      billingAddress: accountDetails ? {
+        addressLine1: accountDetails.billing_address_line1 || "Address not specified",
+        addressLine2: accountDetails.billing_address_line2 || "",
+        city: accountDetails.billing_city || "City not specified",
+        pincode: accountDetails.billing_pin_code || "000000",
+        state: accountDetails.billing_state || "Karnataka",
+        country: accountDetails.billing_country || "India",
+        gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
+        branch_name: accountDetails.billing_branch_name || ""
+      } : periodData.billingAddress || {
+        addressLine1: periodData.originalOrder?.billing_address || "Address not specified",
+        addressLine2: "",
+        city: periodData.originalOrder?.billing_city || "City not specified",
+        pincode: periodData.originalOrder?.billing_pincode || "000000",
+        state: periodData.originalOrder?.billing_state || "Karnataka"
+      },
+      
+      shippingAddress: accountDetails ? {
+        addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
+        addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
+        city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
+        pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
+        state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
+        country: accountDetails.shipping_country || accountDetails.billing_country || "India",
+        gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
+        branch_name: accountDetails.shipping_branch_name || accountDetails.billing_branch_name || ""
+      } : periodData.shippingAddress || periodData.billingAddress || {
+        addressLine1: periodData.originalOrder?.shipping_address || "Address not specified",
+        addressLine2: "",
+        city: periodData.originalOrder?.shipping_city || "City not specified",
+        pincode: periodData.originalOrder?.shipping_pincode || "000000",
+        state: periodData.originalOrder?.shipping_state || "Karnataka"
+      },
+      
+      items: items,
+      
+      taxableAmount: (typeof taxableAmount === 'number' ? taxableAmount : parseFloat(taxableAmount) || 0).toFixed(2),
+      totalGST: (typeof taxAmount === 'number' ? taxAmount : parseFloat(taxAmount) || 0).toFixed(2),
+      grandTotal: (typeof grandTotal === 'number' ? grandTotal : parseFloat(grandTotal) || 0).toFixed(2),
+      totalCess: "0.00",
+      
+      note: periodData.note || "",
+      transportDetails: periodData.transportDetails || "Standard delivery",
+      additionalCharge: "",
+      additionalChargeAmount: "0.00",
+      
+      // Use actual SGST/CGST totals from database
+      totalCGST: totalCGST.toFixed(2),
+      totalSGST: totalSGST.toFixed(2),
+      totalIGST: "0.00",
+      taxType: "CGST/SGST",
+      
+      assigned_staff: periodData.assigned_staff || periodData.originalOrder?.assigned_staff || 'N/A',
+      staffid: periodData.staff_id || periodData.staffid || periodData.originalOrder?.staff_id || null,
+      staff_id: periodData.staff_id || periodData.staffid || periodData.originalOrder?.staff_id || null,
+      staff_incentive: periodData.originalOrder?.staff_incentive || 0,
+      
+      accountDetails: accountDetails
     };
-  });
-  
-  const taxableAmount = parseFloat(periodData.selectedItemsTotal?.taxableAmount) || totalTaxableAmount;
-  const taxAmount = parseFloat(periodData.selectedItemsTotal?.taxAmount) || totalTaxAmount;
-  const grandTotal = parseFloat(periodData.selectedItemsTotal?.grandTotal) || totalGrandTotal;
-  
-  console.log("📊 Database SGST/CGST Totals:", {
-    totalSGST: totalSGST,
-    totalCGST: totalCGST,
-    totalTaxAmount: taxAmount
-  });
-  
-  return {
-    // Static transaction type
-    transactionType: 'stock transfer',
-    
-    invoiceNumber: periodData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`,
-    invoiceDate: periodData.invoiceDate || new Date().toISOString().split('T')[0],
-    validityDate: periodData.validityDate || 
-                  new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    
-    orderNumber: orderNumber,
-    originalOrderNumber: orderNumber,
-    order_mode: orderMode,
-    
-    companyInfo: periodData.companyInfo || {
-      name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-      email: "spmathur56@gmail.com",
-      phone: "9801049700",
-      gstin: "10AAOCS1541B1ZZ",
-      state: "Bihar"
-    },
-    
-    supplierInfo: {
-      name: accountDetails?.name || periodData.customerInfo?.name || periodData.originalOrder?.customer_name || 'Customer',
-      businessName: accountDetails?.business_name || periodData.customerInfo?.businessName || periodData.originalOrder?.customer_name || 'Business',
-      gstin: accountDetails?.gstin || periodData.customerInfo?.gstin || '',
-      state: accountDetails?.billing_state || periodData.customerInfo?.state || '',
-      id: periodData.customerInfo?.id || '',
-      email: accountDetails?.email || '',
-      phone: accountDetails?.phone_number || accountDetails?.mobile_number || '',
-      pan: accountDetails?.pan || '',
-      fullDetails: accountDetails
-    },
-    
-    billingAddress: accountDetails ? {
-      addressLine1: accountDetails.billing_address_line1 || "Address not specified",
-      addressLine2: accountDetails.billing_address_line2 || "",
-      city: accountDetails.billing_city || "City not specified",
-      pincode: accountDetails.billing_pin_code || "000000",
-      state: accountDetails.billing_state || "Karnataka",
-      country: accountDetails.billing_country || "India",
-      gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
-      branch_name: accountDetails.billing_branch_name || ""
-    } : periodData.billingAddress || {
-      addressLine1: periodData.originalOrder?.billing_address || "Address not specified",
-      addressLine2: "",
-      city: periodData.originalOrder?.billing_city || "City not specified",
-      pincode: periodData.originalOrder?.billing_pincode || "000000",
-      state: periodData.originalOrder?.billing_state || "Karnataka"
-    },
-    
-    shippingAddress: accountDetails ? {
-      addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
-      addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
-      city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
-      pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
-      state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
-      country: accountDetails.shipping_country || accountDetails.billing_country || "India",
-      gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
-      branch_name: accountDetails.shipping_branch_name || accountDetails.billing_branch_name || ""
-    } : periodData.shippingAddress || periodData.billingAddress || {
-      addressLine1: periodData.originalOrder?.shipping_address || "Address not specified",
-      addressLine2: "",
-      city: periodData.originalOrder?.shipping_city || "City not specified",
-      pincode: periodData.originalOrder?.shipping_pincode || "000000",
-      state: periodData.originalOrder?.shipping_state || "Karnataka"
-    },
-    
-    items: items,
-    
-    taxableAmount: (typeof taxableAmount === 'number' ? taxableAmount : parseFloat(taxableAmount) || 0).toFixed(2),
-    totalGST: (typeof taxAmount === 'number' ? taxAmount : parseFloat(taxAmount) || 0).toFixed(2),
-    grandTotal: (typeof grandTotal === 'number' ? grandTotal : parseFloat(grandTotal) || 0).toFixed(2),
-    totalCess: "0.00",
-    
-    note: periodData.note || "",
-    transportDetails: periodData.transportDetails || "Standard delivery",
-    additionalCharge: "",
-    additionalChargeAmount: "0.00",
-    
-    // Use actual SGST/CGST totals from database
-    totalCGST: totalCGST.toFixed(2),
-    totalSGST: totalSGST.toFixed(2),
-    totalIGST: "0.00",
-    taxType: "CGST/SGST",
-    
-    assigned_staff: periodData.assigned_staff || periodData.originalOrder?.assigned_staff || 'N/A',
-    staffid: periodData.staff_id || periodData.staffid || periodData.originalOrder?.staff_id || null,
-    staff_id: periodData.staff_id || periodData.staffid || periodData.originalOrder?.staff_id || null,
-    staff_incentive: periodData.originalOrder?.staff_incentive || 0,
-    
-    accountDetails: accountDetails
   };
-};
-
   
 useEffect(() => {
   if (invoiceData) {
@@ -702,7 +703,7 @@ const handleGenerateInvoice = async () => {
                       periodInvoiceData?.originalOrder?.order_mode || 
                       "PAKKA";
     
-    console.log("🎯 Order Mode for invoice generation:", orderMode);
+    const transactionType = orderMode.toUpperCase() === "PAKKA" ? "Sales" : "stock transfer";   
     
     if (fromPeriod && periodInvoiceData) {
       const selectedItems = periodInvoiceData.selectedItems || [];
@@ -734,6 +735,8 @@ const handleGenerateInvoice = async () => {
                             0;
       
       console.log("💰 Staff Incentive for invoice:", staffIncentive);
+      console.log("🔧 Determined Transaction Type:", transactionType);
+      console.log("🔧 Order Mode:", orderMode);
       
       // Calculate totals
       let taxableAmount = 0;
@@ -760,11 +763,10 @@ const handleGenerateInvoice = async () => {
         totalDiscount += itemDiscountAmount;
       });
       
+      // Create the base payload without spreading periodInvoiceData first
       const payload = {
-        // Static transaction type - always 'stock transfer'
-        transactionType: 'stock transfer',
-        
-        ...periodInvoiceData,
+        // Dynamic transaction type based on order mode
+        transactionType: transactionType,
         
         orderNumber: orderNumber,
         order_number: orderNumber,
@@ -811,7 +813,8 @@ const handleGenerateInvoice = async () => {
           totalGrandTotal: grandTotal,
           totalDiscountAmount: totalDiscount,
           itemCount: selectedItems.length,
-          staffIncentive: staffIncentive
+          staffIncentive: staffIncentive,
+          transactionType: transactionType
         },
         
         BasicAmount: taxableAmount,
@@ -852,9 +855,6 @@ const handleGenerateInvoice = async () => {
           gstin: accountDetails.shipping_gstin || accountDetails.gstin
         } : periodInvoiceData.shippingAddress || periodInvoiceData.billingAddress,
         
-        // Always 'stock transfer'
-        transactionType: 'stock transfer',
-        
         selectedSupplierId: periodInvoiceData.customerInfo?.id || periodInvoiceData.PartyID,
         PartyID: periodInvoiceData.customerInfo?.id || periodInvoiceData.PartyID,
         AccountID: periodInvoiceData.customerInfo?.id || periodInvoiceData.AccountID,
@@ -876,14 +876,24 @@ const handleGenerateInvoice = async () => {
         Subtotal: taxableAmount
       };
 
-      console.log("📦 Sending invoice creation request with transactionType:", payload.transactionType);
+      // Create final payload by spreading periodInvoiceData first, then our payload
+      // But remove any existing transactionType from periodInvoiceData to avoid conflicts
+      const { transactionType: existingTransactionType, ...periodDataWithoutTransactionType } = periodInvoiceData;
+      
+      const finalPayload = {
+        ...periodDataWithoutTransactionType,
+        ...payload  // Our payload values will override any duplicates
+      };
+
+      console.log("📦 Sending invoice creation request with transactionType:", finalPayload.transactionType);
+      console.log("📦 Complete payload:", finalPayload);
 
       const response = await fetch(`${baseurl}/transaction`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(finalPayload),
       });
 
       const result = await response.json();
@@ -896,7 +906,8 @@ const handleGenerateInvoice = async () => {
         try {
           const updatedInvoiceData = {
             ...invoiceData,
-            voucherId: result.voucherId
+            voucherId: result.voucherId,
+            transactionType: transactionType // Add transaction type here too
           };
           
           // Generate and store PDF
@@ -904,21 +915,22 @@ const handleGenerateInvoice = async () => {
           
           if (pdfResult.success) {
             console.log('✅ PDF stored successfully with result:', pdfResult);
-            setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber}. PDF has been stored.`);
+            setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber}. PDF has been stored. Transaction Type: ${transactionType}`);
           }
         } catch (pdfError) {
           console.warn('⚠️ Invoice created but PDF storage failed:', pdfError.message);
           setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber} (PDF storage failed: ${pdfError.message})`);
         }
       } else {
-        setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber || payload.invoiceNumber}`);
+        setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber || payload.invoiceNumber}. Transaction Type: ${transactionType}`);
       }
 
       // ✅ Also update the local invoiceData with voucherId if available
       if (result.voucherId) {
         setInvoiceData(prev => ({
           ...prev,
-          voucherId: result.voucherId
+          voucherId: result.voucherId,
+          transactionType: transactionType
         }));
       }
 

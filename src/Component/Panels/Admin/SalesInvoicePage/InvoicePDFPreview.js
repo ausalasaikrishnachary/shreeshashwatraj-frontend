@@ -23,27 +23,33 @@ const InvoicePDFPreview = () => {
   const [deleting, setDeleting] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [receiptFormData, setReceiptFormData] = useState({
-    receiptNumber: '',
-    retailerId: '',
-    amount: '',
-    currency: 'INR',
-    paymentMethod: 'Direct Deposit',
-    receiptDate: new Date().toISOString().split('T')[0],
-    note: '',
-    bankName: '',
-    transactionDate: '',
-    reconciliationOption: 'Do Not Reconcile',
-    retailerMobile: '',
-    retailerEmail: '',
-    retailerGstin: '',
-    retailerBusinessName: '',
-    invoiceNumber: '',
-    transactionProofFile: null,
-      product_id: '', 
-  batch_id: '' ,
-  TransactionType: 'Receipt' 
-  });
+const [receiptFormData, setReceiptFormData] = useState({
+  receiptNumber: '',
+  retailerId: '',
+  assignedStaffName: '', 
+  staff_id: '',
+  amount: '',
+  currency: 'INR',
+  paymentMethod: 'Direct Deposit',
+  receiptDate: new Date().toISOString().split('T')[0],
+  note: '',
+  bankName: '',
+  transactionDate: '',
+  reconciliationOption: 'Do Not Reconcile',
+  retailerMobile: '',
+  retailerEmail: '',
+  retailerGstin: '',
+  retailerBusinessName: '',
+  invoiceNumber: '',
+  transactionProofFile: null,
+  product_id: '', 
+  batch_id: '',
+  TransactionType: 'Receipt',
+  
+  // ✅ Add these new fields
+  retailer_staff_id: '', // Staff ID of the retailer from invoice
+  invoice_assigned_staff: '' // Assigned staff from invoice
+});
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
 
@@ -333,152 +339,157 @@ const transformPaymentData = (apiData) => {
     }
   };
 
-  const transformApiDataToInvoiceFormat = (apiData) => {
-    console.log('Transforming API data:', apiData);
+ const transformApiDataToInvoiceFormat = (apiData) => {
+  console.log('Transforming API data:', apiData);
+  
+  let batchDetails = [];
+  try {
+    if (apiData.batch_details && typeof apiData.batch_details === 'string') {
+      batchDetails = JSON.parse(apiData.batch_details);
+    } else if (Array.isArray(apiData.batch_details)) {
+      batchDetails = apiData.batch_details;
+    } else if (apiData.BatchDetails && typeof apiData.BatchDetails === 'string') {
+      batchDetails = JSON.parse(apiData.BatchDetails);
+    }
+  } catch (error) {
+    console.error('Error parsing batch details:', error);
+  }
+
+  const items = batchDetails.map((batch, index) => {
+    const quantity = parseFloat(batch.quantity) || 0;
+    const price = parseFloat(batch.price) || 0;
+    const discount = parseFloat(batch.discount) || 0;
+    const gst = parseFloat(batch.gst) || 0;
+    const cess = parseFloat(batch.cess) || 0;
     
-    let batchDetails = [];
-    try {
-      if (apiData.batch_details && typeof apiData.batch_details === 'string') {
-        batchDetails = JSON.parse(apiData.batch_details);
-      } else if (Array.isArray(apiData.batch_details)) {
-        batchDetails = apiData.batch_details;
-      } else if (apiData.BatchDetails && typeof apiData.BatchDetails === 'string') {
-        batchDetails = JSON.parse(apiData.BatchDetails);
-      }
-    } catch (error) {
-      console.error('Error parsing batch details:', error);
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    const amountAfterDiscount = subtotal - discountAmount;
+    const gstAmount = amountAfterDiscount * (gst / 100);
+    const cessAmount = amountAfterDiscount * (cess / 100);
+    const total = amountAfterDiscount + gstAmount + cessAmount;
+
+    const isSameState = parseFloat(apiData.IGSTAmount) === 0;
+    let cgst, sgst, igst;
+    
+    if (isSameState) {
+      cgst = gst / 2;
+      sgst = gst / 2;
+      igst = 0;
+    } else {
+      cgst = 0;
+      sgst = 0;
+      igst = gst;
     }
 
-    const items = batchDetails.map((batch, index) => {
-      const quantity = parseFloat(batch.quantity) || 0;
-      const price = parseFloat(batch.price) || 0;
-      const discount = parseFloat(batch.discount) || 0;
-      const gst = parseFloat(batch.gst) || 0;
-      const cess = parseFloat(batch.cess) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const gstAmount = amountAfterDiscount * (gst / 100);
-      const cessAmount = amountAfterDiscount * (cess / 100);
-      const total = amountAfterDiscount + gstAmount + cessAmount;
-
-      const isSameState = parseFloat(apiData.IGSTAmount) === 0;
-      let cgst, sgst, igst;
-      
-      if (isSameState) {
-        cgst = gst / 2;
-        sgst = gst / 2;
-        igst = 0;
-      } else {
-        cgst = 0;
-        sgst = 0;
-        igst = gst;
-      }
-
-      return {
-        id: index + 1,
-        product: batch.product || 'Product',
-        description: batch.description || `Batch: ${batch.batch}`,
-        quantity: quantity,
-        price: price,
-        discount: discount,
-        gst: gst,
-        cgst: cgst,
-        sgst: sgst,
-        igst: igst,
-        cess: cess,
-        total: total.toFixed(2),
-        batch: batch.batch || '',
-        batch_id: batch.batch_id || '',
-        product_id: batch.product_id || '',
-              assigned_staff: batch.assigned_staff  || 'N/A',
-
-      };
-    }) || [];
-
-    const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
-    const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
-    const grandTotal = parseFloat(apiData.TotalAmount) || 0;
-      const assignedStaff = apiData.assigned_staff || apiData.AssignedStaff || apiData.staff_name || 'N/A';
-
-
     return {
-      voucherId: apiData.VoucherID,
-      invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
-      invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      
-      companyInfo: {
-           name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+      id: index + 1,
+      product: batch.product || 'Product',
+      description: batch.description || `Batch: ${batch.batch}`,
+      quantity: quantity,
+      price: price,
+      discount: discount,
+      gst: gst,
+      cgst: cgst,
+      sgst: sgst,
+      igst: igst,
+      cess: cess,
+      total: total.toFixed(2),
+      batch: batch.batch || '',
+      batch_id: batch.batch_id || '',
+      product_id: batch.product_id || '',
+      assigned_staff: batch.assigned_staff || apiData.assigned_staff || 'N/A'
+    };
+  }) || [];
+
+  const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
+  const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
+  const grandTotal = parseFloat(apiData.TotalAmount) || 0;
+  
+  // ✅ Get staff information from API response
+  const assignedStaff = apiData.assigned_staff || apiData.AssignedStaff || apiData.staff_name || 'N/A';
+  const staffId = apiData.staffid || apiData.staff_id || null;
+
+  return {
+    voucherId: apiData.VoucherID,
+    invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
+    invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    
+    companyInfo: {
+      name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
       address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
       email: "spmathur56@gmail.com",
       phone: "9801049700",
       gstin: "10AAOCS1541B1ZZ",
       state: "Bihar"
-      },
-      
-      supplierInfo: {
-        name: apiData.PartyName || 'Customer',
-        businessName: apiData.AccountName || 'Business', // This is the PartyName
-        gstin: apiData.gstin || '',
-        state: apiData.billing_state || apiData.BillingState || '',
-        id: apiData.PartyID || null
-      },
-      
-      billingAddress: {
-        addressLine1: apiData.billing_address_line1 || apiData.BillingAddress || '',
-        addressLine2: apiData.billing_address_line2 || '',
-        city: apiData.billing_city || apiData.BillingCity || '',
-        pincode: apiData.billing_pin_code || apiData.BillingPincode || '',
-        state: apiData.billing_state || apiData.BillingState || ''
-      },
-      
-      shippingAddress: {
-        addressLine1: apiData.shipping_address_line1 || apiData.ShippingAddress || apiData.billing_address_line1 || apiData.BillingAddress || '',
-        addressLine2: apiData.shipping_address_line2 || apiData.billing_address_line2 || '',
-        city: apiData.shipping_city || apiData.ShippingCity || apiData.billing_city || apiData.BillingCity || '',
-        pincode: apiData.shipping_pin_code || apiData.ShippingPincode || apiData.billing_pin_code || apiData.BillingPincode || '',
-        state: apiData.shipping_state || apiData.ShippingState || apiData.billing_state || apiData.BillingState || ''
-      },
-      
-      items: items.length > 0 ? items : [{
-        id: 1,
-        product: 'Product',
-        description: 'No batch details available',
-        quantity: 1,
-        price: grandTotal,
-        discount: 0,
-        gst: parseFloat(apiData.IGSTPercentage) || 0,
-        cgst: parseFloat(apiData.CGSTPercentage) || 0,
-        sgst: parseFloat(apiData.SGSTPercentage) || 0,
-        igst: parseFloat(apiData.IGSTPercentage) || 0,
-        cess: 0,
-        total: grandTotal.toFixed(2),
-        batch: '',
-        batch_id: '',
-        product_id: '',
-        assigned_staff: assignedStaff 
-      }],
-      
-      taxableAmount: taxableAmount.toFixed(2),
-      totalGST: totalGST.toFixed(2),
-      grandTotal: grandTotal.toFixed(2),
-      totalCess: "0.00",
-      
-      note: apiData.Notes || "Thank you for your business!",
-      transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
-      additionalCharge: "",
-      additionalChargeAmount: "0.00",
-      
-      totalCGST: parseFloat(apiData.CGSTAmount) || 0,
-      totalSGST: parseFloat(apiData.SGSTAmount) || 0,
-      totalIGST: parseFloat(apiData.IGSTAmount) || 0,
-      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST",
+    },
+    
+    supplierInfo: {
+      name: apiData.PartyName || 'Customer',
+      businessName: apiData.AccountName || 'Business',
+      gstin: apiData.gstin || '',
+      state: apiData.billing_state || apiData.BillingState || '',
+      id: apiData.PartyID || null,
+      staffid: staffId, // ✅ Add staffid
+      assigned_staff: assignedStaff // ✅ Add assigned_staff
+    },
+    
+    billingAddress: {
+      addressLine1: apiData.billing_address_line1 || apiData.BillingAddress || '',
+      addressLine2: apiData.billing_address_line2 || '',
+      city: apiData.billing_city || apiData.BillingCity || '',
+      pincode: apiData.billing_pin_code || apiData.BillingPincode || '',
+      state: apiData.billing_state || apiData.BillingState || ''
+    },
+    
+    shippingAddress: {
+      addressLine1: apiData.shipping_address_line1 || apiData.ShippingAddress || apiData.billing_address_line1 || apiData.BillingAddress || '',
+      addressLine2: apiData.shipping_address_line2 || apiData.billing_address_line2 || '',
+      city: apiData.shipping_city || apiData.ShippingCity || apiData.billing_city || apiData.BillingCity || '',
+      pincode: apiData.shipping_pin_code || apiData.ShippingPincode || apiData.billing_pin_code || apiData.BillingPincode || '',
+      state: apiData.shipping_state || apiData.ShippingState || apiData.billing_state || apiData.BillingState || ''
+    },
+    
+    items: items.length > 0 ? items : [{
+      id: 1,
+      product: 'Product',
+      description: 'No batch details available',
+      quantity: 1,
+      price: grandTotal,
+      discount: 0,
+      gst: parseFloat(apiData.IGSTPercentage) || 0,
+      cgst: parseFloat(apiData.CGSTPercentage) || 0,
+      sgst: parseFloat(apiData.SGSTPercentage) || 0,
+      igst: parseFloat(apiData.IGSTPercentage) || 0,
+      cess: 0,
+      total: grandTotal.toFixed(2),
+      batch: '',
+      batch_id: '',
+      product_id: '',
+      assigned_staff: assignedStaff 
+    }],
+    
+    taxableAmount: taxableAmount.toFixed(2),
+    totalGST: totalGST.toFixed(2),
+    grandTotal: grandTotal.toFixed(2),
+    totalCess: "0.00",
+    
+    note: apiData.Notes || "Thank you for your business!",
+    transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
+    additionalCharge: "",
+    additionalChargeAmount: "0.00",
+    
+    totalCGST: parseFloat(apiData.CGSTAmount) || 0,
+    totalSGST: parseFloat(apiData.SGSTAmount) || 0,
+    totalIGST: parseFloat(apiData.IGSTAmount) || 0,
+    taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST",
 
-      assigned_staff: assignedStaff
-    };
+    // ✅ Add staff fields at the top level
+    staffid: staffId,
+    assigned_staff: assignedStaff
   };
+};
 
 const PaymentStatus = () => {
   if (paymentLoading) {
@@ -1049,20 +1060,36 @@ const handleOpenReceiptModal = () => {
   console.log("✅ balanceDue:", balanceDue);
 
   const firstItem = invoiceData.items[0];
-  console.log("✅ firstItem:", firstItem);
-
-  // Debug: Check if batch_id exists in the first item
-  console.log("🔍 First item batch_id:", firstItem?.batch_id);
-  console.log("🔍 All items:", invoiceData.items);
+  
+  // Get staff data from invoice
+  const staffId = invoiceData.supplierInfo.id || '';
+  const assignedStaffName = invoiceData.assigned_staff || 'N/A';
+  
+  // ✅ Get staff_id from the invoice data (not from localStorage)
+  // The staff_id who created the invoice is stored in the invoice data
+  const invoiceStaffId = invoiceData.staffid || invoiceData.supplierInfo.staffid || '';
+  
+  // Get logged-in user's staff ID (for who is creating the receipt)
+  const loggedInStaffId = localStorage.getItem('staff_id') || invoiceStaffId || '';
+  
+  console.log("👤 Invoice Staff ID:", invoiceStaffId);
+  console.log("👤 Assigned Staff Name from invoice:", assignedStaffName);
+  console.log("👤 Logged-in Staff ID (creator):", loggedInStaffId);
 
   const updatedForm = {
     retailerBusinessName: invoiceData.supplierInfo.name,
-    retailerId: invoiceData.supplierInfo.id || '',
+    retailerId: staffId, // Retailer staff ID from invoice
+    assignedStaffName: assignedStaffName, // Staff name from invoice
+    staff_id: loggedInStaffId, // Logged-in user's staff ID who is creating receipt
     amount: balanceDue,
     invoiceNumber: invoiceData.invoiceNumber,
     product_id: firstItem?.product_id || '',
-    batch_id: firstItem?.batch_id || '', // Ensure this is being set
-    TransactionType: 'Receipt'
+    batch_id: firstItem?.batch_id || '',
+    TransactionType: 'Receipt',
+    
+    // ✅ Add these fields to ensure they're passed to backend
+    retailer_staff_id: invoiceStaffId, // Staff ID of the retailer from invoice
+    invoice_assigned_staff: assignedStaffName // Assigned staff from invoice
   };
 
   console.log("✅ Updated Receipt Form Data:", updatedForm);
@@ -1078,7 +1105,6 @@ const handleOpenReceiptModal = () => {
   console.log("📌 Opening Receipt Modal");
   setShowReceiptModal(true);
 };
-
 
   const handleCloseReceiptModal = () => {
     setShowReceiptModal(false);
@@ -1102,7 +1128,7 @@ const handleOpenReceiptModal = () => {
     if (fileInput) fileInput.value = '';
   };
 
- const handleCreateReceiptFromInvoice = async () => {
+const handleCreateReceiptFromInvoice = async () => {
   if (!receiptFormData.amount || parseFloat(receiptFormData.amount) <= 0) {
     alert('Please enter a valid amount');
     return;
@@ -1113,8 +1139,11 @@ const handleOpenReceiptModal = () => {
 
     const formDataToSend = new FormData();
 
+    // ✅ Add ALL receipt data including staff information
     formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
-    formDataToSend.append('retailer_id', receiptFormData.retailerId);
+    formDataToSend.append('retailer_id', receiptFormData.retailerId); // Staff ID from invoice
+    formDataToSend.append('assigned_staff_name', receiptFormData.assignedStaffName); // Staff name from invoice
+    formDataToSend.append('staff_id', receiptFormData.staff_id); // Logged-in staff ID creating receipt
     formDataToSend.append('TransactionType', receiptFormData.TransactionType);
     formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
     formDataToSend.append('amount', receiptFormData.amount);
@@ -1130,19 +1159,39 @@ const handleOpenReceiptModal = () => {
     formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
     formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
     
-    // FIX: Properly append product_id and batch_id - ensure they have values
+    // ✅ Product and batch info
     formDataToSend.append('product_id', receiptFormData.product_id || '');
     formDataToSend.append('batch_id', receiptFormData.batch_id || '');
     
+    // ✅ Business info
     formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
+    
+    // ✅ Staff information from the original invoice
+    formDataToSend.append('invoice_staff_id', receiptFormData.retailer_staff_id || ''); // Staff ID from original invoice
+    formDataToSend.append('invoice_assigned_staff', receiptFormData.invoice_assigned_staff || ''); // Assigned staff from original invoice
+    
+    // ✅ Mark as created from invoice
     formDataToSend.append('from_invoice', 'true');
+    
+    // ✅ Add voucher ID if available
+    if (invoiceData && invoiceData.voucherId) {
+      formDataToSend.append('voucher_id', invoiceData.voucherId);
+    }
 
     if (receiptFormData.transactionProofFile) {
       formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
     }
 
     // Debug: Log all FormData entries
-    console.log('FormData entries:');
+    console.log('📤 FormData entries for receipt creation:');
+    console.log('=== STAFF INFORMATION ===');
+    console.log('staff_id (creator):', receiptFormData.staff_id);
+    console.log('retailer_id (from invoice):', receiptFormData.retailerId);
+    console.log('assigned_staff_name:', receiptFormData.assignedStaffName);
+    console.log('invoice_staff_id:', receiptFormData.retailer_staff_id);
+    console.log('invoice_assigned_staff:', receiptFormData.invoice_assigned_staff);
+    console.log('========================');
+    
     for (let [key, value] of formDataToSend.entries()) {
       console.log(`${key}:`, value);
     }
@@ -1154,20 +1203,31 @@ const handleOpenReceiptModal = () => {
 
     if (response.ok) {
       const result = await response.json();
-      console.log('Receipt created successfully:', result);
+      console.log('✅ Receipt created successfully:', result);
+      
+      // Check if staff data was saved
+      if (result.data) {
+        console.log('Receipt saved with staff data:', {
+          staff_id: result.data.staff_id,
+          assigned_staff: result.data.assigned_staff
+        });
+      }
+      
       handleCloseReceiptModal();
       alert('Receipt created successfully!');
       
+      // Refresh payment data
       if (invoiceData && invoiceData.invoiceNumber) {
         fetchPaymentData(invoiceData.invoiceNumber);
       }
       
-      if (result.id) {
-        navigate(`/receipts_view/${result.id}`);
+      // Navigate to receipt view
+      if (result.id || result.data?.id) {
+        navigate(`/receipts_view/${result.id || result.data.id}`);
       }
     } else {
       const errorText = await response.text();
-      console.error('Failed to create receipt:', errorText);
+      console.error('❌ Failed to create receipt:', errorText);
       let errorMessage = 'Failed to create receipt. ';
       try {
         const errorData = JSON.parse(errorText);
@@ -1178,7 +1238,7 @@ const handleOpenReceiptModal = () => {
       alert(errorMessage);
     }
   } catch (err) {
-    console.error('Error creating receipt:', err);
+    console.error('❌ Error creating receipt:', err);
     alert('Network error. Please check your connection and try again.');
   } finally {
     setIsCreatingReceipt(false);

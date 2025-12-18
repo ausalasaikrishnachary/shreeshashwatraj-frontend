@@ -206,7 +206,8 @@ const transformApiDataToFormFormat = (apiData) => {
       total: total.toFixed(2),
       batch: batch.batch || '',
       batch_id: batch.batch_id || '',
-      batchDetails: batch.batchDetails || null
+      batchDetails: batch.batchDetails || null,
+      assigned_staff: batch.assigned_staff || apiData.assigned_staff || apiData.AssignedStaff || 'N/A' // ✅ Add assigned_staff
     };
   }) || [];
 
@@ -230,10 +231,12 @@ const transformApiDataToFormFormat = (apiData) => {
     
     supplierInfo: {
       name: apiData.PartyName || 'Customer',
-      business_name: account?.business_name || apiData.AccountName || 'Business', // ✅ Add both fields
+      business_name: account?.business_name || apiData.AccountName || 'Business',
       gstin: apiData.gstin || '',
       state: apiData.billing_state || apiData.BillingState || '',
-      id: apiData.PartyID || null
+      id: apiData.PartyID || null,
+      staffid: apiData.staffid || apiData.staff_id || null, // ✅ Add staffid
+      assigned_staff: apiData.assigned_staff || apiData.AssignedStaff || account?.assigned_staff || 'N/A' // ✅ Add assigned_staff
     },
     
     billingAddress: {
@@ -261,7 +264,11 @@ const transformApiDataToFormFormat = (apiData) => {
     transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
     additionalCharge: "",
     additionalChargeAmount: "0.00",
-    taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST"
+    taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST",
+    
+    // ✅ Add staff fields at the top level
+    staffid: apiData.staffid || apiData.staff_id || null,
+    assigned_staff: apiData.assigned_staff || apiData.AssignedStaff || 'N/A'
   };
 };
 
@@ -823,10 +830,18 @@ const handleSubmit = async (e) => {
     const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
     console.log('Submitting invoice with number:', finalInvoiceNumber);
 
-    // 🔥 ADD LOGS FOR STAFFID DEBUGGING:
-    console.log('👤 Frontend - Staff ID (selectedStaffId):', selectedStaffId);
-    console.log('👤 Frontend - Staff ID from supplierInfo:', invoiceData.supplierInfo.staffid);
-    console.log('👤 Frontend - Staff ID from accounts:', accounts.find(acc => acc.staffid == selectedStaffId)?.staffid);
+    // Get staff information
+    const staffAccount = accounts.find(acc => acc.staffid == selectedStaffId);
+    const staffName = staffAccount?.assigned_staff || 
+                     invoiceData.supplierInfo.assigned_staff || 
+                     accounts.find(acc => acc.id == selectedSupplierId)?.assigned_staff ||
+                     'N/A';
+
+    console.log('👤 Staff Info:', {
+      selectedStaffId,
+      staffName,
+      staffAccount
+    });
 
     // Calculate GST breakdown for backend
     const sameState = isSameState();
@@ -860,64 +875,48 @@ const handleSubmit = async (e) => {
       igst: parseFloat(item.igst) || 0,
       cess: parseFloat(item.cess) || 0,
       total: parseFloat(item.total) || 0,
-      batchDetails: item.batchDetails
+      batchDetails: item.batchDetails,
+      assigned_staff: staffName // ✅ Add assigned_staff to batch details
     }));
 
     // Get product_id and batch_id for logging
     const firstItemProductId = invoiceData.items[0]?.product_id || null;
     const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
     
-    // Find staff name from accounts if staffid exists
-    const staffAccount = accounts.find(acc => acc.staffid == selectedStaffId);
-    const staffName = staffAccount?.assigned_staff || 
-                     invoiceData.supplierInfo.assigned_staff || 
-                     accounts.find(acc => acc.id == selectedSupplierId)?.assigned_staff;
+    const payload = {
+      ...invoiceData,
+      invoiceNumber: finalInvoiceNumber,
+      selectedSupplierId: selectedSupplierId,
+      staffid: selectedStaffId, // ✅ This is important
+      assigned_staff: staffName, // ✅ This is important
+      staffName: staffName,
+      type: 'sales',
+      totalCGST: totalCGST.toFixed(2),
+      totalSGST: totalSGST.toFixed(2),
+      totalIGST: totalIGST.toFixed(2),
+      taxType: sameState ? "CGST/SGST" : "IGST",
+      batchDetails: batchDetails,
+      product_id: 123,
+      batch_id: "bth0001",
+      primaryProductId: firstItemProductId,
+      primaryBatchId: firstItemBatchId,
+      PartyID: selectedSupplierId,
+      AccountID: invoiceData.supplierInfo.accountId,
+      PartyName: invoiceData.supplierInfo.name,
+      AccountName: invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName || invoiceData.supplierInfo.name
+    };
 
-const payload = {
-  ...invoiceData,
-  invoiceNumber: finalInvoiceNumber,
-  selectedSupplierId: selectedSupplierId,
-  staffid: selectedStaffId,
-  staffName: staffName,
-  assigned_staff: staffName,
-  type: 'sales',
-  totalCGST: totalCGST.toFixed(2),
-  totalSGST: totalSGST.toFixed(2),
-  totalIGST: totalIGST.toFixed(2),
-  taxType: sameState ? "CGST/SGST" : "IGST",
-  batchDetails: batchDetails,
-  product_id: 123,
-  batch_id: "bth0001",
-  primaryProductId: firstItemProductId,
-  primaryBatchId: firstItemBatchId,
-  PartyID: selectedSupplierId,
-  AccountID: invoiceData.supplierInfo.accountId,
-  PartyName: invoiceData.supplierInfo.name, // This stays as name
-  AccountName: invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName || invoiceData.supplierInfo.name // ✅ Use business_name here
-};
-
-// 🔥 LOG THE FINAL PAYLOAD
-console.log('🚀 Final Payload for AccountName:', {
-  PartyName: payload.PartyName, // Should be personal name
-  AccountName: payload.AccountName, // Should be business_name
-  business_name: invoiceData.supplierInfo.business_name,
-  businessName: invoiceData.supplierInfo.businessName,
-  staffid: payload.staffid
-});
+    // 🔥 LOG THE PAYLOAD WITH STAFF INFO
+    console.log('🚀 Payload with Staff Info:', {
+      staffid: payload.staffid,
+      assigned_staff: payload.assigned_staff,
+      staffName: payload.staffName
+    });
 
     // Remove unused fields
     delete payload.companyState;
     delete payload.supplierState;
     delete payload.items;
-
-    // 🔥 LOG THE FINAL PAYLOAD WITH STAFFID
-    console.log('🚀 Final Payload with Staff ID:', {
-      staffid: payload.staffid,
-      staffName: payload.staffName,
-      assigned_staff: payload.assigned_staff,
-      PartyID: payload.PartyID,
-      AccountID: payload.AccountID
-    });
     
     let response;
     if (isEditMode && editingVoucherId) {
@@ -948,20 +947,29 @@ console.log('🚀 Final Payload for AccountName:', {
     
     console.log('✅ Server Response:', responseData);
     console.log('Response staffid:', responseData.staffid);
+    console.log('Response assigned_staff:', responseData.assigned_staff);
     
     localStorage.removeItem('draftInvoice');
     setSuccess(isEditMode ? 'Invoice updated successfully!' : 'Invoice submitted successfully!');
     setIsPreviewReady(true);
 
-    // Store preview data with voucher ID
+    // Store preview data with ALL staff information
     const previewData = {
       ...invoiceData,
       invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
       voucherId: responseData.voucherId || editingVoucherId,
       product_id: responseData.product_id || firstItemProductId,
       batch_id: responseData.batch_id || firstItemBatchId,
-      staffid: responseData.staffid || selectedStaffId // ✅ Include staffid in preview
+      staffid: responseData.staffid || selectedStaffId, // ✅ Include staffid
+      assigned_staff: responseData.assigned_staff || staffName, // ✅ Include assigned_staff
+      staffName: responseData.staffName || staffName, // ✅ Include staffName
+      supplierInfo: {
+        ...invoiceData.supplierInfo,
+        staffid: responseData.staffid || selectedStaffId, // ✅ Add staffid to supplierInfo
+        assigned_staff: responseData.assigned_staff || staffName // ✅ Add assigned_staff to supplierInfo
+      }
     };
+    
     localStorage.setItem('previewInvoice', JSON.stringify(previewData));
     
     // Navigate to preview page with voucher ID
@@ -977,7 +985,6 @@ console.log('🚀 Final Payload for AccountName:', {
     setLoading(false);
   }
 };
-
   const calculateTotalPrice = () => {
     const price = parseFloat(itemForm.price) || 0;
     const gst = parseFloat(itemForm.gst) || 0;

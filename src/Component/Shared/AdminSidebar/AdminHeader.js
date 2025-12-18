@@ -35,7 +35,10 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
     "/purchase/create-purchase-invoice": "Purchase Invoice",
     "/kacha_sales" : "kacha Sales",
     "/period": "Order",
-    "/credit-period" : "Credit Period"
+    "/credit-period" : "Credit Period",
+    "/kachareceipts" :" Receipts",
+    "/sales/receipts": "Receipts",
+   " /sales/invoices": "Invoice",
   };
 
   const getPageTitle = () => {
