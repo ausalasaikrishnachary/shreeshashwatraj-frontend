@@ -169,7 +169,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       icon: <FaChartLine />,
       subMenu: [
         { path: "/kachinvoicetable", name: "Kacha  Sales Invoices", icon: <FaFileInvoice /> },
-        { path: "/sales/receipts", name: " Kacha Receipts", icon: <FaReceipt /> },
+{ path: "/kachareceipts", name: " Kacha Receipts", icon: <FaReceipt /> },
         { path: "/sales/quotations", name: " kacha Quotations", icon: <FaFileContract /> },
         { path: "/sales/bill_of_supply", name: " kacha Bill Of Supply", icon: <FaFileInvoiceDollar /> },
         { path: "/sales/credit_note", name: " kachaCredit Note", icon: <FaCreditCard /> },
