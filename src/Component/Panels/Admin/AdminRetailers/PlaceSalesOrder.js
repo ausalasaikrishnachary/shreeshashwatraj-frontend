@@ -33,6 +33,7 @@ function PlaceSalesOrder() {
     const user = storedData ? JSON.parse(storedData) : null;
     const staffId = user?.id || null;
 
+    console.log("displayName:", displayName);
     // Handle mobile toggle
     const handleToggleMobile = () => {
         setIsMobileOpen(!isMobileOpen);
@@ -384,7 +385,8 @@ function PlaceSalesOrder() {
                                             retailerId,
                                             discount: retailerInfo.discount,
                                             customerName: retailerInfo.name,
-                                            displayName: displayName
+                                            // displayName: displayName,
+                                             displayName: retailerInfo.displayName || displayName
                                         }}
                                         className="desktop-cart-link"
                                     >
@@ -438,7 +440,8 @@ function PlaceSalesOrder() {
                                                 retailerId,
                                                 discount: retailerInfo.discount,
                                                 customerName: retailerInfo.name,
-                                                displayName: displayName
+                                                // displayName: displayName
+                                                 displayName: retailerInfo.displayName || displayName
                                             }}
                                             className="desktop-place-order-btn"
                                         >
@@ -485,7 +488,8 @@ function PlaceSalesOrder() {
                                 retailerId,
                                 discount: retailerInfo.discount,
                                 customerName: retailerInfo.name,
-                                displayName: displayName
+                                // displayName: displayName,
+                                 displayName: retailerInfo.displayName || displayName
                             }}
                             className="mobile-cart-btn"
                         >

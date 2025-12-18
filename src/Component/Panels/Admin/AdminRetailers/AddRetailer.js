@@ -1682,13 +1682,13 @@ const RetailerForm = ({ user, mode = 'add' }) => {
   ];
 
   // Conditional mandatory fields based on group type
-const getConditionalMandatoryFields = () => {
-  const fields = [];
-  if (formData.group !== 'SUPPLIERS') {
-    fields.push('staffid', 'assigned_staff');
-  }
-  return fields;
-};
+  const getConditionalMandatoryFields = () => {
+    const fields = [];
+    if (formData.group !== 'SUPPLIERS') {
+      fields.push('staffid', 'assigned_staff');
+    }
+    return fields;
+  };
 
   useEffect(() => {
     const fetchAccountGroups = async () => {
@@ -1763,20 +1763,20 @@ const getConditionalMandatoryFields = () => {
 
         if (response.data.success && response.data.result) {
           const result = response.data.result;
-          
+
           console.log("GSTIN API Response:", result);
-          
+
           // Extract data based on your API response structure
           const businessName = result.lgnm || result.tradeNam || '';
           const address = result.pradr?.addr || {};
-          
+
           // Build address lines
           const addressLine1 = [address.bno, address.bnm, address.st].filter(Boolean).join(', ');
           const addressLine2 = [address.loc, address.dst].filter(Boolean).join(', ');
-          
+
           // Get state name from state code
           const stateName = getStateName(result.stjCd || address.stcd);
-          
+
           setFormData(prev => ({
             ...prev,
             gst_registered_name: result.lgnm || '',
@@ -1843,40 +1843,40 @@ const getConditionalMandatoryFields = () => {
     }
   };
 
-const validateCurrentTab = () => {
-  if (isViewing) return true;
+  const validateCurrentTab = () => {
+    if (isViewing) return true;
 
-  const newErrors = {};
-  const conditionalMandatoryFields = getConditionalMandatoryFields();
+    const newErrors = {};
+    const conditionalMandatoryFields = getConditionalMandatoryFields();
 
-  switch (activeTab) {
-    case 'information':
-      // Base mandatory fields for all
-      const informationMandatoryFields = [
-        'name',
-        'group',
-        'email',
-        'display_name',
-        'phone_number',
-        'mobile_number',
-        ...conditionalMandatoryFields
-      ];
-      
-      // Add entity_type only if NOT SUPPLIERS
-      if (formData.group !== 'SUPPLIERS') {
-        informationMandatoryFields.push('entity_type');
-      }
+    switch (activeTab) {
+      case 'information':
+        // Base mandatory fields for all
+        const informationMandatoryFields = [
+          'name',
+          'group',
+          'email',
+          'display_name',
+          'phone_number',
+          'mobile_number',
+          ...conditionalMandatoryFields
+        ];
 
-      // Add GSTIN for suppliers (mandatory for suppliers)
-      if (formData.group === 'SUPPLIERS') {
-        informationMandatoryFields.push('gstin');
-      }
-
-      informationMandatoryFields.forEach(field => {
-        if (!formData[field]) {
-          newErrors[field] = 'This field is required';
+        // Add entity_type only if NOT SUPPLIERS
+        if (formData.group !== 'SUPPLIERS') {
+          informationMandatoryFields.push('entity_type');
         }
-      });
+
+        // Add GSTIN for suppliers (mandatory for suppliers)
+        // if (formData.group === 'SUPPLIERS') {
+        //   informationMandatoryFields.push('gstin');
+        // }
+
+        // informationMandatoryFields.forEach(field => {
+        //   if (!formData[field]) {
+        //     newErrors[field] = 'This field is required';
+        //   }
+        // });
         // Field-specific validations
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
           newErrors.email = 'Invalid email format';
@@ -1976,50 +1976,50 @@ const validateCurrentTab = () => {
     }));
   }, [formData.name]);
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  if (isViewing) {
-    navigate('/retailers');
-    return;
-  }
+    if (isViewing) {
+      navigate('/retailers');
+      return;
+    }
 
-  // Validate all tabs before final submission
-  let allTabsValid = true;
-  const allErrors = {};
+    // Validate all tabs before final submission
+    let allTabsValid = true;
+    const allErrors = {};
 
-  // Check each tab's validation
-  tabs.forEach(tab => {
-    const tempErrors = {};
-    const conditionalMandatoryFields = getConditionalMandatoryFields();
+    // Check each tab's validation
+    tabs.forEach(tab => {
+      const tempErrors = {};
+      const conditionalMandatoryFields = getConditionalMandatoryFields();
 
-    if (tab.id === 'information') {
-      // Base mandatory fields
-      const informationMandatoryFields = [
-        'name',
-        'group',
-        'email',
-        'display_name',
-        'phone_number',
-        'mobile_number',
-        ...conditionalMandatoryFields
-      ];
-      
-      // Add entity_type only if NOT SUPPLIERS
-      if (formData.group !== 'SUPPLIERS') {
-        informationMandatoryFields.push('entity_type');
-      }
+      if (tab.id === 'information') {
+        // Base mandatory fields
+        const informationMandatoryFields = [
+          'name',
+          'group',
+          'email',
+          'display_name',
+          'phone_number',
+          'mobile_number',
+          ...conditionalMandatoryFields
+        ];
 
-      // Add GSTIN for suppliers
-      if (formData.group === 'SUPPLIERS') {
-        informationMandatoryFields.push('gstin');
-      }
-
-      informationMandatoryFields.forEach(field => {
-        if (!formData[field]) {
-          tempErrors[field] = 'This field is required';
+        // Add entity_type only if NOT SUPPLIERS
+        if (formData.group !== 'SUPPLIERS') {
+          informationMandatoryFields.push('entity_type');
         }
-      });
+
+        // Add GSTIN for suppliers
+        // if (formData.group === 'SUPPLIERS') {
+        //   informationMandatoryFields.push('gstin');
+        // }
+
+        // informationMandatoryFields.forEach(field => {
+        //   if (!formData[field]) {
+        //     tempErrors[field] = 'This field is required';
+        //   }
+        // });
 
         // Field-specific validations
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -2164,31 +2164,31 @@ const handleSubmit = async (e) => {
     return `form-select customer-form-input ${errors[fieldName] ? 'is-invalid' : ''} ${isViewing ? 'view-mode' : ''}`;
   };
 
-const renderField = (fieldConfig) => {
-  const { type = 'text', name, label, required = false, options, onChange: customOnChange, ...props } = fieldConfig;
+  const renderField = (fieldConfig) => {
+    const { type = 'text', name, label, required = false, options, onChange: customOnChange, ...props } = fieldConfig;
 
-  // Check if field is mandatory based on our rules
+    // Check if field is mandatory based on our rules
   const isFieldMandatory = mandatoryFields.includes(name) || 
-    (formData.group !== 'SUPPLIERS' && ['staffid', 'assigned_staff', 'entity_type'].includes(name)) ||
-    (formData.group === 'SUPPLIERS' && name === 'gstin');
+  (formData.group !== 'SUPPLIERS' && ['staffid', 'assigned_staff', 'entity_type'].includes(name));
+  // Removed: (formData.group === 'SUPPLIERS' && name === 'gstin')
 
-  if (isViewing) {
-    const displayValue = (name === 'staffid' && formData.assigned_staff)
-      ? formData.assigned_staff
-      : (formData[name] || 'N/A');
+    if (isViewing) {
+      const displayValue = (name === 'staffid' && formData.assigned_staff)
+        ? formData.assigned_staff
+        : (formData[name] || 'N/A');
 
-    return (
-      <div className="mb-3">
-        <label className="customer-form-label view-mode-label">{label}</label>
-        <div className="view-mode-value">{displayValue}</div>
-      </div>
-    );
-  }
+      return (
+        <div className="mb-3">
+          <label className="customer-form-label view-mode-label">{label}</label>
+          <div className="view-mode-value">{displayValue}</div>
+        </div>
+      );
+    }
 
-  // Hide role, assigned_staff, staffid for SUPPLIERS
-  if (formData.group === 'SUPPLIERS' && ['role', 'assigned_staff', 'staffid'].includes(name)) {
-    return null;
-  }
+    // Hide role, assigned_staff, staffid for SUPPLIERS
+    if (formData.group === 'SUPPLIERS' && ['role', 'assigned_staff', 'staffid'].includes(name)) {
+      return null;
+    }
 
     if (type === 'select') {
       return (
@@ -2227,7 +2227,7 @@ const renderField = (fieldConfig) => {
           {...props}
         />
         {renderError(name)}
-    </div>
+      </div>
     );
   };
 
@@ -2322,7 +2322,7 @@ const renderField = (fieldConfig) => {
                     maxLength={15}
                     pattern="^[0-9A-Z]{15}$"
                     title="GSTIN must be exactly 15 characters (A-Z, 0-9 only)"
-                    required
+                   required={formData.group === 'SUPPLIERS' ? false : true}
                   />
                   {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
                   {gstinError && <div className="text-danger small">{gstinError}</div>}

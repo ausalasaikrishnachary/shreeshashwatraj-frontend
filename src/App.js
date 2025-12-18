@@ -173,6 +173,7 @@ import ReceiptModal_preview from "./Component/Panels/Admin/Period/ReceiptModal_p
 import QRCodeGenerator from "./Component/Panels/Admin/Period/QRCodeGenerator";
 import RetailersScore from "./Component/Panels/Admin/RetailersScore/RetailersScore";
 import KachaReceiptsTable from "./Component/Panels/kachreceipts/Receipts/KachaReceiptsTable";
+import SalesPersonScore from "./Component/Panels/Admin/SalesPersonScore/SalesPersonScore";
 
 
 
@@ -356,6 +357,7 @@ function App() {
         <Route path="/debitnote_view/:id" element={<DebitView />} />
         <Route path="/retailersscore" element={<RetailersScore />} />
         <Route path="/kachareceipts" element={<KachaReceiptsTable />} />
+        <Route path="/salesmanscore" element={<SalesPersonScore />} />
 
       </Routes>
     </Router>
