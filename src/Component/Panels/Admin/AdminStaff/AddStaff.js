@@ -151,44 +151,59 @@ function AddStaff() {
     }
   }, [id]);
 
-  const fetchStaffData = async () => {
-    try {
-      setIsFetching(true);
-      const response = await fetch(`${baseurl}/api/staff/${id}`);
-      const staffData = await response.json();
-
-      setFormData({
-        fullName: staffData.full_name || "",
-        mobileNumber: staffData.mobile_number || "",
-        alternateNumber: staffData.alternate_number || "",
-        email: staffData.email || "",
-        dateOfBirth: staffData.date_of_birth || "",
-        gender: staffData.gender || "",
-        address: staffData.address || "",
-        role: staffData.role || "staff",
-        designation: staffData.designation || "",
-        department: staffData.department || "",
-        joiningDate: staffData.joining_date || "",
-        incentivePercent: staffData.incentive_percent || "",
-        salary: staffData.salary || "",
-        bankAccountNumber: staffData.bank_account_number || "",
-        ifscCode: staffData.ifsc_code || "",
-        bankName: staffData.bank_name || "",
-        branchName: staffData.branch_name || "",
-        upiId: staffData.upi_id || "",
-        aadhaarNumber: staffData.aadhaar_number || "",
-        panNumber: staffData.pan_number || "",
-        bloodGroup: staffData.blood_group || "",
-        emergencyContact: staffData.emergency_contact || "",
-        status: staffData.status || "Active"
-      });
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load staff data");
-    } finally {
-      setIsFetching(false);
+const fetchStaffData = async () => {
+  try {
+    setIsFetching(true);
+    const response = await fetch(`${baseurl}/api/staff/${id}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch staff data: ${response.status}`);
     }
-  };
+    
+    const staffData = await response.json();
+    
+    // Log the data to see what's being returned
+    console.log('Staff Data Response:', staffData);
+    
+    // Handle if staffData is an array or single object
+    const data = Array.isArray(staffData) ? staffData[0] : staffData;
+    
+    if (!data) {
+      throw new Error('No staff data found');
+    }
+    
+    setFormData({
+      fullName: data.name || data.fullName || data.full_name || "",
+      mobileNumber: data.mobile_number || data.mobileNumber || "",
+      alternateNumber: data.alternate_number || data.alternateNumber || "",
+      email: data.email || "",
+      dateOfBirth: data.date_of_birth || data.dateOfBirth || "",
+      gender: data.gender || "",
+      address: data.address || "",
+      role: data.role || "staff",
+      designation: data.designation || "",
+      department: data.department || "",
+      joiningDate: data.joining_date || data.joiningDate || "",
+      incentivePercent: data.incentive_percent || data.incentivePercent || "",
+      salary: data.salary || "",
+      bankAccountNumber: data.bank_account_number || data.bankAccountNumber || "",
+      ifscCode: data.ifsc_code || data.ifscCode || "",
+      bankName: data.bank_name || data.bankName || "",
+      branchName: data.branch_name || data.branchName || "",
+      upiId: data.upi_id || data.upiId || "",
+      aadhaarNumber: data.aadhaar_number || data.aadhaarNumber || "",
+      panNumber: data.pan || data.pan_number || data.panNumber || "",
+      bloodGroup: data.blood_group || data.bloodGroup || "",
+      emergencyContact: data.emergency_contact || data.emergencyContact || "",
+      status: data.status || "Active"
+    });
+  } catch (err) {
+    console.error('Error fetching staff data:', err);
+    setError("Failed to load staff data: " + err.message);
+  } finally {
+    setIsFetching(false);
+  }
+};
 
   // Validation functions
   const validateBankAccountNumber = (value) => {
@@ -332,89 +347,125 @@ function AddStaff() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Validate all tabs before submission
-    let allTabsValid = true;
-    const validationErrors = [];
-    
-    // Validate basic tab
-    if (!formData.fullName.trim()) {
-      validationErrors.push("Full name required");
-      allTabsValid = false;
-    }
-    if (!/^\d{10}$/.test(formData.mobileNumber)) {
-      validationErrors.push("Invalid mobile number (10 digits required)");
-      allTabsValid = false;
-    }
-    
-    // Validate job tab
-    if (!formData.designation) {
-      validationErrors.push("Designation is required");
-      allTabsValid = false;
-    }
-    if (!formData.department) {
-      validationErrors.push("Department is required");
-      allTabsValid = false;
-    }
-    if (!formData.joiningDate) {
-      validationErrors.push("Joining date is required");
-      allTabsValid = false;
-    }
-    
-    // Validate bank tab if bank details are provided
-    if (formData.bankAccountNumber && !validateBankAccountNumber(formData.bankAccountNumber)) {
-      validationErrors.push("Invalid bank account number (9-16 digits required)");
-      allTabsValid = false;
-    }
-    if (formData.ifscCode && !validateIFSCCode(formData.ifscCode)) {
-      validationErrors.push("Invalid IFSC code (11 alphanumeric characters only)");
-      allTabsValid = false;
-    }
-    
-    // Validate documents tab
-    if (formData.aadhaarNumber && !validateAadhaarNumber(formData.aadhaarNumber)) {
-      validationErrors.push("Invalid Aadhaar number (12 digits required)");
-      allTabsValid = false;
-    }
-    if (formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)) {
-      validationErrors.push("Invalid PAN number format (e.g., ABCDE1234F)");
-      allTabsValid = false;
-    }
-    if (formData.emergencyContact && !/^\d{10}$/.test(formData.emergencyContact)) {
-      validationErrors.push("Invalid emergency contact number (10 digits required)");
-      allTabsValid = false;
-    }
-    
-    if (!allTabsValid) {
-      setError(validationErrors.join(", "));
-      return;
-    }
-    
-    setIsLoading(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  // Validate all tabs before submission
+  let allTabsValid = true;
+  const validationErrors = [];
+  
+  // Validate basic tab
+  if (!formData.fullName.trim()) {
+    validationErrors.push("Full name required");
+    allTabsValid = false;
+  }
+  if (!/^\d{10}$/.test(formData.mobileNumber)) {
+    validationErrors.push("Invalid mobile number (10 digits required)");
+    allTabsValid = false;
+  }
+  
+  // Validate job tab
+  if (!formData.designation) {
+    validationErrors.push("Designation is required");
+    allTabsValid = false;
+  }
+  if (!formData.department) {
+    validationErrors.push("Department is required");
+    allTabsValid = false;
+  }
+  if (!formData.joiningDate) {
+    validationErrors.push("Joining date is required");
+    allTabsValid = false;
+  }
+  
+  // Validate bank tab if bank details are provided
+  if (formData.bankAccountNumber && !validateBankAccountNumber(formData.bankAccountNumber)) {
+    validationErrors.push("Invalid bank account number (9-16 digits required)");
+    allTabsValid = false;
+  }
+  if (formData.ifscCode && !validateIFSCCode(formData.ifscCode)) {
+    validationErrors.push("Invalid IFSC code (11 alphanumeric characters only)");
+    allTabsValid = false;
+  }
+  
+  // Validate documents tab
+  if (formData.aadhaarNumber && !validateAadhaarNumber(formData.aadhaarNumber)) {
+    validationErrors.push("Invalid Aadhaar number (12 digits required)");
+    allTabsValid = false;
+  }
+  if (formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)) {
+    validationErrors.push("Invalid PAN number format (e.g., ABCDE1234F)");
+    allTabsValid = false;
+  }
+  if (formData.emergencyContact && !/^\d{10}$/.test(formData.emergencyContact)) {
+    validationErrors.push("Invalid emergency contact number (10 digits required)");
+    allTabsValid = false;
+  }
+  
+  if (!allTabsValid) {
+    setError(validationErrors.join(", "));
+    return;
+  }
+  
+  setIsLoading(true);
 
-    try {
-      const url = isEditMode
-        ? `${baseurl}/api/staff/${id}`
-        : `${baseurl}/api/staff`;
+  try {
+    const url = isEditMode
+      ? `${baseurl}/api/staff/${id}`
+      : `${baseurl}/api/staff`;
 
-      const response = await fetch(url, {
-        method: isEditMode ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
-      });
+    // Prepare data for API - match backend field names
+    const apiData = {
+      fullName: formData.fullName,
+      mobileNumber: formData.mobileNumber,
+      alternateNumber: formData.alternateNumber || null,
+      email: formData.email || "",
+      dateOfBirth: formData.dateOfBirth || null,
+      gender: formData.gender || null,
+      address: formData.address || null,
+      role: formData.role,
+      designation: formData.designation || null,
+      department: formData.department || null,
+      joiningDate: formData.joiningDate || null,
+      incentivePercent: formData.incentivePercent || null,
+      salary: formData.salary || null,
+      bankAccountNumber: formData.bankAccountNumber || null,
+      ifscCode: formData.ifscCode || null,
+      bankName: formData.bankName || null,
+      branchName: formData.branchName || null,
+      upiId: formData.upiId || null,
+      aadhaarNumber: formData.aadhaarNumber || null,
+      panNumber: formData.panNumber || null,
+      bloodGroup: formData.bloodGroup || null,
+      emergencyContact: formData.emergencyContact || null,
+      status: formData.status
+    };
 
-      if (!response.ok) throw new Error("Operation failed");
-
-      alert(isEditMode ? "Staff updated!" : "Staff added!");
-      navigate("/staff");
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
+    // For edit mode, ensure email is not empty since backend requires it
+    if (isEditMode && !apiData.email) {
+      apiData.email = "placeholder@example.com"; // Or use existing email
     }
-  };
+
+    const response = await fetch(url, {
+      method: isEditMode ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(apiData)
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(responseData.error || "Operation failed");
+    }
+
+    alert(isEditMode ? "Staff updated!" : "Staff added!");
+    navigate("/staff");
+  } catch (error) {
+    setError(error.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleCancel = () => {
     navigate("/staff");
@@ -479,6 +530,7 @@ function AddStaff() {
                     type="email"
                     value={formData.email} 
                     onChange={handleInputChange} 
+                    required 
                   />
                   <Input 
                     type="date" 

@@ -49,7 +49,7 @@ const PurchasedItems = ({ user }) => {
         .map((item) => ({
           id: item.id,
           goods_name: item.goods_name,
-          price: item.price,
+          selling_price: item.selling_price,
           description: item.description,
           gst: item.gst_rate,
           updatedBy: 'System',
@@ -186,7 +186,7 @@ const PurchasedItems = ({ user }) => {
             {item?.goods_name || "N/A"}
           </Link>
           <br />
-          <span className="text-muted">Rs. {item?.price ?? 0}</span>
+          <span className="text-muted">Rs. {item?.selling_price ?? 0}</span>
           {item.images && item.images.length > 0 && (
             <div className="mt-1">
               <small className="text-success">
