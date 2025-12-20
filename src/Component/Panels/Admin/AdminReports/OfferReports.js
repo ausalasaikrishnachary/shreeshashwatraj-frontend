@@ -12,9 +12,10 @@ import {
 } from "react-icons/fa";
 import "./OfferReports.css";
 import * as XLSX from "xlsx";
+import { baseurl } from "../../../BaseURL/BaseURL";
 
 // Define your API base URL
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = `${baseurl}/api`;
 
 const OffersDashboard = () => {
   const [offers, setOffers] = useState([]);
