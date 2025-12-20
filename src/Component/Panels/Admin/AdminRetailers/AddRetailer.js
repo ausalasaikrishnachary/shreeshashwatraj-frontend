@@ -1652,6 +1652,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     shipping_city: "",
     shipping_pin_code: "",
     shipping_state: "",
+    shipping_state_code: "",
+    billing_state_code: "",
     shipping_country: "",
     shipping_branch_name: "",
     shipping_gstin: "",
@@ -1680,6 +1682,54 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     'billing_state',
     'billing_country'
   ];
+
+  // Master list of states with codes
+  const STATES = [
+    { code: '01', name: 'Jammu & Kashmir' },
+    { code: '02', name: 'Himachal Pradesh' },
+    { code: '03', name: 'Punjab' },
+    { code: '04', name: 'Chandigarh' },
+    { code: '05', name: 'Uttarakhand' },
+    { code: '06', name: 'Haryana' },
+    { code: '07', name: 'Delhi' },
+    { code: '08', name: 'Rajasthan' },
+    { code: '09', name: 'Uttar Pradesh' },
+    { code: '10', name: 'Bihar' },
+    { code: '11', name: 'Sikkim' },
+    { code: '12', name: 'Arunachal Pradesh' },
+    { code: '13', name: 'Nagaland' },
+    { code: '14', name: 'Manipur' },
+    { code: '15', name: 'Mizoram' },
+    { code: '16', name: 'Tripura' },
+    { code: '17', name: 'Meghalaya' },
+    { code: '18', name: 'Assam' },
+    { code: '19', name: 'West Bengal' },
+    { code: '20', name: 'Jharkhand' },
+    { code: '21', name: 'Odisha' },
+    { code: '22', name: 'Chhattisgarh' },
+    { code: '23', name: 'Madhya Pradesh' },
+    { code: '24', name: 'Gujarat' },
+    { code: '25', name: 'Daman & Diu' },
+    { code: '26', name: 'Dadra & Nagar Haveli' },
+    { code: '27', name: 'Maharashtra' },
+    { code: '28', name: 'Andhra Pradesh' },
+    { code: '29', name: 'Karnataka' },
+    { code: '30', name: 'Goa' },
+    { code: '31', name: 'Lakshadweep' },
+    { code: '32', name: 'Kerala' },
+    { code: '33', name: 'Tamil Nadu' },
+    { code: '34', name: 'Puducherry' },
+    { code: '35', name: 'Andaman & Nicobar Islands' },
+    { code: '36', name: 'Telangana' },
+    { code: '37', name: 'Andhra Pradesh (New)' }
+  ];
+
+  const getStateByName = (name) =>
+    STATES.find(s => s.name === name);
+
+  const getStateByCode = (code) =>
+    STATES.find(s => s.code === code);
+
 
   // Conditional mandatory fields based on group type
   const getConditionalMandatoryFields = () => {
@@ -1827,7 +1877,37 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     if (isViewing) return;
 
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+
+    // Base update
+    setFormData(prev => {
+      let updated = { ...prev, [name]: value };
+
+      // When user selects a shipping state by name, set its code
+      if (name === 'shipping_state') {
+        const st = getStateByName(value);
+        updated.shipping_state_code = st ? st.code : "";
+      }
+
+      // When user selects a shipping state code, set its name
+      if (name === 'shipping_state_code') {
+        const st = getStateByCode(value);
+        updated.shipping_state = st ? st.name : "";
+      }
+
+      // When user selects a billing state by name, set its code
+      if (name === 'billing_state') {
+        const st = getStateByName(value);
+        updated.billing_state_code = st ? st.code : "";
+      }
+
+      // When user selects a billing state code, set its name
+      if (name === 'billing_state_code') {
+        const st = getStateByCode(value);
+        updated.billing_state = st ? st.name : "";
+      }
+
+      return updated;
+    });
 
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -1842,6 +1922,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       }
     }
   };
+
 
   const validateCurrentTab = () => {
     if (isViewing) return true;
@@ -2168,9 +2249,9 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     const { type = 'text', name, label, required = false, options, onChange: customOnChange, ...props } = fieldConfig;
 
     // Check if field is mandatory based on our rules
-  const isFieldMandatory = mandatoryFields.includes(name) || 
-  (formData.group !== 'SUPPLIERS' && ['staffid', 'assigned_staff', 'entity_type'].includes(name));
-  // Removed: (formData.group === 'SUPPLIERS' && name === 'gstin')
+    const isFieldMandatory = mandatoryFields.includes(name) ||
+      (formData.group !== 'SUPPLIERS' && ['staffid', 'assigned_staff', 'entity_type'].includes(name));
+    // Removed: (formData.group === 'SUPPLIERS' && name === 'gstin')
 
     if (isViewing) {
       const displayValue = (name === 'staffid' && formData.assigned_staff)
@@ -2322,7 +2403,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                     maxLength={15}
                     pattern="^[0-9A-Z]{15}$"
                     title="GSTIN must be exactly 15 characters (A-Z, 0-9 only)"
-                   required={formData.group === 'SUPPLIERS' ? false : true}
+                    required={formData.group === 'SUPPLIERS' ? false : true}
                   />
                   {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
                   {gstinError && <div className="text-danger small">{gstinError}</div>}
@@ -2777,18 +2858,22 @@ const RetailerForm = ({ user, mode = 'add' }) => {
             </div>
 
             <div className="row">
-              <div className="col-md-6">
+              <div className="col-md-4">
                 {renderField({
                   type: 'select',
                   name: 'shipping_state',
                   label: 'State',
                   required: true,
-                  options: [
-                    { value: 'Telangana', label: 'Telangana' },
-                    { value: 'Andhra Pradesh', label: 'Andhra Pradesh' },
-                    { value: 'Kerala', label: 'Kerala' },
-                    { value: 'Karnataka', label: 'Karnataka' }
-                  ]
+                  options: STATES.map(s => ({ value: s.name, label: s.name }))
+                })}
+              </div>
+              <div className="col-md-2">
+                {renderField({
+                  type: 'select',
+                  name: 'shipping_state_code',
+                  label: 'State Code',
+                  required: true,
+                  options: STATES.map(s => ({ value: s.code, label: s.code }))
                 })}
               </div>
               <div className="col-md-6">
@@ -2806,6 +2891,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                 })}
               </div>
             </div>
+
 
             <div className="row">
               <div className="col-md-6">
@@ -2893,18 +2979,22 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                 </div>
 
                 <div className="row">
-                  <div className="col-md-6">
+                  <div className="col-md-4">
                     {renderField({
                       type: 'select',
                       name: 'billing_state',
                       label: 'State',
                       required: true,
-                      options: [
-                        { value: 'Telangana', label: 'Telangana' },
-                        { value: 'Andhra Pradesh', label: 'Andhra Pradesh' },
-                        { value: 'Kerala', label: 'Kerala' },
-                        { value: 'Karnataka', label: 'Karnataka' }
-                      ]
+                      options: STATES.map(s => ({ value: s.name, label: s.name }))
+                    })}
+                  </div>
+                  <div className="col-md-2">
+                    {renderField({
+                      type: 'select',
+                      name: 'billing_state_code',
+                      label: 'State Code',
+                      required: true,
+                      options: STATES.map(s => ({ value: s.code, label: s.code }))
                     })}
                   </div>
                   <div className="col-md-6">
@@ -2922,6 +3012,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                     })}
                   </div>
                 </div>
+
 
                 <div className="row">
                   <div className="col-md-6">
