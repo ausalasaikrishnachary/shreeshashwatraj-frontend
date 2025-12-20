@@ -1953,11 +1953,13 @@ const RetailerForm = ({ user, mode = 'add' }) => {
         //   informationMandatoryFields.push('gstin');
         // }
 
-        // informationMandatoryFields.forEach(field => {
-        //   if (!formData[field]) {
-        //     newErrors[field] = 'This field is required';
-        //   }
-        // });
+        // Validate all mandatory fields
+        informationMandatoryFields.forEach(field => {
+          if (!formData[field] || formData[field].toString().trim() === '') {
+            newErrors[field] = 'This field is required';
+          }
+        });
+
         // Field-specific validations
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
           newErrors.email = 'Invalid email format';
@@ -2031,9 +2033,52 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Helper function to get field label for error messages
+  const getFieldLabel = (fieldName) => {
+    const fieldLabels = {
+      'name': 'Name',
+      'entity_type': 'Entity Type',
+      'group': 'Group Type',
+      'email': 'Email',
+      'display_name': 'Display Name',
+      'phone_number': 'Phone Number',
+      'mobile_number': 'Mobile Number',
+      'gstin': 'GSTIN',
+      'staffid': 'Assign Staff',
+      'assigned_staff': 'Assigned Staff',
+      'shipping_state': 'Shipping State',
+      'shipping_country': 'Shipping Country',
+      'shipping_state_code': 'Shipping State Code',
+      'billing_state': 'Billing State',
+      'billing_country': 'Billing Country',
+      'billing_state_code': 'Billing State Code',
+      'shipping_pin_code': 'Shipping PIN Code',
+      'billing_pin_code': 'Billing PIN Code',
+      'shipping_gstin': 'Shipping GSTIN',
+      'billing_gstin': 'Billing GSTIN'
+    };
+    return fieldLabels[fieldName] || fieldName.replace(/_/g, ' ');
+  };
+
   const handleNext = () => {
     if (!validateCurrentTab()) {
-      alert('Please fill all required fields in the current tab.');
+      // Find the first error field and focus on it
+      const firstErrorField = Object.keys(errors)[0];
+      if (firstErrorField) {
+        const errorElement = document.querySelector(`[name="${firstErrorField}"]`);
+        if (errorElement) {
+          errorElement.focus();
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+
+      // Show alert with specific missing fields
+      const errorMessages = Object.keys(errors).map(field => {
+        const fieldLabel = getFieldLabel(field);
+        return `${fieldLabel}: ${errors[field]}`;
+      }).join('\n');
+
+      alert(`Please fix the following errors:\n\n${errorMessages}`);
       return;
     }
 

@@ -13,6 +13,29 @@
   min-height: 100vh;
 }
 
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a237e; /* Dark blue color */
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #3f51b5; /* Accent line */
+  display: inline-block;
+  padding-right: 30px;
+  letter-spacing: 0.5px; /* Slightly reduce letter spacing */
+}
+
+/* If you want a more compact version */
+.page-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a237e;
+  margin: 0 0 20px 0;
+  padding: 0;
+  letter-spacing: normal;
+  line-height: 1.3;
+}
+
 .add-staff-main-content.collapsed {
   margin-left: 80px;
 }
