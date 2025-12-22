@@ -1,252 +1,3 @@
-// import React, { useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
-// import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
-// import ReusableTable from '../../../Layouts/TableLayout/DataTable';
-// import './Voucher.css';
-
-// const VoucherTable = () => {
-//   const [isCollapsed, setIsCollapsed] = useState(false);
-//   const [activeTab, setActiveTab] = useState('Voucher');
-//   const navigate = useNavigate();
-
-//   const [month, setMonth] = useState('July');
-//   const [year, setYear] = useState('2025');
-//   const [startDate, setStartDate] = useState('2025-06-08');
-//   const [endDate, setEndDate] = useState('2025-07-08');
-
-//   // Define tabs with their corresponding routes
-//   const tabs = [
-//     { name: 'Purchase Invoice', path: '/purchase/purchase-invoice' },
-//     { name: 'Purchase Order', path: '/purchase/purchase-order' },
-//     { name: 'Voucher', path: '/purchase/voucher' },
-//     { name: 'Debit Note', path: '/purchase/debit-note' },
-//     { name: 'Payables', path: '/purchase/payables' }
-//   ];
-
-//   // Handle tab click - navigate to corresponding route
-//   const handleTabClick = (tab) => {
-//     setActiveTab(tab.name);
-//     navigate(tab.path);
-//   };
-
-//   // Sample voucher data
-//   const voucherData = [
-//     // Add your voucher data here
-//     // Example:
-//     // {
-//     //   payee: "John Doe",
-//     //   number: "VOU-001",
-//     //   amount: "₹ 10,000.00",
-//     //   accounting: "Expense",
-//     //   action: "View"
-//     // }
-//   ];
-
-//   // Voucher stats data
-//   const voucherStats = [
-//     { label: "Total Vouchers", value: "₹ 1,00,000", change: "+12%", type: "total" },
-//     { label: "Expense Vouchers", value: "₹ 75,000", change: "+8%", type: "expense" },
-//     { label: "Payment Vouchers", value: "₹ 20,000", change: "+15%", type: "payment" },
-//     { label: "Receipt Vouchers", value: "₹ 5,000", change: "-3%", type: "receipt" }
-//   ];
-
-//   const columns = [
-//     {
-//       key: 'payee',
-//       title: 'PAYEE',
-//       style: { textAlign: 'left' }
-//     },
-//     {
-//       key: 'number',
-//       title: 'NUMBER',
-//       style: { textAlign: 'center' }
-//     },
-//     {
-//       key: 'amount',
-//       title: 'AMOUNT',
-//       style: { textAlign: 'right' }
-//     },
-//     {
-//       key: 'accounting',
-//       title: 'ACCOUNTING',
-//       style: { textAlign: 'center' }
-//     },
-//     {
-//       key: 'action',
-//       title: 'ACTION',
-//       style: { textAlign: 'center' },
-//       render: (item, index) => (
-//         <button 
-//           className="btn btn-primary btn-sm"
-//           onClick={() => handleViewClick(item)}
-//         >
-//           View
-//         </button>
-//       )
-//     }
-//   ];
-
-//   const handleCreateClick = () => {
-//     navigate("/purchase/create-voucher");
-//   };
-
-//   const handleViewClick = (voucher) => {
-//     // Handle view action
-//     console.log('View voucher:', voucher);
-//     // navigate(`/purchase/voucher/${voucher.id}`);
-//   };
-
-//   const handleDownloadMonth = () => {
-//     // Handle month download
-//     console.log('Download month data:', month, year);
-//   };
-
-//   const handleDownloadRange = () => {
-//     // Handle date range download
-//     console.log('Download range data:', startDate, endDate);
-//   };
-
-//   return (
-//     <div className="voucher-wrapper">
-//       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-//       <div className={`voucher-main-content ${isCollapsed ? "collapsed" : ""}`}>
-//         <AdminHeader isCollapsed={isCollapsed} />
-        
-//         <div className="voucher-content-area">
-//           {/* ✅ Purchase Navigation Tabs Section */}
-//           <div className="voucher-tabs-section">
-//             <div className="voucher-tabs-container">
-//               {tabs.map((tab) => (
-//                 <button
-//                   key={tab.name}
-//                   className={`voucher-tab ${activeTab === tab.name ? 'voucher-tab--active' : ''}`}
-//                   onClick={() => handleTabClick(tab)}
-//                 >
-//                   {tab.name}
-//                 </button>
-//               ))}
-//             </div>
-//           </div>
-
-//           <div className="voucher-header-section">
-//             <div className="voucher-header-top">
-//               <div className="voucher-title-section">
-//                 <h1 className="voucher-main-title">Voucher Management</h1>
-//                 <p className="voucher-subtitle">Create, manage and track all your vouchers</p>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Voucher Stats */}
-//           {/* <div className="voucher-stats-grid">
-//             {voucherStats.map((stat, index) => (
-//               <div key={index} className={`voucher-stat-card voucher-stat-card--${stat.type}`}>
-//                 <h3 className="voucher-stat-label">{stat.label}</h3>
-//                 <div className="voucher-stat-value">{stat.value}</div>
-//                 <div className={`voucher-stat-change ${stat.change.startsWith("+") ? "voucher-stat-change--positive" : "voucher-stat-change--negative"}`}>
-//                   {stat.change} from last month
-//                 </div>
-//               </div>
-//             ))}
-//           </div> */}
-
-//           {/* Filters and Actions Section */}
-//           <div className="voucher-actions-section">
-//             <div className="quotation-container p-3">
-//               <h5 className="mb-3 fw-bold">View Voucher</h5>
-
-//               {/* Filters Section */}
-//               <div className="row align-items-end g-3 mb-3">
-//                 <div className="col-md-auto">
-//                   <label className="form-label mb-1">Select Month and Year Data:</label>
-//                   <div className="d-flex">
-//                     <select className="form-select me-2" value={month} onChange={(e) => setMonth(e.target.value)}>
-//                       <option>January</option>
-//                       <option>February</option>
-//                       <option>March</option>
-//                       <option>April</option>
-//                       <option>May</option>
-//                       <option>June</option>
-//                       <option>July</option>
-//                       <option>August</option>
-//                       <option>September</option>
-//                       <option>October</option>
-//                       <option>November</option>
-//                       <option>December</option>
-//                     </select>
-//                     <select className="form-select" value={year} onChange={(e) => setYear(e.target.value)}>
-//                       <option>2025</option>
-//                       <option>2024</option>
-//                       <option>2023</option>
-//                     </select>
-//                   </div>
-//                 </div>
-
-//                 <div className="col-md-auto">
-//                   <button className="btn btn-success mt-4" onClick={handleDownloadMonth}>
-//                     <i className="bi bi-download me-1"></i> Download
-//                   </button>
-//                 </div>
-
-//                 <div className="col-md-auto">
-//                   <label className="form-label mb-1">Select Date Range:</label>
-//                   <div className="d-flex">
-//                     <input 
-//                       type="date" 
-//                       className="form-control me-2" 
-//                       value={startDate} 
-//                       onChange={(e) => setStartDate(e.target.value)} 
-//                     />
-//                     <input 
-//                       type="date" 
-//                       className="form-control" 
-//                       value={endDate} 
-//                       onChange={(e) => setEndDate(e.target.value)} 
-//                     />
-//                   </div>
-//                 </div>
-
-//                 <div className="col-md-auto">
-//                   <button className="btn btn-success mt-4" onClick={handleDownloadRange}>
-//                     <i className="bi bi-download me-1"></i> Download Range
-//                   </button>
-//                 </div>
-
-//                 <div className="col-md-auto">
-//                   <button 
-//                     className="btn btn-info text-white mt-4"
-//                     onClick={handleCreateClick}
-//                   >
-//                     Create
-//                   </button>
-//                 </div>
-//               </div>
-
-//               {/* Table Section */}
-//               <ReusableTable
-//                 title="Vouchers"
-//                 data={voucherData}
-//                 columns={columns}
-//                 initialEntriesPerPage={10}
-//                 searchPlaceholder="Search vouchers..."
-//                 showSearch={true}
-//                 showEntriesSelector={true}
-//                 showPagination={true}
-//               />
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default VoucherTable;
-
-
-
-// frontend/src/components/Sales/Receipts/ReceiptsTable.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
@@ -259,7 +10,7 @@ const ReceiptsTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [accounts, setAccounts] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [receiptData, setReceiptData] = useState([]);
   const [nextReceiptNumber, setNextReceiptNumber] = useState('REC001');
   const [hasFetchedReceiptNumber, setHasFetchedReceiptNumber] = useState(false);
@@ -269,12 +20,12 @@ const ReceiptsTable = () => {
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
   const [activeTab, setActiveTab] = useState('Voucher');
-  const [invoices, setInvoices] = useState([]); // Add invoices state
-  const [selectedInvoice, setSelectedInvoice] = useState(''); // Add selected invoice state
+  const [invoices, setInvoices] = useState([]);
+  const [selectedInvoice, setSelectedInvoice] = useState('');
 
   const [formData, setFormData] = useState({
     receiptNumber: 'REC001',
-    retailerId: '',
+    supplierId: '',
     amount: '',
     currency: 'INR',
     paymentMethod: 'Direct Deposit',
@@ -283,12 +34,12 @@ const ReceiptsTable = () => {
     bankName: '',
     transactionDate: '',
     reconciliationOption: 'Do Not Reconcile',
-    retailerMobile: '',
-    retailerEmail: '',
-    retailerGstin: '',
-    retailerBusinessName: '',
+    supplierMobile: '',
+    supplierEmail: '',
+    supplierGstin: '',
+    supplierBusinessName: '',
     transactionProofFile: '',
-    invoiceNumber: '' // Add invoice number field
+    invoiceNumber: ''
   });
 
   // Fetch invoices from API
@@ -299,12 +50,76 @@ const ReceiptsTable = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('Received invoices data:', data);
-        setInvoices(data);
+        
+        // Check the structure of the data
+        if (Array.isArray(data)) {
+          // If data is an array of objects with VchNo property
+          const invoiceNumbers = data.map(invoice => ({
+            id: invoice.VoucherID || invoice.id || Math.random(),
+            number: invoice.VchNo || invoice.invoice_number || invoice.number || 'Unknown'
+          }));
+          console.log('Processed invoice numbers:', invoiceNumbers);
+          setInvoices(invoiceNumbers);
+        } else if (typeof data === 'object') {
+          const invoiceArray = data.invoices || data.data || [];
+          const invoiceNumbers = invoiceArray.map(invoice => ({
+            id: invoice.VoucherID || invoice.id || Math.random(),
+            number: invoice.VchNo || invoice.invoice_number || invoice.number || 'Unknown'
+          }));
+          console.log('Processed invoice numbers from object:', invoiceNumbers);
+          setInvoices(invoiceNumbers);
+        } else {
+          console.warn('Unexpected invoices data format:', data);
+          setInvoices([]);
+        }
       } else {
         console.error('Failed to fetch invoices. Status:', response.status);
+        // Try alternative endpoint
+        await fetchInvoicesFromAlternativeEndpoint();
       }
     } catch (err) {
       console.error('Error fetching invoices:', err);
+      // Try alternative endpoint
+      await fetchInvoicesFromAlternativeEndpoint();
+    }
+  };
+
+  // Alternative endpoint for fetching invoices
+  const fetchInvoicesFromAlternativeEndpoint = async () => {
+    try {
+      console.log('Trying alternative endpoint for invoices...');
+      const endpoints = [
+        `${baseurl}/api/invoices`,
+        `${baseurl}/api/purchase-invoices`,
+        `${baseurl}/api/purchasevouchers`
+      ];
+      
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint);
+          if (response.ok) {
+            const data = await response.json();
+            console.log(`Found invoices at ${endpoint}:`, data);
+            
+            if (Array.isArray(data)) {
+              const invoiceNumbers = data.map(invoice => ({
+                id: invoice.id || invoice.VoucherID || Math.random(),
+                number: invoice.invoice_number || invoice.VchNo || invoice.number || 'Unknown'
+              }));
+              setInvoices(invoiceNumbers);
+              return;
+            }
+          }
+        } catch (err) {
+          console.log(`Failed to fetch from ${endpoint}:`, err);
+        }
+      }
+      
+      // If no endpoint works, set empty array
+      setInvoices([]);
+    } catch (err) {
+      console.error('Error in alternative invoice fetch:', err);
+      setInvoices([]);
     }
   };
 
@@ -352,9 +167,9 @@ const ReceiptsTable = () => {
       style: { textAlign: 'left' },
       render: (value, row) => {
         const businessName =
-          row?.retailer?.business_name ||
+          row?.supplier?.business_name ||
           row?.payee_name ||
-          row?.retailer_name ||
+          row?.supplier_name ||
           'N/A';
 
         return businessName;
@@ -392,21 +207,21 @@ const ReceiptsTable = () => {
       style:{textAlign:'center'},
       render:(value) => value || '0'
     },
-   {
-  key: 'Date',
-  title: 'DATE',
-  style: { textAlign: 'center' },
-  render: (value) => {
-    if (!value) return 'N/A';
+    {
+      key: 'Date',
+      title: 'DATE',
+      style: { textAlign: 'center' },
+      render: (value) => {
+        if (!value) return 'N/A';
 
-    const dateObj = new Date(value);
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const year = dateObj.getFullYear();
+        const dateObj = new Date(value);
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = dateObj.getFullYear();
 
-    return `${day}-${month}-${year}`; // DD-MM-YYYY
-  }
-}
+        return `${day}-${month}-${year}`;
+      }
+    }
   ];
 
   const tabs = [
@@ -500,17 +315,18 @@ const ReceiptsTable = () => {
           return dateB - dateA || b.id - a.id;
         });
 
-        // Transform data with proper retailer object handling
+        // Transform data with proper supplier object handling
         const transformedData = sortedData.map(receipt => ({
           ...receipt,
           id: receipt.id || '',
-          retailer: receipt.retailer || { 
-            business_name: receipt.payee_name || receipt.retailer_name || 'N/A' 
+          supplier: receipt.supplier || {
+            business_name: receipt.payee_name || receipt.supplier_name || 'N/A' 
           },
-          payee: receipt.retailer?.business_name || receipt.payee_name || receipt.retailer_name || 'N/A',
+          payee: receipt.supplier?.business_name || receipt.payee_name || receipt.supplier_name || 'N/A',
           amount: `₹ ${parseFloat(receipt.amount || 0).toLocaleString('en-IN')}`,
           receipt_date: receipt.receipt_date ? new Date(receipt.receipt_date).toLocaleDateString('en-IN') : 'N/A',
-          payment_method: receipt.payment_method || 'N/A'
+          payment_method: receipt.payment_method || 'N/A',
+          invoice_numbers: receipt.invoice_number || 'N/A'
         }));
 
         console.log('Transformed receipts data:', transformedData);
@@ -528,29 +344,31 @@ const ReceiptsTable = () => {
     }
   };
 
-  // Fetch accounts for retailer dropdown
-  const fetchAccounts = async () => {
+  // Fetch suppliers for supplier dropdown
+  const fetchSuppliers = async () => {
     try {
       const res = await fetch(`${baseurl}/accounts`);
       if (res.ok) {
         const data = await res.json();
-        setAccounts(data);
+        // Filter accounts to get only suppliers with role === "supplier"
+        const supplierAccounts = data.filter(acc => acc.role === "supplier");
+        setSuppliers(supplierAccounts);
       } else {
-        console.error('Failed to fetch accounts:', res.statusText);
-        alert('Failed to load accounts. Please try again later.');
+        console.error('Failed to fetch suppliers:', res.statusText);
+        alert('Failed to load suppliers. Please try again later.');
       }
     } catch (err) {
-      console.error('Error fetching accounts:', err);
+      console.error('Error fetching suppliers:', err);
       alert('Error connecting to server. Please check your network or try again later.');
     }
   };
 
   useEffect(() => {
     console.log('Component mounted, fetching initial data...');
-    fetchAccounts();
+    fetchSuppliers();
     fetchReceipts();
     fetchNextReceiptNumber();
-    fetchInvoices(); // Fetch invoices when component mounts
+    fetchInvoices();
   }, []);
 
   // Tab navigation
@@ -575,7 +393,7 @@ const ReceiptsTable = () => {
     setIsModalOpen(false);
     setFormData(prev => ({
       ...prev,
-      retailerId: '',
+      supplierId: '',
       amount: '',
       currency: 'INR',
       paymentMethod: 'Direct Deposit',
@@ -585,9 +403,13 @@ const ReceiptsTable = () => {
       transactionDate: '',
       reconciliationOption: 'Do Not Reconcile',
       receiptNumber: nextReceiptNumber,
-      invoiceNumber: '' // Reset invoice number
+      invoiceNumber: '',
+      supplierMobile: '',
+      supplierEmail: '',
+      supplierGstin: '',
+      supplierBusinessName: ''
     }));
-    setSelectedInvoice(''); // Reset selected invoice
+    setSelectedInvoice('');
   };
 
   // Handle form input changes
@@ -600,18 +422,18 @@ const ReceiptsTable = () => {
     }));
   };
 
-  // Handle retailer selection change
-  const handleRetailerChange = (e) => {
-    const selectedRetailerId = e.target.value;
-    const selectedRetailer = accounts.find(acc => acc.id == selectedRetailerId);
+  // Handle supplier selection change
+  const handleSupplierChange = (e) => {
+    const selectedSupplierId = e.target.value;
+    const selectedSupplier = suppliers.find(supp => supp.id == selectedSupplierId);
     
     setFormData(prev => ({
       ...prev,
-      retailerId: selectedRetailerId,
-      retailerMobile: selectedRetailer?.mobile_number || '',
-      retailerEmail: selectedRetailer?.email || '',
-      retailerGstin: selectedRetailer?.gstin || '',
-      retailerBusinessName: selectedRetailer?.business_name || ''
+      supplierId: selectedSupplierId,
+      supplierMobile: selectedSupplier?.mobile_number || '',
+      supplierEmail: selectedSupplier?.email || '',
+      supplierGstin: selectedSupplier?.gstin || '',
+      supplierBusinessName: selectedSupplier?.business_name || ''
     }));
   };
 
@@ -623,12 +445,13 @@ const ReceiptsTable = () => {
       ...prev,
       invoiceNumber: selectedVchNo
     }));
+    console.log('Selected invoice number:', selectedVchNo);
   };
 
   const handleCreateReceipt = async () => {
     // Validation
-    if (!formData.retailerId) {
-      alert('Please select a retailer');
+    if (!formData.supplierId) {
+      alert('Please select a supplier');
       return;
     }
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
@@ -639,6 +462,7 @@ const ReceiptsTable = () => {
       alert('Please select a receipt date');
       return;
     }
+  
 
     try {
       setIsLoading(true);
@@ -648,7 +472,7 @@ const ReceiptsTable = () => {
       
       // Append all form fields
       formDataToSend.append('receipt_number', formData.receiptNumber);
-      formDataToSend.append('retailer_id', formData.retailerId);
+      formDataToSend.append('supplier_id', formData.supplierId);
       formDataToSend.append('amount', formData.amount);
       formDataToSend.append('currency', formData.currency);
       formDataToSend.append('payment_method', formData.paymentMethod);
@@ -657,15 +481,15 @@ const ReceiptsTable = () => {
       formDataToSend.append('bank_name', formData.bankName);
       formDataToSend.append('transaction_date', formData.transactionDate || '');
       formDataToSend.append('reconciliation_option', formData.reconciliationOption);
-      formDataToSend.append('retailer_name', formData.retailerBusinessName);
-      formDataToSend.append('invoice_number', formData.invoiceNumber); // Add invoice number
-      
-      // Append file if exists
+      formDataToSend.append('supplier_name', formData.supplierBusinessName);
+      formDataToSend.append('invoice_number', formData.invoiceNumber);
+
       if (formData.transactionProofFile) {
         formDataToSend.append('transaction_proof', formData.transactionProofFile);
       }
 
       console.log('Sending receipt data with FormData...');
+      console.log('Supplier ID:', formData.supplierId);
       console.log('Invoice Number:', formData.invoiceNumber);
 
       const response = await fetch(`${baseurl}/api/receipts`, {
@@ -677,11 +501,10 @@ const ReceiptsTable = () => {
       if (response.ok) {
         const result = await response.json();
         console.log('Voucher created successfully:', result);
-        await fetchReceipts(); // Refresh the receipts list
-        handleCloseModal(); // Close modal
+        await fetchReceipts();
+        handleCloseModal();
         alert('Voucher created successfully!');
         
-        // Navigate to the ReceiptView page with the new receipt's ID
         if (result.id) {
           navigate(`/voucher_view/${result.id}`);
         } else {
@@ -689,7 +512,7 @@ const ReceiptsTable = () => {
           alert('Voucher created, but unable to view details. Please check the receipt list.');
         }
 
-        await fetchNextReceiptNumber(); // Fetch the next receipt number
+        await fetchNextReceiptNumber();
       } else {
         const errorText = await response.text();
         console.error('Failed to create receipt. Status:', response.status);
@@ -720,27 +543,6 @@ const ReceiptsTable = () => {
   const handleViewReceipt = (receiptId) => {
     console.log('View receipt:', receiptId);
     navigate(`/voucher_view/${receiptId}`);
-  };
-
-  // Delete receipt
-  const handleDeleteReceipt = async (receiptId) => {
-    if (window.confirm('Are you sure you want to delete this receipt?')) {
-      try {
-        const response = await fetch(`${baseurl}/api/receipts/${receiptId}`, {
-          method: 'DELETE',
-        });
-        if (response.ok) {
-          alert('Voucher deleted successfully!');
-          await fetchReceipts(); // Refresh the list
-          await fetchNextReceiptNumber(); // Re-fetch in case deletion affects sequence
-        } else {
-          alert('Failed to delete receipt. Please try again.');
-        }
-      } catch (err) {
-        console.error('Error deleting receipt:', err);
-        alert('Error deleting receipt. Please try again.');
-      }
-    }
   };
 
   // Download receipts
@@ -964,28 +766,23 @@ const ReceiptsTable = () => {
                       </div>
                     </div>
                     
-                    {/* Invoice Number Selection - Added below the first row */}
-                    <div className="row mb-4">
-                     
-                    </div>
-
                     <div className="row mb-4">
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Retailer *</label>
+                          <label className="form-label">Supplier *</label>
                           <select
                             className="form-select"
-                            name="retailerId"
-                            value={formData.retailerId}
-                            onChange={handleRetailerChange}
+                            name="supplierId"
+                            value={formData.supplierId}
+                            onChange={handleSupplierChange}
                             required
                           >
-                            <option value="">Select Retailer</option>
-                            {accounts
-                              .filter(acc => acc.role === "retailer" && acc.business_name)
-                              .map((acc) => (
-                                <option key={acc.id} value={acc.id}>
-                                  {acc.business_name}
+                            <option value="">Select Supplier</option>
+                            {suppliers
+                              .filter(supp => supp.role === "supplier" && supp.business_name)
+                              .map((supp) => (
+                                <option key={supp.id} value={supp.id}>
+                                  {supp.business_name}
                                 </option>
                               ))}
                           </select>
@@ -1046,12 +843,21 @@ const ReceiptsTable = () => {
                             required
                           >
                             <option value="">Select Invoice Number</option>
-                            {invoices.map((invoice) => (
-                              <option key={invoice.VoucherID} value={invoice.VchNo}>
-                                {invoice.VchNo}
-                              </option>
-                            ))}
+                            {invoices.length > 0 ? (
+                              invoices.map((invoice) => (
+                                <option key={invoice.id} value={invoice.number}>
+                                  {invoice.number}
+                                </option>
+                              ))
+                            ) : (
+                              <option value="" disabled>No invoices found</option>
+                            )}
                           </select>
+                          {invoices.length === 0 && (
+                            <small className="text-danger">
+                              No invoices available. Please check if invoices are created.
+                            </small>
+                          )}
                         </div>
                       </div>
                     </div>

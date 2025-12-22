@@ -1183,7 +1183,7 @@ const handleSubmit = async (e) => {
       ) : (
         <>
           <div className="d-flex justify-content-between align-items-center mb-2">
-            <strong className="text-primary">Retailer Info</strong>
+            <strong className="text-primary">Customer Info</strong>
             <Button
               variant="info"
               size="sm"

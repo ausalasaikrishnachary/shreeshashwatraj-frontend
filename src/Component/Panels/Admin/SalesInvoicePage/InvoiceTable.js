@@ -418,8 +418,8 @@ const columns = [
     )
   },
   { key: 'totalAmount', title: 'TOTAL AMOUNT', style: { textAlign: 'right' } },
-  {
-    key: 'status',
+   {
+    key: 'payment',
     title: 'PAYMENT STATUS',
     style: { textAlign: 'center' },
     render: (value) => {
