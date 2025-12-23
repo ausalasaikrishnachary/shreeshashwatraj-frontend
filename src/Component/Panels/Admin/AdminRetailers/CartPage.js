@@ -26,6 +26,8 @@ function CartPage() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [assignedStaffInfo, setAssignedStaffInfo] = useState({ id: null, name: null });
+  const [editingPriceForItem, setEditingPriceForItem] = useState(null);
+  const [editedPrice, setEditedPrice] = useState("");
 
   // Get logged-in user
   useEffect(() => {
@@ -102,42 +104,41 @@ function CartPage() {
     fetchRetailerInfo();
   }, [retailerId, staffId, customerName, displayName, discount]);
 
-useEffect(() => {
-  if (!retailerId) return;
-  
-  const fetchAssignedStaffInfo = async () => {
-    try {
-      const response = await fetch(`${baseurl}/accounts/${retailerId}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+  useEffect(() => {
+    if (!retailerId) return;
+    
+    const fetchAssignedStaffInfo = async () => {
+      try {
+        const response = await fetch(`${baseurl}/accounts/${retailerId}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result) {
+          setAssignedStaffInfo({
+            id: result.staffid,
+            name: result.assigned_staff
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching assigned staff info:", err);
+        const storedData = localStorage.getItem("user");
+        if (storedData) {
+          const user = JSON.parse(storedData);
+          setAssignedStaffInfo({
+            id: user.id,
+            name: user.name || user.username || "Staff"
+          });
+        }
       }
-      
-      const result = await response.json();
-      
-      if (result) {
-        // Use staffid (lowercase) from the API response
-        setAssignedStaffInfo({
-          id: result.staffid, // Note: lowercase 'staffid'
-          name: result.assigned_staff
-        });
-      }
-    } catch (err) {
-      console.error("Error fetching assigned staff info:", err);
-      // Fallback to logged-in user info
-      const storedData = localStorage.getItem("user");
-      if (storedData) {
-        const user = JSON.parse(storedData);
-        setAssignedStaffInfo({
-          id: user.id,
-          name: user.name || user.username || "Staff"
-        });
-      }
-    }
-  };
-  
-  fetchAssignedStaffInfo();
-}, [retailerId, baseurl]);
+    };
+    
+    fetchAssignedStaffInfo();
+  }, [retailerId, baseurl]);
+
   // Fetch product details for cart items
   useEffect(() => {
     const fetchProductDetails = async () => {
@@ -151,14 +152,15 @@ useEffect(() => {
         const result = await response.json();
         const products = Array.isArray(result) ? result : (result.data || []);
         
-        // Create a map of product details
+        // Create a map of product details with MRP and sale price - UPDATED
         const productMap = {};
         products.forEach(product => {
           productMap[product.id] = {
             name: product.name,
             unit: product.unit,
             gst_rate: parseFloat(product.gst_rate) || 0,
-            price: parseFloat(product.price) || 0,
+            price: parseFloat(product.price) || 0, // This is sale_price
+            mrp: parseFloat(product.mrp) || 0,
             inclusive_gst: product.inclusive_gst || "Exclusive"
           };
         });
@@ -253,6 +255,73 @@ useEffect(() => {
     }
   };
 
+  // Update edited_sale_price in cart - ADDED FROM REFERENCE CODE
+  const updatePriceInCart = async (itemId, newPrice) => {
+    try {
+      // Validate price
+      const price = parseFloat(newPrice);
+      if (isNaN(price) || price < 0) {
+        alert("Please enter a valid price");
+        return false;
+      }
+
+      const response = await fetch(`${baseurl}/api/cart/update-cart-price/${itemId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ price: price }),
+      });
+
+      if (!response.ok) throw new Error("Failed to update price");
+      
+      // Exit edit mode
+      setEditingPriceForItem(null);
+      setEditedPrice("");
+      
+      // Refresh cart items
+      fetchCartItems();
+      return true;
+    } catch (err) {
+      console.error("Error updating price:", err);
+      alert(err.message || "Failed to update price");
+      return false;
+    }
+  };
+
+  // Start editing price for an item - ADDED FROM REFERENCE CODE
+  const startEditingPrice = (itemId, currentPrice) => {
+    setEditingPriceForItem(itemId);
+    setEditedPrice(currentPrice.toString());
+  };
+
+  // Handle price input change - ADDED FROM REFERENCE CODE
+  const handlePriceInputChange = (e) => {
+    setEditedPrice(e.target.value);
+  };
+
+  // Handle price input blur (save on click outside or enter) - ADDED FROM REFERENCE CODE
+  const handlePriceInputBlur = (itemId) => {
+    if (editedPrice.trim() !== "") {
+      updatePriceInCart(itemId, editedPrice);
+    } else {
+      setEditingPriceForItem(null);
+      setEditedPrice("");
+    }
+  };
+
+  // Handle price input key press (save on Enter) - ADDED FROM REFERENCE CODE
+  const handlePriceInputKeyPress = (e, itemId) => {
+    if (e.key === 'Enter') {
+      if (editedPrice.trim() !== "") {
+        updatePriceInCart(itemId, editedPrice);
+      }
+    } else if (e.key === 'Escape') {
+      setEditingPriceForItem(null);
+      setEditedPrice("");
+    }
+  };
+
   // Update credit period for individual item
   const updateItemCreditPeriod = async (itemId, creditPeriod, creditPercentage) => {
     try {
@@ -294,153 +363,144 @@ useEffect(() => {
     }
   };
 
-  // CALCULATION FUNCTIONS
+  // CALCULATION FUNCTIONS - UPDATED TO MATCH REFERENCE CODE
   const calculateItemBreakdown = (item) => {
     const product = productDetails[item.product_id] || {};
-    const price = product.price || item.price || 0;
-    const gstRate = product.gst_rate || 0;
+    
+    // Get MRP and sale prices - UPDATED
+    const mrp = product.mrp || 0;
+    const salePrice = product.price || 0;
+    
+    // Use edited_sale_price if available in cart item, otherwise from product details
+    const editedSalePrice = parseFloat(item.price) || salePrice;
+    
+    const gstRate = parseFloat(product.gst_rate) || 0;
     const isInclusiveGST = product.inclusive_gst === "Inclusive";
     const quantity = item.quantity || 1;
-    const creditMultiplier = item.credit_percentage ? (1 + (item.credit_percentage / 100)) : 1;
     const creditPercentage = item.credit_percentage || 0;
-    const userDiscountPercentage = parseFloat(discount) || 0;
+    const creditPeriod = item.credit_period || 0;
+    const discountPercentage = parseFloat(discount) || 0;
 
-    // FOR INCLUSIVE GST
+    // Calculate credit charge (percentage of edited_sale_price) - UPDATED
+    const creditChargePerUnit = (editedSalePrice * creditPercentage) / 100;
+
+    // Calculate customer sale price - UPDATED
+    const customerSalePricePerUnit = editedSalePrice + creditChargePerUnit;
+
+    // Calculate discount (percentage of customer_sale_price) - UPDATED
+    const discountAmountPerUnit = (customerSalePricePerUnit * discountPercentage) / 100;
+
+    // Calculate item total (before tax) - UPDATED
+    const itemTotalPerUnit = customerSalePricePerUnit - discountAmountPerUnit;
+
+    // Calculate tax (GST handling based on inclusive/exclusive) - UPDATED
+    let taxableAmountPerUnit = 0;
+    let taxAmountPerUnit = 0;
+
     if (isInclusiveGST) {
-      // Step 1: Extract base amount from price (which includes GST)
-      const baseAmountPerUnit = price / (1 + (gstRate / 100));
-      
-      // Step 2: Apply credit charge per unit
-      const priceAfterCreditPerUnit = baseAmountPerUnit * creditMultiplier;
-      const creditChargePerUnit = priceAfterCreditPerUnit - baseAmountPerUnit;
-      
-      // Step 3: Calculate total for quantity
-      const totalBaseAmount = baseAmountPerUnit * quantity;
-      const totalCreditCharges = creditChargePerUnit * quantity;
-      const totalAmountAfterCredit = totalBaseAmount + totalCreditCharges;
-      
-      // Step 4: Apply user discount
-      let discountAmount = 0;
-      if (userDiscountPercentage > 0) {
-        discountAmount = (totalAmountAfterCredit * userDiscountPercentage) / 100;
-      }
-      
-      // Step 5: Calculate taxable amount
-      const taxableAmount = totalAmountAfterCredit - discountAmount;
-      
-      // Step 6: Calculate tax amount on taxable amount
-      const taxAmount = (taxableAmount * gstRate) / 100;
-      
-      // Step 7: Final total
-      const finalPayableAmount = taxableAmount + taxAmount;
-
-      return {
-        basePrice: price,
-        gstRate,
-        isInclusiveGST: true,
-        quantity,
-        creditMultiplier,
-        creditPercentage,
-        userDiscountPercentage,
-        
-        perUnit: {
-          price: price,
-          baseAmount: baseAmountPerUnit,
-          creditCharge: creditChargePerUnit,
-        },
-        
-        totalBaseAmount,
-        totalCreditCharges,
-        discountAmount,
-        taxableAmount,
-        taxAmount,
-        finalPayableAmount
-      };
+      taxableAmountPerUnit = itemTotalPerUnit / (1 + (gstRate / 100));
+      taxAmountPerUnit = itemTotalPerUnit - taxableAmountPerUnit;
+    } else {
+      taxableAmountPerUnit = itemTotalPerUnit;
+      taxAmountPerUnit = (taxableAmountPerUnit * gstRate) / 100;
     }
-    
-    // FOR EXCLUSIVE GST
-    else {
-      const baseAmountPerUnit = price;
-      const priceAfterCreditPerUnit = baseAmountPerUnit * creditMultiplier;
-      const creditChargePerUnit = priceAfterCreditPerUnit - baseAmountPerUnit;
+
+    // Calculate CGST/SGST (split equally) - UPDATED
+    const sgstPercentage = gstRate / 2;
+    const cgstPercentage = gstRate / 2;
+    const sgstAmountPerUnit = taxAmountPerUnit / 2;
+    const cgstAmountPerUnit = taxAmountPerUnit / 2;
+
+    // Calculate final amount per unit (including tax if exclusive) - UPDATED
+    const finalAmountPerUnit = isInclusiveGST ? itemTotalPerUnit : itemTotalPerUnit + taxAmountPerUnit;
+
+    return {
+      // Per unit values
+      mrp,
+      sale_price: salePrice,
+      edited_sale_price: editedSalePrice,
+      credit_charge: creditChargePerUnit,
+      credit_period: creditPeriod,
+      credit_percentage: creditPercentage,
+      customer_sale_price: customerSalePricePerUnit,
+      discount_percentage: discountPercentage,
+      discount_amount: discountAmountPerUnit,
+      item_total: itemTotalPerUnit,
+      taxable_amount: taxableAmountPerUnit,
+      tax_percentage: gstRate,
+      tax_amount: taxAmountPerUnit,
+      sgst_percentage: sgstPercentage,
+      sgst_amount: sgstAmountPerUnit,
+      cgst_percentage: cgstPercentage,
+      cgst_amount: cgstAmountPerUnit,
+      final_amount: finalAmountPerUnit,
+      total_amount: finalAmountPerUnit * quantity,
       
-      const totalBaseAmount = baseAmountPerUnit * quantity;
-      const totalCreditCharges = creditChargePerUnit * quantity;
-      const totalAmountAfterCredit = totalBaseAmount + totalCreditCharges;
+      // For display purposes
+      isInclusiveGST,
+      quantity,
       
-      let discountAmount = 0;
-      if (userDiscountPercentage > 0) {
-        discountAmount = (totalAmountAfterCredit * userDiscountPercentage) / 100;
+      // Totals for the entire quantity
+      totals: {
+        totalMRP: mrp * quantity,
+        totalSalePrice: salePrice * quantity,
+        totalEditedSalePrice: editedSalePrice * quantity,
+        totalCreditCharge: creditChargePerUnit * quantity,
+        totalCustomerSalePrice: customerSalePricePerUnit * quantity,
+        totalDiscountAmount: discountAmountPerUnit * quantity,
+        totalItemTotal: itemTotalPerUnit * quantity,
+        totalTaxableAmount: taxableAmountPerUnit * quantity,
+        totalTaxAmount: taxAmountPerUnit * quantity,
+        totalSgstAmount: sgstAmountPerUnit * quantity,
+        totalCgstAmount: cgstAmountPerUnit * quantity,
+        finalPayableAmount: finalAmountPerUnit * quantity
       }
-      
-      const taxableAmount = totalAmountAfterCredit - discountAmount;
-      const taxAmount = (taxableAmount * gstRate) / 100;
-      const finalPayableAmount = taxableAmount + taxAmount;
-
-      return {
-        basePrice: price,
-        gstRate,
-        isInclusiveGST: false,
-        quantity,
-        creditMultiplier,
-        creditPercentage,
-        userDiscountPercentage,
-        
-        perUnit: {
-          price: price,
-          baseAmount: baseAmountPerUnit,
-          creditCharge: creditChargePerUnit,
-        },
-        
-        totalBaseAmount,
-        totalCreditCharges,
-        discountAmount,
-        taxableAmount,
-        taxAmount,
-        finalPayableAmount
-      };
-    }
+    };
   };
 
-  // Calculate item total
-  const calculateItemTotal = (item) => {
-    const breakdown = calculateItemBreakdown(item);
-    return breakdown.finalPayableAmount;
-  };
-
-  // Calculate item discount
-  const calculateItemDiscount = (item) => {
-    const breakdown = calculateItemBreakdown(item);
-    return breakdown.discountAmount;
-  };
-
-  // Calculate totals for the entire cart
+  // Calculate totals for the entire cart - UPDATED
   const calculateCartTotals = () => {
     let subtotal = 0;
     let totalCreditCharges = 0;
+    let totalCustomerSalePrice = 0;
     let totalDiscount = 0;
+    let totalItemTotal = 0;
+    let totalTaxableAmount = 0;
     let totalTax = 0;
+    let totalSgst = 0;
+    let totalCgst = 0;
     let finalTotal = 0;
     let itemCount = 0;
 
     cartItems.forEach(item => {
       const breakdown = calculateItemBreakdown(item);
       
-      subtotal += breakdown.totalBaseAmount;
-      totalCreditCharges += breakdown.totalCreditCharges;
-      totalDiscount += breakdown.discountAmount;
-      totalTax += breakdown.taxAmount;
-      finalTotal += breakdown.finalPayableAmount;
+      subtotal += breakdown.totals.totalEditedSalePrice;
+      totalCreditCharges += breakdown.totals.totalCreditCharge;
+      totalCustomerSalePrice += breakdown.totals.totalCustomerSalePrice;
+      totalDiscount += breakdown.totals.totalDiscountAmount;
+      totalItemTotal += breakdown.totals.totalItemTotal;
+      totalTaxableAmount += breakdown.totals.totalTaxableAmount;
+      totalTax += breakdown.totals.totalTaxAmount;
+      totalSgst += breakdown.totals.totalSgstAmount;
+      totalCgst += breakdown.totals.totalCgstAmount;
+      finalTotal += breakdown.totals.finalPayableAmount;
       itemCount += breakdown.quantity;
     });
 
     return {
       subtotal,
       totalCreditCharges,
+      totalCustomerSalePrice,
       totalDiscount,
+      totalItemTotal,
+      totalTaxableAmount,
       totalTax,
+      totalSgst,
+      totalCgst,
       finalTotal,
-      itemCount
+      itemCount,
+      userDiscount: discount
     };
   };
 
@@ -458,73 +518,99 @@ useEffect(() => {
     });
   };
 
-  // Proceed to checkout
-// Update the navigate to checkout function
-const handleProceedToCheckout = () => {
-  if (cartItems.length === 0) {
-    alert("Cart is empty. Add items before checkout.");
-    return;
-  }
-
-  // Prepare cart items with full breakdown for checkout
-  const checkoutItems = cartItems.map(item => {
-    const breakdown = calculateItemBreakdown(item);
-    const product = productDetails[item.product_id] || {};
-    
-    return {
-      ...item,
-      item_name: product.name || `Product ${item.product_id}`,
-      price: product.price || item.price || 0,
-      gst_rate: product.gst_rate || 0,
-      inclusive_gst: product.inclusive_gst || "Exclusive",
-      breakdown: {
-        ...breakdown,
-        productDetails: product
-      }
-    };
-  });
-
-  navigate("/retailers/checkout", {
-    state: {
-      retailerId,
-      customerName: retailerInfo.name,
-      displayName: retailerInfo.displayName || displayName,
-      discount,
-      cartItems: checkoutItems,
-      staffId: assignedStaffInfo.id, // Use assigned staff ID
-      assignedStaffName: assignedStaffInfo.name, // Pass assigned staff name
-      userRole,
-      totals: totals,
-      creditBreakdown: {
-        subtotal: totals.subtotal,
-        totalCreditCharges: totals.totalCreditCharges,
-        totalDiscount: totals.totalDiscount,
-        totalTax: totals.totalTax,
-        userDiscount: discount,
-        finalTotal: totals.finalTotal
-      }
+  // Proceed to checkout - UPDATED
+  const handleProceedToCheckout = () => {
+    if (cartItems.length === 0) {
+      alert("Cart is empty. Add items before checkout.");
+      return;
     }
-  });
-};
+
+    const checkoutItems = cartItems.map(item => {
+      const breakdown = calculateItemBreakdown(item);
+      const product = productDetails[item.product_id] || {};
+      
+      // Create comprehensive breakdown object - UPDATED
+      const breakdownObj = {
+        perUnit: {
+          mrp: breakdown.mrp,
+          sale_price: breakdown.sale_price,
+          edited_sale_price: breakdown.edited_sale_price,
+          credit_charge: breakdown.credit_charge,
+          credit_period: breakdown.credit_period,
+          credit_percentage: breakdown.credit_percentage,
+          customer_sale_price: breakdown.customer_sale_price,
+          discount_percentage: breakdown.discount_percentage,
+          discount_amount: breakdown.discount_amount,
+          item_total: breakdown.item_total,
+          taxable_amount: breakdown.taxable_amount,
+          tax_percentage: breakdown.tax_percentage,
+          tax_amount: breakdown.tax_amount,
+          sgst_percentage: breakdown.sgst_percentage,
+          sgst_amount: breakdown.sgst_amount,
+          cgst_percentage: breakdown.cgst_percentage,
+          cgst_amount: breakdown.cgst_amount,
+          final_amount: breakdown.final_amount,
+          total_amount: breakdown.total_amount,
+          isInclusiveGST: breakdown.isInclusiveGST
+        },
+        
+        // Totals for the quantity
+        totals: {
+          totalMRP: breakdown.totals.totalMRP,
+          totalSalePrice: breakdown.totals.totalSalePrice,
+          totalEditedSalePrice: breakdown.totals.totalEditedSalePrice,
+          totalCreditCharge: breakdown.totals.totalCreditCharge,
+          totalCustomerSalePrice: breakdown.totals.totalCustomerSalePrice,
+          totalDiscountAmount: breakdown.totals.totalDiscountAmount,
+          totalItemTotal: breakdown.totals.totalItemTotal,
+          totalTaxableAmount: breakdown.totals.totalTaxableAmount,
+          totalTaxAmount: breakdown.totals.totalTaxAmount,
+          totalSgstAmount: breakdown.totals.totalSgstAmount,
+          totalCgstAmount: breakdown.totals.totalCgstAmount,
+          finalPayableAmount: breakdown.totals.finalPayableAmount
+        },
+        
+        // Quantity
+        quantity: breakdown.quantity
+      };
+
+      return {
+        // Original cart item fields
+        id: item.id,
+        product_id: item.product_id,
+        quantity: item.quantity || 1,
+        price: item.price || breakdown.edited_sale_price,
+        credit_period: item.credit_period || 0,
+        credit_percentage: item.credit_percentage || 0,
+        
+        // Additional fields needed for checkout
+        item_name: product.name || `Product ${item.product_id}`,
+        product_details: product,
+        breakdown: breakdownObj
+      };
+    });
+
+    navigate("/retailers/checkout", {
+      state: {
+        retailerId,
+        customerName: retailerInfo.name,
+        displayName: retailerInfo.displayName || displayName,
+        discount,
+        cartItems: checkoutItems,
+        staffId: assignedStaffInfo.id,
+        assignedStaffName: assignedStaffInfo.name,
+        userRole,
+        totals: totals,
+        orderTotals: totals,
+        userDiscountPercentage: discount,
+        creditPeriods
+      }
+    });
+  };
 
   // Go back to retailers page
   const handleBackToRetailers = () => {
     navigate("/retailers");
-  };
-
-  // Helper function for credit period display
-  const getCreditPeriodDisplay = (item) => {
-    if (!item.credit_period && item.credit_period !== 0) return "Select Credit Period";
-    
-    if (item.credit_period === 0) return "No Credit Period";
-    
-    const period = creditPeriods.find(cp => 
-      cp.credit_period === parseInt(item.credit_period)
-    );
-    if (period) {
-      return `${period.credit_period} days (+${period.credit_percentage}%)`;
-    }
-    return `${item.credit_period} days`;
   };
 
   if (!retailerId) {
@@ -612,12 +698,13 @@ const handleProceedToCheckout = () => {
                     <div className="summary-items-preview">
                       {cartItems.slice(0, 3).map(item => {
                         const product = productDetails[item.product_id] || {};
+                        const breakdown = calculateItemBreakdown(item);
                         return (
                           <div key={item.id} className="preview-item">
                             <span className="preview-name">{product.name || `Product ${item.product_id}`}</span>
                             <span className="preview-qty">x{item.quantity || 1}</span>
                             <span className="preview-price">
-                              ₹{calculateItemTotal(item).toLocaleString('en-IN')}
+                              ₹{breakdown.totals.finalPayableAmount.toLocaleString('en-IN')}
                             </span>
                           </div>
                         );
@@ -748,7 +835,7 @@ const handleProceedToCheckout = () => {
         </div>
       )}
 
-      {/* Cart Items with Credit Period Selection */}
+      {/* Cart Items with Credit Period Selection and Price Editing */}
       {!loading && cartItems.length > 0 && (
         <div className="cart-items-container">
           <h2>Cart Items ({cartItems.length})</h2>
@@ -764,16 +851,47 @@ const handleProceedToCheckout = () => {
             {cartItems.map(item => {
               const breakdown = calculateItemBreakdown(item);
               const product = productDetails[item.product_id] || {};
+              const finalPayableAmount = breakdown.totals.finalPayableAmount;
               
               return (
                 <div key={item.id} className="cart-item-card">
                   <div className="item-main-info">
-                    <h4>{product.name || `Product ${item.product_id}`}</h4>
+                    <div className="item-header">
+                      <h4>{product.name || `Product ${item.product_id}`}</h4>
+                      
+                      {/* Edited Sale Price Display/Edit - Click to edit - ADDED FROM REFERENCE CODE */}
+                      <div className="price-edit-container">
+                        {editingPriceForItem === item.id ? (
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={editedPrice}
+                            onChange={handlePriceInputChange}
+                            onBlur={() => handlePriceInputBlur(item.id)}
+                            onKeyDown={(e) => handlePriceInputKeyPress(e, item.id)}
+                            className="price-edit-input"
+                            autoFocus
+                            placeholder="Enter sale price"
+                          />
+                        ) : (
+                          <div 
+                            className="price-display clickable-price"
+                            onClick={() => startEditingPrice(item.id, breakdown.edited_sale_price)}
+                            title="Click to edit sale price"
+                          >
+                            <span className="price-label">Sale Price: </span>
+                            <span className="price-value">₹{breakdown.edited_sale_price.toLocaleString('en-IN')}</span>
+                            <span className="price-edit-hint">✏️</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
                     <div className="item-details">
-                      <span className="price">₹{breakdown.basePrice.toLocaleString('en-IN')}</span>
                       {product.unit && <span className="unit">/{product.unit}</span>}
                       <span className={`gst-badge ${breakdown.isInclusiveGST ? 'inclusive' : 'exclusive'}`}>
-                        {breakdown.isInclusiveGST ? 'Incl. GST' : 'Excl. GST'} {breakdown.gstRate}%
+                        {breakdown.isInclusiveGST ? 'Incl. GST' : 'Excl. GST'} {breakdown.tax_percentage}%
                       </span>
                     </div>
                     
@@ -814,50 +932,39 @@ const handleProceedToCheckout = () => {
                     </div>
                     
                     {/* Credit Period Indicator */}
-                    {item.credit_period > 0 && (
+                    {breakdown.credit_period > 0 && (
                       <div className="credit-badge">
-                        Credit: {item.credit_period} days (+{item.credit_percentage}%)
+                        Credit: {breakdown.credit_period} days (+{breakdown.credit_percentage}%)
                       </div>
                     )}
 
-                    {/* Item Calculation Breakdown */}
+                    {/* Item Calculation Breakdown - UPDATED */}
                     <div className="calculation-breakdown">
-                      <div className="breakdown-row">
-                        <span>Base Amount:</span>
-                        <span>₹{breakdown.totalBaseAmount.toLocaleString('en-IN')}</span>
-                      </div>
-                      
-                      {breakdown.totalCreditCharges > 0 && (
-                        <div className="breakdown-row credit-charge">
-                          <span>Credit Charges (+{breakdown.creditPercentage}%):</span>
-                          <span>+₹{breakdown.totalCreditCharges.toLocaleString('en-IN')}</span>
-                        </div>
-                      )}
-                      
-                      {discount > 0 && (
-                        <div className="breakdown-row discount">
-                          <span>Discount ({discount}%):</span>
-                          <span>-₹{breakdown.discountAmount.toLocaleString('en-IN')}</span>
-                        </div>
-                      )}
-                      
+                      {/* Taxable Amount - UPDATED */}
                       <div className="breakdown-row">
                         <span>Taxable Amount:</span>
-                        <span>₹{breakdown.taxableAmount.toLocaleString('en-IN')}</span>
+                        <span>₹{breakdown.taxable_amount.toLocaleString('en-IN')}</span>
                       </div>
                       
-                      {breakdown.taxAmount > 0 && (
+                      {/* GST - UPDATED */}
+                      {breakdown.tax_amount > 0 && (
                         <div className="breakdown-row tax">
-                          <span>GST ({breakdown.gstRate}%):</span>
-                          <span>+₹{breakdown.taxAmount.toLocaleString('en-IN')}</span>
+                          <span>GST ({breakdown.tax_percentage}%):</span>
+                          <span>+₹{breakdown.tax_amount.toLocaleString('en-IN')}</span>
                         </div>
                       )}
                       
+                      {/* Final Amount - UPDATED */}
                       <div className="breakdown-row total">
-                        <span>Item Total:</span>
+                        <span>Final Amount:</span>
                         <span className="item-total-amount">
-                          ₹{breakdown.finalPayableAmount.toLocaleString('en-IN')}
+                          ₹{breakdown.final_amount.toLocaleString('en-IN')}
                         </span>
+                      </div>
+                      
+                      {/* Quantity Multiplier Note - ADDED FROM REFERENCE CODE */}
+                      <div className="breakdown-row-note">
+                        × {breakdown.quantity} units = ₹{finalPayableAmount.toLocaleString('en-IN')} total
                       </div>
                     </div>
                   </div>
@@ -881,7 +988,7 @@ const handleProceedToCheckout = () => {
                     </div>
 
                     <div className="per-unit-price">
-                      ₹{(breakdown.finalPayableAmount / breakdown.quantity).toFixed(2)} per unit
+                      ₹{(breakdown.final_amount).toFixed(2)} per unit
                     </div>
 
                     <button
@@ -896,14 +1003,9 @@ const handleProceedToCheckout = () => {
             })}
           </div>
 
-          {/* Order Summary */}
+          {/* Order Summary - UPDATED */}
           <div className="order-summary">
             <h3>Order Summary</h3>
-            
-            <div className="summary-row">
-              <span>Subtotal ({totals.itemCount} items):</span>
-              <span>₹{totals.subtotal.toLocaleString('en-IN')}</span>
-            </div>
             
             {totals.totalCreditCharges > 0 && (
               <div className="summary-row credit-charges">
@@ -920,10 +1022,17 @@ const handleProceedToCheckout = () => {
             )}
             
             {totals.totalTax > 0 && (
-              <div className="summary-row tax">
-                <span>Total GST:</span>
-                <span>+₹{totals.totalTax.toLocaleString('en-IN')}</span>
-              </div>
+              <>
+                <div className="summary-row">
+                  <span>Total Taxable Amount:</span>
+                  <span>₹{totals.totalTaxableAmount.toLocaleString('en-IN')}</span>
+                </div>
+                
+                <div className="summary-row tax">
+                  <span>Total GST:</span>
+                  <span>+₹{totals.totalTax.toLocaleString('en-IN')}</span>
+                </div>
+              </>
             )}
             
             <div className="summary-row total">

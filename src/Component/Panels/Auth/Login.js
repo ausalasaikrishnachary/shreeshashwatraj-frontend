@@ -1,18 +1,18 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { FaEye, FaEyeSlash } from "react-icons/fa"; // 👁️ Eye icons
+import { FaEye, FaEyeSlash, FaStore, FaShoppingCart, FaChartLine, FaTags } from "react-icons/fa";
+import { MdAccountBalanceWallet } from "react-icons/md";
 import "./Login.css";
 import { baseurl } from "../../BaseURL/BaseURL";
 
 function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // 👁️ Password toggle
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  // Static admin credentials
   const ADMIN_CREDENTIALS = {
     email: "admin@gmail.com",
     password: "1234"
@@ -88,62 +88,139 @@ function Login() {
 
   return (
     <div className="login-container">
-      <form className="login-form" onSubmit={handleSubmit}>
-        <h2>Welcome Back 👋</h2>
+      {/* Decorative Background Elements */}
+      <div className="sales-bg-elements">
+        <div className="bg-icon cart-icon"><FaShoppingCart /></div>
+        <div className="bg-icon chart-icon"><FaChartLine /></div>
+        <div className="bg-icon store-icon"><FaStore /></div>
+        <div className="bg-icon wallet-icon"><MdAccountBalanceWallet /></div>
+        <div className="bg-icon tag-icon"><FaTags /></div>
+        
+        {/* Animated floating elements */}
+        <div className="floating-circle circle-1"></div>
+        <div className="floating-circle circle-2"></div>
+        <div className="floating-circle circle-3"></div>
+        <div className="floating-rect rect-1"></div>
+        <div className="floating-rect rect-2"></div>
+      </div>
 
-        {/* Error Message */}
-        {error && <div className="error-message">{error}</div>}
-
-        {/* Username */}
-        <div className="form-group">
-          <label htmlFor="username">Email or Mobile Number</label>
-          <input
-            type="text"
-            id="username"
-            placeholder="Enter your email or mobile number"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
+      {/* Left Side - Branding */}
+      <div className="login-branding">
+        <div className="brand-logo">
+          <FaStore />
         </div>
-
-        {/* Password with Eye Toggle */}
-        <div className="form-group password-group">
-          <label htmlFor="password">Password</label>
-          <div className="password-wrapper">
-            <input
-              type={showPassword ? "text" : "password"}
-              id="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <span
-              className="password-toggle"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? <FaEyeSlash /> : <FaEye />}
-            </span>
+        <h1 className="brand-title">RetailSync</h1>
+        <p className="brand-subtitle">Sales & Retail Management Platform</p>
+        
+        <div className="features-list">
+          <div className="feature-item">
+            <span className="feature-icon">📊</span>
+            <span>Real-time Analytics</span>
+          </div>
+          <div className="feature-item">
+            <span className="feature-icon">📈</span>
+            <span>Sales Tracking</span>
+          </div>
+          <div className="feature-item">
+            <span className="feature-icon">🛒</span>
+            <span>Inventory Management</span>
+          </div>
+          <div className="feature-item">
+            <span className="feature-icon">👥</span>
+            <span>Customer Insights</span>
           </div>
         </div>
+      </div>
 
-        {/* Forgot Password */}
-        <div className="forgot-password-link">
-          Forgot Password?{" "}
-          <Link
-            to="/forgot-password"
-            state={{ email: username.includes("@") ? username : "" }}
-          >
-            Reset Here
-          </Link>
-        </div>
+      {/* Right Side - Login Form */}
+      <div className="login-wrapper">
+        <form className="login-form" onSubmit={handleSubmit}>
+          <div className="form-header">
+            <h2>Welcome Back! 👋</h2>
+            <p className="form-subtitle">Sign in to your retailer account</p>
+          </div>
 
-        {/* Submit Button */}
-        <button type="submit" disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
+          {/* Error Message */}
+          {error && <div className="error-message">{error}</div>}
+
+          {/* Username */}
+          <div className="form-group">
+            <label htmlFor="username">
+              <span className="label-icon">📧</span>
+              Email or Mobile Number
+            </label>
+            <input
+              type="text"
+              id="username"
+              placeholder="retailer@example.com or +91 9876543210"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              className="form-input"
+            />
+          </div>
+
+          {/* Password with Eye Toggle */}
+          <div className="form-group password-group">
+            <label htmlFor="password">
+              <span className="label-icon">🔒</span>
+              Password
+            </label>
+            <div className="password-wrapper">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="form-input"
+              />
+              <span
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </span>
+            </div>
+          </div>
+
+          {/* Forgot Password & Remember Me */}
+          <div className="form-options">
+            <div className="remember-me">
+              <input type="checkbox" id="remember" />
+              <label htmlFor="remember">Remember me</label>
+            </div>
+            <div className="forgot-password-link">
+              <Link to="/forgot-password" state={{ email: username.includes("@") ? username : "" }}>
+                Forgot Password?
+              </Link>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <button type="submit" disabled={loading} className="login-button">
+            {loading ? (
+              <span className="button-loading">
+                <span className="spinner"></span>
+                Logging in...
+              </span>
+            ) : (
+              "Login to Dashboard"
+            )}
+          </button>
+
+          {/* Divider */}
+          <div className="divider">
+            <span>New to RetailSync?</span>
+          </div>
+
+          {/* Register Link */}
+          <div className="register-link">
+            <p>Don't have an account? <Link to="/register">Register as Retailer</Link></p>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

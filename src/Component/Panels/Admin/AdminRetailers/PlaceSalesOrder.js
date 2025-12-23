@@ -228,16 +228,19 @@ function PlaceSalesOrder() {
         return matchesCategory && matchesSearch;
     });
 
-    // Add product to cart via backend
+    // Add product to cart via backend - SAME AS REFERENCE CODE
     const addToCart = async (product) => {
         try {
             // First check if product is already in cart
             const existingItem = cart.find(item => item.product_id === product.id);
-
+            
             // Get logged-in user info
             const storedData = localStorage.getItem("user");
             const user = storedData ? JSON.parse(storedData) : null;
-
+            
+            // Format price to ensure it's a number - ADDED FROM REFERENCE CODE
+            const productPrice = parseFloat(product.price) || 0;
+            
             if (existingItem) {
                 // Update quantity
                 const response = await fetch(`${baseurl}/api/cart/update-cart-quantity/${existingItem.id}`, {
@@ -252,11 +255,12 @@ function PlaceSalesOrder() {
 
                 if (!response.ok) throw new Error("Failed to update quantity");
             } else {
-                // Add new item with NO credit period by default
+                // Add new item with price - UPDATED FROM REFERENCE CODE
                 const requestBody = {
                     customer_id: retailerId,
                     product_id: product.id,
                     quantity: 1,
+                    price: productPrice,  // Add the product price here - FROM REFERENCE CODE
                     credit_period: 0,
                     credit_percentage: 0
                 };
@@ -274,7 +278,10 @@ function PlaceSalesOrder() {
                     body: JSON.stringify(requestBody),
                 });
 
-                if (!response.ok) throw new Error("Failed to add to cart");
+                if (!response.ok) {
+                    const errorData = await response.json(); // FROM REFERENCE CODE
+                    throw new Error(errorData.message || "Failed to add to cart"); // FROM REFERENCE CODE
+                }
             }
 
             // Refresh cart from backend
@@ -284,22 +291,15 @@ function PlaceSalesOrder() {
 
         } catch (err) {
             console.error("Error adding to cart:", err);
-            alert("Failed to add item to cart");
+            alert(err.message || "Failed to add item to cart"); // UPDATED FROM REFERENCE CODE
         }
     };
 
-    // Cart count
+    // Cart count - SAME AS REFERENCE CODE
     const cartCount = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
-    // Calculate cart total
-    const cartTotal = cart.reduce((sum, item) => {
-        const price = parseFloat(item.price) || 0;
-        const quantity = item.quantity || 1;
-        return sum + (price * quantity);
-    }, 0);
-
-    // Apply retailer discount
-    const discountedTotal = cartTotal - (cartTotal * (retailerInfo.discount || 0) / 100);
+    // REMOVED the detailed cart total calculations to match reference code
+    // Reference code only uses cartCount, not cartTotal or discountedTotal
 
     if (!retailerId) {
         return (
@@ -385,12 +385,11 @@ function PlaceSalesOrder() {
                                             retailerId,
                                             discount: retailerInfo.discount,
                                             customerName: retailerInfo.name,
-                                            // displayName: displayName,
-                                             displayName: retailerInfo.displayName || displayName
+                                            displayName: retailerInfo.displayName || displayName
                                         }}
                                         className="desktop-cart-link"
                                     >
-                                        View Cart ({cartCount})
+                                        View Cart ({cartCount}) {/* Only show count like reference code */}
                                     </Link>
                                 </div>
 
@@ -400,14 +399,12 @@ function PlaceSalesOrder() {
                                     </div>
                                 ) : (
                                     <>
+                                        {/* Simplified cart items display - similar to reference code approach */}
                                         <div className="cart-summary-items">
                                             {cart.slice(0, 3).map(item => (
                                                 <div key={item.id} className="summary-item">
                                                     <span className="item-name">{item.product_name || 'Product'}</span>
                                                     <span className="item-qty">x{item.quantity || 1}</span>
-                                                    <span className="item-price">
-                                                        ₹{((parseFloat(item.price) || 0) * (item.quantity || 1)).toLocaleString()}
-                                                    </span>
                                                 </div>
                                             ))}
                                             {cart.length > 3 && (
@@ -417,22 +414,8 @@ function PlaceSalesOrder() {
                                             )}
                                         </div>
 
-                                        <div className="cart-summary-total">
-                                            <div className="summary-row">
-                                                <span>Subtotal:</span>
-                                                <span>₹{cartTotal.toLocaleString()}</span>
-                                            </div>
-                                            {retailerInfo.discount > 0 && (
-                                                <div className="summary-row discount-row">
-                                                    <span>Discount ({retailerInfo.discount}%):</span>
-                                                    <span>-₹{(cartTotal * retailerInfo.discount / 100).toLocaleString()}</span>
-                                                </div>
-                                            )}
-                                            <div className="summary-row total-row">
-                                                <span>Total:</span>
-                                                <span>₹{discountedTotal.toLocaleString()}</span>
-                                            </div>
-                                        </div>
+                                        {/* REMOVED detailed total calculations to match reference code */}
+                                        {/* Reference code doesn't show subtotal/discount/total in the header */}
 
                                         <Link
                                             to="/retailers/cart"
@@ -440,8 +423,7 @@ function PlaceSalesOrder() {
                                                 retailerId,
                                                 discount: retailerInfo.discount,
                                                 customerName: retailerInfo.name,
-                                                // displayName: displayName
-                                                 displayName: retailerInfo.displayName || displayName
+                                                displayName: retailerInfo.displayName || displayName
                                             }}
                                             className="desktop-place-order-btn"
                                         >
@@ -488,8 +470,7 @@ function PlaceSalesOrder() {
                                 retailerId,
                                 discount: retailerInfo.discount,
                                 customerName: retailerInfo.name,
-                                // displayName: displayName,
-                                 displayName: retailerInfo.displayName || displayName
+                                displayName: retailerInfo.displayName || displayName
                             }}
                             className="mobile-cart-btn"
                         >
@@ -625,9 +606,6 @@ function PlaceSalesOrder() {
                                 <div className="product-info">
                                     <h3>{product.name}</h3>
                                     <p className="product-category">{product.category}</p>
-                                    {/* {product.supplier && (
-                                        <p className="product-supplier">Supplier: {product.supplier}</p>
-                                    )} */}
                                     <p className="product-price">₹{parseFloat(product.price || 0).toLocaleString()} / {product.unit || 'unit'}</p>
                                     <div className="product-stock-info">
                                         <p className="product-gst">GST: {product.gst_rate || 0}%</p>
