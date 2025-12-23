@@ -271,10 +271,8 @@ const fetchOrders = async () => {
       const approvalStatus = order.approval_status?.toString().toLowerCase();
       const orderStatus = order.order_status?.toString().toLowerCase();
       
-      // Condition 1: approval_status should be "approved" (case insensitive)
       const isApproved = approvalStatus === "approved";
       
-      // Condition 2: order_status should NOT be "cancelled" (case insensitive)
       const isNotCancelled = orderStatus !== "cancelled";
       
       return isApproved && isNotCancelled;
@@ -285,12 +283,9 @@ const fetchOrders = async () => {
     const ordersWithItems = await Promise.all(
       filteredOrdersData.map(async (order) => {
         try {
-          // Fetch order items from order_items table
-          // Try multiple possible API endpoints
           let itemsData = [];
           
           try {
-            // Try the original endpoint first
             const itemsRes = await axios.get(`${baseurl}/orders/details/${order.order_number}`);
             console.log(`Response for order ${order.order_number}:`, itemsRes.data);
             
@@ -303,7 +298,6 @@ const fetchOrders = async () => {
             console.log(`First API failed for ${order.order_number}, trying alternatives:`, error1.message);
             
             try {
-              // Try alternative endpoint
               const itemsRes2 = await axios.get(`${baseurl}/orders/order-items/${order.order_number}`);
               console.log(`Alternative response for order ${order.order_number}:`, itemsRes2.data);
               
@@ -327,7 +321,14 @@ const fetchOrders = async () => {
           let accountDetails = null;
           try {
             const accountRes = await axios.get(`${baseurl}/accounts/${order.customer_id}`);
+            
             accountDetails = accountRes.data;
+                 console.log(`🔍 Account details for customer ${order.customer_id}:`, {
+              credit_limit_raw: accountDetails.credit_limit,
+              unpaid_amount_raw: accountDetails.unpaid_amount,
+              balance_amount_raw: accountDetails.balance_amount,
+              full_details: accountDetails
+            });
           } catch (accountErr) {
             console.warn(`Could not fetch account details for customer ID ${order.customer_id}:`, accountErr.message);
             accountDetails = null;
@@ -337,7 +338,6 @@ const fetchOrders = async () => {
             itemsData.map(async (item) => {
               let min_sale_price = 0;
 
-              // Fetch min_sale_price from products table
               try {
                 const productRes = await axios.get(`${baseurl}/products/${item.product_id}`);
                 min_sale_price = productRes.data.min_sale_price || 0;
@@ -652,68 +652,247 @@ const fetchOrders = async () => {
     setModalData(null);
   };
 
-  // Handle invoice generation with approval check - PASS ALL COLUMNS
-  const handleGenerateInvoice = (order) => {
-    try {
-      setGeneratingInvoice(true);
+ const handleGenerateInvoice = (order) => {
+  try {
+    setGeneratingInvoice(true);
 
-      const orderSelectedItems = selectedItems[order.id] || [];
-      if (orderSelectedItems.length === 0) {
-        alert("Please select at least one item to generate invoice!");
-        setGeneratingInvoice(false);
-        return;
-      }
+    const orderSelectedItems = selectedItems[order.id] || [];
+    if (orderSelectedItems.length === 0) {
+      alert("Please select at least one item to generate invoice!");
+      setGeneratingInvoice(false);
+      return;
+    }
 
-      // Check if any selected item needs approval but is not approved
-      const itemsWithApprovalIssue = orderSelectedItems.map(itemId => {
-        const item = order.items.find(i => i.id === itemId);
-        return item;
-      }).filter(item => 
-        item.needs_approval && item.approval_status !== "approved"
-      );
+    const itemsWithApprovalIssue = orderSelectedItems.map(itemId => {
+      const item = order.items.find(i => i.id === itemId);
+      return item;
+    }).filter(item => 
+      item.needs_approval && item.approval_status !== "approved"
+    );
 
-      if (itemsWithApprovalIssue.length > 0) {
-        const itemNames = itemsWithApprovalIssue.map(i => i.item_name).join(', ');
-        alert(`Cannot generate invoice for the following items because they require approval but are not approved: ${itemNames}`);
-        setGeneratingInvoice(false);
-        return;
-      }
+    if (itemsWithApprovalIssue.length > 0) {
+      const itemNames = itemsWithApprovalIssue.map(i => i.item_name).join(', ');
+      alert(`Cannot generate invoice for the following items because they require approval but are not approved: ${itemNames}`);
+      setGeneratingInvoice(false);
+      return;
+    }
 
-      const selectedItemsData = order.items.filter(item =>
-        orderSelectedItems.includes(item.id)
-      );
+    const selectedItemsData = order.items.filter(item =>
+      orderSelectedItems.includes(item.id)
+    );
 
-      const itemsWithInvoice = selectedItemsData.filter(item => item.invoice_status === 1);
-      if (itemsWithInvoice.length > 0) {
-        alert(`Some selected items already have invoices generated: ${itemsWithInvoice.map(i => i.item_name).join(', ')}`);
-        setGeneratingInvoice(false);
-        return;
-      }
+    const itemsWithInvoice = selectedItemsData.filter(item => item.invoice_status === 1);
+    if (itemsWithInvoice.length > 0) {
+      alert(`Some selected items already have invoices generated: ${itemsWithInvoice.map(i => i.item_name).join(', ')}`);
+      setGeneratingInvoice(false);
+      return;
+    }
 
-      let invoiceNumber = nextInvoiceNumber;
-      if (!invoiceNumber) {
-        invoiceNumber = `INV${order.order_number.replace('ORD', '')}`;
-      }
+    let invoiceNumber = nextInvoiceNumber;
+    if (!invoiceNumber) {
+      invoiceNumber = `INV${order.order_number.replace('ORD', '')}`;
+    }
 
-      const accountDetails = order.account_details;
-      const staffId = selectedItemsData[0]?.staff_id || order.staff_id || 0;
+    const accountDetails = order.account_details;
+    const staffId = selectedItemsData[0]?.staff_id || order.staff_id || 0;
+    
+    const staffIncentive = order.staff_incentive || 0;
+
+    // Prepare selected items with ALL order_items columns
+    const selectedItemsWithAllColumns = selectedItemsData.map(item => ({
+      // All order_items table columns
+      id: item.id,
+      order_number: item.order_number,
+      item_name: item.item_name,
+      product_id: item.product_id,
+      mrp: item.mrp,
+      sale_price: item.sale_price,
+      edited_sale_price: item.edited_sale_price,
+      credit_charge: item.credit_charge,
+      customer_sale_price: item.customer_sale_price,
+      final_amount: item.final_amount,
+      quantity: item.quantity,
+      total_amount: item.total_amount,
+      discount_percentage: item.discount_percentage,
+      discount_amount: item.discount_amount,
+      taxable_amount: item.taxable_amount,
+      tax_percentage: item.tax_percentage,
+      tax_amount: item.tax_amount,
+      item_total: item.item_total,
+      credit_period: item.credit_period,
+      invoice_number: item.invoice_number,
+      invoice_date: item.invoice_date,
+      invoice_status: item.invoice_status,
+      credit_percentage: item.credit_percentage,
+      sgst_percentage: item.sgst_percentage,
+      sgst_amount: item.sgst_amount,
+      cgst_percentage: item.cgst_percentage,
+      cgst_amount: item.cgst_amount,
+      discount_applied_scheme: item.discount_applied_scheme,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
       
-      const staffIncentive = order.staff_incentive || 0;
+      // Additional fields
+      min_sale_price: item.min_sale_price,
+      needs_approval: item.needs_approval,
+      approval_status: item.approval_status,
+      staff_id: item.staff_id,
+      assigned_staff: item.assigned_staff,
+      staff_incentive: item.staff_incentive,
+      
+      // For backward compatibility
+      price: item.price
+    }));
 
-      // Prepare selected items with ALL order_items columns
-      const selectedItemsWithAllColumns = selectedItemsData.map(item => ({
-        // All order_items table columns
+    // FIXED: Convert NULL strings to actual null or 0
+    const creditLimit = accountDetails?.credit_limit;
+    const unpaidAmount = accountDetails?.unpaid_amount;
+    const balanceAmount = accountDetails?.balance_amount;
+    
+    console.log("🔍 DEBUG - Account details from Period:", {
+      credit_limit_raw: creditLimit,
+      unpaid_amount_raw: unpaidAmount,
+      balance_amount_raw: balanceAmount,
+      credit_limit_type: typeof creditLimit,
+      unpaid_amount_type: typeof unpaidAmount,
+      balance_amount_type: typeof balanceAmount,
+      accountDetails: accountDetails
+    });
+    
+    // Convert values properly
+    const parseCreditValue = (value) => {
+      if (value === null || value === undefined || value === "NULL" || value === "null") {
+        return 0;
+      }
+      if (typeof value === 'string') {
+        // Remove any non-numeric characters except decimal point
+        const cleanValue = value.replace(/[^0-9.-]+/g, '');
+        return parseFloat(cleanValue) || 0;
+      }
+      return parseFloat(value) || 0;
+    };
+
+    const parsedCreditLimit = parseCreditValue(creditLimit);
+    const parsedUnpaidAmount = parseCreditValue(unpaidAmount);
+    const parsedBalanceAmount = parseCreditValue(balanceAmount);
+
+    console.log("✅ Parsed credit values:", {
+      credit_limit: parsedCreditLimit,
+      unpaid_amount: parsedUnpaidAmount,
+      balance_amount: parsedBalanceAmount
+    });
+
+    const invoiceData = {
+      transactionType: 'stock transfer',
+      
+      orderNumber: order.order_number,
+      invoiceNumber: invoiceNumber,
+      invoiceDate: new Date().toISOString().split('T')[0],
+      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+
+      originalOrder: {
+        ...order,
+        items: undefined
+      },
+
+      // Pass ALL order_items columns
+      selectedItems: selectedItemsWithAllColumns,
+      selectedItemIds: orderSelectedItems,
+
+      selectedItemsTotal: {
+        taxableAmount: selectedItemsData.reduce((sum, item) => sum + (item.taxable_amount || 0), 0),
+        taxAmount: selectedItemsData.reduce((sum, item) => sum + (item.tax_amount || 0), 0),
+        discountAmount: selectedItemsData.reduce((sum, item) => sum + (item.discount_amount || 0), 0),
+        grandTotal: selectedItemsData.reduce((sum, item) => sum + (item.item_total || 0), 0),
+        creditChargeTotal: selectedItemsData.reduce((sum, item) => sum + (item.credit_charge || 0), 0)
+      },
+
+      companyInfo: {
+        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+        address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+        email: "spmathur56@gmail.com",
+        phone: "9801049700",
+        gstin: "10AAOCS1541B1ZZ",
+        state: "Bihar"
+      },
+
+      customerInfo: {
+        name: accountDetails?.name || order.customer_name,
+        businessName: accountDetails?.business_name || order.customer_name,
+        state: accountDetails?.billing_state || order.billing_state || "Karnataka",
+        gstin: accountDetails?.gstin || order.gstin || "29AABCD0503B1ZG",
+        id: order.customer_id,
+        account_details: accountDetails,
+        // FIXED: Pass parsed values
+        credit_limit: parsedCreditLimit,
+        unpaid_amount: parsedUnpaidAmount,
+        balance_amount: parsedBalanceAmount,
+      },
+
+      billingAddress: accountDetails ? {
+        addressLine1: accountDetails.billing_address_line1 || "Address not specified",
+        addressLine2: accountDetails.billing_address_line2 || "",
+        city: accountDetails.billing_city || "City not specified",
+        pincode: accountDetails.billing_pin_code || "000000",
+        state: accountDetails.billing_state || "Karnataka",
+        gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
+        country: accountDetails.billing_country || "India"
+      } : {
+        addressLine1: order.billing_address || "Address not specified",
+        addressLine2: "",
+        city: order.billing_city || "City not specified",
+        pincode: order.billing_pincode || "000000",
+        state: order.billing_state || "Karnataka"
+      },
+
+      shippingAddress: accountDetails ? {
+        addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
+        addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
+        city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
+        pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
+        state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
+        gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
+        country: accountDetails.shipping_country || "India"
+      } : {
+        addressLine1: order.shipping_address || order.billing_address || "Address not specified",
+        addressLine2: "",
+        city: order.shipping_city || order.billing_city || "City not specified",
+        pincode: order.shipping_pincode || order.billing_pincode || "000000",
+        state: order.shipping_state || order.billing_state || "Karnataka"
+      },
+
+      note: "Thank you for your business!",
+      transportDetails: "Standard delivery",
+      otherDetails: "Authorized Signatory",
+      taxType: "CGST/SGST",
+
+      transactionType: 'stock transfer',
+      selectedSupplierId: order.customer_id,
+      PartyID: order.customer_id,
+      AccountID: order.customer_id,
+      PartyName: order.customer_name,
+      AccountName: order.customer_name,
+
+      isSingleItemInvoice: orderSelectedItems.length === 1,
+      selectedItemId: orderSelectedItems.length === 1 ? orderSelectedItems[0] : null,
+      originalOrderId: order.id,
+      isMultiSelect: orderSelectedItems.length > 1,
+
+      staff_id: staffId,
+      staff_incentive: staffIncentive,
+      order_mode: order.order_mode || "Pakka",
+      fullAccountDetails: accountDetails,
+      
+      itemDetails: selectedItemsWithAllColumns.map(item => ({
         id: item.id,
         order_number: item.order_number,
         item_name: item.item_name,
         product_id: item.product_id,
-        mrp: item.mrp,
-        sale_price: item.sale_price,
+        quantity: item.quantity,
         edited_sale_price: item.edited_sale_price,
         credit_charge: item.credit_charge,
         customer_sale_price: item.customer_sale_price,
         final_amount: item.final_amount,
-        quantity: item.quantity,
         total_amount: item.total_amount,
         discount_percentage: item.discount_percentage,
         discount_amount: item.discount_amount,
@@ -722,171 +901,38 @@ const fetchOrders = async () => {
         tax_amount: item.tax_amount,
         item_total: item.item_total,
         credit_period: item.credit_period,
-        invoice_number: item.invoice_number,
-        invoice_date: item.invoice_date,
-        invoice_status: item.invoice_status,
         credit_percentage: item.credit_percentage,
         sgst_percentage: item.sgst_percentage,
         sgst_amount: item.sgst_amount,
         cgst_percentage: item.cgst_percentage,
         cgst_amount: item.cgst_amount,
-        discount_applied_scheme: item.discount_applied_scheme,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        
-        // Additional fields
-        min_sale_price: item.min_sale_price,
-        needs_approval: item.needs_approval,
-        approval_status: item.approval_status,
-        staff_id: item.staff_id,
-        assigned_staff: item.assigned_staff,
-        staff_incentive: item.staff_incentive,
-        
-        // For backward compatibility
-        price: item.price
-      }));
+        discount_applied_scheme: item.discount_applied_scheme
+      }))
+    };
 
-      const invoiceData = {
-        transactionType: 'stock transfer',
-        
-        orderNumber: order.order_number,
-        invoiceNumber: invoiceNumber,
-        invoiceDate: new Date().toISOString().split('T')[0],
-        validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    console.log("📋 Invoice data being sent:", {
+      invoiceData: invoiceData,
+      customerInfo: invoiceData.customerInfo,
+      credit_values: {
+        credit_limit: invoiceData.customerInfo.credit_limit,
+        unpaid_amount: invoiceData.customerInfo.unpaid_amount,
+        balance_amount: invoiceData.customerInfo.balance_amount
+      }
+    });
 
-        originalOrder: {
-          ...order,
-          items: undefined
-        },
+    navigate(`/periodinvoicepreviewpdf/${order.id}`, {
+      state: {
+        invoiceData,
+        selectedItemIds: orderSelectedItems
+      }
+    });
 
-        // Pass ALL order_items columns
-        selectedItems: selectedItemsWithAllColumns,
-        selectedItemIds: orderSelectedItems,
-
-        selectedItemsTotal: {
-          taxableAmount: selectedItemsData.reduce((sum, item) => sum + (item.taxable_amount || 0), 0),
-          taxAmount: selectedItemsData.reduce((sum, item) => sum + (item.tax_amount || 0), 0),
-          discountAmount: selectedItemsData.reduce((sum, item) => sum + (item.discount_amount || 0), 0),
-          grandTotal: selectedItemsData.reduce((sum, item) => sum + (item.item_total || 0), 0),
-          creditChargeTotal: selectedItemsData.reduce((sum, item) => sum + (item.credit_charge || 0), 0)
-        },
-
-        companyInfo: {
-          name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-          address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-          email: "spmathur56@gmail.com",
-          phone: "9801049700",
-          gstin: "10AAOCS1541B1ZZ",
-          state: "Bihar"
-        },
-
-        customerInfo: {
-          name: accountDetails?.name || order.customer_name,
-          businessName: accountDetails?.business_name || order.customer_name,
-          state: accountDetails?.billing_state || order.billing_state || "Karnataka",
-          gstin: accountDetails?.gstin || order.gstin || "29AABCD0503B1ZG",
-          id: order.customer_id,
-          account_details: accountDetails
-        },
-
-        billingAddress: accountDetails ? {
-          addressLine1: accountDetails.billing_address_line1 || "Address not specified",
-          addressLine2: accountDetails.billing_address_line2 || "",
-          city: accountDetails.billing_city || "City not specified",
-          pincode: accountDetails.billing_pin_code || "000000",
-          state: accountDetails.billing_state || "Karnataka",
-          gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
-          country: accountDetails.billing_country || "India"
-        } : {
-          addressLine1: order.billing_address || "Address not specified",
-          addressLine2: "",
-          city: order.billing_city || "City not specified",
-          pincode: order.billing_pincode || "000000",
-          state: order.billing_state || "Karnataka"
-        },
-
-        shippingAddress: accountDetails ? {
-          addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
-          addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
-          city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
-          pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
-          state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
-          gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
-          country: accountDetails.shipping_country || "India"
-        } : {
-          addressLine1: order.shipping_address || order.billing_address || "Address not specified",
-          addressLine2: "",
-          city: order.shipping_city || order.billing_city || "City not specified",
-          pincode: order.shipping_pincode || order.billing_pincode || "000000",
-          state: order.shipping_state || order.billing_state || "Karnataka"
-        },
-
-        note: "Thank you for your business!",
-        transportDetails: "Standard delivery",
-        otherDetails: "Authorized Signatory",
-        taxType: "CGST/SGST",
-
-        // Stock transfer specific fields
-        transactionType: 'stock transfer',
-        selectedSupplierId: order.customer_id,
-        PartyID: order.customer_id,
-        AccountID: order.customer_id,
-        PartyName: order.customer_name,
-        AccountName: order.customer_name,
-
-        isSingleItemInvoice: orderSelectedItems.length === 1,
-        selectedItemId: orderSelectedItems.length === 1 ? orderSelectedItems[0] : null,
-        originalOrderId: order.id,
-        isMultiSelect: orderSelectedItems.length > 1,
-
-        staff_id: staffId,
-        staff_incentive: staffIncentive,
-        order_mode: order.order_mode || "Pakka",
-        fullAccountDetails: accountDetails,
-        
-        // Pass all order_items columns for each selected item
-        itemDetails: selectedItemsWithAllColumns.map(item => ({
-          id: item.id,
-          order_number: item.order_number,
-          item_name: item.item_name,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          edited_sale_price: item.edited_sale_price,
-          credit_charge: item.credit_charge,
-          customer_sale_price: item.customer_sale_price,
-          final_amount: item.final_amount,
-          total_amount: item.total_amount,
-          discount_percentage: item.discount_percentage,
-          discount_amount: item.discount_amount,
-          taxable_amount: item.taxable_amount,
-          tax_percentage: item.tax_percentage,
-          tax_amount: item.tax_amount,
-          item_total: item.item_total,
-          credit_period: item.credit_period,
-          credit_percentage: item.credit_percentage,
-          sgst_percentage: item.sgst_percentage,
-          sgst_amount: item.sgst_amount,
-          cgst_percentage: item.cgst_percentage,
-          cgst_amount: item.cgst_amount,
-          discount_applied_scheme: item.discount_applied_scheme
-        }))
-      };
-
-      console.log("📋 Invoice data with all order_items columns:", invoiceData);
-
-      navigate(`/periodinvoicepreviewpdf/${order.id}`, {
-        state: {
-          invoiceData,
-          selectedItemIds: orderSelectedItems
-        }
-      });
-
-    } catch (error) {
-      console.error("Error preparing invoice:", error);
-      alert("Failed to prepare invoice data. Please try again.");
-      setGeneratingInvoice(false);
-    }
-  };
+  } catch (error) {
+    console.error("Error preparing invoice:", error);
+    alert("Failed to prepare invoice data. Please try again.");
+    setGeneratingInvoice(false);
+  }
+};
 
   // Filter orders by search and date
   const filteredOrders = orders.filter(order => {
