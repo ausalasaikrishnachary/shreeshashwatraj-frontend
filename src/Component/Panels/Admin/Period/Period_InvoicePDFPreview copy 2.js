@@ -47,15 +47,13 @@ const Period_InvoicePDFPreview = () => {
     let totalCGST = 0;
     
     const items = (periodData.selectedItems || []).map((item, index) => {
-      // Use ACTUAL values from database - NO CALCULATION
       const itemTaxableAmount = parseFloat(item.taxable_amount) || 0;
       const itemTaxAmount = parseFloat(item.tax_amount) || 0;
       const itemTotal = parseFloat(item.item_total) || 0;
-      const quantity = parseFloat(item.quantity) || 1;
-      const price = parseFloat(item.edited_sale_price) || parseFloat(item.sale_price) || 0; // Use edited_sale_price
+      const quantity = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.price) || 0;
       const discount = parseFloat(item.discount_percentage) || 0;
-      const discountAmount = parseFloat(item.discount_amount) || 0;
-      const creditCharge = parseFloat(item.credit_charge) || 0; // Get credit_charge
+      const gst = parseFloat(item.tax_percentage) || 0;
       
       // Use ACTUAL values from database
       const actualCGSTPercentage = parseFloat(item.cgst_percentage) || 0;
@@ -63,7 +61,7 @@ const Period_InvoicePDFPreview = () => {
       const actualCGSTAmount = parseFloat(item.cgst_amount) || 0;
       const actualSGSTAmount = parseFloat(item.sgst_amount) || 0;
       
-      // Add to totals - using database values
+      // Add to totals
       totalTaxableAmount += itemTaxableAmount;
       totalTaxAmount += itemTaxAmount;
       totalGrandTotal += itemTotal;
@@ -75,11 +73,11 @@ const Period_InvoicePDFPreview = () => {
         product: item.item_name || `Item ${index + 1}`,
         product_id: item.product_id || '',
         quantity: quantity,
-        price: price, // Use edited_sale_price as price
+        price: price,
         discount: discount,
-        discount_amount: discountAmount,
-        gst: parseFloat(item.tax_percentage) || 0,
+        gst: gst,
         
+        // Use actual values from DB instead of calculating
         cgst: actualCGSTPercentage,
         sgst: actualSGSTPercentage,
         cgst_amount: actualCGSTAmount,
@@ -94,14 +92,12 @@ const Period_InvoicePDFPreview = () => {
         staff_incentive: item.staff_incentive || 0,
         taxable_amount: itemTaxableAmount, 
         tax_amount: itemTaxAmount,
-        credit_charge: creditCharge, 
         
+        // Store original DB values
         original_sgst_percentage: item.sgst_percentage,
         original_sgst_amount: item.sgst_amount,
         original_cgst_percentage: item.cgst_percentage,
-        original_cgst_amount: item.cgst_amount,
-        edited_sale_price: price,
-        sale_price: parseFloat(item.sale_price) || 0
+        original_cgst_amount: item.cgst_amount
       };
     });
     
@@ -466,14 +462,30 @@ const transformApiDataToInvoiceFormat = (apiData) => {
     if (!invoiceData || !invoiceData.items) return { totalCGST: 0, totalSGST: 0, totalIGST: 0 };
     
     const totalCGST = invoiceData.items.reduce((sum, item) => {
-      // Use cgst_amount from database if available, otherwise use calculation
-      const cgstAmount = parseFloat(item.cgst_amount) || 0;
+      const quantity = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.price) || 0;
+      const discount = parseFloat(item.discount) || 0;
+      const cgstRate = parseFloat(item.cgst) || 0;
+      
+      const subtotal = quantity * price;
+      const discountAmount = subtotal * (discount / 100);
+      const amountAfterDiscount = subtotal - discountAmount;
+      const cgstAmount = amountAfterDiscount * (cgstRate / 100);
+      
       return sum + cgstAmount;
     }, 0);
     
     const totalSGST = invoiceData.items.reduce((sum, item) => {
-      // Use sgst_amount from database if available, otherwise use calculation
-      const sgstAmount = parseFloat(item.sgst_amount) || 0;
+      const quantity = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.price) || 0;
+      const discount = parseFloat(item.discount) || 0;
+      const sgstRate = parseFloat(item.sgst) || 0;
+      
+      const subtotal = quantity * price;
+      const discountAmount = subtotal * (discount / 100);
+      const amountAfterDiscount = subtotal - discountAmount;
+      const sgstAmount = amountAfterDiscount * (sgstRate / 100);
+      
       return sum + sgstAmount;
     }, 0);
     
@@ -678,7 +690,6 @@ const generateAndStorePDF = async (voucherId) => {
   }
 };
 const handleGenerateInvoice = async () => {
-  
   try {
     setGenerating(true);
     setErrorMessage('');
@@ -723,103 +734,78 @@ const handleGenerateInvoice = async () => {
                             periodInvoiceData.originalOrder?.staff_incentive || 
                             0;
       
+      console.log("💰 Staff Incentive for invoice:", staffIncentive);
+      console.log("🔧 Determined Transaction Type:", transactionType);
+      console.log("🔧 Order Mode:", orderMode);
       
+      // Calculate totals
       let taxableAmount = 0;
       let totalGST = 0;
       let grandTotal = 0;
       let totalDiscount = 0;
-      let totalCGST = 0;
-      let totalSGST = 0;
       
-    
-      const itemsWithCalculations = selectedItems.map(item => {
-        const quantity = parseFloat(item.quantity) || 1;
+      selectedItems.forEach(item => {
+        const itemTaxableAmount = parseFloat(item.taxable_amount) || 0;
+        const itemTaxAmount = parseFloat(item.tax_amount) || 0;
+        const itemTotal = parseFloat(item.item_total) || 0;
+        const itemDiscountAmount = parseFloat(item.discount_amount) || 0;
         
-        const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
-        const taxAmountPerUnit = parseFloat(item.tax_amount) || 0;
-        const cgstAmountPerUnit = parseFloat(item.cgst_amount) || 0;
-        const sgstAmountPerUnit = parseFloat(item.sgst_amount) || 0;
-        const editedSalePrice = parseFloat(item.edited_sale_price) || parseFloat(item.sale_price) || 0;
-        const discountAmountPerUnit = parseFloat(item.discount_amount) || 0;
-        const creditChargePerUnit = parseFloat(item.credit_charge) || 0;
+        if (orderMode.toUpperCase() === "KACHA") {
+          taxableAmount += itemTaxableAmount;
+          totalGST += 0;
+          grandTotal += itemTaxableAmount;
+        } else {
+          taxableAmount += itemTaxableAmount;
+          totalGST += itemTaxAmount;
+          grandTotal += itemTotal;
+        }
         
-        const cgstPercentage = parseFloat(item.cgst_percentage) || 0;
-        const sgstPercentage = parseFloat(item.sgst_percentage) || 0;
-        const taxPercentage = parseFloat(item.tax_percentage) || 0;
-        
-        const itemTaxableAmount = taxablePerUnit * quantity;
-        const itemTaxAmount = orderMode.toUpperCase() === "KACHA" ? 0 : taxAmountPerUnit * quantity;
-        const itemCGSTAmount = orderMode.toUpperCase() === "KACHA" ? 0 : cgstAmountPerUnit * quantity;
-        const itemSGSTAmount = orderMode.toUpperCase() === "KACHA" ? 0 : sgstAmountPerUnit * quantity;
-        const itemDiscountAmount = discountAmountPerUnit * quantity;
-        const itemCreditCharge = creditChargePerUnit * quantity;
-        const itemTotal = orderMode.toUpperCase() === "KACHA" ? itemTaxableAmount : 
-                         itemTaxableAmount + itemTaxAmount;
-        
-        
-        taxableAmount += itemTaxableAmount;
-        totalGST += itemTaxAmount;
-        totalCGST += itemCGSTAmount;
-        totalSGST += itemSGSTAmount;
         totalDiscount += itemDiscountAmount;
-        grandTotal += itemTotal;
-        
-        return {
-          originalItemId: item.id,
-          product: item.item_name,
-          product_id: item.product_id,
-          description: editableDescriptions[item.id] || item.description || '',
-          quantity: quantity,
-          price: editedSalePrice, // Per unit price
-          discount: parseFloat(item.discount_percentage) || 0,
-          gst: orderMode.toUpperCase() === "KACHA" ? 0 : taxPercentage, 
-          cgst: orderMode.toUpperCase() === "KACHA" ? 0 : cgstPercentage, 
-          sgst: orderMode.toUpperCase() === "KACHA" ? 0 : sgstPercentage, 
-          igst: 0,
-          cess: 0,
-          
-
-          total: itemTotal,
-          taxable_amount: itemTaxableAmount, 
-          tax_amount: itemTaxAmount, 
-          cgst_amount: itemCGSTAmount, 
-          sgst_amount: itemSGSTAmount,
-          
-          batch: item.batch_id || '',
-          batch_id: item.batch_id || '',
-          item_total: itemTotal,
-          
-          edited_sale_price: editedSalePrice,
-          sale_price: parseFloat(item.sale_price) || 0, 
-          credit_charge: itemCreditCharge, 
-          discount_amount: itemDiscountAmount, // Total discount amount (multiplied)
-          
-          _calculation_note: `Amounts are multiplied by quantity ${quantity}`
-        };
       });
       
-      
+      // Create the base payload without spreading periodInvoiceData first
       const payload = {
+        // Dynamic transaction type based on order mode
         transactionType: transactionType,
         
         orderNumber: orderNumber,
         order_number: orderNumber,
         order_mode: orderMode.toUpperCase(),
         
-        items: itemsWithCalculations,
+        items: selectedItems.map(item => ({
+          originalItemId: item.id,
+          product: item.item_name,
+          product_id: item.product_id,
+          description: editableDescriptions[item.id] || item.description || '',
+          quantity: parseFloat(item.quantity) || 0,
+          price: parseFloat(item.price) || 0,
+          discount: parseFloat(item.discount_percentage) || 0,
+          discount_amount: parseFloat(item.discount_amount) || 0,
+          taxable_amount: parseFloat(item.taxable_amount) || 0,
+          tax_amount: parseFloat(item.tax_amount) || 0,
+          gst: orderMode.toUpperCase() === "KACHA" ? 0 : parseFloat(item.tax_percentage) || 0,
+          cgst: orderMode.toUpperCase() === "KACHA" ? 0 : parseFloat(item.cgst_percentage) || 0,
+          sgst: orderMode.toUpperCase() === "KACHA" ? 0 : parseFloat(item.sgst_percentage) || 0,
+          igst: 0,
+          cess: 0,
+          total: orderMode.toUpperCase() === "KACHA" 
+            ? parseFloat(item.taxable_amount) || 0
+            : parseFloat(item.item_total) || 0,
+          batch: '',
+          batch_id: item.batch_id || '',
+          item_total: parseFloat(item.item_total) || 0,
+          staff_incentive: item.staff_incentive || 0
+        })),
 
         originalOrderNumber: orderNumber,
         originalOrderId: periodInvoiceData.originalOrderId,
         selectedItemIds: selectedItemIds,
         
-        // Send calculated totals (already multiplied)
         taxableAmount: taxableAmount,
         totalGST: totalGST,
         totalCess: 0,
         grandTotal: grandTotal,
         totalDiscount: totalDiscount,
-        totalCGST: totalCGST,
-        totalSGST: totalSGST,
         
         calculatedTotals: {
           totalTaxableAmount: taxableAmount,
@@ -828,9 +814,7 @@ const handleGenerateInvoice = async () => {
           totalDiscountAmount: totalDiscount,
           itemCount: selectedItems.length,
           staffIncentive: staffIncentive,
-          transactionType: transactionType,
-          totalCGST: totalCGST,
-          totalSGST: totalSGST
+          transactionType: transactionType
         },
         
         BasicAmount: taxableAmount,
@@ -889,18 +873,21 @@ const handleGenerateInvoice = async () => {
         
         TotalAmount: grandTotal,
         TaxAmount: totalGST,
-        Subtotal: taxableAmount,
-        CGSTAmount: totalCGST,
-        SGSTAmount: totalSGST
+        Subtotal: taxableAmount
       };
 
+      // Create final payload by spreading periodInvoiceData first, then our payload
+      // But remove any existing transactionType from periodInvoiceData to avoid conflicts
       const { transactionType: existingTransactionType, ...periodDataWithoutTransactionType } = periodInvoiceData;
       
       const finalPayload = {
         ...periodDataWithoutTransactionType,
-        ...payload  
+        ...payload  // Our payload values will override any duplicates
       };
-console.log("📦 FINAL INVOICE PAYLOAD:", finalPayload);
+
+      console.log("📦 Sending invoice creation request with transactionType:", finalPayload.transactionType);
+      console.log("📦 Complete payload:", finalPayload);
+
       const response = await fetch(`${baseurl}/transaction`, {
         method: "POST",
         headers: {
@@ -920,15 +907,15 @@ console.log("📦 FINAL INVOICE PAYLOAD:", finalPayload);
           const updatedInvoiceData = {
             ...invoiceData,
             voucherId: result.voucherId,
-            transactionType: transactionType
+            transactionType: transactionType // Add transaction type here too
           };
           
           // Generate and store PDF
           const pdfResult = await generateAndStorePDF(result.voucherId);
           
           if (pdfResult.success) {
-            console.log('✅ PDF stored successfully');
-            setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber}. Transaction Type: ${transactionType}`);
+            console.log('✅ PDF stored successfully with result:', pdfResult);
+            setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber}. PDF has been stored. Transaction Type: ${transactionType}`);
           }
         } catch (pdfError) {
           console.warn('⚠️ Invoice created but PDF storage failed:', pdfError.message);
@@ -966,8 +953,6 @@ console.log("📦 FINAL INVOICE PAYLOAD:", finalPayload);
     setGenerating(false);
   }
 };
-
-
 
   // Handle download PDF
   const handleDownloadPDF = async () => {
@@ -1095,112 +1080,55 @@ console.log("📦 FINAL INVOICE PAYLOAD:", finalPayload);
     }
   };
 
+
+// Updated calculateGrandTotalForQR function
 const calculateGrandTotalForQR = () => {
-  if (!invoiceData || !invoiceData.items) {
-    console.log('❌ No invoice data or items for QR calculation');
-    return 0;
+  if (!invoiceData) return 0;
+  
+  const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
+  
+  // If KACHA mode, calculate without GST
+  if (orderMode.toUpperCase() === "KACHA") {
+    let totalTaxableAmount = 0;
+    if (invoiceData.items && invoiceData.items.length > 0) {
+      invoiceData.items.forEach(item => {
+        const taxableAmount = parseFloat(item.taxable_amount) || 0;
+        totalTaxableAmount += taxableAmount;
+      });
+    }
+    return totalTaxableAmount;
   }
   
-  const orderMode = (editableOrderMode || invoiceData.order_mode || "PAKKA").toUpperCase();
+  const grandTotal = parseFloat(invoiceData.grandTotal) || 0;
   
-  console.log('🔍 Calculating QR Grand Total:', {
-    orderMode,
-    itemCount: invoiceData.items.length
-  });
-  
-  // Calculate exactly like the child component does
-  let grandTotal = 0;
-  
-  invoiceData.items.forEach((item, index) => {
-    const quantity = parseFloat(item.quantity) || 1;
-    
-    // Get taxable amount per unit from database
-    const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
-    const totalTaxable = taxablePerUnit * quantity;
-    
-    // Get GST amount per unit from database
-    const gstPerUnit = parseFloat(item.tax_amount) || 0;
-    const totalGST = orderMode === "KACHA" ? 0 : gstPerUnit * quantity;
-    
-    // Calculate item total
-    const itemTotal = totalTaxable + totalGST;
-    
-    grandTotal += itemTotal;
-    
-    console.log(`💰 Item ${index + 1} Calculation:`, {
-      product: item.product,
-      quantity,
-      taxablePerUnit,
-      totalTaxable,
-      gstPerUnit,
-      totalGST,
-      itemTotal,
-      accumulatedTotal: grandTotal
+  if (invoiceData.items && invoiceData.items.length > 0) {
+    let calculatedTotal = 0;
+    invoiceData.items.forEach(item => {
+      const itemTotal = parseFloat(item.total) || 0;
+      calculatedTotal += itemTotal;
     });
-  });
+    
+    return Math.max(grandTotal, calculatedTotal);
+  }
   
-  console.log('💰 FINAL QR Grand Total:', grandTotal);
-  
-  // Use the grandTotal from invoiceData as fallback
-  const invoiceGrandTotal = parseFloat(invoiceData.grandTotal) || 0;
-  
-  // Return the larger of the two (should be the calculated one)
-  return Math.max(grandTotal, invoiceGrandTotal);
+  return grandTotal;
 };
 
 const generateQRCodeData = () => {
-  if (!invoiceData) {
-    console.log('❌ No invoice data available for QR code');
-    return '';
-  }
+  if (!invoiceData) return '';
   
-  try {
-    // Calculate correct amount
-    const amount = calculateGrandTotalForQR();
-    console.log('📊 QR Code Amount:', {
-      amount,
-      orderMode: editableOrderMode || invoiceData.order_mode,
-      itemCount: invoiceData.items?.length || 0
-    });
-    
-    // Ensure amount is properly formatted with 2 decimal places
-    const formattedAmount = parseFloat(amount).toFixed(2);
-    
-    // UPI ID
-    const upiId = 'bharathsiripuram98@okicici';
-    
-    // Merchant/Business name
-    const merchantName = invoiceData.companyInfo?.name?.replace(/[^a-zA-Z0-9 ]/g, '') || 'Business';
-    
-    // Invoice details
-    const invoiceNumber = invoiceData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`;
-    const orderMode = (editableOrderMode || invoiceData.order_mode || "PAKKA").toUpperCase();
-    
-    // Create transaction note
-    const transactionNote = `Payment for Invoice ${invoiceNumber} (${orderMode} Order)`;
-    
-    // Construct UPI payment URL with proper encoding
-    const upiParams = new URLSearchParams({
-      pa: upiId,
-      pn: merchantName,
-      am: formattedAmount,
-      tn: transactionNote,
-      cu: 'INR'
-    });
-    
-    const upiUrl = `upi://pay?${upiParams.toString()}`;
-    
-    console.log('✅ Generated UPI URL for amount:', formattedAmount);
-    
-    // Update QR code data
-    setQrData(upiUrl);
-    
-    return upiUrl;
-    
-  } catch (error) {
-    console.error('❌ Error generating QR code data:', error);
-    return '';
-  }
+  const amount = calculateGrandTotalForQR().toFixed(2); // Ensure 2 decimal places
+  const upiId = 'bharathsiripuram98@okicici';
+  const merchantName = invoiceData.companyInfo?.name || 'Business';
+  const invoiceNumber = invoiceData.invoiceNumber || 'INV001';
+  const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
+  
+  // Create properly encoded UPI payment URL
+  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(merchantName)}&am=${amount}&tn=${encodeURIComponent(`Payment for Invoice ${invoiceNumber} (${orderMode})`)}&cu=INR`;
+  
+  setQrData(upiUrl);
+  
+  return upiUrl;
 };
   // Handle delete invoice
   const handleDeleteInvoice = async () => {
@@ -1270,119 +1198,62 @@ useEffect(() => {
   }, [id, location]);
 
 const QRCodeGenerator = () => {
-  const grandTotal = calculateGrandTotalForQR();
-  
-  useEffect(() => {
-    if (invoiceData && invoiceData.items && invoiceData.items.length > 0) {
-      console.log("🔄 Regenerating QR with updated total:", grandTotal);
-      generateQRCodeData();
-    }
-  }, [invoiceData, editableOrderMode, grandTotal]);
-  
   if (!invoiceData) return null;
   
-  const orderMode = (editableOrderMode || invoiceData.order_mode || "PAKKA").toUpperCase();
+  const grandTotal = calculateGrandTotalForQR(); // Get correct amount
+  const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
   
-  const getCorrectGrandTotal = () => {
-    if (!invoiceData || !invoiceData.items) return 0;
-    
-    // Use the same calculation logic as the child component
-    let total = 0;
-    
-    invoiceData.items.forEach(item => {
-      const quantity = parseFloat(item.quantity) || 1;
-      const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
-      const taxPerUnit = parseFloat(item.tax_amount) || 0;
-      
-      const itemTaxable = taxablePerUnit * quantity;
-      const itemTax = orderMode === "KACHA" ? 0 : taxPerUnit * quantity;
-      const itemTotal = itemTaxable + itemTax;
-      
-      total += itemTotal;
-    });
-    
-    console.log("✅ QR Correct Grand Total Calculation:", {
-      calculated: total,
-      invoiceDataGrandTotal: invoiceData.grandTotal,
-      itemsCount: invoiceData.items.length
-    });
-    
-    return total;
-  };
-  
-  const correctGrandTotal = getCorrectGrandTotal();
-  
-  // Breakdown of the total - FIXED VERSION
-  const calculateBreakdown = () => {
-    if (!invoiceData.items) return null;
-    
-    let totalTaxable = 0;
-    let totalGST = 0;
-    
-    invoiceData.items.forEach(item => {
-      const quantity = parseFloat(item.quantity) || 1;
-      const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
-      const gstPerUnit = parseFloat(item.tax_amount) || 0;
-      
-      totalTaxable += taxablePerUnit * quantity;
-      totalGST += (orderMode === "KACHA" ? 0 : gstPerUnit * quantity);
-    });
-    
-    const grandTotalAmount = totalTaxable + totalGST;
-    
-    console.log("📊 QR Breakdown Calculation:", {
-      totalTaxable,
-      totalGST,
-      grandTotalAmount,
-      orderMode
-    });
-    
-    return {
-      totalTaxable: totalTaxable.toFixed(2),
-      totalGST: totalGST.toFixed(2),
-      grandTotal: grandTotalAmount.toFixed(2)
-    };
-  };
-  
-  const breakdown = calculateBreakdown();
+  console.log("QR Code Details:", {
+    orderMode,
+    grandTotal,
+    itemCount: invoiceData.items?.length || 0,
+    items: invoiceData.items?.map(item => ({
+      product: item.product,
+      quantity: item.quantity,
+      price: item.price,
+      total: item.total,
+      taxable_amount: item.taxable_amount
+    }))
+  });
   
   return (
     <Card className="shadow-sm border-0 mb-3">
-      <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
-        <h6 className="mb-0"><FaQrcode className="me-2" /> Scan to Pay</h6>
-     
+      <Card.Header className="bg-primary text-white">
+        <h6 className="mb-0"><FaQrcode className="me-2" /> Scan to Pay via UPI</h6>
       </Card.Header>
-      <Card.Body>
-        <div className="text-center mb-3">
-          <div className="qr-code-box d-inline-block">
-            {qrData ? (
-              <QRCodeCanvas 
-                value={qrData}
-                size={180}
-                level="H"
-                includeMargin={true}
-              />
-            ) : (
-              <div className="p-3">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Generating QR...</span>
-                </div>
+      <Card.Body className="text-center">
+        <div className="qr-code-box mb-3">
+          {qrData ? (
+            <QRCodeCanvas 
+              value={qrData}
+              size={180}
+              level="H"
+              includeMargin={true}
+            />
+          ) : (
+            <div className="text-center p-3">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Generating QR Code...</span>
               </div>
-            )}
-          </div>
-          
-          {/* Amount Display - Use correctGrandTotal */}
-          <div className="mt-3">
-            <h4 className="text-success fw-bold">₹{correctGrandTotal.toFixed(2)}</h4>
-              <span className={`badge ${orderMode === "KACHA" ? "bg-warning" : "bg-success"}`}>
-          {orderMode} ORDER
-        </span>
-            
-          </div>
+            </div>
+          )}
         </div>
         
-
-       
+        <div className="payment-details">
+          <div className="mb-2">
+            <span className={`badge ${orderMode === "KACHA" ? "bg-warning" : "bg-success"}`}>
+              {orderMode} ORDER
+            </span>
+            {/* <span className="badge bg-secondary ms-1">
+              {invoiceData.items?.length || 0} Items
+            </span> */}
+          </div>
+          <h5 className="text-success mb-2">
+            ₹{grandTotal.toFixed(2)}
+          </h5>
+          
+         
+        </div>
       </Card.Body>
     </Card>
   );
@@ -1604,7 +1475,7 @@ const QRCodeGenerator = () => {
           </Col>
           
           <Col lg={4}>
-            <div className="sticky-top" style={{ top: '80px' }}>  
+            <div className="sticky-top" style={{ top: '80px' }}>
               <QRCodeGenerator />
               
              
