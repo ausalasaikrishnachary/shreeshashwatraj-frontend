@@ -89,20 +89,24 @@ const InvoicePreview_preview = ({
     return cgstPerUnit * quantity;
   };
 
+  // Get SGST amount PER UNIT from database
   const getSGSTAmountPerUnit = (item) => {
     if (item.sgst_amount !== undefined && item.sgst_amount !== null) {
       return parseFloat(item.sgst_amount) || 0;
     }
+    // If SGST not in database, calculate half of total GST
     const gstPerUnit = getGSTAmountPerUnit(item);
     return gstPerUnit / 2;
   };
 
+  // Get total SGST amount (PER UNIT × QUANTITY)
   const getItemTotalSGSTAmount = (item) => {
     const sgstPerUnit = getSGSTAmountPerUnit(item);
     const quantity = parseFloat(item.quantity) || 1;
     return sgstPerUnit * quantity;
   };
 
+  // Calculate item total (PER UNIT × QUANTITY)
   const calculateItemTotal = (item) => {
     if (localOrderMode === "KACHA") {
       // For KACHA, use total taxable amount
@@ -417,7 +421,7 @@ const adjustedTotals = getAdjustedTotals();
               </td>
               <td className="text-center align-middle">
                 {quantity}
-              
+                <div className="text-muted small">Pcs</div>
               </td>
               
            
@@ -425,20 +429,20 @@ const adjustedTotals = getAdjustedTotals();
               {/* EDP (Edited Price) Column */}
               <td className="text-end align-middle">
                 <div className="fw-medium">₹{editedPrice.toFixed(2)}</div>
-                
+                <div className="text-muted small">Per unit</div>
               </td>
               
               {/* Credit Charge Column */}
               <td className="text-end align-middle">
                 <div className="fw-medium">₹{creditCharge.toFixed(2)}</div>
-             
+                <div className="text-muted small">Per unit</div>
               </td>
               
               {/* Taxable Amount Column */}
               <td className="text-end align-middle">
                 <div className="fw-bold text-primary">₹{totalTaxableAmount.toFixed(2)}</div>
                 <div className="text-muted small">
-               
+                  ₹{taxablePerUnit.toFixed(2)} × {quantity}
                 </div>
               </td>
               
@@ -455,7 +459,7 @@ const adjustedTotals = getAdjustedTotals();
                 </div>
                 {localOrderMode === "PAKKA" && quantity > 1 && (
                   <div className="text-muted small">
-                    
+                    ₹{gstPerUnit.toFixed(2)} × {quantity}
                   </div>
                 )}
               </td>
@@ -467,7 +471,7 @@ const adjustedTotals = getAdjustedTotals();
                 </div>
                 {localOrderMode === "PAKKA" && quantity > 1 && (
                   <div className="text-muted small">
-                  
+                    ₹{cgstPerUnit.toFixed(2)} × {quantity}
                   </div>
                 )}
               </td>
@@ -479,7 +483,7 @@ const adjustedTotals = getAdjustedTotals();
                 </div>
                 {localOrderMode === "PAKKA" && quantity > 1 && (
                   <div className="text-muted small">
-                 
+                    ₹{sgstPerUnit.toFixed(2)} × {quantity}
                   </div>
                 )}
               </td>
@@ -488,7 +492,10 @@ const adjustedTotals = getAdjustedTotals();
               <td className="text-end align-middle">
                 <div className="fw-bold text-success">₹{itemTotal.toFixed(2)}</div>
                 <div className="text-muted small">
-                 
+                  {localOrderMode === "KACHA" ? 
+                    "Taxable Amount" : 
+                    `Taxable + GST`
+                  }
                 </div>
               </td>
             </tr>
@@ -499,25 +506,25 @@ const adjustedTotals = getAdjustedTotals();
    
         
         {/* Add Total GST Row */}
-        <tr className='text-end'>
-          <td colSpan={11} className="text-end fw-bold">
+        <tr>
+          <td colSpan={9} className="text-end fw-bold">
             Total GST:
           </td>
           <td className="text-end fw-bold text-success">
             ₹{adjustedGstBreakdown.totalGST}
           </td>
-        
+          <td colSpan={3}></td>
         </tr>
         
         {/* Add Grand Total Row */}
         <tr>
-          <td colSpan={11} className="text-end fw-bold">
+          <td colSpan={9} className="text-end fw-bold">
             Grand Total:
           </td>
           <td className="text-end fw-bold text-danger fs-5">
             ₹{adjustedTotals.grandTotal}
           </td>
-      
+          <td colSpan={3}></td>
         </tr>
       </tfoot>
     </table>

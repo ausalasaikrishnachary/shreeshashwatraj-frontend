@@ -1095,112 +1095,55 @@ console.log("📦 FINAL INVOICE PAYLOAD:", finalPayload);
     }
   };
 
+
+// Updated calculateGrandTotalForQR function
 const calculateGrandTotalForQR = () => {
-  if (!invoiceData || !invoiceData.items) {
-    console.log('❌ No invoice data or items for QR calculation');
-    return 0;
+  if (!invoiceData) return 0;
+  
+  const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
+  
+  // If KACHA mode, calculate without GST
+  if (orderMode.toUpperCase() === "KACHA") {
+    let totalTaxableAmount = 0;
+    if (invoiceData.items && invoiceData.items.length > 0) {
+      invoiceData.items.forEach(item => {
+        const taxableAmount = parseFloat(item.taxable_amount) || 0;
+        totalTaxableAmount += taxableAmount;
+      });
+    }
+    return totalTaxableAmount;
   }
   
-  const orderMode = (editableOrderMode || invoiceData.order_mode || "PAKKA").toUpperCase();
+  const grandTotal = parseFloat(invoiceData.grandTotal) || 0;
   
-  console.log('🔍 Calculating QR Grand Total:', {
-    orderMode,
-    itemCount: invoiceData.items.length
-  });
-  
-  // Calculate exactly like the child component does
-  let grandTotal = 0;
-  
-  invoiceData.items.forEach((item, index) => {
-    const quantity = parseFloat(item.quantity) || 1;
-    
-    // Get taxable amount per unit from database
-    const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
-    const totalTaxable = taxablePerUnit * quantity;
-    
-    // Get GST amount per unit from database
-    const gstPerUnit = parseFloat(item.tax_amount) || 0;
-    const totalGST = orderMode === "KACHA" ? 0 : gstPerUnit * quantity;
-    
-    // Calculate item total
-    const itemTotal = totalTaxable + totalGST;
-    
-    grandTotal += itemTotal;
-    
-    console.log(`💰 Item ${index + 1} Calculation:`, {
-      product: item.product,
-      quantity,
-      taxablePerUnit,
-      totalTaxable,
-      gstPerUnit,
-      totalGST,
-      itemTotal,
-      accumulatedTotal: grandTotal
+  if (invoiceData.items && invoiceData.items.length > 0) {
+    let calculatedTotal = 0;
+    invoiceData.items.forEach(item => {
+      const itemTotal = parseFloat(item.total) || 0;
+      calculatedTotal += itemTotal;
     });
-  });
+    
+    return Math.max(grandTotal, calculatedTotal);
+  }
   
-  console.log('💰 FINAL QR Grand Total:', grandTotal);
-  
-  // Use the grandTotal from invoiceData as fallback
-  const invoiceGrandTotal = parseFloat(invoiceData.grandTotal) || 0;
-  
-  // Return the larger of the two (should be the calculated one)
-  return Math.max(grandTotal, invoiceGrandTotal);
+  return grandTotal;
 };
 
 const generateQRCodeData = () => {
-  if (!invoiceData) {
-    console.log('❌ No invoice data available for QR code');
-    return '';
-  }
+  if (!invoiceData) return '';
   
-  try {
-    // Calculate correct amount
-    const amount = calculateGrandTotalForQR();
-    console.log('📊 QR Code Amount:', {
-      amount,
-      orderMode: editableOrderMode || invoiceData.order_mode,
-      itemCount: invoiceData.items?.length || 0
-    });
-    
-    // Ensure amount is properly formatted with 2 decimal places
-    const formattedAmount = parseFloat(amount).toFixed(2);
-    
-    // UPI ID
-    const upiId = 'bharathsiripuram98@okicici';
-    
-    // Merchant/Business name
-    const merchantName = invoiceData.companyInfo?.name?.replace(/[^a-zA-Z0-9 ]/g, '') || 'Business';
-    
-    // Invoice details
-    const invoiceNumber = invoiceData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`;
-    const orderMode = (editableOrderMode || invoiceData.order_mode || "PAKKA").toUpperCase();
-    
-    // Create transaction note
-    const transactionNote = `Payment for Invoice ${invoiceNumber} (${orderMode} Order)`;
-    
-    // Construct UPI payment URL with proper encoding
-    const upiParams = new URLSearchParams({
-      pa: upiId,
-      pn: merchantName,
-      am: formattedAmount,
-      tn: transactionNote,
-      cu: 'INR'
-    });
-    
-    const upiUrl = `upi://pay?${upiParams.toString()}`;
-    
-    console.log('✅ Generated UPI URL for amount:', formattedAmount);
-    
-    // Update QR code data
-    setQrData(upiUrl);
-    
-    return upiUrl;
-    
-  } catch (error) {
-    console.error('❌ Error generating QR code data:', error);
-    return '';
-  }
+  const amount = calculateGrandTotalForQR().toFixed(2); // Ensure 2 decimal places
+  const upiId = 'bharathsiripuram98@okicici';
+  const merchantName = invoiceData.companyInfo?.name || 'Business';
+  const invoiceNumber = invoiceData.invoiceNumber || 'INV001';
+  const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
+  
+  // Create properly encoded UPI payment URL
+  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(merchantName)}&am=${amount}&tn=${encodeURIComponent(`Payment for Invoice ${invoiceNumber} (${orderMode})`)}&cu=INR`;
+  
+  setQrData(upiUrl);
+  
+  return upiUrl;
 };
   // Handle delete invoice
   const handleDeleteInvoice = async () => {
@@ -1270,119 +1213,62 @@ useEffect(() => {
   }, [id, location]);
 
 const QRCodeGenerator = () => {
-  const grandTotal = calculateGrandTotalForQR();
-  
-  useEffect(() => {
-    if (invoiceData && invoiceData.items && invoiceData.items.length > 0) {
-      console.log("🔄 Regenerating QR with updated total:", grandTotal);
-      generateQRCodeData();
-    }
-  }, [invoiceData, editableOrderMode, grandTotal]);
-  
   if (!invoiceData) return null;
   
-  const orderMode = (editableOrderMode || invoiceData.order_mode || "PAKKA").toUpperCase();
+  const grandTotal = calculateGrandTotalForQR(); // Get correct amount
+  const orderMode = editableOrderMode || invoiceData.order_mode || "PAKKA";
   
-  const getCorrectGrandTotal = () => {
-    if (!invoiceData || !invoiceData.items) return 0;
-    
-    // Use the same calculation logic as the child component
-    let total = 0;
-    
-    invoiceData.items.forEach(item => {
-      const quantity = parseFloat(item.quantity) || 1;
-      const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
-      const taxPerUnit = parseFloat(item.tax_amount) || 0;
-      
-      const itemTaxable = taxablePerUnit * quantity;
-      const itemTax = orderMode === "KACHA" ? 0 : taxPerUnit * quantity;
-      const itemTotal = itemTaxable + itemTax;
-      
-      total += itemTotal;
-    });
-    
-    console.log("✅ QR Correct Grand Total Calculation:", {
-      calculated: total,
-      invoiceDataGrandTotal: invoiceData.grandTotal,
-      itemsCount: invoiceData.items.length
-    });
-    
-    return total;
-  };
-  
-  const correctGrandTotal = getCorrectGrandTotal();
-  
-  // Breakdown of the total - FIXED VERSION
-  const calculateBreakdown = () => {
-    if (!invoiceData.items) return null;
-    
-    let totalTaxable = 0;
-    let totalGST = 0;
-    
-    invoiceData.items.forEach(item => {
-      const quantity = parseFloat(item.quantity) || 1;
-      const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
-      const gstPerUnit = parseFloat(item.tax_amount) || 0;
-      
-      totalTaxable += taxablePerUnit * quantity;
-      totalGST += (orderMode === "KACHA" ? 0 : gstPerUnit * quantity);
-    });
-    
-    const grandTotalAmount = totalTaxable + totalGST;
-    
-    console.log("📊 QR Breakdown Calculation:", {
-      totalTaxable,
-      totalGST,
-      grandTotalAmount,
-      orderMode
-    });
-    
-    return {
-      totalTaxable: totalTaxable.toFixed(2),
-      totalGST: totalGST.toFixed(2),
-      grandTotal: grandTotalAmount.toFixed(2)
-    };
-  };
-  
-  const breakdown = calculateBreakdown();
+  console.log("QR Code Details:", {
+    orderMode,
+    grandTotal,
+    itemCount: invoiceData.items?.length || 0,
+    items: invoiceData.items?.map(item => ({
+      product: item.product,
+      quantity: item.quantity,
+      price: item.price,
+      total: item.total,
+      taxable_amount: item.taxable_amount
+    }))
+  });
   
   return (
     <Card className="shadow-sm border-0 mb-3">
-      <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
-        <h6 className="mb-0"><FaQrcode className="me-2" /> Scan to Pay</h6>
-     
+      <Card.Header className="bg-primary text-white">
+        <h6 className="mb-0"><FaQrcode className="me-2" /> Scan to Pay via UPI</h6>
       </Card.Header>
-      <Card.Body>
-        <div className="text-center mb-3">
-          <div className="qr-code-box d-inline-block">
-            {qrData ? (
-              <QRCodeCanvas 
-                value={qrData}
-                size={180}
-                level="H"
-                includeMargin={true}
-              />
-            ) : (
-              <div className="p-3">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Generating QR...</span>
-                </div>
+      <Card.Body className="text-center">
+        <div className="qr-code-box mb-3">
+          {qrData ? (
+            <QRCodeCanvas 
+              value={qrData}
+              size={180}
+              level="H"
+              includeMargin={true}
+            />
+          ) : (
+            <div className="text-center p-3">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Generating QR Code...</span>
               </div>
-            )}
-          </div>
-          
-          {/* Amount Display - Use correctGrandTotal */}
-          <div className="mt-3">
-            <h4 className="text-success fw-bold">₹{correctGrandTotal.toFixed(2)}</h4>
-              <span className={`badge ${orderMode === "KACHA" ? "bg-warning" : "bg-success"}`}>
-          {orderMode} ORDER
-        </span>
-            
-          </div>
+            </div>
+          )}
         </div>
         
-
-       
+        <div className="payment-details">
+          <div className="mb-2">
+            <span className={`badge ${orderMode === "KACHA" ? "bg-warning" : "bg-success"}`}>
+              {orderMode} ORDER
+            </span>
+            {/* <span className="badge bg-secondary ms-1">
+              {invoiceData.items?.length || 0} Items
+            </span> */}
+          </div>
+          <h5 className="text-success mb-2">
+            ₹{grandTotal.toFixed(2)}
+          </h5>
+          
+         
+        </div>
       </Card.Body>
     </Card>
   );

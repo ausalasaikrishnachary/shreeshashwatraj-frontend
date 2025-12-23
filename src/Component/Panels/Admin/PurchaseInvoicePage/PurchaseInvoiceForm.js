@@ -910,7 +910,7 @@ const handleSubmit = async (e) => {
                           <Button
                             variant="primary"
                             size="sm"
-                            onClick={() => navigate("/salesitemspage")}
+                            onClick={() => navigate("/retailers/add")}
                           >
                             New
                           </Button>
@@ -1020,7 +1020,7 @@ const handleSubmit = async (e) => {
                         type="button"
                         className="btn btn-link p-0 text-primary"
                         style={{ textDecoration: "none", fontSize: "14px" }}
-                        onClick={() => navigate("/purchase-items")}
+                        onClick={() => navigate("/AddProductPage")}
                       >
                         + New Item
                       </button>

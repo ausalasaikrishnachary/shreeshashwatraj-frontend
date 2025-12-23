@@ -2096,11 +2096,15 @@ const RetailerForm = ({ user, mode = 'add' }) => {
   };
 
   useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      password: prev.name ? `${prev.name}@123` : ''
-    }));
-  }, [formData.name]);
+    setFormData(prev => {
+      // Remove spaces and special characters from name for password generation
+      const cleanName = prev.name ? prev.name.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '') : '';
+      return {
+        ...prev,
+        password: cleanName ? `${cleanName}@123` : ''
+      };
+    });
+  }, [formData.name]);;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -2193,9 +2197,12 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       return;
     }
 
+    // Clean the name for password generation (remove spaces and special chars)
+    const cleanNameForPassword = formData.name ? formData.name.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '') : '';
+
     let finalData = {
       ...formData,
-      password: `${formData.name}@123`
+      password: cleanNameForPassword ? `${cleanNameForPassword}@123` : ''
     };
 
     if (formData.group === 'SUPPLIERS') {
