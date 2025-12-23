@@ -510,7 +510,7 @@ const adjustedTotals = getAdjustedTotals();
         
         {/* Add Total GST Row */}
         <tr className='text-end'>
-          <td colSpan={11} className="text-end fw-bold">
+          <td colSpan={12} className="text-end fw-bold">
             Total GST:
           </td>
           <td className="text-end fw-bold text-success">
@@ -521,7 +521,7 @@ const adjustedTotals = getAdjustedTotals();
         
         {/* Add Grand Total Row */}
         <tr>
-          <td colSpan={11} className="text-end fw-bold">
+          <td colSpan={12} className="text-end fw-bold">
             Grand Total:
           </td>
           <td className="text-end fw-bold text-danger fs-5">
