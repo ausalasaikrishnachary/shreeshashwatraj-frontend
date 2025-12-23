@@ -1117,7 +1117,7 @@ const fetchOrders = async () => {
                                         <td>₹{item.discount_amount.toLocaleString()}</td>
                                         <td>{item.credit_period}</td>
                                         <td>{item.invoice_number || "N/A"}</td>
-                                        <td>
+                                        <td>            
                                           {needsApproval ? (
                                             <div className="p-approval-status">
                                               <span className={`p-approval-badge p-${approvalStatus}`}>
