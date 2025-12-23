@@ -45,6 +45,8 @@ const Period_InvoicePDFPreview = () => {
     let totalGrandTotal = 0;
     let totalSGST = 0;
     let totalCGST = 0;
+      let totalDiscountAmount = 0; // Add this
+  let totalCreditCharge = 0; // Add this
     
     const items = (periodData.selectedItems || []).map((item, index) => {
       // Use ACTUAL values from database - NO CALCULATION
@@ -69,6 +71,8 @@ const Period_InvoicePDFPreview = () => {
       totalGrandTotal += itemTotal;
       totalSGST += actualSGSTAmount;
       totalCGST += actualCGSTAmount;
+        totalDiscountAmount += discountAmount; // Add to total discount
+    totalCreditCharge += creditCharge; // Add to total credit charge
       
       return {
         id: index + 1,
@@ -189,7 +193,8 @@ const Period_InvoicePDFPreview = () => {
       totalGST: (typeof taxAmount === 'number' ? taxAmount : parseFloat(taxAmount) || 0).toFixed(2),
       grandTotal: (typeof grandTotal === 'number' ? grandTotal : parseFloat(grandTotal) || 0).toFixed(2),
       totalCess: "0.00",
-      
+         totalDiscountAmount: totalDiscountAmount.toFixed(2), // Add total discount
+    totalCreditCharge: totalCreditCharge.toFixed(2), // Add total credit charge
       note: periodData.note || "",
       transportDetails: periodData.transportDetails || "Standard delivery",
       additionalCharge: "",
@@ -678,12 +683,21 @@ const generateAndStorePDF = async (voucherId) => {
   }
 };
 const handleGenerateInvoice = async () => {
-  
   try {
     setGenerating(true);
     setErrorMessage('');
     setSuccessMessage('');
     
+    // DEBUG: Add logging to see what's coming
+    console.log('🔍 DEBUG - periodInvoiceData structure:', {
+      periodInvoiceData,
+      customerInfo: periodInvoiceData?.customerInfo,
+      fullAccountDetails: periodInvoiceData?.fullAccountDetails,
+      hasCreditLimit: !!periodInvoiceData?.customerInfo?.credit_limit,
+      creditLimitRaw: periodInvoiceData?.customerInfo?.credit_limit,
+      creditLimitType: typeof periodInvoiceData?.customerInfo?.credit_limit
+    });
+
     const firstDescription = editableDescriptions[invoiceData?.items[0]?.id || 0] || 
                             invoiceData?.items[0]?.description || '';
 
@@ -731,7 +745,87 @@ const handleGenerateInvoice = async () => {
       let totalCGST = 0;
       let totalSGST = 0;
       
-    
+      // FIXED: Better credit data parsing function
+      const parseCreditValue = (value) => {
+        console.log('🔄 Parsing credit value:', { rawValue: value, type: typeof value });
+        
+        if (value === null || value === undefined || value === '') {
+          console.log('Value is null/undefined/empty, returning 0');
+          return 0;
+        }
+        
+        if (typeof value === 'string') {
+          // Check for "NULL" string (case insensitive)
+          const trimmedValue = value.trim().toUpperCase();
+          if (trimmedValue === 'NULL' || trimmedValue === '') {
+            console.log('Value is "NULL" or empty string, returning 0');
+            return 0;
+          }
+          
+          // Remove any non-numeric characters except decimal point and minus sign
+          const cleanValue = value.replace(/[^0-9.-]+/g, '');
+          if (cleanValue === '') {
+            console.log('Cleaned value is empty, returning 0');
+            return 0;
+          }
+          
+          const parsed = parseFloat(cleanValue);
+          
+          if (isNaN(parsed)) {
+            console.log('Could not parse to number, returning 0');
+            return 0;
+          }
+          
+          console.log(`Successfully parsed "${value}" to ${parsed}`);
+          return parsed;
+        }
+        
+        if (typeof value === 'number') {
+          console.log(`Value is already number: ${value}`);
+          return value;
+        }
+        
+        // Try to convert other types
+        try {
+          const parsed = parseFloat(value);
+          if (!isNaN(parsed)) {
+            console.log(`Converted to number: ${parsed}`);
+            return parsed;
+          }
+        } catch (e) {
+          console.log('Conversion failed, returning 0');
+        }
+        
+        return 0;
+      };
+      
+      // FIXED: Get and parse credit values with proper debugging
+      const rawCreditLimit = periodInvoiceData.customerInfo?.credit_limit;
+      const rawUnpaidAmount = periodInvoiceData.customerInfo?.unpaid_amount;
+      const rawBalanceAmount = periodInvoiceData.customerInfo?.balance_amount;
+      
+      console.log('📥 RAW CREDIT VALUES RECEIVED:', {
+        rawCreditLimit,
+        rawUnpaidAmount,
+        rawBalanceAmount,
+        types: {
+          creditLimit: typeof rawCreditLimit,
+          unpaidAmount: typeof rawUnpaidAmount,
+          balanceAmount: typeof rawBalanceAmount
+        }
+      });
+      
+      const creditLimit = parseCreditValue(rawCreditLimit);
+      const unpaidAmount = parseCreditValue(rawUnpaidAmount);
+      const balanceAmount = parseCreditValue(rawBalanceAmount);
+      
+      console.log('✅ FINAL PARSED CREDIT VALUES:', {
+        creditLimit,
+        unpaidAmount,
+        balanceAmount
+      });
+      
+      // Calculate invoice amount
       const itemsWithCalculations = selectedItems.map(item => {
         const quantity = parseFloat(item.quantity) || 1;
         
@@ -770,7 +864,12 @@ const handleGenerateInvoice = async () => {
           product_id: item.product_id,
           description: editableDescriptions[item.id] || item.description || '',
           quantity: quantity,
-          price: editedSalePrice, // Per unit price
+          price: editedSalePrice, 
+          discount_amount: itemDiscountAmount,
+          credit_charge: itemCreditCharge, 
+          discount_amount_per_unit: discountAmountPerUnit,
+          credit_charge_per_unit: creditChargePerUnit,
+          
           discount: parseFloat(item.discount_percentage) || 0,
           gst: orderMode.toUpperCase() === "KACHA" ? 0 : taxPercentage, 
           cgst: orderMode.toUpperCase() === "KACHA" ? 0 : cgstPercentage, 
@@ -778,7 +877,6 @@ const handleGenerateInvoice = async () => {
           igst: 0,
           cess: 0,
           
-
           total: itemTotal,
           taxable_amount: itemTaxableAmount, 
           tax_amount: itemTaxAmount, 
@@ -792,12 +890,88 @@ const handleGenerateInvoice = async () => {
           edited_sale_price: editedSalePrice,
           sale_price: parseFloat(item.sale_price) || 0, 
           credit_charge: itemCreditCharge, 
-          discount_amount: itemDiscountAmount, // Total discount amount (multiplied)
+          discount_amount: itemDiscountAmount,
           
           _calculation_note: `Amounts are multiplied by quantity ${quantity}`
         };
       });
       
+      // FIXED: Perform credit limit check with better logic
+      console.log('📊 CREDIT CHECK - ALL VALUES:', {
+        creditLimit,
+        unpaidAmount,
+        balanceAmount,
+        grandTotal,
+        isCreditLimitSet: creditLimit > 0,
+        isCreditLimitValid: typeof creditLimit === 'number' && !isNaN(creditLimit)
+      });
+      
+      // IMPORTANT: Only check if creditLimit is a valid positive number
+      if (creditLimit > 0 && typeof creditLimit === 'number' && !isNaN(creditLimit)) {
+        const totalInvoiceAmount = grandTotal;
+        const currentTotal = unpaidAmount;
+        const newTotal = currentTotal + totalInvoiceAmount;
+        const exceedAmount = newTotal - creditLimit;
+        
+        console.log('🚨 CREDIT LIMIT CALCULATION:', {
+          creditLimit,
+          currentTotal,
+          totalInvoiceAmount,
+          newTotal,
+          exceedAmount,
+          isExceeded: newTotal > creditLimit
+        });
+        
+        if (newTotal > creditLimit) {
+          // Show Windows alert - FIXED format
+          const customerName = accountDetails?.name || periodInvoiceData.customerInfo?.name || 'Customer';
+          
+          // Create alert message with proper formatting
+          const alertMessage = 
+            "⚠️ CREDIT LIMIT EXCEEDED!\n\n" +
+            `Customer: ${customerName}\n` +
+            `Credit Limit: ₹${creditLimit.toLocaleString('en-IN')}\n` +
+            `Unpaid Amount: ₹${unpaidAmount.toLocaleString('en-IN')}\n` +
+            `Invoice Amount: ₹${totalInvoiceAmount.toLocaleString('en-IN')}\n` +
+            `New Total: ₹${newTotal.toLocaleString('en-IN')}\n` +
+            `Exceeds by: ₹${exceedAmount.toLocaleString('en-IN')}\n\n` +
+            "Credit limit exceeded! Proceed anyway?\n\n" +
+            "OK = Continue with invoice\n" +
+            "Cancel = Stop invoice generation";
+          
+          console.log('🔄 SHOWING ALERT DIALOG');
+          console.log('Alert Message:', alertMessage);
+          
+          const proceed = window.confirm(alertMessage);
+          
+          if (!proceed) {
+            setGenerating(false);
+            setErrorMessage('Invoice generation cancelled due to credit limit exceedance.');
+            setTimeout(() => setErrorMessage(null), 5000);
+            return;
+          } else {
+            console.log('✅ User chose to proceed despite credit limit');
+          }
+        } else {
+          console.log('✅ Credit limit NOT exceeded, proceeding normally');
+        }
+      } else {
+        console.log('ℹ️ No valid credit limit found:', {
+          creditLimit,
+          type: typeof creditLimit,
+          isNumber: typeof creditLimit === 'number',
+          isPositive: creditLimit > 0,
+          isNotNaN: !isNaN(creditLimit)
+        });
+        
+        if (creditLimit === 0) {
+          console.log('ℹ️ Credit limit is 0, skipping credit check');
+        } else if (creditLimit < 0) {
+          console.log('⚠️ Credit limit is negative, skipping credit check');
+        } else {
+          console.log('⚠️ Credit limit is not a valid number, skipping credit check');
+        }
+      }
       
       const payload = {
         transactionType: transactionType,
@@ -807,7 +981,6 @@ const handleGenerateInvoice = async () => {
         order_mode: orderMode.toUpperCase(),
         
         items: itemsWithCalculations,
-
         originalOrderNumber: orderNumber,
         originalOrderId: periodInvoiceData.originalOrderId,
         selectedItemIds: selectedItemIds,
@@ -848,7 +1021,11 @@ const handleGenerateInvoice = async () => {
           id: periodInvoiceData.customerInfo?.id,
           email: accountDetails?.email || '',
           phone: accountDetails?.phone_number || accountDetails?.mobile_number || '',
-          pan: accountDetails?.pan || ''
+          pan: accountDetails?.pan || '',
+          // Include credit info in payload
+          credit_limit: creditLimit,
+          unpaid_amount: unpaidAmount,
+          balance_amount: balanceAmount
         },
         
         billingAddress: accountDetails ? {
@@ -891,7 +1068,12 @@ const handleGenerateInvoice = async () => {
         TaxAmount: totalGST,
         Subtotal: taxableAmount,
         CGSTAmount: totalCGST,
-        SGSTAmount: totalSGST
+        SGSTAmount: totalSGST,
+        
+        // Include credit info in the main payload too
+        credit_limit: creditLimit,
+        unpaid_amount: unpaidAmount,
+        balance_amount: balanceAmount
       };
 
       const { transactionType: existingTransactionType, ...periodDataWithoutTransactionType } = periodInvoiceData;
@@ -900,7 +1082,9 @@ const handleGenerateInvoice = async () => {
         ...periodDataWithoutTransactionType,
         ...payload  
       };
-console.log("📦 FINAL INVOICE PAYLOAD:", finalPayload);
+      
+      console.log("📦 FINAL INVOICE PAYLOAD:", finalPayload);
+      
       const response = await fetch(`${baseurl}/transaction`, {
         method: "POST",
         headers: {
@@ -938,7 +1122,6 @@ console.log("📦 FINAL INVOICE PAYLOAD:", finalPayload);
         setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber || payload.invoiceNumber}. Transaction Type: ${transactionType}`);
       }
 
-      // ✅ Also update the local invoiceData with voucherId if available
       if (result.voucherId) {
         setInvoiceData(prev => ({
           ...prev,
@@ -952,7 +1135,6 @@ console.log("📦 FINAL INVOICE PAYLOAD:", finalPayload);
       }, 3000);
 
     } else {
-      // Handle non-period invoice generation...
       throw new Error('Invalid invoice data source');
     }
   } catch (error) {
@@ -966,7 +1148,6 @@ console.log("📦 FINAL INVOICE PAYLOAD:", finalPayload);
     setGenerating(false);
   }
 };
-
 
 
   // Handle download PDF
@@ -1249,6 +1430,16 @@ useEffect(() => {
       console.log('📦 Received data from Period component:', location.state.invoiceData);
       
       const periodData = location.state.invoiceData;
+       console.log('🔍 Credit Data Check in periodInvoiceData:', {
+      customerInfo: periodData.customerInfo,
+      fullAccountDetails: periodData.fullAccountDetails,
+      hasCreditLimit: !!periodData.customerInfo?.credit_limit,
+      hasUnpaidAmount: !!periodData.customerInfo?.unpaid_amount,
+      hasBalanceAmount: !!periodData.customerInfo?.balance_amount,
+      credit_limit_value: periodData.customerInfo?.credit_limit,
+      unpaid_amount_value: periodData.customerInfo?.unpaid_amount,
+      balance_amount_value: periodData.customerInfo?.balance_amount
+    });
       setPeriodInvoiceData(periodData);
       setFromPeriod(true);
       setLoading(false);

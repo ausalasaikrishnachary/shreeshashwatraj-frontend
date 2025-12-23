@@ -224,9 +224,6 @@ const adjustedTotals = getAdjustedTotals();
   // Debug: Log the calculations
   useEffect(() => {
     if (invoiceData && invoiceData.items) {
-      console.log('Order Mode:', localOrderMode);
-      console.log('Adjusted Totals:', adjustedTotals);
-      console.log('GST Breakdown:', adjustedGstBreakdown);
       
       invoiceData.items.forEach((item, index) => {
         console.log(`Item ${index + 1}:`, {
@@ -362,6 +359,7 @@ const adjustedTotals = getAdjustedTotals();
           <th style={{ width: '15%' }}>Description</th>
           <th className="text-center" style={{ width: '4%' }}>Qty</th>
           <th className="text-end" style={{ width: '7%' }}>EDP</th>
+            <th className="text-end" style={{ width: '7%' }}>Discount Amt</th> 
           <th className="text-end" style={{ width: '7%' }}>Credit Charge</th>
           <th className="text-end" style={{ width: '7%' }}>Taxable Amount</th>
           <th className="text-center" style={{ width: '5%' }}>GST %</th>
@@ -381,13 +379,16 @@ const adjustedTotals = getAdjustedTotals();
           const gstPerUnit = localOrderMode === "KACHA" ? 0 : getGSTAmountPerUnit(item);
           const cgstPerUnit = localOrderMode === "KACHA" ? 0 : getCGSTAmountPerUnit(item);
           const sgstPerUnit = localOrderMode === "KACHA" ? 0 : getSGSTAmountPerUnit(item);
-          
+            const discountAmountPerUnit = parseFloat(item.discount_amount) || 0;
+        const creditChargePerUnit = parseFloat(item.credit_charge) || 0;
           // Get TOTAL values (PER UNIT × QUANTITY)
           const totalTaxableAmount = taxablePerUnit * quantity;
           const totalAmount = totalAmountPerUnit * quantity;
           const totalGSTAmount = gstPerUnit * quantity;
           const totalCGSTAmount = cgstPerUnit * quantity;
           const totalSGSTAmount = sgstPerUnit * quantity;
+            const totalDiscountAmount = discountAmountPerUnit * quantity;
+        const totalCreditCharge = creditChargePerUnit * quantity;
           const itemTotal = calculateItemTotal(item);
           
           const gstPercentage = localOrderMode === "KACHA" ? 0 : (parseFloat(item.gst) || 0);
@@ -427,6 +428,15 @@ const adjustedTotals = getAdjustedTotals();
                 <div className="fw-medium">₹{editedPrice.toFixed(2)}</div>
                 
               </td>
+        {/* Discount Amount Column - NEW */}
+            <td className="text-end align-middle">
+              <div className="fw-medium text-warning">₹{totalDiscountAmount.toFixed(2)}</div>
+              {quantity > 1 && (
+                <div className="text-muted small">
+                  ₹{discountAmountPerUnit.toFixed(2)} × {quantity}
+                </div>
+              )}
+            </td>
               
               {/* Credit Charge Column */}
               <td className="text-end align-middle">
