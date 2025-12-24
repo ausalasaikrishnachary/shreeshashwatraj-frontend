@@ -449,7 +449,7 @@ const InvoicePDFDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             <View style={styles.colEDP}><Text style={styles.tableCellHeader}>EDP</Text></View>
             <View style={styles.colCreditCharge}><Text style={styles.tableCellHeader}>Credit Charge</Text></View>
             <View style={styles.colTaxable}><Text style={styles.tableCellHeader}>Taxable Amount</Text></View>
-            <View style={styles.colGSTPercent}><Text style={styles.tableCellHeader}>GST %</Text></View>
+            <View style={styles.colGSTPercent}><Text style={styles.tableCellHeader}>GST </Text></View>
             <View style={styles.colGSTAmount}><Text style={styles.tableCellHeader}>GST Amt</Text></View>
             <View style={styles.colCGST}><Text style={styles.tableCellHeader}>CGST Amt</Text></View>
             <View style={styles.colSGST}><Text style={styles.tableCellHeader}>SGST Amt</Text></View>
@@ -513,13 +513,13 @@ const InvoicePDFDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
                 </View>
                 
                 {/* GST Percentage */}
-                <View style={styles.colGSTPercent}>
-                  <View style={[styles.badge, isKacha ? styles.badgeSecondary : styles.badgePrimary]}>
-                    <Text style={styles.tableCell}>
-                      {isKacha ? '0%' : `${gstPercentage}%`}
-                    </Text>
-                  </View>
-                </View>
+              <View style={styles.colGSTPercent}>
+  <View style={styles.badge}>
+    <Text style={styles.tableCell}>
+      {isKacha ? '0%' : `${gstPercentage}%`}
+    </Text>
+  </View>
+</View>
                 
                 {/* GST Amount */}
                 <View style={styles.colGSTAmount}>
@@ -578,7 +578,6 @@ const InvoicePDFDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             </View>
           </View>
           
-          {/* GST Breakdown - Additional row like in the image */}
           <View style={[styles.tableRow, { backgroundColor: '#f8f9fa', borderBottom: 'none' }]}>
             <View style={[styles.colSNo, { borderRightWidth: 0 }]}></View>
             <View style={[styles.colProduct, { borderRightWidth: 0 }]}></View>

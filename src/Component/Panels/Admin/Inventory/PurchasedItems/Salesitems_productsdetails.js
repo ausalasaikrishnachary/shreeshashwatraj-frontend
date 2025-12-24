@@ -21,6 +21,7 @@ const Salesitems_productsdetails = ({ user }) => {
     try {
       setLoading(true);
       const response = await axios.get(`${baseurl}/products/${id}/with-batches`);
+      debugger
       setProductData(response.data);
       setLoading(false);
     } catch (error) {
@@ -52,7 +53,7 @@ const Salesitems_productsdetails = ({ user }) => {
     const maxAlert = parseFloat(productData.max_stock_alert) || 0;
 
     productData.batches.forEach(batch => {
-      const batchQuantity = parseFloat(batch.quantity) || 0;
+      const batchQuantity = parseFloat(batch.current_stock || batch.quantity) || 0;
       const batchNumber = batch.batch_number || 'N/A';
 
       if (minAlert > 0 && batchQuantity <= minAlert) {
@@ -96,46 +97,15 @@ const Salesitems_productsdetails = ({ user }) => {
     }
   }, [productData]);
 
-  const calculateBatchStock = (batchObj) => {
-    const batchNumber = (batchObj.batch_number || '').toString().trim();
-    const batchStocks = (productData.stock || []).filter(
-      stock => (stock.batch_number || '').toString().trim() === batchNumber
-    );
-
-    let opening_stock = parseFloat(batchObj.opening_stock) || parseFloat(batchObj.quantity) || 0;
-    let stock_in = 0;
-    let stock_out = 0;
-    let balance_stock = opening_stock;
-    let latest_date = batchObj.updated_at || batchObj.created_at;
-
-    if (batchStocks.length > 0) {
-      const sortedStocks = batchStocks.sort(
-        (a, b) => new Date(a.date || a.created_at) - new Date(b.date || b.created_at)
-      );
-
-      sortedStocks.forEach((stock, index) => {
-        if (index === 0 && stock.opening_stock != null) {
-          opening_stock = parseFloat(stock.opening_stock) || opening_stock;
-        }
-        stock_in += parseFloat(stock.stock_in) || 0;
-        stock_out += parseFloat(stock.stock_out) || 0;
-        balance_stock = parseFloat(stock.balance_stock) || (opening_stock + stock_in - stock_out);
-        latest_date = stock.date || stock.created_at || latest_date;
-      });
-
-      balance_stock = opening_stock + stock_in - stock_out;
-    } else {
-      stock_in = parseFloat(batchObj.stock_in) || 0;
-      stock_out = parseFloat(batchObj.stock_out) || 0;
-      balance_stock = parseFloat(batchObj.quantity) || 0;
-    }
-
+  // Simplified function to get batch stock values
+  const getBatchStockValues = (batch) => {
     return {
-      opening_stock,
-      stock_in,
-      stock_out,
-      balance_stock,
-      latest_date,
+      opening_stock: parseFloat(batch.opening_stock) || 0,
+      stock_in: parseFloat(batch.stock_in) || 0,
+      stock_out: parseFloat(batch.stock_out) || 0,
+      // Use current_stock directly since it's provided in the API
+      balance_stock: parseFloat(batch.current_stock || batch.quantity) || 0,
+      latest_date: batch.updated_at || batch.created_at,
     };
   };
 
@@ -249,16 +219,6 @@ const Salesitems_productsdetails = ({ user }) => {
                   <h1 className="page-title text-primary fw-bold">{productData.goods_name}</h1>
                   <p className="page-subtitle text-muted">Product Details & Inventory Management</p>
                 </div>
-                {/* <div className="product-badges">
-                  <span className={`badge ${productData.can_be_sold ? 'bg-success' : 'bg-secondary'} me-2`}>
-                    <i className="fas fa-shopping-cart me-1"></i>
-                    {productData.can_be_sold ? 'Available for Sale' : 'Not for Sale'}
-                  </span>
-                  <span className={`badge ${productData.maintain_batch ? 'bg-info' : 'bg-light text-dark'}`}>
-                    <i className="fas fa-layer-group me-1"></i>
-                    {productData.maintain_batch ? 'Batch Managed' : 'Single Batch'}
-                  </span>
-                </div> */}
               </div>
             </div>
 
@@ -329,11 +289,15 @@ const Salesitems_productsdetails = ({ user }) => {
                     <div className="stock-stats">
                       <div className="stock-stat-item">
                         <div className="stat-label">Opening Stock</div>
-                        <div className="stat-value">{productData.opening_stock}</div>
+                        <div className="stat-value">
+                          {productData.batches?.reduce((sum, batch) => sum + (parseFloat(batch.opening_stock) || 0), 0) || 0}
+                        </div>
                       </div>
                       <div className="stock-stat-item">
                         <div className="stat-label">Current Stock</div>
-                        <div className="stat-value text-primary fw-bold">{productData.balance_stock}</div>
+                        <div className="stat-value text-primary fw-bold">
+                          {productData.batches?.reduce((sum, batch) => sum + (parseFloat(batch.current_stock || batch.quantity) || 0), 0) || 0}
+                        </div>
                       </div>
                       <div className="stock-stat-item">
                         <div className="stat-label">Min Stock Alert</div>
@@ -388,15 +352,15 @@ const Salesitems_productsdetails = ({ user }) => {
                             <th>Opening Stock</th>
                             <th>Stock In</th>
                             <th>Stock Out</th>
-                            <th>Balance Stock</th>
+                            <th>Current Stock</th>
                             <th>Last Updated</th>
                           </tr>
                         </thead>
                         <tbody>
                           {productData.batches && productData.batches.length > 0 ? (
                             productData.batches.map((batch) => {
-                              const batchStock = calculateBatchStock(batch);
-                              const batchQuantity = parseFloat(batch.quantity) || 0;
+                              const batchStock = getBatchStockValues(batch);
+                              const batchQuantity = parseFloat(batch.current_stock || batch.quantity) || 0;
                               const minAlert = parseFloat(productData.min_stock_alert) || 0;
                               const maxAlert = parseFloat(productData.max_stock_alert) || 0;
                               const isLowStock = minAlert > 0 && batchQuantity <= minAlert;
@@ -449,9 +413,7 @@ const Salesitems_productsdetails = ({ user }) => {
                                   </td>
                                   <td>
                                     <span className="date-value">
-                                      {batchStock.latest_date
-                                        ? formatDate(batchStock.latest_date)
-                                        : formatDate(batch.created_at)}
+                                      {formatDate(batchStock.latest_date)}
                                     </span>
                                   </td>
                                 </tr>

@@ -250,6 +250,14 @@ const adjustedTotals = getAdjustedTotals();
 
   if (!invoiceData) return null;
 
+             const formatIndianDate = (dateString) => {
+  const date = new Date(dateString);
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
   return (
     <div className="invoice-pdf-preview bg-white p-4 shadow-sm" id="invoice-pdf-content">
       {/* Header - unchanged */}
@@ -269,8 +277,9 @@ const adjustedTotals = getAdjustedTotals();
             <h3 className="invoice-title text-danger mb-2">TAX INVOICE</h3>
             <div className="invoice-meta bg-light p-2 rounded">
               <p className="mb-1"><strong>Invoice No:</strong> {invoiceData.invoiceNumber}</p>
-              <p className="mb-1"><strong>Invoice Date:</strong> {new Date(invoiceData.invoiceDate).toLocaleDateString()}</p>
-              <p className="mb-0"><strong>Due Date:</strong> {new Date(invoiceData.validityDate).toLocaleDateString()}</p>
+  
+<p className="mb-1"><strong>Invoice Date:</strong> {formatIndianDate(invoiceData.invoiceDate)}</p>
+<p className="mb-0"><strong>Due Date:</strong> {formatIndianDate(invoiceData.validityDate)}</p>
             </div>
           </Col>
         </Row>
@@ -358,7 +367,7 @@ const adjustedTotals = getAdjustedTotals();
           <th style={{ width: '12%' }}>Product</th>
           <th style={{ width: '15%' }}>Description</th>
           <th className="text-center" style={{ width: '4%' }}>Qty</th>
-          <th className="text-end" style={{ width: '7%' }}>EDP</th>
+          <th className="text-end" style={{ width: '7%' }}>Price</th>
             <th className="text-end" style={{ width: '7%' }}>Discount Amt</th> 
           <th className="text-end" style={{ width: '7%' }}>Credit Charge</th>
           <th className="text-end" style={{ width: '7%' }}>Taxable Amount</th>
@@ -381,7 +390,6 @@ const adjustedTotals = getAdjustedTotals();
           const sgstPerUnit = localOrderMode === "KACHA" ? 0 : getSGSTAmountPerUnit(item);
             const discountAmountPerUnit = parseFloat(item.discount_amount) || 0;
         const creditChargePerUnit = parseFloat(item.credit_charge) || 0;
-          // Get TOTAL values (PER UNIT × QUANTITY)
           const totalTaxableAmount = taxablePerUnit * quantity;
           const totalAmount = totalAmountPerUnit * quantity;
           const totalGSTAmount = gstPerUnit * quantity;
