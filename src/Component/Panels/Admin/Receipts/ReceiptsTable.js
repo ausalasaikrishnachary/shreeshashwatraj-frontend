@@ -21,8 +21,10 @@ const ReceiptsTable = () => {
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
   const [activeTab, setActiveTab] = useState('Receipts');
-  const [invoices, setInvoices] = useState([]); // Add invoices state
-  const [selectedInvoice, setSelectedInvoice] = useState(''); // Add selected invoice state
+  const [invoices, setInvoices] = useState([]);
+  const [selectedInvoice, setSelectedInvoice] = useState('');
+  const [invoiceBalance, setInvoiceBalance] = useState(0);
+  const [isFetchingBalance, setIsFetchingBalance] = useState(false);
 
   const [formData, setFormData] = useState({
     receiptNumber: 'REC001',
@@ -40,7 +42,7 @@ const ReceiptsTable = () => {
     retailerGstin: '',
     retailerBusinessName: '',
     transactionProofFile: '',
-    invoiceNumber: '' // Add invoice number field
+    invoiceNumber: ''
   });
 
   // Fetch invoices from API
@@ -59,6 +61,109 @@ const ReceiptsTable = () => {
       console.error('Error fetching invoices:', err);
     }
   };
+
+  const fetchInvoiceBalance = async (retailerId, invoiceNumber) => {
+    if (!retailerId || !invoiceNumber) {
+      setInvoiceBalance(0);
+      setFormData(prev => ({
+        ...prev,
+        amount: ''
+      }));
+      return;
+    }
+
+    try {
+      setIsFetchingBalance(true);
+      console.log(`Fetching balance for retailer ${retailerId}, invoice ${invoiceNumber}`);
+      
+      const existingReceipt = receiptData.find(receipt => 
+        receipt.retailer?.id == retailerId && 
+        receipt.invoice_numbers?.includes(invoiceNumber)
+      );
+
+      if (existingReceipt?.total_balance_amount) {
+        console.log('Found balance in existing data:', existingReceipt.total_balance_amount);
+        setInvoiceBalance(existingReceipt.total_balance_amount);
+        setFormData(prev => ({
+          ...prev,
+          amount: existingReceipt.total_balance_amount
+        }));
+        setIsFetchingBalance(false);
+        return;
+      }
+
+      // If not found in existing data, try API endpoint
+      try {
+        const response = await fetch(
+          
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Received balance data from API:', data);
+          
+          const balanceAmount = data.total_balance_amount || data.balance || data.amount_due || 0;
+          setInvoiceBalance(balanceAmount);
+          
+          setFormData(prev => ({
+            ...prev,
+            amount: balanceAmount
+          }));
+        } else {
+          console.warn('No balance found from API, checking invoices data');
+          const selectedInvoiceData = invoices.find(inv => inv.VchNo === invoiceNumber);
+          if (selectedInvoiceData) {
+            const invoiceAmount = parseFloat(selectedInvoiceData.TotalAmount || selectedInvoiceData.total_amount || 0);
+            const paidAmount = parseFloat(selectedInvoiceData.paid_amount || 0);
+            const balance = invoiceAmount - paidAmount;
+            
+            if (balance > 0) {
+              setInvoiceBalance(balance);
+              setFormData(prev => ({
+                ...prev,
+                amount: balance
+              }));
+            } else {
+              setInvoiceBalance(0);
+              setFormData(prev => ({
+                ...prev,
+                amount: ''
+              }));
+              alert('This invoice is already fully paid.');
+            }
+          }
+        }
+      } catch (apiError) {
+        console.error('API error fetching balance:', apiError);
+        // Fallback: show empty amount
+        setInvoiceBalance(0);
+        setFormData(prev => ({
+          ...prev,
+          amount: ''
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching invoice balance:', err);
+      setInvoiceBalance(0);
+      setFormData(prev => ({
+        ...prev,
+        amount: ''
+      }));
+    } finally {
+      setIsFetchingBalance(false);
+    }
+  };
+
+  // Auto-fetch balance when both retailer and invoice are selected
+  useEffect(() => {
+    if (formData.retailerId && formData.invoiceNumber) {
+      const timer = setTimeout(() => {
+        fetchInvoiceBalance(formData.retailerId, formData.invoiceNumber);
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [formData.retailerId, formData.invoiceNumber]);
 
   // File change handler
   const handleFileChange = (e) => {
@@ -144,22 +249,21 @@ const ReceiptsTable = () => {
       style:{textAlign:'center'},
       render:(value) => value || '0'
     },
-  {
-  key: 'Date',
-  title: 'DATE',
-  style: { textAlign: 'center' },
-  render: (value) => {
-    if (!value) return 'N/A';
+    {
+      key: 'Date',
+      title: 'DATE',
+      style: { textAlign: 'center' },
+      render: (value) => {
+        if (!value) return 'N/A';
 
-    const dateObj = new Date(value);
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const year = dateObj.getFullYear();
+        const dateObj = new Date(value);
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = dateObj.getFullYear();
 
-    return `${day}-${month}-${year}`; // DD-MM-YYYY
-  }
-}
-
+        return `${day}-${month}-${year}`; // DD-MM-YYYY
+      }
+    }
   ];
 
   const tabs = [
@@ -244,35 +348,79 @@ const ReceiptsTable = () => {
       setIsLoading(true);
       console.log('Fetching receipts from:', `${baseurl}/api/receipts`);
       const response = await fetch(`${baseurl}/api/receipts`);
+      
       if (response.ok) {
-        const data = await response.json();
+        let data;
+        try {
+          data = await response.json();
+        } catch (parseError) {
+          console.error('Failed to parse receipts data:', parseError);
+          throw new Error('Invalid response from server');
+        }
+        
         console.log('Received receipts data:', data);
         
+        // Handle different response structures
+        const receiptsArray = Array.isArray(data) ? data : 
+                             (data.data && Array.isArray(data.data)) ? data.data : 
+                             (data.receipts && Array.isArray(data.receipts)) ? data.receipts : 
+                             [];
+        
         // Sort data in descending order by receipt_date or id
-        const sortedData = data.sort((a, b) => {
-          const dateA = new Date(a.receipt_date || a.created_at);
-          const dateB = new Date(b.receipt_date || b.created_at);
-          return dateB - dateA || b.id - a.id;
+        const sortedData = receiptsArray.sort((a, b) => {
+          const dateA = new Date(a.receipt_date || a.created_at || a.Date);
+          const dateB = new Date(b.receipt_date || b.created_at || b.Date);
+          return dateB - dateA || 
+                 (b.VoucherID - a.VoucherID) || 
+                 (b.id - a.id) || 
+                 (b.receipt_id - a.receipt_id);
         });
 
         // Transform data with proper retailer object handling
-        const transformedData = sortedData.map(receipt => ({
-          ...receipt,
-          id: receipt.id || '',
-          retailer: receipt.retailer || { 
-            business_name: receipt.payee_name || receipt.retailer_name || 'N/A' 
-          },
-          payee: receipt.retailer?.business_name || receipt.payee_name || receipt.retailer_name || 'N/A',
-          amount: `₹ ${parseFloat(receipt.amount || 0).toLocaleString('en-IN')}`,
-          receipt_date: receipt.receipt_date ? new Date(receipt.receipt_date).toLocaleDateString('en-IN') : 'N/A',
-          payment_method: receipt.payment_method || 'N/A'
-        }));
+        const transformedData = sortedData.map(receipt => {
+          // Find VoucherID from any possible key
+          const voucherId = 
+            receipt.VoucherID || 
+            receipt.id ||
+            receipt.receipt_id ||
+            '';
+            
+          const retailerName = 
+            receipt.retailer?.business_name || 
+            receipt.payee_name || 
+            receipt.retailer_name || 
+            receipt.PartyName || 
+            receipt.retailer_name || 
+            'N/A';
+            
+          const amount = parseFloat(receipt.amount || receipt.paid_amount || receipt.Amount || 0);
+          
+          return {
+            ...receipt,
+            id: voucherId,
+            VoucherID: voucherId,
+            retailer: receipt.retailer || { 
+              id: receipt.AccountID || receipt.PartyID || receipt.retailer_id || '',
+              business_name: retailerName
+            },
+            payee: retailerName,
+            VchNo: receipt.receipt_number || receipt.VchNo || receipt.VoucherNo || receipt.receipt_number || '',
+            amount: `₹ ${amount.toLocaleString('en-IN')}`,
+            paid_amount: amount,
+            Date: receipt.receipt_date || receipt.Date || receipt.created_at,
+            receipt_date: receipt.receipt_date ? new Date(receipt.receipt_date).toLocaleDateString('en-IN') : 'N/A',
+            payment_method: receipt.payment_method || receipt.PaymentMethod || 'N/A',
+            InvoiceNumber: receipt.invoice_number || receipt.InvoiceNumber || receipt.invoice_no || ''
+          };
+        });
 
         console.log('Transformed receipts data:', transformedData);
         
         setReceiptData(transformedData);
       } else {
         console.error('Failed to fetch receipts. Status:', response.status);
+        const errorText = await response.text();
+        console.error('Error details:', errorText);
         alert('Failed to load receipts. Please try again later.');
       }
     } catch (err) {
@@ -305,7 +453,7 @@ const ReceiptsTable = () => {
     fetchAccounts();
     fetchReceipts();
     fetchNextReceiptNumber();
-    fetchInvoices(); // Fetch invoices when component mounts
+    fetchInvoices();
   }, []);
 
   // Tab navigation
@@ -321,6 +469,21 @@ const ReceiptsTable = () => {
       console.log('Receipt number not fetched yet, fetching now...');
       await fetchNextReceiptNumber();
     }
+    
+    // Reset form data for new receipt
+    setFormData(prev => ({
+      ...prev,
+      retailerId: '',
+      amount: '',
+      invoiceNumber: '',
+      note: '',
+      bankName: '',
+      transactionDate: '',
+      transactionProofFile: ''
+    }));
+    setSelectedInvoice('');
+    setInvoiceBalance(0);
+    
     setIsModalOpen(true);
   };
 
@@ -340,9 +503,11 @@ const ReceiptsTable = () => {
       transactionDate: '',
       reconciliationOption: 'Do Not Reconcile',
       receiptNumber: nextReceiptNumber,
-      invoiceNumber: '' // Reset invoice number
+      invoiceNumber: '',
+      transactionProofFile: ''
     }));
-    setSelectedInvoice(''); // Reset selected invoice
+    setSelectedInvoice('');
+    setInvoiceBalance(0);
   };
 
   // Handle form input changes
@@ -353,6 +518,9 @@ const ReceiptsTable = () => {
       ...prev,
       [name]: value
     }));
+    
+    if (name === 'amount') {
+    }
   };
 
   // Handle retailer selection change
@@ -366,8 +534,16 @@ const ReceiptsTable = () => {
       retailerMobile: selectedRetailer?.mobile_number || '',
       retailerEmail: selectedRetailer?.email || '',
       retailerGstin: selectedRetailer?.gstin || '',
-      retailerBusinessName: selectedRetailer?.business_name || ''
+      retailerBusinessName: selectedRetailer?.business_name || '',
+      amount: '' // Clear amount when retailer changes
     }));
+    
+    setInvoiceBalance(0);
+    
+    // If invoice is already selected, fetch balance
+    if (formData.invoiceNumber) {
+      fetchInvoiceBalance(selectedRetailerId, formData.invoiceNumber);
+    }
   };
 
   // Handle invoice selection change
@@ -376,20 +552,27 @@ const ReceiptsTable = () => {
     setSelectedInvoice(selectedVchNo);
     setFormData(prev => ({
       ...prev,
-      invoiceNumber: selectedVchNo
+      invoiceNumber: selectedVchNo,
+      amount: '' 
     }));
+    if (formData.retailerId) {
+      fetchInvoiceBalance(formData.retailerId, selectedVchNo);
+    }
   };
 
+  // Create receipt - Fixed with 2 second delay
   const handleCreateReceipt = async () => {
     // Validation
     if (!formData.retailerId) {
       alert('Please select a retailer');
       return;
     }
+
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
       alert('Please enter a valid amount');
       return;
     }
+    
     if (!formData.receiptDate) {
       alert('Please select a receipt date');
       return;
@@ -413,7 +596,7 @@ const ReceiptsTable = () => {
       formDataToSend.append('transaction_date', formData.transactionDate || '');
       formDataToSend.append('reconciliation_option', formData.reconciliationOption);
       formDataToSend.append('retailer_name', formData.retailerBusinessName);
-      formDataToSend.append('invoice_number', formData.invoiceNumber); // Add invoice number
+      formDataToSend.append('invoice_number', formData.invoiceNumber);
       
       // Append file if exists
       if (formData.transactionProofFile) {
@@ -422,6 +605,7 @@ const ReceiptsTable = () => {
 
       console.log('Sending receipt data with FormData...');
       console.log('Invoice Number:', formData.invoiceNumber);
+      console.log('Amount:', formData.amount);
 
       const response = await fetch(`${baseurl}/api/receipts`, {
         method: 'POST',
@@ -429,31 +613,82 @@ const ReceiptsTable = () => {
       });
 
       console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+      
+      const responseText = await response.text();
+      console.log('Raw response text:', responseText);
+      
       if (response.ok) {
-        const result = await response.json();
-        console.log('Receipt created successfully:', result);
-        await fetchReceipts(); // Refresh the receipts list
-        handleCloseModal(); // Close modal
-        alert('Receipt created successfully!');
-        
-        // Navigate to the ReceiptView page with the new receipt's ID
-        if (result.id) {
-          navigate(`/receipts_view/${result.id}`);
-        } else {
-          console.error('No ID returned in response');
-          alert('Receipt created, but unable to view details. Please check the receipt list.');
+        let result;
+        try {
+          result = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('Failed to parse response as JSON:', parseError);
+          throw new Error('Invalid response from server');
         }
-
-        await fetchNextReceiptNumber(); // Fetch the next receipt number
+        
+        console.log('Receipt created successfully:', result);
+        console.log('Full response structure:', JSON.stringify(result, null, 2));
+        
+        // Extract receipt ID
+        let receiptId = null;
+        
+        // Try to find VoucherID or similar ID in the response
+        if (result.VoucherID) {
+          receiptId = result.VoucherID;
+        } else if (result.id) {
+          receiptId = result.id;
+        } else if (result.receipt_id) {
+          receiptId = result.receipt_id;
+        } else if (result.receiptId) {
+          receiptId = result.receiptId;
+        } else if (result.data?.VoucherID) {
+          receiptId = result.data.VoucherID;
+        } else if (result.data?.id) {
+          receiptId = result.data.id;
+        }
+        
+        console.log('Extracted receipt ID:', receiptId);
+        
+        if (receiptId) {
+          // Show success message
+          alert('Receipt created successfully! Redirecting to view page in 2 seconds...');
+          
+          // Close modal
+          handleCloseModal();
+          
+          // Refresh the receipts list
+          await fetchReceipts();
+          
+          // Generate next receipt number
+          await fetchNextReceiptNumber();
+          
+          // Navigate to the receipt view after 2 seconds
+          setTimeout(() => {
+            navigate(`/receipts_view/${receiptId}`);
+          }, 2000); // 2 seconds delay
+        } else {
+          console.error('No receipt ID found in response:', result);
+          
+          // Still show success but don't redirect
+          alert('Receipt created successfully! Please check the receipts list.');
+          
+          // Close modal and refresh
+          handleCloseModal();
+          await fetchReceipts();
+          await fetchNextReceiptNumber();
+        }
       } else {
         const errorText = await response.text();
         console.error('Failed to create receipt. Status:', response.status);
         console.error('Error response:', errorText);
+        
         let errorMessage = 'Failed to create receipt. ';
         try {
           const errorData = JSON.parse(errorText);
-          errorMessage += errorData.error || 'Please try again.';
-          if (errorData.error.includes('already exists')) {
+          errorMessage += errorData.error || errorData.message || 'Please try again.';
+          
+          if (errorData.error?.includes('already exists') || errorData.message?.includes('already exists')) {
             console.log('Duplicate receipt number detected, fetching new number...');
             await fetchNextReceiptNumber();
             errorMessage += ' A new receipt number has been generated. Please try again.';
@@ -477,28 +712,6 @@ const ReceiptsTable = () => {
     navigate(`/receipts_view/${receiptId}`);
   };
 
-  // Delete receipt
-  const handleDeleteReceipt = async (receiptId) => {
-    if (window.confirm('Are you sure you want to delete this receipt?')) {
-      try {
-        const response = await fetch(`${baseurl}/api/receipts/${receiptId}`, {
-          method: 'DELETE',
-        });
-        if (response.ok) {
-          alert('Receipt deleted successfully!');
-          await fetchReceipts(); // Refresh the list
-          await fetchNextReceiptNumber(); // Re-fetch in case deletion affects sequence
-        } else {
-          alert('Failed to delete receipt. Please try again.');
-        }
-      } catch (err) {
-        console.error('Error deleting receipt:', err);
-        alert('Error deleting receipt. Please try again.');
-      }
-    }
-  };
-
-  // Download receipts
   const handleDownload = () => {
     alert(`Downloading receipts for ${month} ${year}`);
   };
@@ -718,12 +931,8 @@ const ReceiptsTable = () => {
                         </div>
                       </div>
                     </div>
-                    
-                    {/* Invoice Number Selection - Added below the first row */}
-                    <div className="row mb-4">
-                     
-                    </div>
 
+                    {/* Retailer and Invoice Selection Row */}
                     <div className="row mb-4">
                       <div className="col-md-6">
                         <div className="mb-3">
@@ -747,7 +956,34 @@ const ReceiptsTable = () => {
                         </div>
                       </div>
                       <div className="col-md-6">
-                        <div className="mb-3">
+                        <div className="mb-1">
+                          <label className="form-label">Invoice Number *</label>
+                          <div className="input-group">
+                            <select
+                              className="form-select"
+                              name="invoiceNumber"
+                              value={formData.invoiceNumber}
+                              onChange={handleInvoiceChange}
+                              required
+                            >
+                              <option value="">Select Invoice Number</option>
+                              {invoices.map((invoice) => (
+                                <option key={invoice.VoucherID} value={invoice.VchNo}>
+                                  {invoice.VchNo}
+                                </option>
+                              ))}
+                            </select>
+               
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Balance and Amount Row */}
+                    <div className="row mb-4">
+                    
+                      <div className="col-md-6">
+                        <div className="mb-1">
                           <label className="form-label">Amount *</label>
                           <div className="input-group custom-amount-receipts-table">
                             <select
@@ -767,17 +1003,24 @@ const ReceiptsTable = () => {
                               name="amount"
                               value={formData.amount}
                               onChange={handleInputChange}
-                              placeholder="Amount"
+                              placeholder={invoiceBalance > 0 ? "Auto-filled from balance" : "Enter amount"}
                               min="0"
                               step="0.01"
                               required
                             />
                           </div>
+                          {invoiceBalance > 0 && formData.amount && (
+                            <small className="text-success">
+                              <i className="bi bi-check-circle me-1"></i>
+                              Auto-filled from invoice balance
+                            </small>
+                          )}
                         </div>
                       </div>
                     </div>
+
                     <div className="row mb-4">
-                      <div className="col-md-6">
+                      <div className="col-md-12">
                         <div className="mb-3">
                           <label className="form-label">Note</label>
                           <textarea
@@ -790,26 +1033,9 @@ const ReceiptsTable = () => {
                           ></textarea>
                         </div>
                       </div>
-                      <div className="col-md-6">
-                        <div className="mb-3">
-                          <label className="form-label">Invoice Number *</label>
-                          <select
-                            className="form-select"
-                            name="invoiceNumber"
-                            value={formData.invoiceNumber}
-                            onChange={handleInvoiceChange}
-                            required
-                          >
-                            <option value="">Select Invoice Number</option>
-                            {invoices.map((invoice) => (
-                              <option key={invoice.VoucherID} value={invoice.VchNo}>
-                                {invoice.VchNo}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
+                 
                     </div>
+                    
                     <div className="row">
                       <div className="col-md-6">
                         <div className="mb-3">
@@ -823,6 +1049,38 @@ const ReceiptsTable = () => {
                             placeholder="Bank Name"
                           />
                         </div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="mb-3">
+                          <label className="form-label">Transaction Date</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            name="transactionDate"
+                            value={formData.transactionDate}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="row">
+                      <div className="col-md-6">
+                        
+                        <div className="mb-3">
+                          <label className="form-label">Reconciliation Option</label>
+                          <select
+                            className="form-select"
+                            name="reconciliationOption"
+                            value={formData.reconciliationOption}
+                            onChange={handleInputChange}
+                          >
+                            <option>Do Not Reconcile</option>
+                            <option>Customer Reconcile</option>
+                          </select>
+                        </div>
+                      </div>
+                           <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Transaction Proof Document</label>
                           <input 
@@ -857,30 +1115,6 @@ const ReceiptsTable = () => {
                           )}
                         </div>
                       </div>
-                      <div className="col-md-6">
-                        <div className="mb-3">
-                          <label className="form-label">Transaction Date</label>
-                          <input
-                            type="date"
-                            className="form-control"
-                            name="transactionDate"
-                            value={formData.transactionDate}
-                            onChange={handleInputChange}
-                          />
-                        </div>
-                        <div className="mb-3">
-                          <label className="form-label">Reconciliation Option</label>
-                          <select
-                            className="form-select"
-                            name="reconciliationOption"
-                            value={formData.reconciliationOption}
-                            onChange={handleInputChange}
-                          >
-                            <option>Do Not Reconcile</option>
-                            <option>Customer Reconcile</option>
-                          </select>
-                        </div>
-                      </div>
                     </div>
                   </div>
                   <div className="modal-footer">
@@ -896,7 +1130,7 @@ const ReceiptsTable = () => {
                       type="button"
                       className="btn btn-primary"
                       onClick={handleCreateReceipt}
-                      disabled={isLoading}
+                      disabled={isLoading || !formData.amount || parseFloat(formData.amount) <= 0}
                     >
                       {isLoading ? 'Creating...' : 'Create Receipt'}
                     </button>

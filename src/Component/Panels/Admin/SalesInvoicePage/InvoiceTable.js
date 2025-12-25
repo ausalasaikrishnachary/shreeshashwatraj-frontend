@@ -48,7 +48,7 @@ const fetchInvoices = async () => {
       customerName: invoice.PartyName || 'N/A',
       number: invoice.InvoiceNumber || `INV-${invoice.VoucherID}`,
       totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-      payment: getPaymentStatus(invoice),
+      status: invoice.status,
       created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
       originalData: invoice,
       hasPDF: !!invoice.pdf_data,
@@ -393,14 +393,11 @@ const handleDownloadPDF = async (invoice) => {
 
       localStorage.setItem('previewInvoice', JSON.stringify(fallbackPreviewData));
       
-      // Navigate with fallback ID or to generic preview
       const fallbackId = invoice.originalData?.VoucherID || 'fallback';
       navigate(`/sales/invoice-preview/${fallbackId}`);
     }
   };
 
-  // Table columns configuration with actions
- // Table columns configuration with actions
 const columns = [
   { key: 'customerName', title: 'RETAILER NAME', style: { textAlign: 'left' } },
   { 
@@ -419,17 +416,10 @@ const columns = [
   },
   { key: 'totalAmount', title: 'TOTAL AMOUNT', style: { textAlign: 'right' } },
    {
-    key: 'payment',
+    key: 'status',
     title: 'PAYMENT STATUS',
     style: { textAlign: 'center' },
-    render: (value) => {
-      if (typeof value !== 'string') return '';
-      let badgeClass = '';
-      if (value === 'Paid') badgeClass = 'status-badge status-paid';
-      else if (value === 'Pending') badgeClass = 'status-badge status-pending';
-      else if (value === 'Overdue') badgeClass = 'status-badge status-overdue';
-      return <span className={badgeClass}>{value}</span>;
-    }
+ render: (value) => value || 'Pending'
   },
   {
     key: 'created',
