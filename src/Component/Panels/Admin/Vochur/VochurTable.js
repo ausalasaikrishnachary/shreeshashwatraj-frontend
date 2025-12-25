@@ -6,7 +6,7 @@ import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import './Voucher.css';
 
-const ReceiptsTable = () => {
+const VochurTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -202,7 +202,7 @@ const ReceiptsTable = () => {
       render: (value) => value || 'N/A'
     },
     {
-      key:'invoice_numbers',
+      key:'InvoiceNumber',
       title:'Accounting',
       style:{textAlign:'center'},
       render:(value) => value || '0'
@@ -962,4 +962,4 @@ const ReceiptsTable = () => {
   );
 };
 
-export default ReceiptsTable;
+export default VochurTable;
