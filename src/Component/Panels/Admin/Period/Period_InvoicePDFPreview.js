@@ -1150,131 +1150,131 @@ const handleGenerateInvoice = async () => {
 };
 
 
-  // Handle download PDF
-  const handleDownloadPDF = async () => {
-    try {
-      setDownloading(true);
-      setError(null);
+  // // Handle download PDF
+  // const handleDownloadPDF = async () => {
+  //   try {
+  //     setDownloading(true);
+  //     setError(null);
       
-      if (!invoiceData) {
-        throw new Error('No invoice data available');
-      }
+  //     if (!invoiceData) {
+  //       throw new Error('No invoice data available');
+  //     }
 
-      let pdf;
-      let InvoicePDFDocument;
+  //     let pdf;
+  //     let InvoicePDFDocument;
       
-      try {
-        const reactPdf = await import('@react-pdf/renderer');
-        pdf = reactPdf.pdf;
+  //     try {
+  //       const reactPdf = await import('@react-pdf/renderer');
+  //       pdf = reactPdf.pdf;
         
-        const pdfModule = await import('./InvoicePDFDocument');
-        InvoicePDFDocument = pdfModule.default;
-      } catch (importError) {
-        console.error('Error importing PDF modules:', importError);
-        throw new Error('Failed to load PDF generation libraries');
-      }
+  //       const pdfModule = await import('./InvoicePDFDocument');
+  //       InvoicePDFDocument = pdfModule.default;
+  //     } catch (importError) {
+  //       console.error('Error importing PDF modules:', importError);
+  //       throw new Error('Failed to load PDF generation libraries');
+  //     }
 
-      const gstBreakdown = calculateGSTBreakdown();
-      const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+  //     const gstBreakdown = calculateGSTBreakdown();
+  //     const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
 
-      let pdfDoc;
-      try {
-        pdfDoc = (
-          <InvoicePDFDocument 
-            invoiceData={invoiceData}
-            invoiceNumber={invoiceData.invoiceNumber}
-            gstBreakdown={gstBreakdown}
-            isSameState={isSameState}
-          />
-        );
-      } catch (componentError) {
-        console.error('Error creating PDF component:', componentError);
-        throw new Error('Failed to create PDF document structure');
-      }
+  //     let pdfDoc;
+  //     try {
+  //       pdfDoc = (
+  //         <InvoicePDFDocument 
+  //           invoiceData={invoiceData}
+  //           invoiceNumber={invoiceData.invoiceNumber}
+  //           gstBreakdown={gstBreakdown}
+  //           isSameState={isSameState}
+  //         />
+  //       );
+  //     } catch (componentError) {
+  //       console.error('Error creating PDF component:', componentError);
+  //       throw new Error('Failed to create PDF document structure');
+  //     }
 
-      let blob;
-      try {
-        blob = await pdf(pdfDoc).toBlob();
-      } catch (pdfError) {
-        console.error('Error generating PDF blob:', pdfError);
-        throw new Error('Failed to generate PDF file');
-      }
+  //     let blob;
+  //     try {
+  //       blob = await pdf(pdfDoc).toBlob();
+  //     } catch (pdfError) {
+  //       console.error('Error generating PDF blob:', pdfError);
+  //       throw new Error('Failed to generate PDF file');
+  //     }
       
-      const filename = `Invoice_${invoiceData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+  //     const filename = `Invoice_${invoiceData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
 
-      const base64data = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+  //     const base64data = await new Promise((resolve, reject) => {
+  //       const reader = new FileReader();
+  //       reader.onloadend = () => resolve(reader.result);
+  //       reader.onerror = reject;
+  //       reader.readAsDataURL(blob);
+  //     });
 
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
+  //     try {
+  //       const controller = new AbortController();
+  //       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-        const storeResponse = await fetch(`${baseurl}/transactions/${id}/pdf`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            pdfData: base64data,
-            fileName: filename
-          }),
-          signal: controller.signal
-        });
+  //       const storeResponse = await fetch(`${baseurl}/transactions/${id}/pdf`, {
+  //         method: 'POST',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //         },
+  //         body: JSON.stringify({
+  //           pdfData: base64data,
+  //           fileName: filename
+  //         }),
+  //         signal: controller.signal
+  //       });
 
-        clearTimeout(timeoutId);
+  //       clearTimeout(timeoutId);
 
-        if (!storeResponse.ok) {
-          const errorText = await storeResponse.text();
-          throw new Error(`Server error: ${storeResponse.status} - ${errorText}`);
-        }
+  //       if (!storeResponse.ok) {
+  //         const errorText = await storeResponse.text();
+  //         throw new Error(`Server error: ${storeResponse.status} - ${errorText}`);
+  //       }
 
-        const storeResult = await storeResponse.json();
+  //       const storeResult = await storeResponse.json();
         
-        if (storeResult.success) {
-          console.log('PDF stored successfully in database');
+  //       if (storeResult.success) {
+  //         console.log('PDF stored successfully in database');
           
-          const downloadUrl = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = downloadUrl;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(downloadUrl);
+  //         const downloadUrl = URL.createObjectURL(blob);
+  //         const a = document.createElement('a');
+  //         a.href = downloadUrl;
+  //         a.download = filename;
+  //         document.body.appendChild(a);
+  //         a.click();
+  //         document.body.removeChild(a);
+  //         URL.revokeObjectURL(downloadUrl);
           
-          setSuccess('PDF downloaded and stored successfully!');
-          setTimeout(() => setSuccess(false), 3000);
-        } else {
-          throw new Error(storeResult.message || 'Failed to store PDF');
-        }
-      } catch (storeError) {
-        console.error('Error storing PDF:', storeError);
+  //         setSuccess('PDF downloaded and stored successfully!');
+  //         setTimeout(() => setSuccess(false), 3000);
+  //       } else {
+  //         throw new Error(storeResult.message || 'Failed to store PDF');
+  //       }
+  //     } catch (storeError) {
+  //       console.error('Error storing PDF:', storeError);
         
-        const downloadUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(downloadUrl);
+  //       const downloadUrl = URL.createObjectURL(blob);
+  //       const a = document.createElement('a');
+  //       a.href = downloadUrl;
+  //       a.download = filename;
+  //       document.body.appendChild(a);
+  //       a.click();
+  //       document.body.removeChild(a);
+  //       URL.revokeObjectURL(downloadUrl);
         
-        setSuccess('PDF downloaded successfully! (Not stored in database due to size limitations)');
-        setTimeout(() => setSuccess(false), 3000);
-      }
+  //       setSuccess('PDF downloaded successfully! (Not stored in database due to size limitations)');
+  //       setTimeout(() => setSuccess(false), 3000);
+  //     }
 
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      setError('Failed to generate PDF: ' + error.message);
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setDownloading(false);
-    }
-  };
+  //   } catch (error) {
+  //     console.error('Error generating PDF:', error);
+  //     setError('Failed to generate PDF: ' + error.message);
+  //     setTimeout(() => setError(null), 5000);
+  //   } finally {
+  //     setDownloading(false);
+  //   }
+  // };
 
 const calculateGrandTotalForQR = () => {
   if (!invoiceData || !invoiceData.items) {
@@ -1677,7 +1677,7 @@ const QRCodeGenerator = () => {
                 </Button>
               )}
 
-              <Button 
+              {/* <Button 
                 variant="danger" 
                 onClick={handleDownloadPDF} 
                 className="me-2"
@@ -1695,7 +1695,7 @@ const QRCodeGenerator = () => {
                     <FaFilePdf className="me-1" /> Download PDF
                   </>
                 )}
-              </Button>
+              </Button> */}
 
               <Button variant="secondary" onClick={() => window.history.back()}>
                 <FaArrowLeft className="me-1" /> Go Back
