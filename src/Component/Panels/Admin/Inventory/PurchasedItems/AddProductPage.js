@@ -60,6 +60,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     if (!batches || batches.length === 0) return 0;
     return batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
   };
+
   // Calculate total MRP from batches
   const calculateTotalMRPFromBatches = () => {
     if (!batches || batches.length === 0) return 0;
@@ -67,11 +68,11 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     return totalMRP > 0 ? totalMRP : 0;
   };
 
-  // Calculate total selling price from batches
-  const calculateTotalSellingPriceFromBatches = () => {
+  // Calculate total price from batches (for products table "price" column)
+  const calculateTotalPriceFromBatches = () => {
     if (!batches || batches.length === 0) return 0;
-    const totalSellingPrice = batches.reduce((total, batch) => total + (parseFloat(batch.sellingPrice) || 0), 0);
-    return totalSellingPrice > 0 ? totalSellingPrice : 0;
+    const totalPrice = batches.reduce((total, batch) => total + (parseFloat(batch.sellingPrice) || 0), 0);
+    return totalPrice > 0 ? totalPrice : 0;
   };
 
   // Calculate total purchase price from batches
@@ -151,7 +152,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
       setTimeout(() => {
         // Now calculate prices based on batches or product data
         let finalPurchasePrice = product.purchase_price || 0;
-        let finalSellingPrice = product.selling_price || 0;
+        let finalPrice = product.price || 0; // Changed from selling_price to price
         let finalMRP = product.mrp || 0;
 
         // If batch management is enabled and we have batches, calculate from batches
@@ -161,7 +162,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
             return sum + (parseFloat(batch.purchasePrice) || 0);
           }, 0);
 
-          const totalSellingPrice = batches.reduce((sum, batch) => {
+          const totalPrice = batches.reduce((sum, batch) => {
             return sum + (parseFloat(batch.sellingPrice) || 0);
           }, 0);
 
@@ -171,13 +172,13 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
 
           // Use batch totals if available, otherwise use product values
           finalPurchasePrice = totalPurchasePrice > 0 ? totalPurchasePrice : product.purchase_price || 0;
-          finalSellingPrice = totalSellingPrice > 0 ? totalSellingPrice : product.selling_price || 0;
+          finalPrice = totalPrice > 0 ? totalPrice : product.price || 0;
           finalMRP = totalMRP > 0 ? totalMRP : product.mrp || 0;
         }
 
         console.log('💰 Calculated prices:', {
           purchase: finalPurchasePrice,
-          selling: finalSellingPrice,
+          price: finalPrice,
           mrp: finalMRP,
           hasBatches: batches.length,
           maintainBatch: product.maintain_batch
@@ -189,7 +190,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
           category_id: product.category_id || '',
           company_id: product.company_id || '',
           purchase_price: finalPurchasePrice,
-          selling_price: finalSellingPrice,
+          price: finalPrice, // Store in price column (not selling_price)
           mrp: finalMRP,
           inclusive_gst: product.inclusive_gst || '',
           gst_rate: product.gst_rate || '',
@@ -269,12 +270,12 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
       // Calculate totals from batches
       if (mappedBatches.length > 0) {
         const totalPurchasePrice = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.purchasePrice) || 0), 0);
-        const totalSellingPrice = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.sellingPrice) || 0), 0);
+        const totalPrice = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.sellingPrice) || 0), 0);
         const totalMRP = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.mrp) || 0), 0);
 
         console.log('💰 Batch totals:', {
           purchase: totalPurchasePrice,
-          selling: totalSellingPrice,
+          price: totalPrice,
           mrp: totalMRP
         });
 
@@ -282,7 +283,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
         setFormData(prev => ({
           ...prev,
           purchase_price: totalPurchasePrice > 0 ? totalPurchasePrice : prev.purchase_price,
-          selling_price: totalSellingPrice > 0 ? totalSellingPrice : prev.selling_price,
+          price: totalPrice > 0 ? totalPrice : prev.price,
           mrp: totalMRP > 0 ? totalMRP : prev.mrp
         }));
       }
@@ -327,6 +328,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
 
     return newBarcode;
   };
+  
   const createDefaultBatch = async () => {
     const newBarcode = await generateUniqueBarcode();
 
@@ -399,7 +401,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     }
 
     if (name === 'sellingPrice') {
-      calculateAndUpdateMainSellingPrice(updated);
+      calculateAndUpdateMainPrice(updated); // Changed from selling price to price
     }
 
     if (name === 'mrp') {
@@ -422,17 +424,17 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     }
   };
 
-  const calculateAndUpdateMainSellingPrice = (updatedBatches) => {
-    // Calculate SUM of all batch selling prices
-    const totalSellingPrice = updatedBatches.reduce((sum, batch) => {
+  const calculateAndUpdateMainPrice = (updatedBatches) => {
+    // Calculate SUM of all batch selling prices (stored as price in products table)
+    const totalPrice = updatedBatches.reduce((sum, batch) => {
       return sum + (parseFloat(batch.sellingPrice) || 0);
     }, 0);
 
-    // Update the main form selling_price field with total value
-    if (totalSellingPrice > 0) {
+    // Update the main form price field with total value
+    if (totalPrice > 0) {
       setFormData(prev => ({
         ...prev,
-        selling_price: totalSellingPrice.toFixed(2)
+        price: totalPrice.toFixed(2)
       }));
     }
   };
@@ -534,8 +536,8 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     category_id: '',
     company_id: '',
     purchase_price: '',
-    selling_price: '', // Stored in products table
-    mrp: '', // Stored in products table
+    price: '', // This goes to "price" column in products table (not selling_price)
+    mrp: '',
     inclusive_gst: 'Inclusive',
     gst_rate: '',
     non_taxable: '',
@@ -553,6 +555,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     maintain_batch: false,
     can_be_sold: false,
   });
+  
   const handleChange = async (e) => {
     const { name, value, type, checked } = e.target;
 
@@ -562,12 +565,12 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     };
 
     // Update tax calculation based on "Can be Sold" checkbox
-    if ((name === 'purchase_price' || name === 'selling_price' || name === 'gst_rate' || name === 'inclusive_gst' || name === 'can_be_sold') &&
-      (updatedFormData.gst_rate && (updatedFormData.purchase_price || updatedFormData.selling_price))) {
+    if ((name === 'purchase_price' || name === 'price' || name === 'gst_rate' || name === 'inclusive_gst' || name === 'can_be_sold') &&
+      (updatedFormData.gst_rate && (updatedFormData.purchase_price || updatedFormData.price))) {
 
       // Determine which price to use for tax calculation
-      const priceToUse = updatedFormData.can_be_sold && updatedFormData.selling_price
-        ? updatedFormData.selling_price
+      const priceToUse = updatedFormData.can_be_sold && updatedFormData.price
+        ? updatedFormData.price
         : updatedFormData.purchase_price;
 
       if (priceToUse) {
@@ -585,7 +588,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
       const updatedBatches = batches.map(batch => ({
         ...batch,
         purchasePrice: name === 'purchase_price' ? value : batch.purchasePrice,
-        sellingPrice: name === 'selling_price' ? value : batch.sellingPrice,
+        sellingPrice: name === 'price' ? value : batch.sellingPrice, // Map price to sellingPrice in batches
         mrp: name === 'mrp' ? value : batch.mrp,
         quantity: name === 'opening_stock' ? value : batch.quantity
       }));
@@ -616,14 +619,14 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
       setMaintainBatch(checked);
     }
 
-    // When "Can be Sold" is checked, ensure selling price is populated from purchase price if empty
-    if (name === 'can_be_sold' && checked && !formData.selling_price && formData.purchase_price) {
-      updatedFormData.selling_price = formData.purchase_price;
+    // When "Can be Sold" is checked, ensure price is populated from purchase price if empty
+    if (name === 'can_be_sold' && checked && !formData.price && formData.purchase_price) {
+      updatedFormData.price = formData.purchase_price;
 
-      // Recalculate tax with selling price
+      // Recalculate tax with price
       if (updatedFormData.gst_rate) {
         const { netPrice } = calculateTaxAndNetPrice(
-          updatedFormData.selling_price,
+          updatedFormData.price,
           updatedFormData.gst_rate,
           updatedFormData.inclusive_gst
         );
@@ -640,8 +643,8 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     const updatedFormData = { ...formData, gst_rate: value };
 
     // Determine which price to use for tax calculation
-    const priceToUse = formData.can_be_sold && formData.selling_price
-      ? formData.selling_price
+    const priceToUse = formData.can_be_sold && formData.price
+      ? formData.price
       : formData.purchase_price;
 
     if (priceToUse && value) {
@@ -662,8 +665,8 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     const updatedFormData = { ...formData, inclusive_gst: value };
 
     // Determine which price to use for tax calculation
-    const priceToUse = formData.can_be_sold && formData.selling_price
-      ? formData.selling_price
+    const priceToUse = formData.can_be_sold && formData.price
+      ? formData.price
       : formData.purchase_price;
 
     if (priceToUse && formData.gst_rate) {
@@ -714,7 +717,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
 
     // Recalculate main prices after removing batch
     calculateAndUpdateMainPurchasePrice(updated);
-    calculateAndUpdateMainSellingPrice(updated);
+    calculateAndUpdateMainPrice(updated); // Changed from selling price to price
     calculateAndUpdateMainMRP(updated);
   };
 
@@ -722,24 +725,25 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     setAlert({ show: true, message, variant });
     setTimeout(() => setAlert({ show: false, message: '', variant: 'success' }), 5000);
   };
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // NEW VALIDATION: Check if selling price is required when "Can be Sold" is checked
+    // NEW VALIDATION: Check if price is required when "Can be Sold" is checked
     if (formData.can_be_sold) {
-      const sellingPrice = parseFloat(formData.selling_price);
+      const price = parseFloat(formData.price);
 
-      if (!sellingPrice || sellingPrice <= 0) {
-        showAlert('Selling Price is required when "Can be Sold" is checked', 'danger');
+      if (!price || price <= 0) {
+        showAlert('Price is required when "Can be Sold" is checked', 'danger');
         setIsLoading(false);
         return;
       }
 
-      // Also validate that selling price is not less than purchase price
+      // Also validate that price is not less than purchase price
       const purchasePrice = parseFloat(formData.purchase_price);
-      if (sellingPrice < purchasePrice) {
-        showAlert('Selling Price cannot be less than Purchase Price', 'danger');
+      if (price < purchasePrice) {
+        showAlert('Price cannot be less than Purchase Price', 'danger');
         setIsLoading(false);
         return;
       }
@@ -829,13 +833,13 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
         console.log('🔄 Using batch-based purchase price (total):', finalPurchasePrice);
       }
 
-      // Calculate final selling price and MRP
-      let finalSellingPrice = parseFloat(formData.selling_price) || 0;
+      // Calculate final price and MRP
+      let finalPrice = parseFloat(formData.price) || 0;
       let finalMRP = parseFloat(formData.mrp) || 0;
 
       if (maintainBatch && batches.length > 0) {
-        // Get total selling price and MRP from batches
-        const totalSellingPrice = batches.reduce((sum, batch) => {
+        // Get total price and MRP from batches
+        const totalPrice = batches.reduce((sum, batch) => {
           return sum + (parseFloat(batch.sellingPrice) || 0);
         }, 0);
 
@@ -843,22 +847,11 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
           return sum + (parseFloat(batch.mrp) || 0);
         }, 0);
 
-        finalSellingPrice = totalSellingPrice;
+        finalPrice = totalPrice;
         finalMRP = totalMRP;
 
-        console.log('🔄 Using batch-based selling price (total):', finalSellingPrice);
+        console.log('🔄 Using batch-based price (total):', finalPrice);
         console.log('🔄 Using batch-based MRP (total):', finalMRP);
-      }
-      if (maintainBatch && batches.length > 0) {
-        // Get max selling price and MRP from batches
-        const batchSellingPrices = batches.map(batch => parseFloat(batch.sellingPrice) || 0);
-        const batchMRPs = batches.map(batch => parseFloat(batch.mrp) || 0);
-
-        finalSellingPrice = Math.max(...batchSellingPrices);
-        finalMRP = Math.max(...batchMRPs);
-
-        console.log('🔄 Using batch-based selling price:', finalSellingPrice);
-        console.log('🔄 Using batch-based MRP:', finalMRP);
       }
 
       // Generate barcodes
@@ -875,7 +868,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
           exp_date: maintainBatch ? (batch.expDate || null) : null,
           quantity: maintainBatch ? (parseFloat(batch.quantity) || 0) : finalOpeningStock,
           min_sale_price: parseFloat(batch.min_sale_price) || 0,
-          selling_price: parseFloat(batch.sellingPrice) || finalSellingPrice,
+          selling_price: parseFloat(batch.sellingPrice) || finalPrice, // selling_price in batches table
           purchase_price: parseFloat(batch.purchasePrice) || finalPurchasePrice,
           mrp: parseFloat(batch.mrp) || finalMRP,
           barcode: maintainBatch ? batch.barcode : defaultBarcode || await generateUniqueBarcode(),
@@ -888,8 +881,8 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
           batchData.batch_number = 'DEFAULT';
           batchData.quantity = finalOpeningStock;
           batchData.purchase_price = finalPurchasePrice;
-          batchData.selling_price = finalSellingPrice; // From main form
-          batchData.mrp = finalMRP; // From main form
+          batchData.selling_price = finalPrice; // From main form price
+          batchData.mrp = finalMRP; // From main form mrp
         }
 
         if (batch.isExisting && batch.dbId && !batch.dbId.toString().includes('temp_')) {
@@ -909,7 +902,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
           exp_date: null,
           quantity: finalOpeningStock,
           cost_price: 0,
-          selling_price: finalSellingPrice,
+          selling_price: finalPrice,
           purchase_price: finalPurchasePrice,
           mrp: finalMRP,
           barcode: barcode,
@@ -918,15 +911,15 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
         });
       }
 
-      // Prepare data for backend - KEEP selling_price and mrp in product data
+      // Prepare data for backend - Use "price" field for products table
       const dataToSend = {
         ...formData,
         images: images,
         group_by: groupType,
         opening_stock: finalOpeningStock,
         purchase_price: finalPurchasePrice,
-        selling_price: finalSellingPrice, // KEEP in product data
-        mrp: finalMRP, // KEEP in product data
+        price: finalPrice, // This goes to "price" column in products table
+        mrp: finalMRP,
         stock_in: finalOpeningStock,
         stock_out: 0,
         balance_stock: finalOpeningStock,
@@ -934,11 +927,14 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
         maintain_batch: maintainBatch
       };
 
+      // Remove selling_price field as it's not needed
+      delete dataToSend.selling_price;
+
       console.log('📤 Sending data to backend:', {
         maintain_batch: maintainBatch,
         product_purchase_price: dataToSend.purchase_price,
-        product_selling_price: dataToSend.selling_price, // In products table
-        product_mrp: dataToSend.mrp, // In products table
+        product_price: dataToSend.price, // In products table "price" column
+        product_mrp: dataToSend.mrp,
         batch_count: batchesForBackend.length,
         selling_price_in_batches: batchesForBackend.map(b => b.selling_price),
         mrp_in_batches: batchesForBackend.map(b => b.mrp)
@@ -1106,14 +1102,14 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                   </div>
                   <div className="col">
                     <Form.Label>
-                      Selling Price {formData.can_be_sold && '*'}
+                      Price {formData.can_be_sold && '*'}
                     </Form.Label>
                     <Form.Control
-                      placeholder="Selling Price"
-                      name="selling_price"
+                      placeholder="Price"
+                      name="price"
                       type="number"
                       step="0.01"
-                      value={formData.selling_price}
+                      value={formData.price}
                       onChange={handleChange}
                       disabled={maintainBatch}
                       className={maintainBatch ? "bg-light" : ""}
@@ -1121,7 +1117,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                     />
                     {maintainBatch && (
                       <Form.Text className="text-muted">
-                        Selling price is auto-calculated as total of all batch selling prices
+                        Price is auto-calculated as total of all batch selling prices
                       </Form.Text>
                     )}
                     {formData.can_be_sold && !maintainBatch && (
@@ -1189,7 +1185,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                   </div>
                   <div className="col">
                     <Form.Label>
-                      {formData.can_be_sold ? 'Net Price (from Selling)' : 'Net Price (from Purchase)'}
+                      {formData.can_be_sold ? 'Net Price (from Price)' : 'Net Price (from Purchase)'}
                     </Form.Label>
                     <Form.Control
                       placeholder="Net Price | GST"
@@ -1202,7 +1198,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                     />
                     <Form.Text className="text-muted">
                       {formData.can_be_sold
-                        ? 'Calculated from Selling Price'
+                        ? 'Calculated from Price'
                         : 'Calculated from Purchase Price'}
                     </Form.Text>
                   </div>
@@ -1458,7 +1454,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                     <h5>Batch Details</h5>
 
                     <div className="alert alert-info mb-3">
-                      <strong>Note:</strong> Selling Price and MRP entered above will be applied to all batches.
+                      <strong>Note:</strong> Price and MRP entered above will be applied to all batches.
                       You can also set individual prices for each batch below.
                     </div>
 
@@ -1523,15 +1519,18 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                             />
                           </div>
                           <div className="col-md-4">
-                            <Form.Label>Selling Price</Form.Label>
+                            <Form.Label>Selling Price (Price)</Form.Label>
                             <Form.Control
                               type="number"
                               step="0.01"
                               name="sellingPrice"
                               value={batch.sellingPrice}
                               onChange={(e) => handleBatchChange(index, e)}
-                              placeholder={formData.selling_price ? `Main: ${formData.selling_price}` : 'Enter selling price'}
+                              placeholder={formData.price ? `Main: ${formData.price}` : 'Enter selling price'}
                             />
+                            <Form.Text className="text-muted">
+                              This goes to "selling_price" in batches table and "price" in products table
+                            </Form.Text>
                           </div>
                         </div>
 
@@ -1594,7 +1593,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                       Add Batch
                     </Button>
                     <div className="mt-2 text-muted">
-                      <small>* Selling Price and MRP are stored in both products table and batches table</small>
+                      <small>* Price is stored in "price" column in products table and "selling_price" in batches table</small>
                     </div>
                   </div>
                 )}
