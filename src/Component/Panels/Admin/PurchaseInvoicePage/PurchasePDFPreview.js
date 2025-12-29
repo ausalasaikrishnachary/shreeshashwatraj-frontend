@@ -148,17 +148,29 @@ const transformPaymentData = (apiData) => {
 
   // For purchase invoices, the actual invoice is inside purchases[0]
   const purchase = apiData.purchases?.[0] || {};
-
   console.log("🔍 Extracted Purchase Invoice:", purchase);
 
   // Extract amounts
   const totalAmount = Number(purchase.TotalAmount || purchase.grandTotal || 0);
 
+  // Get all transaction entries including debit notes
+  const allEntries = apiData.allEntries || [];
+
+  // Filter debit notes and purchase vouchers
+  const debitNotes = allEntries.filter(entry => 
+    entry.TransactionType === 'DebitNote'
+  );
+  
   const purchasevoucherEntries = apiData.purchasevoucher || [];
 
-  // Sum paid amounts
-  const totalPaid = purchasevoucherEntries.reduce((sum, v) => {
+  // Calculate total paid from all sources
+  let totalPaid = purchasevoucherEntries.reduce((sum, v) => {
     return sum + Number(v.paid_amount || 0);
+  }, 0);
+
+  // Add debit notes amounts (debit notes increase amount due)
+  totalPaid += debitNotes.reduce((sum, d) => {
+    return sum + Number(d.TotalAmount || d.paid_amount || 0);
   }, 0);
 
   const balanceDue = totalAmount - totalPaid;
@@ -176,12 +188,27 @@ const transformPaymentData = (apiData) => {
     totalAmount: Number(v.TotalAmount || 0),
     paidDate: v.Date || v.paid_date,
     status: v.status || 'Paid',
-    voucherId: v.VoucherID
+    voucherId: v.VoucherID,
+    type: 'Purchase Voucher'
   }));
+
+  // Transform debit notes
+  const debitNotesList = debitNotes.map(d => ({
+    receiptNumber: d.VchNo || `DEBIT${d.VoucherID}`,
+    paidAmount: Number(d.TotalAmount || d.paid_amount || 0),
+    totalAmount: Number(d.TotalAmount || 0),
+    paidDate: d.Date || d.paid_date,
+    status: d.status || 'Debit',
+    voucherId: d.VoucherID,
+    type: 'Debit Note'
+  }));
+
+  // Combine all payment entries for display
+  const allPaymentEntries = [...purchasevoucher, ...debitNotesList];
 
   // Payment status
   let status = 'Pending';
-  if (balanceDue === 0) status = 'Paid';
+  if (balanceDue <= 0) status = 'Paid';
   else if (totalPaid > 0) status = 'Partial';
 
   return {
@@ -192,6 +219,8 @@ const transformPaymentData = (apiData) => {
       overdueDays: overdueDays
     },
     purchasevoucher: purchasevoucher,
+    debitNotes: debitNotesList,
+    allPayments: allPaymentEntries,
     summary: {
       totalPaid,
       balanceDue,
@@ -199,6 +228,7 @@ const transformPaymentData = (apiData) => {
     }
   };
 };
+
 
 
   const fetchNextReceiptNumber = async () => {
@@ -485,77 +515,91 @@ const PaymentStatus = () => {
     );
   }
 
-    const { invoice, receipts, summary, purchasevoucher,  } = paymentData;
-    console.log("paymentdata",paymentData)
-    console.log("invoice",invoice)
-    const progressPercentage = invoice.totalAmount > 0 ? (summary.totalPaid / invoice.totalAmount) * 100 : 0;
+  const { invoice, summary, allPayments } = paymentData;
+  console.log("paymentdata", paymentData);
+  console.log("invoice", invoice);
+  console.log("allPayments", allPayments);
+  
+  const progressPercentage = invoice.totalAmount > 0 ? (summary.totalPaid / invoice.totalAmount) * 100 : 0;
 
-    return (
-      <Card className="shadow-sm mb-3">
-        <Card.Header className="bg-primary text-white">
-          <h5 className="mb-0">
-            <FaReceipt className="me-2" />
-            Payment Status
-          </h5>
-        </Card.Header>
-        <Card.Body>
-          <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
-            <span className="fw-bold">Status:</span>
-            <Badge bg={
-              summary.status === 'Paid' ? 'success' :
-              summary.status === 'Partial' ? 'warning' : 'danger'
-            }>
-              {summary.status}
-            </Badge>
+  return (
+    <Card className="shadow-sm mb-3">
+      <Card.Header className="bg-primary text-white">
+        <h5 className="mb-0">
+          <FaReceipt className="me-2" />
+          Payment Status
+        </h5>
+      </Card.Header>
+      <Card.Body>
+        <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+          <span className="fw-bold">Status:</span>
+          <Badge bg={
+            summary.status === 'Paid' ? 'success' :
+            summary.status === 'Partial' ? 'warning' : 'danger'
+          }>
+            {summary.status}
+          </Badge>
+        </div>
+
+        <div className="payment-amounts mb-3">
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="text-muted">
+              <FaRupeeSign className="me-1" />
+              Invoiced:
+            </span>
+            <small className="text-muted ms-1">
+              (On {new Date(invoice.invoiceDate).toLocaleDateString()})
+            </small>
+            <span className="fw-bold text-primary">
+              ₹{invoice.totalAmount.toFixed(2)}
+            </span>
           </div>
 
-          <div className="payment-amounts mb-3">
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-muted">
-                <FaRupeeSign className="me-1" />
-                Invoiced:
-              </span>
-              <small className="text-muted ms-1">
-                (On {new Date(invoice.invoiceDate).toLocaleDateString()})
-              </small>
-              <span className="fw-bold text-primary">
-                ₹{invoice.totalAmount.toFixed(2)}
-              </span>
-            </div>
-          {purchasevoucher.map((voucher, index) => {
-            console.log(`Rendering voucher ${index}:`, voucher);
-            return (
-              <div key={`voucher-${voucher.voucherId || index}`} className="d-flex justify-content-between align-items-center mb-2 ps-3 border-start border-info">
-                <span className="text-info">
-                  <FaCheckCircle className="me-1" />
-                  Voucher:
-                </span>
-                <div className="d-flex flex-column align-items-end">
-                  <small className="text-muted">
-                    (On {new Date(voucher.paidDate).toLocaleDateString()}) – {voucher.receiptNumber}
-                  </small>
-                  <span className="fw-bold text-info">
-                    ₹{voucher.paidAmount.toFixed(2)}
+          {/* Show all payment entries (both purchase vouchers and debit notes) */}
+          {allPayments && allPayments.length > 0 ? (
+            allPayments.map((payment, index) => {
+              console.log(`Rendering payment ${index}:`, payment);
+              return (
+                <div key={`payment-${payment.voucherId || index}`} className="d-flex justify-content-between align-items-center mb-2 ps-3 border-start border-info">
+                  <span className="text-info">
+                    {payment.type === 'Debit Note' ? (
+                      <FaExclamationTriangle className="me-1" />
+                    ) : (
+                      <FaCheckCircle className="me-1" />
+                    )}
+                    {payment.type}:
                   </span>
+                  <div className="d-flex flex-column align-items-end">
+                    <small className="text-muted">
+                      (On {new Date(payment.paidDate).toLocaleDateString()}) – {payment.receiptNumber}
+                    </small>
+                    <span className="fw-bold text-info">
+                      ₹{payment.paidAmount.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-
-            <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
-              <span className="text-danger">
-                <FaExclamationTriangle className="me-1" />
-                Balance Due:
-              </span>
-              <span className="fw-bold text-danger">
-                ₹{Math.ceil(summary.balanceDue).toFixed(2)}
-              </span>
+              );
+            })
+          ) : (
+            <div className="text-center text-muted small py-2">
+              No payment entries found
             </div>
+          )}
+
+          <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
+            <span className="text-danger">
+              <FaExclamationTriangle className="me-1" />
+              Balance Due:
+            </span>
+            <span className="fw-bold text-danger">
+              ₹{Math.ceil(summary.balanceDue).toFixed(2)}
+            </span>
           </div>
-        </Card.Body>
-      </Card>
-    );
-  };
+        </div>
+      </Card.Body>
+    </Card>
+  );
+};
 
   const handlePrint = () => {
     window.print();

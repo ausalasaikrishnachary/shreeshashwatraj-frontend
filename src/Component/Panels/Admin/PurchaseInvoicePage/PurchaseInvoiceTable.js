@@ -52,7 +52,7 @@ const fetchPurchaseInvoices = async () => {
       supplier: invoice.PartyName || invoice.AccountName || 'N/A',
       pinvoice: invoice.InvoiceNumber || `PUR-${invoice.VchNo || invoice.VoucherID}`,
       totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-      payment: getPaymentStatus(invoice),
+      status: invoice.status,
       created: formatDate(invoice.Date || invoice.EntryDate),
       originalData: invoice // Keep original data for reference
     }));
@@ -484,17 +484,11 @@ const handleDeleteInvoice = async (invoice) => {
       style: { textAlign: 'right' }
     },
     {
-      key: 'payment',
+      key: 'status',
       title: 'PAYMENT STATUS',
       style: { textAlign: 'center' },
-      render: (value) => {
-        if (typeof value !== 'string') return '';
-        let badgeClass = '';
-        if (value === 'Paid') badgeClass = 'status-badge status-paid';
-        else if (value === 'Pending') badgeClass = 'status-badge status-pending';
-        else if (value === 'Overdue') badgeClass = 'status-badge status-overdue';
-        return <span className={badgeClass}>{value}</span>;
-      }
+       render: (value) => value || 'Pending'
+
     },
     {
   key: 'created',

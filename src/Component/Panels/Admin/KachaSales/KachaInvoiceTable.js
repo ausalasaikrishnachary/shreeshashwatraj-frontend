@@ -53,7 +53,7 @@ const fetchInvoices = async () => {
       customerName: invoice.PartyName || 'N/A',
       number: invoice.InvoiceNumber || `ST-${invoice.VoucherID}`, // ST prefix for stock transfer
       totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-      payment: getPaymentStatus(invoice),
+      status: invoice.status,
       created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
       originalData: invoice,
       hasPDF: !!invoice.pdf_data,
@@ -418,17 +418,11 @@ const columns = [
   },
   { key: 'totalAmount', title: 'TOTAL AMOUNT', style: { textAlign: 'right' } },
   {
-    key: 'payment',
+    key: 'status',
     title: 'PAYMENT STATUS',
     style: { textAlign: 'center' },
-    render: (value) => {
-      if (typeof value !== 'string') return '';
-      let badgeClass = '';
-      if (value === 'Paid') badgeClass = 'status-badge status-paid';
-      else if (value === 'Pending') badgeClass = 'status-badge status-pending';
-      else if (value === 'Overdue') badgeClass = 'status-badge status-overdue';
-      return <span className={badgeClass}>{value}</span>;
-    }
+         render: (value) => value || 'Pending'
+
   },
   {
     key: 'created',
