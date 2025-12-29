@@ -104,6 +104,25 @@ function PlaceSalesOrder() {
         return iconMap[categoryName] || '📦';
     };
 
+    // Helper function to parse product images
+    const parseProductImages = (imagesString) => {
+        // Handle null or undefined
+        if (!imagesString || imagesString === "null") return [];
+        
+        // Handle empty array string
+        if (imagesString === "[]") return [];
+        
+        try {
+            // Parse JSON string
+            const parsed = JSON.parse(imagesString);
+            // Ensure it's an array
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+            console.error("Error parsing images:", error, imagesString);
+            return [];
+        }
+    };
+
     // Fetch cart items on load
     useEffect(() => {
         if (!retailerId) return;
@@ -190,13 +209,25 @@ function PlaceSalesOrder() {
 
                 const result = await response.json();
 
+                let productsArray = [];
                 if (Array.isArray(result)) {
-                    setProducts(result);
+                    productsArray = result;
                 } else if (result.data && Array.isArray(result.data)) {
-                    setProducts(result.data);
+                    productsArray = result.data;
                 } else {
                     throw new Error("Invalid products data format");
                 }
+
+                // Process products to parse images
+                const processedProducts = productsArray.map(product => ({
+                    ...product,
+                    // Parse images field
+                    parsedImages: parseProductImages(product.images),
+                    // Get first image for display
+                    displayImage: parseProductImages(product.images)[0] || null
+                }));
+
+                setProducts(processedProducts);
             } catch (err) {
                 console.error("Error fetching products:", err);
                 setError("Failed to load products. Please try again.");
@@ -603,6 +634,37 @@ function PlaceSalesOrder() {
 
                         {!loading && filteredProducts.map(product => (
                             <div key={product.id} className="product-card">
+                                {/* Product Image */}
+                                <div className="product-image-container">
+                                    {product.displayImage ? (
+                                        <img 
+                                            src={`${baseurl}${product.displayImage}`}
+                                            alt={product.name}
+                                            className="product-image"
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = "/placeholder-image.png"; // Fallback image
+                                                e.target.alt = "Image not available";
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="product-image-placeholder">
+                                            {product.category === 'Laptops' ? '💻' : 
+                                             product.category === 'Mobile' ? '📱' : 
+                                             product.category === 'Home Accessories' ? '🏠' :
+                                             product.category === 'Kitchen' ? '🔪' :
+                                             product.category === 'Snacks' ? '🍪' : '📦'}
+                                        </div>
+                                    )}
+                                    
+                                    {/* Image count badge if multiple images */}
+                                    {product.parsedImages && product.parsedImages.length > 1 && (
+                                        <div className="image-count-badge">
+                                            {product.parsedImages.length}
+                                        </div>
+                                    )}
+                                </div>
+                                
                                 <div className="product-info">
                                     <h3>{product.name}</h3>
                                     <p className="product-category">{product.category}</p>
