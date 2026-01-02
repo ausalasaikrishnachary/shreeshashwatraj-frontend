@@ -435,16 +435,16 @@ const columns = [
       });
     }
   },
-  {
-    key: 'pdfStatus',
-    title: 'PDF STATUS',
-    style: { textAlign: 'center' },
-    render: (value, row) => (
-      <span className={`badge ${row.hasPDF ? 'bg-success' : 'bg-warning'}`}>
-        {row.hasPDF ? 'Available' : 'Not Generated'}
-      </span>
-    )
-  },
+  // {
+  //   key: 'pdfStatus',
+  //   title: 'PDF STATUS',
+  //   style: { textAlign: 'center' },
+  //   render: (value, row) => (
+  //     <span className={`badge ${row.hasPDF ? 'bg-success' : 'bg-warning'}`}>
+  //       {row.hasPDF ? 'Available' : 'Not Generated'}
+  //     </span>
+  //   )
+  // },
   {
     key: 'actions',
     title: 'ACTIONS',
@@ -452,7 +452,7 @@ const columns = [
     render: (value, row) => (
       <div className="d-flex justify-content-center gap-2">
         {/* Download PDF Button */}
-        <button
+        {/* <button
           className={`btn btn-sm ${row.hasPDF ? 'btn-success' : 'btn-outline-warning'}`}
           onClick={() => handleDownloadPDF(row)}
           disabled={downloading[row.id]}
@@ -465,7 +465,6 @@ const columns = [
           ) : row.hasPDF ? (
             <>
               <FaDownload className="me-1" />
-              {/* Download */}
             </>
           ) : (
             <>
@@ -473,7 +472,7 @@ const columns = [
               Generate PDF
             </>
           )}
-        </button>
+        </button> */}
         
         {/* Delete Button */}
         <button

@@ -46,15 +46,12 @@ const Ledger = () => {
     // Convert amount safely
     const amount = parseFloat(entry.Amount || 0);
 
-    // 🧾 Use Amount for total — based on DC (Debit or Credit)
     if (entry.DC === "D") {
       acc[key].totalDebit += amount;
     } else if (entry.DC === "C") {
       acc[key].totalCredit += amount;
     }
 
-    // Update balance = totalCredit - totalDebit (Corrected!)
-    // For supplier ledger: Balance = Credit (Purchases) - Debit (Payments)
     acc[key].balance = acc[key].totalCredit - acc[key].totalDebit;
 
     return acc;
