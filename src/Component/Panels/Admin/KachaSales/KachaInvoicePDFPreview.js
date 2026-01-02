@@ -627,9 +627,9 @@ const PaymentStatus = () => {
     </Card>
   );
 };
-  const handlePrint = () => {
-    window.print();
-  };
+  // const handlePrint = () => {
+  //   window.print();
+  // };
 
   const handleDownloadPDF = async () => {
     try {
@@ -641,14 +641,14 @@ const PaymentStatus = () => {
       }
 
       let pdf;
-      let InvoicePDFDocument;
+      let SalesPdfDocument;
       
       try {
         const reactPdf = await import('@react-pdf/renderer');
         pdf = reactPdf.pdf;
         
-        const pdfModule = await import('./InvoicePDFDocument');
-        InvoicePDFDocument = pdfModule.default;
+        const pdfModule = await import('../SalesInvoicePage/SalesPdfDocument');
+        SalesPdfDocument = pdfModule.default;
       } catch (importError) {
         console.error('Error importing PDF modules:', importError);
         throw new Error('Failed to load PDF generation libraries');
@@ -662,7 +662,7 @@ const PaymentStatus = () => {
       let pdfDoc;
       try {
         pdfDoc = (
-          <InvoicePDFDocument 
+          <SalesPdfDocument 
             invoiceData={currentData}
             invoiceNumber={currentData.invoiceNumber}
             gstBreakdown={gstBreakdown}
@@ -1242,9 +1242,9 @@ const handleOpenReceiptModal = () => {
                   <Button variant="warning" onClick={handleEditInvoice} className="me-2">
                     <FaEdit className="me-1" /> Edit Invoice
                   </Button>
-                  <Button variant="success" onClick={handlePrint} className="me-2">
+                  {/* <Button variant="success" onClick={handlePrint} className="me-2">
                     <FaPrint className="me-1" /> Print
-                  </Button>
+                  </Button> */}
                   <Button 
                     variant="danger" 
                     onClick={handleDownloadPDF} 
@@ -1652,8 +1652,14 @@ const handleOpenReceiptModal = () => {
                       ) : (
                         <>
                           <p className="mb-1"><strong>Invoice No:</strong> {displayInvoiceNumber}</p>
-                          <p className="mb-1"><strong>Invoice Date:</strong> {new Date(currentData.invoiceDate).toLocaleDateString()}</p>
-                          <p className="mb-0"><strong>Due Date:</strong> {new Date(currentData.validityDate).toLocaleDateString()}</p>
+<p className="mb-1">
+  <strong>Invoice Date:</strong>{" "}
+  {new Date(currentData.invoiceDate).toLocaleDateString("en-GB")}
+</p>
+<p className="mb-0">
+  <strong>Due Date:</strong>{" "}
+  {new Date(currentData.validityDate).toLocaleDateString("en-GB")}
+</p>
                         </>
                       )}
                     </div>

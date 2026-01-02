@@ -176,6 +176,7 @@ import KachaReceiptsTable from "./Component/Panels/kachreceipts/Receipts/KachaRe
 import SalesPersonScore from "./Component/Panels/Admin/SalesPersonScore/SalesPersonScore";
 import ImportSalesPage from "./Component/Panels/Admin/Inventory/Sales_catalogue/ImportSalesPage";
 import ExportSalesPage from "./Component/Panels/Admin/Inventory/Sales_catalogue/ExportSalesPage";
+import SalesPdfDocument from "./Component/Panels/Admin/SalesInvoicePage/SalesPdfDocument";
 
 
 
@@ -231,7 +232,7 @@ function App() {
         <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
 
         <Route path="/sales/createinvoice/:id" element={<SalesInvoiceForm />} />
-        <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
+  
         <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
         <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
         <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
@@ -363,6 +364,7 @@ function App() {
         <Route path="/salesmanscore" element={<SalesPersonScore />} />
         <Route path="/import-sales" element={<ImportSalesPage />} />
         <Route path="/export-sales" element={<ExportSalesPage />} />
+        <Route path="/salespdfdocument" element={<SalesPdfDocument />} />
 
       </Routes>
     </Router>
