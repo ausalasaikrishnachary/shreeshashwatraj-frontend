@@ -301,62 +301,79 @@ const SalesItems = ({ user }) => {
               </div>
             </div>
 
-            {/* Right: Buttons */}
-            <div className="d-flex gap-2 flex-shrink-0 mt-0">
-              {/* Sales Catalogue Dropdown */}
-              <div className="dropdown">
-                <button
-                  className="btn btn-info dropdown-toggle d-flex align-items-center"
-                  type="button"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                >
-                  <i className="bi bi-list me-2"></i> Sales Catalogue
-                </button>
-                <ul className="dropdown-menu">
-                  <li>
-                    <a className="dropdown-item" href="/sale_items">
-                      Sales Catalogue
-                    </a>
-                  </li>
-                  <li>
-                    <a className="dropdown-item" href="/purchased_items">
-                      Purchased Items
-                    </a>
-                  </li>
-                </ul>
-              </div>
 
-              {/* ADD Dropdown */}
-              <div className="dropdown">
-                <button
-                  className="btn btn-success dropdown-toggle d-flex align-items-center"
-                  type="button"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                >
-                  <i className="bi bi-plus-circle me-2"></i> ADD
-                </button>
-                <ul className="dropdown-menu">
-                  <li>
-                    <button
-                      className="dropdown-item"
-                      onClick={() => navigate("/salesitemspage")}
-                    >
-                      Products
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      className="dropdown-item"
-                      onClick={() => setShowServiceModal(true)}
-                    >
-                      Services
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </div>
+{/* Right: Buttons */}
+<div className="d-flex gap-2 flex-shrink-0 mt-0">
+  {/* Sales Catalogue Dropdown */}
+  <div className="dropdown">
+    <button
+      className="btn btn-info dropdown-toggle d-flex align-items-center"
+      type="button"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+    >
+      <i className="bi bi-list me-2"></i> Sales Catalogue
+    </button>
+    <ul className="dropdown-menu">
+      <li>
+        <a className="dropdown-item" href="/sale_items">
+          Sales Catalogue
+        </a>
+      </li>
+      <li>
+        <a className="dropdown-item" href="/purchased_items">
+          Purchased Items
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  {/* Import Button */}
+
+<button
+  className="btn btn-success d-flex align-items-center"
+  onClick={() => navigate("/export-sales")}
+>
+  <i className="bi bi-download me-2"></i> Export
+</button>
+<button
+  className="btn btn-primary d-flex align-items-center"
+  onClick={() => navigate("/import-sales")}
+>
+  <i className="bi bi-download me-2"></i> import
+</button>
+
+
+  {/* ADD Dropdown */}
+  <div className="dropdown">
+    <button
+      className="btn btn-success dropdown-toggle d-flex align-items-center"
+      type="button"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+    >
+      <i className="bi bi-plus-circle me-2"></i> ADD
+    </button>
+    <ul className="dropdown-menu">
+      <li>
+        <button
+          className="dropdown-item"
+          onClick={() => navigate("/salesitemspage")}
+        >
+          Products
+        </button>
+      </li>
+      <li>
+        <button
+          className="dropdown-item"
+          onClick={() => setShowServiceModal(true)}
+        >
+          Services
+        </button>
+      </li>
+    </ul>
+  </div>
+</div>
           </div>
 
           {/* ✅ Table */}

@@ -174,6 +174,8 @@ import QRCodeGenerator from "./Component/Panels/Admin/Period/QRCodeGenerator";
 import RetailersScore from "./Component/Panels/Admin/RetailersScore/RetailersScore";
 import KachaReceiptsTable from "./Component/Panels/kachreceipts/Receipts/KachaReceiptsTable";
 import SalesPersonScore from "./Component/Panels/Admin/SalesPersonScore/SalesPersonScore";
+import ImportSalesPage from "./Component/Panels/Admin/Inventory/Sales_catalogue/ImportSalesPage";
+import ExportSalesPage from "./Component/Panels/Admin/Inventory/Sales_catalogue/ExportSalesPage";
 
 
 
@@ -359,6 +361,8 @@ function App() {
         <Route path="/retailersscore" element={<RetailersScore />} />
         <Route path="/kachareceipts" element={<KachaReceiptsTable />} />
         <Route path="/salesmanscore" element={<SalesPersonScore />} />
+        <Route path="/import-sales" element={<ImportSalesPage />} />
+        <Route path="/export-sales" element={<ExportSalesPage />} />
 
       </Routes>
     </Router>
