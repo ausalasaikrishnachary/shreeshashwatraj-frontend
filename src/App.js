@@ -48,7 +48,7 @@
 
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
+import { GoogleOAuthProvider } from '@react-oauth/google';
 // Dashboards
 import AdminDashboard from "./Component/Panels/Admin/AdminDashboard/AdminDashboard";
 import StaffDashboard from "./Component/Panels/Staff/StaffPages/StaffDashboard";
@@ -182,6 +182,7 @@ import ExportSalesPage from "./Component/Panels/Admin/Inventory/Sales_catalogue/
 
 function App() {
   return (
+     <GoogleOAuthProvider clientId="77643630750-2f13qfdip7lv5npp634cfu70h0ig7vle.apps.googleusercontent.com">
     <Router>
       <Routes>
         {/* Public */}
@@ -365,6 +366,8 @@ function App() {
 
       </Routes>
     </Router>
+
+     </GoogleOAuthProvider>
   );
 }
 

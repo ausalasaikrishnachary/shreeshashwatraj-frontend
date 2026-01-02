@@ -4,6 +4,10 @@ import { FaEye, FaEyeSlash, FaStore, FaShoppingCart, FaChartLine, FaTags } from 
 import { MdAccountBalanceWallet } from "react-icons/md";
 import "./Login.css";
 import { baseurl } from "../../BaseURL/BaseURL";
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+// import {  } from 'react-google-login';
+import { jwtDecode } from "jwt-decode";
+import { useGoogleLogin } from '@react-oauth/google';
 
 function Login() {
   const [username, setUsername] = useState("");
@@ -86,6 +90,62 @@ function Login() {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    setError("");
+
+    try {
+      // Decode the Google JWT token
+      const decoded = jwtDecode(credentialResponse.credential);
+
+      console.log("Google Login Success:", decoded);
+
+      // Send Google token to your backend for verification
+      const response = await fetch(`${baseurl}/accounts/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: credentialResponse.credential,
+          email: decoded.email,
+          name: decoded.name,
+          googleId: decoded.sub
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store user data
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("loginTime", new Date().toISOString());
+
+        // Role-based flags
+        if (data.user.role?.toLowerCase() === "admin") {
+          localStorage.setItem("isAdmin", "true");
+        } else if (data.user.role?.toLowerCase() === "staff") {
+          localStorage.setItem("isStaff", "true");
+        } else if (data.user.role?.toLowerCase() === "retailer") {
+          localStorage.setItem("isRetailer", "true");
+        }
+
+        navigate(data.route || "/dashboard");
+      } else {
+        // If user doesn't exist, you can register them or show error
+        setError(data.error || "User not registered. Please contact administrator.");
+      }
+    } catch (err) {
+      console.error("Google login error:", err);
+      setError("Google login failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleFailure = () => {
+    setError("Google login failed. Please try again.");
+  };
+
   return (
     <div className="login-container">
       {/* Decorative Background Elements */}
@@ -95,7 +155,7 @@ function Login() {
         <div className="bg-icon store-icon"><FaStore /></div>
         <div className="bg-icon wallet-icon"><MdAccountBalanceWallet /></div>
         <div className="bg-icon tag-icon"><FaTags /></div>
-        
+
         {/* Animated floating elements */}
         <div className="floating-circle circle-1"></div>
         <div className="floating-circle circle-2"></div>
@@ -111,7 +171,7 @@ function Login() {
         </div>
         <h1 className="brand-title">RetailSync</h1>
         <p className="brand-subtitle">Sales & Retail Management Platform</p>
-        
+
         <div className="features-list">
           <div className="feature-item">
             <span className="feature-icon">📊</span>
@@ -137,7 +197,7 @@ function Login() {
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="form-header">
             <h2>Welcome Back! 👋</h2>
-            <p className="form-subtitle">Sign in to your retailer account</p>
+            {/* <p className="form-subtitle">Sign in to your retailer account</p> */}
           </div>
 
           {/* Error Message */}
@@ -210,15 +270,32 @@ function Login() {
             )}
           </button>
 
-          {/* Divider */}
-          <div className="divider">
-            <span>New to RetailSync?</span>
+          <div className="google-login-section">
+            <div className="divider">
+              <span>Or continue with</span>
+            </div>
+
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleFailure}
+              useOneTap={false}
+              theme="filled_blue"
+              size="large"
+              text="signin_with"
+              shape="rectangular"
+              width="100%"
+            />
           </div>
 
+          {/* Divider */}
+          {/* <div className="divider">
+            <span>New to RetailSync?</span>
+          </div> */}
+
           {/* Register Link */}
-          <div className="register-link">
+          {/* <div className="register-link">
             <p>Don't have an account? <Link to="/register">Register as Retailer</Link></p>
-          </div>
+          </div> */}
         </form>
       </div>
     </div>

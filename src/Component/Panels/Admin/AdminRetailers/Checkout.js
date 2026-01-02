@@ -40,7 +40,7 @@ function Checkout() {
   const [isMobileView, setIsMobileView] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   // Check for mobile view on resize
   useEffect(() => {
     const checkMobileView = () => {
@@ -152,17 +152,17 @@ function Checkout() {
 
   useEffect(() => {
     if (!retailerId) return;
-    
+
     const fetchAssignedStaffInfo = async () => {
       try {
         const response = await fetch(`${baseurl}/accounts/${retailerId}`);
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        
+
         const result = await response.json();
-        
+
         if (result) {
           setAssignedStaffInfo({
             id: result.staffid, // Note: lowercase 'staffid'
@@ -178,7 +178,7 @@ function Checkout() {
         });
       }
     };
-    
+
     fetchAssignedStaffInfo();
   }, [retailerId, initialStaffId, baseurl]);
 
@@ -188,7 +188,7 @@ function Checkout() {
       alert("Missing required information");
       return;
     }
-    
+
     // Get staff info from localStorage
     const storedData = localStorage.getItem("user");
     let loggedInUser = null;
@@ -296,7 +296,7 @@ function Checkout() {
           item_name: item.item_name || product.name || `Product ${item.product_id}`,
           product_id: item.product_id,
           quantity: quantity,
-          
+
           // Use the pre-calculated breakdown values from cart - FROM REFERENCE CODE
           mrp: breakdown.mrp || 0,
           sale_price: breakdown.sale_price || 0,
@@ -348,8 +348,37 @@ function Checkout() {
           orderMode: orderMode,
           breakdown: orderTotals
         });
+
+        // Set order placed to show popup
         setOrderPlaced(true);
-        navigate('/period');
+
+        // Show success popup
+        setTimeout(() => {
+          // You can use your preferred popup method
+          // Option 1: Using a custom popup component
+          if (typeof setShowSuccessPopup === 'function') {
+            setShowSuccessPopup(true);
+          }
+
+          // Option 2: Using alert with better formatting
+          const successMessage = `
+          ✅ Order Placed Successfully!
+          
+          Order Number: ${result.order_number || orderData.order.order_number}
+          Customer: ${customerName || retailerDetails?.name || "Customer"}
+          Total Amount: ₹${orderData.order.net_payable.toFixed(2)}
+          Order Mode: ${orderMode}
+          
+          Thank you for your order!
+        `;
+          alert(successMessage);
+
+          // Option 3: Navigate after popup
+          setTimeout(() => {
+            navigate('/period');
+          }, 2000);
+        }, 500);
+
       } else {
         throw new Error(result.error || result.details || result.message || "Failed to place order");
       }
@@ -694,7 +723,7 @@ function Checkout() {
         {/* Order Summary - UPDATED TO MATCH REFERENCE CODE */}
         <div className="order-summary-section">
           <h2>Order Summary ({orderTotals.itemCount || cartItems.length} items)</h2>
-          
+
           {orderTotals.totalCreditCharges > 0 && (
             <div className="summary-row credit">
               <span>Credit Charges:</span>
@@ -715,7 +744,7 @@ function Checkout() {
                 <span>Taxable Amount:</span>
                 <span>₹{orderTotals.totalTaxableAmount?.toLocaleString() || '0'}</span>
               </div>
-              
+
               <div className="summary-row tax">
                 <span>Total GST:</span>
                 <span>+₹{orderTotals.totalTax?.toLocaleString() || '0'}</span>
