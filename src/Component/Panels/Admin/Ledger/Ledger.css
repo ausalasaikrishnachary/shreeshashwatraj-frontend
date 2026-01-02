@@ -49,12 +49,12 @@
   padding: 10px;
   font-weight: bold;
   border-radius: 4px;
-  margin-bottom: 10px;
 }
 
 /* Ledger table */
 .ledger-table {
   width: 100%;
+  margin-top: -2px;
   border-collapse: collapse;
 }
 

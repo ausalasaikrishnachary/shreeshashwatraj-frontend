@@ -8,7 +8,7 @@ import "./Ledger.css";
 const Ledger = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [ledgerData, setLedgerData] = useState([]);
-  const [filter, setFilter] = useState("All");
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,8 +28,6 @@ const Ledger = () => {
 
   // Group ledger by PartyID instead of PartyName
   const groupedLedger = ledgerData.reduce((acc, entry) => {
-    console.log("data", entry);
-
     const key = entry.PartyID || "Unknown"; // group by PartyID
     if (!acc[key]) {
       acc[key] = {
@@ -55,19 +53,22 @@ const Ledger = () => {
       acc[key].totalCredit += amount;
     }
 
-    // Update balance = totalDebit - totalCredit
-    acc[key].balance = acc[key].totalDebit - acc[key].totalCredit;
+    // Update balance = totalCredit - totalDebit (Corrected!)
+    // For supplier ledger: Balance = Credit (Purchases) - Debit (Payments)
+    acc[key].balance = acc[key].totalCredit - acc[key].totalDebit;
 
     return acc;
   }, {});
 
   const groupedArray = Object.values(groupedLedger);
 
-  // Apply filter
-  const filteredLedger =
-    filter === "All"
-      ? groupedArray
-      : groupedArray.filter((item) => item.partyID === filter);
+  // Apply search filter
+  const filteredLedger = searchTerm === ""
+    ? groupedArray
+    : groupedArray.filter((item) => 
+        item.partyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.partyID.toString().includes(searchTerm)
+      );
 
   return (
     <div className="ledger-wrapper">
@@ -76,72 +77,123 @@ const Ledger = () => {
         <AdminHeader isCollapsed={isCollapsed} />
 
         <div className="ledger-container">
-          {/* Filter */}
+          {/* Search Filter */}
           <div className="ledger-filter">
-            <label>Filter by Party: </label>
-            <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-              <option value="All">All</option>
-              {groupedArray.map((item) => (
-                <option key={item.partyID} value={item.partyID}>
-                  {item.partyName} (ID: {item.partyID})
-                </option>
-              ))}
-            </select>
+            <label>Search : </label>
+            <input
+              type="text"
+              placeholder="Search by Name or ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                padding: "5px 10px",
+                fontSize: "14px",
+                width: "300px",
+                borderRadius: "4px",
+                border: "1px solid #ccc"
+              }}
+            />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm("")}
+                style={{
+                  marginLeft: "10px",
+                  padding: "5px 10px",
+                  backgroundColor: "#dc3545",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer"
+                }}
+              >
+                Clear
+              </button>
+            )}
           </div>
 
           {/* Loading or Empty */}
           {loading ? (
             <p>Loading ledger data...</p>
           ) : filteredLedger.length === 0 ? (
-            <p>No ledger entries found.</p>
+            <p>
+              {searchTerm 
+                ? `No parties found matching "${searchTerm}"`
+                : "No ledger entries found."
+              }
+            </p>
           ) : (
-            filteredLedger.map((ledger, index) => (
-              <div key={`${ledger.partyID}-${index}`} className="ledger-section">
-                {/* Header with Balance */}
-                <div className="ledger-header">
-                  {ledger.partyName} (ID: {ledger.partyID}) — Balance:{" "}
-                  {Math.abs(ledger.balance).toFixed(2)}{" "}
-                  {ledger.balance >= 0 ? "Dr" : "Cr"}
-                </div>
+            filteredLedger.map((ledger, index) => {
+              // Determine Dr/Cr based on balance
+              const balanceType = ledger.balance >= 0 ? "Cr" : "Dr";
+              const balanceDisplay = Math.abs(ledger.balance).toFixed(2);
+              
+              return (
+                <div key={`${ledger.partyID}-${index}`} className="ledger-section">
+                  {/* Header with Balance */}
+                  <div className="ledger-header">
+                    {ledger.partyName} (ID: {ledger.partyID}) — Balance:{" "}
+                    {balanceDisplay} {balanceType}
+                  </div>
 
-                {/* Table */}
-                <table className="ledger-table">
-                  <thead>
-                    <tr>
-                      <th>Transaction Date</th>
-                      <th>Transaction Type</th>
-                      <th>Account Name</th>
-                      <th>Credit/Debit</th>
-                      <th>Credit</th>
-                      <th>Debit</th>
-                      <th>Rec/Vou No</th>
-                      <th>Created On</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ledger.transactions.map((tx, idx) => {
-                      const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
-                      return (
-                        <tr key={tx.id || idx}>
-                          <td>{tx.date ? new Date(tx.date).toLocaleDateString() : "-"}</td>
-                          <td>{tx.trantype || "-"}</td>
-                          <td>{tx.PartyName || "-"}</td>
-                          <td>{dc || "-"}</td>
-                          <td>{dc === "C" ? tx.Amount : "-"}</td>
-                          <td>{dc === "D" ? tx.Amount : "-"}</td>
-                          <td>{tx.voucherID || "-"}</td>
-                          <td>
-                            {tx.created_at
-                              ? new Date(tx.created_at).toLocaleString("en-IN")
-                              : "-"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ))
+                  {/* Table */}
+                  <table className="ledger-table">
+                    <thead>
+                      <tr>
+                        <th>Transaction Date</th>
+                        <th>Transaction Type</th>
+                        <th>Account Name</th>
+                        <th>Credit/Debit</th>
+                        <th>Credit</th>
+                        <th>Debit</th>
+                        <th>Rec/Vou No</th>
+                        <th>Created On</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ledger.transactions.map((tx, idx) => {
+                        const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
+                        return (
+                          <tr key={tx.id || idx}>
+<td>
+  {tx.date 
+    ? new Date(tx.date).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
+    : "-"
+  }
+</td>                            <td>{tx.trantype || "-"}</td>
+                            <td>{tx.PartyName || "-"}</td>
+                            <td>{dc || "-"}</td>
+                            <td>
+                              {dc === "C" ? (
+                                <span style={{ color: "green", fontWeight: "bold" }}>
+                                  {tx.Amount || "0.00"}
+                                </span>
+                              ) : "-"}
+                            </td>
+                            <td>
+                              {dc === "D" ? (
+                                <span style={{ color: "red", fontWeight: "bold" }}>
+                                  {tx.Amount || "0.00"}
+                                </span>
+                              ) : "-"}
+                            </td>
+                            <td>{tx.voucherID || "-"}</td>
+                            <td>
+                              {tx.created_at
+                                ? new Date(tx.created_at).toLocaleString("en-IN")
+                                : "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })
           )}
         </div>
       </div>

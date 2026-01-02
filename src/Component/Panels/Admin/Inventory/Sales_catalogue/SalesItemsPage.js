@@ -131,8 +131,10 @@ const fetchProductById = async (id) => {
       price: product.price,
       mrp: product.mrp,
       purchase_price: product.purchase_price,
-      opening_stock: product.opening_stock
+      opening_stock: product.opening_stock,
+      unit_id: product.unit_id // Log unit_id for debugging
     });
+ 
 
     // Set initial form data
     setFormData({
@@ -148,8 +150,8 @@ const fetchProductById = async (id) => {
       non_taxable: product.non_taxable || '',
       net_price: product.net_price || '',
       hsn_code: product.hsn_code || '',
-      unit: product.unit || 'UNT-UNITS',
-      cess_rate: product.cess_rate || '',
+      unit:product.unit ,
+        cess_rate: product.cess_rate || '',
       cess_amount: product.cess_amount || '',
       sku: product.sku || '',
       opening_stock: product.opening_stock || '',
@@ -377,15 +379,15 @@ const createDefaultBatch = async () => {
   return {
     id: `temp_${Date.now()}_${Math.random()}`,
     dbId: null,
-    batchNumber: '', // Empty for manual entry
+    batchNumber: '',
     mfgDate: '',
     expDate: '',
-    quantity: '0', // Start with 0
+    quantity: '0', 
     min_sale_price: '',
-    opening_stock: '0', // Start with 0
-    sellingPrice: '', // Empty instead of using formData.price
-    purchasePrice: '', // Empty instead of using formData.purchase_price
-    mrp: '', // Empty instead of using formData.mrp
+    opening_stock: '0', 
+    sellingPrice: '', 
+    purchasePrice: '',
+    mrp: '', 
     barcode: newBarcode,
     stock_in: 0,
     stock_out: 0,
@@ -1053,33 +1055,32 @@ const createDefaultBatch = async () => {
                       onChange={handleChange}
                     />
                   </div>
-                  <div className="col">
-                    <Form.Label>Unit *</Form.Label>
-                    <div className="d-flex">
-                      <Form.Select
-                        className="me-1"
-                        name="unit"
-                        value={formData.unit}
-                        onChange={handleChange}
-                        required
-                      >
-                        <option value="">Select Unit</option>
-                        {unitOptions.map((unit) => (
-                          <option key={unit.id} value={unit.name}>
-                            {unit.name}
-                          </option>
-                        ))}
-                      </Form.Select>
-                      <Button
-                        variant="outline-primary"
-                        size="sm"
-                        onClick={() => setShowUnitModal(true)}
-                      >
-                        <BsPlus />
-                      </Button>
-                    </div>
-                  </div>
-
+<div className="col">
+  <Form.Label>Unit *</Form.Label>
+  <div className="d-flex">
+    <Form.Select
+      className="me-1"
+      name="unit"
+      value={formData.unit}
+      onChange={handleChange}
+      required
+    >
+      <option value="">Select Unit</option>
+      {unitOptions.map((unit) => (
+        <option key={unit.id} value={unit.id}> 
+          {unit.name} 
+        </option>
+      ))}
+    </Form.Select>
+    <Button
+      variant="outline-primary"
+      size="sm"
+      onClick={() => setShowUnitModal(true)}
+    >
+      <BsPlus />
+    </Button>
+  </div>
+</div>
                   <div className="col">
                     <Form.Label>CESS Rate %</Form.Label>
                     <Form.Control
@@ -1475,14 +1476,14 @@ const createDefaultBatch = async () => {
               />
 
               <AddUnitModal
-                show={showUnitModal}
-                onClose={() => setShowUnitModal(false)}
-                onSave={(newUnit) => {
-                  fetchUnits();
-                  setFormData(prev => ({ ...prev, unit: newUnit.name }));
-                  setShowUnitModal(false);
-                }}
-              />
+  show={showUnitModal}
+  onClose={() => setShowUnitModal(false)}
+  onSave={(newUnit) => {
+    fetchUnits();
+    setFormData(prev => ({ ...prev, unit: newUnit.id })); // Store ID instead of name
+    setShowUnitModal(false);
+  }}
+/>
 
             </div>
           </div>
