@@ -22,6 +22,8 @@ const VochurTable = () => {
   const [activeTab, setActiveTab] = useState('Voucher');
   const [invoices, setInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState('');
+  const [invoiceBalance, setInvoiceBalance] = useState(0);
+  const [isFetchingBalance, setIsFetchingBalance] = useState(false);
 
   const [formData, setFormData] = useState({
     receiptNumber: 'REC001',
@@ -56,7 +58,10 @@ const VochurTable = () => {
           // If data is an array of objects with VchNo property
           const invoiceNumbers = data.map(invoice => ({
             id: invoice.VoucherID || invoice.id || Math.random(),
-            number: invoice.VchNo || invoice.invoice_number || invoice.number || 'Unknown'
+            number: invoice.VchNo || invoice.invoice_number || invoice.number || 'Unknown',
+            // Add balance-related fields if available
+            total_amount: invoice.TotalAmount || invoice.total_amount || 0,
+            paid_amount: invoice.paid_amount || 0
           }));
           console.log('Processed invoice numbers:', invoiceNumbers);
           setInvoices(invoiceNumbers);
@@ -64,7 +69,9 @@ const VochurTable = () => {
           const invoiceArray = data.invoices || data.data || [];
           const invoiceNumbers = invoiceArray.map(invoice => ({
             id: invoice.VoucherID || invoice.id || Math.random(),
-            number: invoice.VchNo || invoice.invoice_number || invoice.number || 'Unknown'
+            number: invoice.VchNo || invoice.invoice_number || invoice.number || 'Unknown',
+            total_amount: invoice.TotalAmount || invoice.total_amount || 0,
+            paid_amount: invoice.paid_amount || 0
           }));
           console.log('Processed invoice numbers from object:', invoiceNumbers);
           setInvoices(invoiceNumbers);
@@ -104,7 +111,9 @@ const VochurTable = () => {
             if (Array.isArray(data)) {
               const invoiceNumbers = data.map(invoice => ({
                 id: invoice.id || invoice.VoucherID || Math.random(),
-                number: invoice.invoice_number || invoice.VchNo || invoice.number || 'Unknown'
+                number: invoice.invoice_number || invoice.VchNo || invoice.number || 'Unknown',
+                total_amount: invoice.TotalAmount || invoice.total_amount || invoice.amount || 0,
+                paid_amount: invoice.paid_amount || 0
               }));
               setInvoices(invoiceNumbers);
               return;
@@ -122,6 +131,135 @@ const VochurTable = () => {
       setInvoices([]);
     }
   };
+
+  // Fetch invoice balance for suppliers
+  const fetchInvoiceBalance = async (supplierId, invoiceNumber) => {
+    if (!supplierId || !invoiceNumber) {
+      setInvoiceBalance(0);
+      setFormData(prev => ({
+        ...prev,
+        amount: ''
+      }));
+      return;
+    }
+
+    try {
+      setIsFetchingBalance(true);
+      console.log(`Fetching balance for supplier ${supplierId}, invoice ${invoiceNumber}`);
+      
+      // Check existing receipt data for balance
+      const existingReceipt = receiptData.find(receipt => 
+        receipt.supplier?.id == supplierId && 
+        receipt.invoice_number?.includes(invoiceNumber)
+      );
+
+      if (existingReceipt?.total_balance_amount) {
+        console.log('Found balance in existing data:', existingReceipt.total_balance_amount);
+        setInvoiceBalance(existingReceipt.total_balance_amount);
+        setFormData(prev => ({
+          ...prev,
+          amount: existingReceipt.total_balance_amount
+        }));
+        setIsFetchingBalance(false);
+        return;
+      }
+
+      // Try API endpoint for purchase invoice balance
+      try {
+        const response = await fetch(
+          `${baseurl}/api/purchase-invoice-balance?supplier_id=${supplierId}&invoice_number=${invoiceNumber}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Received balance data from API:', data);
+          
+          const balanceAmount = data.total_balance_amount || data.balance || data.amount_due || 0;
+          setInvoiceBalance(balanceAmount);
+          
+          setFormData(prev => ({
+            ...prev,
+            amount: balanceAmount
+          }));
+        } else {
+          console.warn('No balance found from API, checking invoices data');
+          // Fallback: Calculate balance from invoice data
+          const selectedInvoiceData = invoices.find(inv => inv.number === invoiceNumber);
+          if (selectedInvoiceData) {
+            const invoiceAmount = parseFloat(selectedInvoiceData.total_amount || 0);
+            const paidAmount = parseFloat(selectedInvoiceData.paid_amount || 0);
+            const balance = invoiceAmount - paidAmount;
+            
+            if (balance > 0) {
+              setInvoiceBalance(balance);
+              setFormData(prev => ({
+                ...prev,
+                amount: balance
+              }));
+            } else {
+              setInvoiceBalance(0);
+              setFormData(prev => ({
+                ...prev,
+                amount: ''
+              }));
+              alert('This invoice is already fully paid.');
+            }
+          }
+        }
+      } catch (apiError) {
+        console.error('API error fetching balance:', apiError);
+        // Fallback: Calculate from local invoice data
+        const selectedInvoiceData = invoices.find(inv => inv.number === invoiceNumber);
+        if (selectedInvoiceData) {
+          const invoiceAmount = parseFloat(selectedInvoiceData.total_amount || 0);
+          const paidAmount = parseFloat(selectedInvoiceData.paid_amount || 0);
+          const balance = invoiceAmount - paidAmount;
+          
+          if (balance > 0) {
+            setInvoiceBalance(balance);
+            setFormData(prev => ({
+              ...prev,
+              amount: balance
+            }));
+          } else {
+            setInvoiceBalance(0);
+            setFormData(prev => ({
+              ...prev,
+              amount: ''
+            }));
+            alert('This invoice is already fully paid.');
+          }
+        } else {
+          // Show empty amount
+          setInvoiceBalance(0);
+          setFormData(prev => ({
+            ...prev,
+            amount: ''
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching invoice balance:', err);
+      setInvoiceBalance(0);
+      setFormData(prev => ({
+        ...prev,
+        amount: ''
+      }));
+    } finally {
+      setIsFetchingBalance(false);
+    }
+  };
+
+  // Auto-fetch balance when both supplier and invoice are selected
+  useEffect(() => {
+    if (formData.supplierId && formData.invoiceNumber) {
+      const timer = setTimeout(() => {
+        fetchInvoiceBalance(formData.supplierId, formData.invoiceNumber);
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [formData.supplierId, formData.invoiceNumber]);
 
   // File change handler
   const handleFileChange = (e) => {
@@ -298,7 +436,6 @@ const VochurTable = () => {
     }
   };
 
-  // Fetch all receipts
   const fetchReceipts = async () => {
     try {
       setIsLoading(true);
@@ -308,14 +445,12 @@ const VochurTable = () => {
         const data = await response.json();
         console.log('Received receipts data:', data);
         
-        // Sort data in descending order by receipt_date or id
         const sortedData = data.sort((a, b) => {
           const dateA = new Date(a.receipt_date || a.created_at);
           const dateB = new Date(b.receipt_date || b.created_at);
           return dateB - dateA || b.id - a.id;
         });
 
-        // Transform data with proper supplier object handling
         const transformedData = sortedData.map(receipt => ({
           ...receipt,
           id: receipt.id || '',
@@ -326,7 +461,8 @@ const VochurTable = () => {
           amount: `₹ ${parseFloat(receipt.amount || 0).toLocaleString('en-IN')}`,
           receipt_date: receipt.receipt_date ? new Date(receipt.receipt_date).toLocaleDateString('en-IN') : 'N/A',
           payment_method: receipt.payment_method || 'N/A',
-          invoice_numbers: receipt.invoice_number || 'N/A'
+          invoice_numbers: receipt.invoice_number || 'N/A',
+          total_balance_amount: receipt.balance_amount || receipt.amount_due || 0
         }));
 
         console.log('Transformed receipts data:', transformedData);
@@ -344,13 +480,11 @@ const VochurTable = () => {
     }
   };
 
-  // Fetch suppliers for supplier dropdown
   const fetchSuppliers = async () => {
     try {
       const res = await fetch(`${baseurl}/accounts`);
       if (res.ok) {
         const data = await res.json();
-        // Filter accounts to get only suppliers with role === "supplier"
         const supplierAccounts = data.filter(acc => acc.role === "supplier");
         setSuppliers(supplierAccounts);
       } else {
@@ -384,6 +518,21 @@ const VochurTable = () => {
       console.log('Voucher number not fetched yet, fetching now...');
       await fetchNextReceiptNumber();
     }
+    
+    // Reset form data for new voucher
+    setFormData(prev => ({
+      ...prev,
+      supplierId: '',
+      amount: '',
+      invoiceNumber: '',
+      note: '',
+      bankName: '',
+      transactionDate: '',
+      transactionProofFile: ''
+    }));
+    setSelectedInvoice('');
+    setInvoiceBalance(0);
+    
     setIsModalOpen(true);
   };
 
@@ -404,12 +553,10 @@ const VochurTable = () => {
       reconciliationOption: 'Do Not Reconcile',
       receiptNumber: nextReceiptNumber,
       invoiceNumber: '',
-      supplierMobile: '',
-      supplierEmail: '',
-      supplierGstin: '',
-      supplierBusinessName: ''
+      transactionProofFile: ''
     }));
     setSelectedInvoice('');
+    setInvoiceBalance(0);
   };
 
   // Handle form input changes
@@ -420,6 +567,11 @@ const VochurTable = () => {
       ...prev,
       [name]: value
     }));
+    
+    if (name === 'amount') {
+      if (value !== invoiceBalance.toString()) {
+      }
+    }
   };
 
   // Handle supplier selection change
@@ -433,8 +585,16 @@ const VochurTable = () => {
       supplierMobile: selectedSupplier?.mobile_number || '',
       supplierEmail: selectedSupplier?.email || '',
       supplierGstin: selectedSupplier?.gstin || '',
-      supplierBusinessName: selectedSupplier?.business_name || ''
+      supplierBusinessName: selectedSupplier?.business_name || '',
+      amount: '' // Clear amount when supplier changes
     }));
+    
+    setInvoiceBalance(0);
+    
+    // If invoice is already selected, fetch balance
+    if (formData.invoiceNumber) {
+      fetchInvoiceBalance(selectedSupplierId, formData.invoiceNumber);
+    }
   };
 
   // Handle invoice selection change
@@ -443,9 +603,12 @@ const VochurTable = () => {
     setSelectedInvoice(selectedVchNo);
     setFormData(prev => ({
       ...prev,
-      invoiceNumber: selectedVchNo
+      invoiceNumber: selectedVchNo,
+      amount: '' // Clear amount when invoice changes
     }));
-    console.log('Selected invoice number:', selectedVchNo);
+    if (formData.supplierId) {
+      fetchInvoiceBalance(formData.supplierId, selectedVchNo);
+    }
   };
 
   const handleCreateReceipt = async () => {
@@ -491,6 +654,7 @@ const VochurTable = () => {
       console.log('Sending receipt data with FormData...');
       console.log('Supplier ID:', formData.supplierId);
       console.log('Invoice Number:', formData.invoiceNumber);
+      console.log('Amount:', formData.amount);
 
       const response = await fetch(`${baseurl}/api/receipts`, {
         method: 'POST',
@@ -790,50 +954,6 @@ const VochurTable = () => {
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Amount *</label>
-                          <div className="input-group custom-amount-receipts-table">
-                            <select
-                              className="form-select currency-select-receipts-table"
-                              name="currency"
-                              value={formData.currency}
-                              onChange={handleInputChange}
-                            >
-                              <option>INR</option>
-                              <option>USD</option>
-                              <option>EUR</option>
-                              <option>GBP</option>
-                            </select>
-                            <input
-                              type="number"
-                              className="form-control amount-input-receipts-table"
-                              name="amount"
-                              value={formData.amount}
-                              onChange={handleInputChange}
-                              placeholder="Amount"
-                              min="0"
-                              step="0.01"
-                              required
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="row mb-4">
-                      <div className="col-md-6">
-                        <div className="mb-3">
-                          <label className="form-label">Note</label>
-                          <textarea
-                            className="form-control"
-                            rows="3"
-                            name="note"
-                            value={formData.note}
-                            onChange={handleInputChange}
-                            placeholder="Additional notes..."
-                          ></textarea>
-                        </div>
-                      </div>
-                      <div className="col-md-6">
-                        <div className="mb-3">
                           <label className="form-label">Invoice Number *</label>
                           <select
                             className="form-select"
@@ -858,6 +978,57 @@ const VochurTable = () => {
                               No invoices available. Please check if invoices are created.
                             </small>
                           )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="row mb-4">
+                      <div className="col-md-6">
+                        <div className="mb-3">
+                          <label className="form-label">Amount *</label>
+                          <div className="input-group custom-amount-receipts-table">
+                            <select
+                              className="form-select currency-select-receipts-table"
+                              name="currency"
+                              value={formData.currency}
+                              onChange={handleInputChange}
+                            >
+                              <option>INR</option>
+                              <option>USD</option>
+                              <option>EUR</option>
+                              <option>GBP</option>
+                            </select>
+                            <input
+                              type="number"
+                              className="form-control amount-input-receipts-table"
+                              name="amount"
+                              value={formData.amount}
+                              onChange={handleInputChange}
+                              placeholder={invoiceBalance > 0 ? "Auto-filled from balance" : "Enter amount"}
+                              min="0"
+                              step="0.01"
+                              required
+                            />
+                          </div>
+                          {invoiceBalance > 0 && formData.amount && (
+                            <small className="text-success">
+                              <i className="bi bi-check-circle me-1"></i>
+                              Auto-filled from invoice balance
+                            </small>
+                          )}
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="mb-3">
+                          <label className="form-label">Note</label>
+                          <textarea
+                            className="form-control"
+                            rows="3"
+                            name="note"
+                            value={formData.note}
+                            onChange={handleInputChange}
+                            placeholder="Additional notes..."
+                          ></textarea>
                         </div>
                       </div>
                     </div>
@@ -947,7 +1118,7 @@ const VochurTable = () => {
                       type="button"
                       className="btn btn-primary"
                       onClick={handleCreateReceipt}
-                      disabled={isLoading}
+                      disabled={isLoading || !formData.amount || parseFloat(formData.amount) <= 0}
                     >
                       {isLoading ? 'Creating...' : 'Create Voucher'}
                     </button>

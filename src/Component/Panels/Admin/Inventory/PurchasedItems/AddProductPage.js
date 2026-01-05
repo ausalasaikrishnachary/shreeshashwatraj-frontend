@@ -145,19 +145,14 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
         setImages([]);
       }
 
-      // Fetch batches first to get accurate pricing
       await fetchBatches(id);
 
-      // Wait a moment for batches to be set in state
       setTimeout(() => {
-        // Now calculate prices based on batches or product data
         let finalPurchasePrice = product.purchase_price || 0;
-        let finalPrice = product.price || 0; // Changed from selling_price to price
+        let finalPrice = product.price || 0; 
         let finalMRP = product.mrp || 0;
 
-        // If batch management is enabled and we have batches, calculate from batches
         if (product.maintain_batch && batches.length > 0) {
-          // Calculate sums from all batches
           const totalPurchasePrice = batches.reduce((sum, batch) => {
             return sum + (parseFloat(batch.purchasePrice) || 0);
           }, 0);
@@ -170,7 +165,6 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
             return sum + (parseFloat(batch.mrp) || 0);
           }, 0);
 
-          // Use batch totals if available, otherwise use product values
           finalPurchasePrice = totalPurchasePrice > 0 ? totalPurchasePrice : product.purchase_price || 0;
           finalPrice = totalPrice > 0 ? totalPrice : product.price || 0;
           finalMRP = totalMRP > 0 ? totalMRP : product.mrp || 0;
@@ -190,7 +184,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
           category_id: product.category_id || '',
           company_id: product.company_id || '',
           purchase_price: finalPurchasePrice,
-          price: finalPrice, // Store in price column (not selling_price)
+          price: finalPrice, 
           mrp: finalMRP,
           inclusive_gst: product.inclusive_gst || '',
           gst_rate: product.gst_rate || '',
@@ -208,6 +202,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
           description: product.description || '',
           maintain_batch: product.maintain_batch || false,
           can_be_sold: product.can_be_sold || false,
+            product_type: product.product_type || '', 
         });
 
         setMaintainBatch(product.maintain_batch || false);
@@ -536,7 +531,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     category_id: '',
     company_id: '',
     purchase_price: '',
-    price: '', // This goes to "price" column in products table (not selling_price)
+    price: '', 
     mrp: '',
     inclusive_gst: 'Inclusive',
     gst_rate: '',
@@ -554,6 +549,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     description: '',
     maintain_batch: false,
     can_be_sold: false,
+     product_type: '', 
   });
   
   const handleChange = async (e) => {
@@ -911,29 +907,28 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
         });
       }
 
-      // Prepare data for backend - Use "price" field for products table
       const dataToSend = {
         ...formData,
         images: images,
         group_by: groupType,
         opening_stock: finalOpeningStock,
         purchase_price: finalPurchasePrice,
-        price: finalPrice, // This goes to "price" column in products table
+        price: finalPrice, 
         mrp: finalMRP,
         stock_in: finalOpeningStock,
         stock_out: 0,
         balance_stock: finalOpeningStock,
         batches: batchesForBackend,
-        maintain_batch: maintainBatch
+        maintain_batch: maintainBatch,
+         product_type: formData.product_type, 
       };
 
-      // Remove selling_price field as it's not needed
       delete dataToSend.selling_price;
 
       console.log('📤 Sending data to backend:', {
         maintain_batch: maintainBatch,
         product_purchase_price: dataToSend.purchase_price,
-        product_price: dataToSend.price, // In products table "price" column
+        product_price: dataToSend.price, 
         product_mrp: dataToSend.mrp,
         batch_count: batchesForBackend.length,
         selling_price_in_batches: batchesForBackend.map(b => b.selling_price),
@@ -1329,38 +1324,51 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                   </div>
                 </div>
 
-                <div className="row mb-3">
-                  <div className="col">
-                    <Form.Label>Max Stock Alert</Form.Label>
-                    <Form.Control
-                      placeholder="Max Stock Alert"
-                      name="max_stock_alert"
-                      type="number"
-                      value={formData.max_stock_alert}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="col d-flex align-items-center">
-                    <Form.Check
-                      type="checkbox"
-                      label="Can be Sold (Creates Sales Catalog Entry)"
-                      name="can_be_sold"
-                      checked={formData.can_be_sold}
-                      onChange={handleChange}
-                      className="mt-4"
-                    />
-                  </div>
-                  <div className="col d-flex align-items-center">
-                    <Form.Check
-                      type="checkbox"
-                      label="Maintain Batch"
-                      name="maintain_batch"
-                      checked={formData.maintain_batch}
-                      onChange={handleChange}
-                      className="mt-4"
-                    />
-                  </div>
-                </div>
+         <div className="row mb-3">
+  <div className="col">
+    <Form.Label>Max Stock Alert</Form.Label>
+    <Form.Control
+      placeholder="Max Stock Alert"
+      name="max_stock_alert"
+      type="number"
+      value={formData.max_stock_alert}
+      onChange={handleChange}
+    />
+  </div>
+  <div className="col">
+    <Form.Label>Product Type *</Form.Label>
+    <Form.Select
+      name="product_type"
+      value={formData.product_type}
+      onChange={handleChange}
+      required
+    >
+      <option value="">Select Product Type</option>
+      <option value="KACHA">KACHA</option>
+      <option value="PAKKA">PAKKA</option>
+    </Form.Select>
+  </div>
+  <div className="col d-flex align-items-center">
+    <Form.Check
+      type="checkbox"
+      label="Can be Sold (Crt Sales Ctlg Entry)"
+      name="can_be_sold"
+      checked={formData.can_be_sold}
+      onChange={handleChange}
+      className="mt-4"
+    />
+  </div>
+  <div className="col d-flex align-items-center">
+    <Form.Check
+      type="checkbox"
+      label="Maintain Batch"
+      name="maintain_batch"
+      checked={formData.maintain_batch}
+      onChange={handleChange}
+      className="mt-4"
+    />
+  </div>
+</div>
 
                 <Form.Group className="mt-3 mb-2">
                   <Form.Label>Description</Form.Label>

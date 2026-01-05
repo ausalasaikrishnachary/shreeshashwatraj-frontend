@@ -161,6 +161,7 @@ const fetchProductById = async (id) => {
       min_sale_price: product.min_sale_price || '',
       description: product.description || '',
       maintain_batch: product.maintain_batch || false,
+        product_type: product.product_type || '',
     });
 
     // Load images
@@ -503,7 +504,8 @@ const createDefaultBatch = async () => {
     min_sale_price: '',
     description: '',
     maintain_batch: false,
-    purchase_price: ''
+    purchase_price: '',
+     product_type: '', 
   });
 
   // Updated handleChange to update batch totals when maintain_batch changes
@@ -1157,41 +1159,53 @@ const createDefaultBatch = async () => {
                     />
                   </div>
                 </div>
+<div className="row mb-3">
+  <div className="col">
+    <Form.Label>Max Stock Alert</Form.Label>
+    <Form.Control
+      placeholder="Max Stock Alert"
+      name="max_stock_alert"
+      type="number"
+      value={formData.max_stock_alert}
+      onChange={handleChange}
+    />
+  </div>
+  <div className="col">
+    <Form.Label>Minimum Sale Price</Form.Label>
+    <Form.Control
+      placeholder="Minimum Sale Price"
+      name="min_sale_price"
+      type="number"
+      step="0.01"
+      value={formData.min_sale_price}
+      onChange={handleChange}
+    />
+  </div>
+ <div className="col">
+    <Form.Label>Product Type *</Form.Label>
+    <Form.Select
+      name="product_type"
+      value={formData.product_type}
+      onChange={handleChange}
+      required
+    >
+      <option value="">Select Product Type</option>
+      <option value="KACHA">KACHA</option>
+      <option value="PAKKA">PAKKA</option>
+    </Form.Select>
+  </div>
 
-                <div className="row mb-3">
-             
-                  <div className="col">
-                    <Form.Label>Max Stock Alert</Form.Label>
-                    <Form.Control
-                      placeholder="Max Stock Alert"
-                      name="max_stock_alert"
-                      type="number"
-                      value={formData.max_stock_alert}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="col">
-                    <Form.Label>Minimum Sale Price</Form.Label>
-                    <Form.Control
-                      placeholder="Minimum Sale Price"
-                      name="min_sale_price"
-                      type="number"
-                      step="0.01"
-                      value={formData.min_sale_price}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="col d-flex align-items-center">
-                    <Form.Check
-                      type="checkbox"
-                      label="Maintain Batch"
-                      name="maintain_batch"
-                      checked={formData.maintain_batch}
-                      onChange={handleChange}
-                      className="mt-4"
-                    />
-                  </div>
-                </div>
+  <div className="col d-flex align-items-center">
+    <Form.Check
+      type="checkbox"
+      label="Maintain Batch"
+      name="maintain_batch"
+      checked={formData.maintain_batch}
+      onChange={handleChange}
+      className="mt-4"
+    />
+  </div>
+</div>
 
                 <Form.Group className="mt-3 mb-2">
                   <Form.Label>Description</Form.Label>

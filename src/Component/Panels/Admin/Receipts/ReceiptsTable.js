@@ -234,7 +234,7 @@ const ReceiptsTable = () => {
     { 
       key: 'paid_amount', 
       title: 'AMOUNT', 
-      style: { textAlign: 'right' },
+      style: { textAlign: 'center' },
       render: (value) => value || '₹ 0.00'
     },
     { 
@@ -343,93 +343,111 @@ const ReceiptsTable = () => {
   };
 
   // Fetch all receipts
-  const fetchReceipts = async () => {
-    try {
-      setIsLoading(true);
-      console.log('Fetching receipts from:', `${baseurl}/api/receipts`);
-      const response = await fetch(`${baseurl}/api/receipts`);
-      
-      if (response.ok) {
-        let data;
-        try {
-          data = await response.json();
-        } catch (parseError) {
-          console.error('Failed to parse receipts data:', parseError);
-          throw new Error('Invalid response from server');
-        }
-        
-        console.log('Received receipts data:', data);
-        
-        // Handle different response structures
-        const receiptsArray = Array.isArray(data) ? data : 
-                             (data.data && Array.isArray(data.data)) ? data.data : 
-                             (data.receipts && Array.isArray(data.receipts)) ? data.receipts : 
-                             [];
-        
-        // Sort data in descending order by receipt_date or id
-        const sortedData = receiptsArray.sort((a, b) => {
-          const dateA = new Date(a.receipt_date || a.created_at || a.Date);
-          const dateB = new Date(b.receipt_date || b.created_at || b.Date);
-          return dateB - dateA || 
-                 (b.VoucherID - a.VoucherID) || 
-                 (b.id - a.id) || 
-                 (b.receipt_id - a.receipt_id);
-        });
+const fetchReceipts = async () => {
+  try {
+    setIsLoading(true);
+    console.log('Fetching receipts from:', `${baseurl}/api/receipts`);
 
-        // Transform data with proper retailer object handling
-        const transformedData = sortedData.map(receipt => {
-          // Find VoucherID from any possible key
-          const voucherId = 
-            receipt.VoucherID || 
-            receipt.id ||
-            receipt.receipt_id ||
-            '';
-            
-          const retailerName = 
-            receipt.retailer?.business_name || 
-            receipt.payee_name || 
-            receipt.retailer_name || 
-            receipt.PartyName || 
-            receipt.retailer_name || 
-            'N/A';
-            
-          const amount = parseFloat(receipt.amount || receipt.paid_amount || receipt.Amount || 0);
-          
-          return {
-            ...receipt,
-            id: voucherId,
-            VoucherID: voucherId,
-            retailer: receipt.retailer || { 
-              id: receipt.AccountID || receipt.PartyID || receipt.retailer_id || '',
-              business_name: retailerName
-            },
-            payee: retailerName,
-            VchNo: receipt.receipt_number || receipt.VchNo || receipt.VoucherNo || receipt.receipt_number || '',
-            amount: `₹ ${amount.toLocaleString('en-IN')}`,
-            paid_amount: amount,
-            Date: receipt.receipt_date || receipt.Date || receipt.created_at,
-            receipt_date: receipt.receipt_date ? new Date(receipt.receipt_date).toLocaleDateString('en-IN') : 'N/A',
-            payment_method: receipt.payment_method || receipt.PaymentMethod || 'N/A',
-            InvoiceNumber: receipt.invoice_number || receipt.InvoiceNumber || receipt.invoice_no || ''
-          };
-        });
+    const response = await fetch(`${baseurl}/api/receipts`);
 
-        console.log('Transformed receipts data:', transformedData);
-        
-        setReceiptData(transformedData);
-      } else {
-        console.error('Failed to fetch receipts. Status:', response.status);
-        const errorText = await response.text();
-        console.error('Error details:', errorText);
-        alert('Failed to load receipts. Please try again later.');
-      }
-    } catch (err) {
-      console.error('Error fetching receipts:', err);
-      alert('Error connecting to server. Please check your network connection.');
-    } finally {
-      setIsLoading(false);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Fetch error:', response.status, errorText);
+      alert('Failed to load receipts');
+      return;
     }
-  };
+
+    const data = await response.json();
+    console.log('Received receipts data:', data);
+
+    const receiptsArray = Array.isArray(data)
+      ? data
+      : data.data || data.receipts || [];
+
+    /* ===============================
+       ✅ FILTER ONLY RECEIPTS
+    =============================== */
+    const receiptOnlyData = receiptsArray.filter(item =>
+      (
+        item.TransactionType ||
+     
+        '').toLowerCase() === 'receipt'
+    );
+
+    /* ===============================
+       SORTING
+    =============================== */
+    const sortedData = receiptOnlyData.sort((a, b) => {
+      const dateA = new Date(a.receipt_date || a.created_at || a.Date);
+      const dateB = new Date(b.receipt_date || b.created_at || b.Date);
+      return dateB - dateA ||
+        (b.VoucherID - a.VoucherID) ||
+        (b.id - a.id);
+    });
+
+    /* ===============================
+       TRANSFORM DATA
+    =============================== */
+    const transformedData = sortedData.map(receipt => {
+      const voucherId =
+        receipt.VoucherID ||
+        receipt.id ||
+        receipt.receipt_id ||
+        '';
+
+      const retailerName =
+        receipt.retailer?.business_name ||
+        receipt.payee_name ||
+        receipt.retailer_name ||
+        receipt.PartyName ||
+        'N/A';
+
+      const amount = parseFloat(
+        receipt.amount ||
+        receipt.paid_amount ||
+        receipt.Amount ||
+        0
+      );
+
+      return {
+        ...receipt,
+        id: voucherId,
+        VoucherID: voucherId,
+        payee: retailerName,
+        VchNo:
+          receipt.receipt_number ||
+          receipt.VchNo ||
+          receipt.VoucherNo ||
+          '',
+        amount: `₹ ${amount.toLocaleString('en-IN')}`,
+        paid_amount: amount,
+        Date: receipt.receipt_date || receipt.Date || receipt.created_at,
+        receipt_date: receipt.receipt_date
+          ? new Date(receipt.receipt_date).toLocaleDateString('en-IN')
+          : 'N/A',
+        payment_method:
+          receipt.payment_method ||
+          receipt.PaymentMethod ||
+          'N/A',
+        InvoiceNumber:
+          receipt.invoice_number ||
+          receipt.InvoiceNumber ||
+          receipt.invoice_no ||
+          ''
+      };
+    });
+
+    console.log('Filtered Receipt Data:', transformedData);
+    setReceiptData(transformedData);
+
+  } catch (err) {
+    console.error('Error fetching receipts:', err);
+    alert('Server connection error');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   // Fetch accounts for retailer dropdown
   const fetchAccounts = async () => {

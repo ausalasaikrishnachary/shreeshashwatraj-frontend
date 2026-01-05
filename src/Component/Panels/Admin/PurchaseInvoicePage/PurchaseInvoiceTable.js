@@ -22,12 +22,10 @@ const PurchaseInvoiceTable = () => {
   const [endDate, setEndDate] = useState('2025-07-08');
     const [deleting, setDeleting] = useState({});
 
-  // Fetch purchase invoices from API
   useEffect(() => {
     fetchPurchaseInvoices();
   }, []);
 
-  // Enhanced fetch function with better error handling and filtering
 const fetchPurchaseInvoices = async () => {
   try {
     setLoading(true);
@@ -39,14 +37,12 @@ const fetchPurchaseInvoices = async () => {
     
     const data = await response.json();
     
-    // Filter transactions where TransactionType is 'Purchase'
     const purchaseInvoicesData = data.filter(transaction => 
       transaction.TransactionType === 'Purchase'
     );
     
     console.log('Raw purchase data:', purchaseInvoicesData);
     
-    // Transform the data to match your table structure
     const transformedInvoices = purchaseInvoicesData.map(invoice => ({
       id: invoice.VoucherID,
       supplier: invoice.PartyName || invoice.AccountName || 'N/A',
@@ -79,7 +75,6 @@ const handleInvoiceNumberClick = async (invoice) => {
     
     console.log('Fetching details for VoucherID:', voucherId);
     
-    // Fetch complete invoice data including batch details
     const response = await fetch(`${baseurl}/transactions/${voucherId}`);
     if (!response.ok) {
       throw new Error('Failed to fetch invoice details');
@@ -92,7 +87,6 @@ const handleInvoiceNumberClick = async (invoice) => {
     let items = [];
     let batchDetails = [];
     
-  // Function to get invoice by invoice number
   const getInvoiceByNumber = async (invoiceNumber) => {
     try {
       console.log('Fetching invoice by number:', invoiceNumber);
@@ -204,7 +198,6 @@ const handleInvoiceNumberClick = async (invoice) => {
 
     localStorage.setItem('previewInvoice', JSON.stringify(previewData));
     
-    // Navigate to preview page WITH the ID
     navigate(`/purchase/invoice-preview/${voucherId}`);
     
   } catch (error) {
@@ -293,21 +286,6 @@ const formatDate = (dateString) => {
   }
 };
 
-  const getPaymentStatus = (invoice) => {
-    if (invoice.ChequeNo && invoice.ChequeNo !== 'NULL') {
-      return 'Paid';
-    }
-    
-    const invoiceDate = new Date(invoice.Date || invoice.EntryDate);
-    const today = new Date();
-    const daysDiff = Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24));
-    
-    if (daysDiff > 45) { 
-      return 'Overdue';
-    }
-    
-    return 'Pending';
-  };
 
   const calculatePurchaseStats = () => {
     const totalInvoices = purchaseInvoices.reduce((sum, invoice) => {
@@ -361,40 +339,7 @@ const formatDate = (dateString) => {
     ];
   };
 
-    // Handle Delete Invoice
-    // const handleDeleteInvoice = async (invoice) => {
-    //   const voucherId = invoice.originalData?.VoucherID || invoice.id;
-    //   const invoiceNumber = invoice.number;
-      
-    //   if (!window.confirm(`Are you sure you want to delete invoice ${invoiceNumber}? This action cannot be undone and will update stock values.`)) {
-    //     return;
-    //   }
-      
-    //   try {
-    //     setDeleting(prev => ({ ...prev, [voucherId]: true }));
-        
-    //     const response = await fetch(`${baseurl}/transactions/${voucherId}`, {
-    //       method: 'DELETE',
-    //     });
-        
-    //     if (!response.ok) {
-    //       throw new Error('Failed to delete invoice');
-    //     }
-        
-    //     const result = await response.json();
-        
-    //     // Remove from local state
-    //     setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
-        
-    //     alert('Invoice deleted successfully!');
-        
-    //   } catch (error) {
-    //     console.error('Error deleting invoice:', error);
-    //     alert('Error deleting invoice: ' + error.message);
-    //   } finally {
-    //     setDeleting(prev => ({ ...prev, [voucherId]: false }));
-    //   }
-    // };
+
 
     // Handle Delete Invoice
 const handleDeleteInvoice = async (invoice) => {
@@ -481,7 +426,7 @@ const handleDeleteInvoice = async (invoice) => {
     {
       key: 'totalAmount',
       title: 'TOTAL AMOUNT',
-      style: { textAlign: 'right' }
+      style: { textAlign: 'center' }
     },
     {
       key: 'status',

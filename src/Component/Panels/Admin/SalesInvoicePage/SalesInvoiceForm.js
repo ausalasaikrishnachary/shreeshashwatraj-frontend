@@ -23,6 +23,8 @@ const CreateInvoice = ({ user }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [staffMembers, setStaffMembers] = useState([]);
   const [selectedStaffId, setSelectedStaffId] = useState("");
+  const [isPriceEditing, setIsPriceEditing] = useState(false);
+const [tempPrice, setTempPrice] = useState("");
   const [editingItemIndex, setEditingItemIndex] = useState(null);
   const [editingVoucherId, setEditingVoucherId] = useState(null);
   const navigate = useNavigate();
@@ -496,33 +498,24 @@ const CreateInvoice = ({ user }) => {
     let cgst, sgst, igst;
     
     if (sameState) {
-      // ✅ Same State: Divide GST by 2 for CGST and SGST
-      cgst = gst / 2;    // Percentage: 2.5% for 5% GST
-      sgst = gst / 2;    // Percentage: 2.5% for 5% GST
-      igst = 0;          // Percentage: 0%
+ 
+      cgst = gst / 2;   
+      sgst = gst / 2; 
+      igst = 0;       
     } else {
-      // ✅ Different State: IGST = GST, CGST = 0, SGST = 0
-      cgst = 0;          // Percentage: 0%
-      sgst = 0;          // Percentage: 0%
-      igst = gst;        // Percentage: 5% for 5% GST
-    }
     
-    console.log("🧮 GST Calculation:", {
-      "Product": itemForm.product || "N/A",
-      "GST": `${gst}%`,
-      "Same State": sameState,
-      "CGST %": `${cgst}%`,
-      "SGST %": `${sgst}%`,
-      "IGST %": `${igst}%`
-    });
+      cgst = 0;         
+      sgst = 0;      
+      igst = gst;      
+    }
+
     
     return {
       ...itemForm,
       total: total.toFixed(2),
-      // ✅ Store PERCENTAGES for items table
-      cgst: cgst.toFixed(2),  // e.g., "2.50" or "0.00"
-      sgst: sgst.toFixed(2),  // e.g., "2.50" or "0.00"
-      igst: igst.toFixed(2),  // e.g., "5.00" or "0.00"
+      cgst: cgst.toFixed(2),  
+      sgst: sgst.toFixed(2),  
+      igst: igst.toFixed(2), 
       cess: cess,
       batchDetails: selectedBatchDetails
     };
@@ -547,19 +540,18 @@ const CreateInvoice = ({ user }) => {
       let cgst, sgst, igst;
       
       if (sameState) {
-        cgst = gst / 2;    // Percentage: 2.5% for 5% GST
-        sgst = gst / 2;    // Percentage: 2.5% for 5% GST
-        igst = 0;          // Percentage: 0%
+        cgst = gst / 2;   
+        sgst = gst / 2;    
+        igst = 0;       
       } else {
-        cgst = 0;          // Percentage: 0%
-        sgst = 0;          // Percentage: 0%
-        igst = gst;        // Percentage: 5% for 5% GST
+        cgst = 0;         
+        sgst = 0;         
+        igst = gst;      
       }
       
       return {
         ...item,
         total: total.toFixed(2),
-        // ✅ Update percentages based on current state
         cgst: cgst.toFixed(2),
         sgst: sgst.toFixed(2),
         igst: igst.toFixed(2)
@@ -581,15 +573,7 @@ const CreateInvoice = ({ user }) => {
 
     const calculatedItem = calculateItemTotal();
     
-    console.log("📦 Adding Item with GST:", {
-      "Product": calculatedItem.product,
-      "GST": `${calculatedItem.gst}%`,
-      "CGST": `${calculatedItem.cgst}%`,
-      "SGST": `${calculatedItem.sgst}%`,
-      "IGST": `${calculatedItem.igst}%`,
-      "Quantity": calculatedItem.quantity,
-      "Same State": isSameState() ? "Yes" : "No"
-    });
+
 
     const finalItem = {
       ...calculatedItem,
@@ -625,7 +609,7 @@ const CreateInvoice = ({ user }) => {
       product: "",
       product_id: "",
       description: "",
-      quantity: 1,
+      quantity: 0,
       price: 0,
       discount: 0,
       gst: 0,
@@ -692,7 +676,7 @@ const CreateInvoice = ({ user }) => {
       product: "",
       product_id: "",
       description: "",
-      quantity: 1,
+      quantity: 0,
       price: 0,
       discount: 0,
       gst: 0,
@@ -907,15 +891,6 @@ const CreateInvoice = ({ user }) => {
         }
       });
 
-      console.log('💰 Voucher Table GST Data:', {
-        "Same State": sameState ? "Yes" : "No",
-        "CGST Amount": `₹${totalCGSTAmount.toFixed(2)}`,
-        "SGST Amount": `₹${totalSGSTAmount.toFixed(2)}`,
-        "IGST Amount": `₹${totalIGSTAmount.toFixed(2)}`,
-        "CGST %": `${totalCGSTPercentage}%`,
-        "SGST %": `${totalSGSTPercentage}%`,
-        "IGST %": `${totalIGSTPercentage}%`
-      });
 
       // Extract batch details from items with PERCENTAGES for items table
       const batchDetails = invoiceData.items.map(item => {
@@ -1082,7 +1057,6 @@ const CreateInvoice = ({ user }) => {
     return (priceWithGst * quantity).toFixed(2);
   };
 
-  // ... rest of the JSX code remains the same as your original ...
   return (
     <div className="admin-layout">
       <AdminSidebar 
@@ -1369,7 +1343,6 @@ const CreateInvoice = ({ user }) => {
         setBatches(batchData);
 
         if (selectedProduct.maintain_batch === 0 && batchData.length > 0) {
-          // If maintain_batch is 0, select the first (or default) batch automatically
           const defaultBatch = batchData[0];
           setSelectedBatch(defaultBatch.batch_number);
           setSelectedBatchDetails(defaultBatch);
@@ -1380,7 +1353,6 @@ const CreateInvoice = ({ user }) => {
             price: defaultBatch.selling_price
           }));
         } else {
-          // If maintain_batch > 0, let user choose from dropdown
           setSelectedBatch("");
           setSelectedBatchDetails(null);
         }
@@ -1392,7 +1364,6 @@ const CreateInvoice = ({ user }) => {
         setSelectedBatchDetails(null);
       }
     } else {
-      // Reset if no product selected
       setItemForm(prev => ({
         ...prev,
         product: "",
@@ -1413,10 +1384,11 @@ const CreateInvoice = ({ user }) => {
   <option value="">Select Product</option>
   {products
     .filter(
-      (p) =>
-        p.group_by === "Salescatalog" ||
+        (p) =>
+        (p.group_by === "Salescatalog" ||
         p.can_be_sold === 1 ||
-        p.can_be_sold === true
+        p.can_be_sold === true) &&
+        p.product_type === "PAKKA" 
     )
     .map((p) => (
       <option key={p.id} value={p.goods_name}>
@@ -1425,7 +1397,7 @@ const CreateInvoice = ({ user }) => {
     ))}
 </Form.Select>
 
-{/* Batch Dropdown */}
+
 {batches.length > 0 && itemForm.maintain_batch !== 0 && (
   <Form.Select
     className="mt-2 border-primary"
@@ -1475,18 +1447,105 @@ const CreateInvoice = ({ user }) => {
       className="border-primary"
     />
   </Col>
+{/* <Col md={2}>
+  <div className="d-flex align-items-center justify-content-between mb-1">
+    <Form.Label className="fw-bold text-primary mb-0">
+      Price (₹)
+    </Form.Label>
 
-  <Col md={2}>
-    <Form.Label className="fw-bold">Price (₹)</Form.Label>
-    <Form.Control
-      name="price"
-      type="number"
-      value={itemForm.price}
-      readOnly
-      className="border-primary bg-light"
-    />
-  </Col>
+    <div className="d-flex gap-2">
+      {!isPriceEditing ? (
+        <FaEdit
+          className="text-warning cursor-pointer"
+          size={14}
+          title="Click to edit price manually"
+          onClick={() => {
+            setIsPriceEditing(true);
+            setTempPrice(itemForm.price || "");
+            window.alert("✏️ You can now edit the price manually.");
+          }}
+          style={{ cursor: "pointer" }}
+        />
+      ) : (
+        <>
+          <FaSave
+            className="text-success cursor-pointer"
+            size={14}
+            title="Save price"
+            onClick={() => {
+              const newPrice = parseFloat(tempPrice) || 0;
+              setItemForm(prev => ({
+                ...prev,
+                price: newPrice
+              }));
+              setIsPriceEditing(false);
+              setTempPrice("");
+              window.alert(`✅ Manual price updated successfully!\nNew Price: ₹${newPrice.toFixed(2)}`);
+            }}
+            style={{ cursor: "pointer" }}
+          />
+          <FaTimes
+            className="text-danger cursor-pointer"
+            size={14}
+            title="Cancel editing"
+            onClick={() => {
+              setIsPriceEditing(false);
+              setTempPrice("");
+              window.alert("❌ Price editing cancelled. Reverted to original price.");
+            }}
+            style={{ cursor: "pointer" }}
+          />
+        </>
+      )}
+    </div>
+  </div>
 
+  <Form.Control
+    name="price"
+    type="number"
+    step="0.01"
+    min="0"
+    value={isPriceEditing ? tempPrice : (itemForm.price || "")}
+    onChange={(e) => {
+      if (isPriceEditing) {
+        setTempPrice(e.target.value);
+      }
+    }}
+    placeholder={isPriceEditing ? "Enter custom price" : "Auto-filled / Click edit icon"}
+    className={`border-primary shadow-sm ${!isPriceEditing ? 'bg-light' : 'border-success'}`}
+    readOnly={!isPriceEditing}
+    style={{ 
+      fontWeight: "500",
+      height: "42px"
+    }}
+  />
+
+
+</Col> */}
+
+
+<Col md={2}>
+  <Form.Label className="fw-bold text-primary">
+    Price (₹)
+  </Form.Label>
+
+  <Form.Control
+    name="price"
+    type="number"
+    step="0.01"
+    min="0"
+    value={itemForm.price || ""}
+    onChange={handleItemChange}
+    placeholder="Enter price manually"
+    className="border-primary shadow-sm"
+    style={{ 
+      // fontWeight: "500",
+      height: "42px"
+    }}
+  />
+
+
+</Col>
   <Col md={2}>
     <Form.Label className="fw-bold">Discount (%)</Form.Label>
     <Form.Control

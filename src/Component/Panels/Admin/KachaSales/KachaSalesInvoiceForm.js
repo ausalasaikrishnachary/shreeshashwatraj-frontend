@@ -28,7 +28,6 @@ const KachaSalesInvoiceForm = ({ user }) => {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  // Load from localStorage on component mount OR fetch existing invoice data if editing
   const [invoiceData, setInvoiceData] = useState(() => {
     const savedData = localStorage.getItem('draftInvoice');
     if (savedData) {
@@ -1096,9 +1095,10 @@ const KachaSalesInvoiceForm = ({ user }) => {
                       {products
                         .filter(
                           (p) =>
-                            p.group_by === "Salescatalog" ||
+                            (p.group_by === "Salescatalog" ||
                             p.can_be_sold === 1 ||
-                            p.can_be_sold === true
+                            p.can_be_sold === true) &&
+                            p.product_type === "KACHA"
                         )
                         .map((p) => (
                           <option key={p.id} value={p.goods_name}>
@@ -1157,16 +1157,29 @@ const KachaSalesInvoiceForm = ({ user }) => {
                     />
                   </Col>
 
-                  <Col md={2}>
-                    <Form.Label className="fw-bold">Price (₹)</Form.Label>
-                    <Form.Control
-                      name="price"
-                      type="number"
-                      value={itemForm.price}
-                      readOnly
-                      className="border-primary bg-light"
-                    />
-                  </Col>
+              <Col md={2}>
+  <Form.Label className="fw-bold text-primary">
+    Price (₹)
+  </Form.Label>
+
+  <Form.Control
+    name="price"
+    type="number"
+    step="0.01"
+    min="0"
+    value={itemForm.price || ""}
+    onChange={handleItemChange}
+    placeholder="Enter price manually"
+    className="border-primary shadow-sm"
+    style={{
+      height: "42px"
+    }}
+  />
+
+  {/* <Form.Text className="text-muted small mt-1">
+    Manual entry • You can edit the price freely
+  </Form.Text> */}
+</Col>
 
                   <Col md={2}>
                     <Form.Label className="fw-bold">Discount (%)</Form.Label>

@@ -21,7 +21,7 @@ const ReceiptView = () => {
 
   useEffect(() => {
     fetchReceipt();
-     fetchInvoices(); // Add this line
+     fetchInvoices();
 
   }, [id]);
 const fetchReceipt = async () => {
@@ -33,9 +33,6 @@ const fetchReceipt = async () => {
       const data = await response.json(); 
       setReceipt(data);
       
-      console.log('🔍 FULL API RESPONSE:', data);
-      console.log('🔍 Available fields:', Object.keys(data));
-      console.log('🔍 Transaction proof field:', data.transaction_proof); // Add this
       
       // Update edit form data with correct retailer ID
       setEditFormData({
@@ -120,11 +117,9 @@ const fetchInvoices = async () => {
     console.error('Error fetching invoices:', err);
   }
 };
-  // File change handler for edit modal
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert('File size should be less than 5MB');
         return;

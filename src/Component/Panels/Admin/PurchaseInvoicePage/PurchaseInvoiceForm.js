@@ -18,12 +18,11 @@ const CreateProductInvoice = ({ user }) => {
   const [products, setProducts] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [nextInvoiceNumber, setNextInvoiceNumber] = useState("PINV001");
-  const [editingIndex, setEditingIndex] = useState(null); // Track which item is being edited
+  const [editingIndex, setEditingIndex] = useState(null); 
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const [hasFetchedInvoiceNumber, setHasFetchedInvoiceNumber] = useState(false);
   const navigate = useNavigate();
 
-  // Load from localStorage on component mount
   const [invoiceData, setInvoiceData] = useState(() => {
     const savedData = localStorage.getItem('draftPurchaseInvoice');
     if (savedData) {
@@ -1011,7 +1010,7 @@ const handleSubmit = async (e) => {
 
               {/* Item Section - Filter products by Purchaseditems */}
               <div className="item-section mb-3 mt-3 bg-white p-3 rounded">
-                <h6 className="text-primary mb-3">Add Items</h6>
+                <h6 className="text-primary mb-3">Add Item</h6>
                 <Row className="align-items-end">
                   <Col md={2}>
                     <div className="d-flex justify-content-between align-items-center mb-1">
@@ -1055,7 +1054,6 @@ const handleSubmit = async (e) => {
         setBatches(batchData);
 
         if (selectedProduct.maintain_batch === 0 && batchData.length > 0) {
-          // Auto-select first batch if maintain_batch is 0
           const defaultBatch = batchData[0];
           setSelectedBatch(defaultBatch.batch_number);
           setSelectedBatchDetails(defaultBatch);
@@ -1066,7 +1064,6 @@ const handleSubmit = async (e) => {
             price: defaultBatch.selling_price
           }));
         } else {
-          // If maintain_batch > 0, let user select batch
           setSelectedBatch("");
           setSelectedBatchDetails(null);
         }
@@ -1078,7 +1075,6 @@ const handleSubmit = async (e) => {
         setSelectedBatchDetails(null);
       }
     } else {
-      // Reset form if no product selected
       setItemForm(prev => ({
         ...prev,
         product: "",
@@ -1098,7 +1094,7 @@ const handleSubmit = async (e) => {
 >
   <option value="">Select Product</option>
   {products
-    .filter((p) => p.group_by === "Purchaseditems")
+.filter((p) => p.group_by === "Purchaseditems" && p.product_type === "PAKKA")
     .map((p) => (
       <option key={p.id} value={p.goods_name}>
         {p.goods_name}
@@ -1157,16 +1153,29 @@ const handleSubmit = async (e) => {
                     />
                   </Col>
 
-                  <Col md={2}>
-                    <Form.Label className="fw-bold">Price (₹)</Form.Label>
-                    <Form.Control
-                      name="price"
-                      type="number"
-                      value={itemForm.price}
-                      readOnly
-                      className="border-primary bg-light"
-                    />
-                  </Col>
+            <Col md={2}>
+  <Form.Label className="fw-bold text-primary">
+    Price (₹)
+  </Form.Label>
+
+  <Form.Control
+    name="price"
+    type="number"
+    step="0.01"
+    min="0"
+    value={itemForm.price || ""}
+    onChange={handleItemChange}
+    placeholder="Enter price manually"
+    className="border-primary shadow-sm"
+    style={{
+      height: "42px"
+    }}
+  />
+{/* 
+  <Form.Text className="text-muted small mt-1">
+    Manual entry allowed • You can change the price
+  </Form.Text> */}
+</Col>
 
                   <Col md={2}>
                     <Form.Label className="fw-bold">Discount (%)</Form.Label>
