@@ -113,7 +113,7 @@ const fetchReceipt = async () => {
 const fetchInvoices = async () => {
   try {
     console.log('Fetching invoices from:', `${baseurl}/api/purchasevouchersnumber`);
-    const response = await fetch(`${baseurl}/api/purchasevouchersnumber`);
+    const response = await fetch(`${baseurl}/api/purchasevouchersnumber?type=Purchase`);
     if (response.ok) {
       const data = await response.json();
       console.log('Received invoices data:', data);
@@ -757,7 +757,7 @@ const fetchAllAccountsAndFindRetailer = async (retailerId) => {
           <div className="receipt-header">
             <h1 className="receipt-main-title">View Voucher</h1>
             <div className="receipt-customer-section">
-              <h2 className="receipt-customer-title">Customer: {receipt.payee_name || 'N/A'}</h2>
+              <h2 className="receipt-customer-title">Supplier: {receipt.payee_name || 'N/A'}</h2>
             </div>
             <hr className="receipt-divider" />
           </div>
@@ -846,9 +846,9 @@ const fetchAllAccountsAndFindRetailer = async (retailerId) => {
     </div>
 
 
-    <div className="col-md-6">
+    {/* <div className="col-md-6">
       <p><strong>Voucher Number:</strong> {receipt.receipt_number || 'N/A'}</p>
-    </div>
+    </div> */}
   </div>
 
   {/* Third Row - Two Columns */}

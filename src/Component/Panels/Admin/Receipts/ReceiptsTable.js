@@ -49,7 +49,7 @@ const ReceiptsTable = () => {
   const fetchInvoices = async () => {
     try {
       console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber`);
-      const response = await fetch(`${baseurl}/api/vouchersnumber`);
+      const response = await fetch(`${baseurl}/api/vouchersnumber?type=Sales`);
       if (response.ok) {
         const data = await response.json();
         console.log('Received invoices data:', data);
@@ -62,100 +62,181 @@ const ReceiptsTable = () => {
     }
   };
 
-  const fetchInvoiceBalance = async (retailerId, invoiceNumber) => {
-    if (!retailerId || !invoiceNumber) {
+ const fetchInvoiceBalance = async (retailerId, invoiceNumber) => {
+  if (!retailerId || !invoiceNumber) {
+    setInvoiceBalance(0);
+    setFormData(prev => ({
+      ...prev,
+      amount: ''
+    }));
+    return;
+  }
+
+  try {
+    setIsFetchingBalance(true);
+    console.log(`Fetching balance for retailer ${retailerId}, invoice ${invoiceNumber}`);
+    
+    // First, check if we have the retailer information
+    const selectedRetailer = accounts.find(acc => acc.id == retailerId);
+    if (!selectedRetailer) {
+      console.error('Retailer not found');
       setInvoiceBalance(0);
-      setFormData(prev => ({
-        ...prev,
-        amount: ''
-      }));
+      setFormData(prev => ({ ...prev, amount: '' }));
+      setIsFetchingBalance(false);
       return;
     }
 
     try {
-      setIsFetchingBalance(true);
-      console.log(`Fetching balance for retailer ${retailerId}, invoice ${invoiceNumber}`);
-      
-      const existingReceipt = receiptData.find(receipt => 
-        receipt.retailer?.id == retailerId && 
-        receipt.invoice_numbers?.includes(invoiceNumber)
+      const response = await fetch(
+        `${baseurl}/api/receipts?retailer_id=${retailerId}&invoice_number=${invoiceNumber}`
       );
-
-      if (existingReceipt?.total_balance_amount) {
-        console.log('Found balance in existing data:', existingReceipt.total_balance_amount);
-        setInvoiceBalance(existingReceipt.total_balance_amount);
-        setFormData(prev => ({
-          ...prev,
-          amount: existingReceipt.total_balance_amount
-        }));
-        setIsFetchingBalance(false);
-        return;
-      }
-
-      // If not found in existing data, try API endpoint
-      try {
-        const response = await fetch(
-          
-        );
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Received receipt data for balance check:', data);
         
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Received balance data from API:', data);
+        // Check if we got an array or single object
+        let balanceAmount = 0;
+        
+        if (Array.isArray(data)) {
+          // Filter receipts for the specific invoice
+          const relevantReceipts = data.filter(receipt => 
+            receipt.invoice_number === invoiceNumber || 
+            (Array.isArray(receipt.invoice_numbers) && receipt.invoice_numbers.includes(invoiceNumber))
+          );
           
-          const balanceAmount = data.total_balance_amount || data.balance || data.amount_due || 0;
-          setInvoiceBalance(balanceAmount);
-          
-          setFormData(prev => ({
-            ...prev,
-            amount: balanceAmount
-          }));
-        } else {
-          console.warn('No balance found from API, checking invoices data');
-          const selectedInvoiceData = invoices.find(inv => inv.VchNo === invoiceNumber);
-          if (selectedInvoiceData) {
-            const invoiceAmount = parseFloat(selectedInvoiceData.TotalAmount || selectedInvoiceData.total_amount || 0);
-            const paidAmount = parseFloat(selectedInvoiceData.paid_amount || 0);
-            const balance = invoiceAmount - paidAmount;
+          if (relevantReceipts.length > 0) {
+            // Get the latest receipt for this invoice
+            const latestReceipt = relevantReceipts.sort((a, b) => 
+              new Date(b.created_at) - new Date(a.created_at)
+            )[0];
             
-            if (balance > 0) {
-              setInvoiceBalance(balance);
-              setFormData(prev => ({
-                ...prev,
-                amount: balance
-              }));
-            } else {
-              setInvoiceBalance(0);
-              setFormData(prev => ({
-                ...prev,
-                amount: ''
-              }));
-              alert('This invoice is already fully paid.');
+            balanceAmount = parseFloat(latestReceipt.total_balance_amount || latestReceipt.balance_amount || 0);
+            console.log('Found balance from receipts array:', balanceAmount);
+          }
+        } else if (data.total_balance_amount || data.balance_amount) {
+          // Single receipt object
+          balanceAmount = parseFloat(data.total_balance_amount || data.balance_amount || 0);
+          console.log('Found balance from single receipt:', balanceAmount);
+        } else if (data.data) {
+          // Response has data property
+          const receiptData = data.data;
+          if (Array.isArray(receiptData)) {
+            const relevantReceipt = receiptData.find(receipt => 
+              receipt.invoice_number === invoiceNumber
+            );
+            if (relevantReceipt) {
+              balanceAmount = parseFloat(relevantReceipt.total_balance_amount || relevantReceipt.balance_amount || 0);
             }
           }
         }
-      } catch (apiError) {
-        console.error('API error fetching balance:', apiError);
-        // Fallback: show empty amount
+        
+        if (balanceAmount > 0) {
+          setInvoiceBalance(balanceAmount);
+          setFormData(prev => ({
+            ...prev,
+            amount: balanceAmount.toString()
+          }));
+          setIsFetchingBalance(false);
+          return;
+        }
+      }
+    } catch (apiError) {
+      console.error('API error fetching receipt balance:', apiError);
+    }
+
+    const existingReceipt = receiptData.find(receipt => {
+      const matchesRetailer = receipt.PartyID == retailerId || 
+                             receipt.AccountID == retailerId ||
+                             receipt.retailer?.id == retailerId;
+      
+      // Check if receipt has this invoice
+      const matchesInvoice = receipt.invoice_number === invoiceNumber ||
+                            (Array.isArray(receipt.invoice_numbers) && 
+                             receipt.invoice_numbers.includes(invoiceNumber));
+      
+      return matchesRetailer && matchesInvoice;
+    });
+
+    if (existingReceipt?.total_balance_amount) {
+      console.log('Found balance in existing data:', existingReceipt.total_balance_amount);
+      const balance = parseFloat(existingReceipt.total_balance_amount);
+      setInvoiceBalance(balance);
+      setFormData(prev => ({
+        ...prev,
+        amount: balance.toString()
+      }));
+      setIsFetchingBalance(false);
+      return;
+    }
+
+    // Fallback 2: Check invoices data
+    console.warn('No balance found from receipts API, checking invoices data');
+    const selectedInvoiceData = invoices.find(inv => inv.VchNo === invoiceNumber);
+    if (selectedInvoiceData) {
+      const invoiceAmount = parseFloat(
+        selectedInvoiceData.TotalAmount || 
+        selectedInvoiceData.total_amount || 
+        selectedInvoiceData.amount || 
+        0
+      );
+      
+      const receiptsForInvoice = receiptData.filter(receipt => 
+        receipt.invoice_number === invoiceNumber ||
+        (Array.isArray(receipt.invoice_numbers) && receipt.invoice_numbers.includes(invoiceNumber))
+      );
+      
+      const totalPaid = receiptsForInvoice.reduce((sum, receipt) => {
+        return sum + parseFloat(receipt.paid_amount || receipt.amount || 0);
+      }, 0);
+      
+      const balance = invoiceAmount - totalPaid;
+      
+      console.log(`Invoice amount: ${invoiceAmount}, Total paid: ${totalPaid}, Balance: ${balance}`);
+      
+      if (balance > 0) {
+        setInvoiceBalance(balance);
+        setFormData(prev => ({
+          ...prev,
+          amount: balance.toString()
+        }));
+      } else {
         setInvoiceBalance(0);
         setFormData(prev => ({
           ...prev,
           amount: ''
         }));
+        if (balance === 0) {
+          alert('This invoice is already fully paid.');
+        } else {
+          alert('Invoice has been overpaid. Please check the invoice details.');
+        }
       }
-    } catch (err) {
-      console.error('Error fetching invoice balance:', err);
+    } else {
+      // No invoice found
+      console.warn('Invoice not found in invoices data');
       setInvoiceBalance(0);
       setFormData(prev => ({
         ...prev,
         amount: ''
       }));
-    } finally {
-      setIsFetchingBalance(false);
+      alert('Invoice not found. Please check the invoice number.');
     }
-  };
-
+  } catch (err) {
+    console.error('Error fetching invoice balance:', err);
+    setInvoiceBalance(0);
+    setFormData(prev => ({
+      ...prev,
+      amount: ''
+    }));
+    alert('Error fetching invoice balance. Please try again or enter amount manually.');
+  } finally {
+    setIsFetchingBalance(false);
+  }
+};
   // Auto-fetch balance when both retailer and invoice are selected
   useEffect(() => {
+
     if (formData.retailerId && formData.invoiceNumber) {
       const timer = setTimeout(() => {
         fetchInvoiceBalance(formData.retailerId, formData.invoiceNumber);
@@ -342,7 +423,6 @@ const ReceiptsTable = () => {
     }
   };
 
-  // Fetch all receipts
 const fetchReceipts = async () => {
   try {
     setIsLoading(true);
@@ -368,10 +448,7 @@ const fetchReceipts = async () => {
        ✅ FILTER ONLY RECEIPTS
     =============================== */
     const receiptOnlyData = receiptsArray.filter(item =>
-      (
-        item.TransactionType ||
-     
-        '').toLowerCase() === 'receipt'
+      (item.TransactionType || '').toLowerCase() === 'receipt'
     );
 
     /* ===============================
@@ -400,6 +477,7 @@ const fetchReceipts = async () => {
         receipt.payee_name ||
         receipt.retailer_name ||
         receipt.PartyName ||
+        receipt.AccountName ||
         'N/A';
 
       const amount = parseFloat(
@@ -409,10 +487,19 @@ const fetchReceipts = async () => {
         0
       );
 
+      // Get retailer ID from multiple possible fields
+      const retailerId = 
+        receipt.retailer?.id ||
+        receipt.PartyID ||
+        receipt.AccountID ||
+        receipt.retailer_id ||
+        '';
+
       return {
         ...receipt,
         id: voucherId,
         VoucherID: voucherId,
+        retailerId: retailerId, // Add retailer ID
         payee: retailerName,
         VchNo:
           receipt.receipt_number ||
@@ -433,7 +520,13 @@ const fetchReceipts = async () => {
           receipt.invoice_number ||
           receipt.InvoiceNumber ||
           receipt.invoice_no ||
-          ''
+          '',
+           data_type: receipt.data_type || 'Sales',
+        total_balance_amount: parseFloat(receipt.total_balance_amount || receipt.balance_amount || 0),
+        balance_amount: parseFloat(receipt.balance_amount || receipt.total_balance_amount || 0),
+        invoice_numbers: Array.isArray(receipt.invoice_numbers) 
+          ? receipt.invoice_numbers 
+          : (receipt.invoice_number ? [receipt.invoice_number] : [])
       };
     });
 
@@ -447,7 +540,6 @@ const fetchReceipts = async () => {
     setIsLoading(false);
   }
 };
-
 
   // Fetch accounts for retailer dropdown
   const fetchAccounts = async () => {
@@ -615,7 +707,8 @@ const fetchReceipts = async () => {
       formDataToSend.append('reconciliation_option', formData.reconciliationOption);
       formDataToSend.append('retailer_name', formData.retailerBusinessName);
       formDataToSend.append('invoice_number', formData.invoiceNumber);
-      
+          formDataToSend.append('data_type', 'Sales');
+
       // Append file if exists
       if (formData.transactionProofFile) {
         formDataToSend.append('transaction_proof', formData.transactionProofFile);
@@ -655,15 +748,7 @@ const fetchReceipts = async () => {
         if (result.VoucherID) {
           receiptId = result.VoucherID;
         } else if (result.id) {
-          receiptId = result.id;
-        } else if (result.receipt_id) {
-          receiptId = result.receipt_id;
-        } else if (result.receiptId) {
-          receiptId = result.receiptId;
-        } else if (result.data?.VoucherID) {
-          receiptId = result.data.VoucherID;
-        } else if (result.data?.id) {
-          receiptId = result.data.id;
+         
         }
         
         console.log('Extracted receipt ID:', receiptId);
@@ -998,44 +1083,57 @@ const fetchReceipts = async () => {
                     </div>
 
                     {/* Balance and Amount Row */}
-                    <div className="row mb-4">
-                    
-                      <div className="col-md-6">
-                        <div className="mb-1">
-                          <label className="form-label">Amount *</label>
-                          <div className="input-group custom-amount-receipts-table">
-                            <select
-                              className="form-select currency-select-receipts-table"
-                              name="currency"
-                              value={formData.currency}
-                              onChange={handleInputChange}
-                            >
-                              <option>INR</option>
-                              <option>USD</option>
-                              <option>EUR</option>
-                              <option>GBP</option>
-                            </select>
-                            <input
-                              type="number"
-                              className="form-control amount-input-receipts-table"
-                              name="amount"
-                              value={formData.amount}
-                              onChange={handleInputChange}
-                              placeholder={invoiceBalance > 0 ? "Auto-filled from balance" : "Enter amount"}
-                              min="0"
-                              step="0.01"
-                              required
-                            />
-                          </div>
-                          {invoiceBalance > 0 && formData.amount && (
-                            <small className="text-success">
-                              <i className="bi bi-check-circle me-1"></i>
-                              Auto-filled from invoice balance
-                            </small>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+      {/* Balance and Amount Row */}
+<div className="row mb-4">
+  <div className="col-md-6">
+    <div className="mb-1">
+      <label className="form-label">Amount *</label>
+      <div className="input-group custom-amount-receipts-table">
+        <select
+          className="form-select currency-select-receipts-table"
+          name="currency"
+          value={formData.currency}
+          onChange={handleInputChange}
+        >
+          <option>INR</option>
+          <option>USD</option>
+          <option>EUR</option>
+          <option>GBP</option>
+        </select>
+        <input
+          type="number"
+          className="form-control amount-input-receipts-table"
+          name="amount"
+          value={formData.amount}
+          onChange={handleInputChange}
+          placeholder={isFetchingBalance ? "Fetching balance..." : (invoiceBalance > 0 ? "Auto-filled from balance" : "Enter amount")}
+          min="0"
+          step="0.01"
+          required
+          disabled={isFetchingBalance}
+        />
+        {isFetchingBalance && (
+          <div className="input-group-text">
+            <div className="spinner-border spinner-border-sm" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        )}
+      </div>
+      {isFetchingBalance ? (
+        <small className="text-info">
+          <i className="bi bi-arrow-clockwise me-1"></i>
+          Fetching invoice balance...
+        </small>
+      ) : invoiceBalance > 0 && formData.amount && formData.amount === invoiceBalance.toString() ? (
+        <small className="text-success">
+          <i className="bi bi-check-circle me-1"></i>
+          Auto-filled from invoice balance (₹{invoiceBalance.toLocaleString('en-IN')})
+        </small>
+      ) : null}
+    </div>
+  </div>
+</div>
 
                     <div className="row mb-4">
                       <div className="col-md-12">

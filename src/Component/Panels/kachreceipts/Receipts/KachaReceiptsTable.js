@@ -40,26 +40,29 @@ const KachaReceiptsTable = () => {
     retailerGstin: '',
     retailerBusinessName: '',
     transactionProofFile: '',
-    invoiceNumber: '' // Add invoice number field
+    invoiceNumber: '' 
   });
 
   // Fetch invoices from API
-  const fetchInvoices = async () => {
-    try {
-      console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber`);
-      const response = await fetch(`${baseurl}/api/vouchersnumber`);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Received invoices data:', data);
-        setInvoices(data);
-      } else {
-        console.error('Failed to fetch invoices. Status:', response.status);
-      }
-    } catch (err) {
-      console.error('Error fetching invoices:', err);
+const fetchInvoices = async () => {
+  try {
+    debugger
+    console.log('Fetching stock transfer vouchers...');
+    
+    // Call with 'stock transfer' as query parameter
+    const response = await fetch(`${baseurl}/api/vouchersnumber?type=stock transfer`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Received stock transfer vouchers:', data);
+      setInvoices(data);
+    } else {
+      console.error('Failed to fetch invoices. Status:', response.status);
     }
-  };
-
+  } catch (err) {
+    console.error('Error fetching invoices:', err);
+  }
+};
   // File change handler
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -413,9 +416,9 @@ const KachaReceiptsTable = () => {
       formDataToSend.append('transaction_date', formData.transactionDate || '');
       formDataToSend.append('reconciliation_option', formData.reconciliationOption);
       formDataToSend.append('retailer_name', formData.retailerBusinessName);
-      formDataToSend.append('invoice_number', formData.invoiceNumber); // Add invoice number
-      
-      // Append file if exists
+      formDataToSend.append('invoice_number', formData.invoiceNumber); 
+                formDataToSend.append('data_type', 'stock transfer');
+
       if (formData.transactionProofFile) {
         formDataToSend.append('transaction_proof', formData.transactionProofFile);
       }
@@ -432,11 +435,10 @@ const KachaReceiptsTable = () => {
       if (response.ok) {
         const result = await response.json();
         console.log('Receipt created successfully:', result);
-        await fetchReceipts(); // Refresh the receipts list
-        handleCloseModal(); // Close modal
+        await fetchReceipts(); 
+        handleCloseModal();
         alert('Receipt created successfully!');
         
-        // Navigate to the ReceiptView page with the new receipt's ID
         if (result.id) {
           navigate(`/receipts_view/${result.id}`);
         } else {
@@ -474,7 +476,7 @@ const KachaReceiptsTable = () => {
   // View receipt details
   const handleViewReceipt = (receiptId) => {
     console.log('View receipt:', receiptId);
-    navigate(`/receipts_view/${receiptId}`);
+    navigate(`/kachareceipts_view/${receiptId}`);
   };
 
   // Delete receipt

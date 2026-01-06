@@ -104,8 +104,8 @@ const fetchReceipt = async () => {
   // Add fetchInvoices function
 const fetchInvoices = async () => {
   try {
-    console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber`);
-    const response = await fetch(`${baseurl}/api/vouchersnumber`);
+    console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber?type=Sales`);
+    const response = await fetch(`${baseurl}/api/vouchersnumber?type=Sales`);
     if (response.ok) {
       const data = await response.json();
       console.log('Received invoices data:', data);

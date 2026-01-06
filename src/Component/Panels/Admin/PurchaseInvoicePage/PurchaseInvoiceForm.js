@@ -586,11 +586,6 @@ const handleSubmit = async (e) => {
     const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
     console.log('Submitting purchase invoice with number:', finalInvoiceNumber);
 
-    // 🔥 ADD PARTYID AND ACCOUNTID CONSOLE LOGS HERE:
-    console.log('🎯 Frontend - PartyID (selectedSupplierId):', selectedSupplierId);
-    console.log('🏦 Frontend - AccountID (from supplierInfo):', invoiceData.supplierInfo.accountId);
-    console.log('📋 Frontend - Complete Supplier Info:', invoiceData.supplierInfo);
-    console.log('🔍 Frontend - All supplierInfo keys:', Object.keys(invoiceData.supplierInfo));
 
     const sameState = isSameState();
     let totalCGST = 0;
@@ -653,12 +648,6 @@ const handleSubmit = async (e) => {
     const firstItemProductId = invoiceData.items[0]?.product_id || null;
     const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
     
-    console.log('📦 Product and Batch IDs Summary:');
-    console.log('First item product_id:', firstItemProductId);
-    console.log('First item batch_id:', firstItemBatchId);
-    console.log('All items product_ids:', invoiceData.items.map(item => item.product_id));
-    console.log('All items batch_ids:', invoiceData.items.map(item => item.batch_id));
-
     // Validate that we have product_id and batch_id
     const missingProductIds = invoiceData.items.filter(item => !item.product_id);
     const missingBatchIds = invoiceData.items.filter(item => !item.batch_id);

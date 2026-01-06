@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import './Receiptsview.css';
 
-const ReceiptView = () => {
+const Kachareceiptview = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [receipt, setReceipt] = useState(null);
@@ -77,7 +77,7 @@ const fetchReceipt = async () => {
   };
 
   const handleBack = () => {
-    navigate('/sales/receipts');
+    navigate('/kachareceipts');
   };
 
   const toggleDropdown = () => {
@@ -107,8 +107,9 @@ const fetchReceipt = async () => {
   // Add fetchInvoices function
 const fetchInvoices = async () => {
   try {
+    debugger
     console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber`);
-    const response = await fetch(`${baseurl}/api/vouchersnumber`);
+    const response = await fetch(`${baseurl}/api/vouchersnumber?type=stock transfer`);
     if (response.ok) {
       const data = await response.json();
       console.log('Received invoices data:', data);
@@ -948,4 +949,4 @@ const fetchAllAccountsAndFindRetailer = async (retailerId) => {
   );
 };
 
-export default ReceiptView;
+export default Kachareceiptview;

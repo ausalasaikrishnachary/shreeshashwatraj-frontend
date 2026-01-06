@@ -42,7 +42,9 @@ const InvoicePDFPreview = () => {
     transactionProofFile: null,
       product_id: '', 
   batch_id: '' ,
-  TransactionType: 'Receipt' 
+  TransactionType: 'Receipt' ,
+       data_type: 'stock transfer',
+
   });
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
@@ -1062,7 +1064,9 @@ const handleOpenReceiptModal = () => {
     invoiceNumber: invoiceData.invoiceNumber,
     product_id: firstItem?.product_id || '',
     batch_id: firstItem?.batch_id || '', // Ensure this is being set
-    TransactionType: 'Receipt'
+    TransactionType: 'Receipt',
+       data_type: 'stock transfer' 
+
   };
 
   console.log("✅ Updated Receipt Form Data:", updatedForm);
@@ -1130,12 +1134,12 @@ const handleOpenReceiptModal = () => {
     formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
     formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
     
-    // FIX: Properly append product_id and batch_id - ensure they have values
     formDataToSend.append('product_id', receiptFormData.product_id || '');
     formDataToSend.append('batch_id', receiptFormData.batch_id || '');
     
     formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
     formDataToSend.append('from_invoice', 'true');
+            formDataToSend.append('data_type', 'stock transfer');
 
     if (receiptFormData.transactionProofFile) {
       formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
@@ -1157,7 +1161,7 @@ const handleOpenReceiptModal = () => {
       console.log('Receipt created successfully:', result);
       handleCloseReceiptModal();
       alert('Receipt created successfully!');
-      
+        console.log('📊 Response data_type:', result.data_type);
       if (invoiceData && invoiceData.invoiceNumber) {
         fetchPaymentData(invoiceData.invoiceNumber);
       }

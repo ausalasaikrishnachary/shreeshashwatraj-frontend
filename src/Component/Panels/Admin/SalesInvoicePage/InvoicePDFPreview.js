@@ -45,10 +45,10 @@ const [receiptFormData, setReceiptFormData] = useState({
   product_id: '', 
   batch_id: '',
   TransactionType: 'Receipt',
+  data_type: 'Sales' ,
   
-  // ✅ Add these new fields
-  retailer_staff_id: '', // Staff ID of the retailer from invoice
-  invoice_assigned_staff: '' // Assigned staff from invoice
+  retailer_staff_id: '', 
+  invoice_assigned_staff: '' 
 });
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
@@ -1061,35 +1061,27 @@ const handleOpenReceiptModal = () => {
 
   const firstItem = invoiceData.items[0];
   
-  // Get staff data from invoice
   const staffId = invoiceData.supplierInfo.id || '';
   const assignedStaffName = invoiceData.assigned_staff || 'N/A';
   
-  // ✅ Get staff_id from the invoice data (not from localStorage)
-  // The staff_id who created the invoice is stored in the invoice data
   const invoiceStaffId = invoiceData.staffid || invoiceData.supplierInfo.staffid || '';
   
-  // Get logged-in user's staff ID (for who is creating the receipt)
   const loggedInStaffId = localStorage.getItem('staff_id') || invoiceStaffId || '';
   
-  console.log("👤 Invoice Staff ID:", invoiceStaffId);
-  console.log("👤 Assigned Staff Name from invoice:", assignedStaffName);
-  console.log("👤 Logged-in Staff ID (creator):", loggedInStaffId);
 
   const updatedForm = {
     retailerBusinessName: invoiceData.supplierInfo.name,
-    retailerId: staffId, // Retailer staff ID from invoice
-    assignedStaffName: assignedStaffName, // Staff name from invoice
-    staff_id: loggedInStaffId, // Logged-in user's staff ID who is creating receipt
+    retailerId: staffId, 
+    assignedStaffName: assignedStaffName, 
+    staff_id: loggedInStaffId, 
     amount: balanceDue,
     invoiceNumber: invoiceData.invoiceNumber,
     product_id: firstItem?.product_id || '',
     batch_id: firstItem?.batch_id || '',
     TransactionType: 'Receipt',
     
-    // ✅ Add these fields to ensure they're passed to backend
-    retailer_staff_id: invoiceStaffId, // Staff ID of the retailer from invoice
-    invoice_assigned_staff: assignedStaffName // Assigned staff from invoice
+    retailer_staff_id: invoiceStaffId, 
+    invoice_assigned_staff: assignedStaffName 
   };
 
   console.log("✅ Updated Receipt Form Data:", updatedForm);
@@ -1159,21 +1151,17 @@ const handleCreateReceiptFromInvoice = async () => {
     formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
     formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
     
-    // ✅ Product and batch info
     formDataToSend.append('product_id', receiptFormData.product_id || '');
     formDataToSend.append('batch_id', receiptFormData.batch_id || '');
     
-    // ✅ Business info
     formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
     
-    // ✅ Staff information from the original invoice
     formDataToSend.append('invoice_staff_id', receiptFormData.retailer_staff_id || ''); // Staff ID from original invoice
     formDataToSend.append('invoice_assigned_staff', receiptFormData.invoice_assigned_staff || ''); // Assigned staff from original invoice
     
-    // ✅ Mark as created from invoice
     formDataToSend.append('from_invoice', 'true');
-    
-    // ✅ Add voucher ID if available
+        formDataToSend.append('data_type', 'Sales');
+
     if (invoiceData && invoiceData.voucherId) {
       formDataToSend.append('voucher_id', invoiceData.voucherId);
     }
@@ -1183,14 +1171,6 @@ const handleCreateReceiptFromInvoice = async () => {
     }
 
     // Debug: Log all FormData entries
-    console.log('📤 FormData entries for receipt creation:');
-    console.log('=== STAFF INFORMATION ===');
-    console.log('staff_id (creator):', receiptFormData.staff_id);
-    console.log('retailer_id (from invoice):', receiptFormData.retailerId);
-    console.log('assigned_staff_name:', receiptFormData.assignedStaffName);
-    console.log('invoice_staff_id:', receiptFormData.retailer_staff_id);
-    console.log('invoice_assigned_staff:', receiptFormData.invoice_assigned_staff);
-    console.log('========================');
     
     for (let [key, value] of formDataToSend.entries()) {
       console.log(`${key}:`, value);
@@ -1209,7 +1189,8 @@ const handleCreateReceiptFromInvoice = async () => {
       if (result.data) {
         console.log('Receipt saved with staff data:', {
           staff_id: result.data.staff_id,
-          assigned_staff: result.data.assigned_staff
+          assigned_staff: result.data.assigned_staff,
+              data_type: result.data.data_type 
         });
       }
       

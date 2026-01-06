@@ -44,22 +44,18 @@ const VochurTable = () => {
     invoiceNumber: ''
   });
 
-  // Fetch invoices from API
   const fetchInvoices = async () => {
     try {
       console.log('Fetching invoices from:', `${baseurl}/api/purchasevouchersnumber`);
-      const response = await fetch(`${baseurl}/api/purchasevouchersnumber`);
+      const response = await fetch(`${baseurl}/api/purchasevouchersnumber?type=Purchase`);
       if (response.ok) {
         const data = await response.json();
         console.log('Received invoices data:', data);
         
-        // Check the structure of the data
         if (Array.isArray(data)) {
-          // If data is an array of objects with VchNo property
           const invoiceNumbers = data.map(invoice => ({
             id: invoice.VoucherID || invoice.id || Math.random(),
             number: invoice.VchNo || invoice.invoice_number || invoice.number || 'Unknown',
-            // Add balance-related fields if available
             total_amount: invoice.TotalAmount || invoice.total_amount || 0,
             paid_amount: invoice.paid_amount || 0
           }));
@@ -81,17 +77,14 @@ const VochurTable = () => {
         }
       } else {
         console.error('Failed to fetch invoices. Status:', response.status);
-        // Try alternative endpoint
         await fetchInvoicesFromAlternativeEndpoint();
       }
     } catch (err) {
       console.error('Error fetching invoices:', err);
-      // Try alternative endpoint
       await fetchInvoicesFromAlternativeEndpoint();
     }
   };
 
-  // Alternative endpoint for fetching invoices
   const fetchInvoicesFromAlternativeEndpoint = async () => {
     try {
       console.log('Trying alternative endpoint for invoices...');
@@ -124,7 +117,6 @@ const VochurTable = () => {
         }
       }
       
-      // If no endpoint works, set empty array
       setInvoices([]);
     } catch (err) {
       console.error('Error in alternative invoice fetch:', err);
@@ -132,134 +124,176 @@ const VochurTable = () => {
     }
   };
 
-  // Fetch invoice balance for suppliers
-  const fetchInvoiceBalance = async (supplierId, invoiceNumber) => {
-    if (!supplierId || !invoiceNumber) {
-      setInvoiceBalance(0);
-      setFormData(prev => ({
-        ...prev,
-        amount: ''
-      }));
+ const fetchInvoiceBalance = async (supplierId, invoiceNumber) => {
+  if (!supplierId || !invoiceNumber) {
+    setInvoiceBalance(0);
+    setFormData(prev => ({
+      ...prev,
+      amount: ''
+    }));
+    return;
+  }
+
+  try {
+    setIsFetchingBalance(true);
+    console.log(`Fetching balance for supplier ${supplierId}, invoice ${invoiceNumber}`);
+    
+    // Check in existing receipt data first (from your API response)
+    const existingReceipt = receiptData.find(receipt => {
+      // Match by supplier ID and invoice number
+      const receiptSupplierId = receipt.PartyID || receipt.supplier?.id || receipt.AccountID;
+      const receiptInvoiceNumbers = receipt.invoice_numbers || [receipt.InvoiceNumber];
+      
+      return receiptSupplierId == supplierId && 
+             receiptInvoiceNumbers.includes(invoiceNumber);
+    });
+
+    if (existingReceipt) {
+      console.log('Found existing receipt data:', existingReceipt);
+      
+      // Try different possible balance fields
+      const balanceAmount = 
+        existingReceipt.total_balance_amount ||
+        existingReceipt.balance_amount ||
+        (parseFloat(existingReceipt.total_invoice_amount || 0) - 
+         parseFloat(existingReceipt.total_paid_amount || 0)) ||
+        (parseFloat(existingReceipt.TotalAmount || 0) - 
+         parseFloat(existingReceipt.paid_amount || 0)) ||
+        0;
+      
+      console.log('Calculated balance from existing data:', balanceAmount);
+      
+      if (balanceAmount > 0) {
+        setInvoiceBalance(balanceAmount);
+        setFormData(prev => ({
+          ...prev,
+          amount: balanceAmount
+        }));
+      } else {
+        setInvoiceBalance(0);
+        setFormData(prev => ({
+          ...prev,
+          amount: ''
+        }));
+        alert('This invoice has no outstanding balance.');
+      }
+      
+      setIsFetchingBalance(false);
       return;
     }
 
+    // If not found in existing data, call the API
     try {
-      setIsFetchingBalance(true);
-      console.log(`Fetching balance for supplier ${supplierId}, invoice ${invoiceNumber}`);
-      
-      // Check existing receipt data for balance
-      const existingReceipt = receiptData.find(receipt => 
-        receipt.supplier?.id == supplierId && 
-        receipt.invoice_number?.includes(invoiceNumber)
+      const response = await fetch(
+        `${baseurl}/api/purchase-invoice-balance?supplier_id=${supplierId}&invoice_number=${invoiceNumber}`
       );
-
-      if (existingReceipt?.total_balance_amount) {
-        console.log('Found balance in existing data:', existingReceipt.total_balance_amount);
-        setInvoiceBalance(existingReceipt.total_balance_amount);
-        setFormData(prev => ({
-          ...prev,
-          amount: existingReceipt.total_balance_amount
-        }));
-        setIsFetchingBalance(false);
-        return;
-      }
-
-      // Try API endpoint for purchase invoice balance
-      try {
-        const response = await fetch(
-          `${baseurl}/api/purchase-invoice-balance?supplier_id=${supplierId}&invoice_number=${invoiceNumber}`
-        );
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Received balance data from API:', data);
         
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Received balance data from API:', data);
-          
-          const balanceAmount = data.total_balance_amount || data.balance || data.amount_due || 0;
+        // Extract balance from API response
+        const balanceAmount = 
+          data.total_balance_amount ||
+          data.balance_amount ||
+          data.balance ||
+          data.amount_due ||
+          (parseFloat(data.total_invoice_amount || 0) - parseFloat(data.total_paid_amount || 0)) ||
+          0;
+        
+        console.log('Extracted balance amount:', balanceAmount);
+        
+        if (balanceAmount > 0) {
           setInvoiceBalance(balanceAmount);
-          
           setFormData(prev => ({
             ...prev,
             amount: balanceAmount
           }));
         } else {
-          console.warn('No balance found from API, checking invoices data');
-          // Fallback: Calculate balance from invoice data
-          const selectedInvoiceData = invoices.find(inv => inv.number === invoiceNumber);
-          if (selectedInvoiceData) {
-            const invoiceAmount = parseFloat(selectedInvoiceData.total_amount || 0);
-            const paidAmount = parseFloat(selectedInvoiceData.paid_amount || 0);
-            const balance = invoiceAmount - paidAmount;
-            
-            if (balance > 0) {
-              setInvoiceBalance(balance);
-              setFormData(prev => ({
-                ...prev,
-                amount: balance
-              }));
-            } else {
-              setInvoiceBalance(0);
-              setFormData(prev => ({
-                ...prev,
-                amount: ''
-              }));
-              alert('This invoice is already fully paid.');
-            }
-          }
-        }
-      } catch (apiError) {
-        console.error('API error fetching balance:', apiError);
-        // Fallback: Calculate from local invoice data
-        const selectedInvoiceData = invoices.find(inv => inv.number === invoiceNumber);
-        if (selectedInvoiceData) {
-          const invoiceAmount = parseFloat(selectedInvoiceData.total_amount || 0);
-          const paidAmount = parseFloat(selectedInvoiceData.paid_amount || 0);
-          const balance = invoiceAmount - paidAmount;
-          
-          if (balance > 0) {
-            setInvoiceBalance(balance);
-            setFormData(prev => ({
-              ...prev,
-              amount: balance
-            }));
-          } else {
-            setInvoiceBalance(0);
-            setFormData(prev => ({
-              ...prev,
-              amount: ''
-            }));
-            alert('This invoice is already fully paid.');
-          }
-        } else {
-          // Show empty amount
           setInvoiceBalance(0);
           setFormData(prev => ({
             ...prev,
             amount: ''
           }));
+          alert('This invoice is already fully paid or has no balance.');
         }
+      } else {
+        console.warn('Balance API returned status:', response.status);
+        // Fallback to local invoice data
+        await fetchBalanceFromLocalInvoices(invoiceNumber);
       }
-    } catch (err) {
-      console.error('Error fetching invoice balance:', err);
+    } catch (apiError) {
+      console.error('API error fetching balance:', apiError);
+      // Fallback to local invoice data
+      await fetchBalanceFromLocalInvoices(invoiceNumber);
+    }
+  } catch (err) {
+    console.error('Error in fetchInvoiceBalance:', err);
+    setInvoiceBalance(0);
+    setFormData(prev => ({
+      ...prev,
+      amount: ''
+    }));
+  } finally {
+    setIsFetchingBalance(false);
+  }
+};
+
+// Helper function to fetch balance from local invoices data
+const fetchBalanceFromLocalInvoices = async (invoiceNumber) => {
+  const selectedInvoiceData = invoices.find(inv => inv.number === invoiceNumber);
+  if (selectedInvoiceData) {
+    const invoiceAmount = parseFloat(selectedInvoiceData.total_amount || 0);
+    const paidAmount = parseFloat(selectedInvoiceData.paid_amount || 0);
+    const balance = invoiceAmount - paidAmount;
+    
+    if (balance > 0) {
+      setInvoiceBalance(balance);
+      setFormData(prev => ({
+        ...prev,
+        amount: balance
+      }));
+    } else {
       setInvoiceBalance(0);
       setFormData(prev => ({
         ...prev,
         amount: ''
       }));
-    } finally {
-      setIsFetchingBalance(false);
+      alert('This invoice is already fully paid based on local data.');
     }
-  };
-
-  // Auto-fetch balance when both supplier and invoice are selected
-  useEffect(() => {
-    if (formData.supplierId && formData.invoiceNumber) {
-      const timer = setTimeout(() => {
-        fetchInvoiceBalance(formData.supplierId, formData.invoiceNumber);
-      }, 300);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [formData.supplierId, formData.invoiceNumber]);
+  } else {
+    console.log('Invoice not found in local data');
+    // Show empty amount
+    setInvoiceBalance(0);
+    setFormData(prev => ({
+      ...prev,
+      amount: ''
+    }));
+  }
+};
+useEffect(() => {
+  console.log('Balance fetch triggered:', {
+    supplierId: formData.supplierId,
+    invoiceNumber: formData.invoiceNumber,
+    hasSupplier: !!formData.supplierId,
+    hasInvoice: !!formData.invoiceNumber
+  });
+  
+  if (formData.supplierId && formData.invoiceNumber) {
+    const timer = setTimeout(() => {
+      fetchInvoiceBalance(formData.supplierId, formData.invoiceNumber);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  } else {
+    // Clear amount if either is missing
+    setInvoiceBalance(0);
+    setFormData(prev => ({
+      ...prev,
+      amount: ''
+    }));
+  }
+}, [formData.supplierId, formData.invoiceNumber]);
 
   // File change handler
   const handleFileChange = (e) => {
@@ -436,49 +470,62 @@ const VochurTable = () => {
     }
   };
 
-  const fetchReceipts = async () => {
-    try {
-      setIsLoading(true);
-      console.log('Fetching receipts from:', `${baseurl}/api/voucher`);
-      const response = await fetch(`${baseurl}/api/voucher`);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Received receipts data:', data);
-        
-        const sortedData = data.sort((a, b) => {
-          const dateA = new Date(a.receipt_date || a.created_at);
-          const dateB = new Date(b.receipt_date || b.created_at);
-          return dateB - dateA || b.id - a.id;
-        });
+const fetchReceipts = async () => {
+  try {
+    setIsLoading(true);
+    console.log('Fetching receipts from:', `${baseurl}/api/voucher`);
+    const response = await fetch(`${baseurl}/api/voucher`);
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Received receipts data (first item):', data[0]);
+      
+      const sortedData = data.sort((a, b) => {
+        const dateA = new Date(a.receipt_date || a.created_at);
+        const dateB = new Date(b.receipt_date || b.created_at);
+        return dateB - dateA || b.id - a.id;
+      });
 
-        const transformedData = sortedData.map(receipt => ({
+      const transformedData = sortedData.map(receipt => {
+        // Calculate balance amount if not present
+        const totalAmount = parseFloat(receipt.TotalAmount || receipt.total_amount || 0);
+        const paidAmount = parseFloat(receipt.paid_amount || 0);
+        const balanceAmount = receipt.total_balance_amount || 
+                             receipt.balance_amount || 
+                             (totalAmount - paidAmount);
+        
+        return {
           ...receipt,
           id: receipt.id || '',
           supplier: receipt.supplier || {
-            business_name: receipt.payee_name || receipt.supplier_name || 'N/A' 
+            business_name: receipt.payee_name || receipt.supplier_name || receipt.PartyName || 'N/A' 
           },
-          payee: receipt.supplier?.business_name || receipt.payee_name || receipt.supplier_name || 'N/A',
-          amount: `₹ ${parseFloat(receipt.amount || 0).toLocaleString('en-IN')}`,
+          payee: receipt.supplier?.business_name || receipt.payee_name || receipt.supplier_name || receipt.PartyName || 'N/A',
+          amount: `₹ ${parseFloat(receipt.amount || totalAmount).toLocaleString('en-IN')}`,
           receipt_date: receipt.receipt_date ? new Date(receipt.receipt_date).toLocaleDateString('en-IN') : 'N/A',
           payment_method: receipt.payment_method || 'N/A',
-          invoice_numbers: receipt.invoice_number || 'N/A',
-          total_balance_amount: receipt.balance_amount || receipt.amount_due || 0
-        }));
+          invoice_numbers: receipt.invoice_numbers || receipt.InvoiceNumber || 'N/A',
+          total_balance_amount: balanceAmount,
+          // Add fields for easier matching
+          PartyID: receipt.PartyID,
+          AccountID: receipt.AccountID,
+          InvoiceNumber: receipt.InvoiceNumber
+        };
+      });
 
-        console.log('Transformed receipts data:', transformedData);
-        
-        setReceiptData(transformedData);
-      } else {
-        console.error('Failed to fetch receipts. Status:', response.status);
-        alert('Failed to load receipts. Please try again later.');
-      }
-    } catch (err) {
-      console.error('Error fetching receipts:', err);
-      alert('Error connecting to server. Please check your network connection.');
-    } finally {
-      setIsLoading(false);
+      console.log('Transformed receipts data (first item):', transformedData[0]);
+      
+      setReceiptData(transformedData);
+    } else {
+      console.error('Failed to fetch receipts. Status:', response.status);
+      alert('Failed to load receipts. Please try again later.');
     }
-  };
+  } catch (err) {
+    console.error('Error fetching receipts:', err);
+    alert('Error connecting to server. Please check your network connection.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const fetchSuppliers = async () => {
     try {
@@ -586,7 +633,7 @@ const VochurTable = () => {
       supplierEmail: selectedSupplier?.email || '',
       supplierGstin: selectedSupplier?.gstin || '',
       supplierBusinessName: selectedSupplier?.business_name || '',
-      amount: '' // Clear amount when supplier changes
+      amount: '' 
     }));
     
     setInvoiceBalance(0);
@@ -611,97 +658,100 @@ const VochurTable = () => {
     }
   };
 
-  const handleCreateReceipt = async () => {
-    // Validation
-    if (!formData.supplierId) {
-      alert('Please select a supplier');
-      return;
-    }
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      alert('Please enter a valid amount');
-      return;
-    }
-    if (!formData.receiptDate) {
-      alert('Please select a receipt date');
-      return;
-    }
-  
+ const handleCreateReceipt = async () => {
+  // Validation
+  if (!formData.supplierId) {
+    alert('Please select a supplier');
+    return;
+  }
+  if (!formData.amount || parseFloat(formData.amount) <= 0) {
+    alert('Please enter a valid amount');
+    return;
+  }
+  if (!formData.receiptDate) {
+    alert('Please select a receipt date');
+    return;
+  }
 
-    try {
-      setIsLoading(true);
+  try {
+    setIsLoading(true);
+    
+    // Create FormData instead of JSON
+    const formDataToSend = new FormData();
+    
+    // Append all form fields
+    formDataToSend.append('receipt_number', formData.receiptNumber);
+    formDataToSend.append('supplier_id', formData.supplierId);
+    formDataToSend.append('amount', formData.amount);
+    formDataToSend.append('currency', formData.currency);
+    formDataToSend.append('payment_method', formData.paymentMethod);
+    formDataToSend.append('receipt_date', formData.receiptDate);
+    formDataToSend.append('note', formData.note);
+    formDataToSend.append('bank_name', formData.bankName);
+    formDataToSend.append('transaction_date', formData.transactionDate || '');
+    formDataToSend.append('reconciliation_option', formData.reconciliationOption);
+    formDataToSend.append('supplier_name', formData.supplierBusinessName);
+    formDataToSend.append('invoice_number', formData.invoiceNumber);
+    
+    formDataToSend.append('TransactionType', 'purchase voucher');
+            formDataToSend.append('data_type', 'Purchase');
+
+    if (formData.transactionProofFile) {
+      formDataToSend.append('transaction_proof', formData.transactionProofFile);
+    }
+
+    console.log('Sending receipt data with FormData...');
+    console.log('Supplier ID:', formData.supplierId);
+    console.log('Invoice Number:', formData.invoiceNumber);
+    console.log('Amount:', formData.amount);
+    console.log('TransactionType: purchase voucher'); // Debug log
+
+    const response = await fetch(`${baseurl}/api/receipts`, {
+      method: 'POST',
+      body: formDataToSend,
+    });
+
+    console.log('Response status:', response.status);
+    if (response.ok) {
+      const result = await response.json();
+      console.log('Voucher created successfully:', result);
+      await fetchReceipts();
+      handleCloseModal();
+      alert('Voucher created successfully!');
       
-      // Create FormData instead of JSON
-      const formDataToSend = new FormData();
-      
-      // Append all form fields
-      formDataToSend.append('receipt_number', formData.receiptNumber);
-      formDataToSend.append('supplier_id', formData.supplierId);
-      formDataToSend.append('amount', formData.amount);
-      formDataToSend.append('currency', formData.currency);
-      formDataToSend.append('payment_method', formData.paymentMethod);
-      formDataToSend.append('receipt_date', formData.receiptDate);
-      formDataToSend.append('note', formData.note);
-      formDataToSend.append('bank_name', formData.bankName);
-      formDataToSend.append('transaction_date', formData.transactionDate || '');
-      formDataToSend.append('reconciliation_option', formData.reconciliationOption);
-      formDataToSend.append('supplier_name', formData.supplierBusinessName);
-      formDataToSend.append('invoice_number', formData.invoiceNumber);
-
-      if (formData.transactionProofFile) {
-        formDataToSend.append('transaction_proof', formData.transactionProofFile);
-      }
-
-      console.log('Sending receipt data with FormData...');
-      console.log('Supplier ID:', formData.supplierId);
-      console.log('Invoice Number:', formData.invoiceNumber);
-      console.log('Amount:', formData.amount);
-
-      const response = await fetch(`${baseurl}/api/receipts`, {
-        method: 'POST',
-        body: formDataToSend,
-      });
-
-      console.log('Response status:', response.status);
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Voucher created successfully:', result);
-        await fetchReceipts();
-        handleCloseModal();
-        alert('Voucher created successfully!');
-        
-        if (result.id) {
-          navigate(`/voucher_view/${result.id}`);
-        } else {
-          console.error('No ID returned in response');
-          alert('Voucher created, but unable to view details. Please check the receipt list.');
-        }
-
-        await fetchNextReceiptNumber();
+      if (result.id) {
+        navigate(`/voucher_view/${result.id}`);
       } else {
-        const errorText = await response.text();
-        console.error('Failed to create receipt. Status:', response.status);
-        console.error('Error response:', errorText);
-        let errorMessage = 'Failed to create receipt. ';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage += errorData.error || 'Please try again.';
-          if (errorData.error.includes('already exists')) {
-            console.log('Duplicate receipt number detected, fetching new number...');
-            await fetchNextReceiptNumber();
-            errorMessage += ' A new receipt number has been generated. Please try again.';
-          }
-        } catch {
-          errorMessage += 'Please try again.';
-        }
-        alert(errorMessage);
+        console.error('No ID returned in response');
+        alert('Voucher created, but unable to view details. Please check the receipt list.');
       }
-    } catch (err) {
-      console.error('Error creating receipt:', err);
-      alert('Network error. Please check your connection and try again.');
-    } finally {
-      setIsLoading(false);
+
+      await fetchNextReceiptNumber();
+    } else {
+      const errorText = await response.text();
+      console.error('Failed to create receipt. Status:', response.status);
+      console.error('Error response:', errorText);
+      let errorMessage = 'Failed to create receipt. ';
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage += errorData.error || 'Please try again.';
+        if (errorData.error.includes('already exists')) {
+          console.log('Duplicate receipt number detected, fetching new number...');
+          await fetchNextReceiptNumber();
+          errorMessage += ' A new receipt number has been generated. Please try again.';
+        }
+      } catch {
+        errorMessage += 'Please try again.';
+      }
+      alert(errorMessage);
     }
-  };
+  } catch (err) {
+    console.error('Error creating receipt:', err);
+    alert('Network error. Please check your connection and try again.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // View receipt details
   const handleViewReceipt = (receiptId) => {
