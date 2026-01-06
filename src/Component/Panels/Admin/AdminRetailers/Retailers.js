@@ -151,85 +151,95 @@ function Retailers() {
     previewExcelFile(file);
   };
 
-  const previewExcelFile = (file) => {
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+const previewExcelFile = (file) => {
+  const reader = new FileReader();
+  
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
 
-        if (jsonData.length < 2) {
-          setUploadError("Excel file is empty or has no data");
-          return;
-        }
+      if (jsonData.length < 2) {
+        setUploadError("Excel file is empty or has no data");
+        return;
+      }
 
-        // Get headers
-        const headers = jsonData[0];
-        
-        // Check required headers
-        const requiredHeaders = ["name", "email", "mobile_number", "business_name", "display_name"];
-        const missingHeaders = requiredHeaders.filter(header => 
-          !headers.some(h => h && h.toString().toLowerCase().replace(/\s+/g, '_') === header)
-        );
+      // Get headers
+      const headers = jsonData[0];
+      
+      // Check required headers
+      const requiredHeaders = ["name", "email", "mobile_number", "business_name", "display_name"];
+      const missingHeaders = requiredHeaders.filter(header => 
+        !headers.some(h => h && h.toString().toLowerCase().replace(/\s+/g, '_') === header)
+      );
 
-        if (missingHeaders.length > 0) {
-          setUploadError(`Missing required columns: ${missingHeaders.join(", ")}`);
-          return;
-        }
+      if (missingHeaders.length > 0) {
+        setUploadError(`Missing required columns: ${missingHeaders.join(", ")}`);
+        return;
+      }
 
-        // Process data rows
-        const processedData = jsonData.slice(1).map((row, index) => {
-          const rowData = {};
-          headers.forEach((header, colIndex) => {
-            if (header) {
-              const key = header.toString().toLowerCase().replace(/\s+/g, '_');
+      // Process data rows
+      const processedData = jsonData.slice(1).map((row, index) => {
+        const rowData = {};
+        headers.forEach((header, colIndex) => {
+          if (header) {
+            const key = header.toString().toLowerCase().replace(/\s+/g, '_');
+            // Ensure target is always lowercase
+            if (key === 'target') {
+              rowData['target'] = row[colIndex] || "";
+            } else {
               rowData[key] = row[colIndex] || "";
             }
-          });
-          
-          // Set role based on selectedRole
-          rowData.role = selectedRole;
-          
-          // Set group based on role
-          if (selectedRole === "retailer") {
-            rowData.group = rowData.group || "Retailer";
-            rowData.entity_type = rowData.entity_type || "Individual";
-          } else {
-            rowData.group = rowData.group || "SUPPLIERS";
           }
-          
-          // Set default values for required fields
-          rowData.status = "Active";
-          rowData.password = rowData.name ? 
-            `${rowData.name.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '')}@123` : "";
-          rowData.discount = rowData.discount || 0;
-          rowData.Target = rowData.target || rowData.Target || 100000;
-          
-          return {
-            ...rowData,
-            __id: index + 1,
-            __status: "pending"
-          };
         });
+        
+        // Set role based on selectedRole
+        rowData.role = selectedRole;
+        
+        // Set group based on role
+        if (selectedRole === "retailer") {
+          rowData.group = rowData.group || "Retailer";
+          rowData.entity_type = rowData.entity_type || "Individual";
+        } else {
+          rowData.group = rowData.group || "SUPPLIERS";
+        }
+        
+        // Set default values for required fields
+        rowData.status = "Active";
+        rowData.password = rowData.name ? 
+          `${rowData.name.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '')}@123` : "";
+        rowData.discount = rowData.discount || 0;
+        
+        // Ensure target is set and remove any uppercase Target
+        rowData.target = rowData.target || 100000;
+        if (rowData.Target) {
+          delete rowData.Target;
+        }
+        
+        return {
+          ...rowData,
+          __id: index + 1,
+          __status: "pending"
+        };
+      });
 
-        setPreviewData(processedData);
-        setIsPreviewMode(true);
-        setUploadError("");
-      } catch (error) {
-        console.error("Error parsing Excel file:", error);
-        setUploadError("Error parsing Excel file. Please check the format.");
-      }
-    };
-
-    reader.onerror = () => {
-      setUploadError("Error reading file");
-    };
-
-    reader.readAsArrayBuffer(file);
+      setPreviewData(processedData);
+      setIsPreviewMode(true);
+      setUploadError("");
+    } catch (error) {
+      console.error("Error parsing Excel file:", error);
+      setUploadError("Error parsing Excel file. Please check the format.");
+    }
   };
+
+  reader.onerror = () => {
+    setUploadError("Error reading file");
+  };
+
+  reader.readAsArrayBuffer(file);
+};
 
   const handleBulkUpload = async () => {
     if (!bulkUploadFile || previewData.length === 0) {
@@ -400,17 +410,17 @@ function Retailers() {
     </div>
   );
 
-  const renderPerformanceCell = (item) => (
-    <div className="retailers-table__performance-cell">
-      <div className="retailers-table__rating">
-        <span className="retailers-table__rating-icon">⭐</span>
-        Discount: {item.discount || 0}%
-      </div>
-      <div className="retailers-table__revenue">
-        Target: ₹ {item.Target ? parseInt(item.Target).toLocaleString() : "100,000"}
-      </div>
+const renderPerformanceCell = (item) => (
+  <div className="retailers-table__performance-cell">
+    <div className="retailers-table__rating">
+      <span className="retailers-table__rating-icon">⭐</span>
+      Discount: {item.discount || 0}%
     </div>
-  );
+    <div className="retailers-table__revenue">
+      Target: ₹ {((item.target || item.Target || 100000) ? parseInt(item.target || item.Target || 100000).toLocaleString() : "100,000")}
+    </div>
+  </div>
+);
 
   const renderGroupTypeCell = (item) => (
     <div className="retailers-table__group-type-cell">
