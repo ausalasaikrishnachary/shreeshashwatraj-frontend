@@ -4,6 +4,7 @@ import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import "./CheckOut.css";
+import axios from "axios";
 
 function Checkout() {
   const navigate = useNavigate();
@@ -20,20 +21,26 @@ function Checkout() {
     totals: initialTotals,
     orderTotals: initialOrderTotals,
     userDiscountPercentage,
-    creditPeriods
+    creditPeriods,
+    isEditMode = false,
+    editOrderNumber,
+    editItemId,
+    originalItemData
   } = location.state || {};
 
   const discountPercentage = discount || userDiscountPercentage || 0;
 
-  console.log("DisplayName:", displayName);
-  console.log("customerName:", customerName);
+  console.log("Checkout Mode:", isEditMode ? "Edit Mode" : "New Order");
+  console.log("Edit Order Number:", editOrderNumber);
+  console.log("Edit Item ID:", editItemId);
+  console.log("Original Item Data:", originalItemData);
 
   const [assignedStaffInfo, setAssignedStaffInfo] = useState({ id: null, name: null });
   const [retailerDetails, setRetailerDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderDetails, setOrderDetails] = useState(null);
-  const [orderMode, setOrderMode] = useState('KACHA'); // Default to KACHA
+  const [orderMode, setOrderMode] = useState(isEditMode ? 'KACHA' : 'KACHA');
   const [cartItems, setCartItems] = useState(initialCartItems || []);
   const [orderTotals, setOrderTotals] = useState(initialOrderTotals || initialTotals || {});
   const [retailerInfo, setRetailerInfo] = useState({});
@@ -41,7 +48,8 @@ function Checkout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-  // Check for mobile view on resize
+  const [isUpdatingItem, setIsUpdatingItem] = useState(false);
+
   useEffect(() => {
     const checkMobileView = () => {
       setIsMobileView(window.innerWidth < 768);
@@ -53,12 +61,10 @@ function Checkout() {
     return () => window.removeEventListener('resize', checkMobileView);
   }, []);
 
-  // Handle mobile toggle
   const handleToggleMobile = () => {
     setIsMobileOpen(!isMobileOpen);
   };
 
-  // Get logged-in staff info from localStorage and fetch retailer info
   useEffect(() => {
     const getStaffInfo = () => {
       const storedData = localStorage.getItem("user");
@@ -74,7 +80,6 @@ function Checkout() {
     getStaffInfo();
   }, []);
 
-  // Fetch retailer details from accounts endpoint - ADDED FROM REFERENCE CODE
   useEffect(() => {
     const fetchRetailerDetails = async () => {
       if (!retailerId) return;
@@ -96,13 +101,11 @@ function Checkout() {
     fetchRetailerDetails();
   }, [retailerId]);
 
-  // Fetch retailer info
   useEffect(() => {
     if (!retailerId) return;
 
     const fetchRetailerInfo = async () => {
       try {
-        // Get staff ID from localStorage
         const storedData = localStorage.getItem("user");
         const user = storedData ? JSON.parse(storedData) : null;
         const staffId = user?.id || null;
@@ -129,7 +132,6 @@ function Checkout() {
             }
           }
         } else {
-          // Fallback to state data
           setRetailerInfo({
             name: customerName,
             discount: discount,
@@ -138,7 +140,6 @@ function Checkout() {
         }
       } catch (err) {
         console.error("Error fetching retailer info:", err);
-        // Fallback to state data
         setRetailerInfo({
           name: customerName,
           discount: discount,
@@ -165,13 +166,12 @@ function Checkout() {
 
         if (result) {
           setAssignedStaffInfo({
-            id: result.staffid, // Note: lowercase 'staffid'
+            id: result.staffid,
             name: result.assigned_staff
           });
         }
       } catch (err) {
         console.error("Error fetching assigned staff info:", err);
-        // Fallback to state data
         setAssignedStaffInfo({
           id: initialStaffId,
           name: "Staff"
@@ -182,14 +182,109 @@ function Checkout() {
     fetchAssignedStaffInfo();
   }, [retailerId, initialStaffId, baseurl]);
 
-  // Enhanced place order function with all calculations - UPDATED TO MATCH REFERENCE CODE
-  const handlePlaceOrder = async () => {
+  // NEW: Function to update item price
+  const handleUpdateItemPrice = async () => {
+    if (cartItems.length === 0 || !editItemId || !editOrderNumber) {
+      alert("No item to update or missing edit information");
+      return;
+    }
+
+    const cartItem = cartItems[0];
+    const newEditedPrice = cartItem.edited_sale_price || cartItem.sale_price;
+    const minSalePrice = cartItem.min_sale_price || 0;
+
+    // Validate that edited price is at least minimum sale price
+    if (newEditedPrice < minSalePrice) {
+      alert(`Edited price (₹${newEditedPrice}) cannot be less than minimum sale price (₹${minSalePrice})`);
+      return;
+    }
+
+    setIsUpdatingItem(true);
+
+    try {
+      // Calculate new breakdown based on edited price
+      const mrp = cartItem.mrp || 0;
+      const quantity = cartItem.quantity || 1;
+      const creditPeriod = cartItem.credit_period || 0;
+      const discountPercentage = cartItem.discount_percentage || 0;
+      
+      // Calculate new breakdown
+      const customerSalePrice = newEditedPrice;
+      const discountAmount = customerSalePrice * (discountPercentage / 100);
+      const priceAfterDiscount = customerSalePrice - discountAmount;
+      
+      // Calculate GST (assuming 18% for example)
+      const gstPercentage = 18;
+      const taxableAmount = priceAfterDiscount / (1 + gstPercentage/100);
+      const taxAmount = priceAfterDiscount - taxableAmount;
+      
+      // Calculate credit charge if credit period > 0
+      let creditCharge = 0;
+      if (creditPeriod > 0) {
+        const creditPercentage = cartItem.credit_percentage || 2; // 2% per month default
+        creditCharge = (customerSalePrice * creditPercentage * creditPeriod) / (30 * 100);
+      }
+      
+      const finalAmount = priceAfterDiscount + creditCharge;
+      const itemTotal = finalAmount * quantity;
+
+      const updatedItem = {
+        edited_sale_price: newEditedPrice,
+        customer_sale_price: customerSalePrice,
+        discount_amount: discountAmount,
+        taxable_amount: taxableAmount,
+        tax_amount: taxAmount,
+        final_amount: finalAmount,
+        item_total: itemTotal,
+        credit_charge: creditCharge,
+        total_amount: finalAmount * quantity
+      };
+
+      console.log("Updating item with data:", {
+        itemId: editItemId,
+        orderNumber: editOrderNumber,
+        updatedItem
+      });
+
+      // Call API to update item
+      const response = await axios.put(
+        `${baseurl}/orders/items/${editItemId}/update-price`,
+        {
+          order_number: editOrderNumber,
+          ...updatedItem
+        }
+      );
+
+      if (response.data.success) {
+        alert("Item price updated successfully!");
+        
+        // Navigate back to period page
+        setTimeout(() => {
+          navigate('/period');
+        }, 1000);
+      } else {
+        throw new Error(response.data.error || "Failed to update item");
+      }
+    } catch (error) {
+      console.error("Error updating item price:", error);
+      alert(`Failed to update item: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setIsUpdatingItem(false);
+    }
+  };
+
+  // NEW: Handle place order for edit mode
+  const handlePlaceOrderForEdit = async () => {
+    return handleUpdateItemPrice();
+  };
+
+  // Original place order function (for new orders)
+  const handlePlaceOrderForNew = async () => {
     if (!retailerId || !cartItems || cartItems.length === 0) {
       alert("Missing required information");
       return;
     }
 
-    // Get staff info from localStorage
     const storedData = localStorage.getItem("user");
     let loggedInUser = null;
     let actualStaffId = initialStaffId;
@@ -202,19 +297,14 @@ function Checkout() {
         loggedInUser = JSON.parse(storedData);
         console.log("Logged in user data:", loggedInUser);
 
-        // Extract user information
         staffName = loggedInUser.name || "Staff Member";
         staffIdFromStorage = loggedInUser.id;
         assignedStaff = loggedInUser.assigned_staff || loggedInUser.supervisor_name || staffName;
 
-        // Use staff ID from localStorage if not provided in state
         if (!actualStaffId && staffIdFromStorage) {
           actualStaffId = staffIdFromStorage;
           console.log("Using staff ID from localStorage:", actualStaffId);
         }
-
-        console.log("Staff Name:", staffName);
-        console.log("Assigned Staff:", assignedStaff);
 
       } catch (err) {
         console.error("Error parsing user data:", err);
@@ -228,9 +318,6 @@ function Checkout() {
 
     setLoading(true);
 
-    // ---------------------------------------------------------
-    // 1. Fetch Staff Details From Backend (accounts/:id) - FROM REFERENCE CODE
-    // ---------------------------------------------------------
     let staffIncentive = 0;
     let assignedStaffName = "Unknown Staff";
     let staffEmail = null;
@@ -251,16 +338,12 @@ function Checkout() {
       console.error("Error fetching staff details:", error);
     }
 
-    // Generate order number
     const orderNumber = `ORD${Date.now()}`;
-
-    // Calculate total credit charges from all items - FROM REFERENCE CODE
     const totalCreditCharges = cartItems.reduce((sum, item) => {
       const breakdown = item.breakdown?.perUnit || {};
       return sum + ((breakdown.credit_charge || 0) * (item.quantity || 1));
     }, 0);
 
-    // Prepare order data using the breakdown from cart - UPDATED TO MATCH REFERENCE CODE
     const orderData = {
       order: {
         order_number: orderNumber,
@@ -271,7 +354,7 @@ function Checkout() {
         taxable_amount: orderTotals.totalTaxableAmount || 0,
         tax_amount: orderTotals.totalTax || 0,
         net_payable: orderTotals.finalTotal || 0,
-        credit_period: totalCreditCharges, // This should be the total credit charges amount - FROM REFERENCE CODE
+        credit_period: totalCreditCharges,
         estimated_delivery_date: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
         order_placed_by: actualStaffId,
         order_mode: orderMode,
@@ -280,7 +363,7 @@ function Checkout() {
         order_status: "Pending",
         staffid: actualStaffId,
         assigned_staff: assignedStaffName,
-        staff_incentive: staffIncentive.toString(), // Convert to string - FROM REFERENCE CODE
+        staff_incentive: staffIncentive.toString(),
         staff_email: staffEmail,
         retailer_email: retailerDetails?.email || ""
       },
@@ -296,8 +379,6 @@ function Checkout() {
           item_name: item.item_name || product.name || `Product ${item.product_id}`,
           product_id: item.product_id,
           quantity: quantity,
-
-          // Use the pre-calculated breakdown values from cart - FROM REFERENCE CODE
           mrp: breakdown.mrp || 0,
           sale_price: breakdown.sale_price || 0,
           edited_sale_price: breakdown.edited_sale_price || 0,
@@ -349,18 +430,9 @@ function Checkout() {
           breakdown: orderTotals
         });
 
-        // Set order placed to show popup
         setOrderPlaced(true);
 
-        // Show success popup
         setTimeout(() => {
-          // You can use your preferred popup method
-          // Option 1: Using a custom popup component
-          if (typeof setShowSuccessPopup === 'function') {
-            setShowSuccessPopup(true);
-          }
-
-          // Option 2: Using alert with better formatting
           const successMessage = `
           ✅ Order Placed Successfully!
           
@@ -373,7 +445,6 @@ function Checkout() {
         `;
           alert(successMessage);
 
-          // Option 3: Navigate after popup
           setTimeout(() => {
             navigate('/period');
           }, 2000);
@@ -390,20 +461,33 @@ function Checkout() {
     }
   };
 
+  // Main place order function
+  const handlePlaceOrder = () => {
+    if (isEditMode) {
+      handlePlaceOrderForEdit();
+    } else {
+      handlePlaceOrderForNew();
+    }
+  };
+
   const handleBackToCart = () => {
-    navigate("/retailers/cart", {
-      state: {
-        retailerId,
-        customerName: retailerInfo.name,
-        displayName: retailerInfo.displayName,
-        discount,
-        cartItems,
-        staffId: initialStaffId,
-        userRole,
-        orderTotals,
-        userDiscountPercentage: discountPercentage
-      }
-    });
+    if (isEditMode) {
+      navigate('/period');
+    } else {
+      navigate("/retailers/cart", {
+        state: {
+          retailerId,
+          customerName: retailerInfo.name,
+          displayName: retailerInfo.displayName,
+          discount,
+          cartItems,
+          staffId: initialStaffId,
+          userRole,
+          orderTotals,
+          userDiscountPercentage: discountPercentage
+        }
+      });
+    }
   };
 
   const handleBackToRetailers = () => {
@@ -440,89 +524,74 @@ function Checkout() {
   }
 
   if (orderPlaced && orderDetails) {
-    // Success content
     const successContent = (
       <div className="checkout-page">
         <div className="order-success-container">
           <div className="success-icon">✅</div>
-          <h2>Order Placed Successfully!</h2>
+          <h2>{isEditMode ? "Item Updated Successfully!" : "Order Placed Successfully!"}</h2>
 
           <div className="order-details-card">
-            <h3>Order Details</h3>
-            <div className="order-detail-row">
-              <span>Order Number:</span>
-              <strong>{orderDetails.orderNumber}</strong>
-            </div>
-            <div className="order-detail-row">
-              <span>Order Mode:</span>
-              <strong className={`order-mode-badge ${orderDetails.orderMode === 'PAKKA' ? 'pakka' : 'kacha'}`}>
-                {orderDetails.orderMode}
-              </strong>
-            </div>
-            <div className="order-detail-row">
-              <span>Customer:</span>
-              <span>{orderDetails.customerName}</span>
-            </div>
-            <div className="order-detail-row">
-              <span>Placed by Staff ID:</span>
-              <strong>{orderDetails.staffId}</strong>
-            </div>
-            <div className="order-detail-row">
-              <span>Date:</span>
-              <span>{orderDetails.date}</span>
-            </div>
-            <div className="order-detail-row">
-              <span>Total Amount:</span>
-              <strong className="total-amount">
-                ₹{orderDetails.amount.toLocaleString()}
-              </strong>
-            </div>
-          </div>
-
-          {/* Order Summary Breakdown - UPDATED */}
-          <div className="breakdown-card">
-            <h4>Payment Breakdown</h4>
-            {orderTotals.totalCreditCharges > 0 && (
-              <div className="breakdown-row credit">
-                <span>Credit Charges:</span>
-                <span>+₹{orderTotals.totalCreditCharges.toLocaleString()}</span>
-              </div>
-            )}
-            {orderTotals.totalDiscount > 0 && (
-              <div className="breakdown-row discount">
-                <span>Discount ({orderTotals.userDiscount || discountPercentage}%):</span>
-                <span>-₹{orderTotals.totalDiscount.toLocaleString()}</span>
-              </div>
-            )}
-            {orderTotals.totalTax > 0 && (
+            <h3>{isEditMode ? "Update Details" : "Order Details"}</h3>
+            {isEditMode ? (
               <>
-                <div className="breakdown-row">
-                  <span>Total Taxable Amount:</span>
-                  <span>₹{orderTotals.totalTaxableAmount.toLocaleString()}</span>
+                <div className="order-detail-row">
+                  <span>Order Number:</span>
+                  <strong>{editOrderNumber}</strong>
                 </div>
-                <div className="breakdown-row tax">
-                  <span>Total GST:</span>
-                  <span>+₹{orderTotals.totalTax.toLocaleString()}</span>
+                <div className="order-detail-row">
+                  <span>Item:</span>
+                  <strong>{cartItems[0]?.item_name}</strong>
+                </div>
+                <div className="order-detail-row">
+                  <span>Updated Price:</span>
+                  <strong className="total-amount">
+                    ₹{(cartItems[0]?.edited_sale_price || cartItems[0]?.sale_price)?.toLocaleString()}
+                  </strong>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="order-detail-row">
+                  <span>Order Number:</span>
+                  <strong>{orderDetails.orderNumber}</strong>
+                </div>
+                <div className="order-detail-row">
+                  <span>Order Mode:</span>
+                  <strong className={`order-mode-badge ${orderDetails.orderMode === 'PAKKA' ? 'pakka' : 'kacha'}`}>
+                    {orderDetails.orderMode}
+                  </strong>
+                </div>
+                <div className="order-detail-row">
+                  <span>Customer:</span>
+                  <span>{orderDetails.customerName}</span>
+                </div>
+                <div className="order-detail-row">
+                  <span>Placed by Staff ID:</span>
+                  <strong>{orderDetails.staffId}</strong>
+                </div>
+                <div className="order-detail-row">
+                  <span>Date:</span>
+                  <span>{orderDetails.date}</span>
+                </div>
+                <div className="order-detail-row">
+                  <span>Total Amount:</span>
+                  <strong className="total-amount">
+                    ₹{orderDetails.amount.toLocaleString()}
+                  </strong>
                 </div>
               </>
             )}
-            <div className="breakdown-row total">
-              <span>Final Total:</span>
-              <strong>₹{orderTotals.finalTotal.toLocaleString()}</strong>
-            </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="order-actions">
-            <button onClick={handleBackToRetailers} className="new-order-btn">
-              Back to Retailers
+            <button onClick={() => navigate('/period')} className="new-order-btn">
+              Back to Period
             </button>
           </div>
         </div>
       </div>
     );
 
-    // Return with layout for desktop, without layout for mobile
     if (isMobileView) {
       return successContent;
     } else {
@@ -547,23 +616,21 @@ function Checkout() {
     }
   }
 
-  // Main checkout content
   const mainContent = (
     <div className="checkout-page">
-      {/* Desktop Header */}
       {!isMobileView && (
         <div className="checkout-desktop-header">
           <div className="desktop-header-content">
             <div className="desktop-header-left">
               <button
                 className="desktop-back-btn"
-                onClick={handleBackToRetailers}
+                onClick={handleBackToCart}
               >
-                ← Back to Retailers
+                ← {isEditMode ? "Back to Period" : "Back to Cart"}
               </button>
               <div className="desktop-header-text">
                 <h1>
-                  Checkout
+                  {isEditMode ? "Edit Item Price" : "Checkout"}
                   {retailerInfo.displayName && <span className="display-name-header"> for {retailerInfo.displayName}</span>}
                 </h1>
                 {retailerInfo.name && (
@@ -591,24 +658,12 @@ function Checkout() {
             <div className="desktop-header-right">
               <div className="desktop-summary-box">
                 <div className="summary-header">
-                  <h3>Order Summary</h3>
-                  <Link
-                    to="/cart"
-                    state={{
-                      retailerId,
-                      customerName: retailerInfo.name,
-                      displayName: retailerInfo.displayName,
-                      discount
-                    }}
-                    className="desktop-cart-link"
-                  >
-                    Edit Cart
-                  </Link>
+                  <h3>{isEditMode ? "Edit Summary" : "Order Summary"}</h3>
                 </div>
 
                 {cartItems.length === 0 ? (
                   <div className="empty-summary">
-                    <p>No items in cart</p>
+                    <p>No items</p>
                   </div>
                 ) : (
                   <>
@@ -625,11 +680,6 @@ function Checkout() {
                           </div>
                         );
                       })}
-                      {cartItems.length > 3 && (
-                        <div className="more-items-preview">
-                          +{cartItems.length - 3} more items
-                        </div>
-                      )}
                     </div>
 
                     <div className="summary-totals">
@@ -662,7 +712,6 @@ function Checkout() {
         </div>
       )}
 
-      {/* Mobile Header */}
       {isMobileView && (
         <div className="checkout-mobile-header">
           <div className="mobile-header-content">
@@ -671,10 +720,10 @@ function Checkout() {
                 className="mobile-back-btn"
                 onClick={handleBackToCart}
               >
-                ← Back to Cart
+                ← {isEditMode ? "Back" : "Back to Cart"}
               </button>
               <div className="mobile-header-text">
-                <h1>Checkout</h1>
+                <h1>{isEditMode ? "Edit Item" : "Checkout"}</h1>
                 {retailerInfo.name && (
                   <div className="mobile-customer-info">
                     <div className="customer-info">
@@ -694,35 +743,83 @@ function Checkout() {
         </div>
       )}
 
-      {/* Main Content Area */}
       <div className="checkout-main-content">
-        {/* Order Mode Selection */}
-        <div className="order-mode-section">
-          <h3>Order Mode</h3>
-          <div className="order-mode-buttons">
-            <button
-              className={`order-mode-btn ${orderMode === 'KACHA' ? 'active' : ''}`}
-              onClick={() => setOrderMode('KACHA')}
-            >
-              KACHA
-            </button>
-            <button
-              className={`order-mode-btn ${orderMode === 'PAKKA' ? 'active' : ''}`}
-              onClick={() => setOrderMode('PAKKA')}
-            >
-              PAKKA
-            </button>
+        {isEditMode && cartItems.length > 0 && (
+          <div className="edit-item-section">
+            <h3>Edit Item Price</h3>
+            <div className="edit-item-details">
+              <div className="edit-item-row">
+                <span className="edit-label">Item Name:</span>
+                <span className="edit-value">{cartItems[0].item_name}</span>
+              </div>
+              <div className="edit-item-row">
+                <span className="edit-label">Current Sale Price:</span>
+                <span className="edit-value">₹{cartItems[0].sale_price?.toLocaleString()}</span>
+              </div>
+              <div className="edit-item-row">
+                <span className="edit-label">Minimum Sale Price:</span>
+                <span className="edit-value warning">₹{cartItems[0].min_sale_price?.toLocaleString()}</span>
+              </div>
+              <div className="edit-item-row">
+                <span className="edit-label">Quantity:</span>
+                <span className="edit-value">{cartItems[0].quantity}</span>
+              </div>
+              
+              <div className="edit-price-input">
+                <label htmlFor="editedPrice">Enter New Price (must be ≥ ₹{cartItems[0].min_sale_price}):</label>
+                <input
+                  type="number"
+                  id="editedPrice"
+                  min={cartItems[0].min_sale_price}
+                  defaultValue={cartItems[0].edited_sale_price || cartItems[0].sale_price}
+                  onChange={(e) => {
+                    const newPrice = parseFloat(e.target.value);
+                    const updatedItems = [...cartItems];
+                    updatedItems[0] = {
+                      ...updatedItems[0],
+                      edited_sale_price: newPrice
+                    };
+                    setCartItems(updatedItems);
+                  }}
+                  className="price-input"
+                />
+                {cartItems[0].edited_sale_price < cartItems[0].min_sale_price && (
+                  <p className="error-message">
+                    Price must be at least ₹{cartItems[0].min_sale_price}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
-          <p className="order-mode-note">
-            {orderMode === 'KACHA'
-              ? 'KACHA: Temporary order, invoice will be generated later'
-              : 'PAKKA: Complete order with immediate invoice'}
-          </p>
-        </div>
+        )}
 
-        {/* Order Summary - UPDATED TO MATCH REFERENCE CODE */}
+        {!isEditMode && (
+          <div className="order-mode-section">
+            <h3>Order Mode</h3>
+            <div className="order-mode-buttons">
+              <button
+                className={`order-mode-btn ${orderMode === 'KACHA' ? 'active' : ''}`}
+                onClick={() => setOrderMode('KACHA')}
+              >
+                KACHA
+              </button>
+              <button
+                className={`order-mode-btn ${orderMode === 'PAKKA' ? 'active' : ''}`}
+                onClick={() => setOrderMode('PAKKA')}
+              >
+                PAKKA
+              </button>
+            </div>
+            <p className="order-mode-note">
+              {orderMode === 'KACHA'
+                ? 'KACHA: Temporary order, invoice will be generated later'
+                : 'PAKKA: Complete order with immediate invoice'}
+            </p>
+          </div>
+        )}
+
         <div className="order-summary-section">
-          <h2>Order Summary ({orderTotals.itemCount || cartItems.length} items)</h2>
+          <h2>{isEditMode ? "Price Update Summary" : "Order Summary"} ({orderTotals.itemCount || cartItems.length} items)</h2>
 
           {orderTotals.totalCreditCharges > 0 && (
             <div className="summary-row credit">
@@ -757,13 +854,14 @@ function Checkout() {
             <strong>₹{orderTotals.finalTotal?.toLocaleString() || '0'}</strong>
           </div>
 
-          {/* Order Mode Display - ADDED FROM REFERENCE CODE */}
-          <div className="summary-row mode-display">
-            <span>Order Mode:</span>
-            <span className={`order-mode-indicator ${orderMode === 'PAKKA' ? 'pakka' : 'kacha'}`}>
-              {orderMode} {orderMode === 'PAKKA' ? '✓' : '⏳'}
-            </span>
-          </div>
+          {!isEditMode && (
+            <div className="summary-row mode-display">
+              <span>Order Mode:</span>
+              <span className={`order-mode-indicator ${orderMode === 'PAKKA' ? 'pakka' : 'kacha'}`}>
+                {orderMode} {orderMode === 'PAKKA' ? '✓' : '⏳'}
+              </span>
+            </div>
+          )}
 
           {orderTotals.totalDiscount > 0 && (
             <div className="savings-note">
@@ -772,21 +870,29 @@ function Checkout() {
           )}
         </div>
 
-        {/* Place Order Button */}
         <div className="place-order-section">
           <button
             onClick={handlePlaceOrder}
-            disabled={loading || !cartItems || cartItems.length === 0}
-            className={`place-order-btn ${loading ? 'loading' : ''}`}
+            disabled={loading || isUpdatingItem || !cartItems || cartItems.length === 0 || 
+              (isEditMode && cartItems[0].edited_sale_price < cartItems[0].min_sale_price)}
+            className={`place-order-btn ${loading || isUpdatingItem ? 'loading' : ''} ${isEditMode ? 'edit-btn' : ''}`}
           >
-            {loading ? "Processing..." : `Place ${orderMode} Order - ₹${orderTotals.finalTotal?.toLocaleString() || '0'}`}
+            {isUpdatingItem ? "Updating..." : 
+             loading ? "Processing..." : 
+             isEditMode ? `Update Price - ₹${cartItems[0]?.edited_sale_price?.toLocaleString() || '0'}` : 
+             `Place ${orderMode} Order - ₹${orderTotals.finalTotal?.toLocaleString() || '0'}`}
           </button>
+          
+          {isEditMode && cartItems[0].edited_sale_price < cartItems[0].min_sale_price && (
+            <p className="validation-error">
+              Cannot update: Price is below minimum sale price (₹{cartItems[0].min_sale_price})
+            </p>
+          )}
         </div>
       </div>
     </div>
   );
 
-  // Return with layout for desktop, without layout for mobile
   if (isMobileView) {
     return mainContent;
   } else {

@@ -5,7 +5,7 @@ import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import './Period.css';
 import { baseurl } from "../../../BaseURL/BaseURL";
-import { FaFilePdf, FaTrash, FaDownload, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaFilePdf, FaTrash, FaDownload, FaCheck, FaTimes, FaEdit } from 'react-icons/fa';
 
 const Period = () => {
   const [openRow, setOpenRow] = useState(null);
@@ -130,7 +130,6 @@ const Period = () => {
 
   const handleDownloadSpecificPDF = async (orderNumber, pdfData) => {
     try {
-      // Decode base64 PDF data
       const binaryString = window.atob(pdfData.data);
       const bytes = new Uint8Array(binaryString.length);
 
@@ -139,8 +138,6 @@ const Period = () => {
       }
 
       const pdfBlob = new Blob([bytes], { type: 'application/pdf' });
-
-      // Create download link
       const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;
@@ -168,18 +165,14 @@ const Period = () => {
     try {
       setDownloading(prev => ({ ...prev, [orderNumber]: true }));
 
-      // First, try to download the existing PDF using order_number
       const downloadResponse = await fetch(`${baseurl}/transactions/download-pdf?order_number=${encodeURIComponent(orderNumber)}`);
 
       if (downloadResponse.ok) {
         const pdfBlob = await downloadResponse.blob();
-
-        // Create download link
         const url = window.URL.createObjectURL(pdfBlob);
         const link = document.createElement('a');
         link.href = url;
 
-        // Get filename from response headers or use default
         const contentDisposition = downloadResponse.headers.get('content-disposition');
         let filename = `Invoice_${invoice.number || orderNumber}.pdf`;
 
@@ -199,10 +192,8 @@ const Period = () => {
         console.log('PDF downloaded successfully');
 
       } else if (downloadResponse.status === 404) {
-        // PDF doesn't exist, generate it first
         console.log('PDF not found, generating new PDF...');
 
-        // Note: You'll also need to update the generate-pdf endpoint to accept order_number
         const generateResponse = await fetch(`${baseurl}/transactions/generate-pdf`, {
           method: 'POST',
           headers: {
@@ -215,7 +206,6 @@ const Period = () => {
           const result = await generateResponse.json();
           console.log('PDF generated successfully:', result);
 
-          // After generation, try downloading again
           const retryDownload = await fetch(`${baseurl}/transactions/download-pdf?order_number=${encodeURIComponent(orderNumber)}`);
 
           if (retryDownload.ok) {
@@ -224,7 +214,6 @@ const Period = () => {
             const link = document.createElement('a');
             link.href = url;
 
-            // Get filename for the retry download as well
             const retryContentDisposition = retryDownload.headers.get('content-disposition');
             let retryFilename = `Invoice_${invoice.number || orderNumber}.pdf`;
 
@@ -266,13 +255,11 @@ const fetchOrders = async () => {
     const ordersData = response.data;
     console.log("Raw API ordersData:", ordersData);
     
-    // Filter orders based on approval_status and order_status
     const filteredOrdersData = ordersData.filter(order => {
       const approvalStatus = order.approval_status?.toString().toLowerCase();
       const orderStatus = order.order_status?.toString().toLowerCase();
       
       const isApproved = approvalStatus === "approved";
-      
       const isNotCancelled = orderStatus !== "cancelled";
       
       return isApproved && isNotCancelled;
@@ -317,18 +304,10 @@ const fetchOrders = async () => {
           const orderMode = order.order_mode || "Pakka";
           const staffIncentive = parseFloat(order.staff_incentive) || 0;
 
-          // Fetch account details by customer ID
           let accountDetails = null;
           try {
             const accountRes = await axios.get(`${baseurl}/accounts/${order.customer_id}`);
-            
             accountDetails = accountRes.data;
-                 console.log(`🔍 Account details for customer ${order.customer_id}:`, {
-              credit_limit_raw: accountDetails.credit_limit,
-              unpaid_amount_raw: accountDetails.unpaid_amount,
-              balance_amount_raw: accountDetails.balance_amount,
-              full_details: accountDetails
-            });
           } catch (accountErr) {
             console.warn(`Could not fetch account details for customer ID ${order.customer_id}:`, accountErr.message);
             accountDetails = null;
@@ -346,15 +325,13 @@ const fetchOrders = async () => {
                 min_sale_price = 0;
               }
 
-              // Check if item needs approval (sale_price < min_sale_price)
               const salePrice = parseFloat(item.sale_price) || 0;
-              const needsApproval = salePrice < parseFloat(min_sale_price);
-
-              // Use edited_sale_price if available, otherwise use sale_price
               const editedSalePrice = parseFloat(item.edited_sale_price) || salePrice;
               
+              // Check if sale price is less than minimum sale price
+              const needsApproval = salePrice < parseFloat(min_sale_price);
+              
               return {
-                // order_items table columns
                 id: item.id || item.item_id || 0,
                 order_number: item.order_number || order.order_number,
                 item_name: item.item_name || item.product_name || "N/A",
@@ -386,32 +363,28 @@ const fetchOrders = async () => {
                 created_at: item.created_at,
                 updated_at: item.updated_at,
                 
-                // Additional calculated fields
                 min_sale_price: min_sale_price,
                 needs_approval: needsApproval,
                 approval_status: item.approval_status || "pending",
                 staff_id: item.staff_id || order.staff_id || 0,
                 assigned_staff: item.assigned_staff || order.assigned_staff || null,
                 staff_incentive: parseFloat(item.staff_incentive) || 0,
+                price: editedSalePrice,
                 
-                // For display purposes
-                price: editedSalePrice
+                // NEW: Flag to show edit button
+                can_edit: salePrice < parseFloat(min_sale_price)
               };
             })
           );
 
           console.log(`Processed ${items.length} items for order ${order.order_number}`);
 
-          const assignedStaff = order.assigned_staff || "N/A";
-          const staffId = order.staff_id || "N/A";
-          const orderStatus = order.order_status || "N/A";
-
           return {
             ...order,
             items: items,
-            assigned_staff: assignedStaff,
-            staff_id: staffId,
-            order_status: orderStatus,
+            assigned_staff: order.assigned_staff || "N/A",
+            staff_id: order.staff_id || "N/A",
+            order_status: order.order_status || "N/A",
             staff_incentive: staffIncentive,
             account_details: accountDetails,
             order_mode: orderMode
@@ -444,11 +417,9 @@ const fetchOrders = async () => {
     setOpenRow(openRow === id ? null : id);
   };
 
-  // Updated handleItemSelect function with approval check
   const handleItemSelect = (orderId, itemId, isSelected, itemCreditPeriod) => {
     const item = orders.find(o => o.id === orderId)?.items?.find(i => i.id === itemId);
     
-    // Check if item needs approval and is not approved
     if (item && item.needs_approval && item.approval_status !== "approved") {
       alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
       return;
@@ -462,9 +433,7 @@ const fetchOrders = async () => {
       if (!order || !order.items) return prev;
 
       if (isSelected) {
-        // Auto-select all eligible items with the same credit period
         if (currentSelectedIds.length === 0) {
-          // No items selected yet - select all eligible with this credit period
           const eligibleItems = order.items.filter(item =>
             item.credit_period === itemCreditPeriod &&
             item.invoice_status !== 1 &&
@@ -472,12 +441,10 @@ const fetchOrders = async () => {
           );
           newSelected[orderId] = eligibleItems.map(item => item.id);
         } else {
-          // Some items already selected - check if credit period matches
           const firstSelectedItemId = currentSelectedIds[0];
           const firstSelectedItem = order.items.find(item => item.id === firstSelectedItemId);
 
           if (firstSelectedItem && firstSelectedItem.credit_period === itemCreditPeriod) {
-            // Same credit period - add all remaining eligible items with this credit period
             const eligibleItems = order.items.filter(item =>
               item.credit_period === itemCreditPeriod &&
               item.invoice_status !== 1 &&
@@ -486,13 +453,11 @@ const fetchOrders = async () => {
             );
             newSelected[orderId] = [...currentSelectedIds, ...eligibleItems.map(item => item.id)];
           } else {
-            // Different credit period - alert and don't select
             alert(`Cannot select items with different credit periods. Selected items have ${firstSelectedItem?.credit_period} days, this item has ${itemCreditPeriod} days.`);
             return prev;
           }
         }
       } else {
-        // Deselecting - remove only this specific item
         if (currentSelectedIds.includes(itemId)) {
           newSelected[orderId] = currentSelectedIds.filter(id => id !== itemId);
           if (newSelected[orderId].length === 0) {
@@ -504,30 +469,26 @@ const fetchOrders = async () => {
     });
   };
 
-  // Select all items in an order with credit period validation and approval check
   const handleSelectAll = (orderId, items) => {
     const currentSelectedIds = selectedItems[orderId] || [];
     const isAllSelected = currentSelectedIds.length === items.length;
 
     if (isAllSelected) {
-      // Deselect all
       setSelectedItems(prev => {
         const newSelected = { ...prev };
         delete newSelected[orderId];
         return newSelected;
       });
     } else {
-      // Check if all items have the same credit period
       const creditPeriods = [...new Set(items.map(item => item.credit_period))];
       if (creditPeriods.length > 1) {
         alert(`Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days. Please select items with the same credit period.`);
         return;
       }
 
-      // Filter items that are eligible (no invoice generated and approved if needed)
       const eligibleItems = items.filter(item => {
-        if (item.invoice_status === 1) return false; // Skip items with existing invoice
-        if (item.needs_approval && item.approval_status !== "approved") return false; // Skip items needing approval but not approved
+        if (item.invoice_status === 1) return false;
+        if (item.needs_approval && item.approval_status !== "approved") return false;
         return true;
       });
 
@@ -536,7 +497,6 @@ const fetchOrders = async () => {
         return;
       }
 
-      // Select all eligible items
       setSelectedItems(prev => ({
         ...prev,
         [orderId]: eligibleItems.map(item => item.id)
@@ -544,23 +504,19 @@ const fetchOrders = async () => {
     }
   };
 
-  // Handle item approval
   const handleApproveItem = async (itemId, orderId) => {
     try {
-      // Find the item
       const order = orders.find(o => o.id === orderId);
       if (!order) return;
       
       const item = order.items.find(i => i.id === itemId);
       if (!item) return;
       
-      // Call API to update approval status
       const response = await axios.put(`${baseurl}/orders/items/${itemId}/approve`, {
         approval_status: "approved"
       });
       
       if (response.data.success) {
-        // Update local state
         setOrders(prevOrders => 
           prevOrders.map(order => {
             if (order.id === orderId) {
@@ -585,23 +541,19 @@ const fetchOrders = async () => {
     }
   };
 
-  // Handle item rejection
   const handleRejectItem = async (itemId, orderId) => {
     try {
-      // Find the item
       const order = orders.find(o => o.id === orderId);
       if (!order) return;
       
       const item = order.items.find(i => i.id === itemId);
       if (!item) return;
       
-      // Call API to update approval status
       const response = await axios.put(`${baseurl}/orders/items/${itemId}/approve`, {
         approval_status: "rejected"
       });
       
       if (response.data.success) {
-        // Update local state
         setOrders(prevOrders => 
           prevOrders.map(order => {
             if (order.id === orderId) {
@@ -626,6 +578,78 @@ const fetchOrders = async () => {
     }
   };
 
+  // NEW: Handle edit item (navigate to checkout page)
+  const handleEditItem = (order, item) => {
+    console.log("Editing item:", item);
+    
+    // Prepare data for checkout page
+    const cartItem = {
+      product_id: item.product_id,
+      item_name: item.item_name,
+      quantity: item.quantity,
+      sale_price: item.sale_price,
+      edited_sale_price: item.edited_sale_price,
+      mrp: item.mrp,
+      min_sale_price: item.min_sale_price,
+      credit_period: item.credit_period,
+      staff_incentive: item.staff_incentive || 0,
+      
+      // Include all breakdown calculations
+      breakdown: {
+        perUnit: {
+          mrp: item.mrp,
+          sale_price: item.sale_price,
+          edited_sale_price: item.edited_sale_price,
+          credit_charge: item.credit_charge,
+          credit_percentage: item.credit_percentage,
+          customer_sale_price: item.customer_sale_price,
+          discount_percentage: item.discount_percentage,
+          discount_amount: item.discount_amount,
+          taxable_amount: item.taxable_amount,
+          tax_percentage: item.tax_percentage,
+          tax_amount: item.tax_amount,
+          sgst_percentage: item.sgst_percentage,
+          sgst_amount: item.sgst_amount,
+          cgst_percentage: item.cgst_percentage,
+          cgst_amount: item.cgst_amount,
+          final_amount: item.final_amount,
+          item_total: item.item_total
+        }
+      }
+    };
+
+    // Prepare order totals for checkout
+    const orderTotals = {
+      subtotal: item.item_total,
+      totalTax: item.tax_amount,
+      totalDiscount: item.discount_amount,
+      totalTaxableAmount: item.taxable_amount,
+      totalCreditCharges: item.credit_charge,
+      finalTotal: item.item_total,
+      itemCount: 1,
+      userDiscount: item.discount_percentage || 0
+    };
+
+    // Navigate to checkout with order and item data
+    navigate('/retailers/checkout', {
+      state: {
+        retailerId: order.customer_id,
+        customerName: order.customer_name,
+        displayName: order.customer_name,
+        discount: order.discount_amount || 0,
+        cartItems: [cartItem],
+        staffId: order.staff_id,
+        orderTotals: orderTotals,
+        userDiscountPercentage: item.discount_percentage || 0,
+        creditPeriods: item.credit_period,
+        isEditMode: true,
+        editOrderNumber: order.order_number,
+        editItemId: item.id,
+        originalItemData: item
+      }
+    });
+  };
+
   const openOrderModal = (orderId) => {
     const orderData = orders.find(order => order.id === orderId);
     if (orderData) {
@@ -645,7 +669,6 @@ const fetchOrders = async () => {
     }
   };
 
-  // Close modals
   const closeModals = () => {
     setShowOrderModal(false);
     setShowItemModal(false);
@@ -695,12 +718,9 @@ const fetchOrders = async () => {
 
     const accountDetails = order.account_details;
     const staffId = selectedItemsData[0]?.staff_id || order.staff_id || 0;
-    
     const staffIncentive = order.staff_incentive || 0;
 
-    // Prepare selected items with ALL order_items columns
     const selectedItemsWithAllColumns = selectedItemsData.map(item => ({
-      // All order_items table columns
       id: item.id,
       order_number: item.order_number,
       item_name: item.item_name,
@@ -731,60 +751,32 @@ const fetchOrders = async () => {
       discount_applied_scheme: item.discount_applied_scheme,
       created_at: item.created_at,
       updated_at: item.updated_at,
-      
-      // Additional fields
       min_sale_price: item.min_sale_price,
       needs_approval: item.needs_approval,
       approval_status: item.approval_status,
       staff_id: item.staff_id,
       assigned_staff: item.assigned_staff,
       staff_incentive: item.staff_incentive,
-      
-      // For backward compatibility
       price: item.price
     }));
 
-    // FIXED: Convert NULL strings to actual null or 0
-    const creditLimit = accountDetails?.credit_limit;
-    const unpaidAmount = accountDetails?.unpaid_amount;
-    const balanceAmount = accountDetails?.balance_amount;
-    
-    console.log("🔍 DEBUG - Account details from Period:", {
-      credit_limit_raw: creditLimit,
-      unpaid_amount_raw: unpaidAmount,
-      balance_amount_raw: balanceAmount,
-      credit_limit_type: typeof creditLimit,
-      unpaid_amount_type: typeof unpaidAmount,
-      balance_amount_type: typeof balanceAmount,
-      accountDetails: accountDetails
-    });
-    
-    // Convert values properly
     const parseCreditValue = (value) => {
       if (value === null || value === undefined || value === "NULL" || value === "null") {
         return 0;
       }
       if (typeof value === 'string') {
-        // Remove any non-numeric characters except decimal point
         const cleanValue = value.replace(/[^0-9.-]+/g, '');
         return parseFloat(cleanValue) || 0;
       }
       return parseFloat(value) || 0;
     };
 
-    const parsedCreditLimit = parseCreditValue(creditLimit);
-    const parsedUnpaidAmount = parseCreditValue(unpaidAmount);
-    const parsedBalanceAmount = parseCreditValue(balanceAmount);
-
-    console.log("✅ Parsed credit values:", {
-      credit_limit: parsedCreditLimit,
-      unpaid_amount: parsedUnpaidAmount,
-      balance_amount: parsedBalanceAmount
-    });
+    const parsedCreditLimit = parseCreditValue(accountDetails?.credit_limit);
+    const parsedUnpaidAmount = parseCreditValue(accountDetails?.unpaid_amount);
+    const parsedBalanceAmount = parseCreditValue(accountDetails?.balance_amount);
 
     const invoiceData = {
       transactionType: 'stock transfer',
-      
       orderNumber: order.order_number,
       invoiceNumber: invoiceNumber,
       invoiceDate: new Date().toISOString().split('T')[0],
@@ -795,7 +787,6 @@ const fetchOrders = async () => {
         items: undefined
       },
 
-      // Pass ALL order_items columns
       selectedItems: selectedItemsWithAllColumns,
       selectedItemIds: orderSelectedItems,
 
@@ -823,7 +814,6 @@ const fetchOrders = async () => {
         gstin: accountDetails?.gstin || order.gstin || "29AABCD0503B1ZG",
         id: order.customer_id,
         account_details: accountDetails,
-        // FIXED: Pass parsed values
         credit_limit: parsedCreditLimit,
         unpaid_amount: parsedUnpaidAmount,
         balance_amount: parsedBalanceAmount,
@@ -910,16 +900,6 @@ const fetchOrders = async () => {
       }))
     };
 
-    console.log("📋 Invoice data being sent:", {
-      invoiceData: invoiceData,
-      customerInfo: invoiceData.customerInfo,
-      credit_values: {
-        credit_limit: invoiceData.customerInfo.credit_limit,
-        unpaid_amount: invoiceData.customerInfo.unpaid_amount,
-        balance_amount: invoiceData.customerInfo.balance_amount
-      }
-    });
-
     navigate(`/periodinvoicepreviewpdf/${order.id}`, {
       state: {
         invoiceData,
@@ -934,7 +914,6 @@ const fetchOrders = async () => {
   }
 };
 
-  // Filter orders by search and date
   const filteredOrders = orders.filter(order => {
     const customerMatch = order.customer_name.toLowerCase().includes(search.toLowerCase());
     let startMatch = true;
@@ -955,7 +934,6 @@ const fetchOrders = async () => {
         <AdminHeader isCollapsed={isCollapsed} />
 
         <div className="p-period-page">
-          {/* Filters Section */}
           <div className="p-filters-section">
             <div className="p-filter-row">
               <div className="p-filter-group">
@@ -1130,47 +1108,48 @@ const fetchOrders = async () => {
                               </div>
                               {order.items && order.items.length > 0 ? (
                                 <table className="p-invoices-table">
-                                 <thead>
-  <tr>
-    <th style={{ width: '50px' }}>
-      <input
-        type="checkbox"
-        checked={allItemsSelected}
-        onChange={() => handleSelectAll(order.id, order.items)}
-        className="p-item-checkbox"
-        disabled={(() => {
-          const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
-          return creditPeriods.length > 1;
-        })()}
-        title={(() => {
-          const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
-          if (creditPeriods.length > 1) {
-            return `Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days`;
-          }
-          return allItemsSelected ? "Deselect all items" : "Select all items";
-        })()}
-      />
-    </th>
-    <th>Item Name</th>
-    <th>Qty</th>
-       <th>Sale Price</th>        {/* Added Sale Price column */}
-    <th>MSP</th>        
-    <th>Edited Price</th>
-    <th>Credit Charge</th>
-    <th>Dst Amnt</th>
-    <th>CP</th>
-    <th>Inv No</th>
-    <th>Approval Status</th>
-    <th>Action</th>
-    <th>Status</th>
-  </tr>
-</thead>
+                                  <thead>
+                                    <tr>
+                                      <th style={{ width: '50px' }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={allItemsSelected}
+                                          onChange={() => handleSelectAll(order.id, order.items)}
+                                          className="p-item-checkbox"
+                                          disabled={(() => {
+                                            const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
+                                            return creditPeriods.length > 1;
+                                          })()}
+                                          title={(() => {
+                                            const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
+                                            if (creditPeriods.length > 1) {
+                                              return `Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days`;
+                                            }
+                                            return allItemsSelected ? "Deselect all items" : "Select all items";
+                                          })()}
+                                        />
+                                      </th>
+                                      <th>Item Name</th>
+                                      <th>Qty</th>
+                                      <th>Sale Price</th>
+                                      <th>MSP</th>
+                                      <th>Edited Price</th>
+                                      <th>Credit Charge</th>
+                                      <th>Dst Amnt</th>
+                                      <th>CP</th>
+                                      <th>Inv No</th>
+                                      <th>Approval Status</th>
+                                      <th>Action</th>
+                                      <th>Status</th>
+                                    </tr>
+                                  </thead>
                                   <tbody>
                                     {order.items.map((item) => {
                                       const isItemSelected = orderSelectedItems.includes(item.id);
                                       const hasInvoiceGenerated = item.invoice_status === 1;
                                       const needsApproval = item.needs_approval;
                                       const approvalStatus = item.approval_status;
+                                      const canEdit = item.can_edit;
 
                                       return (
                                         <tr key={item.id}>
@@ -1239,9 +1218,9 @@ const fetchOrders = async () => {
                                           </td>
                                           <td>{item.item_name}</td>
                                           <td>{item.quantity}</td>
-                                         <td>₹{item.sale_price.toLocaleString()}</td>       
-                                         <td>₹{item.min_sale_price.toLocaleString()}</td>   
-                                         <td>₹{item.edited_sale_price.toLocaleString()}</td>
+                                          <td>₹{item.sale_price.toLocaleString()}</td>
+                                          <td>₹{item.min_sale_price.toLocaleString()}</td>
+                                          <td>₹{item.edited_sale_price.toLocaleString()}</td>
                                           <td>₹{item.credit_charge.toLocaleString()}</td>
                                           <td>₹{item.discount_amount.toLocaleString()}</td>
                                           <td>{item.credit_period}</td>
@@ -1279,13 +1258,24 @@ const fetchOrders = async () => {
                                             )}
                                           </td>
                                           <td>
-                                            <button
-                                              className="p-eye-btn"
-                                              onClick={() => openItemModal(order.order_number, item.id)}
-                                              title="View Item Details"
-                                            >
-                                              👁️
-                                            </button>
+                                            <div className="p-action-buttons">
+                                              <button
+                                                className="p-eye-btn"
+                                                onClick={() => openItemModal(order.order_number, item.id)}
+                                                title="View Item Details"
+                                              >
+                                                👁️
+                                              </button>
+                                              {canEdit && (
+                                                <button
+                                                  className="p-edit-btn"
+                                                  onClick={() => handleEditItem(order, item)}
+                                                  title="Edit Item Price"
+                                                >
+                                                  <FaEdit />
+                                                </button>
+                                              )}
+                                            </div>
                                           </td>
                                           <td>
                                             {hasInvoiceGenerated ? (

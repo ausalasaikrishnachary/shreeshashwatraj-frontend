@@ -1673,10 +1673,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     'entity_type',
     'group',
     'gstin',
-    'email',
     'display_name',
-    'phone_number',
-    'mobile_number',
     'shipping_state',
     'shipping_country',
     'billing_state',
@@ -1936,10 +1933,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
         const informationMandatoryFields = [
           'name',
           'group',
-          'email',
           'display_name',
-          'phone_number',
-          'mobile_number',
           ...conditionalMandatoryFields
         ];
 
@@ -1948,11 +1942,6 @@ const RetailerForm = ({ user, mode = 'add' }) => {
           informationMandatoryFields.push('entity_type');
         }
 
-        // Add GSTIN for suppliers (mandatory for suppliers)
-        // if (formData.group === 'SUPPLIERS') {
-        //   informationMandatoryFields.push('gstin');
-        // }
-
         // Validate all mandatory fields
         informationMandatoryFields.forEach(field => {
           if (!formData[field] || formData[field].toString().trim() === '') {
@@ -1960,7 +1949,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
           }
         });
 
-        // Field-specific validations
+        // Field-specific validations (only validate format if field has value)
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
           newErrors.email = 'Invalid email format';
         }
@@ -2128,10 +2117,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
         const informationMandatoryFields = [
           'name',
           'group',
-          'email',
           'display_name',
-          'phone_number',
-          'mobile_number',
+          
           ...conditionalMandatoryFields
         ];
 
