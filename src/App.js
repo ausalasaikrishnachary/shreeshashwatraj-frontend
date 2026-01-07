@@ -178,6 +178,7 @@ import ImportSalesPage from "./Component/Panels/Admin/Inventory/Sales_catalogue/
 import ExportSalesPage from "./Component/Panels/Admin/Inventory/Sales_catalogue/ExportSalesPage";
 import SalesPdfDocument from "./Component/Panels/Admin/SalesInvoicePage/SalesPdfDocument";
 import Kachareceiptview from "./Component/Panels/kachreceipts/Receipts/Kachareceiptview";
+import ImportRetailersPage from "./Component/Panels/Admin/AdminRetailers/ImportRetailersPage";
 
 
 
@@ -364,6 +365,7 @@ function App() {
         <Route path="/kachareceipts" element={<KachaReceiptsTable />} />
         <Route path="/salesmanscore" element={<SalesPersonScore />} />
         <Route path="/import-sales" element={<ImportSalesPage />} />
+        <Route path="/retailers/import" element={<ImportRetailersPage />} />
         <Route path="/export-sales" element={<ExportSalesPage />} />
         <Route path="/salespdfdocument" element={<SalesPdfDocument />} />
         <Route path="/kachareceipts_view/:id" element={<Kachareceiptview />} />

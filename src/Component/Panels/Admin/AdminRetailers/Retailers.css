@@ -911,6 +911,7 @@
 /* Update existing button styles for bulk upload */
 .retailers-add-button--upload {
   background-color: #1d6f42 !important;
+      color: white;
 }
 
 .retailers-add-button--upload:hover {
@@ -919,6 +920,87 @@
 
 .retailers-add-button--upload .retailers-add-icon {
   margin-right: 8px;
+}
+
+
+/* Export Dropdown Styles */
+.retailers-export-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.retailers-export-dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #fff;
+  min-width: 280px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1000;
+  border-radius: 4px;
+  overflow: hidden;
+  top: 100%;
+  left: 0;
+}
+
+.retailers-export-dropdown:hover .retailers-export-dropdown-content {
+  display: block;
+}
+
+.retailers-export-dropdown-content button {
+  color: #333;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.retailers-export-dropdown-content button:hover {
+  background-color: #f5f5f5;
+}
+
+.retailers-export-dropdown-content button:first-child {
+  border-bottom: 1px solid #eee;
+}
+
+.retailers-add-button--export {
+  background-color: #28a745 !important;
+  border-color: #28a745 !important;
+}
+
+.retailers-add-button--export:hover {
+  background-color: #218838 !important;
+  border-color: #1e7e34 !important;
+}
+
+/* Export button icon */
+.retailers-add-button--export .retailers-add-icon {
+  margin-right: 8px;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .retailers-export-dropdown-content {
+    min-width: 200px;
+    left: -50px;
+  }
+  
+  .retailers-add-buttons {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .retailers-export-dropdown,
+  .retailers-add-button--upload,
+  .retailers-add-button--retailer {
+    flex: 1;
+    min-width: 120px;
+  }
 }
 
 /* Responsive adjustments */
