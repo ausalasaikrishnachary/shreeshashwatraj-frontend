@@ -170,7 +170,7 @@ const previewExcelFile = (file) => {
       const headers = jsonData[0];
       
       // Check required headers
-      const requiredHeaders = ["name", "email", "mobile_number", "business_name", "display_name"];
+      const requiredHeaders = ["name", "business_name", "display_name"];
       const missingHeaders = requiredHeaders.filter(header => 
         !headers.some(h => h && h.toString().toLowerCase().replace(/\s+/g, '_') === header)
       );
@@ -693,7 +693,7 @@ const renderPerformanceCell = (item) => (
                       <li>Download the template file to see the required format</li>
                       <li>Fill in the data following the template structure</li>
                       <li>Upload the completed Excel file (.xlsx, .xls, .csv)</li>
-                      <li>Required fields: <strong>name, email, mobile_number, business_name, display_name</strong></li>
+                      <li>Required fields: <strong>name, business_name, display_name</strong></li>
                       <li>Each record will be added as a <strong>{selectedRole}</strong></li>
                     </ul>
                   </div>
