@@ -39,6 +39,7 @@ const [receiptFormData, setReceiptFormData] = useState({
   retailerMobile: '',
   retailerEmail: '',
   retailerGstin: '',
+  
   retailerBusinessName: '',
   invoiceNumber: '',
   transactionProofFile: null,
@@ -223,7 +224,7 @@ const transformPaymentData = (apiData) => {
       overdueDays: overdueDays
     },
     receipts: receipts,
-    creditnotes: creditnotes, // Now this is always an array
+    creditnotes: creditnotes, 
     summary: {
       totalPaid: totalPaid,
       totalCreditNotes: totalCreditNotes,
@@ -427,12 +428,14 @@ const transformPaymentData = (apiData) => {
     
     supplierInfo: {
       name: apiData.PartyName || 'Customer',
-      businessName: apiData.AccountName || 'Business',
+    businessName: apiData.AccountName || 'Business',
+  business_name: apiData.business_name || apiData.AccountName || 'Business', // ✅ Add this
+  account_name: apiData.account_name || apiData.AccountName || 'Business', // ✅ Add this
       gstin: apiData.gstin || '',
       state: apiData.billing_state || apiData.BillingState || '',
       id: apiData.PartyID || null,
-      staffid: staffId, // ✅ Add staffid
-      assigned_staff: assignedStaff // ✅ Add assigned_staff
+      staffid: staffId,
+      assigned_staff: assignedStaff 
     },
     
     billingAddress: {
@@ -1046,7 +1049,6 @@ const PaymentStatus = () => {
   };
 
 const handleOpenReceiptModal = () => {
-  console.log("🟦 handleOpenReceiptModal TRIGGERED");
 
   if (!invoiceData) {
     console.log("❌ No invoiceData found");
@@ -1068,9 +1070,14 @@ const handleOpenReceiptModal = () => {
   
   const loggedInStaffId = localStorage.getItem('staff_id') || invoiceStaffId || '';
   
+  // ✅ FIX: Get both account_name and business_name from supplierInfo
+  const account_name = invoiceData.supplierInfo.account_name || invoiceData.supplierInfo.businessName || '';
+  const business_name = invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName || '';
 
   const updatedForm = {
     retailerBusinessName: invoiceData.supplierInfo.name,
+    account_name: account_name, // ✅ Add account_name
+    business_name: business_name, // ✅ Add business_name
     retailerId: staffId, 
     assignedStaffName: assignedStaffName, 
     staff_id: loggedInStaffId, 
@@ -1097,7 +1104,6 @@ const handleOpenReceiptModal = () => {
   console.log("📌 Opening Receipt Modal");
   setShowReceiptModal(true);
 };
-
   const handleCloseReceiptModal = () => {
     setShowReceiptModal(false);
     setIsCreatingReceipt(false);
@@ -1131,13 +1137,18 @@ const handleCreateReceiptFromInvoice = async () => {
 
     const formDataToSend = new FormData();
 
-    // ✅ Add ALL receipt data including staff information
+    // ✅ Add ALL receipt data including account_name and business_name
     formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
-    formDataToSend.append('retailer_id', receiptFormData.retailerId); // Staff ID from invoice
-    formDataToSend.append('assigned_staff_name', receiptFormData.assignedStaffName); // Staff name from invoice
-    formDataToSend.append('staff_id', receiptFormData.staff_id); // Logged-in staff ID creating receipt
+    formDataToSend.append('retailer_id', receiptFormData.retailerId); 
+    formDataToSend.append('assigned_staff_name', receiptFormData.assignedStaffName); 
+    formDataToSend.append('staff_id', receiptFormData.staff_id); 
     formDataToSend.append('TransactionType', receiptFormData.TransactionType);
     formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
+    
+    // ✅ Add account_name and business_name
+    formDataToSend.append('account_name', receiptFormData.account_name || ''); // Add this
+    formDataToSend.append('business_name', receiptFormData.business_name || ''); // Add this
+    
     formDataToSend.append('amount', receiptFormData.amount);
     formDataToSend.append('currency', receiptFormData.currency);
     formDataToSend.append('payment_method', receiptFormData.paymentMethod);
@@ -1156,11 +1167,11 @@ const handleCreateReceiptFromInvoice = async () => {
     
     formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
     
-    formDataToSend.append('invoice_staff_id', receiptFormData.retailer_staff_id || ''); // Staff ID from original invoice
-    formDataToSend.append('invoice_assigned_staff', receiptFormData.invoice_assigned_staff || ''); // Assigned staff from original invoice
+    formDataToSend.append('invoice_staff_id', receiptFormData.retailer_staff_id || ''); 
+    formDataToSend.append('invoice_assigned_staff', receiptFormData.invoice_assigned_staff || ''); 
     
     formDataToSend.append('from_invoice', 'true');
-        formDataToSend.append('data_type', 'Sales');
+    formDataToSend.append('data_type', 'Sales');
 
     if (invoiceData && invoiceData.voucherId) {
       formDataToSend.append('voucher_id', invoiceData.voucherId);
@@ -1171,7 +1182,7 @@ const handleCreateReceiptFromInvoice = async () => {
     }
 
     // Debug: Log all FormData entries
-    
+    console.log("📤 Sending to Receipt API:");
     for (let [key, value] of formDataToSend.entries()) {
       console.log(`${key}:`, value);
     }
@@ -1190,7 +1201,9 @@ const handleCreateReceiptFromInvoice = async () => {
         console.log('Receipt saved with staff data:', {
           staff_id: result.data.staff_id,
           assigned_staff: result.data.assigned_staff,
-              data_type: result.data.data_type 
+          account_name: result.data.account_name, // Check this
+          business_name: result.data.business_name, // Check this
+          data_type: result.data.data_type 
         });
       }
       
@@ -1735,6 +1748,11 @@ const handleCreateReceiptFromInvoice = async () => {
                           <Form.Control 
                             className="mb-2"
                             value={currentData.supplierInfo.businessName}
+                            onChange={(e) => handleNestedChange('supplierInfo', 'businessName', e.target.value)}
+                          />
+                             <Form.Control 
+                            className="mb-2"
+                            value={currentData.supplierInfo.account_name}
                             onChange={(e) => handleNestedChange('supplierInfo', 'businessName', e.target.value)}
                           />
                           <Form.Control 

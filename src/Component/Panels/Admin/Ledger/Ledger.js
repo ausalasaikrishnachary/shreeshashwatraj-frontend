@@ -161,7 +161,7 @@ const Ledger = () => {
     : "-"
   }
 </td>                            <td>{tx.trantype || "-"}</td>
-                            <td>{tx.PartyName || "-"}</td>
+                            <td>{tx.AccountName || "-"}</td>
                             <td>{dc || "-"}</td>
                             <td>
                               {dc === "C" ? (

@@ -29,6 +29,7 @@ const ReceiptsTable = () => {
   const [formData, setFormData] = useState({
     receiptNumber: 'REC001',
     retailerId: '',
+    retailerName: '',  
     amount: '',
     currency: 'INR',
     paymentMethod: 'Direct Deposit',
@@ -40,7 +41,6 @@ const ReceiptsTable = () => {
     retailerMobile: '',
     retailerEmail: '',
     retailerGstin: '',
-    retailerBusinessName: '',
     transactionProofFile: '',
     invoiceNumber: ''
   });
@@ -62,7 +62,7 @@ const ReceiptsTable = () => {
     }
   };
 
- const fetchInvoiceBalance = async (retailerId, invoiceNumber) => {
+const fetchInvoiceBalance = async (retailerId, invoiceNumber) => {
   if (!retailerId || !invoiceNumber) {
     setInvoiceBalance(0);
     setFormData(prev => ({
@@ -99,20 +99,23 @@ const ReceiptsTable = () => {
         let balanceAmount = 0;
         
         if (Array.isArray(data)) {
-          // Filter receipts for the specific invoice
-          const relevantReceipts = data.filter(receipt => 
-            receipt.invoice_number === invoiceNumber || 
-            (Array.isArray(receipt.invoice_numbers) && receipt.invoice_numbers.includes(invoiceNumber))
-          );
+          // Filter receipts for the specific retailer AND invoice
+          const relevantReceipts = data.filter(receipt => {
+            const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+            const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
+            
+            return receiptRetailerId == retailerId && 
+                   receiptInvoiceNumber === invoiceNumber;
+          });
           
           if (relevantReceipts.length > 0) {
-            // Get the latest receipt for this invoice
+            // Get the latest receipt for this retailer + invoice
             const latestReceipt = relevantReceipts.sort((a, b) => 
               new Date(b.created_at) - new Date(a.created_at)
             )[0];
             
             balanceAmount = parseFloat(latestReceipt.total_balance_amount || latestReceipt.balance_amount || 0);
-            console.log('Found balance from receipts array:', balanceAmount);
+            console.log('Found balance from receipts array for retailer', retailerId, 'invoice', invoiceNumber, ':', balanceAmount);
           }
         } else if (data.total_balance_amount || data.balance_amount) {
           // Single receipt object
@@ -122,9 +125,10 @@ const ReceiptsTable = () => {
           // Response has data property
           const receiptData = data.data;
           if (Array.isArray(receiptData)) {
-            const relevantReceipt = receiptData.find(receipt => 
-              receipt.invoice_number === invoiceNumber
-            );
+            const relevantReceipt = receiptData.find(receipt => {
+              const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+              return receiptRetailerId == retailerId && receipt.invoice_number === invoiceNumber;
+            });
             if (relevantReceipt) {
               balanceAmount = parseFloat(relevantReceipt.total_balance_amount || relevantReceipt.balance_amount || 0);
             }
@@ -145,21 +149,16 @@ const ReceiptsTable = () => {
       console.error('API error fetching receipt balance:', apiError);
     }
 
+    // Check in existing receipt data
     const existingReceipt = receiptData.find(receipt => {
-      const matchesRetailer = receipt.PartyID == retailerId || 
-                             receipt.AccountID == retailerId ||
-                             receipt.retailer?.id == retailerId;
+      const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+      const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
       
-      // Check if receipt has this invoice
-      const matchesInvoice = receipt.invoice_number === invoiceNumber ||
-                            (Array.isArray(receipt.invoice_numbers) && 
-                             receipt.invoice_numbers.includes(invoiceNumber));
-      
-      return matchesRetailer && matchesInvoice;
+      return receiptRetailerId == retailerId && receiptInvoiceNumber === invoiceNumber;
     });
 
     if (existingReceipt?.total_balance_amount) {
-      console.log('Found balance in existing data:', existingReceipt.total_balance_amount);
+      console.log('Found balance in existing data for retailer', retailerId, 'invoice', invoiceNumber, ':', existingReceipt.total_balance_amount);
       const balance = parseFloat(existingReceipt.total_balance_amount);
       setInvoiceBalance(balance);
       setFormData(prev => ({
@@ -170,10 +169,26 @@ const ReceiptsTable = () => {
       return;
     }
 
-    // Fallback 2: Check invoices data
+    // Check invoices data
     console.warn('No balance found from receipts API, checking invoices data');
     const selectedInvoiceData = invoices.find(inv => inv.VchNo === invoiceNumber);
+    
     if (selectedInvoiceData) {
+      // First verify this invoice belongs to the selected retailer
+      const invoiceRetailerId = selectedInvoiceData.PartyID || selectedInvoiceData.AccountID;
+      
+      if (invoiceRetailerId != retailerId) {
+        console.log('Invoice does not belong to selected retailer. Invoice retailer ID:', invoiceRetailerId, 'Selected retailer ID:', retailerId);
+        setInvoiceBalance(0);
+        setFormData(prev => ({
+          ...prev,
+          amount: ''
+        }));
+        alert('This invoice does not belong to the selected retailer.');
+        setIsFetchingBalance(false);
+        return;
+      }
+      
       const invoiceAmount = parseFloat(
         selectedInvoiceData.TotalAmount || 
         selectedInvoiceData.total_amount || 
@@ -181,10 +196,13 @@ const ReceiptsTable = () => {
         0
       );
       
-      const receiptsForInvoice = receiptData.filter(receipt => 
-        receipt.invoice_number === invoiceNumber ||
-        (Array.isArray(receipt.invoice_numbers) && receipt.invoice_numbers.includes(invoiceNumber))
-      );
+      const receiptsForInvoice = receiptData.filter(receipt => {
+        const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+        const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
+        
+        return receiptRetailerId == retailerId && 
+               receiptInvoiceNumber === invoiceNumber;
+      });
       
       const totalPaid = receiptsForInvoice.reduce((sum, receipt) => {
         return sum + parseFloat(receipt.paid_amount || receipt.amount || 0);
@@ -214,13 +232,13 @@ const ReceiptsTable = () => {
       }
     } else {
       // No invoice found
-      console.warn('Invoice not found in invoices data');
+      console.warn('Invoice not found in invoices data for retailer:', retailerId);
       setInvoiceBalance(0);
       setFormData(prev => ({
         ...prev,
         amount: ''
       }));
-      alert('Invoice not found. Please check the invoice number.');
+      alert('Invoice not found for the selected retailer.');
     }
   } catch (err) {
     console.error('Error fetching invoice balance:', err);
@@ -234,7 +252,6 @@ const ReceiptsTable = () => {
     setIsFetchingBalance(false);
   }
 };
-  // Auto-fetch balance when both retailer and invoice are selected
   useEffect(() => {
 
     if (formData.retailerId && formData.invoiceNumber) {
@@ -290,7 +307,7 @@ const ReceiptsTable = () => {
       style: { textAlign: 'left' },
       render: (value, row) => {
         const businessName =
-          row?.retailer?.business_name ||
+          row?.retailer?.businessname_name ||
           row?.payee_name ||
           row?.retailer_name ||
           'N/A';
@@ -426,51 +443,53 @@ const ReceiptsTable = () => {
 const fetchReceipts = async () => {
   try {
     setIsLoading(true);
-    console.log('Fetching receipts from:', `${baseurl}/api/receipts`);
+    console.log("Fetching receipts from:", `${baseurl}/api/receipts`);
 
     const response = await fetch(`${baseurl}/api/receipts`);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Fetch error:', response.status, errorText);
-      alert('Failed to load receipts');
+      console.error("Fetch error:", response.status, errorText);
+      alert("Failed to load receipts");
       return;
     }
 
     const data = await response.json();
-    console.log('Received receipts data:', data);
+    console.log("Raw API Data:", data);
 
     const receiptsArray = Array.isArray(data)
       ? data
       : data.data || data.receipts || [];
 
     /* ===============================
-       ✅ FILTER ONLY RECEIPTS
+       ✅ FILTER ONLY data_type = Sales
     =============================== */
-    const receiptOnlyData = receiptsArray.filter(item =>
-      (item.TransactionType || '').toLowerCase() === 'receipt'
+    const salesOnlyData = receiptsArray.filter(item =>
+      (item.data_type || "").trim().toLowerCase() === "sales"
     );
 
     /* ===============================
-       SORTING
+       ✅ SORTING (Latest First)
     =============================== */
-    const sortedData = receiptOnlyData.sort((a, b) => {
+    const sortedData = salesOnlyData.sort((a, b) => {
       const dateA = new Date(a.receipt_date || a.created_at || a.Date);
       const dateB = new Date(b.receipt_date || b.created_at || b.Date);
-      return dateB - dateA ||
-        (b.VoucherID - a.VoucherID) ||
-        (b.id - a.id);
+      return (
+        dateB - dateA ||
+        (b.VoucherID || 0) - (a.VoucherID || 0) ||
+        (b.id || 0) - (a.id || 0)
+      );
     });
 
     /* ===============================
-       TRANSFORM DATA
+       ✅ TRANSFORM DATA
     =============================== */
     const transformedData = sortedData.map(receipt => {
       const voucherId =
         receipt.VoucherID ||
         receipt.id ||
         receipt.receipt_id ||
-        '';
+        "";
 
       const retailerName =
         receipt.retailer?.business_name ||
@@ -478,7 +497,7 @@ const fetchReceipts = async () => {
         receipt.retailer_name ||
         receipt.PartyName ||
         receipt.AccountName ||
-        'N/A';
+        "N/A";
 
       const amount = parseFloat(
         receipt.amount ||
@@ -487,59 +506,65 @@ const fetchReceipts = async () => {
         0
       );
 
-      // Get retailer ID from multiple possible fields
-      const retailerId = 
+      const retailerId =
         receipt.retailer?.id ||
         receipt.PartyID ||
         receipt.AccountID ||
         receipt.retailer_id ||
-        '';
+        "";
 
       return {
         ...receipt,
         id: voucherId,
         VoucherID: voucherId,
-        retailerId: retailerId, // Add retailer ID
+        retailerId,
         payee: retailerName,
         VchNo:
           receipt.receipt_number ||
           receipt.VchNo ||
           receipt.VoucherNo ||
-          '',
-        amount: `₹ ${amount.toLocaleString('en-IN')}`,
+          "",
+        amount: `₹ ${amount.toLocaleString("en-IN")}`,
         paid_amount: amount,
         Date: receipt.receipt_date || receipt.Date || receipt.created_at,
         receipt_date: receipt.receipt_date
-          ? new Date(receipt.receipt_date).toLocaleDateString('en-IN')
-          : 'N/A',
+          ? new Date(receipt.receipt_date).toLocaleDateString("en-IN")
+          : "N/A",
         payment_method:
           receipt.payment_method ||
           receipt.PaymentMethod ||
-          'N/A',
+          "N/A",
         InvoiceNumber:
           receipt.invoice_number ||
           receipt.InvoiceNumber ||
           receipt.invoice_no ||
-          '',
-           data_type: receipt.data_type || 'Sales',
-        total_balance_amount: parseFloat(receipt.total_balance_amount || receipt.balance_amount || 0),
-        balance_amount: parseFloat(receipt.balance_amount || receipt.total_balance_amount || 0),
-        invoice_numbers: Array.isArray(receipt.invoice_numbers) 
-          ? receipt.invoice_numbers 
-          : (receipt.invoice_number ? [receipt.invoice_number] : [])
+          "",
+        data_type: receipt.data_type || "Sales",
+        total_balance_amount: parseFloat(
+          receipt.total_balance_amount || receipt.balance_amount || 0
+        ),
+        balance_amount: parseFloat(
+          receipt.balance_amount || receipt.total_balance_amount || 0
+        ),
+        invoice_numbers: Array.isArray(receipt.invoice_numbers)
+          ? receipt.invoice_numbers
+          : receipt.invoice_number
+          ? [receipt.invoice_number]
+          : []
       };
     });
 
-    console.log('Filtered Receipt Data:', transformedData);
+    console.log("Final Sales Receipt Data:", transformedData);
     setReceiptData(transformedData);
 
   } catch (err) {
-    console.error('Error fetching receipts:', err);
-    alert('Server connection error');
+    console.error("Error fetching receipts:", err);
+    alert("Server connection error");
   } finally {
     setIsLoading(false);
   }
 };
+
 
   // Fetch accounts for retailer dropdown
   const fetchAccounts = async () => {
@@ -644,8 +669,8 @@ const fetchReceipts = async () => {
       retailerMobile: selectedRetailer?.mobile_number || '',
       retailerEmail: selectedRetailer?.email || '',
       retailerGstin: selectedRetailer?.gstin || '',
-      retailerBusinessName: selectedRetailer?.business_name || '',
-      amount: '' // Clear amount when retailer changes
+   retailerName: selectedRetailer?.name || '',
+         amount: '',
     }));
     
     setInvoiceBalance(0);
@@ -705,7 +730,7 @@ const fetchReceipts = async () => {
       formDataToSend.append('bank_name', formData.bankName);
       formDataToSend.append('transaction_date', formData.transactionDate || '');
       formDataToSend.append('reconciliation_option', formData.reconciliationOption);
-      formDataToSend.append('retailer_name', formData.retailerBusinessName);
+      formDataToSend.append('retailer_name', formData.retailerName); 
       formDataToSend.append('invoice_number', formData.invoiceNumber);
           formDataToSend.append('data_type', 'Sales');
 
@@ -1048,13 +1073,14 @@ const fetchReceipts = async () => {
                             required
                           >
                             <option value="">Select Retailer</option>
-                            {accounts
-                              .filter(acc => acc.role === "retailer" && acc.business_name)
-                              .map((acc) => (
-                                <option key={acc.id} value={acc.id}>
-                                  {acc.business_name}
-                                </option>
-                              ))}
+                        {accounts
+  .filter(acc => acc.role === "retailer" && (acc.name || acc.display_name))
+  .map((acc) => (
+    <option key={acc.id} value={acc.id}>
+      {acc.gstin?.trim() ? acc.display_name : acc.name}
+    </option>
+  ))}
+
                           </select>
                         </div>
                       </div>
@@ -1082,8 +1108,6 @@ const fetchReceipts = async () => {
                       </div>
                     </div>
 
-                    {/* Balance and Amount Row */}
-      {/* Balance and Amount Row */}
 <div className="row mb-4">
   <div className="col-md-6">
     <div className="mb-1">

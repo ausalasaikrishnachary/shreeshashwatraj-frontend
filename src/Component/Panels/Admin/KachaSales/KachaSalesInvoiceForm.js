@@ -910,7 +910,7 @@ const KachaSalesInvoiceForm = ({ user }) => {
     setInvoiceData(prev => ({
   ...prev,
   supplierInfo: {
-    name: supplier.name,
+  name: supplier.gstin ? supplier.display_name : supplier.name,
     businessName: supplier.business_name,
     state: supplier.billing_state,
     staffid: supplier.staffid,
@@ -940,11 +940,11 @@ const KachaSalesInvoiceForm = ({ user }) => {
   {accounts
     .filter(acc => acc.role === "retailer")
     .map(acc => (
-      <option key={acc.id} value={acc.business_name}>
-        {acc.business_name} 
-      
-        
-      </option>
+     <option key={acc.id} value={acc.business_name}>
+  {acc.gstin?.trim()
+    ? acc.display_name || acc.name
+    : acc.name || acc.display_name}
+</option>
     ))}
 </Form.Select>
                         

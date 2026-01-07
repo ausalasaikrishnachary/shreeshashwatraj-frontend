@@ -105,7 +105,6 @@ const [tempPrice, setTempPrice] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
-  // Check if we're in edit mode (has ID parameter)
   useEffect(() => {
     if (id) {
       setIsEditMode(true);
@@ -136,13 +135,11 @@ const [tempPrice, setTempPrice] = useState("");
         setSelectedSupplierId(apiData.PartyID);
         setSelected(true);
         
-        // Set the retailer name in the search input
         const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
         if (supplierAccount) {
           setInputName(supplierAccount.business_name);
         }
         
-        // Set staff data from API response
         if (apiData.staffid) {
           setSelectedStaffId(apiData.staffid);
         }
@@ -233,12 +230,14 @@ const [tempPrice, setTempPrice] = useState("");
       
       supplierInfo: {
         name: apiData.PartyName || 'Customer',
-        business_name: account?.business_name || apiData.AccountName || 'Business',
-        gstin: apiData.gstin || '',
+ business_name: account?.business_name || apiData.business_name || 'Business',
+  account_name: account?.account_name || apiData.account_name || 'Busines',
+          gstin: apiData.gstin || '',
         state: apiData.billing_state || apiData.BillingState || '',
         id: apiData.PartyID || null,
         staffid: apiData.staffid || apiData.staff_id || null,
-        assigned_staff: apiData.assigned_staff || apiData.AssignedStaff || account?.assigned_staff || 'N/A'
+        assigned_staff: apiData.assigned_staff || apiData.AssignedStaff || account?.assigned_staff || 'N/A',
+        
       },
       
       billingAddress: {
@@ -248,7 +247,8 @@ const [tempPrice, setTempPrice] = useState("");
         pincode: apiData.billing_pin_code || apiData.BillingPincode || '',
         state: apiData.billing_state || apiData.BillingState || ''
       },
-      
+
+    
       shippingAddress: {
         addressLine1: apiData.shipping_address_line1 || apiData.ShippingAddress || apiData.billing_address_line1 || apiData.BillingAddress || '',
         addressLine2: apiData.shipping_address_line2 || apiData.billing_address_line2 || '',
@@ -413,38 +413,6 @@ const [tempPrice, setTempPrice] = useState("");
     }
   };
 
-  const handleSearch = () => {
-    if (inputName.trim().toLowerCase() === "dummy") {
-      setSelected(true);
-      setInvoiceData(prev => ({
-        ...prev,
-        supplierInfo: {
-          name: "Vamshi",
-          businessName: "business name",
-          state: "Telangana",
-          gstin: "29AABCD0503B1ZG"
-        },
-        billingAddress: {
-          addressLine1: "5-300001, Jyoti Nagar, chandrampet, Rajanna sircilla",
-          addressLine2: "Address Line2",
-          city: "Hyderabad-501505",
-          pincode: "501505",
-          state: "Telangana"
-        },
-        shippingAddress: {
-          addressLine1: "5-300001, Jyoti Nagar, chandrampet, Rajanna sircilla",
-          addressLine2: "Address Line2",
-          city: "Hyderabad-501505",
-          pincode: "501505",
-          state: "Telangana"
-        }
-      }));
-    } else {
-      setSelected(false);
-      setError("Supplier not found");
-      setTimeout(() => setError(null), 3000);
-    }
-  };
 
   const handleItemChange = (e) => {
     const { name, value } = e.target;
@@ -881,9 +849,9 @@ const [tempPrice, setTempPrice] = useState("");
           // Same state: GST amount divided equally
           totalCGSTAmount += gstAmount / 2;
           totalSGSTAmount += gstAmount / 2;
-          totalCGSTPercentage = gst / 2;  // Percentage: 2.5 for 5% GST
-          totalSGSTPercentage = gst / 2;  // Percentage: 2.5 for 5% GST
-          totalIGSTPercentage = 0;        // Percentage: 0
+          totalCGSTPercentage = gst / 2; 
+          totalSGSTPercentage = gst / 2; 
+          totalIGSTPercentage = 0;      
         } else {
           // Different state: Full GST as IGST
           totalIGSTAmount += gstAmount;
@@ -907,11 +875,10 @@ const [tempPrice, setTempPrice] = useState("");
           quantity: quantity,
           price: price,
           discount: discount,
-          // ✅ Store PERCENTAGES for items table
-          gst: parseFloat(item.gst) || 0,           // Percentage: 5%
-          cgst: parseFloat(item.cgst) || 0,         // Percentage: 2.5% (same state) or 0%
-          sgst: parseFloat(item.sgst) || 0,         // Percentage: 2.5% (same state) or 0%
-          igst: parseFloat(item.igst) || 0,         // Percentage: 5% (different state) or 0%
+          gst: parseFloat(item.gst) || 0,          
+          cgst: parseFloat(item.cgst) || 0,        
+          sgst: parseFloat(item.sgst) || 0,       
+          igst: parseFloat(item.igst) || 0,       
           cess: parseFloat(item.cess) || 0,
           total: parseFloat(item.total) || 0,
           batchDetails: item.batchDetails,
@@ -933,14 +900,14 @@ const [tempPrice, setTempPrice] = useState("");
         type: 'sales',
         
         // ✅ Voucher Table: Store AMOUNTS
-        CGSTAmount: totalCGSTAmount.toFixed(2),    // Amount: ₹25.00
-        SGSTAmount: totalSGSTAmount.toFixed(2),    // Amount: ₹25.00
-        IGSTAmount: totalIGSTAmount.toFixed(2),    // Amount: ₹50.00 or 0
+        CGSTAmount: totalCGSTAmount.toFixed(2),   
+        SGSTAmount: totalSGSTAmount.toFixed(2),    
+        IGSTAmount: totalIGSTAmount.toFixed(2),   
         
         // ✅ Voucher Table: Also store PERCENTAGES
-        CGSTPercentage: totalCGSTPercentage.toFixed(2),  // Percentage: 2.50
-        SGSTPercentage: totalSGSTPercentage.toFixed(2),  // Percentage: 2.50
-        IGSTPercentage: totalIGSTPercentage.toFixed(2),  // Percentage: 5.00 or 0
+        CGSTPercentage: totalCGSTPercentage.toFixed(2),
+        SGSTPercentage: totalSGSTPercentage.toFixed(2), 
+        IGSTPercentage: totalIGSTPercentage.toFixed(2), 
         
         taxType: sameState ? "CGST/SGST" : "IGST",
         batchDetails: batchDetails,  // Items table: Stores percentages
@@ -951,8 +918,14 @@ const [tempPrice, setTempPrice] = useState("");
         PartyID: selectedSupplierId,
         AccountID: invoiceData.supplierInfo.accountId,
         PartyName: invoiceData.supplierInfo.name,
-        AccountName: invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName || invoiceData.supplierInfo.name
-      };
+  // ✅ FIX: Get account_name and business_name from the account object
+  account_name: invoiceData.supplierInfo.account_name || 
+                accounts.find(acc => acc.id === selectedSupplierId)?.account_name || 
+                invoiceData.supplierInfo.name,
+  business_name: invoiceData.supplierInfo.business_name || 
+                 accounts.find(acc => acc.id === selectedSupplierId)?.business_name || 
+                 invoiceData.supplierInfo.name
+};     
 
       console.log('🚀 Final Payload to Backend:', {
         // Voucher table amounts
@@ -1203,14 +1176,15 @@ const [tempPrice, setTempPrice] = useState("");
       setInvoiceData(prev => ({
         ...prev,
         supplierInfo: {
-          name: supplier.name,
-          businessName: supplier.business_name,
-          business_name: supplier.business_name,
-          state: supplier.billing_state,
+  name: supplier.gstin ? supplier.display_name : supplier.name,
+
+  state: supplier.billing_state,
           gstin: supplier.gstin,
           accountId: supplier.id,
           staffid: supplier.staffid,
-          assigned_staff: supplier.assigned_staff
+ business_name: supplier.business_name, 
+    account_name: supplier.account_name,   
+                  assigned_staff: supplier.assigned_staff,
         },
         billingAddress: {
           addressLine1: supplier.billing_address_line1,
@@ -1234,10 +1208,12 @@ const [tempPrice, setTempPrice] = useState("");
             {accounts
               .filter(acc => acc.role === "retailer")
               .map(acc => (
-                <option key={acc.id} value={acc.business_name}>
-                  {acc.business_name} 
+<option key={acc.id} value={acc.business_name}>
+  {acc.gstin?.trim()
+    ? acc.display_name || acc.name
+    : acc.name || acc.display_name}
+</option>
             
-                </option>
               ))}
           </Form.Select>
         </>
@@ -1259,7 +1235,7 @@ const [tempPrice, setTempPrice] = useState("");
           </div>
           <div className="bg-light p-2 rounded">
             <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
-            <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
+<div><strong>Business:</strong> {invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName}</div> 
             <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
             <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
             {/* Display assigned staff from the selected retailer */}

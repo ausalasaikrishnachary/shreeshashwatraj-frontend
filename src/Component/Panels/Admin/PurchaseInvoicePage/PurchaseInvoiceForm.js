@@ -916,7 +916,7 @@ const handleSubmit = async (e) => {
                               setInvoiceData(prev => ({
                                 ...prev,
                                 supplierInfo: {
-                                  name: supplier.display_name,
+  name: supplier.gstin ? supplier.display_name : supplier.name,
                                   businessName: supplier.business_name,
                                   state: supplier.billing_state,
                                   gstin: supplier.gstin
@@ -943,9 +943,12 @@ const handleSubmit = async (e) => {
                           {accounts
                             .filter(acc => acc.role === "supplier") 
                             .map(acc => (
-                              <option key={acc.id} value={acc.business_name}>
-                                {acc.business_name} 
-                              </option>
+                            <option key={acc.id} value={acc.business_name}>
+  {acc.gstin?.trim()
+    ? acc.display_name || acc.business_name
+    : acc.name || acc.business_name}
+</option>
+
                             ))}
                         </Form.Select>
                       </>

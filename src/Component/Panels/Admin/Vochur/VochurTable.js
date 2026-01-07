@@ -39,7 +39,7 @@ const VochurTable = () => {
     supplierMobile: '',
     supplierEmail: '',
     supplierGstin: '',
-    supplierBusinessName: '',
+    suppliername: '',
     transactionProofFile: '',
     invoiceNumber: ''
   });
@@ -622,27 +622,42 @@ const fetchReceipts = async () => {
   };
 
   // Handle supplier selection change
-  const handleSupplierChange = (e) => {
-    const selectedSupplierId = e.target.value;
-    const selectedSupplier = suppliers.find(supp => supp.id == selectedSupplierId);
-    
-    setFormData(prev => ({
-      ...prev,
-      supplierId: selectedSupplierId,
-      supplierMobile: selectedSupplier?.mobile_number || '',
-      supplierEmail: selectedSupplier?.email || '',
-      supplierGstin: selectedSupplier?.gstin || '',
-      supplierBusinessName: selectedSupplier?.business_name || '',
-      amount: '' 
-    }));
-    
-    setInvoiceBalance(0);
-    
-    // If invoice is already selected, fetch balance
-    if (formData.invoiceNumber) {
-      fetchInvoiceBalance(selectedSupplierId, formData.invoiceNumber);
-    }
-  };
+const handleSupplierChange = (e) => {
+  const selectedSupplierId = e.target.value;
+  const selectedSupplier = suppliers.find(supp => supp.id == selectedSupplierId);
+  
+  if (!selectedSupplier) {
+    console.error('Supplier not found with ID:', selectedSupplierId);
+    return;
+  }
+  
+  console.log('Selected Supplier:', {
+    id: selectedSupplier.id,
+    name: selectedSupplier.name, // Person's name
+    business_name: selectedSupplier.business_name, // Business name
+    mobile: selectedSupplier.mobile_number,
+    email: selectedSupplier.email,
+    gstin: selectedSupplier.gstin
+  });
+  
+  setFormData(prev => ({
+    ...prev,
+    supplierId: selectedSupplierId,
+    supplierMobile: selectedSupplier.mobile_number || '',
+    supplierEmail: selectedSupplier.email || '',
+    supplierGstin: selectedSupplier.gstin || '',
+    suppliername: selectedSupplier.name || '', // Store person's name here
+    business_name: selectedSupplier.business_name || '', // Store business name separately
+    amount: '' 
+  }));
+  
+  setInvoiceBalance(0);
+  
+  // If invoice is already selected, fetch balance
+  if (formData.invoiceNumber) {
+    fetchInvoiceBalance(selectedSupplierId, formData.invoiceNumber);
+  }
+};
 
   // Handle invoice selection change
   const handleInvoiceChange = (e) => {
@@ -658,7 +673,7 @@ const fetchReceipts = async () => {
     }
   };
 
- const handleCreateReceipt = async () => {
+const handleCreateReceipt = async () => {
   // Validation
   if (!formData.supplierId) {
     alert('Please select a supplier');
@@ -676,77 +691,115 @@ const fetchReceipts = async () => {
   try {
     setIsLoading(true);
     
-    // Create FormData instead of JSON
+    // Get the selected supplier details
+    const selectedSupplier = suppliers.find(supp => supp.id == formData.supplierId);
+    if (!selectedSupplier) {
+      alert('Supplier not found');
+      setIsLoading(false);
+      return;
+    }
+    
     const formDataToSend = new FormData();
     
-    // Append all form fields
-    formDataToSend.append('receipt_number', formData.receiptNumber);
-    formDataToSend.append('supplier_id', formData.supplierId);
-    formDataToSend.append('amount', formData.amount);
-    formDataToSend.append('currency', formData.currency);
-    formDataToSend.append('payment_method', formData.paymentMethod);
-    formDataToSend.append('receipt_date', formData.receiptDate);
-    formDataToSend.append('note', formData.note);
-    formDataToSend.append('bank_name', formData.bankName);
-    formDataToSend.append('transaction_date', formData.transactionDate || '');
-    formDataToSend.append('reconciliation_option', formData.reconciliationOption);
-    formDataToSend.append('supplier_name', formData.supplierBusinessName);
-    formDataToSend.append('invoice_number', formData.invoiceNumber);
+    formDataToSend.append('retailer_id', formData.supplierId);
     
+    formDataToSend.append('retailer_name', selectedSupplier.name || '');
+    
+    if (selectedSupplier.business_name) {
+      formDataToSend.append('business_name', selectedSupplier.business_name);
+    }
+    
+    // Other required fields
+    formDataToSend.append('amount', formData.amount);
+    formDataToSend.append('bank_name', formData.bankName || '');
+    formDataToSend.append('invoice_number', formData.invoiceNumber || '');
     formDataToSend.append('TransactionType', 'purchase voucher');
-            formDataToSend.append('data_type', 'Purchase');
+    formDataToSend.append('data_type', 'Purchase');
+    
+    // Optional fields
+    formDataToSend.append('currency', formData.currency || 'INR');
+    formDataToSend.append('payment_method', formData.paymentMethod || 'Direct Deposit');
+    formDataToSend.append('receipt_date', formData.receiptDate);
+    formDataToSend.append('note', formData.note || '');
+    formDataToSend.append('transaction_date', formData.transactionDate || '');
+    
+    // Supplier contact details
+    if (selectedSupplier.mobile_number) {
+      formDataToSend.append('supplier_mobile', selectedSupplier.mobile_number);
+    }
+    if (selectedSupplier.email) {
+      formDataToSend.append('supplier_email', selectedSupplier.email);
+    }
+    if (selectedSupplier.gstin) {
+      formDataToSend.append('supplier_gstin', selectedSupplier.gstin);
+    }
 
+    // Append file if exists
     if (formData.transactionProofFile) {
       formDataToSend.append('transaction_proof', formData.transactionProofFile);
     }
 
-    console.log('Sending receipt data with FormData...');
+    // Debug: Log what we're sending
+    console.log('=== SENDING DATA TO BACKEND ===');
     console.log('Supplier ID:', formData.supplierId);
-    console.log('Invoice Number:', formData.invoiceNumber);
+    console.log('Supplier Name (person):', selectedSupplier.name);
+    console.log('Business Name:', selectedSupplier.business_name);
     console.log('Amount:', formData.amount);
-    console.log('TransactionType: purchase voucher'); // Debug log
+    console.log('Invoice Number:', formData.invoiceNumber);
+    console.log('TransactionType:', 'purchase voucher');
+    console.log('data_type:', 'Purchase');
+    
+    // Log all FormData entries
+    console.log('FormData entries:');
+    for (let [key, value] of formDataToSend.entries()) {
+      console.log(`${key}: ${value}`);
+    }
 
+    // Make the API call
     const response = await fetch(`${baseurl}/api/receipts`, {
       method: 'POST',
       body: formDataToSend,
     });
 
     console.log('Response status:', response.status);
+    
     if (response.ok) {
       const result = await response.json();
-      console.log('Voucher created successfully:', result);
+      console.log('✅ Voucher created successfully:', result);
+      
+      // Refresh the receipts list
       await fetchReceipts();
+      
+      // Close modal
       handleCloseModal();
+      
       alert('Voucher created successfully!');
       
-      if (result.id) {
+      // Navigate to view page
+      if (result.voucherId) {
+        navigate(`/voucher_view/${result.voucherId}`);
+      } else if (result.id) {
         navigate(`/voucher_view/${result.id}`);
-      } else {
-        console.error('No ID returned in response');
-        alert('Voucher created, but unable to view details. Please check the receipt list.');
       }
 
+      // Generate next receipt number
       await fetchNextReceiptNumber();
     } else {
       const errorText = await response.text();
-      console.error('Failed to create receipt. Status:', response.status);
+      console.error('❌ Failed to create voucher. Status:', response.status);
       console.error('Error response:', errorText);
-      let errorMessage = 'Failed to create receipt. ';
+      
+      let errorMessage = 'Failed to create voucher. ';
       try {
         const errorData = JSON.parse(errorText);
-        errorMessage += errorData.error || 'Please try again.';
-        if (errorData.error.includes('already exists')) {
-          console.log('Duplicate receipt number detected, fetching new number...');
-          await fetchNextReceiptNumber();
-          errorMessage += ' A new receipt number has been generated. Please try again.';
-        }
+        errorMessage += errorData.error || errorData.message || 'Please try again.';
       } catch {
         errorMessage += 'Please try again.';
       }
       alert(errorMessage);
     }
   } catch (err) {
-    console.error('Error creating receipt:', err);
+    console.error('❌ Error creating voucher:', err);
     alert('Network error. Please check your connection and try again.');
   } finally {
     setIsLoading(false);
@@ -979,30 +1032,33 @@ const fetchReceipts = async () => {
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="row mb-4">
-                      <div className="col-md-6">
-                        <div className="mb-3">
-                          <label className="form-label">Supplier *</label>
-                          <select
-                            className="form-select"
-                            name="supplierId"
-                            value={formData.supplierId}
-                            onChange={handleSupplierChange}
-                            required
-                          >
-                            <option value="">Select Supplier</option>
-                            {suppliers
-                              .filter(supp => supp.role === "supplier" && supp.business_name)
-                              .map((supp) => (
-                                <option key={supp.id} value={supp.id}>
-                                  {supp.business_name}
-                                </option>
-                              ))}
-                          </select>
-                        </div>
-                      </div>
-                      <div className="col-md-6">
+                    <div className='row'>
+<div className="col-md-6">
+  <div className="mb-3">
+    <label className="form-label">Supplier *</label>
+    <select
+      className="form-select"
+      name="supplierId"
+      value={formData.supplierId}
+      onChange={handleSupplierChange}
+      required
+    >
+      <option value="">Select Supplier</option>
+      {suppliers
+        .filter(supp => supp.role === "supplier")
+        .map((supp) => (
+     <option key={supp.id} value={supp.id}>
+  {supp.gstin?.trim()
+    ? supp.display_name || supp.name
+    : supp.name || supp.display_name}
+</option>
+
+        ))}
+    </select>
+  </div>
+</div>
+        
+            <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Invoice Number *</label>
                           <select
@@ -1030,8 +1086,7 @@ const fetchReceipts = async () => {
                           )}
                         </div>
                       </div>
-                    </div>
-
+                      </div>
                     <div className="row mb-4">
                       <div className="col-md-6">
                         <div className="mb-3">

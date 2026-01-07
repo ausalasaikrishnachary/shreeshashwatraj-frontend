@@ -38,7 +38,7 @@ const PurchasePDFPreview = () => {
     retailerMobile: '',
     retailerEmail: '',
     retailerGstin: '',
-    retailerBusinessName: '',
+    retailerName: '',
     invoiceNumber: '',
     transactionProofFile: null,
       product_id: '', // Add this
@@ -1029,7 +1029,7 @@ const handleOpenReceiptModal = () => {
   console.log("✅ firstItem:", firstItem);
 
   const updatedForm = {
-    retailerBusinessName: invoiceData.supplierInfo.name, // ✅ CHANGED TO 'name' (PartyName)
+    retailerName: invoiceData.supplierInfo.name, // ✅ CHANGED TO 'name' (PartyName)
     retailerId: invoiceData.supplierInfo.id || '',
     amount: balanceDue,
     invoiceNumber: invoiceData.invoiceNumber,
@@ -1089,7 +1089,7 @@ const handleOpenReceiptModal = () => {
       formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
 formDataToSend.append('TransactionType', receiptFormData.TransactionType)
       formDataToSend.append('retailer_id', receiptFormData.retailerId);
-      formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
+      formDataToSend.append('retailer_name', receiptFormData.retailerName);
       formDataToSend.append('amount', receiptFormData.amount);
       formDataToSend.append('currency', receiptFormData.currency);
       formDataToSend.append('payment_method', receiptFormData.paymentMethod);
@@ -1108,7 +1108,7 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
     formDataToSend.append('batch_id', receiptFormData.batch_id || '');
             formDataToSend.append('data_type', 'Purchase');
 
-    formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
+    formDataToSend.append('retailer_business_name', receiptFormData.retailerName);
     formDataToSend.append('from_invoice', 'true');
 
     if (receiptFormData.transactionProofFile) {
@@ -1384,7 +1384,7 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                 <input
                   type="text"
                   className="form-control"
-                  value={receiptFormData.retailerBusinessName || 'Auto-filled from invoice'}
+                  value={receiptFormData.retailerName || 'Auto-filled from invoice'}
                   readOnly
                   disabled
                 />
