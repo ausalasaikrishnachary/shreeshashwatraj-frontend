@@ -6,7 +6,7 @@ import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import "./Retailers.css";
 import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
-import { FaSearch, FaUpload, FaFileExcel } from "react-icons/fa";
+import { FaSearch, FaUpload, FaFileExcel, FaEye, FaEdit, FaTrash } from "react-icons/fa";
 import * as XLSX from "xlsx";
 
 function Retailers() {
@@ -155,7 +155,7 @@ function Retailers() {
 
       // Create worksheet
       const worksheet = XLSX.utils.json_to_sheet(exportData);
-      
+
       // Set column widths
       const wscols = [
         { wch: 10 }, // ID
@@ -191,16 +191,16 @@ function Retailers() {
       // Create workbook
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, `${selectedRole === 'retailer' ? 'Retailers' : 'Suppliers'}`);
-      
+
       // Generate file name with timestamp
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
       const fileName = `${selectedRole === 'retailer' ? 'Retailers' : 'Suppliers'}_${timestamp}.xlsx`;
-      
+
       // Download file
       XLSX.writeFile(workbook, fileName);
-      
+
       alert(`${selectedRole === 'retailer' ? 'Retailers' : 'Suppliers'} data exported successfully!`);
-      
+
     } catch (error) {
       console.error('Error exporting to Excel:', error);
       alert('Failed to export data. Please try again.');
@@ -223,11 +223,11 @@ function Retailers() {
       }
       return false;
     });
-    
+
     // Temporarily set filtered data to all data for export
     const originalFilteredData = filteredRetailersData;
     setFilteredRetailersData(allDataForRole);
-    
+
     // Use setTimeout to ensure state update before export
     setTimeout(() => {
       exportToExcel();
@@ -301,9 +301,9 @@ function Retailers() {
     { key: "__item", title: "Group Type", render: (value, item) => renderGroupTypeCell(item) },
     { key: "__item", title: "Performance", render: (value, item) => renderPerformanceCell(item) },
     { key: "__item", title: "Status", render: (value, item) => renderStatusCell(item) },
-    { 
-      key: "__item", 
-      title: "Place Order", 
+    {
+      key: "__item",
+      title: "Place Order",
       render: (value, item) => (
         <button
           className="retailers-table__order-btn"
@@ -314,32 +314,26 @@ function Retailers() {
         </button>
       )
     },
-    { 
-      key: "__item", 
-      title: "Actions", 
+    {
+      key: "__item",
+      title: "Actions",
       render: (value, item) => (
         <div className="retailers-table__actions">
-          <button
-            className="retailers-table__action-btn retailers-table__action-btn--view"
+          <FaEye
+            className="retailers-table__action-icon retailers-table__action-icon--view"
             onClick={() => handleView(item.id)}
             title="View"
-          >
-            👁️
-          </button>
-          <button
-            className="retailers-table__action-btn retailers-table__action-btn--edit"
+          />
+          <FaEdit
+            className="retailers-table__action-icon retailers-table__action-icon--edit"
             onClick={() => handleEdit(item.id)}
             title="Edit"
-          >
-            ✏️
-          </button>
-          <button
-            className="retailers-table__action-btn retailers-table__action-btn--delete"
+          />
+          <FaTrash
+            className="retailers-table__action-icon retailers-table__action-icon--delete"
             onClick={() => handleDelete(item.id, item.business_name || item.name)}
             title="Delete"
-          >
-            🗑️
-          </button>
+          />
         </div>
       )
     }
@@ -458,7 +452,7 @@ function Retailers() {
                 <div className="retailers-add-buttons">
                   <div className="retailers-export-dropdown">
                     <button
-                      className="retailers-add-button retailers-add-button--export" style={{color:'white'}}
+                      className="retailers-add-button retailers-add-button--export" style={{ color: 'white' }}
                       onClick={exportFilteredData}
                       title="Export Current View"
                     >
@@ -470,7 +464,7 @@ function Retailers() {
                         Export Current View ({filteredRetailersData.length} records)
                       </button>
                       <button onClick={exportAllData}>
-                        Export All {selectedRole === 'retailer' ? 'Retailers' : 'Suppliers'} 
+                        Export All {selectedRole === 'retailer' ? 'Retailers' : 'Suppliers'}
                         ({retailersData.filter(item => item.role === selectedRole).length} records)
                       </button>
                     </div>

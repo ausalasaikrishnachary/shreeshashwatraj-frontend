@@ -867,7 +867,9 @@
   gap: 12px;
 }
 
-.btn-cancel, .btn-back, .btn-upload {
+.btn-cancel,
+.btn-back,
+.btn-upload {
   padding: 10px 20px;
   border-radius: 6px;
   border: none;
@@ -903,7 +905,9 @@
   background-color: #155d35;
 }
 
-.btn-cancel:disabled, .btn-back:disabled, .btn-upload:disabled {
+.btn-cancel:disabled,
+.btn-back:disabled,
+.btn-upload:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -911,7 +915,7 @@
 /* Update existing button styles for bulk upload */
 .retailers-add-button--upload {
   background-color: #1d6f42 !important;
-      color: white;
+  color: white;
 }
 
 .retailers-add-button--upload:hover {
@@ -934,7 +938,7 @@
   position: absolute;
   background-color: #fff;
   min-width: 280px;
-  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
   z-index: 1000;
   border-radius: 4px;
   overflow: hidden;
@@ -983,18 +987,68 @@
   margin-right: 8px;
 }
 
+/* Action icons styles matching SalesItems */
+.retailers-table__action-icon {
+  cursor: pointer;
+  font-size: 16px;
+  margin: 0 0px;
+  padding: 0px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.retailers-table__action-icon--view {
+  color: #2563eb;
+}
+
+.retailers-table__action-icon--view:hover {
+  background-color: #dbeafe;
+  transform: scale(1.1);
+}
+
+.retailers-table__action-icon--edit {
+  color: #16a34a;
+}
+
+.retailers-table__action-icon--edit:hover {
+  background-color: #dcfce7;
+  transform: scale(1.1);
+}
+
+.retailers-table__action-icon--delete {
+  color: #dc2626;
+}
+
+.retailers-table__action-icon--delete:hover {
+  background-color: #fee2e2;
+  transform: scale(1.1);
+}
+
+/* Update the actions container if needed */
+.retailers-table__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Remove the old button styles if they exist */
+.retailers-table__action-btn {
+  display: none;
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
   .retailers-export-dropdown-content {
     min-width: 200px;
     left: -50px;
   }
-  
+
   .retailers-add-buttons {
     flex-wrap: wrap;
     gap: 10px;
   }
-  
+
   .retailers-export-dropdown,
   .retailers-add-button--upload,
   .retailers-add-button--retailer {
@@ -1009,15 +1063,17 @@
     width: 95%;
     margin: 10px;
   }
-  
-  .modal-header, .modal-body, .modal-footer {
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
     padding: 15px;
   }
-  
+
   .preview-table-container {
     font-size: 0.9rem;
   }
-  
+
   .preview-table th,
   .preview-table td {
     padding: 8px 10px;
