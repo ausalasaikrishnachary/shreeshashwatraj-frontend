@@ -143,11 +143,11 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       subMenu: [
         { path: "/sales/invoices", name: "Invoices", icon: <FaFileInvoice /> },
         { path: "/sales/receipts", name: "Receipts", icon: <FaReceipt /> },
-        { path: "/sales/quotations", name: "Quotations", icon: <FaFileContract /> },
-        { path: "/sales/bill_of_supply", name: "Bill Of Supply", icon: <FaFileInvoiceDollar /> },
+        // { path: "/sales/quotations", name: "Quotations", icon: <FaFileContract /> },
+        // { path: "/sales/bill_of_supply", name: "Bill Of Supply", icon: <FaFileInvoiceDollar /> },
         { path: "/sales/credit_note", name: "Credit Note", icon: <FaCreditCard /> },
-        { path: "/sales/delivery_challan", name: "Delivery Challan", icon: <FaTruck /> },
-        { path: "/sales/receivables", name: "Receivables", icon: <FaHandHoldingUsd /> },
+        // { path: "/sales/delivery_challan", name: "Delivery Challan", icon: <FaTruck /> },
+        // { path: "/sales/receivables", name: "Receivables", icon: <FaHandHoldingUsd /> },
       ],
     },
 
@@ -156,10 +156,10 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       icon: <FaBox />,
       subMenu: [
         { path: "/purchase/purchase-invoice", name: "Purchase Invoice", icon: <FaPurchaseInvoice /> },
-        { path: "/purchase/purchase-order", name: "Purchase Order", icon: <FaClipboardCheck /> },
+        // { path: "/purchase/purchase-order", name: "Purchase Order", icon: <FaClipboardCheck /> },
         { path: "/purchase/voucher", name: "Voucher", icon: <FaStickyNote /> },
         { path: "/purchase/debit-note", name: "Debit Note", icon: <FaFileExport /> },
-        { path: "/purchase/payables", name: "Payables", icon: <FaHandHoldingUsd /> },
+        // { path: "/purchase/payables", name: "Payables", icon: <FaHandHoldingUsd /> },
       ],
     },
 
@@ -170,11 +170,11 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       subMenu: [
         { path: "/kachinvoicetable", name: "Kacha  Sales Invoices", icon: <FaFileInvoice /> },
 { path: "/kachareceipts", name: " Kacha Receipts", icon: <FaReceipt /> },
-        { path: "/sales/quotations", name: " kacha Quotations", icon: <FaFileContract /> },
-        { path: "/sales/bill_of_supply", name: " kacha Bill Of Supply", icon: <FaFileInvoiceDollar /> },
+        // { path: "/sales/quotations", name: " kacha Quotations", icon: <FaFileContract /> },
+        // { path: "/sales/bill_of_supply", name: " kacha Bill Of Supply", icon: <FaFileInvoiceDollar /> },
         { path: "/sales/credit_note", name: " kachaCredit Note", icon: <FaCreditCard /> },
-        { path: "/sales/delivery_challan", name: " kacha Delivery Challan", icon: <FaTruck /> },
-        { path: "/sales/receivables", name: " kacha Receivables", icon: <FaHandHoldingUsd /> },
+        // { path: "/sales/delivery_challan", name: " kacha Delivery Challan", icon: <FaTruck /> },
+        // { path: "/sales/receivables", name: " kacha Receivables", icon: <FaHandHoldingUsd /> },
       ],
     },
 

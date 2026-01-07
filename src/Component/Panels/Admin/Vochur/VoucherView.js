@@ -846,9 +846,9 @@ const fetchAllAccountsAndFindRetailer = async (retailerId) => {
     </div>
 
 
-    {/* <div className="col-md-6">
-      <p><strong>Voucher Number:</strong> {receipt.receipt_number || 'N/A'}</p>
-    </div> */}
+    <div className="col-md-6">
+    <p><strong>Voucher Number:</strong> {receipt.VchNo || 'N/A'}</p>
+    </div>
   </div>
 
   {/* Third Row - Two Columns */}

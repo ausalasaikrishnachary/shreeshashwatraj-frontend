@@ -44,6 +44,9 @@ const InvoicePDFPreview = () => {
   batch_id: '' ,
   TransactionType: 'Receipt' ,
        data_type: 'stock transfer',
+            account_name: '',
+  business_name: '',
+
 
   });
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
@@ -422,7 +425,10 @@ const transformPaymentData = (apiData) => {
       
       supplierInfo: {
         name: apiData.PartyName || 'Customer',
-        businessName: apiData.AccountName || 'Business', // This is the PartyName
+        businessName: apiData.AccountName || 'Business',
+          business_name: apiData.business_name || apiData.AccountName || 'Business',
+  account_name: apiData.account_name || apiData.AccountName || 'Business',
+
         gstin: apiData.gstin || '',
         state: apiData.billing_state || apiData.BillingState || '',
         id: apiData.PartyID || null
@@ -1053,9 +1059,8 @@ const handleOpenReceiptModal = () => {
   const firstItem = invoiceData.items[0];
   console.log("✅ firstItem:", firstItem);
 
-  // Debug: Check if batch_id exists in the first item
-  console.log("🔍 First item batch_id:", firstItem?.batch_id);
-  console.log("🔍 All items:", invoiceData.items);
+   const account_name = invoiceData.supplierInfo.account_name || invoiceData.supplierInfo.name || '';
+  const business_name = invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName || '';
 
   const updatedForm = {
     retailerBusinessName: invoiceData.supplierInfo.name,
@@ -1063,7 +1068,10 @@ const handleOpenReceiptModal = () => {
     amount: balanceDue,
     invoiceNumber: invoiceData.invoiceNumber,
     product_id: firstItem?.product_id || '',
-    batch_id: firstItem?.batch_id || '', // Ensure this is being set
+    batch_id: firstItem?.batch_id || '', 
+         account_name: account_name,
+    business_name: business_name,
+
     TransactionType: 'Receipt',
        data_type: 'stock transfer' 
 
@@ -1133,7 +1141,9 @@ const handleOpenReceiptModal = () => {
     formDataToSend.append('retailer_mobile', receiptFormData.retailerMobile);
     formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
     formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
-    
+        formDataToSend.append('account_name', receiptFormData.account_name );
+    formDataToSend.append('business_name', receiptFormData.business_name);
+
     formDataToSend.append('product_id', receiptFormData.product_id || '');
     formDataToSend.append('batch_id', receiptFormData.batch_id || '');
     
@@ -1704,7 +1714,7 @@ const handleOpenReceiptModal = () => {
                       ) : (
                         <>
                           <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p>
-                          <p className="mb-1 text-muted">{currentData.supplierInfo.businessName}</p>
+                          <p className="mb-1 text-muted">{currentData.supplierInfo.business_name}</p>
                           <p className="mb-1"><small>GSTIN: {currentData.supplierInfo.gstin || 'N/A'}</small></p>
                           <p className="mb-0"><small>State: {currentData.supplierInfo.state || 'N/A'}</small></p>
                         </>

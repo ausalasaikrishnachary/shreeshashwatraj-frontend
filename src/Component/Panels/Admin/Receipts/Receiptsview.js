@@ -28,7 +28,6 @@ const fetchReceipt = async () => {
   try {
     setIsLoading(true);
     const response = await fetch(`${baseurl}/api/receipts/${id}`);
-    
     if (response.ok) {
       const data = await response.json(); 
       setReceipt(data);
@@ -878,9 +877,11 @@ const fetchAllAccountsAndFindRetailer = async (retailerId) => {
     </div>
 
 
-    <div className="col-md-6">
-      <p><strong>Receipt Number:</strong> {receipt.receipt_number || 'N/A'}</p>
-    </div>
+   
+  <div className="col-md-6">
+    <p><strong>Receipt Number:</strong> {receipt.VchNo || 'N/A'}</p>
+  </div>
+
   </div>
 
   {/* Third Row - Two Columns */}

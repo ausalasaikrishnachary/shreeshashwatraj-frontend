@@ -48,7 +48,7 @@ const KachaSalesInvoiceForm = ({ user }) => {
       },
       supplierInfo: {
         name: "",
-        businessName: "",
+      business_name: "", 
         state: "",
       },
       billingAddress: {
@@ -226,7 +226,7 @@ const KachaSalesInvoiceForm = ({ user }) => {
       
       supplierInfo: {
         name: apiData.PartyName || 'Customer',
-        businessName: apiData.AccountName || 'Business',
+  business_name: apiData.business_name || apiData.AccountName || '',
         state: apiData.billing_state || apiData.BillingState || '',
         id: apiData.PartyID || null,
  gstin: apiData.gstin || '',   
@@ -601,7 +601,9 @@ const KachaSalesInvoiceForm = ({ user }) => {
       },
       supplierInfo: {
         name: "",
-        businessName: "",
+          business_name: "", // Add this
+      account_name: "", // Add this
+
         state: "",
       },
       billingAddress: {
@@ -701,7 +703,8 @@ const KachaSalesInvoiceForm = ({ user }) => {
         PartyID: selectedSupplierId,
         AccountID: invoiceData.supplierInfo.accountId,
         PartyName: invoiceData.supplierInfo.name,
-        AccountName: invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.name,
+       business_name : invoiceData.supplierInfo.business_name,
+       acccount_name:invoiceData.supplierInfo.account_name,
         staff_incentive: invoiceData.supplierInfo.staff_incentive || 0 ,
          gstin: invoiceData.supplierInfo.gstin || "" // ✅ Add GSTIN to payload
       };
@@ -911,10 +914,12 @@ const KachaSalesInvoiceForm = ({ user }) => {
   ...prev,
   supplierInfo: {
   name: supplier.gstin ? supplier.display_name : supplier.name,
-    businessName: supplier.business_name,
+  businessName: supplier.business_name, 
+ business_name: supplier.business_name, 
+    account_name: supplier.account_name,   
     state: supplier.billing_state,
     staffid: supplier.staffid,
-    gstin: supplier.gstin || '', // ✅ CORRECT: Use supplier.gstin
+    gstin: supplier.gstin || '', 
     assigned_staff: supplier.assigned_staff,
     staff_incentive: supplier.staff_incentive || 0
   },
@@ -969,6 +974,7 @@ const KachaSalesInvoiceForm = ({ user }) => {
     <div className="bg-light p-2 rounded">
       <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
       <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
+      <div><strong>account:</strong> {invoiceData.supplierInfo.account_name}</div>
       <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin || "Not Available"}</div>
       <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
       

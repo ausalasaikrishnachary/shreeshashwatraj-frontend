@@ -96,12 +96,13 @@ const [receiptFormData, setReceiptFormData] = useState({
 
   const fetchPaymentData = async (invoiceNumber) => {
     try {
+      
       setPaymentLoading(true);
       setPaymentError(null);
       
       console.log('Fetching payment data for invoice:', invoiceNumber);
       const response = await fetch(`${baseurl}/invoices/${invoiceNumber}`);
-      debugger
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -141,7 +142,6 @@ const [receiptFormData, setReceiptFormData] = useState({
   };
 
 const transformPaymentData = (apiData) => {
-  // FIX: Handle both Sales AND Stock Transfer
   const salesEntry = apiData.sales || apiData.stocktransfer || {};
   const receiptEntries = apiData.receipts || [];
   const creditNoteEntries = apiData.creditnotes || [];
@@ -428,9 +428,8 @@ const transformPaymentData = (apiData) => {
     
     supplierInfo: {
       name: apiData.PartyName || 'Customer',
-    businessName: apiData.AccountName || 'Business',
-  business_name: apiData.business_name || apiData.AccountName || 'Business', // ✅ Add this
-  account_name: apiData.account_name || apiData.AccountName || 'Business', // ✅ Add this
+business_name: apiData.business_name || '',
+  account_name: apiData.account_name || apiData.AccountName || 'Business', 
       gstin: apiData.gstin || '',
       state: apiData.billing_state || apiData.BillingState || '',
       id: apiData.PartyID || null,
@@ -1070,7 +1069,6 @@ const handleOpenReceiptModal = () => {
   
   const loggedInStaffId = localStorage.getItem('staff_id') || invoiceStaffId || '';
   
-  // ✅ FIX: Get both account_name and business_name from supplierInfo
   const account_name = invoiceData.supplierInfo.account_name || invoiceData.supplierInfo.businessName || '';
   const business_name = invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName || '';
 
@@ -1735,48 +1733,48 @@ const handleCreateReceiptFromInvoice = async () => {
               {/* Customer and Address Details */}
               <div className="address-section mb-4">
                 <Row>
-                  <Col md={6}>
-                    <div className="billing-address bg-light p-3 rounded">
-                      <h5 className="text-primary mb-2">Bill To:</h5>
-                      {isEditMode ? (
-                        <div className="edit-control">
-                          <Form.Control 
-                            className="mb-2"
-                            value={currentData.supplierInfo.name}
-                            onChange={(e) => handleNestedChange('supplierInfo', 'name', e.target.value)}
-                          />
-                          <Form.Control 
-                            className="mb-2"
-                            value={currentData.supplierInfo.businessName}
-                            onChange={(e) => handleNestedChange('supplierInfo', 'businessName', e.target.value)}
-                          />
-                             <Form.Control 
-                            className="mb-2"
-                            value={currentData.supplierInfo.account_name}
-                            onChange={(e) => handleNestedChange('supplierInfo', 'businessName', e.target.value)}
-                          />
-                          <Form.Control 
-                            className="mb-2"
-                            placeholder="GSTIN"
-                            value={currentData.supplierInfo.gstin || ''}
-                            onChange={(e) => handleNestedChange('supplierInfo', 'gstin', e.target.value)}
-                          />
-                          <Form.Control 
-                            placeholder="State"
-                            value={currentData.supplierInfo.state || ''}
-                            onChange={(e) => handleNestedChange('supplierInfo', 'state', e.target.value)}
-                          />
-                        </div>
-                      ) : (
-                        <>
-                          <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p>
-                          <p className="mb-1 text-muted">{currentData.supplierInfo.businessName}</p>
-                          <p className="mb-1"><small>GSTIN: {currentData.supplierInfo.gstin || 'N/A'}</small></p>
-                          <p className="mb-0"><small>State: {currentData.supplierInfo.state || 'N/A'}</small></p>
-                        </>
-                      )}
-                    </div>
-                  </Col>
+           <Col md={6}>
+  <div className="billing-address bg-light p-3 rounded">
+    <h5 className="text-primary mb-2">Bill To:</h5>
+    {isEditMode ? (
+      <div className="edit-control">
+        <Form.Control 
+          className="mb-2"
+          value={currentData.supplierInfo.name}
+          onChange={(e) => handleNestedChange('supplierInfo', 'name', e.target.value)}
+        />
+        <Form.Control 
+          className="mb-2"
+          value={currentData.supplierInfo.business_name || ''}
+          onChange={(e) => handleNestedChange('supplierInfo', 'business_name', e.target.value)}
+          placeholder="Business Name"
+        />
+      
+        <Form.Control 
+          className="mb-2"
+          placeholder="GSTIN"
+          value={currentData.supplierInfo.gstin || ''}
+          onChange={(e) => handleNestedChange('supplierInfo', 'gstin', e.target.value)}
+        />
+        <Form.Control 
+          placeholder="State"
+          value={currentData.supplierInfo.state || ''}
+          onChange={(e) => handleNestedChange('supplierInfo', 'state', e.target.value)}
+        />
+      </div>
+    ) : (
+      <>
+        <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p>
+        {currentData.supplierInfo.business_name && (
+          <p className="mb-1 text-muted">{currentData.supplierInfo.business_name}</p>
+        )}
+        
+        <p className="mb-1"><small>GSTIN: {currentData.supplierInfo.gstin || 'N/A'}</small></p>
+        <p className="mb-0"><small>State: {currentData.supplierInfo.state || 'N/A'}</small></p>
+      </>
+    )}
+  </div>
+</Col>
                   <Col md={6}>
                     <div className="shipping-address bg-light p-3 rounded">
                       <h5 className="text-primary mb-2">Ship To:</h5>

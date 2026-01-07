@@ -41,19 +41,19 @@ const PurchasePDFPreview = () => {
     retailerName: '',
     invoiceNumber: '',
     transactionProofFile: null,
-      product_id: '', // Add this
+      product_id: '', 
   batch_id: '' ,
    TransactionType: 'purchase voucher' ,
      data_type: 'Purchase' ,
+     account_name: '',
+  business_name: '',
 
   });
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
 
-  // Add this function to handle navigation to edit form
   const handleEditInvoice = () => {
     if (invoiceData && invoiceData.voucherId) {
-      // Navigate to the sales form with the voucher ID for editing
       navigate(`/Purchase/editinvoice/${invoiceData.voucherId}`);
     } else {
       setError('Cannot edit invoice: Voucher ID not found');
@@ -419,8 +419,10 @@ const transformPaymentData = (apiData) => {
       
       supplierInfo: {
         name: apiData.PartyName || 'Customer',
-        businessName: apiData.AccountName || 'Business', // This is the PartyName
+        businessName: apiData.business_name || 'Business', 
         gstin: apiData.gstin || '',
+          account_name: apiData.account_name || apiData.AccountName || '',
+      business_name: apiData.business_name || apiData.businessName || '',
         state: apiData.billing_state || apiData.BillingState || '',
         id: apiData.PartyID || null
       },
@@ -1028,14 +1030,19 @@ const handleOpenReceiptModal = () => {
   const firstItem = invoiceData.items[0];
   console.log("✅ firstItem:", firstItem);
 
+   const account_name = invoiceData.supplierInfo.account_name || invoiceData.supplierInfo.name || '';
+  const business_name = invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName || '';
+
   const updatedForm = {
-    retailerName: invoiceData.supplierInfo.name, // ✅ CHANGED TO 'name' (PartyName)
+    retailerName: invoiceData.supplierInfo.name, 
     retailerId: invoiceData.supplierInfo.id || '',
     amount: balanceDue,
     invoiceNumber: invoiceData.invoiceNumber,
     product_id: firstItem?.product_id || '',
     batch_id: firstItem?.batch_id || '',
-     TransactionType: 'purchase voucher' // ✅ CHANGED to "purchase voucher"
+     account_name: account_name,
+    business_name: business_name,
+     TransactionType: 'purchase voucher'
   };
 
   console.log("✅ Updated Receipt Form Data:", updatedForm);
@@ -1103,7 +1110,8 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
     formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
     formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
     
-    // FIX: Properly append product_id and batch_id
+    formDataToSend.append('account_name', receiptFormData.account_name );
+    formDataToSend.append('business_name', receiptFormData.business_name);
     formDataToSend.append('product_id', receiptFormData.product_id || '');
     formDataToSend.append('batch_id', receiptFormData.batch_id || '');
             formDataToSend.append('data_type', 'Purchase');

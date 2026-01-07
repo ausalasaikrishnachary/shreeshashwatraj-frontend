@@ -42,7 +42,9 @@ const ReceiptsTable = () => {
     retailerEmail: '',
     retailerGstin: '',
     transactionProofFile: '',
-    invoiceNumber: ''
+    invoiceNumber: '',
+      account_name: '', // Add this
+  business_name: '' // Add this
   });
 
   // Fetch invoices from API
@@ -630,6 +632,9 @@ const fetchReceipts = async () => {
       ...prev,
       retailerId: '',
       amount: '',
+        retailerName: '',
+      account_name: '', // Add this
+      business_name: '', // Add this
       currency: 'INR',
       paymentMethod: 'Direct Deposit',
       receiptDate: new Date().toISOString().split('T')[0],
@@ -670,6 +675,8 @@ const fetchReceipts = async () => {
       retailerEmail: selectedRetailer?.email || '',
       retailerGstin: selectedRetailer?.gstin || '',
    retailerName: selectedRetailer?.name || '',
+      account_name: selectedRetailer?.account_name || '', 
+    business_name: selectedRetailer?.businessname_name || selectedRetailer?.business_name ,
          amount: '',
     }));
     
@@ -723,6 +730,9 @@ const fetchReceipts = async () => {
       formDataToSend.append('receipt_number', formData.receiptNumber);
       formDataToSend.append('retailer_id', formData.retailerId);
       formDataToSend.append('amount', formData.amount);
+    formDataToSend.append('account_name', formData.account_name || ''); // Add this
+    formDataToSend.append('business_name', formData.business_name || ''); // Add this
+
       formDataToSend.append('currency', formData.currency);
       formDataToSend.append('payment_method', formData.paymentMethod);
       formDataToSend.append('receipt_date', formData.receiptDate);

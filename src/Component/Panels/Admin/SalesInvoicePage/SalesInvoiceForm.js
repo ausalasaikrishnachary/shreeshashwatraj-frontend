@@ -174,7 +174,6 @@ const [tempPrice, setTempPrice] = useState("");
       console.error('Error parsing batch details:', error);
     }
 
-    // Transform items for form display
     const items = batchDetails.map((batch, index) => {
       const quantity = parseFloat(batch.quantity) || 0;
       const price = parseFloat(batch.price) || 0;

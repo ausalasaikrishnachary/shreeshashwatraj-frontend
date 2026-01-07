@@ -41,7 +41,9 @@ const VochurTable = () => {
     supplierGstin: '',
     suppliername: '',
     transactionProofFile: '',
-    invoiceNumber: ''
+    invoiceNumber: '',
+          account_name: '', 
+  business_name: '' 
   });
 
   const fetchInvoices = async () => {
@@ -339,7 +341,7 @@ useEffect(() => {
       style: { textAlign: 'left' },
       render: (value, row) => {
         const businessName =
-          row?.supplier?.business_name ||
+         
           row?.payee_name ||
           row?.supplier_name ||
           'N/A';
@@ -591,6 +593,10 @@ const fetchReceipts = async () => {
       ...prev,
       supplierId: '',
       amount: '',
+            retailerName: '',
+    account_name: '', 
+    business_name: '', 
+
       currency: 'INR',
       paymentMethod: 'Direct Deposit',
       receiptDate: new Date().toISOString().split('T')[0],
@@ -621,7 +627,6 @@ const fetchReceipts = async () => {
     }
   };
 
-  // Handle supplier selection change
 const handleSupplierChange = (e) => {
   const selectedSupplierId = e.target.value;
   const selectedSupplier = suppliers.find(supp => supp.id == selectedSupplierId);
@@ -633,8 +638,8 @@ const handleSupplierChange = (e) => {
   
   console.log('Selected Supplier:', {
     id: selectedSupplier.id,
-    name: selectedSupplier.name, // Person's name
-    business_name: selectedSupplier.business_name, // Business name
+    name: selectedSupplier.name, 
+    business_name: selectedSupplier.business_name,
     mobile: selectedSupplier.mobile_number,
     email: selectedSupplier.email,
     gstin: selectedSupplier.gstin
@@ -646,8 +651,9 @@ const handleSupplierChange = (e) => {
     supplierMobile: selectedSupplier.mobile_number || '',
     supplierEmail: selectedSupplier.email || '',
     supplierGstin: selectedSupplier.gstin || '',
-    suppliername: selectedSupplier.name || '', // Store person's name here
-    business_name: selectedSupplier.business_name || '', // Store business name separately
+    suppliername: selectedSupplier.name || '', 
+    business_name: selectedSupplier.business_name || '', 
+      account_name: selectedSupplier.account_name || '',
     amount: '' 
   }));
   
@@ -705,14 +711,13 @@ const handleCreateReceipt = async () => {
     
     formDataToSend.append('retailer_name', selectedSupplier.name || '');
     
-    if (selectedSupplier.business_name) {
-      formDataToSend.append('business_name', selectedSupplier.business_name);
-    }
-    
+     formDataToSend.append('account_name', formData.account_name || ''); // Add this
+    formDataToSend.append('business_name', formData.business_name || ''); // Add this
+
     // Other required fields
-    formDataToSend.append('amount', formData.amount);
-    formDataToSend.append('bank_name', formData.bankName || '');
-    formDataToSend.append('invoice_number', formData.invoiceNumber || '');
+    formDataToSend.append('amount', selectedSupplier.amount);
+    formDataToSend.append('bank_name', selectedSupplier.bankName || '');
+    formDataToSend.append('invoice_number', selectedSupplier.invoiceNumber || '');
     formDataToSend.append('TransactionType', 'purchase voucher');
     formDataToSend.append('data_type', 'Purchase');
     

@@ -44,6 +44,7 @@ const CreateProductInvoice = ({ user }) => {
       supplierInfo: {
         name: "",
         businessName: "",
+        account_name:"",
         state: "",
         gstin: ""
       },
@@ -509,8 +510,11 @@ const cancelEdit = () => {
       supplierInfo: {
         name: "",
         businessName: "",
+          business_name: "", // Add this
+      account_name: "", // Add this
         state: "",
-        gstin: ""
+        gstin: "",
+         accountId: "" // ✅ Add this if needed
       },
       billingAddress: {
         addressLine1: "",
@@ -644,11 +648,9 @@ const handleSubmit = async (e) => {
       });
     });
 
-    // Get product_id and batch_id for logging
     const firstItemProductId = invoiceData.items[0]?.product_id || null;
     const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
     
-    // Validate that we have product_id and batch_id
     const missingProductIds = invoiceData.items.filter(item => !item.product_id);
     const missingBatchIds = invoiceData.items.filter(item => !item.batch_id);
     
@@ -659,36 +661,31 @@ const handleSubmit = async (e) => {
       console.warn('⚠️ Items missing batch_id:', missingBatchIds);
     }
 
-    // Create payload with IDs and proper totals
     const payload = {
       ...invoiceData,
       invoiceNumber: finalInvoiceNumber,
       selectedSupplierId: selectedSupplierId,
-      TransactionType: 'Purchase', // 🔥 CHANGED from transactionType to TransactionType
+      TransactionType: 'Purchase', 
       totalCGST: totalCGST.toFixed(2),
       totalSGST: totalSGST.toFixed(2),
       totalIGST: totalIGST.toFixed(2),
       taxType: sameState ? "CGST/SGST" : "IGST",
       batchDetails: batchDetails,
-      // Add primary product and batch IDs for voucher table
       primaryProductId: firstItemProductId,
       primaryBatchId: firstItemBatchId,
-      // 🔥 ADD PARTYID AND ACCOUNTID TO PAYLOAD:
       PartyID: selectedSupplierId,
-      AccountID: invoiceData.supplierInfo.accountId,
+     AccountID: selectedSupplierId,
       PartyName: invoiceData.supplierInfo.name,
-      AccountName: invoiceData.supplierInfo.businessName || invoiceData.supplierInfo.name,
-      // 🔥 ADD SHIPPING ADDRESS FIELDS:
+      AccountName: invoiceData.supplierInfo.account_name,
+       businessName: invoiceData.supplierInfo.businessName ,
       shippingAddress: invoiceData.shippingAddress?.addressLine1 || '',
       shippingState: invoiceData.shippingAddress?.state || '',
       shippingCity: invoiceData.shippingAddress?.city || '',
       shippingPincode: invoiceData.shippingAddress?.pincode || '',
-      // 🔥 ADD BILLING ADDRESS FIELDS:
       billingAddress: invoiceData.billingAddress?.addressLine1 || '',
       billingState: invoiceData.billingAddress?.state || '',
       billingCity: invoiceData.billingAddress?.city || '',
       billingPincode: invoiceData.billingAddress?.pincode || '',
-      // 🔥 ADD PAYMENT TERMS AND OTHER FIELDS:
       PaymentTerms: invoiceData.PaymentTerms || "Immediate",
       Freight: parseFloat(invoiceData.Freight) || 0,
       BillSundryAmount: parseFloat(invoiceData.BillSundryAmount) || 0,
@@ -916,8 +913,9 @@ const handleSubmit = async (e) => {
                               setInvoiceData(prev => ({
                                 ...prev,
                                 supplierInfo: {
-  name: supplier.gstin ? supplier.display_name : supplier.name,
+                                name: supplier.gstin ? supplier.display_name : supplier.name,
                                   businessName: supplier.business_name,
+                                   account_name: supplier.account_name,
                                   state: supplier.billing_state,
                                   gstin: supplier.gstin
                                 },

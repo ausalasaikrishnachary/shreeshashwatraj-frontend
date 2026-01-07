@@ -110,7 +110,12 @@ const Ledger = () => {
 
           {/* Loading or Empty */}
           {loading ? (
-            <p>Loading ledger data...</p>
+            <div className="loading-container">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              <p className="loading-text">Loading ledger...</p>
+            </div>
           ) : filteredLedger.length === 0 ? (
             <p>
               {searchTerm 
@@ -151,16 +156,17 @@ const Ledger = () => {
                         const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
                         return (
                           <tr key={tx.id || idx}>
-<td>
-  {tx.date 
-    ? new Date(tx.date).toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      })
-    : "-"
-  }
-</td>                            <td>{tx.trantype || "-"}</td>
+                            <td>
+                              {tx.date 
+                                ? new Date(tx.date).toLocaleDateString('en-IN', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric'
+                                  })
+                                : "-"
+                              }
+                            </td>
+                            <td>{tx.trantype || "-"}</td>
                             <td>{tx.AccountName || "-"}</td>
                             <td>{dc || "-"}</td>
                             <td>
