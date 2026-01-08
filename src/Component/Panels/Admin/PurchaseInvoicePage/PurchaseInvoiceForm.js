@@ -910,6 +910,8 @@ const handleSubmit = async (e) => {
                             if (supplier) {
                               setSelectedSupplierId(supplier.id);
                               setSelected(true);
+
+                                 const accountDiscount = parseFloat(supplier.discount) || 0;
                               setInvoiceData(prev => ({
                                 ...prev,
                                 supplierInfo: {
@@ -917,7 +919,8 @@ const handleSubmit = async (e) => {
                                   businessName: supplier.business_name,
                                    account_name: supplier.account_name,
                                   state: supplier.billing_state,
-                                  gstin: supplier.gstin
+                                  gstin: supplier.gstin,
+
                                 },
                                 billingAddress: {
                                   addressLine1: supplier.billing_address_line1,
@@ -934,6 +937,10 @@ const handleSubmit = async (e) => {
                                   state: supplier.shipping_state
                                 }
                               }));
+                                setItemForm(prev => ({
+        ...prev,
+        discount: accountDiscount
+      }));
                             }
                           }}
                         >
@@ -1014,8 +1021,7 @@ const handleSubmit = async (e) => {
                         + New Item
                       </button>
                     </div>
-
-                  <Form.Select
+<Form.Select
   name="product"
   value={itemForm.product}
   onChange={async (e) => {
@@ -1025,15 +1031,18 @@ const handleSubmit = async (e) => {
     );
 
     if (selectedProduct) {
+      // Get discount from selected supplier account
+      const supplierAccount = accounts.find(acc => acc.id === selectedSupplierId);
+      const supplierDiscount = parseFloat(supplierAccount?.discount) || 0;
+      
       setItemForm((prev) => ({
         ...prev,
         product: selectedProduct.goods_name,
         product_id: selectedProduct.id,
-        price: selectedProduct.net_price,
-        gst: parseFloat(selectedProduct.gst_rate)
-          ? selectedProduct.gst_rate.replace("%", "")
-          : 0,
+        price: selectedProduct.net_price || 0,
+        gst: parseFloat(selectedProduct.gst_rate?.replace("%", "") || 0),
         description: selectedProduct.description || "",
+        discount: supplierDiscount, // Apply supplier discount
         batch: "",
         batch_id: ""
       }));
@@ -1051,7 +1060,8 @@ const handleSubmit = async (e) => {
             ...prev,
             batch: defaultBatch.batch_number,
             batch_id: defaultBatch.batch_number,
-            price: defaultBatch.selling_price
+            price: defaultBatch.selling_price,
+            discount: supplierDiscount // Keep supplier discount when batch is selected
           }));
         } else {
           setSelectedBatch("");
@@ -1072,6 +1082,7 @@ const handleSubmit = async (e) => {
         description: "",
         price: 0,
         gst: 0,
+        discount: 0, // Reset discount
         batch: "",
         batch_id: ""
       }));
@@ -1084,7 +1095,7 @@ const handleSubmit = async (e) => {
 >
   <option value="">Select Product</option>
   {products
-.filter((p) => p.group_by === "Purchaseditems" && p.product_type === "PAKKA")
+    .filter((p) => p.group_by === "Purchaseditems" && p.product_type === "PAKKA")
     .map((p) => (
       <option key={p.id} value={p.goods_name}>
         {p.goods_name}
@@ -1103,13 +1114,18 @@ const handleSubmit = async (e) => {
       setSelectedBatch(batchNumber);
       const batch = batches.find(b => b.batch_number === batchNumber);
       setSelectedBatchDetails(batch || null);
+      
+      // Get supplier discount again to preserve it
+      const supplierAccount = accounts.find(acc => acc.id === selectedSupplierId);
+      const supplierDiscount = parseFloat(supplierAccount?.discount) || 0;
 
       if (batch) {
         setItemForm(prev => ({
           ...prev,
           batch: batchNumber,
           batch_id: batch.batch_number,
-          price: batch.selling_price
+          price: batch.selling_price,
+          discount: supplierDiscount // Keep supplier discount
         }));
       } else {
         setItemForm(prev => ({
@@ -1167,18 +1183,39 @@ const handleSubmit = async (e) => {
   </Form.Text> */}
 </Col>
 
-                  <Col md={2}>
-                    <Form.Label className="fw-bold">Discount (%)</Form.Label>
-                    <Form.Control
-                      name="discount"
-                      type="number"
-                      value={itemForm.discount}
-                      onChange={handleItemChange}
-                      min="0"
-                      max="100"
-                      className="border-primary"
-                    />
-                  </Col>
+                <Col md={2}>
+  <div className="d-flex justify-content-between align-items-center mb-1">
+    <Form.Label className="fw-bold">Discount (%)</Form.Label>
+    {invoiceData.retailerDiscount > 0 && (
+      <small className="text-primary">Retailer: {invoiceData.retailerDiscount}%</small>
+    )}
+    {invoiceData.supplierDiscount > 0 && (
+      <small className="text-primary">Supplier: {invoiceData.supplierDiscount}%</small>
+    )}
+  </div>
+  <Form.Control
+    name="discount"
+    type="number"
+    value={itemForm.discount}
+    onChange={(e) => {
+      const newDiscount = parseFloat(e.target.value) || 0;
+      setItemForm(prev => ({
+        ...prev,
+        discount: newDiscount
+      }));
+    }}
+    min="0"
+    max="100"
+    className="border-primary"
+    placeholder={
+      invoiceData.retailerDiscount > 0 
+        ? `Default: ${invoiceData.retailerDiscount}%` 
+        : invoiceData.supplierDiscount > 0
+        ? `Default: ${invoiceData.supplierDiscount}%`
+        : ""
+    }
+  />
+</Col>
 
                   <Col md={2}>
                     <Form.Label className="fw-bold">GST (%)</Form.Label>

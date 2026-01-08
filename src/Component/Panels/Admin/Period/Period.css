@@ -490,6 +490,18 @@
 .p-modal-body {
   padding: 25px;
 }
+.p-two-column-wrapper {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+@media (max-width: 1024px) {
+  .p-two-column-wrapper {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 
 /* Three Column Grid for Modal Content */
 .p-three-column-grid {

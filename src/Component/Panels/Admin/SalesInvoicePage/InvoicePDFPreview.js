@@ -1921,6 +1921,7 @@ const handleCreateReceiptFromInvoice = async () => {
                         <th width="10%">Qty</th>
                         <th width="15%">Price</th>
                         <th width="10%">GST %</th>
+                        <th width="8%">Discount %</th>
                         <th width="10%"> Taxable Amount (₹)</th>
                       </tr>
                     </thead>
@@ -1933,6 +1934,9 @@ const handleCreateReceiptFromInvoice = async () => {
                           <td className="text-center">{item.quantity}</td>
                           <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
                           <td className="text-center">{item.gst}%</td>
+                          <td className="text-center">
+          {parseFloat(item.discount || 0).toFixed(1)}%
+        </td>
                           <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
                         </tr>
                       ))}
