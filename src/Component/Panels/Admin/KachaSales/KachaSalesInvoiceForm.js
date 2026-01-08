@@ -974,7 +974,6 @@ const KachaSalesInvoiceForm = ({ user }) => {
     <div className="bg-light p-2 rounded">
       <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
       <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
-      <div><strong>account:</strong> {invoiceData.supplierInfo.account_name}</div>
       <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin || "Not Available"}</div>
       <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
       

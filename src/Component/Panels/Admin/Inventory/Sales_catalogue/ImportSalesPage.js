@@ -74,7 +74,6 @@ const ImportSalesPage = ({ user }) => {
     loadData();
   }, []);
 
-  // Helper function to find ID by name or return the input if it's already an ID
   const findIdByNameOrId = (value, options, fieldName = 'name') => {
     if (!value || value.toString().trim() === '') return '';
     
@@ -1200,9 +1199,7 @@ const ImportSalesPage = ({ user }) => {
                       <FaUpload className="me-2" />
                       Import Sales Products
                     </h4>
-                    <small className="text-light">
-                      Mode: {importMode === 'with_batch' ? 'Batch (maintain_batch = TRUE)' : 'Simple (maintain_batch = FALSE)'}
-                    </small>
+                   
                   </Card.Header>
                   <Card.Body>
                     {loadingData && (
@@ -1238,17 +1235,7 @@ const ImportSalesPage = ({ user }) => {
                           </Button>
                         </div>
                         
-                        <div className="alert alert-info">
-                          <strong>Current Mode: </strong>
-                          {importMode === 'with_batch' 
-                            ? 'Batch Products - Products with maintain_batch = TRUE will have batch management'
-                            : 'Simple Products - Products with maintain_batch = FALSE will be imported without batch management'
-                          }
-                          <br />
-                          <small className="text-muted">
-                            The system will auto-detect mode based on maintain_batch field values
-                          </small>
-                        </div>
+                   
                       </div>
                     </div>
 
@@ -1256,7 +1243,6 @@ const ImportSalesPage = ({ user }) => {
                       <div className="col-md-12">
                         <h5>Step 2: Download Template</h5>
                         <p className="text-muted">
-                          Download the appropriate Excel template for your import type.
                           {importMode === 'with_batch' 
                             ? ' For batch products, set maintain_batch = TRUE for batch management.'
                             : ' For simple products, set maintain_batch = FALSE for no batch management.'
@@ -1283,27 +1269,7 @@ const ImportSalesPage = ({ user }) => {
                           </Button>
                         </div>
                         
-                        <div className="mt-3">
-                          <div className="alert alert-warning">
-                            <FaExclamationTriangle className="me-2" />
-                            <strong>Important Notes:</strong>
-                            <ul className="mb-0 mt-1">
-                              <li><strong>You can use either ID or Name for:</strong></li>
-                              <li><strong>Category:</strong> Use category_id (ID) or category_name (Name)</li>
-                              <li><strong>Company:</strong> Use company_id (ID) or company_name (Name)</li>
-                              <li><strong>Unit:</strong> Use unit_id (ID), unit_code, or unit_name</li>
-                              <li><strong>maintain_batch field determines the import mode:</strong></li>
-                              <li><strong>maintain_batch = TRUE</strong> → Batch mode (each row can have batch details)</li>
-                              <li><strong>maintain_batch = FALSE</strong> → Simple mode (no batch management)</li>
-                              <li>Valid values for maintain_batch: true/false, yes/no, 1/0</li>
-                              <li><strong>If ANY row has maintain_batch = TRUE → ALL products use Batch mode</strong></li>
-                              <li><strong>If ALL rows have maintain_batch = FALSE → ALL products use Simple mode</strong></li>
-                              <li><strong>Batch fields are ignored when maintain_batch = FALSE</strong></li>
-                              <li><strong>Always required:</strong> goods_name, price</li>
-                              <li><strong>Category and Company are required (ID or Name)</strong></li>
-                            </ul>
-                          </div>
-                        </div>
+                  
                       </div>
                     </div>
 
