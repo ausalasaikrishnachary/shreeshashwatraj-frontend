@@ -22,6 +22,14 @@ function PlaceSalesOrder() {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     
+    // Notification state
+    const [notification, setNotification] = useState({
+        show: false,
+        message: "",
+        type: "success", // success or error
+        count: 0
+    });
+    
     // Get retailer data from navigation state
     const retailerId = location.state?.retailerId;
     const retailerDiscount = location.state?.retailerDiscount || 0;
@@ -34,9 +42,25 @@ function PlaceSalesOrder() {
     const staffId = user?.id || null;
 
     console.log("displayName:", displayName);
+    
     // Handle mobile toggle
     const handleToggleMobile = () => {
         setIsMobileOpen(!isMobileOpen);
+    };
+
+    // Show notification
+    const showNotification = (message, type = "success", count = 0) => {
+        setNotification({
+            show: true,
+            message,
+            type,
+            count
+        });
+        
+        // Auto hide after 3 seconds
+        setTimeout(() => {
+            setNotification(prev => ({ ...prev, show: false }));
+        }, 3000);
     };
 
     // Check for mobile view on resize
@@ -239,6 +263,17 @@ function PlaceSalesOrder() {
         fetchSalesProducts();
     }, []);
 
+    // Check if product is in cart
+    const isProductInCart = (productId) => {
+        return cart.some(item => item.product_id === productId);
+    };
+
+    // Get cart quantity for a product
+    const getProductCartQuantity = (productId) => {
+        const cartItem = cart.find(item => item.product_id === productId);
+        return cartItem ? cartItem.quantity : 0;
+    };
+
     // Filter products based on search AND category
     const filteredProducts = products.filter(product => {
         // Filter by category
@@ -259,7 +294,7 @@ function PlaceSalesOrder() {
         return matchesCategory && matchesSearch;
     });
 
-    // Add product to cart via backend - SAME AS REFERENCE CODE
+    // Add product to cart via backend
     const addToCart = async (product) => {
         try {
             // First check if product is already in cart
@@ -269,7 +304,7 @@ function PlaceSalesOrder() {
             const storedData = localStorage.getItem("user");
             const user = storedData ? JSON.parse(storedData) : null;
             
-            // Format price to ensure it's a number - ADDED FROM REFERENCE CODE
+            // Format price to ensure it's a number
             const productPrice = parseFloat(product.price) || 0;
             
             if (existingItem) {
@@ -285,13 +320,16 @@ function PlaceSalesOrder() {
                 });
 
                 if (!response.ok) throw new Error("Failed to update quantity");
+                
+                // Show notification for quantity update
+                showNotification(`Updated ${product.name} quantity to ${existingItem.quantity + 1}`, "success", 1);
             } else {
-                // Add new item with price - UPDATED FROM REFERENCE CODE
+                // Add new item with price
                 const requestBody = {
                     customer_id: retailerId,
                     product_id: product.id,
                     quantity: 1,
-                    price: productPrice,  // Add the product price here - FROM REFERENCE CODE
+                    price: productPrice,
                     credit_period: 0,
                     credit_percentage: 0
                 };
@@ -310,9 +348,12 @@ function PlaceSalesOrder() {
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json(); // FROM REFERENCE CODE
-                    throw new Error(errorData.message || "Failed to add to cart"); // FROM REFERENCE CODE
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to add to cart");
                 }
+                
+                // Show notification for adding new item
+                showNotification(`Added ${product.name} to cart`, "success", 1);
             }
 
             // Refresh cart from backend
@@ -322,15 +363,75 @@ function PlaceSalesOrder() {
 
         } catch (err) {
             console.error("Error adding to cart:", err);
-            alert(err.message || "Failed to add item to cart"); // UPDATED FROM REFERENCE CODE
+            showNotification(err.message || "Failed to add item to cart", "error", 0);
         }
     };
 
-    // Cart count - SAME AS REFERENCE CODE
+    // Remove product from cart
+    const removeFromCart = async (product) => {
+        try {
+            // Find the cart item
+            const existingItem = cart.find(item => item.product_id === product.id);
+            
+            if (!existingItem) {
+                throw new Error("Item not found in cart");
+            }
+
+            // If quantity is more than 1, decrement it
+            if (existingItem.quantity > 1) {
+                const response = await fetch(`${baseurl}/api/cart/update-cart-quantity/${existingItem.id}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        quantity: existingItem.quantity - 1
+                    }),
+                });
+
+                if (!response.ok) throw new Error("Failed to update quantity");
+                
+                // Show notification for quantity update
+                showNotification(`Decreased ${product.name} quantity to ${existingItem.quantity - 1}`, "success", -1);
+            } else {
+                // If quantity is 1, remove the item completely
+                const response = await fetch(`${baseurl}/api/cart/remove-cart-item/${existingItem.id}`, {
+                    method: "DELETE",
+                });
+
+                if (!response.ok) throw new Error("Failed to remove from cart");
+                
+                // Show notification for removing item
+                showNotification(`Removed ${product.name} from cart`, "success", -1);
+            }
+
+            // Refresh cart from backend
+            const cartResponse = await fetch(`${baseurl}/api/cart/customer-cart/${retailerId}`);
+            const refreshedCart = await cartResponse.json();
+            setCart(refreshedCart || []);
+
+        } catch (err) {
+            console.error("Error removing from cart:", err);
+            showNotification(err.message || "Failed to remove item from cart", "error", 0);
+        }
+    };
+
+    // Handle cart button click (add or remove)
+    const handleCartButtonClick = (product) => {
+        if (isProductInCart(product.id)) {
+            removeFromCart(product);
+        } else {
+            addToCart(product);
+        }
+    };
+
+    // Cart count
     const cartCount = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
-    // REMOVED the detailed cart total calculations to match reference code
-    // Reference code only uses cartCount, not cartTotal or discountedTotal
+    // Get cart item count change for notification
+    const getCartItemCount = (cartItem) => {
+        return cartItem ? cartItem.quantity || 1 : 0;
+    };
 
     if (!retailerId) {
         return (
@@ -367,6 +468,23 @@ function PlaceSalesOrder() {
     // Main content
     const mainContent = (
         <div className="place-sales-order">
+            {/* Notification Popup */}
+            {notification.show && (
+                <div className={`cart-notification ${notification.type}`}>
+                    <div className="notification-content">
+                        <span className="notification-icon">
+                            {notification.type === "success" ? "✅" : "❌"}
+                        </span>
+                        <span className="notification-message">{notification.message}</span>
+                        {notification.count !== 0 && (
+                            <span className="notification-count">
+                                ({notification.count > 0 ? "+" : ""}{notification.count})
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Desktop Header - Only shown on desktop */}
             {!isMobileView && (
                 <div className="place-order-desktop-header">
@@ -420,7 +538,7 @@ function PlaceSalesOrder() {
                                         }}
                                         className="desktop-cart-link"
                                     >
-                                        View Cart ({cartCount}) {/* Only show count like reference code */}
+                                        View Cart ({cartCount})
                                     </Link>
                                 </div>
 
@@ -430,7 +548,7 @@ function PlaceSalesOrder() {
                                     </div>
                                 ) : (
                                     <>
-                                        {/* Simplified cart items display - similar to reference code approach */}
+                                        {/* Simplified cart items display */}
                                         <div className="cart-summary-items">
                                             {cart.slice(0, 3).map(item => (
                                                 <div key={item.id} className="summary-item">
@@ -444,9 +562,6 @@ function PlaceSalesOrder() {
                                                 </div>
                                             )}
                                         </div>
-
-                                        {/* REMOVED detailed total calculations to match reference code */}
-                                        {/* Reference code doesn't show subtotal/discount/total in the header */}
 
                                         <Link
                                             to="/retailers/cart"
@@ -632,60 +747,80 @@ function PlaceSalesOrder() {
                             </div>
                         )}
 
-                        {!loading && filteredProducts.map(product => (
-                            <div key={product.id} className="product-card">
-                                {/* Product Image */}
-                                <div className="product-image-container">
-                                    {product.displayImage ? (
-                                        <img 
-                                            src={`${baseurl}${product.displayImage}`}
-                                            alt={product.name}
-                                            className="product-image"
-                                            onError={(e) => {
-                                                e.target.onerror = null;
-                                                e.target.src = "/placeholder-image.png"; // Fallback image
-                                                e.target.alt = "Image not available";
-                                            }}
-                                        />
-                                    ) : (
-                                        <div className="product-image-placeholder">
-                                            {product.category === 'Laptops' ? '💻' : 
-                                             product.category === 'Mobile' ? '📱' : 
-                                             product.category === 'Home Accessories' ? '🏠' :
-                                             product.category === 'Kitchen' ? '🔪' :
-                                             product.category === 'Snacks' ? '🍪' : '📦'}
-                                        </div>
-                                    )}
-                                    
-                                    {/* Image count badge if multiple images */}
-                                    {product.parsedImages && product.parsedImages.length > 1 && (
-                                        <div className="image-count-badge">
-                                            {product.parsedImages.length}
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                <div className="product-info">
-                                    <h3>{product.name}</h3>
-                                    <p className="product-category">{product.category}</p>
-                                    <p className="product-price">₹{parseFloat(product.price || 0).toLocaleString()} / {product.unit || 'unit'}</p>
-                                    <div className="product-stock-info">
-                                        <p className="product-gst">GST: {product.gst_rate || 0}%</p>
-                                        {product.balance_stock && (
-                                            <p className="stock-indicator">
-                                                Stock: {product.balance_stock}
-                                            </p>
+                        {!loading && filteredProducts.map(product => {
+                            const inCart = isProductInCart(product.id);
+                            const cartQuantity = getProductCartQuantity(product.id);
+                            
+                            return (
+                                <div key={product.id} className="product-card">
+                                    {/* Product Image */}
+                                    <div className="product-image-container">
+                                        {product.displayImage ? (
+                                            <img 
+                                                src={`${baseurl}${product.displayImage}`}
+                                                alt={product.name}
+                                                className="product-image"
+                                                onError={(e) => {
+                                                    e.target.onerror = null;
+                                                    e.target.src = "/placeholder-image.png"; // Fallback image
+                                                    e.target.alt = "Image not available";
+                                                }}
+                                            />
+                                        ) : (
+                                            <div className="product-image-placeholder">
+                                                {product.category === 'Laptops' ? '💻' : 
+                                                 product.category === 'Mobile' ? '📱' : 
+                                                 product.category === 'Home Accessories' ? '🏠' :
+                                                 product.category === 'Kitchen' ? '🔪' :
+                                                 product.category === 'Snacks' ? '🍪' : '📦'}
+                                            </div>
+                                        )}
+                                        
+                                        {/* Image count badge if multiple images */}
+                                        {product.parsedImages && product.parsedImages.length > 1 && (
+                                            <div className="image-count-badge">
+                                                {product.parsedImages.length}
+                                            </div>
+                                        )}
+                                        
+                                        {/* Cart indicator badge */}
+                                        {inCart && (
+                                            <div className="cart-indicator-badge">
+                                                <span className="cart-badge-icon">🛒</span>
+                                                <span className="cart-badge-qty">{cartQuantity}</span>
+                                            </div>
                                         )}
                                     </div>
+                                    
+                                    <div className="product-info">
+                                        <h3>{product.name}</h3>
+                                        <p className="product-category">{product.category}</p>
+                                        <p className="product-price">₹{parseFloat(product.price || 0).toLocaleString()} / {product.unit || 'unit'}</p>
+                                        <div className="product-stock-info">
+                                            <p className="product-gst">GST: {product.gst_rate || 0}%</p>
+                                            {product.balance_stock && (
+                                                <p className="stock-indicator">
+                                                    Stock: {product.balance_stock}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <button
+                                        className={`add-to-cart-btn ${inCart ? 'added-to-cart' : ''}`}
+                                        onClick={() => handleCartButtonClick(product)}
+                                    >
+                                        {inCart ? (
+                                            <>
+                                                <span className="cart-btn-icon">✓</span>
+                                                Added to Cart ({cartQuantity})
+                                            </>
+                                        ) : (
+                                            "Add to Cart"
+                                        )}
+                                    </button>
                                 </div>
-                                <button
-                                    className="add-to-cart-btn"
-                                    onClick={() => addToCart(product)}
-                                >
-                                    Add to Cart
-                                </button>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             </div>
