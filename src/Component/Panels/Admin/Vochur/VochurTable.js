@@ -198,8 +198,6 @@ const VochurTable = () => {
         const balanceAmount = 
           data.total_balance_amount ||
           data.balance_amount ||
-          data.balance ||
-          data.amount_due ||
           (parseFloat(data.total_invoice_amount || 0) - parseFloat(data.total_paid_amount || 0)) ||
           0;
         
@@ -715,9 +713,9 @@ const handleCreateReceipt = async () => {
     formDataToSend.append('business_name', formData.business_name || ''); // Add this
 
     // Other required fields
-    formDataToSend.append('amount', selectedSupplier.amount);
-    formDataToSend.append('bank_name', selectedSupplier.bankName || '');
-    formDataToSend.append('invoice_number', selectedSupplier.invoiceNumber || '');
+ formDataToSend.append('amount', formData.amount); // This was the main issue
+     formDataToSend.append('bank_name', selectedSupplier.bankName || '');
+    formDataToSend.append('invoice_number', formData.invoiceNumber || '');
     formDataToSend.append('TransactionType', 'purchase voucher');
     formDataToSend.append('data_type', 'Purchase');
     

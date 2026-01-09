@@ -294,7 +294,6 @@ const KachaReceiptsTable = () => {
       style: { textAlign: 'left' },
       render: (value, row) => {
         const businessName =
-          row?.retailer?.name ||
           row?.payee_name ||
           row?.retailer_name ||
           'N/A';
@@ -459,14 +458,9 @@ const KachaReceiptsTable = () => {
         retailer: receipt.retailer || {
           name:
             receipt.payee_name ||
-            receipt.retailer_name ||
             'N/A'
         },
-        payee:
-          receipt.retailer?.name ||
-          receipt.payee_name ||
-          receipt.retailer_name ||
-          'N/A',
+      
         amount: `₹ ${parseFloat(receipt.amount || 0).toLocaleString('en-IN')}`,
         receipt_date: receipt.receipt_date
           ? new Date(receipt.receipt_date).toLocaleDateString('en-IN')

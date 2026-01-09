@@ -435,6 +435,7 @@ const [tempPrice, setTempPrice] = useState("");
   }, []);
 
   useEffect(() => {
+  
     const fetchAccounts = async () => {
       try {
         const res = await fetch(`${baseurl}/accounts`);
@@ -1151,57 +1152,65 @@ const [tempPrice, setTempPrice] = useState("");
       <Form.Select
   className="mb-2 border-primary"
   value={inputName}
-  onChange={(e) => {
-    const selectedName = e.target.value;
-    setInputName(selectedName);
-    
-    if (selectedName === "") {
-      setSelected(false);
-      setSelectedSupplierId(null);
-      setSelectedStaffId("");
-      return;
-    }
-    
-    const supplier = accounts.find(acc => acc.business_name === selectedName);
-    if (supplier) {
-      setSelectedSupplierId(supplier.id);
-      setSelected(true);
-      
-      // Auto-select the assigned staff if available
-      if (supplier.staffid) {
-        setSelectedStaffId(supplier.staffid);
-      }
-      
-      setInvoiceData(prev => ({
-        ...prev,
-        supplierInfo: {
-  name: supplier.gstin ? supplier.display_name : supplier.name,
+onChange={(e) => {
+  const selectedName = e.target.value;
+  setInputName(selectedName);
 
-  state: supplier.billing_state,
-          gstin: supplier.gstin,
-          accountId: supplier.id,
-          staffid: supplier.staffid,
- business_name: supplier.business_name, 
-    account_name: supplier.account_name,   
-                  assigned_staff: supplier.assigned_staff,
-        },
-        billingAddress: {
-          addressLine1: supplier.billing_address_line1,
-          addressLine2: supplier.billing_address_line2 || "",
-          city: supplier.billing_city,
-          pincode: supplier.billing_pin_code,
-          state: supplier.billing_state
-        },
-        shippingAddress: {
-          addressLine1: supplier.shipping_address_line1,
-          addressLine2: supplier.shipping_address_line2 || "",
-          city: supplier.shipping_city,
-          pincode: supplier.shipping_pin_code,
-          state: supplier.shipping_state
-        }
-      }));
+  if (selectedName === "") {
+    setSelected(false);
+    setSelectedSupplierId(null);
+    setSelectedStaffId("");
+    setItemForm(prev => ({ ...prev, discount: 0 })); // Reset discount
+    return;
+  }
+
+  const supplier = accounts.find(acc => acc.business_name === selectedName);
+  if (supplier) {
+    setSelectedSupplierId(supplier.id);
+    setSelected(true);
+
+    if (supplier.staffid) {
+      setSelectedStaffId(supplier.staffid);
     }
-  }}
+
+    const retailerDiscount = parseFloat(supplier.discount) || 0;
+
+    setInvoiceData(prev => ({
+      ...prev,
+      supplierInfo: {
+        name: supplier.gstin ? supplier.display_name : supplier.name,
+        state: supplier.billing_state,
+        gstin: supplier.gstin,
+        accountId: supplier.id,
+        staffid: supplier.staffid,
+        business_name: supplier.business_name,
+        account_name: supplier.account_name,
+        assigned_staff: supplier.assigned_staff,
+        discount: retailerDiscount // optional: store it
+      },
+      billingAddress: {
+        addressLine1: supplier.billing_address_line1,
+        addressLine2: supplier.billing_address_line2 || "",
+        city: supplier.billing_city,
+        pincode: supplier.billing_pin_code,
+        state: supplier.billing_state
+      },
+      shippingAddress: {
+        addressLine1: supplier.shipping_address_line1 || supplier.billing_address_line1,
+        addressLine2: supplier.shipping_address_line2 || supplier.billing_address_line2 || "",
+        city: supplier.shipping_city || supplier.billing_city,
+        pincode: supplier.shipping_pin_code || supplier.billing_pin_code,
+        state: supplier.shipping_state || supplier.billing_state
+      }
+    }));
+
+    // THIS IS THE MAIN FIX: Apply discount to new items
+    setItemForm(prev => ({
+      ...prev,
+      discount: retailerDiscount
+    }));
+  }
+}}
 >
             <option value="">Select Retailer </option>
             {accounts
@@ -1298,19 +1307,24 @@ const [tempPrice, setTempPrice] = useState("");
       (p) => p.goods_name === selectedName
     );
 
-    if (selectedProduct) {
-      setItemForm((prev) => ({
-        ...prev,
-        product: selectedProduct.goods_name,
-        product_id: selectedProduct.id,
-        price: selectedProduct.net_price,
-        gst: parseFloat(selectedProduct.gst_rate)
-          ? selectedProduct.gst_rate.replace("%", "")
-          : 0,
-        description: selectedProduct.description || "",
-        batch: "",
-        batch_id: ""
-      }));
+if (selectedProduct) {
+  // Get current retailer discount
+  const retailerDiscount = parseFloat(
+    accounts.find(acc => acc.id === selectedSupplierId)?.discount || 0
+  ) || 0;
+
+  setItemForm(prev => ({
+    ...prev,
+    product: selectedProduct.goods_name,
+    product_id: selectedProduct.id,
+    price: selectedProduct.net_price || 0,
+    gst: parseFloat(selectedProduct.gst_rate?.replace("%", "") || 0),
+    description: selectedProduct.description || "",
+    discount: retailerDiscount,   // ← Keeps retailer discount
+    quantity: prev.quantity || 1,
+    batch: "",
+    batch_id: ""
+  }));
 
       try {
         const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
@@ -1383,13 +1397,14 @@ const [tempPrice, setTempPrice] = useState("");
       setSelectedBatch(batchNumber);
       const batch = batches.find(b => b.batch_number === batchNumber);
       setSelectedBatchDetails(batch || null);
-
+const currentDiscount = itemForm.discount || 0;
       if (batch) {
         setItemForm(prev => ({
           ...prev,
           batch: batchNumber,
           batch_id: batch.batch_number,
-          price: batch.selling_price
+          price: batch.selling_price,
+          discount: currentDiscount  
         }));
       } else {
         setItemForm(prev => ({
