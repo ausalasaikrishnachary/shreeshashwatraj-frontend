@@ -582,52 +582,101 @@ const fetchOrders = async () => {
   const handleEditItem = (order, item) => {
     console.log("Editing item:", item);
     
-    // Prepare data for checkout page
+    // Prepare all calculations for the checkout page
+    const newEditedPrice = item.edited_sale_price || item.sale_price;
+    const discountPercentage = item.discount_percentage || 0;
+    const creditPeriod = item.credit_period || 0;
+    const quantity = item.quantity || 1;
+    const gstPercentage = item.tax_percentage || 18; // Use existing tax percentage or default 18%
+    const creditPercentage = item.credit_percentage || 2; // Default 2% per month
+    
+    // Recalculate all values based on the new edited price
+    // 1. Edited price is the taxable amount (base price)
+    const taxableAmount = newEditedPrice;
+    
+    // 2. Calculate discount on taxable amount
+    const discountAmount = taxableAmount * (discountPercentage / 100);
+    
+    // 3. Price after discount
+    const priceAfterDiscount = taxableAmount - discountAmount;
+    
+    // 4. Calculate GST on taxable amount (not on discounted amount)
+    const taxAmount = taxableAmount * (gstPercentage / 100);
+    
+    // 5. Split GST into SGST and CGST (equal split)
+    const sgstPercentage = gstPercentage / 2;
+    const cgstPercentage = gstPercentage / 2;
+    const sgstAmount = taxAmount / 2;
+    const cgstAmount = taxAmount / 2;
+    
+    // 6. Calculate credit charge on taxable amount
+    let creditCharge = 0;
+    if (creditPeriod > 0) {
+      creditCharge = (taxableAmount * creditPercentage * creditPeriod) / (30 * 100);
+    }
+    
+    // 7. Calculate final amount: taxable amount + GST + credit charge
+    const finalAmount = taxableAmount + taxAmount + creditCharge;
+    
+    // 8. Customer sale price is the final amount per unit
+    const customerSalePrice = finalAmount;
+    
+    // 9. Calculate totals for all quantities
+    const itemTotal = finalAmount * quantity;
+    const totalDiscount = discountAmount * quantity;
+    const totalTax = taxAmount * quantity;
+    const totalTaxableAmount = taxableAmount * quantity;
+    const totalCreditCharges = creditCharge * quantity;
+    const finalTotal = itemTotal;
+
     const cartItem = {
       product_id: item.product_id,
       item_name: item.item_name,
       quantity: item.quantity,
       sale_price: item.sale_price,
-      edited_sale_price: item.edited_sale_price,
+      edited_sale_price: newEditedPrice,
       mrp: item.mrp,
       min_sale_price: item.min_sale_price,
-      credit_period: item.credit_period,
+      credit_period: creditPeriod,
       staff_incentive: item.staff_incentive || 0,
+      discount_percentage: discountPercentage,
+      tax_percentage: gstPercentage,
+      credit_percentage: creditPercentage,
       
-      // Include all breakdown calculations
+      // Include all recalculated breakdown calculations
       breakdown: {
         perUnit: {
           mrp: item.mrp,
           sale_price: item.sale_price,
-          edited_sale_price: item.edited_sale_price,
-          credit_charge: item.credit_charge,
-          credit_percentage: item.credit_percentage,
-          customer_sale_price: item.customer_sale_price,
-          discount_percentage: item.discount_percentage,
-          discount_amount: item.discount_amount,
-          taxable_amount: item.taxable_amount,
-          tax_percentage: item.tax_percentage,
-          tax_amount: item.tax_amount,
-          sgst_percentage: item.sgst_percentage,
-          sgst_amount: item.sgst_amount,
-          cgst_percentage: item.cgst_percentage,
-          cgst_amount: item.cgst_amount,
-          final_amount: item.final_amount,
-          item_total: item.item_total
+          edited_sale_price: newEditedPrice,
+          credit_charge: creditCharge,
+          credit_percentage: creditPercentage,
+          customer_sale_price: customerSalePrice,
+          discount_percentage: discountPercentage,
+          discount_amount: discountAmount,
+          taxable_amount: taxableAmount,
+          tax_percentage: gstPercentage,
+          tax_amount: taxAmount,
+          sgst_percentage: sgstPercentage,
+          sgst_amount: sgstAmount,
+          cgst_percentage: cgstPercentage,
+          cgst_amount: cgstAmount,
+          final_amount: finalAmount,
+          item_total: finalAmount
         }
       }
     };
 
-    // Prepare order totals for checkout
+    // Prepare order totals for checkout with recalculated values
     const orderTotals = {
-      subtotal: item.item_total,
-      totalTax: item.tax_amount,
-      totalDiscount: item.discount_amount,
-      totalTaxableAmount: item.taxable_amount,
-      totalCreditCharges: item.credit_charge,
-      finalTotal: item.item_total,
+      subtotal: itemTotal,
+      totalTax: totalTax,
+      totalDiscount: totalDiscount,
+      totalTaxableAmount: totalTaxableAmount,
+      totalCreditCharges: totalCreditCharges,
+      finalTotal: finalTotal,
       itemCount: 1,
-      userDiscount: item.discount_percentage || 0
+      userDiscount: discountPercentage
     };
 
     // Navigate to checkout with order and item data
@@ -640,12 +689,20 @@ const fetchOrders = async () => {
         cartItems: [cartItem],
         staffId: order.staff_id,
         orderTotals: orderTotals,
-        userDiscountPercentage: item.discount_percentage || 0,
-        creditPeriods: item.credit_period,
+        userDiscountPercentage: discountPercentage,
+        creditPeriods: creditPeriod,
         isEditMode: true,
         editOrderNumber: order.order_number,
         editItemId: item.id,
-        originalItemData: item
+        originalItemData: item,
+        
+        // Pass all calculation parameters for recalculation in checkout
+        calculationParams: {
+          discountPercentage: discountPercentage,
+          gstPercentage: gstPercentage,
+          creditPercentage: creditPercentage,
+          quantity: quantity
+        }
       }
     });
   };

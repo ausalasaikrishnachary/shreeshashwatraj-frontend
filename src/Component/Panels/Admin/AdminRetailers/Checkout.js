@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
 import { baseurl } from "../../../BaseURL/BaseURL";
@@ -25,7 +25,8 @@ function Checkout() {
     isEditMode = false,
     editOrderNumber,
     editItemId,
-    originalItemData
+    originalItemData,
+    calculationParams = {}
   } = location.state || {};
 
   const discountPercentage = discount || userDiscountPercentage || 0;
@@ -34,6 +35,7 @@ function Checkout() {
   console.log("Edit Order Number:", editOrderNumber);
   console.log("Edit Item ID:", editItemId);
   console.log("Original Item Data:", originalItemData);
+  console.log("Calculation Params:", calculationParams);
 
   const [assignedStaffInfo, setAssignedStaffInfo] = useState({ id: null, name: null });
   const [retailerDetails, setRetailerDetails] = useState(null);
@@ -42,13 +44,205 @@ function Checkout() {
   const [orderDetails, setOrderDetails] = useState(null);
   const [orderMode, setOrderMode] = useState(isEditMode ? 'KACHA' : 'KACHA');
   const [cartItems, setCartItems] = useState(initialCartItems || []);
-  const [orderTotals, setOrderTotals] = useState(initialOrderTotals || initialTotals || {});
+  
+  // Safe initialization of orderTotals with defaults
+  const [orderTotals, setOrderTotals] = useState(() => {
+    if (initialOrderTotals && typeof initialOrderTotals === 'object') {
+      return {
+        subtotal: initialOrderTotals.subtotal || 0,
+        totalTax: initialOrderTotals.totalTax || 0,
+        totalDiscount: initialOrderTotals.totalDiscount || 0,
+        totalTaxableAmount: initialOrderTotals.totalTaxableAmount || 0,
+        totalCreditCharges: initialOrderTotals.totalCreditCharges || 0,
+        finalTotal: initialOrderTotals.finalTotal || 0,
+        itemCount: initialOrderTotals.itemCount || 0,
+        userDiscount: initialOrderTotals.userDiscount || discountPercentage
+      };
+    }
+    
+    if (initialTotals && typeof initialTotals === 'object') {
+      return {
+        subtotal: initialTotals.subtotal || 0,
+        totalTax: initialTotals.totalTax || 0,
+        totalDiscount: initialTotals.totalDiscount || 0,
+        totalTaxableAmount: initialTotals.totalTaxableAmount || 0,
+        totalCreditCharges: initialTotals.totalCreditCharges || 0,
+        finalTotal: initialTotals.finalTotal || 0,
+        itemCount: initialTotals.itemCount || 0,
+        userDiscount: initialTotals.userDiscount || discountPercentage
+      };
+    }
+    
+    return {
+      subtotal: 0,
+      totalTax: 0,
+      totalDiscount: 0,
+      totalTaxableAmount: 0,
+      totalCreditCharges: 0,
+      finalTotal: 0,
+      itemCount: cartItems.length || 0,
+      userDiscount: discountPercentage
+    };
+  });
+  
   const [retailerInfo, setRetailerInfo] = useState({});
   const [isMobileView, setIsMobileView] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [isUpdatingItem, setIsUpdatingItem] = useState(false);
+  const [editedPrice, setEditedPrice] = useState(() => {
+    if (initialCartItems && initialCartItems.length > 0) {
+      return initialCartItems[0].edited_sale_price || initialCartItems[0].sale_price || 0;
+    }
+    return 0;
+  });
+
+  // Helper function to safely format numbers
+  const formatCurrency = (value) => {
+    if (value === undefined || value === null) return '0';
+    const numValue = typeof value === 'string' ? parseFloat(value) || 0 : value;
+    return numValue.toLocaleString('en-IN');
+  };
+
+  // NEW: Function to recalculate all values based on edited price
+  const recalculateAllValues = (newPrice) => {
+    if (!cartItems.length) return { updatedCartItems: cartItems, updatedOrderTotals: orderTotals };
+
+    const item = cartItems[0];
+    const discountPercentage = calculationParams.discountPercentage || item.discount_percentage || 0;
+    const gstPercentage = calculationParams.gstPercentage || item.tax_percentage || 18;
+    const creditPercentage = calculationParams.creditPercentage || item.credit_percentage || 2;
+    const quantity = calculationParams.quantity || item.quantity || 1;
+    const creditPeriod = item.credit_period || 0;
+
+    console.log("Recalculating with:", {
+      newPrice,
+      discountPercentage,
+      gstPercentage,
+      creditPercentage,
+      quantity,
+      creditPeriod
+    });
+
+    // 1. Edited price is the taxable amount (base price)
+    const taxableAmount = parseFloat(newPrice) || 0;
+    
+    // 2. Calculate discount on taxable amount
+    const discountAmount = taxableAmount * (discountPercentage / 100);
+    
+    // 3. Price after discount (for reference, not used in final calculation)
+    const priceAfterDiscount = taxableAmount - discountAmount;
+    
+    // 4. Calculate GST on taxable amount (not on discounted amount)
+    const taxAmount = taxableAmount * (gstPercentage / 100);
+    
+    // 5. Split GST into SGST and CGST (equal split)
+    const sgstPercentage = gstPercentage / 2;
+    const cgstPercentage = gstPercentage / 2;
+    const sgstAmount = taxAmount / 2;
+    const cgstAmount = taxAmount / 2;
+    
+    // 6. Calculate credit charge on taxable amount
+    let creditCharge = 0;
+    if (creditPeriod > 0) {
+      creditCharge = (taxableAmount * creditPercentage * creditPeriod) / (30 * 100);
+    }
+    
+    // 7. Calculate final amount: taxable amount + GST + credit charge
+    const finalAmount = taxableAmount + taxAmount + creditCharge;
+    
+    // 8. Customer sale price is the final amount per unit
+    const customerSalePrice = finalAmount;
+    
+    // 9. Calculate totals for all quantities
+    const itemTotal = finalAmount * quantity;
+    const totalDiscount = discountAmount * quantity;
+    const totalTax = taxAmount * quantity;
+    const totalTaxableAmount = taxableAmount * quantity;
+    const totalCreditCharges = creditCharge * quantity;
+    const finalTotal = itemTotal;
+
+    console.log("Calculation results:", {
+      taxableAmount,
+      discountAmount,
+      taxAmount,
+      creditCharge,
+      finalAmount,
+      customerSalePrice,
+      itemTotal
+    });
+
+    // Update cart item with recalculated values
+    const updatedCartItems = cartItems.map(item => ({
+      ...item,
+      edited_sale_price: taxableAmount, // This is the edited price (taxable amount)
+      customer_sale_price: customerSalePrice,
+      discount_amount: discountAmount,
+      taxable_amount: taxableAmount,
+      tax_amount: taxAmount,
+      sgst_percentage: sgstPercentage,
+      sgst_amount: sgstAmount,
+      cgst_percentage: cgstPercentage,
+      cgst_amount: cgstAmount,
+      credit_charge: creditCharge,
+      final_amount: finalAmount,
+      item_total: finalAmount,
+      total_amount: finalAmount * quantity,
+      
+      breakdown: {
+        perUnit: {
+          mrp: item.mrp || 0,
+          sale_price: item.sale_price || 0,
+          edited_sale_price: taxableAmount,
+          credit_charge: creditCharge,
+          credit_percentage: creditPercentage,
+          customer_sale_price: customerSalePrice,
+          discount_percentage: discountPercentage,
+          discount_amount: discountAmount,
+          taxable_amount: taxableAmount,
+          tax_percentage: gstPercentage,
+          tax_amount: taxAmount,
+          sgst_percentage: sgstPercentage,
+          sgst_amount: sgstAmount,
+          cgst_percentage: cgstPercentage,
+          cgst_amount: cgstAmount,
+          final_amount: finalAmount,
+          item_total: finalAmount
+        }
+      }
+    }));
+
+    // Update order totals
+    const updatedOrderTotals = {
+      subtotal: itemTotal || 0,
+      totalTax: totalTax || 0,
+      totalDiscount: totalDiscount || 0,
+      totalTaxableAmount: totalTaxableAmount || 0,
+      totalCreditCharges: totalCreditCharges || 0,
+      finalTotal: finalTotal || 0,
+      itemCount: quantity || 1,
+      userDiscount: discountPercentage || 0
+    };
+
+    console.log("Recalculated values:", {
+      updatedCartItems,
+      updatedOrderTotals
+    });
+
+    return { updatedCartItems, updatedOrderTotals };
+  };
+
+  // Handle price change
+  const handlePriceChange = (newPrice) => {
+    setEditedPrice(newPrice);
+    
+    if (cartItems.length > 0) {
+      const { updatedCartItems, updatedOrderTotals } = recalculateAllValues(newPrice);
+      setCartItems(updatedCartItems);
+      setOrderTotals(updatedOrderTotals);
+    }
+  };
 
   useEffect(() => {
     const checkMobileView = () => {
@@ -182,7 +376,7 @@ function Checkout() {
     fetchAssignedStaffInfo();
   }, [retailerId, initialStaffId, baseurl]);
 
-  // NEW: Function to update item price
+  // NEW: Function to update item price with all calculations
   const handleUpdateItemPrice = async () => {
     if (cartItems.length === 0 || !editItemId || !editOrderNumber) {
       alert("No item to update or missing edit information");
@@ -190,7 +384,7 @@ function Checkout() {
     }
 
     const cartItem = cartItems[0];
-    const newEditedPrice = cartItem.edited_sale_price || cartItem.sale_price;
+    const newEditedPrice = parseFloat(editedPrice) || 0;
     const minSalePrice = cartItem.min_sale_price || 0;
 
     // Validate that edited price is at least minimum sale price
@@ -202,66 +396,59 @@ function Checkout() {
     setIsUpdatingItem(true);
 
     try {
-      // Calculate new breakdown based on edited price
-      const mrp = cartItem.mrp || 0;
-      const quantity = cartItem.quantity || 1;
-      const creditPeriod = cartItem.credit_period || 0;
-      const discountPercentage = cartItem.discount_percentage || 0;
-      
-      // Calculate new breakdown
-      const customerSalePrice = newEditedPrice;
-      const discountAmount = customerSalePrice * (discountPercentage / 100);
-      const priceAfterDiscount = customerSalePrice - discountAmount;
-      
-      // Calculate GST (assuming 18% for example)
-      const gstPercentage = 18;
-      const taxableAmount = priceAfterDiscount / (1 + gstPercentage/100);
-      const taxAmount = priceAfterDiscount - taxableAmount;
-      
-      // Calculate credit charge if credit period > 0
-      let creditCharge = 0;
-      if (creditPeriod > 0) {
-        const creditPercentage = cartItem.credit_percentage || 2; // 2% per month default
-        creditCharge = (customerSalePrice * creditPercentage * creditPeriod) / (30 * 100);
-      }
-      
-      const finalAmount = priceAfterDiscount + creditCharge;
-      const itemTotal = finalAmount * quantity;
-
-      const updatedItem = {
-        edited_sale_price: newEditedPrice,
-        customer_sale_price: customerSalePrice,
-        discount_amount: discountAmount,
-        taxable_amount: taxableAmount,
-        tax_amount: taxAmount,
-        final_amount: finalAmount,
-        item_total: itemTotal,
-        credit_charge: creditCharge,
-        total_amount: finalAmount * quantity
+      // Prepare all updated values for the API call
+      const updatedItemData = {
+        edited_sale_price: cartItem.edited_sale_price || 0,
+        customer_sale_price: cartItem.customer_sale_price || 0,
+        discount_amount: cartItem.discount_amount || 0,
+        taxable_amount: cartItem.taxable_amount || 0,
+        tax_amount: cartItem.tax_amount || 0,
+        sgst_percentage: cartItem.sgst_percentage || 0,
+        sgst_amount: cartItem.sgst_amount || 0,
+        cgst_percentage: cartItem.cgst_percentage || 0,
+        cgst_amount: cartItem.cgst_amount || 0,
+        credit_charge: cartItem.credit_charge || 0,
+        final_amount: cartItem.final_amount || 0,
+        item_total: cartItem.final_amount || 0, // per unit
+        total_amount: (cartItem.final_amount || 0) * (cartItem.quantity || 1) // total for all quantities
       };
 
-      console.log("Updating item with data:", {
+      console.log("Updating item with complete data:", {
         itemId: editItemId,
         orderNumber: editOrderNumber,
-        updatedItem
+        updatedItemData
       });
 
-      // Call API to update item
+      // Call API to update item with all fields
       const response = await axios.put(
         `${baseurl}/orders/items/${editItemId}/update-price`,
         {
           order_number: editOrderNumber,
-          ...updatedItem
+          ...updatedItemData
         }
       );
 
       if (response.data.success) {
-        alert("Item price updated successfully!");
+        alert("Item price updated successfully with all calculations!");
         
-        // Navigate back to period page
+        // Show success message
+        setOrderDetails({
+          orderNumber: editOrderNumber,
+          customerName: customerName || retailerDetails?.name || "Customer",
+          itemName: cartItem.item_name,
+          newPrice: cartItem.edited_sale_price,
+          discount: cartItem.discount_amount,
+          tax: cartItem.tax_amount,
+          creditCharge: cartItem.credit_charge,
+          finalAmount: cartItem.final_amount
+        });
+        
+        setOrderPlaced(true);
+        
+        // Navigate back to period page after delay
         setTimeout(() => {
           navigate('/period');
-        }, 1000);
+        }, 2000);
       } else {
         throw new Error(response.data.error || "Failed to update item");
       }
@@ -540,12 +727,30 @@ function Checkout() {
                 </div>
                 <div className="order-detail-row">
                   <span>Item:</span>
-                  <strong>{cartItems[0]?.item_name}</strong>
+                  <strong>{orderDetails.itemName}</strong>
                 </div>
                 <div className="order-detail-row">
-                  <span>Updated Price:</span>
+                  <span>Base Price (Taxable Amount):</span>
+                  <strong>₹{formatCurrency(orderDetails.newPrice)}</strong>
+                </div>
+                <div className="order-detail-row">
+                  <span>Discount:</span>
+                  <span>-₹{formatCurrency(orderDetails.discount)}</span>
+                </div>
+                <div className="order-detail-row">
+                  <span>Tax (GST):</span>
+                  <span>+₹{formatCurrency(orderDetails.tax)}</span>
+                </div>
+                {(orderDetails.creditCharge || 0) > 0 && (
+                  <div className="order-detail-row">
+                    <span>Credit Charge:</span>
+                    <span>+₹{formatCurrency(orderDetails.creditCharge)}</span>
+                  </div>
+                )}
+                <div className="order-detail-row total">
+                  <span>Final Amount per unit:</span>
                   <strong className="total-amount">
-                    ₹{(cartItems[0]?.edited_sale_price || cartItems[0]?.sale_price)?.toLocaleString()}
+                    ₹{formatCurrency(orderDetails.finalAmount)}
                   </strong>
                 </div>
               </>
@@ -576,7 +781,7 @@ function Checkout() {
                 <div className="order-detail-row">
                   <span>Total Amount:</span>
                   <strong className="total-amount">
-                    ₹{orderDetails.amount.toLocaleString()}
+                    ₹{formatCurrency(orderDetails.amount)}
                   </strong>
                 </div>
               </>
@@ -675,7 +880,7 @@ function Checkout() {
                             <span className="preview-name">{item.item_name || `Product ${item.product_id}`}</span>
                             <span className="preview-qty">x{item.quantity || 1}</span>
                             <span className="preview-price">
-                              ₹{(breakdown.final_amount || 0).toLocaleString('en-IN')}
+                              ₹{formatCurrency(breakdown.final_amount || 0)}
                             </span>
                           </div>
                         );
@@ -687,21 +892,21 @@ function Checkout() {
                         <span>Items:</span>
                         <span className="count">{orderTotals.itemCount || cartItems.length}</span>
                       </div>
-                      {orderTotals.totalCreditCharges > 0 && (
+                      {(orderTotals.totalCreditCharges || 0) > 0 && (
                         <div className="summary-row credit">
                           <span>Credit Charges:</span>
-                          <span>+₹{orderTotals.totalCreditCharges?.toLocaleString('en-IN') || '0'}</span>
+                          <span>+₹{formatCurrency(orderTotals.totalCreditCharges)}</span>
                         </div>
                       )}
-                      {orderTotals.totalDiscount > 0 && (
+                      {(orderTotals.totalDiscount || 0) > 0 && (
                         <div className="summary-row discount-row">
                           <span>Discount ({orderTotals.userDiscount || discountPercentage}%):</span>
-                          <span>-₹{orderTotals.totalDiscount.toLocaleString('en-IN')}</span>
+                          <span>-₹{formatCurrency(orderTotals.totalDiscount)}</span>
                         </div>
                       )}
                       <div className="summary-row total-row">
                         <span>Total:</span>
-                        <span className="final-total">₹{orderTotals.finalTotal?.toLocaleString('en-IN') || '0'}</span>
+                        <span className="final-total">₹{formatCurrency(orderTotals.finalTotal)}</span>
                       </div>
                     </div>
                   </>
@@ -750,42 +955,42 @@ function Checkout() {
             <div className="edit-item-details">
               <div className="edit-item-row">
                 <span className="edit-label">Item Name:</span>
-                <span className="edit-value">{cartItems[0].item_name}</span>
+                <span className="edit-value">{cartItems[0].item_name || 'N/A'}</span>
               </div>
               <div className="edit-item-row">
                 <span className="edit-label">Current Sale Price:</span>
-                <span className="edit-value">₹{cartItems[0].sale_price?.toLocaleString()}</span>
+                <span className="edit-value">₹{formatCurrency(cartItems[0].sale_price)}</span>
               </div>
               <div className="edit-item-row">
                 <span className="edit-label">Minimum Sale Price:</span>
-                <span className="edit-value warning">₹{cartItems[0].min_sale_price?.toLocaleString()}</span>
+                <span className="edit-value warning">₹{formatCurrency(cartItems[0].min_sale_price)}</span>
               </div>
               <div className="edit-item-row">
                 <span className="edit-label">Quantity:</span>
-                <span className="edit-value">{cartItems[0].quantity}</span>
+                <span className="edit-value">{cartItems[0].quantity || 1}</span>
+              </div>
+              <div className="edit-item-row">
+                <span className="edit-label">Credit Period:</span>
+                <span className="edit-value">{cartItems[0].credit_period || 0} days</span>
               </div>
               
               <div className="edit-price-input">
-                <label htmlFor="editedPrice">Enter New Price (must be ≥ ₹{cartItems[0].min_sale_price}):</label>
+                <label htmlFor="editedPrice">Enter New Base Price (must be ≥ ₹{formatCurrency(cartItems[0].min_sale_price)}):</label>
                 <input
                   type="number"
                   id="editedPrice"
-                  min={cartItems[0].min_sale_price}
-                  defaultValue={cartItems[0].edited_sale_price || cartItems[0].sale_price}
+                  min={cartItems[0].min_sale_price || 0}
+                  step="0.01"
+                  value={editedPrice}
                   onChange={(e) => {
-                    const newPrice = parseFloat(e.target.value);
-                    const updatedItems = [...cartItems];
-                    updatedItems[0] = {
-                      ...updatedItems[0],
-                      edited_sale_price: newPrice
-                    };
-                    setCartItems(updatedItems);
+                    const newPrice = parseFloat(e.target.value) || 0;
+                    handlePriceChange(newPrice);
                   }}
                   className="price-input"
                 />
-                {cartItems[0].edited_sale_price < cartItems[0].min_sale_price && (
+                {editedPrice < (cartItems[0].min_sale_price || 0) && (
                   <p className="error-message">
-                    Price must be at least ₹{cartItems[0].min_sale_price}
+                    Price must be at least ₹{formatCurrency(cartItems[0].min_sale_price)}
                   </p>
                 )}
               </div>
@@ -820,38 +1025,43 @@ function Checkout() {
 
         <div className="order-summary-section">
           <h2>{isEditMode ? "Price Update Summary" : "Order Summary"} ({orderTotals.itemCount || cartItems.length} items)</h2>
+          
+          <div className="summary-row">
+            <span>Base Price (Taxable Amount):</span>
+            <span>₹{formatCurrency(editedPrice)}</span>
+          </div>
 
-          {orderTotals.totalCreditCharges > 0 && (
-            <div className="summary-row credit">
-              <span>Credit Charges:</span>
-              <span>+₹{orderTotals.totalCreditCharges?.toLocaleString() || '0'}</span>
-            </div>
-          )}
-
-          {orderTotals.totalDiscount > 0 && (
+          {(orderTotals.totalDiscount || 0) > 0 && (
             <div className="summary-row discount">
               <span>Discount ({orderTotals.userDiscount || discountPercentage}%):</span>
-              <span>-₹{orderTotals.totalDiscount?.toLocaleString() || '0'}</span>
+              <span>-₹{formatCurrency(orderTotals.totalDiscount)}</span>
             </div>
           )}
 
-          {orderTotals.totalTax > 0 && (
+          {(orderTotals.totalCreditCharges || 0) > 0 && (
+            <div className="summary-row credit">
+              <span>Credit Charges:</span>
+              <span>+₹{formatCurrency(orderTotals.totalCreditCharges)}</span>
+            </div>
+          )}
+
+          {(orderTotals.totalTax || 0) > 0 && (
             <>
               <div className="summary-row">
                 <span>Taxable Amount:</span>
-                <span>₹{orderTotals.totalTaxableAmount?.toLocaleString() || '0'}</span>
+                <span>₹{formatCurrency(orderTotals.totalTaxableAmount)}</span>
               </div>
 
               <div className="summary-row tax">
-                <span>Total GST:</span>
-                <span>+₹{orderTotals.totalTax?.toLocaleString() || '0'}</span>
+                <span>Total GST ({cartItems[0]?.tax_percentage || 18}%):</span>
+                <span>+₹{formatCurrency(orderTotals.totalTax)}</span>
               </div>
             </>
           )}
 
           <div className="summary-row total">
             <span>Final Total:</span>
-            <strong>₹{orderTotals.finalTotal?.toLocaleString() || '0'}</strong>
+            <strong>₹{formatCurrency(orderTotals.finalTotal)}</strong>
           </div>
 
           {!isEditMode && (
@@ -863,9 +1073,9 @@ function Checkout() {
             </div>
           )}
 
-          {orderTotals.totalDiscount > 0 && (
+          {(orderTotals.totalDiscount || 0) > 0 && (
             <div className="savings-note">
-              🎉 Customer saved ₹{orderTotals.totalDiscount?.toLocaleString() || '0'} with {orderTotals.userDiscount || discountPercentage}% discount!
+              🎉 Customer saved ₹{formatCurrency(orderTotals.totalDiscount)} with {orderTotals.userDiscount || discountPercentage}% discount!
             </div>
           )}
         </div>
@@ -874,18 +1084,18 @@ function Checkout() {
           <button
             onClick={handlePlaceOrder}
             disabled={loading || isUpdatingItem || !cartItems || cartItems.length === 0 || 
-              (isEditMode && cartItems[0].edited_sale_price < cartItems[0].min_sale_price)}
+              (isEditMode && editedPrice < (cartItems[0]?.min_sale_price || 0))}
             className={`place-order-btn ${loading || isUpdatingItem ? 'loading' : ''} ${isEditMode ? 'edit-btn' : ''}`}
           >
             {isUpdatingItem ? "Updating..." : 
              loading ? "Processing..." : 
-             isEditMode ? `Update Price - ₹${cartItems[0]?.edited_sale_price?.toLocaleString() || '0'}` : 
-             `Place ${orderMode} Order - ₹${orderTotals.finalTotal?.toLocaleString() || '0'}`}
+             isEditMode ? `Update Price - ₹${formatCurrency(orderTotals.finalTotal)}` : 
+             `Place ${orderMode} Order - ₹${formatCurrency(orderTotals.finalTotal)}`}
           </button>
           
-          {isEditMode && cartItems[0].edited_sale_price < cartItems[0].min_sale_price && (
+          {isEditMode && editedPrice < (cartItems[0]?.min_sale_price || 0) && (
             <p className="validation-error">
-              Cannot update: Price is below minimum sale price (₹{cartItems[0].min_sale_price})
+              Cannot update: Price is below minimum sale price (₹{formatCurrency(cartItems[0]?.min_sale_price)})
             </p>
           )}
         </div>
