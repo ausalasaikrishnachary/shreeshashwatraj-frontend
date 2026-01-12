@@ -179,6 +179,15 @@ import ExportSalesPage from "./Component/Panels/Admin/Inventory/Sales_catalogue/
 import SalesPdfDocument from "./Component/Panels/Admin/SalesInvoicePage/SalesPdfDocument";
 import Kachareceiptview from "./Component/Panels/kachreceipts/Receipts/Kachareceiptview";
 import ImportRetailersPage from "./Component/Panels/Admin/AdminRetailers/ImportRetailersPage";
+import Import_purchase_page from "./Component/Panels/Admin/Inventory/PurchasedItems/Import_purchase_page";
+import KachaPurchaseInvoiceForm from "./Component/Panels/Admin/KachaPurchase/KachaPurchaseInvoiceForm";
+import KachaPurchaseInvoicePDFPreview from "./Component/Panels/Admin/KachaPurchase/KachaPurchaseInvoicePDFPreview";
+import KachaPurchaseInvoiceTable from "./Component/Panels/Admin/KachaPurchase/KachaPurchaseInvoiceTable";
+import KachaPurchaseVochurTable from "./Component/Panels/Admin/KachaPurchaseVoucher/KachaPurchaseVochurTable";
+import KachaPurchaseVoucherView from "./Component/Panels/Admin/KachaPurchaseVoucher/KachaPurchaseVoucherView";
+import Kacha_CreditNoteTable from "./Component/Panels/Admin/KachaCreditNote/Kacha_CreditNoteTable";
+import KachaCreateNote from "./Component/Panels/Admin/KachaCreditNote/KachaCreateNote";
+import Kacha_EditCreditNote from "./Component/Panels/Admin/KachaCreditNote/Kacha_EditCreditNote";
 
 
 
@@ -369,7 +378,25 @@ function App() {
         <Route path="/export-sales" element={<ExportSalesPage />} />
         <Route path="/salespdfdocument" element={<SalesPdfDocument />} />
         <Route path="/kachareceipts_view/:id" element={<Kachareceiptview />} />
+        <Route path="/import_purchase" element={<Import_purchase_page />} />
+        <Route path="/kachapurchaseinvoice" element={<KachaPurchaseInvoiceForm />} />
+        <Route path="/kachapurchasepdf/:id" element={<KachaPurchaseInvoicePDFPreview />} />
+                <Route path="/kachapurchasepdf" element={<KachaPurchaseInvoicePDFPreview />} />
 
+        <Route path="/kachapurchaseinvoicetable" element={<KachaPurchaseInvoiceTable />} />
+<Route path="/kachaPurchasevoucher" element={<KachaPurchaseVochurTable />} />
+<Route path="/kachaPurchasevoucherview" element={<KachaPurchaseVoucherView />} />
+<Route path="/kachaPurchasevoucherview/:id" element={<KachaPurchaseVoucherView />} />
+<Route path="/kachacreditenotetable"element={<Kacha_CreditNoteTable />} />
+<Route path="/kachacreditenotetable/:id"element={<Kacha_CreditNoteTable />} />
+<Route path="/kachacreditenote" element={<KachaCreateNote />} />
+<Route path='/kachaeditcreditnote' element={<Kacha_EditCreditNote />} />
+<Route path='/kachaeditcreditnote/:id' element={<Kacha_EditCreditNote />} />
+
+
+
+
+active
       </Routes>
     </Router>
 

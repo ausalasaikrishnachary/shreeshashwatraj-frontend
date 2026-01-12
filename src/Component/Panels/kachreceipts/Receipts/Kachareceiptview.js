@@ -27,16 +27,14 @@ const Kachareceiptview = () => {
 const fetchReceipt = async () => {
   try {
     setIsLoading(true);
-    const response = await fetch(`${baseurl}/api/receipts/${id}`);
+const response = await fetch(
+  `${baseurl}/api/receipts/${id}?data_type=stock transfer`
+);
     
     if (response.ok) {
       const data = await response.json(); 
       setReceipt(data);
-      
-      console.log('🔍 FULL API RESPONSE:', data);
-      console.log('🔍 Available fields:', Object.keys(data));
-      console.log('🔍 Transaction proof field:', data.transaction_proof); // Add this
-      
+            
       // Update edit form data with correct retailer ID
       setEditFormData({
         retailer_id: data.PartyID || data.retailer_id || '',

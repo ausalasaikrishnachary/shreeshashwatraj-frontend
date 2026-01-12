@@ -6,7 +6,7 @@ import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import './Voucher.css';
 
-const VochurTable = () => {
+const KachaPurchaseVochurTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,8 +48,8 @@ const VochurTable = () => {
 
   const fetchInvoices = async () => {
     try {
-      console.log('Fetching invoices from:', `${baseurl}/api/purchasevouchersnumber`);
-      const response = await fetch(`${baseurl}/api/purchasevouchersnumber?type=Purchase`);
+      console.log('Fetching bharath from:', `${baseurl}/api/purchasevouchersnumber?type=stock inward`);
+      const response = await fetch(`${baseurl}/api/purchasevouchersnumber?type=stock inward`);
       if (response.ok) {
         const data = await response.json();
         console.log('Received invoices data:', data);
@@ -140,9 +140,8 @@ const VochurTable = () => {
     setIsFetchingBalance(true);
     console.log(`Fetching balance for supplier ${supplierId}, invoice ${invoiceNumber}`);
     
-    // Check in existing receipt data first (from your API response)
     const existingReceipt = receiptData.find(receipt => {
-      const receiptSupplierId = receipt.PartyID || receipt.supplier?.id ;
+      const receiptSupplierId = receipt.PartyID || receipt.supplier?.id || receipt.AccountID;
       const receiptInvoiceNumbers = receipt.invoice_numbers || [receipt.InvoiceNumber];
       
       return receiptSupplierId == supplierId && 
@@ -218,10 +217,12 @@ const VochurTable = () => {
         }
       } else {
         console.warn('Balance API returned status:', response.status);
+        // Fallback to local invoice data
         await fetchBalanceFromLocalInvoices(invoiceNumber);
       }
     } catch (apiError) {
       console.error('API error fetching balance:', apiError);
+      // Fallback to local invoice data
       await fetchBalanceFromLocalInvoices(invoiceNumber);
     }
   } catch (err) {
@@ -236,7 +237,6 @@ const VochurTable = () => {
   }
 };
 
-// Helper function to fetch balance from local invoices data
 const fetchBalanceFromLocalInvoices = async (invoiceNumber) => {
   const selectedInvoiceData = invoices.find(inv => inv.number === invoiceNumber);
   if (selectedInvoiceData) {
@@ -392,13 +392,12 @@ useEffect(() => {
       }
     }
   ];
-
-  const tabs = [
-    { name: 'Purchase Invoice', path: '/purchase/purchase-invoice' },
-    { name: 'Purchase Order', path: '/purchase/purchase-order' },
-    { name: 'Voucher', path: '/purchase/voucher' },
+ const tabs = [
+    { name: ' Kacha Purchase Invoice', path: '/kachapurchaseinvoicetable' },
+    // { name: 'Purchase Order', path: '/purchase/purchase-order' },
+    { name: 'Voucher', path: '/kachaPurchasevoucher' },
     { name: 'Debit Note', path: '/purchase/debit-note' },
-    { name: 'Payables', path: '/purchase/payables' }
+    // { name: 'Payables', path: '/purchase/payables' }
   ];
 
   // Fetch next receipt number
@@ -466,28 +465,23 @@ useEffect(() => {
       setHasFetchedReceiptNumber(true);
     }
   };
-
 const fetchReceipts = async () => {
   try {
     setIsLoading(true);
     
-    // FIX: Add query parameter
-const response = await fetch(
-`${baseurl}/api/voucher?data_type=Purchase`
-);
+    const response = await fetch(`${baseurl}/api/voucher?data_type=stock inward`);
     
     if (response.ok) {
       const data = await response.json();
-      console.log('Received purchase vouchers data:', data.length);
       
-      // Now sort the data (already filtered by backend)
       const sortedData = data.sort((a, b) => {
         const dateA = new Date(a.receipt_date || a.created_at || a.VoucherDate || new Date());
         const dateB = new Date(b.receipt_date || b.created_at || b.VoucherDate || new Date());
         return dateB - dateA || (b.VoucherID || b.id) - (a.VoucherID || a.id);
       });
-      
+
       const transformedData = sortedData.map(receipt => {
+        // Calculate balance amount if not present
         const totalAmount = parseFloat(receipt.TotalAmount || receipt.total_amount || 0);
         const paidAmount = parseFloat(receipt.paid_amount || 0);
         const balanceAmount = receipt.total_balance_amount || 
@@ -496,7 +490,7 @@ const response = await fetch(
         
         return {
           ...receipt,
-          id: receipt.id || receipt.VoucherID || '',
+          id: receipt.id || '',
           supplier: receipt.supplier || {
             business_name: receipt.payee_name || receipt.supplier_name || receipt.PartyName || 'N/A' 
           },
@@ -507,24 +501,23 @@ const response = await fetch(
           payment_method: receipt.payment_method || 'N/A',
           invoice_numbers: receipt.invoice_numbers || receipt.InvoiceNumber || 'N/A',
           total_balance_amount: balanceAmount,
-          data_type: "Purchase",
+          data_type: "stock inward", 
           PartyID: receipt.PartyID,
           AccountID: receipt.AccountID,
-          InvoiceNumber: receipt.InvoiceNumber,
-          VchNo: receipt.VchNo,
-          TransactionType: receipt.TransactionType,
-          Date: receipt.receipt_date || receipt.VoucherDate || receipt.created_at
+          InvoiceNumber: receipt.InvoiceNumber
         };
       });
 
+      console.log('Transformed stock inward data (first item):', transformedData[0]);
+      
       setReceiptData(transformedData);
     } else {
-      console.error('Failed to fetch purchase vouchers.');
-      alert('Failed to load purchase data.');
+      console.error('Failed to fetch stock inward vouchers. Status:', response.status);
+      alert('Failed to load stock inward data. Please try again later.');
     }
   } catch (err) {
-    console.error('Error fetching purchase data:', err);
-    alert('Error connecting to server.');
+    console.error('Error fetching stock inward data:', err);
+    alert('Error connecting to server. Please check your network connection.');
   } finally {
     setIsLoading(false);
   }
@@ -720,7 +713,7 @@ const handleCreateReceipt = async () => {
      formDataToSend.append('bank_name', selectedSupplier.bankName || '');
     formDataToSend.append('invoice_number', formData.invoiceNumber || '');
     formDataToSend.append('TransactionType', 'purchase voucher');
-    formDataToSend.append('data_type', 'Purchase');
+    formDataToSend.append('data_type', 'stock inward');
     
     // Optional fields
     formDataToSend.append('currency', formData.currency || 'INR');
@@ -743,14 +736,13 @@ const handleCreateReceipt = async () => {
     // Append file if exists
     if (formData.transactionProofFile) {
       formDataToSend.append('transaction_proof', formData.transactionProofFile);
-    }    
-    // Log all FormData entries
+    }
+    
     console.log('FormData entries:');
     for (let [key, value] of formDataToSend.entries()) {
       console.log(`${key}: ${value}`);
     }
 
-    // Make the API call
     const response = await fetch(`${baseurl}/api/receipts`, {
       method: 'POST',
       body: formDataToSend,
@@ -762,16 +754,13 @@ const handleCreateReceipt = async () => {
       const result = await response.json();
       console.log('✅ Voucher created successfully:', result);
       
-      // Refresh the receipts list
       await fetchReceipts();
       
-      // Close modal
       handleCloseModal();
       
       alert('Voucher created successfully!');
       
-      
-      // Generate next receipt number
+     
       await fetchNextReceiptNumber();
     } else {
       const errorText = await response.text();
@@ -795,18 +784,15 @@ const handleCreateReceipt = async () => {
   }
 };
 
-  // View receipt details
   const handleViewReceipt = (receiptId) => {
     console.log('View receipt:', receiptId);
-    navigate(`/voucher_view/${receiptId}`);
+    navigate(`/kachaPurchasevoucherview/${receiptId}`);
   };
 
-  // Download receipts
   const handleDownload = () => {
     alert(`Downloading receipts for ${month} ${year}`);
   };
 
-  // Download date range receipts
   const handleDownloadRange = () => {
     alert(`Downloading receipts from ${startDate} to ${endDate}`);
   };
@@ -858,7 +844,7 @@ const handleCreateReceipt = async () => {
           {/* Actions Section */}
           <div className="receipts-actions-section">
             <div className="quotation-container p-3">
-              <h5 className="mb-3 fw-bold">View Receipts</h5>
+              <h5 className="mb-3 fw-bold">View Voucher</h5>
               {/* Filters and Actions */}
               <div className="row align-items-end g-3 mb-3">
                 <div className="col-md-auto">
@@ -1227,4 +1213,4 @@ const handleCreateReceipt = async () => {
   );
 };
 
-export default VochurTable;
+export default KachaPurchaseVochurTable;

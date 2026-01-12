@@ -39,6 +39,12 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
     "/kachareceipts" :" Receipts",
     "/sales/receipts": "Receipts",
    " /sales/invoices": "Invoice",
+   "/kachapurchaseinvoicetable": "Kacha Purchase",
+   "/kachapurchaseinvoice":"Create Kacha Purchase",
+   "/kachaPurchasevoucher":"Kacha Purchase Voucher",
+   "/kachacreditenotetable":'Kacha Credit Note Table',
+   '/kachacreditenote': "Kacha Credit Note",
+   "/kachaeditcreditnote" : "Kacha Edit Credit Note",
   };
 
   const getPageTitle = () => {

@@ -62,26 +62,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
   };
 
   // Calculate total MRP from batches
-  const calculateTotalMRPFromBatches = () => {
-    if (!batches || batches.length === 0) return 0;
-    const totalMRP = batches.reduce((total, batch) => total + (parseFloat(batch.mrp) || 0), 0);
-    return totalMRP > 0 ? totalMRP : 0;
-  };
-
-  // Calculate total price from batches (for products table "price" column)
-  const calculateTotalPriceFromBatches = () => {
-    if (!batches || batches.length === 0) return 0;
-    const totalPrice = batches.reduce((total, batch) => total + (parseFloat(batch.sellingPrice) || 0), 0);
-    return totalPrice > 0 ? totalPrice : 0;
-  };
-
-  // Calculate total purchase price from batches
-  const calculateTotalPurchasePriceFromBatches = () => {
-    if (!batches || batches.length === 0) return 0;
-    const totalPurchasePrice = batches.reduce((total, batch) => total + (parseFloat(batch.purchasePrice) || 0), 0);
-    return totalPurchasePrice > 0 ? totalPurchasePrice : 0;
-  };
-
+ 
   const fetchUnits = async () => {
     try {
       const response = await axios.get(`${baseurl}/units`);
@@ -191,7 +172,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
           non_taxable: product.non_taxable || '',
           net_price: product.net_price || '',
           hsn_code: product.hsn_code || '',
-          unit: product.unit || 'UNT-UNITS',
+          unit: product.unit,
           cess_rate: product.cess_rate || '',
           cess_amount: product.cess_amount || '',
           sku: product.sku || '',
@@ -726,7 +707,6 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // NEW VALIDATION: Check if price is required when "Can be Sold" is checked
     if (formData.can_be_sold) {
       const price = parseFloat(formData.price);
 
@@ -1221,7 +1201,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                       >
                         <option value="">Select Unit</option>
                         {unitOptions.map((unit) => (
-                          <option key={unit.id} value={unit.name}>
+                          <option key={unit.id} value={unit.id}>
                             {unit.name}
                           </option>
                         ))}
@@ -1461,10 +1441,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                   <div className="border border-dark p-3 mb-3">
                     <h5>Batch Details</h5>
 
-                    <div className="alert alert-info mb-3">
-                      <strong>Note:</strong> Price and MRP entered above will be applied to all batches.
-                      You can also set individual prices for each batch below.
-                    </div>
+                
 
                     {batches.map((batch, index) => (
                       <div key={batch.id} className="mb-3 border p-2">
@@ -1536,9 +1513,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                               onChange={(e) => handleBatchChange(index, e)}
                               placeholder={formData.price ? `Main: ${formData.price}` : 'Enter selling price'}
                             />
-                            <Form.Text className="text-muted">
-                              This goes to "selling_price" in batches table and "price" in products table
-                            </Form.Text>
+                          
                           </div>
                         </div>
 
@@ -1600,9 +1575,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                     <Button variant="primary" onClick={addNewBatch} className="mb-2">
                       Add Batch
                     </Button>
-                    <div className="mt-2 text-muted">
-                      <small>* Price is stored in "price" column in products table and "selling_price" in batches table</small>
-                    </div>
+                 
                   </div>
                 )}
 
@@ -1665,7 +1638,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                 onClose={() => setShowUnitModal(false)}
                 onSave={(newUnit) => {
                   fetchUnits();
-                  setFormData((prev) => ({ ...prev, unit: newUnit.name }));
+                  setFormData((prev) => ({ ...prev, unit: newUnit.id }));
                   setShowUnitModal(false);
                 }}
               />

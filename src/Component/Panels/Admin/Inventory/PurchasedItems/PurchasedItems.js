@@ -302,6 +302,39 @@ const PurchasedItems = ({ user }) => {
                   </li>
                 </ul>
               </div>
+
+               <div className="dropdown">
+  {/* <button
+    className="btn btn-primary dropdown-toggle d-flex align-items-center justify-content-center"
+    type="button"
+    data-bs-toggle="dropdown"
+    aria-expanded="false"
+  >
+    <i className="bi bi-download me-2"></i>
+    Bulk
+  </button> */}
+
+  {/* <ul className="dropdown-menu">
+    <li>
+      <button
+        className="dropdown-item d-flex align-items-center justify-content-center"
+        onClick={() => navigate("/export-sales")}
+      >
+        <i className="bi bi-box-arrow-down me-2"></i>
+        Export
+      </button>
+    </li>
+    <li> */}
+      <button
+    className="btn btn-primary d-flex align-items-center justify-content-center"
+        onClick={() => navigate("/import_purchase")}
+      >
+        <i className="bi bi-box-arrow-up me-2"></i>
+        Import
+      </button>
+    {/* </li> */}
+  {/* </ul> */}
+</div>
               <div className="dropdown">
                 <button
                   className="btn btn-success dropdown-toggle d-flex align-items-center"

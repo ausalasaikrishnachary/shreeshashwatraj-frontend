@@ -429,9 +429,8 @@ const KachaReceiptsTable = () => {
   const fetchReceipts = async () => {
     try {
       setIsLoading(true);
-      console.log('Fetching receipts from:', `${baseurl}/api/receipts`);
 
-      const response = await fetch(`${baseurl}/api/receipts`);
+      const response = await fetch(`${baseurl}/api/receipts?data_type=stock transfer`);
 
       if (!response.ok) {
         console.error('Failed to fetch receipts. Status:', response.status);

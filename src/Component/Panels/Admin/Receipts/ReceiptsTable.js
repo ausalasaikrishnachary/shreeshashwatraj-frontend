@@ -47,7 +47,6 @@ const ReceiptsTable = () => {
   business_name: '' // Add this
   });
 
-  // Fetch invoices from API
   const fetchInvoices = async () => {
     try {
       console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber`);
@@ -97,11 +96,9 @@ const fetchInvoiceBalance = async (retailerId, invoiceNumber) => {
         const data = await response.json();
         console.log('Received receipt data for balance check:', data);
         
-        // Check if we got an array or single object
         let balanceAmount = 0;
         
         if (Array.isArray(data)) {
-          // Filter receipts for the specific retailer AND invoice
           const relevantReceipts = data.filter(receipt => {
             const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
             const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
@@ -173,7 +170,6 @@ const fetchInvoiceBalance = async (retailerId, invoiceNumber) => {
     const selectedInvoiceData = invoices.find(inv => inv.VchNo === invoiceNumber);
     
     if (selectedInvoiceData) {
-      // First verify this invoice belongs to the selected retailer
       const invoiceRetailerId = selectedInvoiceData.PartyID || selectedInvoiceData.AccountID;
       
       if (invoiceRetailerId != retailerId) {
@@ -438,7 +434,7 @@ const fetchReceipts = async () => {
     setIsLoading(true);
     console.log("Fetching receipts from:", `${baseurl}/api/receipts`);
 
-    const response = await fetch(`${baseurl}/api/receipts`);
+    const response = await fetch(`${baseurl}/api/receipts?data_type=Sales`);
 
     if (!response.ok) {
       const errorText = await response.text();

@@ -27,7 +27,9 @@ const ReceiptView = () => {
 const fetchReceipt = async () => {
   try {
     setIsLoading(true);
-    const response = await fetch(`${baseurl}/api/receipts/${id}`);
+const response = await fetch(
+  `${baseurl}/api/receipts/${id}?data_type=Sales`
+);
     if (response.ok) {
       const data = await response.json(); 
       setReceipt(data);

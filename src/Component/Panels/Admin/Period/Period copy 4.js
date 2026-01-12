@@ -316,36 +316,38 @@ const fetchOrders = async () => {
           const items = await Promise.all(
             itemsData.map(async (item) => {
               let min_sale_price = 0;
-                   let stock_quantity = 0;
+              let stock_quantity = 0;
               let stock_insufficient = false;
 
               try {
+                // Fetch product details for min_sale_price
                 const productRes = await axios.get(`${baseurl}/products/${item.product_id}`);
                 min_sale_price = productRes.data.min_sale_price || 0;
-
-                 try {
-                                  const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
-                                  console.log(`Batches for product ${item.product_id}:`, batchesRes.data);
-                                  
-                                  if (batchesRes.data && Array.isArray(batchesRes.data)) {
-                                    // Sum up all available quantities from batches
-                                    stock_quantity = batchesRes.data.reduce((total, batch) => {
-                                      return total + (parseFloat(batch.quantity) || 0);
-                                    }, 0);
-                                    
-                                    console.log(`Total stock quantity for product ${item.product_id}: ${stock_quantity}`);
-                                    
-                                    // Check if item quantity exceeds available stock
-                                    const itemQuantity = parseInt(item.quantity) || 1;
-                                    if (itemQuantity > stock_quantity) {
-                                      stock_insufficient = true;
-                                      console.warn(`Insufficient stock for product ${item.product_id}: Ordered ${itemQuantity}, Available ${stock_quantity}`);
-                                    }
-                                  }
-                                } catch (batchErr) {
-                                  console.warn(`Could not fetch batches for product ${item.product_id}:`, batchErr.message);
-                                }
-
+                
+                // Fetch batches for stock quantity
+                try {
+                  const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
+                  console.log(`Batches for product ${item.product_id}:`, batchesRes.data);
+                  
+                  if (batchesRes.data && Array.isArray(batchesRes.data)) {
+                    // Sum up all available quantities from batches
+                    stock_quantity = batchesRes.data.reduce((total, batch) => {
+                      return total + (parseFloat(batch.quantity) || 0);
+                    }, 0);
+                    
+                    console.log(`Total stock quantity for product ${item.product_id}: ${stock_quantity}`);
+                    
+                    // Check if item quantity exceeds available stock
+                    const itemQuantity = parseInt(item.quantity) || 1;
+                    if (itemQuantity > stock_quantity) {
+                      stock_insufficient = true;
+                      console.warn(`Insufficient stock for product ${item.product_id}: Ordered ${itemQuantity}, Available ${stock_quantity}`);
+                    }
+                  }
+                } catch (batchErr) {
+                  console.warn(`Could not fetch batches for product ${item.product_id}:`, batchErr.message);
+                }
+                
               } catch (productErr) {
                 console.warn(`Could not fetch product details for product ID ${item.product_id}:`, productErr.message);
                 min_sale_price = 0;
@@ -397,9 +399,10 @@ const fetchOrders = async () => {
                 staff_incentive: parseFloat(item.staff_incentive) || 0,
                 price: editedSalePrice,
                 
-                   // Stock information
+                // Stock information
                 stock_quantity: stock_quantity,
                 stock_insufficient: stock_insufficient,
+                
                 // NEW: Flag to show edit button
                 can_edit: salePrice < parseFloat(min_sale_price)
               };
@@ -611,101 +614,52 @@ const fetchOrders = async () => {
   const handleEditItem = (order, item) => {
     console.log("Editing item:", item);
     
-    // Prepare all calculations for the checkout page
-    const newEditedPrice = item.edited_sale_price || item.sale_price;
-    const discountPercentage = item.discount_percentage || 0;
-    const creditPeriod = item.credit_period || 0;
-    const quantity = item.quantity || 1;
-    const gstPercentage = item.tax_percentage || 18; // Use existing tax percentage or default 18%
-    const creditPercentage = item.credit_percentage || 2; // Default 2% per month
-    
-    // Recalculate all values based on the new edited price
-    // 1. Edited price is the taxable amount (base price)
-    const taxableAmount = newEditedPrice;
-    
-    // 2. Calculate discount on taxable amount
-    const discountAmount = taxableAmount * (discountPercentage / 100);
-    
-    // 3. Price after discount
-    const priceAfterDiscount = taxableAmount - discountAmount;
-    
-    // 4. Calculate GST on taxable amount (not on discounted amount)
-    const taxAmount = taxableAmount * (gstPercentage / 100);
-    
-    // 5. Split GST into SGST and CGST (equal split)
-    const sgstPercentage = gstPercentage / 2;
-    const cgstPercentage = gstPercentage / 2;
-    const sgstAmount = taxAmount / 2;
-    const cgstAmount = taxAmount / 2;
-    
-    // 6. Calculate credit charge on taxable amount
-    let creditCharge = 0;
-    if (creditPeriod > 0) {
-      creditCharge = (taxableAmount * creditPercentage * creditPeriod) / (30 * 100);
-    }
-    
-    // 7. Calculate final amount: taxable amount + GST + credit charge
-    const finalAmount = taxableAmount + taxAmount + creditCharge;
-    
-    // 8. Customer sale price is the final amount per unit
-    const customerSalePrice = finalAmount;
-    
-    // 9. Calculate totals for all quantities
-    const itemTotal = finalAmount * quantity;
-    const totalDiscount = discountAmount * quantity;
-    const totalTax = taxAmount * quantity;
-    const totalTaxableAmount = taxableAmount * quantity;
-    const totalCreditCharges = creditCharge * quantity;
-    const finalTotal = itemTotal;
-
+    // Prepare data for checkout page
     const cartItem = {
       product_id: item.product_id,
       item_name: item.item_name,
       quantity: item.quantity,
       sale_price: item.sale_price,
-      edited_sale_price: newEditedPrice,
+      edited_sale_price: item.edited_sale_price,
       mrp: item.mrp,
       min_sale_price: item.min_sale_price,
-      credit_period: creditPeriod,
+      credit_period: item.credit_period,
       staff_incentive: item.staff_incentive || 0,
-      discount_percentage: discountPercentage,
-      tax_percentage: gstPercentage,
-      credit_percentage: creditPercentage,
       
-      // Include all recalculated breakdown calculations
+      // Include all breakdown calculations
       breakdown: {
         perUnit: {
           mrp: item.mrp,
           sale_price: item.sale_price,
-          edited_sale_price: newEditedPrice,
-          credit_charge: creditCharge,
-          credit_percentage: creditPercentage,
-          customer_sale_price: customerSalePrice,
-          discount_percentage: discountPercentage,
-          discount_amount: discountAmount,
-          taxable_amount: taxableAmount,
-          tax_percentage: gstPercentage,
-          tax_amount: taxAmount,
-          sgst_percentage: sgstPercentage,
-          sgst_amount: sgstAmount,
-          cgst_percentage: cgstPercentage,
-          cgst_amount: cgstAmount,
-          final_amount: finalAmount,
-          item_total: finalAmount
+          edited_sale_price: item.edited_sale_price,
+          credit_charge: item.credit_charge,
+          credit_percentage: item.credit_percentage,
+          customer_sale_price: item.customer_sale_price,
+          discount_percentage: item.discount_percentage,
+          discount_amount: item.discount_amount,
+          taxable_amount: item.taxable_amount,
+          tax_percentage: item.tax_percentage,
+          tax_amount: item.tax_amount,
+          sgst_percentage: item.sgst_percentage,
+          sgst_amount: item.sgst_amount,
+          cgst_percentage: item.cgst_percentage,
+          cgst_amount: item.cgst_amount,
+          final_amount: item.final_amount,
+          item_total: item.item_total
         }
       }
     };
 
-    // Prepare order totals for checkout with recalculated values
+    // Prepare order totals for checkout
     const orderTotals = {
-      subtotal: itemTotal,
-      totalTax: totalTax,
-      totalDiscount: totalDiscount,
-      totalTaxableAmount: totalTaxableAmount,
-      totalCreditCharges: totalCreditCharges,
-      finalTotal: finalTotal,
+      subtotal: item.item_total,
+      totalTax: item.tax_amount,
+      totalDiscount: item.discount_amount,
+      totalTaxableAmount: item.taxable_amount,
+      totalCreditCharges: item.credit_charge,
+      finalTotal: item.item_total,
       itemCount: 1,
-      userDiscount: discountPercentage
+      userDiscount: item.discount_percentage || 0
     };
 
     // Navigate to checkout with order and item data
@@ -718,20 +672,12 @@ const fetchOrders = async () => {
         cartItems: [cartItem],
         staffId: order.staff_id,
         orderTotals: orderTotals,
-        userDiscountPercentage: discountPercentage,
-        creditPeriods: creditPeriod,
+        userDiscountPercentage: item.discount_percentage || 0,
+        creditPeriods: item.credit_period,
         isEditMode: true,
         editOrderNumber: order.order_number,
         editItemId: item.id,
-        originalItemData: item,
-        
-        // Pass all calculation parameters for recalculation in checkout
-        calculationParams: {
-          discountPercentage: discountPercentage,
-          gstPercentage: gstPercentage,
-          creditPercentage: creditPercentage,
-          quantity: quantity
-        }
+        originalItemData: item
       }
     });
   };
@@ -772,11 +718,12 @@ const fetchOrders = async () => {
       return;
     }
 
-  // Stock validation - check if ordered quantity exceeds stock
-    const itemsWithStockIssue = orderSelectedItems.map(itemId => {
+     const itemsWithStockIssue = orderSelectedItems.map(itemId => {
       const item = order.items.find(i => i.id === itemId);
       return item;
     }).filter(item => {
+      if (!item) return false;
+      
       const stockQuantity = item.stock_quantity || 0;
       const orderedQuantity = item.quantity || 0;
       
@@ -800,7 +747,7 @@ const fetchOrders = async () => {
       setGeneratingInvoice(false);
       return;
     }
-    
+
     const itemsWithApprovalIssue = orderSelectedItems.map(itemId => {
       const item = order.items.find(i => i.id === itemId);
       return item;

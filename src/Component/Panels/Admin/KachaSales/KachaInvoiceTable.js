@@ -38,41 +38,36 @@ const fetchInvoices = async () => {
     
     const data = await response.json();
     
-    // Filter: Only 'stock transfer' transactions (case-insensitive), exclude 'Sales'
     const filteredTransactions = data.filter(transaction => {
-      const transactionType = String(transaction.TransactionType || '').toLowerCase().trim();
+      const transactionType = String(transaction.TransactionType || '').trim();
       
-      // Include 'stock transfer' and variations, exclude 'sales'
-      return transactionType.includes('stock') || transactionType.includes('transfer');
+      return transactionType.toLowerCase() === 'stock transfer';
     });
     
-    // Transform the data
     const transformedInvoices = filteredTransactions.map(invoice => ({
       id: invoice.VoucherID,
-      transactionType: invoice.TransactionType, // Keep original case
+      transactionType: invoice.TransactionType,
       customerName: invoice.PartyName || 'N/A',
-      number: invoice.InvoiceNumber || `ST-${invoice.VoucherID}`, // ST prefix for stock transfer
+      number: invoice.InvoiceNumber || `ST-${invoice.VoucherID}`,
       totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
       status: invoice.status,
       created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
       originalData: invoice,
       hasPDF: !!invoice.pdf_data,
-      // Show order number if exists
       orderNumber: invoice.order_number || 'No Order',
-      hasOrder: !!invoice.order_number // Boolean for easy filtering
+      hasOrder: !!invoice.order_number
     }));
     
     setInvoices(transformedInvoices);
     setLoading(false);
     
-    // Log summary
-    const withOrder = filteredTransactions.filter(t => t.order_number).length;
-    const withoutOrder = filteredTransactions.filter(t => !t.order_number).length;
-    
-    console.log(`✅ Fetched ${filteredTransactions.length} Stock Transfer transactions`);
-    console.log(`   📋 With order number: ${withOrder}`);
-    console.log(`   📋 Without order number: ${withoutOrder}`);
-    console.log(`   🚫 Excluded ${data.length - filteredTransactions.length} Sales transactions`);
+    // Log summary for debugging
+    console.log(`✅ Found ${filteredTransactions.length} Stock Transfer transactions`);
+    console.log('Stock Transfer Transactions:', filteredTransactions.map(t => ({
+      id: t.VoucherID,
+      type: t.TransactionType,
+      invoice: t.InvoiceNumber
+    })));
     
   } catch (err) {
     console.error('Error fetching invoices:', err);
@@ -80,22 +75,7 @@ const fetchInvoices = async () => {
     setLoading(false);
   }
 };
-  // Helper function to determine payment status
-  const getPaymentStatus = (invoice) => {
-    if (invoice.ChequeNo && invoice.ChequeNo !== 'NULL') {
-      return 'Paid';
-    }
-    
-    const invoiceDate = new Date(invoice.Date || invoice.EntryDate);
-    const today = new Date();
-    const daysDiff = Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24));
-    
-    if (daysDiff > 30) {
-      return 'Overdue';
-    }
-    
-    return 'Pending';
-  };
+
 
 const handleDownloadPDF = async (invoice) => {
   const voucherId = invoice.originalData?.VoucherID || invoice.id;

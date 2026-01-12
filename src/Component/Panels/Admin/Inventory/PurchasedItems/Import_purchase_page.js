@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button, Form, Alert, Spinner, Card } from 'react-bootstrap';
 import * as XLSX from 'xlsx';
-import AdminSidebar from './../../../../Shared/AdminSidebar/AdminSidebar';
-import Header from './../../../../Shared/AdminSidebar/AdminHeader';
+import AdminSidebar from '../../../../Shared/AdminSidebar/AdminSidebar';
+import Header from '../../../../Shared/AdminSidebar/AdminHeader';
 import { useNavigate } from 'react-router-dom';
 import { FaUpload, FaDownload, FaCheckCircle, FaTimesCircle, FaExclamationTriangle } from 'react-icons/fa';
 import axios from 'axios';
-import { baseurl } from './../../../../BaseURL/BaseURL';
+import { baseurl } from '../../../../BaseURL/BaseURL';
 
-const ImportSalesPage = ({ user }) => {
+const Import_purchase_page = ({ user }) => {
   const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
@@ -110,7 +110,7 @@ const ImportSalesPage = ({ user }) => {
     return strValue;
   };
 
-  // Helper function to find unit ID by ID only
+  // Helper function to find unit ID by name or code
   const findUnitId = (value) => {
     if (!value || value.toString().trim() === '') return '';
     
@@ -125,68 +125,98 @@ const ImportSalesPage = ({ user }) => {
       }
     }
     
-    // For sales flow, we only accept unit IDs
-    return strValue; // Will cause validation error if not a valid ID
+    // Try to find by unit name (case insensitive)
+    const byName = unitOptions.find(unit => 
+      unit.unit_name && unit.unit_name.toString().toLowerCase() === strValue.toLowerCase()
+    );
+    
+    if (byName) {
+      return byName.id;
+    }
+    
+    // Try to find by unit code (case insensitive)
+    const byCode = unitOptions.find(unit => 
+      unit.unit_code && unit.unit_code.toString().toLowerCase() === strValue.toLowerCase()
+    );
+    
+    if (byCode) {
+      return byCode.id;
+    }
+    
+    // Try partial match
+    const partialMatch = unitOptions.find(unit => 
+      (unit.unit_name && unit.unit_name.toString().toLowerCase().includes(strValue.toLowerCase())) ||
+      (unit.unit_code && unit.unit_code.toString().toLowerCase().includes(strValue.toLowerCase()))
+    );
+    
+    if (partialMatch) {
+      return partialMatch.id;
+    }
+    
+    // Return original value (will cause validation error)
+    return strValue;
   };
 
   // Download template function for WITHOUT batch
   const downloadTemplateWithoutBatch = () => {
     setUserSelectedMode('without_batch');
     
-    // Get sample IDs from loaded data
-    const sampleCategory = categoryOptions.length > 0 ? categoryOptions[0] : { id: 1 };
-    const sampleCompany = companyOptions.length > 0 ? companyOptions[0] : { id: 1 };
-    const sampleUnit = unitOptions.length > 0 ? unitOptions[0] : { id: 1 };
+    // Get sample names from loaded data for better examples
+    const sampleCategory = categoryOptions.length > 0 ? categoryOptions[0] : { id: 1, name: 'Raw Materials' };
+    const sampleCompany = companyOptions.length > 0 ? companyOptions[0] : { id: 1, name: 'Supplier Company' };
+    const sampleUnit = unitOptions.length > 0 ? unitOptions[0] : { id: 1, unit_code: 'UNT-UNITS' };
     
     const templateData = [
       {
-        'goods_name': 'iPhone 15 Pro',
-        'category_id': sampleCategory.id, // Use ID only
-        'company_id': sampleCompany.id, // Use ID only
+        'goods_name': 'Steel Rods',
+        'category_id': sampleCategory.name, // Use Name (will be converted to ID)
+        'company_id': sampleCompany.name, // Use Name (will be converted to ID)
+        'purchase_price': '89999',
         'price': '99999',
         'mrp': '109999',
         'inclusive_gst': 'Inclusive',
-        'purchase_price': '89999',
         'gst_rate': '18',
         'non_taxable': 'No',
         'net_price': '',
         'hsn_code': '85171300',
-        'unit': sampleUnit.id, // Use ID only
+        'unit': sampleUnit.unit_code, // Use unit code/name (will be converted to ID)
         'cess_rate': '0',
         'cess_amount': '0',
-        'sku': 'IPH15PRO256',
+        'sku': 'STEELROD50',
         'opening_stock': '50',
         'opening_stock_date': '2024-01-15',
         'min_stock_alert': '10',
         'max_stock_alert': '100',
         'min_sale_price': '95000',
-        'description': 'Apple iPhone 15 Pro 256GB',
+        'description': 'Steel Rods 50mm',
         'maintain_batch': 'false',
-        'product_type': 'PAKKA'
+        'can_be_sold': 'true',
+        'product_type': 'KACHA'
       },
       {
-        'goods_name': 'Samsung Galaxy S24',
-        'category_id': '2', // Use ID only
-        'company_id': '2', // Use ID only
+        'goods_name': 'Cement Bags',
+        'category_id': '1', // Can also use ID directly
+        'company_id': '2', // Can also use ID directly
+        'purchase_price': '74999',
         'price': '84999',
         'mrp': '89999',
         'inclusive_gst': 'Inclusive',
-        'purchase_price': '74999',
         'gst_rate': '18',
         'non_taxable': 'No',
         'net_price': '',
         'hsn_code': '85171300',
-        'unit': '1', // Use ID only
+        'unit': 'UNT-UNITS', // Using unit code
         'cess_rate': '0',
         'cess_amount': '0',
-        'sku': 'SGS24128',
+        'sku': 'CEMENT50KG',
         'opening_stock': '30',
         'opening_stock_date': '2024-01-10',
         'min_stock_alert': '5',
         'max_stock_alert': '50',
         'min_sale_price': '82000',
-        'description': 'Samsung Galaxy S24 128GB',
+        'description': 'Cement 50kg bags',
         'maintain_batch': 'false',
+        'can_be_sold': 'true',
         'product_type': 'PAKKA'
       }
     ];
@@ -196,17 +226,17 @@ const ImportSalesPage = ({ user }) => {
     // Set column widths
     const wscols = [
       { wch: 20 }, // goods_name
-      { wch: 12 }, // category_id (ID only)
-      { wch: 12 }, // company_id (ID only)
+      { wch: 15 }, // category_id (can be ID or Name)
+      { wch: 15 }, // company_id (can be ID or Name)
+      { wch: 15 }, // purchase_price
       { wch: 10 }, // price
       { wch: 10 }, // mrp
       { wch: 15 }, // inclusive_gst
-      { wch: 15 }, // purchase_price
       { wch: 10 }, // gst_rate
       { wch: 12 }, // non_taxable
       { wch: 10 }, // net_price
       { wch: 12 }, // hsn_code
-      { wch: 10 }, // unit (ID only)
+      { wch: 12 }, // unit (can be ID, Code, or Name)
       { wch: 10 }, // cess_rate
       { wch: 12 }, // cess_amount
       { wch: 15 }, // sku
@@ -217,12 +247,13 @@ const ImportSalesPage = ({ user }) => {
       { wch: 12 }, // min_sale_price
       { wch: 30 }, // description
       { wch: 12 }, // maintain_batch
+      { wch: 12 }, // can_be_sold
       { wch: 12 }, // product_type
     ];
     worksheet['!cols'] = wscols;
 
     // Make required columns bold
-    const requiredColumns = ['goods_name', 'price', 'product_type'];
+    const requiredColumns = ['goods_name', 'purchase_price', 'product_type'];
     const range = XLSX.utils.decode_range(worksheet['!ref']);
     
     for (let C = range.s.c; C <= range.e.c; ++C) {
@@ -234,45 +265,46 @@ const ImportSalesPage = ({ user }) => {
     }
 
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Products Without Batch");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Purchase Products Without Batch");
 
-    XLSX.writeFile(workbook, "sales_products_without_batch_template.xlsx");
+    XLSX.writeFile(workbook, "purchase_products_without_batch_template.xlsx");
   };
 
   // Download template function for WITH batch
   const downloadTemplateWithBatch = () => {
     setUserSelectedMode('with_batch');
     
-    // Get sample IDs from loaded data
-    const sampleCategory = categoryOptions.length > 0 ? categoryOptions[0] : { id: 1 };
-    const sampleCompany = companyOptions.length > 0 ? companyOptions[0] : { id: 1 };
-    const sampleUnit = unitOptions.length > 0 ? unitOptions[0] : { id: 1 };
+    // Get sample names from loaded data for better examples
+    const sampleCategory = categoryOptions.length > 0 ? categoryOptions[0] : { id: 1, name: 'Raw Materials' };
+    const sampleCompany = companyOptions.length > 0 ? companyOptions[0] : { id: 1, name: 'Supplier Company' };
+    const sampleUnit = unitOptions.length > 0 ? unitOptions[0] : { id: 1, unit_code: 'UNT-UNITS' };
     
     const templateData = [
       {
-        'goods_name': 'iPhone 15 Pro',
-        'category_id': sampleCategory.id, // Use ID only
-        'company_id': sampleCompany.id, // Use ID only
+        'goods_name': 'Steel Rods',
+        'category_id': sampleCategory.name, // Use Name
+        'company_id': sampleCompany.name, // Use Name
+        'purchase_price': '89999',
         'price': '99999',
         'mrp': '109999',
         'inclusive_gst': 'Inclusive',
-        'purchase_price': '89999',
         'gst_rate': '18',
         'non_taxable': 'No',
         'net_price': '',
         'hsn_code': '85171300',
-        'unit': sampleUnit.id, // Use ID only
+        'unit': sampleUnit.unit_code, // Use unit code
         'cess_rate': '0',
         'cess_amount': '0',
-        'sku': 'IPH15PRO256',
+        'sku': 'STEELROD50',
         'opening_stock': '50',
         'opening_stock_date': '2024-01-15',
         'min_stock_alert': '10',
         'max_stock_alert': '100',
         'min_sale_price': '95000',
-        'description': 'Apple iPhone 15 Pro 256GB',
+        'description': 'Steel Rods 50mm',
         'maintain_batch': 'true',
-        'product_type': 'PAKKA',
+        'can_be_sold': 'true',
+        'product_type': 'KACHA',
         'batch_number': 'BATCH001',
         'mfg_date': '2024-01-01',
         'exp_date': '2025-12-31',
@@ -284,29 +316,30 @@ const ImportSalesPage = ({ user }) => {
         'batch_barcode': '123456'
       },
       {
-        'goods_name': 'iPhone 15 Pro',
-        'category_id': '1', // Use ID only
-        'company_id': '1', // Use ID only
+        'goods_name': 'Steel Rods',
+        'category_id': '1', // Using ID
+        'company_id': '1', // Using ID
+        'purchase_price': '89999',
         'price': '99999',
         'mrp': '109999',
         'inclusive_gst': 'Inclusive',
-        'purchase_price': '89999',
         'gst_rate': '18',
         'non_taxable': 'No',
         'net_price': '',
         'hsn_code': '85171300',
-        'unit': '1', // Use ID only
+        'unit': '1', // Using ID
         'cess_rate': '0',
         'cess_amount': '0',
-        'sku': 'IPH15PRO256',
+        'sku': 'STEELROD50',
         'opening_stock': '50',
         'opening_stock_date': '2024-01-15',
         'min_stock_alert': '10',
         'max_stock_alert': '100',
         'min_sale_price': '95000',
-        'description': 'Apple iPhone 15 Pro 256GB',
+        'description': 'Steel Rods 50mm',
         'maintain_batch': 'true',
-        'product_type': 'PAKKA',
+        'can_be_sold': 'true',
+        'product_type': 'KACHA',
         'batch_number': 'BATCH002',
         'mfg_date': '2024-02-01',
         'exp_date': '2025-12-31',
@@ -324,17 +357,17 @@ const ImportSalesPage = ({ user }) => {
     // Set column widths
     const wscols = [
       { wch: 20 }, // goods_name
-      { wch: 12 }, // category_id (ID only)
-      { wch: 12 }, // company_id (ID only)
+      { wch: 15 }, // category_id
+      { wch: 15 }, // company_id
+      { wch: 15 }, // purchase_price
       { wch: 10 }, // price
       { wch: 10 }, // mrp
       { wch: 15 }, // inclusive_gst
-      { wch: 15 }, // purchase_price
       { wch: 10 }, // gst_rate
       { wch: 12 }, // non_taxable
       { wch: 10 }, // net_price
       { wch: 12 }, // hsn_code
-      { wch: 10 }, // unit (ID only)
+      { wch: 12 }, // unit
       { wch: 10 }, // cess_rate
       { wch: 12 }, // cess_amount
       { wch: 15 }, // sku
@@ -345,6 +378,7 @@ const ImportSalesPage = ({ user }) => {
       { wch: 12 }, // min_sale_price
       { wch: 30 }, // description
       { wch: 12 }, // maintain_batch
+      { wch: 12 }, // can_be_sold
       { wch: 12 }, // product_type
       { wch: 15 }, // batch_number
       { wch: 12 }, // mfg_date
@@ -359,9 +393,9 @@ const ImportSalesPage = ({ user }) => {
     worksheet['!cols'] = wscols;
 
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Products With Batch");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Purchase Products With Batch");
 
-    XLSX.writeFile(workbook, "sales_products_with_batch_template.xlsx");
+    XLSX.writeFile(workbook, "purchase_products_with_batch_template.xlsx");
   };
 
   // Normalize column names to match expected format
@@ -380,35 +414,52 @@ const ImportSalesPage = ({ user }) => {
       'name': 'goods_name',
       'product': 'goods_name',
       
-      // category_id variations
+      // category_id variations (also accept category_name)
       'category_id': 'category_id',
       'category id': 'category_id',
       'category': 'category_id',
       'categoryid': 'category_id',
       'cat_id': 'category_id',
       'cat id': 'category_id',
+      'category_name': 'category_id',
+      'category name': 'category_id',
+      'cat_name': 'category_id',
+      'cat name': 'category_id',
       
-      // company_id variations
+      // company_id variations (also accept company_name)
       'company_id': 'company_id',
       'company id': 'company_id',
       'company': 'company_id',
       'companyid': 'company_id',
       'comp_id': 'company_id',
       'comp id': 'company_id',
+      'company_name': 'company_id',
+      'company name': 'company_id',
+      'comp_name': 'company_id',
+      'comp name': 'company_id',
       
-      // unit variations
+      // unit variations (accept unit_id, unit_code, unit_name)
       'unit': 'unit',
       'unit_id': 'unit',
       'unit id': 'unit',
+      'unit_code': 'unit',
+      'unit code': 'unit',
+      'unit_name': 'unit',
+      'unit name': 'unit',
       'uom': 'unit',
       'uom_id': 'unit',
+      'uom code': 'unit',
+      'uom_name': 'unit',
       
-      // product_type variations
-      'product_type': 'product_type',
-      'product type': 'product_type',
-      'type': 'product_type',
+      // purchase price variations
+      'purchase_price': 'purchase_price',
+      'purchase price': 'purchase_price',
+      'cost price': 'purchase_price',
+      'cost_price': 'purchase_price',
+      'buying price': 'purchase_price',
+      'buying_price': 'purchase_price',
       
-      // price variations
+      // price variations (selling price)
       'price': 'price',
       'selling price': 'price',
       'selling_price': 'price',
@@ -421,14 +472,6 @@ const ImportSalesPage = ({ user }) => {
       'maximum retail price': 'mrp',
       'max retail price': 'mrp',
       'retail price': 'mrp',
-      
-      // purchase_price variations
-      'purchase_price': 'purchase_price',
-      'purchase price': 'purchase_price',
-      'cost price': 'purchase_price',
-      'cost_price': 'purchase_price',
-      'buying price': 'purchase_price',
-      'buying_price': 'purchase_price',
       
       // inclusive_gst variations
       'inclusive_gst': 'inclusive_gst',
@@ -445,6 +488,18 @@ const ImportSalesPage = ({ user }) => {
       'gst%': 'gst_rate',
       'tax rate': 'gst_rate',
       'tax_rate': 'gst_rate',
+      
+      // can_be_sold variations
+      'can_be_sold': 'can_be_sold',
+      'can be sold': 'can_be_sold',
+      'sellable': 'can_be_sold',
+      'saleable': 'can_be_sold',
+      
+      // product_type variations
+      'product_type': 'product_type',
+      'product type': 'product_type',
+      'type': 'product_type',
+      'product category': 'product_type',
       
       // other common fields
       'hsn_code': 'hsn_code',
@@ -716,7 +771,7 @@ const ImportSalesPage = ({ user }) => {
     console.log('Available columns in data:', rowKeys);
 
     // Check required columns with case-insensitive comparison
-    const requiredColumns = ['goods_name', 'price', 'product_type'];
+    const requiredColumns = ['goods_name', 'purchase_price', 'product_type'];
     const missingColumns = requiredColumns.filter(col => 
       !rowKeys.includes(col.toLowerCase())
     );
@@ -735,12 +790,25 @@ const ImportSalesPage = ({ user }) => {
         errors.push(`Row ${rowNum}: Product Name (goods_name) is required`);
       }
 
-      // Price validation
+      // Purchase price validation
+      const purchasePriceStr = row.purchase_price ? row.purchase_price.toString().trim() : '';
+      if (purchasePriceStr === '') {
+        errors.push(`Row ${rowNum}: Purchase Price is required`);
+      } else if (isNaN(parseFloat(purchasePriceStr)) || parseFloat(purchasePriceStr) < 0) {
+        errors.push(`Row ${rowNum}: Purchase Price must be a valid positive number (got: "${row.purchase_price}")`);
+      }
+
+      // Price validation (selling price)
       const priceStr = row.price ? row.price.toString().trim() : '';
-      if (priceStr === '') {
-        errors.push(`Row ${rowNum}: Price is required`);
-      } else if (isNaN(parseFloat(priceStr)) || parseFloat(priceStr) < 0) {
-        errors.push(`Row ${rowNum}: Price must be a valid positive number (got: "${row.price}")`);
+      if (priceStr !== '') {
+        if (isNaN(parseFloat(priceStr)) || parseFloat(priceStr) < 0) {
+          errors.push(`Row ${rowNum}: Price must be a valid positive number (got: "${row.price}")`);
+        }
+        
+        // Check if price is less than purchase price
+        if (purchasePriceStr && parseFloat(priceStr) < parseFloat(purchasePriceStr)) {
+          errors.push(`Row ${rowNum}: Price (${priceStr}) cannot be less than Purchase Price (${purchasePriceStr})`);
+        }
       }
 
       // Product type validation
@@ -751,51 +819,52 @@ const ImportSalesPage = ({ user }) => {
         errors.push(`Row ${rowNum}: Product Type must be either "KACHA" or "PAKKA" (got: "${row.product_type}")`);
       }
 
-      // Category validation - check if we can find it by ID
+      // Can be sold validation (should be true for purchase flow)
+      const canBeSoldValue = parseBoolean(row.can_be_sold);
+      if (canBeSoldValue === null) {
+        // Set default to true if not provided
+        console.log(`Row ${rowNum}: can_be_sold not provided, defaulting to TRUE`);
+      } else if (canBeSoldValue === false) {
+        errors.push(`Row ${rowNum}: For purchase flow, can_be_sold must be TRUE`);
+      }
+
+      // Category validation - check if we can find it
       if (!row.category_id || row.category_id.toString().trim() === '') {
-        errors.push(`Row ${rowNum}: Category ID is required`);
+        errors.push(`Row ${rowNum}: Category is required (use ID or Name)`);
       } else {
         const categoryValue = row.category_id.toString().trim();
-        // For sales flow, we only accept numeric IDs
-        if (isNaN(parseInt(categoryValue))) {
-          errors.push(`Row ${rowNum}: Category must be a valid numeric ID (got: "${row.category_id}")`);
-        } else {
-          const foundCategoryId = findIdByNameOrId(categoryValue, categoryOptions);
-          if (foundCategoryId === categoryValue) {
-            errors.push(`Row ${rowNum}: Category ID "${categoryValue}" not found. Available category IDs: ${categoryOptions.map(cat => cat.id).join(', ')}`);
-          }
+        const foundCategoryId = findIdByNameOrId(categoryValue, categoryOptions);
+        
+        if (foundCategoryId === categoryValue) {
+          // If the returned value is same as input, it means we couldn't find it
+          errors.push(`Row ${rowNum}: Category "${categoryValue}" not found. Available categories: ${categoryOptions.map(cat => `${cat.id} - ${cat.name}`).join(', ')}`);
         }
       }
 
-      // Company validation - check if we can find it by ID
+      // Company validation - check if we can find it
       if (!row.company_id || row.company_id.toString().trim() === '') {
-        errors.push(`Row ${rowNum}: Company ID is required`);
+        errors.push(`Row ${rowNum}: Company is required (use ID or Name)`);
       } else {
         const companyValue = row.company_id.toString().trim();
-        // For sales flow, we only accept numeric IDs
-        if (isNaN(parseInt(companyValue))) {
-          errors.push(`Row ${rowNum}: Company must be a valid numeric ID (got: "${row.company_id}")`);
-        } else {
-          const foundCompanyId = findIdByNameOrId(companyValue, companyOptions);
-          if (foundCompanyId === companyValue) {
-            errors.push(`Row ${rowNum}: Company ID "${companyValue}" not found. Available company IDs: ${companyOptions.map(comp => comp.id).join(', ')}`);
-          }
+        const foundCompanyId = findIdByNameOrId(companyValue, companyOptions);
+        
+        if (foundCompanyId === companyValue) {
+          // If the returned value is same as input, it means we couldn't find it
+          errors.push(`Row ${rowNum}: Company "${companyValue}" not found. Available companies: ${companyOptions.map(comp => `${comp.id} - ${comp.name}`).join(', ')}`);
         }
       }
 
-      // Unit validation - check if we can find it by ID
+      // Unit validation - check if we can find it
       if (!row.unit || row.unit.toString().trim() === '') {
-        errors.push(`Row ${rowNum}: Unit ID is required`);
+        // Unit is optional, set default
+        console.log(`Row ${rowNum}: Unit not provided, will use default`);
       } else {
         const unitValue = row.unit.toString().trim();
-        // For sales flow, we only accept numeric IDs
-        if (isNaN(parseInt(unitValue))) {
-          errors.push(`Row ${rowNum}: Unit must be a valid numeric ID (got: "${row.unit}")`);
-        } else {
-          const foundUnitId = findUnitId(unitValue);
-          if (foundUnitId === unitValue) {
-            errors.push(`Row ${rowNum}: Unit ID "${unitValue}" not found. Available unit IDs: ${unitOptions.map(unit => unit.id).join(', ')}`);
-          }
+        const foundUnitId = findUnitId(unitValue);
+        
+        if (foundUnitId === unitValue) {
+          // If the returned value is same as input, it means we couldn't find it
+          errors.push(`Row ${rowNum}: Unit "${unitValue}" not found. Available units: ${unitOptions.map(unit => `${unit.id} - ${unit.unit_code} (${unit.unit_name})`).join(', ')}`);
         }
       }
 
@@ -863,137 +932,177 @@ const ImportSalesPage = ({ user }) => {
   };
 
   // Import data to backend
-// Import data to backend
 const handleImport = async () => {
-  if (excelData.length === 0) {
-    alert('No data to import. Please upload a valid Excel file.');
-    return;
-  }
-
-  if (validationErrors.length > 0) {
-    alert('Please fix validation errors before importing.');
-    return;
-  }
-
-  if (loadingData) {
-    alert('Please wait while we load category, company, and unit data...');
-    return;
-  }
-
-  setImporting(true);
-  setImportResults(null);
-
-  const results = {
-    total: excelData.length,
-    success: 0,
-    failed: 0,
-    errors: []
-  };
-
-  try {
-    const productGroups = {};
-    
-    let shouldImportAsBatch = importMode === 'with_batch';
-    
-    if (!userSelectedMode) {
-      let trueCount = 0;
-      let falseCount = 0;
-      
-      excelData.forEach(row => {
-        const maintainBatchValue = parseBoolean(row.maintain_batch);
-        if (maintainBatchValue === true) trueCount++;
-        else if (maintainBatchValue === false) falseCount++;
-      });
-      
-      shouldImportAsBatch = trueCount > 0;
-      console.log(`Import decision: TRUE=${trueCount}, FALSE=${falseCount}, BatchMode=${shouldImportAsBatch}`);
+    if (excelData.length === 0) {
+      alert('No data to import. Please upload a valid Excel file.');
+      return;
     }
-    
-    if (shouldImportAsBatch) {
-      // Group by product for batch processing
-      excelData.forEach((row, index) => {
-        // Convert to IDs
-        const categoryId = findIdByNameOrId(row.category_id, categoryOptions);
-        const companyId = findIdByNameOrId(row.company_id, companyOptions);
-        const key = `${row.goods_name}_${categoryId}_${companyId}`;
+
+    if (validationErrors.length > 0) {
+      alert('Please fix validation errors before importing.');
+      return;
+    }
+
+    if (loadingData) {
+      alert('Please wait while we load category, company, and unit data...');
+      return;
+    }
+
+    setImporting(true);
+    setImportResults(null);
+
+    const results = {
+      total: excelData.length,
+      success: 0,
+      failed: 0,
+      errors: []
+    };
+
+    try {
+      // Group data by product for batch processing
+      const productGroups = {};
+      
+      // Determine import mode based on maintain_batch field
+      let shouldImportAsBatch = importMode === 'with_batch';
+      
+      // If importMode was auto-detected, check the data
+      if (!userSelectedMode) {
+        // Count maintain_batch values
+        let trueCount = 0;
+        let falseCount = 0;
         
-        if (!productGroups[key]) {
+        excelData.forEach(row => {
+          const maintainBatchValue = parseBoolean(row.maintain_batch);
+          if (maintainBatchValue === true) trueCount++;
+          else if (maintainBatchValue === false) falseCount++;
+        });
+        
+        shouldImportAsBatch = trueCount > 0;
+        console.log(`Import decision: TRUE=${trueCount}, FALSE=${falseCount}, BatchMode=${shouldImportAsBatch}`);
+      }
+      
+      if (shouldImportAsBatch) {
+        // Group by product for batch processing
+        excelData.forEach((row, index) => {
+          // Convert names to IDs before creating key
+          const categoryId = findIdByNameOrId(row.category_id, categoryOptions);
+          const companyId = findIdByNameOrId(row.company_id, companyOptions);
+          const key = `${row.goods_name}_${categoryId}_${companyId}`;
+          
+          if (!productGroups[key]) {
+            productGroups[key] = {
+              product: row,
+              batches: []
+            };
+          }
+          
+          // Check if this row should have batch data
+          const maintainBatchValue = parseBoolean(row.maintain_batch);
+          const hasBatchForThisRow = maintainBatchValue === true;
+          
+          // If maintain_batch is true or there are batch fields, add as batch
+          if (hasBatchForThisRow || 
+              (row.batch_number && row.batch_number.toString().trim() !== '') ||
+              (row.batch_selling_price && row.batch_selling_price.toString().trim() !== '') ||
+              (row.batch_opening_stock && row.batch_opening_stock.toString().trim() !== '')) {
+            productGroups[key].batches.push(row);
+          }
+        });
+      } else {
+        // Without batch - each row is a separate product
+        excelData.forEach((row, index) => {
+          const key = `product_${index}`;
           productGroups[key] = {
             product: row,
             batches: []
           };
-        }
-        
-        // Check if this row should have batch data
-        const maintainBatchValue = parseBoolean(row.maintain_batch);
-        const hasBatchForThisRow = maintainBatchValue === true;
-        
-        // If maintain_batch is true or there are batch fields, add as batch
-        if (hasBatchForThisRow || 
-            (row.batch_number && row.batch_number.toString().trim() !== '') ||
-            (row.batch_selling_price && row.batch_selling_price.toString().trim() !== '') ||
-            (row.batch_opening_stock && row.batch_opening_stock.toString().trim() !== '')) {
-          productGroups[key].batches.push(row);
-        }
-      });
-    } else {
-      // Without batch - each row is a separate product
-      excelData.forEach((row, index) => {
-        const key = `product_${index}`;
-        productGroups[key] = {
-          product: row,
-          batches: []
-        };
-      });
-    }
+        });
+      }
 
-    // Process each product group
-    const productKeys = Object.keys(productGroups);
-    
-    for (let i = 0; i < productKeys.length; i++) {
-      const key = productKeys[i];
-      const { product, batches } = productGroups[key];
+      // Process each product group
+      const productKeys = Object.keys(productGroups);
       
-      try {
-        // Convert to IDs
-        const categoryId = findIdByNameOrId(product.category_id, categoryOptions);
-        const companyId = findIdByNameOrId(product.company_id, companyOptions);
-        const unitId = findUnitId(product.unit);
+      for (let i = 0; i < productKeys.length; i++) {
+        const key = productKeys[i];
+        const { product, batches } = productGroups[key];
         
-        // Determine if this product should have batch management
-        const maintainBatchValue = parseBoolean(product.maintain_batch);
-        let hasBatchManagement = shouldImportAsBatch && (maintainBatchValue === true || batches.length > 0);
-        
-        // If maintain_batch is explicitly false, don't use batch management
-        if (maintainBatchValue === false) {
-          hasBatchManagement = false;
-        }
+        try {
+          // Convert names to IDs
+          const categoryId = findIdByNameOrId(product.category_id, categoryOptions);
+          const companyId = findIdByNameOrId(product.company_id, companyOptions);
+          const unitId = findUnitId(product.unit);
+          
+          // Determine if this product should have batch management
+          const maintainBatchValue = parseBoolean(product.maintain_batch);
+          let hasBatchManagement = shouldImportAsBatch && (maintainBatchValue === true || batches.length > 0);
+          
+          // If maintain_batch is explicitly false, don't use batch management
+          if (maintainBatchValue === false) {
+            hasBatchManagement = false;
+          }
 
-        // Calculate totals
-        let totalOpeningStock = 0;
-        let totalPrice = 0;
-        let totalPurchasePrice = 0;
-        let totalMRP = 0;
-        
-        const batchDataArray = [];
-        
-        if (hasBatchManagement) {
-          // If there are specific batches, use them
-          if (batches.length > 0) {
-            // Calculate totals from all batches
-            batches.forEach(batchRow => {
-              const batchStock = parseInt(batchRow.batch_opening_stock) || parseInt(batchRow.opening_stock) || 0;
-              const batchPrice = parseFloat(batchRow.batch_selling_price) || parseFloat(batchRow.price) || 0;
-              const batchPurchase = parseFloat(batchRow.batch_purchase_price) || parseFloat(batchRow.purchase_price) || 0;
-              const batchMRPValue = parseFloat(batchRow.batch_mrp) || parseFloat(batchRow.mrp) || 0;
-              
-              totalOpeningStock += batchStock;
-              totalPrice += batchPrice;
-              totalPurchasePrice += batchPurchase;
-              totalMRP += batchMRPValue;
-              
-              // Get batch number - use provided or default to "General"
-              const batchNumber = batchRow.batch_number?.toString().trim() || 'General';
+          // Determine can_be_sold value (default to true for purchase flow)
+          const canBeSoldValue = parseBoolean(product.can_be_sold);
+          const finalCanBeSold = canBeSoldValue === null ? true : canBeSoldValue;
+          
+          // Calculate totals
+          let totalOpeningStock = 0;
+          let totalPurchasePrice = 0;
+          let totalPrice = 0;
+          let totalMRP = 0;
+          
+          const batchDataArray = [];
+          
+          if (hasBatchManagement) {
+            // If there are specific batches, use them
+            if (batches.length > 0) {
+              // Calculate totals from all batches
+              batches.forEach(batchRow => {
+                const batchStock = parseInt(batchRow.batch_opening_stock) || parseInt(batchRow.opening_stock) || 0;
+                const batchPurchase = parseFloat(batchRow.batch_purchase_price) || parseFloat(batchRow.purchase_price) || 0;
+                const batchPrice = parseFloat(batchRow.batch_selling_price) || parseFloat(batchRow.price) || 0;
+                const batchMRPValue = parseFloat(batchRow.batch_mrp) || parseFloat(batchRow.mrp) || 0;
+                
+                totalOpeningStock += batchStock;
+                totalPurchasePrice += batchPurchase;
+                totalPrice += batchPrice;
+                totalMRP += batchMRPValue;
+                
+                // Get batch number - use provided or default to "General"
+                const batchNumber = batchRow.batch_number?.toString().trim() || 'General';
+                
+                // Helper function to convert empty strings to null
+                const getValueOrNull = (value) => {
+                  if (value === undefined || value === null || value.toString().trim() === '') {
+                    return null;
+                  }
+                  return value.toString().trim();
+                };
+                
+                // Prepare batch data with proper null handling
+                batchDataArray.push({
+                  batch_number: batchNumber,
+                  mfg_date: getValueOrNull(batchRow.mfg_date),
+                  exp_date: getValueOrNull(batchRow.exp_date),
+                  quantity: batchStock,
+                  opening_stock: batchStock,
+                  stock_in: 0,
+                  stock_out: 0,
+                  min_sale_price: parseFloat(batchRow.batch_min_sale_price) || parseFloat(batchRow.min_sale_price) || null,
+                  selling_price: batchPrice,
+                  purchase_price: batchPurchase,
+                  mrp: batchMRPValue,
+                  barcode: batchRow.batch_barcode?.toString().trim() || generateBarcode(),
+                  group_by: 'Purchaseditems',
+                  isExisting: false
+                });
+              });
+            } else {
+              // Create a default "General" batch for batch-managed products without specific batches
+              totalOpeningStock = parseInt(product.opening_stock) || 0;
+              totalPurchasePrice = parseFloat(product.purchase_price) || 0;
+              totalPrice = parseFloat(product.price) || 0;
+              totalMRP = parseFloat(product.mrp) || 0;
               
               // Helper function to convert empty strings to null
               const getValueOrNull = (value) => {
@@ -1003,167 +1112,146 @@ const handleImport = async () => {
                 return value.toString().trim();
               };
               
-              // Prepare batch data with proper null handling
+              // Create default batch
               batchDataArray.push({
-                batch_number: batchNumber,
-                mfg_date: getValueOrNull(batchRow.mfg_date),
-                exp_date: getValueOrNull(batchRow.exp_date),
-                quantity: batchStock,
-                opening_stock: batchStock,
+                batch_number: 'General',
+                mfg_date: null,
+                exp_date: null,
+                quantity: totalOpeningStock,
+                opening_stock: totalOpeningStock,
                 stock_in: 0,
                 stock_out: 0,
-                min_sale_price: parseFloat(batchRow.batch_min_sale_price) || parseFloat(batchRow.min_sale_price) || null,
-                selling_price: batchPrice,
-                purchase_price: batchPurchase,
-                mrp: batchMRPValue,
-                barcode: batchRow.batch_barcode?.toString().trim() || generateBarcode(),
-                group_by: 'Salescatalog',
+                min_sale_price: parseFloat(product.min_sale_price) || null,
+                selling_price: totalPrice,
+                purchase_price: totalPurchasePrice,
+                mrp: totalMRP,
+                barcode: generateBarcode(),
+                group_by: 'Purchaseditems',
                 isExisting: false
               });
-            });
+            }
           } else {
-            // Create a default "General" batch for batch-managed products without specific batches
+            // Without batch management
             totalOpeningStock = parseInt(product.opening_stock) || 0;
-            totalPrice = parseFloat(product.price) || 0;
             totalPurchasePrice = parseFloat(product.purchase_price) || 0;
+            totalPrice = parseFloat(product.price) || 0;
             totalMRP = parseFloat(product.mrp) || 0;
-            
-            // Helper function to convert empty strings to null
-            const getValueOrNull = (value) => {
-              if (value === undefined || value === null || value.toString().trim() === '') {
-                return null;
-              }
-              return value.toString().trim();
-            };
-            
-            // Create default batch
-            batchDataArray.push({
-              batch_number: 'General',
-              mfg_date: null,
-              exp_date: null,
-              quantity: totalOpeningStock,
-              opening_stock: totalOpeningStock,
-              stock_in: 0,
-              stock_out: 0,
-              min_sale_price: parseFloat(product.min_sale_price) || null,
-              selling_price: totalPrice,
-              purchase_price: totalPurchasePrice,
-              mrp: totalMRP,
-              barcode: generateBarcode(),
-              group_by: 'Salescatalog',
-              isExisting: false
-            });
           }
-        } else {
-          // Without batch management
-          totalOpeningStock = parseInt(product.opening_stock) || 0;
-          totalPrice = parseFloat(product.price) || 0;
-          totalPurchasePrice = parseFloat(product.purchase_price) || 0;
-          totalMRP = parseFloat(product.mrp) || 0;
-        }
 
-        // Calculate net price based on GST
-        let netPrice = 0;
-        if (product.gst_rate && product.price) {
-          const gstRate = parseFloat(product.gst_rate) || 0;
-          const priceValue = parseFloat(product.price) || 0;
-          const gstType = product.inclusive_gst?.toString().trim() || 'Inclusive';
-          
-          if (gstType === 'Inclusive') {
-            netPrice = priceValue / (1 + (gstRate / 100));
-          } else {
-            netPrice = priceValue;
+          // Calculate net price based on GST
+          let netPrice = 0;
+          if (product.gst_rate && product.purchase_price) {
+            const gstRate = parseFloat(product.gst_rate) || 0;
+            const priceValue = parseFloat(product.purchase_price) || 0;
+            const gstType = product.inclusive_gst?.toString().trim() || 'Inclusive';
+            
+            if (gstType === 'Inclusive') {
+              netPrice = priceValue / (1 + (gstRate / 100));
+            } else {
+              netPrice = priceValue;
+            }
           }
-        }
 
-        // Format the product data to match your backend API
-        const productData = {
-          group_by: 'Salescatalog',
-          goods_name: product.goods_name?.toString().trim() || '',
-          category_id: categoryId,
-          company_id: companyId,
-          price: totalPrice,
-          mrp: totalMRP,
-          inclusive_gst: product.inclusive_gst?.toString().trim() || 'Inclusive',
-          purchase_price: totalPurchasePrice,
-          gst_rate: parseFloat(product.gst_rate) || 0,
-          non_taxable: product.non_taxable?.toString().trim() || '',
-          net_price: netPrice,
-          hsn_code: product.hsn_code?.toString().trim() || '',
-          unit: unitId,
-          cess_rate: parseFloat(product.cess_rate) || 0,
-          cess_amount: parseFloat(product.cess_amount) || 0,
-          sku: product.sku?.toString().trim() || '',
-          opening_stock: totalOpeningStock,
-          opening_stock_date: product.opening_stock_date?.toString().trim() || new Date().toISOString().split('T')[0],
-          min_stock_alert: parseInt(product.min_stock_alert) || 0,
-          max_stock_alert: parseInt(product.max_stock_alert) || 0,
-          min_sale_price: parseFloat(product.min_sale_price) || 0,
-          description: product.description?.toString().trim() || '',
-          maintain_batch: hasBatchManagement,
-          product_type: product.product_type?.toString().trim().toUpperCase() || 'PAKKA',
-          images: [],
-          batches: batchDataArray
-        };
+          // Format the product data to match your backend API
+          const productData = {
+            group_by: 'Purchaseditems',
+            goods_name: product.goods_name?.toString().trim() || '',
+            category_id: categoryId,
+            company_id: companyId,
+            purchase_price: totalPurchasePrice,
+            price: totalPrice,
+            mrp: totalMRP,
+            inclusive_gst: product.inclusive_gst?.toString().trim() || 'Inclusive',
+            gst_rate: parseFloat(product.gst_rate) || 0,
+            non_taxable: product.non_taxable?.toString().trim() || '',
+            net_price: netPrice,
+            hsn_code: product.hsn_code?.toString().trim() || '',
+            unit: unitId || 'UNT-UNITS', // Use ID or default
+            cess_rate: parseFloat(product.cess_rate) || 0,
+            cess_amount: parseFloat(product.cess_amount) || 0,
+            sku: product.sku?.toString().trim() || '',
+            opening_stock: totalOpeningStock,
+            opening_stock_date: product.opening_stock_date?.toString().trim() || new Date().toISOString().split('T')[0],
+            min_stock_alert: parseInt(product.min_stock_alert) || 0,
+            max_stock_alert: parseInt(product.max_stock_alert) || 0,
+            min_sale_price: parseFloat(product.min_sale_price) || 0,
+            description: product.description?.toString().trim() || '',
+            maintain_batch: hasBatchManagement,
+            can_be_sold: finalCanBeSold,
+            product_type: product.product_type?.toString().trim().toUpperCase() || 'KACHA',
+            images: [],
+            batches: batchDataArray
+          };
 
+          console.log(`Importing purchase product:`, productData.goods_name);
+          console.log(`Category ID: ${categoryId}, Company ID: ${companyId}, Unit ID: ${unitId}`);
+          console.log(`Batch mode: ${hasBatchManagement}, Batch count: ${batchDataArray.length}`);
+          console.log(`Product Type: ${productData.product_type}, Can be Sold: ${productData.can_be_sold}`);
 
-        const response = await axios.post(`${baseurl}/products`, productData, {
-          headers: { 'Content-Type': 'application/json' },
-          timeout: 30000
-        });
+          // Use the same POST API as your form
+          const response = await axios.post(`${baseurl}/products`, productData, {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 30000
+          });
 
-        // Better success detection
-        if (response.status === 200 || response.status === 201) {
-          if (response.data) {
-            console.log(`✅ Successfully imported: ${product.goods_name}`, response.data);
+          // FIXED: Better success detection
+          console.log(`Response for ${product.goods_name}:`, {
+            status: response.status,
+            statusText: response.statusText,
+            data: response.data
+          });
+
+          // Check for success (200 or 201 status codes)
+          if (response.status === 200 || response.status === 201) {
+            console.log(`✅ Successfully imported: ${product.goods_name}`);
             results.success++;
           } else {
-            // Even if no response.data, status 200/201 means success
-            console.log(`✅ Successfully imported: ${product.goods_name} (no data returned)`);
-            results.success++;
+            results.failed++;
+            const errorMsg = `Server returned status ${response.status}: ${response.statusText}`;
+            results.errors.push(`Product "${product.goods_name}": ${errorMsg}`);
+            console.error(`Error importing product "${product.goods_name}":`, response.status, response.statusText);
           }
-        } else {
+        } catch (error) {
           results.failed++;
-          const errorMsg = `Server returned status ${response.status}`;
+          const errorMsg = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.response?.statusText || 
+                          error.message || 
+                          'Unknown error';
           results.errors.push(`Product "${product.goods_name}": ${errorMsg}`);
-          console.error(`Error importing product "${product.goods_name}":`, response.status);
-        }
-      } catch (error) {
-        results.failed++;
-        const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message || 'Unknown error';
-        results.errors.push(`Product "${product.goods_name}": ${errorMsg}`);
-        console.error(`Error importing product "${product.goods_name}":`, error);
-        
-        // Log detailed error information
-        if (error.response) {
-          console.error('Error response data:', error.response.data);
-          console.error('Error response status:', error.response.status);
-          console.error('Error response headers:', error.response.headers);
-        } else if (error.request) {
-          console.error('Error request:', error.request);
+          console.error(`Error importing product "${product.goods_name}":`, error);
+          
+          // Log detailed error for debugging
+          if (error.response) {
+            console.error('Error response data:', error.response.data);
+            console.error('Error response status:', error.response.status);
+            console.error('Error response headers:', error.response.headers);
+          } else if (error.request) {
+            console.error('Error request:', error.request);
+          }
         }
       }
-    }
 
-    setImportResults(results);
-    
-    // Show appropriate alert based on results
-    if (results.failed === 0) {
-      alert(`✅ Successfully imported ${results.success} sales products!`);
-      // Redirect after successful import
-      setTimeout(() => navigate('/sale_items'), 2000);
-    } else if (results.success === 0) {
-      alert(`❌ All imports failed. Please check the error messages below.`);
-    } else {
-      alert(`⚠️ Import partially completed with ${results.success} successes and ${results.failed} failures.`);
+      setImportResults(results);
+      
+      // FIXED: Better alert messages
+      if (results.failed === 0 && results.success > 0) {
+        alert(`✅ Successfully imported ${results.success} purchase products!`);
+        // Redirect after successful import
+        setTimeout(() => navigate('/purchased_items'), 2000);
+      } else if (results.success === 0 && results.failed > 0) {
+        alert(`❌ All imports failed. Please check the error messages below.`);
+      } else if (results.success > 0 && results.failed > 0) {
+        alert(`⚠️ Import partially completed with ${results.success} successes and ${results.failed} failures.`);
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      alert('❌ Error during import. Please check console for details.');
+    } finally {
+      setImporting(false);
     }
-  } catch (error) {
-    console.error('Import error:', error);
-    alert('❌ Error during import. Please check console for details.');
-  } finally {
-    setImporting(false);
-  }
-};
+  };
+
   // Reset form
   const handleReset = () => {
     setExcelFile(null);
@@ -1191,9 +1279,9 @@ const handleImport = async () => {
                   <Card.Header className="bg-primary text-white">
                     <h4 className="mb-0">
                       <FaUpload className="me-2" />
-                      Import Sales Products
+                      Import Purchase Products
                     </h4>
-                    <small className="opacity-75">Import sales products with batch management support</small>
+                    <small className="opacity-75">Import purchase products with batch management support</small>
                   </Card.Header>
                   <Card.Body>
                     {loadingData && (
@@ -1228,7 +1316,7 @@ const handleImport = async () => {
                             Batch Products (maintain_batch = TRUE)
                           </Button>
                         </div>
-                   
+                    
                       </div>
                     </div>
 
@@ -1261,8 +1349,7 @@ const handleImport = async () => {
                             Batch Products Template (maintain_batch = TRUE)
                           </Button>
                         </div>
-                        
-                   
+                    
                       </div>
                     </div>
 
@@ -1371,10 +1458,10 @@ const handleImport = async () => {
                         <div className="d-flex justify-content-between">
                           <Button
                             variant="secondary"
-                            onClick={() => navigate('/sale_items')}
+                            onClick={() => navigate('/purchased_items')}
                             disabled={importing || loadingData}
                           >
-                            Back to Sales Items
+                            Back to Purchase Items
                           </Button>
                           
                           <div className="d-flex gap-2">
@@ -1425,4 +1512,4 @@ const handleImport = async () => {
   );
 };
 
-export default ImportSalesPage;
+export default Import_purchase_page;

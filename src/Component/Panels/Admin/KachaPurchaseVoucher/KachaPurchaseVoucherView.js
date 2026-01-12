@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import './VoucherView.css';
 
-const VoucherView = () => {
+const KachaPurchaseVoucherView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [receipt, setReceipt] = useState(null);
@@ -21,21 +21,25 @@ const VoucherView = () => {
 
   useEffect(() => {
     fetchReceipt();
-     fetchInvoices(); // Add this line
+     fetchInvoices(); 
 
   }, [id]);
 const fetchReceipt = async () => {
   try {
     setIsLoading(true);
-    const response = await fetch(`${baseurl}/api/voucher/${id}?data_type=Purchase`);
-    
+
+    const data_type = 'stock inward'; 
+
+    const response = await fetch(
+      `${baseurl}/api/voucher/${id}?data_type=${encodeURIComponent(data_type)}`
+    );
+
     if (response.ok) {
-      const data = await response.json(); 
+      const data = await response.json();
       setReceipt(data);
-      
-      
+
       setEditFormData({
-        retailer_id: data.PartyID || data.retailer_id || '', // Use the correct field
+        retailer_id: data.PartyID || data.retailer_id || '',
         paid_amount: data.paid_amount || data.TotalAmount || '',
         currency: data.currency || 'INR',
         payment_method: data.AccountName || '',
@@ -44,16 +48,15 @@ const fetchReceipt = async () => {
         bank_name: data.BankName || '',
         transaction_date: data.paid_date ? data.paid_date.split('T')[0] : '',
         reconciliation_option: data.status || '',
-        invoiceNumber: data.invoiceNumber || data.InvoiceNumber || data.invoice_number || data.Invoice_Number || data.inv_number || data.invoice_no || data.InvoiceNo || ''
+        invoiceNumber:
+          data.invoiceNumber ||
+          data.InvoiceNumber ||
+          ''
       });
 
-      // Fetch retailer details using the correct ID field
       const retailerId = data.PartyID || data.retailer_id;
       if (retailerId) {
-        console.log('🔄 Fetching retailer details for ID:', retailerId);
         fetchRetailerDetails(retailerId);
-      } else {
-        console.warn('⚠️ No retailer ID found in receipt data');
       }
 
     } else {
@@ -67,12 +70,13 @@ const fetchReceipt = async () => {
   }
 };
 
+
   const handlePrint = () => {
     window.print();
   };
 
   const handleBack = () => {
-    navigate('/purchase/voucher');
+    navigate('/kachaPurchasevoucher');
   };
 
   const toggleDropdown = () => {
@@ -103,7 +107,7 @@ const fetchReceipt = async () => {
 const fetchInvoices = async () => {
   try {
     console.log('Fetching invoices from:', `${baseurl}/api/purchasevouchersnumber`);
-    const response = await fetch(`${baseurl}/api/purchasevouchersnumber?type=Purchase`);
+    const response = await fetch(`${baseurl}/api/purchasevouchersnumber?type=stock inward`);
     if (response.ok) {
       const data = await response.json();
       console.log('Received invoices data:', data);
@@ -265,6 +269,7 @@ const handleDownloadProof = async (view = false) => {
 
 useEffect(() => {
   if (receipt) {
+    // Get retailer ID from the correct field
     const retailerId = receipt.PartyID || receipt.retailer_id;
     if (retailerId) {
       console.log('🔄 useEffect: Fetching retailer for ID:', retailerId);
@@ -900,4 +905,4 @@ const fetchAllAccountsAndFindRetailer = async (retailerId) => {
   );
 };
 
-export default VoucherView;
+export default KachaPurchaseVoucherView;

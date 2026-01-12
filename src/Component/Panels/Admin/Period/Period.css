@@ -502,7 +502,21 @@
   }
 }
 
+/* Stock insufficient row styling */
+.p-stock-insufficient-row {
+  background-color: #fff8f8 !important;
+}
 
+.p-stock-insufficient-row:hover {
+  background-color: #fff0f0 !important;
+}
+
+/* Stock indicator in quantity column */
+.stock-warning {
+  font-size: 0.8em;
+  color: #ff4444;
+  font-style: italic;
+}
 /* Three Column Grid for Modal Content */
 .p-three-column-grid {
   display: grid;

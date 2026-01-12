@@ -329,7 +329,7 @@ const SalesItems = ({ user }) => {
   </div>
 
   {/* Import Button */}
-
+{/* 
  <div className="dropdown">
   <button
     className="btn btn-primary dropdown-toggle d-flex align-items-center justify-content-center"
@@ -361,7 +361,15 @@ const SalesItems = ({ user }) => {
       </button>
     </li>
   </ul>
-</div>
+</div> */}
+
+  <button
+    className="btn btn-primary d-flex align-items-center justify-content-center"
+        onClick={() => navigate("/import-sales")}
+      >
+        <i className="bi bi-box-arrow-up me-2"></i>
+        Import
+      </button>
     
 
   {/* ADD Dropdown */}

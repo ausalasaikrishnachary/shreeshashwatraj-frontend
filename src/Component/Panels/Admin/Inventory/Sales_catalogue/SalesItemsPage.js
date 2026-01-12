@@ -31,7 +31,6 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
   const [unitOptions, setUnitOptions] = useState([]);
   const [showUnitModal, setShowUnitModal] = useState(false);
 
-  // Function to calculate totals from all batches
   const calculateBatchTotals = (batchesArray) => {
     let totalSellingPrice = 0;
     let totalPurchasePrice = 0;

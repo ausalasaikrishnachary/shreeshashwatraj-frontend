@@ -6,7 +6,7 @@ import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, 
 import { useNavigate, useParams } from "react-router-dom";
 import { baseurl } from "../../../BaseURL/BaseURL";
 
-const PurchasePDFPreview = () => {
+const KachaPurchaseInvoicePDFPreview = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [isEditMode, setIsEditMode] = useState(false);
@@ -44,7 +44,7 @@ const PurchasePDFPreview = () => {
       product_id: '', 
   batch_id: '' ,
    TransactionType: 'purchase voucher' ,
-     data_type: 'Purchase' ,
+     data_type: 'stock inward' ,
      account_name: '',
   business_name: '',
 
@@ -146,10 +146,14 @@ useEffect(() => {
   };
 
 const transformPaymentData = (apiData) => {
+  console.log("🔍 Raw Payment API:", apiData);
 
   const purchase = apiData.purchases?.[0] || {};
 
-  const totalAmount = Number(purchase.TotalAmount || purchase.grandTotal || 0);
+  const totalAmount = invoiceData 
+    ? parseFloat(invoiceData.grandTotal) || 0 
+    : Number(purchase.TotalAmount || purchase.grandTotal || 0);
+  
 
   const allEntries = apiData.allEntries || [];
 
@@ -168,14 +172,10 @@ const transformPaymentData = (apiData) => {
   }, 0);
 
   const balanceDue = totalAmount - totalPaid;
-
-  // Dates
   const invoiceDate = purchase.Date || purchase.invoiceDate;
   const overdueDays = invoiceDate
     ? Math.floor((new Date() - new Date(invoiceDate)) / (1000 * 60 * 60 * 24))
     : 0;
-
-  // Transform vouchers
   const purchasevoucher = purchasevoucherEntries.map(v => ({
     receiptNumber: v.VchNo || v.receipt_number || `VCH${v.VoucherID}`,
     paidAmount: Number(v.paid_amount || 0),
@@ -186,7 +186,6 @@ const transformPaymentData = (apiData) => {
     type: 'Purchase Voucher'
   }));
 
-  // Transform debit notes
   const debitNotesList = debitNotes.map(d => ({
     receiptNumber: d.VchNo || `DEBIT${d.VoucherID}`,
     paidAmount: Number(d.TotalAmount || d.paid_amount || 0),
@@ -205,9 +204,10 @@ const transformPaymentData = (apiData) => {
 
   return {
     invoice: {
-      invoiceNumber: purchase.InvoiceNumber || purchase.invoiceNumber,
-      invoiceDate: invoiceDate,
+      invoiceNumber: purchase.InvoiceNumber || purchase.invoiceNumber || invoiceData?.invoiceNumber || 'N/A',
+      invoiceDate: invoiceDate || invoiceData?.invoiceDate || new Date().toISOString().split('T')[0],
       totalAmount: totalAmount,
+      grandTotal: totalAmount, 
       overdueDays: overdueDays
     },
     purchasevoucher: purchasevoucher,
@@ -216,7 +216,8 @@ const transformPaymentData = (apiData) => {
     summary: {
       totalPaid,
       balanceDue,
-      status
+      status,
+      invoiceGrandTotal: totalAmount 
     }
   };
 };
@@ -1104,7 +1105,7 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
     formDataToSend.append('business_name', receiptFormData.business_name);
     formDataToSend.append('product_id', receiptFormData.product_id || '');
     formDataToSend.append('batch_id', receiptFormData.batch_id || '');
-            formDataToSend.append('data_type', 'Purchase');
+            formDataToSend.append('data_type', 'stock inward');
 
     formDataToSend.append('retailer_business_name', receiptFormData.retailerName);
     formDataToSend.append('from_invoice', 'true');
@@ -1953,4 +1954,4 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
   );
 };
 
-export default PurchasePDFPreview;
+export default KachaPurchaseInvoicePDFPreview;
