@@ -305,10 +305,18 @@ const useCreditNoteLogic = () => {
     console.log("Items to Credit:", items.length);
 
 const payload = {
-  transactionType: "CreditNote",
+  data_type:'stock transfer',
+  TransactionType: "CreditNote",
   creditNoteNumber,
   noteDate,
   InvoiceNumber: selectedInvoice,
+      account_name: customerData.account_name || customerData?.account_name || '',
+    business_name: customerData.business_name || customerData?.business_name || '',
+    name: customerData.name || customerData?.name || '',
+    
+    PartyName: customerData?.PartyName || customerData.name || customerData?.business_name || 'Customer',
+    
+
   PartyID: customerData?.PartyID || customerData?.customer_id || null,
   items: items.map(item => ({
     ...item,

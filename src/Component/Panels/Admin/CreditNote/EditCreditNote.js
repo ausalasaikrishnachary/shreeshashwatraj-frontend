@@ -206,19 +206,36 @@ const EditCreditNote = () => {
     }
   };
 
- const handleUpdateCreditNote = async () => {
+const handleUpdateCreditNote = async () => {
   try {
     if(items.length === 0 || !selectedInvoice){
       window.alert("No items or invoice selected");
       return;
     }
 
+    // Get account details if available
+    let accountData = {};
+    if (customerData?.account_id || customerData?.AccountID) {
+      try {
+        const accountResponse = await axios.get(`${baseurl}/accounts/${customerData.account_id || customerData.AccountID}`);
+        accountData = accountResponse.data || {};
+      } catch (err) {
+        console.warn("Could not fetch account details:", err);
+      }
+    }
+
     const requestData = {
-      transactionType: "CreditNote",
+      data_type: "Sales",
+      TransactionType: "CreditNote", 
       VchNo: creditNoteNumber,
       Date: noteDate,
       InvoiceNumber: selectedInvoice,
-      PartyName: customerData?.business_name || 'Customer',
+      
+      account_name: accountData.account_name || customerData?.account_name || '',
+      business_name: accountData.business_name || customerData?.business_name || '',
+      
+      PartyName: customerData?.PartyName || accountData.name || 'Customer',
+      
       BasicAmount: parseFloat(totals.taxableAmount) || 0,
       TaxAmount: parseFloat(totals.totalIGST) || 0,
       TotalAmount: parseFloat(totals.grandTotal) || 0,
@@ -243,7 +260,12 @@ const EditCreditNote = () => {
       customerData: customerData
     };
 
-    console.log("Credit Note Update Data:", requestData);
+    console.log("Credit Note Update Data - Account Info:", {
+      account_name: requestData.account_name,
+      business_name: requestData.business_name,
+      name: requestData.name,
+      PartyName: requestData.PartyName
+    });
 
     const response = await axios.put(`${baseurl}/creditnoteupdate/${id}`, requestData);
 
@@ -256,7 +278,6 @@ const EditCreditNote = () => {
   } catch (err) {
     console.error("Error updating credit note:", err);
     
-    // Check if it's a quantity exceed error
     if (err.response && err.response.data && err.response.data.message) {
       const errorMessage = err.response.data.message;
       

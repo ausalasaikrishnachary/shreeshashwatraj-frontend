@@ -214,11 +214,16 @@ const EditDebitNote = () => {
     }
 
     const requestData = {
-      transactionType: "DebitNote",
+      data_type:'Purchase',
+      TransactionType: "DebitNote",
       VchNo: creditNoteNumber,
       Date: noteDate,
       InvoiceNumber: selectedInvoice,
-      PartyName: customerData?.business_name || 'Customer',
+            account_name: customerData.account_name || customerData?.account_name || '',
+      business_name: customerData.business_name || customerData?.business_name || '',
+      
+      PartyName: customerData?.PartyName || customerData.name ||  'Customer',
+
       BasicAmount: parseFloat(totals.taxableAmount) || 0,
       TaxAmount: parseFloat(totals.totalIGST) || 0,
       TotalAmount: parseFloat(totals.grandTotal) || 0,

@@ -188,6 +188,11 @@ import KachaPurchaseVoucherView from "./Component/Panels/Admin/KachaPurchaseVouc
 import Kacha_CreditNoteTable from "./Component/Panels/Admin/KachaCreditNote/Kacha_CreditNoteTable";
 import KachaCreateNote from "./Component/Panels/Admin/KachaCreditNote/KachaCreateNote";
 import Kacha_EditCreditNote from "./Component/Panels/Admin/KachaCreditNote/Kacha_EditCreditNote";
+import KachaDebitTableNote from "./Component/Panels/Admin/KachaPurchaseDebit/KachaDebitTableNote";
+import KachaCreateDebitNote from "./Component/Panels/Admin/KachaPurchaseDebit/KachaCreateDebitNote";
+import KachaEditDebitNote from "./Component/Panels/Admin/KachaPurchaseDebit/KachaEditDebitNote";
+import KachaCreditview from "./Component/Panels/Admin/KachaCreditNote/KachaCreditview";
+import KachaPurchaseDebitView from "./Component/Panels/Admin/KachaPurchaseDebit/KachaPurchaseDebitView";
 
 
 
@@ -392,11 +397,19 @@ function App() {
 <Route path="/kachacreditenote" element={<KachaCreateNote />} />
 <Route path='/kachaeditcreditnote' element={<Kacha_EditCreditNote />} />
 <Route path='/kachaeditcreditnote/:id' element={<Kacha_EditCreditNote />} />
+<Route path='/kachadebitnotetable' element={<KachaDebitTableNote />} />
+<Route path="/kachadebitnote/:id" element={<KachaCreateDebitNote />} />
+<Route path="/kachadebitnote" element={<KachaCreateDebitNote />} />
+<Route path="/kachaeditdebitenote" element={<KachaEditDebitNote />} />
+<Route path="/kachaeditdebitenote/:id" element={<KachaEditDebitNote />} />
+<Route path="/kachacreditview/:id" element={<KachaCreditview />} />
+<Route path="/kachadebitenoteview/:id" element={<KachaPurchaseDebitView />} />
 
 
 
 
-active
+
+
       </Routes>
     </Router>
 

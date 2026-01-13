@@ -3,11 +3,11 @@ import axios from 'axios';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
-import './Createnote.css'; 
+import "./CreateDebitNote.css";
 import { baseurl } from '../../../BaseURL/BaseURL';
 import { useNavigate, useParams } from "react-router-dom";
 
-const Kacha_EditCreditNote = () => {
+const KachaEditDebitNote = () => {
   const { id } = useParams();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [creditNoteNumber, setCreditNoteNumber] = useState("");
@@ -72,11 +72,7 @@ const Kacha_EditCreditNote = () => {
           if (creditNoteData) {
             setCreditNoteNumber(creditNoteData.VchNo || creditNoteData.creditNoteNumber || '');
             setSelectedInvoice(creditNoteData.InvoiceNumber || creditNoteData.originalInvoiceNumber || '');
-const formattedDate = creditNoteData.Date
-  ? new Date(creditNoteData.Date).toISOString().split('T')[0]
-  : new Date().toISOString().split('T')[0];
-
-setNoteDate(formattedDate);
+            setNoteDate(creditNoteData.Date || new Date().toISOString().split('T')[0]);
             
             // Process items
             const itemsData = creditNoteData.batch_details || creditNoteData.items || [];
@@ -132,7 +128,7 @@ setNoteDate(formattedDate);
         // Fetch invoices for dropdown
         const invoices = await fetchAllTransactions();
         const salesInvoices = invoices.filter(
-          transaction => transaction.TransactionType === "stock transfer"
+          transaction => transaction.TransactionType === "stock inward"
         );
         setInvoiceList(salesInvoices);
 
@@ -218,16 +214,16 @@ setNoteDate(formattedDate);
     }
 
     const requestData = {
-      data_type:'stock transfer',
-    TransactionType: "CreditNote",
+      data_type:"stock inward",
+      TransactionType: "DebitNote",
       VchNo: creditNoteNumber,
       Date: noteDate,
       InvoiceNumber: selectedInvoice,
-            account_name: customerData.account_name || customerData?.account_name || '',
+                  account_name: customerData.account_name || customerData?.account_name || '',
       business_name: customerData.business_name || customerData?.business_name || '',
       name: customerData.name || customerData?.name || '',
       
-      PartyName: customerData?.PartyName || customerData.name || customerData?.business_name || 'Customer',
+      PartyName: customerData?.PartyName || customerData.name || 'Customer',
 
       BasicAmount: parseFloat(totals.taxableAmount) || 0,
       TaxAmount: parseFloat(totals.totalIGST) || 0,
@@ -255,34 +251,33 @@ setNoteDate(formattedDate);
 
     console.log("Credit Note Update Data:", requestData);
 
-    const response = await axios.put(`${baseurl}/creditnoteupdate/${id}`, requestData);
-
+const response = await axios.put(`${baseurl}/debitnoteupdate/${id}`, requestData);
     console.log("Backend Response:", response.data);
 
     if(response.data){
-      window.alert("✅ Kacha Credit Note updated successfully!");
-      navigate("/kachacreditenotetable");
+      window.alert("✅ Debit Note updated successfully!");
+      navigate("/purchase/debit-note");
     }
   } catch (err) {
-    console.error("Error Kacha updating Credit note:", err);
+    console.error("Error updating Debit note:", err);
     
     // Check if it's a quantity exceed error
     if (err.response && err.response.data && err.response.data.message) {
       const errorMessage = err.response.data.message;
       
-      if (errorMessage.includes("Quantity exceeds sales quantity") || 
-          errorMessage.includes("exceeds sales quantity")) {
+      if (errorMessage.includes("Quantity exceeds purchase quantity") || 
+          errorMessage.includes("exceeds purchase quantity")) {
         window.alert(`❌ Quantity Error: ${errorMessage}`);
-      } else if (errorMessage.includes("No Kach Sales voucher found")) {
-        window.alert(`❌ Kach Sales Not Found: ${errorMessage}`);
+      } else if (errorMessage.includes("No purchase voucher found")) {
+        window.alert(`❌ purchase Not Found: ${errorMessage}`);
       } else {
-        window.alert(`❌ Failed to update credit note: ${errorMessage}`);
+        window.alert(`❌ Failed to update Debit note: ${errorMessage}`);
       }
-    } else if (err.message && err.message.includes("Quantity exceeds sales quantity")) {
+    } else if (err.message && err.message.includes("Quantity exceeds purchase quantity")) {
       // Handle case where error is in err.message directly
       window.alert(`❌ Quantity Error: ${err.message}`);
     } else {
-      window.alert("❌ Failed to update credit note");
+      window.alert("❌ Failed to update Debit note");
     }
   }
 };
@@ -306,7 +301,7 @@ setNoteDate(formattedDate);
           <div className="border bg-white p-3" style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.06)" }}>
             {/* Top header row */}
             <div className="row g-0 align-items-start">
-        <div className="col-lg-8 col-md-7 border-end p-3">
+                    <div className="col-lg-8 col-md-7 border-end p-3">
   <strong className="d-block mb-2">Navkar Exports</strong>
   <div className="company-details" style={{ fontSize: '13px' }}>
     <div className="mb-1">
@@ -314,7 +309,7 @@ setNoteDate(formattedDate);
     </div>
     <div className="mb-1">
       <strong>Address:</strong> NO.PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD,
-      <br />BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113
+      BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113
     </div>
     <div className="mb-1">
       <strong>Email:</strong> spmathur56@gmail.com
@@ -330,7 +325,7 @@ setNoteDate(formattedDate);
 
               <div className="col-lg-4 col-md-5 p-3">
                 <div className="mb-2">
-                  <label className="form-label small mb-1">Credit Note No</label>
+                  <label className="form-label small mb-1">Debit Note No</label>
                   <div className="position-relative">
                     <input 
                       className="form-control form-control-sm" 
@@ -597,7 +592,7 @@ setNoteDate(formattedDate);
                 onClick={handleUpdateCreditNote}
                 disabled={!selectedInvoice || items.length === 0 || !creditNoteNumber}
               >
-                📝 Update Credit Note
+                📝 Update Debit Note
               </button>
             </div>
           </div>
@@ -617,4 +612,4 @@ setNoteDate(formattedDate);
   );
 };
 
-export default Kacha_EditCreditNote;
+export default KachaEditDebitNote;

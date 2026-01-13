@@ -301,37 +301,48 @@ const useCreditNoteLogic = () => {
     ).toFixed(2)
   };
 
-  // ------------------------------------------------------------------------------------
-  // CREATE CREDIT NOTE - UPDATED WITH ORIGINAL INVOICE INFO
-  // ------------------------------------------------------------------------------------
-  const handleCreateCreditNote = async () => {
-    console.log("🚀 CREATING CREDIT NOTE ===");
-    console.log("Credit Note Number:", creditNoteNumber);
-    console.log("Original Invoice:", selectedInvoice);
-    console.log("Items to Credit:", items.length);
+ const handleCreateCreditNote = async () => {
 
-const payload = {
-  transactionType: "CreditNote",
-  creditNoteNumber,
-  noteDate,
-  InvoiceNumber: selectedInvoice,
-  PartyID: customerData?.PartyID || customerData?.customer_id || null,
-  items: items.map(item => ({
-    ...item,
-    originalQuantity: undefined,
-    availableQuantity: undefined,
-    soldQuantity: undefined,
-    creditedQuantity: undefined
-  })),
-};
-
-    console.log("📦 FINAL PAYLOAD - Items:", payload.items);
-
-    await axios.post(`${baseurl}/transaction`, payload);
-
-    alert("Credit Note Created!");
-    navigate("/sales/credit_note");
+  // Get the selected account details
+  const selectedAccount = await axios.get(`${baseurl}/accounts/${customerData?.AccountID || customerData?.customer_id}`);
+  const accountData = selectedAccount.data || {};
+  
+  const payload = {
+    data_type: "Sales",
+    TransactionType: "CreditNote", 
+    creditNoteNumber,
+    noteDate,
+    InvoiceNumber: selectedInvoice,
+    PartyID: customerData?.PartyID || customerData?.customer_id || null,
+    
+    account_name: accountData.account_name || customerData?.account_name || '',
+    business_name: accountData.business_name || customerData?.business_name || '',
+    
+    PartyName: customerData?.PartyName || accountData.name || 'Customer',
+    
+    items: items.map(item => ({
+      ...item,
+      originalQuantity: undefined,
+      availableQuantity: undefined,
+      soldQuantity: undefined,
+      creditedQuantity: undefined
+    })),
   };
+
+  console.log("📦 FINAL PAYLOAD:", {
+    data_type: payload.data_type,
+    TransactionType: payload.TransactionType,
+    account_name: payload.account_name,
+    business_name: payload.business_name,
+    name: payload.name,
+    PartyName: payload.PartyName
+  });
+
+  await axios.post(`${baseurl}/transaction`, payload);
+
+  alert("Credit Note Created!");
+  navigate("/sales/credit_note");
+};
 
   // ------------------------------------------------------------------------------------
   // RETURN EVERYTHING FOR UI

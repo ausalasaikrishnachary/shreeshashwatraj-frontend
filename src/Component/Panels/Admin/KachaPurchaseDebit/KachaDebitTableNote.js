@@ -1,14 +1,13 @@
-// CreditNoteTable.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
-import './CreditNote.css';
+import './DebitNote.css';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import { FaPencilAlt, FaTrash } from "react-icons/fa";
 
-const CreditNoteTable = () => {
+const KachaDebitTableNote = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
   const [creditNoteData, setCreditNoteData] = useState([]);
@@ -19,76 +18,73 @@ const CreditNoteTable = () => {
   const [year, setYear] = useState('2025');
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
-  const [activeTab, setActiveTab] = useState('CreditNote');
+  const [activeTab, setActiveTab] = useState('Debit Note');
 
-  // Fetch credit notes from API
+  // Fetch debit notes from API
   useEffect(() => {
     fetchCreditNotes();
   }, []);
 
-  const fetchCreditNotes = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result = await response.json();
-      
-      console.log('API Response:', result);
-      
-      if (result.success) {
-        // Transform the API data to match table format
-        const transformedData = result.creditNotes.map(note => ({
-          id: note.VoucherID, // This is the VoucherID
-          customerName: note.PartyName || 'N/A',
-          noteNumber: note.VchNo || 'N/A',
-          document: note.InvoiceNumber || 'N/A',
-          documentType: note.TransactionType || 'CreditNote',
-          creditAmount: `₹ ${parseFloat(note.TotalAmount || 0).toLocaleString('en-IN', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          })}`,
-          created: note.Date ? new Date(note.Date).toLocaleDateString('en-IN') : 'N/A',
-          status: 'Active',
-          rawData: note // Keep original data for reference
-        }));
-        
-        console.log('Transformed data:', transformedData);
-        setCreditNoteData(transformedData);
-      } else {
-        setError('Failed to fetch credit notes');
-      }
-    } catch (err) {
-      console.error('Error fetching credit notes:', err);
-      setError('Error fetching credit notes data');
-    } finally {
-      setLoading(false);
+const fetchCreditNotes = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+
+const response = await fetch(`${baseurl}/api/debit-notes-table?data_type=stock inward`);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+    const result = await response.json();
+    console.log("API Response:", result);
+
+    if (result.success) {
+      const transformedData = result.debitNotes.map(note => ({
+        id: note.VoucherID,
+        customerName: note.PartyName || 'N/A',
+        noteNumber: note.VchNo || 'N/A',
+        document: note.InvoiceNumber || 'N/A',
+        documentType: note.TransactionType || 'DebitNote',
+        creditAmount: `₹ ${parseFloat(note.TotalAmount || 0).toLocaleString('en-IN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })}`,
+        created: note.Date ? new Date(note.Date).toLocaleDateString('en-IN') : 'N/A',
+        status: 'Active',
+        rawData: note
+      }));
+
+      console.log("Transformed data:", transformedData);
+      setCreditNoteData(transformedData);
+    } else {
+      setError("Failed to fetch debit notes");
     }
-  };
+  } catch (err) {
+    console.error("Error fetching debit notes:", err);
+    setError("Error fetching debit notes data");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleViewCreditNote = (creditNoteId) => {
-    console.log('View credit note ID:', creditNoteId);
+    console.log('View debit note ID:', creditNoteId);
     if (!creditNoteId || creditNoteId === 'undefined') {
-      console.error('Invalid credit note ID:', creditNoteId);
-      alert('Cannot view credit note: Invalid ID');
+      console.error('Invalid debit note ID:', creditNoteId);
+      alert('Cannot view debit note: Invalid ID');
       return;
     }
-    navigate(`/creditview/${creditNoteId}`);
+    navigate(`/kachadebitenoteview/${creditNoteId}`);
   };
 
-  const handleCreateClick = () => navigate("/sales/create_note");
+  const handleCreateClick = () => navigate("/kachadebitnote");
 
   // Define tabs with their corresponding routes
   const tabs = [
-    { name: 'Invoices', path: '/sales/invoices' },
-    { name: 'Receipts', path: '/sales/receipts' },
-    { name: 'Quotations', path: '/sales/quotations' },
-    { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
-    { name: 'CreditNote', path: '/sales/credit_note' },
-    { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
-    { name: 'Receivables', path: '/sales/receivables' }
+    { name: 'Purchase Invoice', path: '/purchase/purchase-invoice' },
+    { name: 'Purchase Order', path: '/purchase/purchase-order' },
+    { name: 'Voucher', path: '/purchase/voucher' },
+    { name: 'Debit Note', path: '/purchase/debit-note' },
+    { name: 'Payables', path: '/purchase/payables' }
   ];
 
   // Handle tab click - navigate to corresponding route
@@ -99,23 +95,23 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
 
   // Action handlers
   const handleView = (item) => {
-    console.log('View credit note:', item);
+    console.log('View debit note:', item);
     if (item.id) {
-      navigate(`/sales/credit-note/view/${item.id}`);
+      navigate(`/purchase/debit-note/view/${item.id}`);
     }
   };
 
   const handleEdit = (item) => {
-    console.log('Edit credit note:', item);
+    console.log('Edit debit note:', item);
     if (item.id) {
-      navigate(`/sales/credit-note/edit/${item.id}`);
+      navigate(`/kachaeditdebitenote/${item.id}`);
     }
   };
 
   const handleDelete = async (item) => {
-    if (window.confirm(`Are you sure you want to delete credit note ${item.noteNumber || 'unknown'}?`)) {
+    if (window.confirm(`Are you sure you want to delete debit note ${item.noteNumber || 'unknown'}?`)) {
       try {
-        console.log('Delete credit note:', item);
+        console.log('Delete debit note:', item);
         
         const response = await fetch(`${baseurl}/transactions/${item.id}`, {
           method: 'DELETE'
@@ -124,18 +120,18 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
-            alert('Credit note deleted successfully!');
+            alert('debit note deleted successfully!');
             fetchCreditNotes();
           } else {
-            alert('Failed to delete credit note: ' + (result.message || 'Unknown error'));
+            alert('Failed to delete debit note: ' + (result.message || 'Unknown error'));
           }
         } else {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to delete credit note');
+          throw new Error(errorData.error || 'Failed to delete debit note');
         }
       } catch (err) {
-        console.error('Error deleting credit note:', err);
-        alert('Error deleting credit note. Please try again.');
+        console.error('Error deleting debit note:', err);
+        alert('Error deleting debit note. Please try again.');
       }
     }
   };
@@ -144,10 +140,10 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
   const renderDocument = (value, item) => {
     if (!item) return null;
     return (
-      <div className="credit-note-table__document-cell">
-        <span className="credit-note-table__document-number">{item.document || 'N/A'}</span>
+      <div className="debit-note-table__document-cell">
+        <span className="debit-note-table__document-number">{item.document || 'N/A'}</span>
         {item.documentType && (
-          <span className="credit-note-table__document-type"></span>
+          <span className="debit-note-table__document-type"></span>
         )}
       </div>
     );
@@ -156,9 +152,9 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
   const renderCreditAmount = (value, item) => {
     if (!item) return null;
     return (
-      <div className="credit-note-table__amount-cell">
-        <div className="credit-note-table__amount">{item.creditAmount || '₹ 0.00'}</div>
-        <div className={`credit-note-table__status credit-note-table__status--${item.status?.toLowerCase() || 'active'}`}>
+      <div className="debit-note-table__amount-cell">
+        <div className="debit-note-table__amount">{item.creditAmount || '₹ 0.00'}</div>
+        <div className={`debit-note-table__status debit-note-table__status--${item.status?.toLowerCase() || 'active'}`}>
           {/* {item.status || 'Active'} */}
         </div>
       </div>
@@ -168,11 +164,11 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
   const renderAction = (value, item) => {
     if (!item) return null;
     return (
-      <div className="credit-note-table__actions">
+      <div className="debit-note-table__actions">
         <button
           className="btn btn-sm btn-outline-warning me-1"
           onClick={() => handleEdit(item)}
-          title="Edit Credit Note"
+          title="Edit debit Note"
         >
           <FaPencilAlt />
         </button>
@@ -180,7 +176,7 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
         <button
           className="btn btn-sm btn-outline-danger"
           onClick={() => handleDelete(item)}
-          title="Delete Credit Note"
+          title="Delete debit Note"
         >
           <FaTrash />
         </button>
@@ -196,12 +192,12 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
     },
     {
       key: 'noteNumber',
-      title: 'CREDIT NOTE NUMBER',
+      title: 'DEBIT NOTE NUMBER',
       render: (value, row) => (
         <button
           className="btn btn-link p-0 text-primary text-decoration-none"
           onClick={() => handleViewCreditNote(row.id)} // Use row.id which contains VoucherID
-          title="Click to view credit note"
+          title="Click to view debit note"
         >
           {value || 'N/A'}
         </button>
@@ -215,7 +211,7 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
       style: { textAlign: 'center' }
     },
     {
-      key: 'creditAmount',
+      key: 'debitAmount',
       title: 'AMOUNT',
       render: renderCreditAmount,
       style: { textAlign: 'right' }
@@ -238,19 +234,19 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
   };
 
   return (
-    <div className="credit-note-wrapper">
+    <div className="debit-note-wrapper">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-      <div className={`credit-note-main-content ${isCollapsed ? "collapsed" : ""}`}>
+      <div className={`debit-note-main-content ${isCollapsed ? "collapsed" : ""}`}>
         <AdminHeader isCollapsed={isCollapsed} />
         
-        <div className="credit-note-content-area">
+        <div className="debit-note-content-area">
           {/* ✅ Tabs Section */}
-          <div className="credit-note-tabs-section">
-            <div className="credit-note-tabs-container">
+          <div className="debit-note-tabs-section">
+            <div className="debit-note-tabs-container">
               {tabs.map((tab) => (
                 <button
                   key={tab.name}
-                  className={`credit-note-tab ${activeTab === tab.name ? 'credit-note-tab--active' : ''}`}
+                  className={`debit-note-tab ${activeTab === tab.name ? 'debit-note-tab--active' : ''}`}
                   onClick={() => handleTabClick(tab)}
                 >
                   {tab.name}
@@ -259,22 +255,22 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
             </div>
           </div>
 
-          <div className="credit-note-header-section">
-            <div className="credit-note-header-top">
-              <div className="credit-note-title-section">
-                <h1 className="credit-note-main-title">Credit Note Management</h1>
-                <p className="credit-note-subtitle">Create, manage and track all your credit notes</p>
+          <div className="debit-note-header-section">
+            <div className="debit-note-header-top">
+              <div className="debit-note-title-section">
+                <h1 className="debit-note-main-title">Debit Note Management</h1>
+                <p className="debit-note-subtitle">Create, manage and track all your debit notes</p>
               </div>
             </div>
           </div>
 
           {/* Filters and Actions Section */}
-          <div className="credit-note-actions-section">
+          <div className="debit-note-actions-section">
             <div className="quotation-container p-3">
-              <h5 className="mb-3 fw-bold">View Credit Note Details</h5>
+              <h5 className="mb-3 fw-bold">View Debit Note Details</h5>
 
               {loading && (
-                <div className="alert alert-info">Loading credit notes...</div>
+                <div className="alert alert-info">Loading debit notes...</div>
               )}
               
               {error && (
@@ -344,7 +340,7 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
                     onClick={handleCreateClick}
                   >
                     <i className="bi bi-plus-circle me-1"></i>
-                    Create Credit Note
+                    Create Debit Note
                   </button>
                 </div>
               </div>
@@ -352,11 +348,11 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
               {/* Table Section */}
               {!loading && !error && (
                 <ReusableTable
-                  title={`Credit Notes (${creditNoteData.length} records)`}
+                  title={`Debit Notes (${creditNoteData.length} records)`}
                   data={creditNoteData}
                   columns={columns}
                   initialEntriesPerPage={10}
-                  searchPlaceholder="Search credit notes..."
+                  searchPlaceholder="Search debit notes..."
                   showSearch={true}
                   showEntriesSelector={true}
                   showPagination={true}
@@ -365,7 +361,7 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
 
               {!loading && !error && creditNoteData.length === 0 && (
                 <div className="alert alert-warning">
-                  No credit notes found. Create your first credit note!
+                  No debit notes found. Create your first debit note!
                 </div>
               )}
             </div>
@@ -376,4 +372,4 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
   );
 };
 
-export default CreditNoteTable;
+export default KachaDebitTableNote;

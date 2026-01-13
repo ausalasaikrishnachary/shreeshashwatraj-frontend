@@ -30,7 +30,7 @@ const fetchCreditNotes = async () => {
     setLoading(true);
     setError(null);
 
-    const response = await fetch(`${baseurl}/api/debit-notes-table`);
+const response = await fetch(`${baseurl}/api/debit-notes-table?data_type=Purchase`);
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
     const result = await response.json();

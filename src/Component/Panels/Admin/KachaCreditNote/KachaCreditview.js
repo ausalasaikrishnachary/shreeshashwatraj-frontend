@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import './Creditview.css';
 
-const Creditsview = () => {
+const KachaCreditview = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [creditNote, setCreditNote] = useState(null);
@@ -47,7 +47,7 @@ const Creditsview = () => {
   };
 
   const handleBack = () => {
-    navigate('/sales/credit_note');
+    navigate('/kachacreditenotetable');
   };
 
   const toggleDropdown = () => {
@@ -75,7 +75,7 @@ const Creditsview = () => {
           const result = await response.json();
           if (result.success) {
             alert('Credit note deleted successfully!');
-            navigate('/sales/credit_note');
+            navigate('/kachacreditenotetable');
           } else {
             alert('Failed to delete credit note: ' + (result.message || 'Unknown error'));
           }
@@ -356,4 +356,4 @@ const Creditsview = () => {
   );
 };
 
-export default Creditsview;
+export default KachaCreditview;

@@ -187,7 +187,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
 { path: "/kachaPurchasevoucher", name: " Kacha Purchase Voucher", icon: <FaStickyNote /> },
         // { path: "/sales/quotations", name: " kacha Quotations", icon: <FaFileContract /> },
         // { path: "/sales/bill_of_supply", name: " kacha Bill Of Supply", icon: <FaFileInvoiceDollar /> },
-        { path: "/", name: " Kacha Debit Note", icon: <FaFileExport /> },
+        { path: "/kachadebitnotetable", name: " Kacha Debit Note", icon: <FaFileExport /> },
         // { path: "/sales/delivery_challan", name: " kacha Delivery Challan", icon: <FaTruck /> },
         // { path: "/sales/receivables", name: " kacha Receivables", icon: <FaHandHoldingUsd /> },
       ],

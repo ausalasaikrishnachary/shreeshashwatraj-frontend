@@ -898,19 +898,17 @@ const [tempPrice, setTempPrice] = useState("");
         assigned_staff: staffName,
         staffName: staffName,
         type: 'sales',
-        
-        // ✅ Voucher Table: Store AMOUNTS
+         TransactionType: "Sales", 
         CGSTAmount: totalCGSTAmount.toFixed(2),   
         SGSTAmount: totalSGSTAmount.toFixed(2),    
         IGSTAmount: totalIGSTAmount.toFixed(2),   
         
-        // ✅ Voucher Table: Also store PERCENTAGES
         CGSTPercentage: totalCGSTPercentage.toFixed(2),
         SGSTPercentage: totalSGSTPercentage.toFixed(2), 
         IGSTPercentage: totalIGSTPercentage.toFixed(2), 
         
         taxType: sameState ? "CGST/SGST" : "IGST",
-        batchDetails: batchDetails,  // Items table: Stores percentages
+        batchDetails: batchDetails,  
         product_id: 123,
         batch_id: "bth0001",
         primaryProductId: firstItemProductId,
@@ -918,7 +916,6 @@ const [tempPrice, setTempPrice] = useState("");
         PartyID: selectedSupplierId,
         AccountID: invoiceData.supplierInfo.accountId,
         PartyName: invoiceData.supplierInfo.name,
-  // ✅ FIX: Get account_name and business_name from the account object
   account_name: invoiceData.supplierInfo.account_name || 
                 accounts.find(acc => acc.id === selectedSupplierId)?.account_name || 
                 invoiceData.supplierInfo.name,

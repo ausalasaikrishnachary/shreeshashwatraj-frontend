@@ -481,14 +481,15 @@ const columns = [
 
   // Define tabs with their corresponding routes
   const tabs = [
-    { name: 'Invoices', path: '/sales/invoices' },
-    { name: 'Receipts', path: '/sales/receipts' },
-    { name: 'Quotations', path: '/sales/quotations' },
-    { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
-    { name: 'CreditNote', path: '/sales/credit_note' },
-    { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
-    { name: 'Receivables', path: '/sales/receivables' }
+    { name: ' Kacha Invoices', path: '/kachinvoicetable' },
+    { name: 'Receipts', path: '/kachareceipts' },
+    // { name: 'Quotations', path: '/sales/quotations' },
+    // { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
+    { name: 'CreditNote', path: '/kachacreditenote' },
+    // { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
+    // { name: 'Receivables', path: '/sales/receivables' }
   ];
+
 
   // Handle tab click - navigate to corresponding route
   const handleTabClick = (tab) => {
@@ -592,8 +593,8 @@ const columns = [
           <div className="receipts-header-section">
             <div className="receipts-header-top">
               <div className="receipts-title-section">
-                <h1 className="receipts-main-title">Sales Invoice Management</h1>
-                <p className="receipts-subtitle">Create, manage and track all your sales invoices</p>
+                <h1 className="receipts-main-title">Kacha Sales Invoice Management</h1>
+                <p className="receipts-subtitle">Create, manage and track all your Kacha Sales invoices</p>
               </div>
             </div>
           </div>

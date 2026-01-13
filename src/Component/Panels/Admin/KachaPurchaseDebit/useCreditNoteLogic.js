@@ -37,18 +37,24 @@ const useCreditNoteLogic = () => {
     return res.data;
   };
 
+  // ------------------------------------------------------------------------------------
+  // CALCULATE AVAILABLE QUANTITY (Sales - Credit Notes)
+  // ------------------------------------------------------------------------------------
   const calculateAvailableQuantity = (invoiceNumber, product, batch) => {
     // Get all transactions for this invoice's product and batch
     const allTransactions = JSON.parse(localStorage.getItem('allTransactions') || '[]');
     
+    console.log("=== CALCULATE AVAILABLE QUANTITY DEBUG ===");
+    console.log("Input - Invoice:", invoiceNumber, "Product:", product, "Batch:", batch);
+    
     // Find the original sales transaction
     const salesTransaction = allTransactions.find(t => 
       t.InvoiceNumber === invoiceNumber && 
-      t.TransactionType === "Purchase"
+      t.TransactionType === "stock inward"
     );
     
     if (!salesTransaction) {
-      console.log("❌ No Purchase transaction found for invoice:", invoiceNumber);
+      console.log("❌ No Kacha Purchase transaction found for invoice:", invoiceNumber);
       return 0;
     }
     
@@ -57,21 +63,20 @@ const useCreditNoteLogic = () => {
     const salesItem = salesItems.find(item => item.product === product && item.batch === batch);
     
     if (!salesItem) {
-      console.log("❌ No matching Purchase item found for product:", product, "batch:", batch);
+      console.log("❌ No matching Kacha Purchase item found for product:", product, "batch:", batch);
       return 0;
     }
     
     const originalSalesQty = parseFloat(salesItem.quantity) || 0;
-    console.log("✅ Original Purchase Quantity:", originalSalesQty);
+    console.log("✅ Original Kacha Purchase Quantity:", originalSalesQty);
     
     const creditNotes = allTransactions.filter(t => 
       t.TransactionType === "DebitNote" && 
-      t.InvoiceNumber === invoiceNumber  // Changed from originalInvoiceNumber to InvoiceNumber
+      t.InvoiceNumber === invoiceNumber 
     );
     
     console.log("Credit Notes for this invoice:", creditNotes.length);
     
-    // Calculate total credited quantity for this product and batch
     let totalCreditedQty = 0;
     creditNotes.forEach((cn, index) => {
       const cnItems = cn.batch_details || cn.items || [];
@@ -79,7 +84,7 @@ const useCreditNoteLogic = () => {
       
       if (cnItem) {
         const creditedQty = parseFloat(cnItem.quantity) || 0;
-        console.log(`✅ Found credit item - Quantity: ${creditedQty}`);
+        console.log(`✅ Found Kacha Debit Note item - Quantity: ${creditedQty}`);
         totalCreditedQty += creditedQty;
       }
     });
@@ -109,7 +114,7 @@ const useCreditNoteLogic = () => {
         
         console.log("🔄 INITIAL LOAD - All Transactions Count:", all.length);
         
-        const salesInvoices = all.filter(t => t.TransactionType === "Purchase");
+        const salesInvoices = all.filter(t => t.TransactionType === "stock inward");
         console.log("📈 Purchase Invoices Count:", salesInvoices.length);
         
         setInvoiceList(salesInvoices);
@@ -166,7 +171,6 @@ const useCreditNoteLogic = () => {
           originalQuantity: parseFloat(item.quantity) || 0, // Store original sales quantity
           availableQuantity: availableQty, // Available for credit (Sales - Previous Credits)
           quantity: availableQty > 0 ? availableQty : 0, // Default to available quantity
-          // Add calculated fields for display
           soldQuantity: parseFloat(item.quantity) || 0,
           creditedQuantity: (parseFloat(item.quantity) || 0) - availableQty
         };
@@ -308,21 +312,20 @@ const useCreditNoteLogic = () => {
     console.log("Items to Credit:", items.length);
 
     const payload = {
-       data_type: "Purchase",
-
+      data_type:'stock inward',
       TransactionType: "DebitNote",
       creditNoteNumber,
       noteDate,
       InvoiceNumber: selectedInvoice, // Store original invoice reference
         PartyID: customerData?.PartyID || customerData?.customer_id || null,
-    account_name: customerData.account_name || customerData?.account_name || '',
+      account_name: customerData.account_name || customerData?.account_name || '',
     business_name: customerData.business_name || customerData?.business_name || '',
+    name: customerData.name || customerData?.name || '',
     
-    PartyName: customerData?.PartyName || customerData.name ||  'Customer',
+    PartyName: customerData?.PartyName || customerData.name || customerData?.business_name || 'Customer',
 
       items: items.map(item => ({
         ...item,
-        // Remove calculated fields before saving
         originalQuantity: undefined,
         availableQuantity: undefined,
         soldQuantity: undefined,
@@ -334,7 +337,7 @@ const useCreditNoteLogic = () => {
 
     await axios.post(`${baseurl}/transaction`, payload);
 
-    alert("Debit Note Created!");
+    alert(" Kacha Debit Note Created!");
     navigate("/purchase/debit-note");
   };
 

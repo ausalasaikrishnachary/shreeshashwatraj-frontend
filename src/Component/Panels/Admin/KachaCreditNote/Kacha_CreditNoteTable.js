@@ -30,7 +30,7 @@ const Kacha_CreditNoteTable = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`${baseurl}/api/credit-notes-table`);
+const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=stock transfer`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -75,20 +75,20 @@ const Kacha_CreditNoteTable = () => {
       alert('Cannot view credit note: Invalid ID');
       return;
     }
-    navigate(`/creditview/${creditNoteId}`);
+    navigate(`/kachacreditview/${creditNoteId}`);
   };
 
   const handleCreateClick = () => navigate("/kachacreditenote");
 
   // Define tabs with their corresponding routes
   const tabs = [
-    { name: 'Invoices', path: '/sales/invoices' },
-    { name: 'Receipts', path: '/sales/receipts' },
-    { name: 'Quotations', path: '/sales/quotations' },
-    { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
-    { name: 'CreditNote', path: '/sales/credit_note' },
-    { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
-    { name: 'Receivables', path: '/sales/receivables' }
+    { name: ' Kacha Invoices', path: '/kachinvoicetable' },
+    { name: 'Receipts', path: '/kachareceipts' },
+    // { name: 'Quotations', path: '/sales/quotations' },
+    // { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
+    { name: 'CreditNote', path: '/kachacreditenote' },
+    // { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
+    // { name: 'Receivables', path: '/sales/receivables' }
   ];
 
   // Handle tab click - navigate to corresponding route

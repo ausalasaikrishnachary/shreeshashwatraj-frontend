@@ -45,6 +45,13 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
    "/kachacreditenotetable":'Kacha Credit Note Table',
    '/kachacreditenote': "Kacha Credit Note",
    "/kachaeditcreditnote" : "Kacha Edit Credit Note",
+   "/kachadebitnotetable" : "Kacha Debit Note Table",
+   "/kachadebitnote" :"Kacha Debit Note ",
+   "/kachaeditdebitenote" :"Kacha Edit Debit Note",
+   "/kachacreditview" : "Kacha Credit view",
+   "/kachinvoicetable" :'Kacha Sales Invoices',
+   "/purchase/purchase-invoice" :"Purchase Invoices Table"
+
   };
 
   const getPageTitle = () => {
