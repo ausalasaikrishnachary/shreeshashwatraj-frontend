@@ -32,7 +32,7 @@ function PlaceSalesOrder() {
     
     // Get retailer data from navigation state
     const retailerId = location.state?.retailerId;
-    const retailerDiscount = location.state?.retailerDiscount || 0;
+    const retailerDiscount = location.state?.retailerDiscount || 0; // This is retailerDiscount from Retailers page
     const retailerName = location.state?.retailerName || "";
     const displayName = location.state?.displayName || "";
 
@@ -41,7 +41,8 @@ function PlaceSalesOrder() {
     const user = storedData ? JSON.parse(storedData) : null;
     const staffId = user?.id || null;
 
-    console.log("displayName:", displayName);
+    console.log("PlaceSalesOrder - Retailer Discount received:", retailerDiscount);
+    console.log("PlaceSalesOrder - Location state:", location.state);
     
     // Handle mobile toggle
     const handleToggleMobile = () => {
@@ -186,13 +187,16 @@ function PlaceSalesOrder() {
                 if (result.success && Array.isArray(result.data)) {
                     const retailer = result.data.find(r => r.id === parseInt(retailerId));
                     if (retailer) {
+                        // Use the retailerDiscount from props first, otherwise use from API
+                        const discountToUse = retailerDiscount > 0 ? retailerDiscount : (retailer.discount || 0);
                         setRetailerInfo({
                             name: retailer.name,
                             business: retailer.business_name,
                             location: retailer.shipping_city,
-                            discount: retailer.discount || 0,
+                            discount: discountToUse,
                             displayName: displayName || retailer.display_name || ""
                         });
+                        console.log("PlaceSalesOrder - Set retailerInfo discount to:", discountToUse);
                     }
                 }
             } catch (err) {
@@ -203,6 +207,7 @@ function PlaceSalesOrder() {
                     discount: retailerDiscount,
                     displayName: displayName || ""
                 });
+                console.log("PlaceSalesOrder - Fallback retailerInfo discount:", retailerDiscount);
             }
         };
 
@@ -517,7 +522,7 @@ function PlaceSalesOrder() {
                                             <p className="retailer-location">Location: {retailerInfo.location}</p>
                                         )}
                                         {retailerInfo.discount > 0 && (
-                                            <p className="retailer-discount">Discount: {retailerInfo.discount}%</p>
+                                            <p className="retailer-discount">Retailer Discount: {retailerInfo.discount}%</p>
                                         )}
                                     </div>
                                 )}
@@ -532,7 +537,7 @@ function PlaceSalesOrder() {
                                         to="/retailers/cart"
                                         state={{
                                             retailerId,
-                                            discount: retailerInfo.discount,
+                                            retailerDiscount: retailerInfo.discount, // PASS retailerDiscount here
                                             customerName: retailerInfo.name,
                                             displayName: retailerInfo.displayName || displayName
                                         }}
@@ -567,7 +572,7 @@ function PlaceSalesOrder() {
                                             to="/retailers/cart"
                                             state={{
                                                 retailerId,
-                                                discount: retailerInfo.discount,
+                                                retailerDiscount, // PASS retailerDiscount here
                                                 customerName: retailerInfo.name,
                                                 displayName: retailerInfo.displayName || displayName
                                             }}
@@ -605,6 +610,11 @@ function PlaceSalesOrder() {
                                                 (Display: {displayName})
                                             </p>
                                         )}
+                                        {retailerInfo.discount > 0 && (
+                                            <p className="mobile-retailer-discount">
+                                                Retailer Discount: {retailerInfo.discount}%
+                                            </p>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -614,7 +624,7 @@ function PlaceSalesOrder() {
                             to="/retailers/cart"
                             state={{
                                 retailerId,
-                                discount: retailerInfo.discount,
+                                retailerDiscount: retailerInfo.discount, // PASS retailerDiscount here
                                 customerName: retailerInfo.name,
                                 displayName: retailerInfo.displayName || displayName
                             }}

@@ -53,7 +53,14 @@ function Retailers() {
     try {
       setLoading(true);
       const response = await axios.get(`${baseurl}/accounts`);
-      setRetailersData(response.data);
+      
+      // Ensure we have proper discount values
+      const retailersWithDiscount = response.data.map(item => ({
+        ...item,
+        discount: parseFloat(item.discount) || 0 // Ensure discount is a number
+      }));
+      
+      setRetailersData(retailersWithDiscount);
       setError(null);
     } catch (err) {
       console.error('Failed to fetch retailers:', err);
@@ -102,14 +109,14 @@ function Retailers() {
     navigate("/retailers/import", { state: { selectedRole } });
   };
 
-  // Handle place order
+  // Handle place order - UPDATED to pass retailer discount
   const handlePlaceOrder = (retailer) => {
     navigate("/retailers/place-order", {
       state: {
         retailerId: retailer.id,
         retailerName: retailer.business_name || retailer.name,
         displayName: retailer.display_name,
-        discount: retailer.discount || 0
+        retailerDiscount: retailer.discount || 0 // Changed from discount to retailerDiscount
       }
     });
   };
