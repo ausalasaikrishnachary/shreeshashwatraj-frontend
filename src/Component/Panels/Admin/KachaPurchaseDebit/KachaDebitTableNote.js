@@ -79,14 +79,13 @@ const response = await fetch(`${baseurl}/api/debit-notes-table?data_type=stock i
   const handleCreateClick = () => navigate("/kachadebitnote");
 
   // Define tabs with their corresponding routes
-  const tabs = [
-    { name: 'Purchase Invoice', path: '/purchase/purchase-invoice' },
-    { name: 'Purchase Order', path: '/purchase/purchase-order' },
-    { name: 'Voucher', path: '/purchase/voucher' },
-    { name: 'Debit Note', path: '/purchase/debit-note' },
-    { name: 'Payables', path: '/purchase/payables' }
+const tabs = [
+    { name: ' Kacha Purchase Invoice', path: '/kachapurchaseinvoicetable' },
+    // { name: 'Purchase Order', path: '/purchase/purchase-order' },
+    { name: 'Voucher', path: '/kachaPurchasevoucher' },
+    { name: 'Debit Note', path: '/kachadebitnotetable' },
+    // { name: 'Payables', path: '/purchase/payables' }
   ];
-
   // Handle tab click - navigate to corresponding route
   const handleTabClick = (tab) => {
     setActiveTab(tab.name);

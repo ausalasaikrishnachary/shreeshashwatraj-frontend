@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import './Period.css';
 import { baseurl } from "../../../BaseURL/BaseURL";
 import { FaFilePdf, FaTrash, FaDownload, FaCheck, FaTimes, FaEdit } from 'react-icons/fa';
+import axios from "axios";
 
 const Period = () => {
   const [openRow, setOpenRow] = useState(null);
@@ -772,34 +772,6 @@ const fetchOrders = async () => {
       return;
     }
 
-  // Stock validation - check if ordered quantity exceeds stock
-    const itemsWithStockIssue = orderSelectedItems.map(itemId => {
-      const item = order.items.find(i => i.id === itemId);
-      return item;
-    }).filter(item => {
-      const stockQuantity = item.stock_quantity || 0;
-      const orderedQuantity = item.quantity || 0;
-      
-      return orderedQuantity > stockQuantity;
-    });
-
-    if (itemsWithStockIssue.length > 0) {
-      let alertMessage = "⚠️ STOCK INSUFFICIENT!\n\n";
-      
-      itemsWithStockIssue.forEach((item, index) => {
-        alertMessage += `${index + 1}. ${item.item_name || 'Unknown Item'}\n`;
-        alertMessage += `   Order Quantity: ${item.quantity}\n`;
-        alertMessage += `   Available Stock: ${item.stock_quantity}\n`;
-        alertMessage += `   Shortage: ${item.quantity - item.stock_quantity}\n\n`;
-      });
-      
-      alertMessage += "Please adjust the order or restock before generating invoices.";
-      
-      // Show the alert window
-      alert(alertMessage);
-      setGeneratingInvoice(false);
-      return;
-    }
     
     const itemsWithApprovalIssue = orderSelectedItems.map(itemId => {
       const item = order.items.find(i => i.id === itemId);

@@ -351,15 +351,14 @@ const KachaReceiptsTable = () => {
   ];
 
   const tabs = [
-    { name: 'Invoices', path: '/sales/invoices' },
-    { name: 'Receipts', path: '/sales/receipts' },
-    { name: 'Quotations', path: '/sales/quotations' },
-    { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
-    { name: 'CreditNote', path: '/sales/credit_note' },
-    { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
-    { name: 'Receivables', path: '/sales/receivables' }
+    { name: ' Kacha Invoices', path: '/kachinvoicetable' },
+    { name: 'Receipts', path: '/kachareceipts' },
+    // { name: 'Quotations', path: '/sales/quotations' },
+    // { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
+    { name: 'CreditNote', path: '/kachacreditenote' },
+    // { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
+    // { name: 'Receivables', path: '/sales/receivables' }
   ];
-
   // Fetch next receipt number
   const fetchNextReceiptNumber = async () => {
     try {

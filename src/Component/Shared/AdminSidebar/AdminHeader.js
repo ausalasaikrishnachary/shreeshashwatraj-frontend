@@ -39,18 +39,20 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
     "/kachareceipts" :" Receipts",
     "/sales/receipts": "Receipts",
    " /sales/invoices": "Invoice",
-   "/kachapurchaseinvoicetable": "Kacha Purchase",
+   "/kachapurchaseinvoicetable": "Kacha Purchase Table",
    "/kachapurchaseinvoice":"Create Kacha Purchase",
    "/kachaPurchasevoucher":"Kacha Purchase Voucher",
    "/kachacreditenotetable":'Kacha Credit Note Table',
    '/kachacreditenote': "Kacha Credit Note",
    "/kachaeditcreditnote" : "Kacha Edit Credit Note",
-   "/kachadebitnotetable" : "Kacha Debit Note Table",
+   "/kachadebitnotetable" : "Kacha Debit Note",
    "/kachadebitnote" :"Kacha Debit Note ",
    "/kachaeditdebitenote" :"Kacha Edit Debit Note",
    "/kachacreditview" : "Kacha Credit view",
    "/kachinvoicetable" :'Kacha Sales Invoices',
-   "/purchase/purchase-invoice" :"Purchase Invoices Table"
+   "/purchase/purchase-invoice" :"Purchase Invoices Table",
+   "/purchase/voucher" :"Purchase Voucher",
+   "/kachareceipts" :"Kacha Receipts",
 
   };
 

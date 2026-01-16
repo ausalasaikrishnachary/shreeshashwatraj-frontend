@@ -393,7 +393,7 @@ const handleDeleteInvoice = async (invoice) => {
     { name: ' Kacha Purchase Invoice', path: '/kachapurchaseinvoicetable' },
     // { name: 'Purchase Order', path: '/purchase/purchase-order' },
     { name: 'Voucher', path: '/kachaPurchasevoucher' },
-    { name: 'Debit Note', path: '/purchase/debit-note' },
+    { name: 'Debit Note', path: '/kachadebitnotetable' },
     // { name: 'Payables', path: '/purchase/payables' }
   ];
 

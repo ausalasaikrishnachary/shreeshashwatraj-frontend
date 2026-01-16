@@ -391,10 +391,10 @@ const handleDeleteInvoice = async (invoice) => {
 
   const tabs = [
     { name: 'Purchase Invoice', path: '/purchase/purchase-invoice' },
-    { name: 'Purchase Order', path: '/purchase/purchase-order' },
+    // { name: 'Purchase Order', path: '/purchase/purchase-order' },
     { name: 'Voucher', path: '/purchase/voucher' },
     { name: 'Debit Note', path: '/purchase/debit-note' },
-    { name: 'Payables', path: '/purchase/payables' }
+    // { name: 'Payables', path: '/purchase/payables' }
   ];
 
   const handleTabClick = (tab) => {

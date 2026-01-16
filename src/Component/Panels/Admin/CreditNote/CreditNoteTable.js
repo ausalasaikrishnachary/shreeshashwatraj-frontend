@@ -84,13 +84,12 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=Sales`
   const tabs = [
     { name: 'Invoices', path: '/sales/invoices' },
     { name: 'Receipts', path: '/sales/receipts' },
-    { name: 'Quotations', path: '/sales/quotations' },
-    { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
+    // { name: 'Quotations', path: '/sales/quotations' },
+    // { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
     { name: 'CreditNote', path: '/sales/credit_note' },
-    { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
-    { name: 'Receivables', path: '/sales/receivables' }
+    // { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
+    // { name: 'Receivables', path: '/sales/receivables' }
   ];
-
   // Handle tab click - navigate to corresponding route
   const handleTabClick = (tab) => {
     setActiveTab(tab.name);
