@@ -300,49 +300,43 @@ const useCreditNoteLogic = () => {
       0
     ).toFixed(2)
   };
+const handleCreateCreditNote = async () => {
+  try {
+    let accountData = {};
 
- const handleCreateCreditNote = async () => {
+    if (customerData?.AccountID || customerData?.customer_id) {
+      const accRes = await axios.get(
+        `${baseurl}/accounts/${customerData.AccountID || customerData.customer_id}`
+      );
+      accountData = accRes.data || {};
+    }
 
-  // Get the selected account details
-  const selectedAccount = await axios.get(`${baseurl}/accounts/${customerData?.AccountID || customerData?.customer_id}`);
-  const accountData = selectedAccount.data || {};
-  
-  const payload = {
-    data_type: "Sales",
-    TransactionType: "CreditNote", 
-    creditNoteNumber,
-    noteDate,
-    InvoiceNumber: selectedInvoice,
-    PartyID: customerData?.PartyID || customerData?.customer_id || null,
-    
-    account_name: accountData.account_name || customerData?.account_name || '',
-    business_name: accountData.business_name || customerData?.business_name || '',
-    
-    PartyName: customerData?.PartyName || accountData.name || 'Customer',
-    
-    items: items.map(item => ({
-      ...item,
-      originalQuantity: undefined,
-      availableQuantity: undefined,
-      soldQuantity: undefined,
-      creditedQuantity: undefined
-    })),
-  };
+    const payload = {
+      data_type: "Sales",
+      TransactionType: "CreditNote",
+      creditNoteNumber,
+      noteDate,
+      InvoiceNumber: selectedInvoice,
 
-  console.log("📦 FINAL PAYLOAD:", {
-    data_type: payload.data_type,
-    TransactionType: payload.TransactionType,
-    account_name: payload.account_name,
-    business_name: payload.business_name,
-    name: payload.name,
-    PartyName: payload.PartyName
-  });
+      PartyID: customerData?.PartyID || null,
+      PartyName: customerData?.PartyName || accountData.name || "Customer",
 
-  await axios.post(`${baseurl}/transaction`, payload);
+      account_name: accountData.account_name || "",
+      business_name: accountData.business_name || "",
 
-  alert("Credit Note Created!");
-  navigate("/sales/credit_note");
+      items: items.map(({ originalQuantity, availableQuantity, soldQuantity, creditedQuantity, ...rest }) => rest),
+    };
+
+    await axios.post(`${baseurl}/transaction`, payload);
+
+    alert("✅ Credit Note Created!");
+    navigate("/sales/credit_note");
+  } catch (err) {
+    console.error(err);
+    alert("❌ Failed to create credit note");
+  }
 };
+
 
   // ------------------------------------------------------------------------------------
   // RETURN EVERYTHING FOR UI
