@@ -31,8 +31,6 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [unitOptions, setUnitOptions] = useState([]);
   const [showUnitModal, setShowUnitModal] = useState(false);
-  // Add state for sales catalog checkbox
-  const [createSalesCatalogCopy, setCreateSalesCatalogCopy] = useState(false);
 
   const calculateTaxAndNetPrice = (price, gstRate, inclusiveGst) => {
     if (!price || !gstRate) return { netPrice: price || '', taxAmount: 0 };
@@ -63,6 +61,8 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     return batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
   };
 
+  // Calculate total MRP from batches
+ 
   const fetchUnits = async () => {
     try {
       const response = await axios.get(`${baseurl}/units`);
@@ -183,8 +183,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
           description: product.description || '',
           maintain_batch: product.maintain_batch || false,
           can_be_sold: product.can_be_sold || false,
-          product_type: product.product_type || '', 
-          min_sale_price: product.min_sale_price || '',
+            product_type: product.product_type || '', 
         });
 
         setMaintainBatch(product.maintain_batch || false);
@@ -231,9 +230,10 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
           mfgDate: batch.mfg_date?.split('T')[0] || '',
           expDate: batch.exp_date?.split('T')[0] || '',
           quantity: batch.quantity || '',
-          min_sale_price: batch.min_sale_price || '',
+          min_sale_price: batch.cost_price || '',
           opening_stock: batch.opening_stock || '',
           sellingPrice: batch.selling_price || '',
+          min_sale_price: batch.min_sale_price || '',
           purchasePrice: batch.purchase_price || '',
           mrp: batch.mrp || '',
           barcode: batch.barcode || '',
@@ -530,8 +530,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     description: '',
     maintain_batch: false,
     can_be_sold: false,
-    product_type: '', 
-    min_sale_price: '',
+     product_type: '', 
   });
   
   const handleChange = async (e) => {
@@ -702,50 +701,6 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
   const showAlert = (message, variant = 'success') => {
     setAlert({ show: true, message, variant });
     setTimeout(() => setAlert({ show: false, message: '', variant: 'success' }), 5000);
-  };
-
-  // Function to create products simultaneously
-  const createProductsSimultaneously = async (dataToSend) => {
-    try {
-      let purchasedItemId = null;
-      let salesCatalogItemId = null;
-      
-      // 1. First create Purchaseditems product
-      console.log('➕ Creating Purchaseditems product...');
-      const purchasedResponse = await axios.post(`${baseurl}/products`, {
-        ...dataToSend,
-        group_by: 'Purchaseditems'
-      }, {
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      purchasedItemId = purchasedResponse.data.id;
-      console.log('✅ Purchaseditems product created:', purchasedItemId);
-      
-      // 2. Then create Salescatalog product with reference
-      console.log('➕ Creating Salescatalog product...');
-      const salesCatalogData = {
-        ...dataToSend,
-        group_by: 'Salescatalog',
-        purchase_product_id: purchasedItemId, // Reference to purchased item
-        can_be_sold: true // Sales catalog items should always be sellable
-      };
-      
-      const salesResponse = await axios.post(`${baseurl}/products`, salesCatalogData, {
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      salesCatalogItemId = salesResponse.data.id;
-      console.log('✅ Salescatalog product created:', salesCatalogItemId);
-      
-      return {
-        purchasedItem: purchasedResponse.data,
-        salesCatalogItem: salesResponse.data
-      };
-    } catch (error) {
-      console.error('❌ Error creating products:', error);
-      throw error;
-    }
   };
   
   const handleSubmit = async (e) => {
@@ -922,7 +877,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
           mfg_date: null,
           exp_date: null,
           quantity: finalOpeningStock,
-          min_sale_price: parseFloat(formData.min_sale_price) || 0,
+          cost_price: 0,
           selling_price: finalPrice,
           purchase_price: finalPurchasePrice,
           mrp: finalMRP,
@@ -945,47 +900,37 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
         balance_stock: finalOpeningStock,
         batches: batchesForBackend,
         maintain_batch: maintainBatch,
-        product_type: formData.product_type, 
-        min_sale_price: formData.min_sale_price || 0,
+         product_type: formData.product_type, 
       };
 
       delete dataToSend.selling_price;
 
-      console.log('📤 Preparing data to send:', {
+      console.log('📤 Sending data to backend:', {
         maintain_batch: maintainBatch,
         product_purchase_price: dataToSend.purchase_price,
         product_price: dataToSend.price, 
         product_mrp: dataToSend.mrp,
         batch_count: batchesForBackend.length,
-        min_sale_price: dataToSend.min_sale_price
+        selling_price_in_batches: batchesForBackend.map(b => b.selling_price),
+        mrp_in_batches: batchesForBackend.map(b => b.mrp)
       });
 
       if (productId) {
-        // Editing existing product
         console.log(`🔄 Updating product ID: ${productId}`);
+
         const response = await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
           headers: { 'Content-Type': 'application/json' }
         });
         console.log('✅ Update response:', response.data);
         showAlert('Product updated successfully!', 'success');
+
         await fetchBatches(productId);
       } else {
-        // Creating new product
-        if (createSalesCatalogCopy) {
-          // Create both Purchaseditems and Salescatalog simultaneously
-          console.log('🔄 Creating products for both Purchaseditems and Salescatalog...');
-          const result = await createProductsSimultaneously(dataToSend);
-          console.log('✅ Both products created successfully:', result);
-          showAlert('Product added to Purchase Catalog and Sales Catalog successfully!', 'success');
-        } else {
-          // Create only Purchaseditems product
-          console.log('➕ Creating Purchaseditems product only');
-          const response = await axios.post(`${baseurl}/products`, dataToSend, {
-            headers: { 'Content-Type': 'application/json' }
-          });
-          console.log('✅ Product created:', response.data);
-          showAlert('New product added successfully!', 'success');
-        }
+        console.log('➕ Creating new product');
+        const response = await axios.post(`${baseurl}/products`, dataToSend, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        showAlert('New product added successfully!', 'success');
       }
 
       setTimeout(() => navigate('/purchased_items'), 1500);
@@ -1359,76 +1304,51 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                   </div>
                 </div>
 
-                <div className="row mb-3">
-                  <div className="col">
-                    <Form.Label>Max Stock Alert</Form.Label>
-                    <Form.Control
-                      placeholder="Max Stock Alert"
-                      name="max_stock_alert"
-                      type="number"
-                      value={formData.max_stock_alert}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="col">
-                    <Form.Label>Product Type *</Form.Label>
-                    <Form.Select
-                      name="product_type"
-                      value={formData.product_type}
-                      onChange={handleChange}
-                      required
-                    >
-                      <option value="">Select Product Type</option>
-                      <option value="KACHA">KACHA</option>
-                      <option value="PAKKA">PAKKA</option>
-                    </Form.Select>
-                  </div>
-                  <div className="col d-flex align-items-center">
-                    <Form.Check
-                      type="checkbox"
-                      label="Can be Sold (Crt Sales Ctlg Entry)"
-                      name="can_be_sold"
-                      checked={formData.can_be_sold}
-                      onChange={handleChange}
-                      className="mt-4"
-                    />
-                  </div>
-                  <div className="col d-flex align-items-center">
-                    <Form.Check
-                      type="checkbox"
-                      label="Maintain Batch"
-                      name="maintain_batch"
-                      checked={formData.maintain_batch}
-                      onChange={handleChange}
-                      className="mt-4"
-                    />
-                  </div>
-                </div>
-
-                <div className="row mb-3">
-                  <div className="col">
-                    <Form.Label>Min Sale Price</Form.Label>
-                    <Form.Control
-                      placeholder="Min Sale Price"
-                      name="min_sale_price"
-                      type="number"
-                      step="0.01"
-                      value={formData.min_sale_price}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="col d-flex align-items-center">
-                    <Form.Check
-                      type="checkbox"
-                      label="Show in Sales Catalogue"
-                      name="sales_catalog_product"
-                      checked={createSalesCatalogCopy}
-                      onChange={(e) => setCreateSalesCatalogCopy(e.target.checked)}
-                      className="mt-4"
-                    />
-                
-                  </div>
-                </div>
+         <div className="row mb-3">
+  <div className="col">
+    <Form.Label>Max Stock Alert</Form.Label>
+    <Form.Control
+      placeholder="Max Stock Alert"
+      name="max_stock_alert"
+      type="number"
+      value={formData.max_stock_alert}
+      onChange={handleChange}
+    />
+  </div>
+  <div className="col">
+    <Form.Label>Product Type *</Form.Label>
+    <Form.Select
+      name="product_type"
+      value={formData.product_type}
+      onChange={handleChange}
+      required
+    >
+      <option value="">Select Product Type</option>
+      <option value="KACHA">KACHA</option>
+      <option value="PAKKA">PAKKA</option>
+    </Form.Select>
+  </div>
+  <div className="col d-flex align-items-center">
+    <Form.Check
+      type="checkbox"
+      label="Can be Sold (Crt Sales Ctlg Entry)"
+      name="can_be_sold"
+      checked={formData.can_be_sold}
+      onChange={handleChange}
+      className="mt-4"
+    />
+  </div>
+  <div className="col d-flex align-items-center">
+    <Form.Check
+      type="checkbox"
+      label="Maintain Batch"
+      name="maintain_batch"
+      checked={formData.maintain_batch}
+      onChange={handleChange}
+      className="mt-4"
+    />
+  </div>
+</div>
 
                 <Form.Group className="mt-3 mb-2">
                   <Form.Label>Description</Form.Label>
@@ -1521,6 +1441,8 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                   <div className="border border-dark p-3 mb-3">
                     <h5>Batch Details</h5>
 
+                
+
                     {batches.map((batch, index) => (
                       <div key={batch.id} className="mb-3 border p-2">
                         <div className="row g-2 mb-2">
@@ -1591,6 +1513,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                               onChange={(e) => handleBatchChange(index, e)}
                               placeholder={formData.price ? `Main: ${formData.price}` : 'Enter selling price'}
                             />
+                          
                           </div>
                         </div>
 
@@ -1614,7 +1537,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                               name="min_sale_price"
                               value={batch.min_sale_price}
                               onChange={(e) => handleBatchChange(index, e)}
-                              placeholder="Enter min sale price"
+                              placeholder="Enter cost price"
                             />
                           </div>
                           <div className="col-md-4">
@@ -1652,6 +1575,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                     <Button variant="primary" onClick={addNewBatch} className="mb-2">
                       Add Batch
                     </Button>
+                 
                   </div>
                 )}
 
