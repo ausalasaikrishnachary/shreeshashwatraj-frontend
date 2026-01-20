@@ -55,12 +55,14 @@ const VochurTable = () => {
         console.log('Received invoices data:', data);
         
         if (Array.isArray(data)) {
-          const invoiceNumbers = data.map(invoice => ({
-            id: invoice.VoucherID || invoice.id || Math.random(),
-            number: invoice.VchNo || invoice.invoice_number || invoice.number || 'Unknown',
-            total_amount: invoice.TotalAmount || invoice.total_amount || 0,
-            paid_amount: invoice.paid_amount || 0
-          }));
+        const invoiceNumbers = data.map(invoice => ({
+  id: invoice.VoucherID || invoice.id,
+  number: invoice.InvoiceNumber || invoice.VchNo,
+  total_amount: invoice.TotalAmount || 0,
+  paid_amount: invoice.paid_amount || 0,
+  supplier_id: invoice.PartyID   // ✅ ADD THIS
+}));
+
           console.log('Processed invoice numbers:', invoiceNumbers);
           setInvoices(invoiceNumbers);
         } else if (typeof data === 'object') {
@@ -667,18 +669,26 @@ const handleSupplierChange = (e) => {
 };
 
   // Handle invoice selection change
-  const handleInvoiceChange = (e) => {
-    const selectedVchNo = e.target.value;
-    setSelectedInvoice(selectedVchNo);
-    setFormData(prev => ({
-      ...prev,
-      invoiceNumber: selectedVchNo,
-      amount: '' // Clear amount when invoice changes
-    }));
-    if (formData.supplierId) {
-      fetchInvoiceBalance(formData.supplierId, selectedVchNo);
-    }
-  };
+ const handleInvoiceChange = (e) => {
+  const selectedInvoiceNumber = e.target.value;
+
+  const selectedInvoice = invoices.find(
+    inv => inv.number === selectedInvoiceNumber
+  );
+
+  setSelectedInvoice(selectedInvoiceNumber);
+
+  setFormData(prev => ({
+    ...prev,
+    invoiceNumber: selectedInvoiceNumber,
+    amount: selectedInvoice ? selectedInvoice.total_amount : ''
+  }));
+
+  setInvoiceBalance(
+    selectedInvoice ? parseFloat(selectedInvoice.total_amount) : 0
+  );
+};
+
 
 const handleCreateReceipt = async () => {
   // Validation
@@ -810,6 +820,13 @@ const handleCreateReceipt = async () => {
   const handleDownloadRange = () => {
     alert(`Downloading receipts from ${startDate} to ${endDate}`);
   };
+
+
+  const filteredInvoices = formData.supplierId
+  ? invoices.filter(
+      inv => String(inv.supplier_id) === String(formData.supplierId)
+    )
+  : [];
 
   return (
     <div className="receipts-wrapper">
@@ -1050,24 +1067,29 @@ const handleCreateReceipt = async () => {
             <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Invoice Number *</label>
-                          <select
-                            className="form-select"
-                            name="invoiceNumber"
-                            value={formData.invoiceNumber}
-                            onChange={handleInvoiceChange}
-                            required
-                          >
-                            <option value="">Select Invoice Number</option>
-                            {invoices.length > 0 ? (
-                              invoices.map((invoice) => (
-                                <option key={invoice.id} value={invoice.number}>
-                                  {invoice.number}
-                                </option>
-                              ))
-                            ) : (
-                              <option value="" disabled>No invoices found</option>
-                            )}
-                          </select>
+                         <select
+  className="form-select"
+  name="invoiceNumber"
+  value={formData.invoiceNumber}
+  onChange={handleInvoiceChange}
+  required
+  disabled={!formData.supplierId}
+>
+  <option value="">Select Invoice Number</option>
+
+  {filteredInvoices.map((invoice) => (
+    <option key={invoice.id} value={invoice.number}>
+      {invoice.number}
+    </option>
+  ))}
+</select>
+
+{formData.supplierId && filteredInvoices.length === 0 && (
+  <small className="text-danger">
+    No invoices found for selected supplier
+  </small>
+)}
+
                           {invoices.length === 0 && (
                             <small className="text-danger">
                               No invoices available. Please check if invoices are created.

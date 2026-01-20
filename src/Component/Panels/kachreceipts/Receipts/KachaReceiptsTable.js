@@ -1,3 +1,4 @@
+// frontend/src/components/Sales/Receipts/ReceiptsTable.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
@@ -20,14 +21,15 @@ const KachaReceiptsTable = () => {
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
   const [activeTab, setActiveTab] = useState('Receipts');
-  const [invoices, setInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState('');
   const [invoiceBalance, setInvoiceBalance] = useState(0);
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
+const [invoices, setInvoices] = useState([]);
 
   const [formData, setFormData] = useState({
     receiptNumber: 'REC001',
     retailerId: '',
+    retailerName: '',  
     amount: '',
     currency: 'INR',
     paymentMethod: 'Direct Deposit',
@@ -39,24 +41,20 @@ const KachaReceiptsTable = () => {
     retailerMobile: '',
     retailerEmail: '',
     retailerGstin: '',
-    retailerName: '',
     transactionProofFile: '',
     invoiceNumber: '',
-          account_name: '', // Add this
+      account_name: '', // Add this
   business_name: '' // Add this
-
   });
 
-  // Fetch invoices from API
   const fetchInvoices = async () => {
     try {
-      console.log('Fetching stock transfer vouchers...');
-      
+      console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber`);
       const response = await fetch(`${baseurl}/api/vouchersnumber?type=stock transfer`);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Received stock transfer vouchers:', data);
+        console.log('data:', data);
         setInvoices(data);
       } else {
         console.error('Failed to fetch invoices. Status:', response.status);
@@ -66,51 +64,118 @@ const KachaReceiptsTable = () => {
     }
   };
 
-  // Fetch invoice balance
-  const fetchInvoiceBalance = async (retailerId, invoiceNumber) => {
-    if (!retailerId || !invoiceNumber) {
+const fetchInvoiceBalance = async (retailerId, invoiceNumber) => {
+  if (!retailerId || !invoiceNumber) {
+    setInvoiceBalance(0);
+    setFormData(prev => ({
+      ...prev,
+      amount: ''
+    }));
+    return;
+  }
+
+  try {
+    setIsFetchingBalance(true);
+    console.log(`Fetching balance for retailer ${retailerId}, invoice ${invoiceNumber}`);
+    
+    const selectedRetailer = accounts.find(acc => acc.id == retailerId);
+    if (!selectedRetailer) {
+      console.error('Retailer not found');
       setInvoiceBalance(0);
-      setFormData(prev => ({
-        ...prev,
-        amount: ''
-      }));
+      setFormData(prev => ({ ...prev, amount: '' }));
+      setIsFetchingBalance(false);
       return;
     }
 
     try {
-      setIsFetchingBalance(true);
-      console.log(`Fetching balance for retailer ${retailerId}, invoice ${invoiceNumber}`);
+      const response = await fetch(
+        `${baseurl}/api/receipts?retailer_id=${retailerId}&invoice_number=${invoiceNumber}`
+      );
       
-      // First, check if the retailer information exists
-      const selectedRetailer = accounts.find(acc => acc.id == retailerId);
-      if (!selectedRetailer) {
-        console.error('Retailer not found');
-        setInvoiceBalance(0);
-        setFormData(prev => ({ ...prev, amount: '' }));
-        setIsFetchingBalance(false);
-        return;
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Received receipt data for balance check:', data);
+        
+        let balanceAmount = 0;
+        
+        if (Array.isArray(data)) {
+          const relevantReceipts = data.filter(receipt => {
+            const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+            const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
+            
+            return receiptRetailerId == retailerId && 
+                   receiptInvoiceNumber === invoiceNumber;
+          });
+          
+          if (relevantReceipts.length > 0) {
+            const latestReceipt = relevantReceipts.sort((a, b) => 
+              new Date(b.created_at) - new Date(a.created_at)
+            )[0];
+            
+            balanceAmount = parseFloat(latestReceipt.total_balance_amount || latestReceipt.balance_amount || 0);
+            console.log('Found balance from receipts array for retailer', retailerId, 'invoice', invoiceNumber, ':', balanceAmount);
+          }
+        } else if (data.total_balance_amount || data.balance_amount) {
+          balanceAmount = parseFloat(data.total_balance_amount || data.balance_amount || 0);
+          console.log('Found balance from single receipt:', balanceAmount);
+        } else if (data.data) {
+          const receiptData = data.data;
+          if (Array.isArray(receiptData)) {
+            const relevantReceipt = receiptData.find(receipt => {
+              const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+              return receiptRetailerId == retailerId && receipt.invoice_number === invoiceNumber;
+            });
+            if (relevantReceipt) {
+              balanceAmount = parseFloat(relevantReceipt.total_balance_amount || relevantReceipt.balance_amount || 0);
+            }
+          }
+        }
+        
+        if (balanceAmount > 0) {
+          setInvoiceBalance(balanceAmount);
+          setFormData(prev => ({
+            ...prev,
+            amount: balanceAmount.toString()
+          }));
+          setIsFetchingBalance(false);
+          return;
+        }
       }
+    } catch (apiError) {
+      console.error('API error fetching receipt balance:', apiError);
+    }
 
-      // Check if invoice exists in the invoices list
-      const selectedInvoiceData = invoices.find(inv => inv.VchNo === invoiceNumber);
+    // Check in existing receipt data
+    const existingReceipt = receiptData.find(receipt => {
+      const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+      const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
       
-      if (!selectedInvoiceData) {
-        console.warn('Invoice not found in invoices data');
-        setInvoiceBalance(0);
-        setFormData(prev => ({
-          ...prev,
-          amount: ''
-        }));
-        alert('Invoice not found. Please check the invoice number.');
-        setIsFetchingBalance(false);
-        return;
-      }
-      
-      // Verify invoice belongs to the selected retailer
+      return receiptRetailerId == retailerId && receiptInvoiceNumber === invoiceNumber;
+    });
+
+    if (existingReceipt?.total_balance_amount) {
+      console.log('Found balance in existing data for retailer', retailerId, 'invoice', invoiceNumber, ':', existingReceipt.total_balance_amount);
+      const balance = parseFloat(existingReceipt.total_balance_amount);
+      setInvoiceBalance(balance);
+      setFormData(prev => ({
+        ...prev,
+        amount: balance.toString()
+      }));
+      setIsFetchingBalance(false);
+      return;
+    }
+
+    // Check invoices data
+    console.warn('No balance found from receipts API, checking invoices data');
+const selectedInvoiceData = invoices.find(
+  inv => inv.InvoiceNumber === invoiceNumber
+);
+    
+    if (selectedInvoiceData) {
       const invoiceRetailerId = selectedInvoiceData.PartyID || selectedInvoiceData.AccountID;
       
-      if (invoiceRetailerId && invoiceRetailerId != retailerId) {
-        console.log(`Invoice ${invoiceNumber} belongs to retailer ${invoiceRetailerId}, not ${retailerId}`);
+      if (invoiceRetailerId != retailerId) {
+        console.log('Invoice does not belong to selected retailer. Invoice retailer ID:', invoiceRetailerId, 'Selected retailer ID:', retailerId);
         setInvoiceBalance(0);
         setFormData(prev => ({
           ...prev,
@@ -120,81 +185,29 @@ const KachaReceiptsTable = () => {
         setIsFetchingBalance(false);
         return;
       }
-
-      // Try to fetch balance from receipts API
-      try {
-        const response = await fetch(
-          `${baseurl}/api/receipts?retailer_id=${retailerId}&invoice_number=${invoiceNumber}`
-        );
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Received receipt data for balance check:', data);
-          
-          let balanceAmount = 0;
-          
-          if (Array.isArray(data)) {
-            // Filter receipts for the specific invoice and retailer
-            const relevantReceipts = data.filter(receipt => {
-              const receiptRetailerId = receipt.PartyID 
-              const receiptInvoiceNumber = receipt.InvoiceNumber || receipt.invoice_number;
-              
-              return receiptRetailerId == retailerId && 
-                     receiptInvoiceNumber === invoiceNumber;
-            });
-            
-            if (relevantReceipts.length > 0) {
-              // Get the latest receipt
-              const latestReceipt = relevantReceipts.sort((a, b) => 
-                new Date(b.created_at) - new Date(a.created_at)
-              )[0];
-              
-              balanceAmount = parseFloat(latestReceipt.total_balance_amount || latestReceipt.balance_amount || 0);
-              console.log('Found balance from receipts array:', balanceAmount);
-            }
-          } else if (data.total_balance_amount || data.balance_amount) {
-            balanceAmount = parseFloat(data.total_balance_amount || data.balance_amount || 0);
-          }
-          
-          if (balanceAmount > 0) {
-            setInvoiceBalance(balanceAmount);
-            setFormData(prev => ({
-              ...prev,
-              amount: balanceAmount.toString()
-            }));
-          } else {
-            await checkInvoiceBalanceFromInvoiceData(retailerId, invoiceNumber);
-          }
-        } else {
-          console.warn('Receipts API returned status:', response.status);
-          await checkInvoiceBalanceFromInvoiceData(retailerId, invoiceNumber);
-        }
-      } catch (apiError) {
-        console.error('API error fetching receipt balance:', apiError);
-        await checkInvoiceBalanceFromInvoiceData(retailerId, invoiceNumber);
-      }
-    } catch (err) {
-      console.error('Error in fetchInvoiceBalance:', err);
-      setInvoiceBalance(0);
-      setFormData(prev => ({
-        ...prev,
-        amount: ''
-      }));
-      alert('Error fetching invoice balance. Please try again or enter amount manually.');
-    } finally {
-      setIsFetchingBalance(false);
-    }
-  };
-
-  // Helper function to check balance from invoice data
-  const checkInvoiceBalanceFromInvoiceData = async (retailerId, invoiceNumber) => {
-    const selectedInvoiceData = invoices.find(inv => inv.VchNo === invoiceNumber);
-    if (selectedInvoiceData) {
-      const invoiceAmount = parseFloat(selectedInvoiceData.TotalAmount || 0);
-      const paidAmount = parseFloat(selectedInvoiceData.paid_amount || 0);
-      const balance = invoiceAmount - paidAmount;
       
-      console.log(`Invoice amount: ${invoiceAmount}, Paid: ${paidAmount}, Balance: ${balance}`);
+      const invoiceAmount = parseFloat(
+        selectedInvoiceData.TotalAmount || 
+        selectedInvoiceData.total_amount || 
+        selectedInvoiceData.amount || 
+        0
+      );
+      
+      const receiptsForInvoice = receiptData.filter(receipt => {
+        const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+        const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
+        
+        return receiptRetailerId == retailerId && 
+               receiptInvoiceNumber === invoiceNumber;
+      });
+      
+      const totalPaid = receiptsForInvoice.reduce((sum, receipt) => {
+        return sum + parseFloat(receipt.paid_amount || receipt.amount || 0);
+      }, 0);
+      
+      const balance = invoiceAmount - totalPaid;
+      
+      console.log(`Invoice amount: ${invoiceAmount}, Total paid: ${totalPaid}, Balance: ${balance}`);
       
       if (balance > 0) {
         setInvoiceBalance(balance);
@@ -215,38 +228,35 @@ const KachaReceiptsTable = () => {
         }
       }
     } else {
-      console.log('Invoice not found in invoices data');
+      // No invoice found
+      console.warn('Invoice not found in invoices data for retailer:', retailerId);
       setInvoiceBalance(0);
       setFormData(prev => ({
         ...prev,
         amount: ''
       }));
-      alert('Invoice details not found. Please enter amount manually.');
+      alert('Invoice not found for the selected retailer.');
     }
-  };
-
-  // Auto-fetch balance when both retailer and invoice are selected
+  } catch (err) {
+    console.error('Error fetching invoice balance:', err);
+    setInvoiceBalance(0);
+    setFormData(prev => ({
+      ...prev,
+      amount: ''
+    }));
+    alert('Error fetching invoice balance. Please try again or enter amount manually.');
+  } finally {
+    setIsFetchingBalance(false);
+  }
+};
   useEffect(() => {
-    console.log('Balance fetch triggered:', {
-      retailerId: formData.retailerId,
-      invoiceNumber: formData.invoiceNumber,
-      hasRetailer: !!formData.retailerId,
-      hasInvoice: !!formData.invoiceNumber
-    });
-    
+
     if (formData.retailerId && formData.invoiceNumber) {
       const timer = setTimeout(() => {
         fetchInvoiceBalance(formData.retailerId, formData.invoiceNumber);
       }, 300);
       
       return () => clearTimeout(timer);
-    } else {
-      // Clear amount if either is missing
-      setInvoiceBalance(0);
-      setFormData(prev => ({
-        ...prev,
-        amount: ''
-      }));
     }
   }, [formData.retailerId, formData.invoiceNumber]);
 
@@ -288,19 +298,14 @@ const KachaReceiptsTable = () => {
   ];
 
   const columns = [
-    { 
-      key: 'payee', 
-      title: 'Retailer Name', 
-      style: { textAlign: 'left' },
-      render: (value, row) => {
-        const businessName =
-          row?.payee_name ||
-          row?.retailer_name ||
-          'N/A';
-
-        return businessName;
-      }
-    },
+  { 
+    key: 'payee', 
+    title: 'Retailer Name', 
+    style: { textAlign: 'left' },
+    render: (value, row) => {
+      return row?.PartyName || 'N/A';
+    }
+  },
     { 
       key: 'VchNo', 
       title: 'RECEIPT NUMBER', 
@@ -318,7 +323,7 @@ const KachaReceiptsTable = () => {
     { 
       key: 'paid_amount', 
       title: 'AMOUNT', 
-      style: { textAlign: 'right' },
+      style: { textAlign: 'center' },
       render: (value) => value || '₹ 0.00'
     },
     { 
@@ -345,7 +350,7 @@ const KachaReceiptsTable = () => {
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const year = dateObj.getFullYear();
 
-        return `${day}-${month}-${year}`;
+        return `${day}-${month}-${year}`; // DD-MM-YYYY
       }
     }
   ];
@@ -407,6 +412,7 @@ const KachaReceiptsTable = () => {
           }
         }
       }
+      // Default fallback
       setNextReceiptNumber('REC001');
       setFormData(prev => ({
         ...prev,
@@ -424,58 +430,104 @@ const KachaReceiptsTable = () => {
     }
   };
 
-  // Fetch all receipts
-  const fetchReceipts = async () => {
-    try {
-      setIsLoading(true);
+const fetchReceipts = async () => {
+  try {
+    setIsLoading(true);
+    console.log("Fetching receipts from:", `${baseurl}/api/receipts`);
 
-      const response = await fetch(`${baseurl}/api/receipts?data_type=stock transfer`);
+    const response = await fetch(`${baseurl}/api/receipts?data_type=stock transfer`);
 
-      if (!response.ok) {
-        console.error('Failed to fetch receipts. Status:', response.status);
-        alert('Failed to load receipts. Please try again later.');
-        return;
-      }
-
-      const data = await response.json();
-      console.log('Received receipts data:', data);
-
-      const salesOnlyData = data.filter(item =>
-        (item.data_type || '').trim().toLowerCase() === 'stock transfer'
-      );
-
-      const sortedData = salesOnlyData.sort((a, b) => {
-        const dateA = new Date(a.receipt_date || a.created_at);
-        const dateB = new Date(b.receipt_date || b.created_at);
-        return dateB - dateA || (b.id || 0) - (a.id || 0);
-      });
-
-      const transformedData = sortedData.map(receipt => ({
-        ...receipt,
-        id: receipt.id || '',
-        retailer: receipt.retailer || {
-          name:
-            receipt.payee_name ||
-            'N/A'
-        },
-      
-        amount: `₹ ${parseFloat(receipt.amount || 0).toLocaleString('en-IN')}`,
-        receipt_date: receipt.receipt_date
-          ? new Date(receipt.receipt_date).toLocaleDateString('en-IN')
-          : 'N/A',
-        payment_method: receipt.payment_method || 'N/A'
-      }));
-
-      console.log('Final Sales Receipts:', transformedData);
-      setReceiptData(transformedData);
-
-    } catch (err) {
-      console.error('Error fetching receipts:', err);
-      alert('Error connecting to server. Please check your network connection.');
-    } finally {
-      setIsLoading(false);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Fetch error:", response.status, errorText);
+      alert("Failed to load receipts");
+      return;
     }
-  };
+
+    const data = await response.json();
+    console.log("Raw API Data:", data);
+
+    const receiptsArray = Array.isArray(data)
+      ? data
+      : data.data || data.receipts || [];
+
+    /* ===============================
+       ✅ SORT DATA (NO EXTRA FILTER)
+    =============================== */
+    const sortedData = receiptsArray.sort((a, b) => {
+      const dateA = new Date(a.receipt_date || a.created_at || a.Date);
+      const dateB = new Date(b.receipt_date || b.created_at || b.Date);
+      return (
+        dateB - dateA ||
+        (b.VoucherID || 0) - (a.VoucherID || 0) ||
+        (b.id || 0) - (a.id || 0)
+      );
+    });
+
+    /* ===============================
+       ✅ TRANSFORM DATA
+    =============================== */
+    const transformedData = sortedData.map(receipt => {
+      const voucherId =
+        receipt.VoucherID ||
+        receipt.receipt_id ||
+        "";
+
+      const retailerName =
+        receipt.PartyName ||
+        "N/A";
+
+      const amount = parseFloat(receipt.paid_amount || 0);
+
+      return {
+        ...receipt,
+        id: voucherId,
+        VoucherID: voucherId,
+        retailerId: receipt.PartyID || receipt.retailer_id || "",
+        payee: retailerName,
+        VchNo: receipt.VchNo || "",
+        amount: `₹ ${amount.toLocaleString("en-IN")}`,
+        paid_amount: amount,
+        Date: receipt.receipt_date || receipt.Date || receipt.created_at,
+        receipt_date: receipt.receipt_date
+          ? new Date(receipt.receipt_date).toLocaleDateString("en-IN")
+          : "N/A",
+        payment_method:
+          receipt.payment_method ||
+          receipt.PaymentMethod ||
+          "N/A",
+        InvoiceNumber:
+          receipt.invoice_number ||
+          receipt.InvoiceNumber ||
+          receipt.invoice_no ||
+          "",
+        data_type: receipt.data_type || "stock transfer",
+        total_balance_amount: parseFloat(
+          receipt.total_balance_amount || receipt.balance_amount || 0
+        ),
+        balance_amount: parseFloat(
+          receipt.balance_amount || receipt.total_balance_amount || 0
+        ),
+        invoice_numbers: Array.isArray(receipt.invoice_numbers)
+          ? receipt.invoice_numbers
+          : receipt.invoice_number
+          ? [receipt.invoice_number]
+          : []
+      };
+    });
+
+    console.log("Final Sales Receipt Data:", transformedData);
+    setReceiptData(transformedData);
+
+  } catch (err) {
+    console.error("Error fetching receipts:", err);
+    alert("Server connection error");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
 
   // Fetch accounts for retailer dropdown
   const fetchAccounts = async () => {
@@ -541,10 +593,9 @@ const KachaReceiptsTable = () => {
       ...prev,
       retailerId: '',
       amount: '',
-              retailerName: '',
+        retailerName: '',
       account_name: '', // Add this
       business_name: '', // Add this
-
       currency: 'INR',
       paymentMethod: 'Direct Deposit',
       receiptDate: new Date().toISOString().split('T')[0],
@@ -568,6 +619,9 @@ const KachaReceiptsTable = () => {
       ...prev,
       [name]: value
     }));
+    
+    if (name === 'amount') {
+    }
   };
 
   // Handle retailer selection change
@@ -584,35 +638,49 @@ const KachaReceiptsTable = () => {
    retailerName: selectedRetailer?.name || '',
       account_name: selectedRetailer?.account_name || '', 
     business_name: selectedRetailer?.businessname_name || selectedRetailer?.business_name ,
-      amount: '', 
-      invoiceNumber: '' 
+         amount: '',
     }));
     
-    setSelectedInvoice(''); 
-    setInvoiceBalance(0); 
-  };
-
-  const handleInvoiceChange = (e) => {
-    const selectedVchNo = e.target.value;
-    setSelectedInvoice(selectedVchNo);
-    setFormData(prev => ({
-      ...prev,
-      invoiceNumber: selectedVchNo,
-      amount: '' 
-    }));
+    setInvoiceBalance(0);
     
-    setInvoiceBalance(0); 
+    // If invoice is already selected, fetch balance
+    if (formData.invoiceNumber) {
+      fetchInvoiceBalance(selectedRetailerId, formData.invoiceNumber);
+    }
   };
 
+  // Handle invoice selection change
+const handleInvoiceChange = (e) => {
+  const selectedInvoiceNumber = e.target.value;
+
+  const selectedInvoice = invoices.find(
+    inv => inv.InvoiceNumber === selectedInvoiceNumber
+  );
+
+  setFormData(prev => ({
+    ...prev,
+    invoiceNumber: selectedInvoiceNumber,
+    amount: selectedInvoice?.TotalAmount || ''
+  }));
+
+  setInvoiceBalance(
+    selectedInvoice ? parseFloat(selectedInvoice.TotalAmount) : 0
+  );
+};
+
+  // Create receipt - Fixed with 2 second delay
   const handleCreateReceipt = async () => {
+    // Validation
     if (!formData.retailerId) {
       alert('Please select a retailer');
       return;
     }
+
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
       alert('Please enter a valid amount');
       return;
     }
+    
     if (!formData.receiptDate) {
       alert('Please select a receipt date');
       return;
@@ -621,12 +689,14 @@ const KachaReceiptsTable = () => {
     try {
       setIsLoading(true);
       
+      // Create FormData instead of JSON
       const formDataToSend = new FormData();
       
+      // Append all form fields
       formDataToSend.append('receipt_number', formData.receiptNumber);
       formDataToSend.append('retailer_id', formData.retailerId);
       formDataToSend.append('amount', formData.amount);
-          formDataToSend.append('account_name', formData.account_name || ''); // Add this
+    formDataToSend.append('account_name', formData.account_name || ''); // Add this
     formDataToSend.append('business_name', formData.business_name || ''); // Add this
 
       formDataToSend.append('currency', formData.currency);
@@ -636,10 +706,11 @@ const KachaReceiptsTable = () => {
       formDataToSend.append('bank_name', formData.bankName);
       formDataToSend.append('transaction_date', formData.transactionDate || '');
       formDataToSend.append('reconciliation_option', formData.reconciliationOption);
-      formDataToSend.append('retailer_name', formData.retailerName);
+      formDataToSend.append('retailer_name', formData.retailerName); 
       formDataToSend.append('invoice_number', formData.invoiceNumber);
-      formDataToSend.append('data_type', 'stock transfer');
+          formDataToSend.append('data_type', 'Sales');
 
+      // Append file if exists
       if (formData.transactionProofFile) {
         formDataToSend.append('transaction_proof', formData.transactionProofFile);
       }
@@ -654,30 +725,74 @@ const KachaReceiptsTable = () => {
       });
 
       console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+      
+      const responseText = await response.text();
+      console.log('Raw response text:', responseText);
+      
       if (response.ok) {
-        const result = await response.json();
-        console.log('Receipt created successfully:', result);
-        await fetchReceipts();
-        handleCloseModal();
-        alert('Receipt created successfully!');
-        
-        if (result.id) {
-          navigate(`/receipts_view/${result.id}`);
-        } else {
-          console.error('No ID returned in response');
-          alert('Receipt created, but unable to view details. Please check the receipt list.');
+        let result;
+        try {
+          result = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('Failed to parse response as JSON:', parseError);
+          throw new Error('Invalid response from server');
         }
-
-        await fetchNextReceiptNumber();
+        
+        console.log('Receipt created successfully:', result);
+        console.log('Full response structure:', JSON.stringify(result, null, 2));
+        
+        // Extract receipt ID
+        let receiptId = null;
+        
+        // Try to find VoucherID or similar ID in the response
+        if (result.VoucherID) {
+          receiptId = result.VoucherID;
+        } else if (result.id) {
+         
+        }
+        
+        console.log('Extracted receipt ID:', receiptId);
+        
+        if (receiptId) {
+          // Show success message
+          alert('Receipt created successfully! Redirecting to view page in 2 seconds...');
+          
+          // Close modal
+          handleCloseModal();
+          
+          // Refresh the receipts list
+          await fetchReceipts();
+          
+          // Generate next receipt number
+          await fetchNextReceiptNumber();
+          
+          // Navigate to the receipt view after 2 seconds
+          setTimeout(() => {
+            navigate(`/receipts_view/${receiptId}`);
+          }, 2000); // 2 seconds delay
+        } else {
+          console.error('No receipt ID found in response:', result);
+          
+          // Still show success but don't redirect
+          alert('Receipt created successfully! Please check the receipts list.');
+          
+          // Close modal and refresh
+          handleCloseModal();
+          await fetchReceipts();
+          await fetchNextReceiptNumber();
+        }
       } else {
         const errorText = await response.text();
         console.error('Failed to create receipt. Status:', response.status);
         console.error('Error response:', errorText);
+        
         let errorMessage = 'Failed to create receipt. ';
         try {
           const errorData = JSON.parse(errorText);
-          errorMessage += errorData.error || 'Please try again.';
-          if (errorData.error?.includes('already exists')) {
+          errorMessage += errorData.error || errorData.message || 'Please try again.';
+          
+          if (errorData.error?.includes('already exists') || errorData.message?.includes('already exists')) {
             console.log('Duplicate receipt number detected, fetching new number...');
             await fetchNextReceiptNumber();
             errorMessage += ' A new receipt number has been generated. Please try again.';
@@ -698,31 +813,9 @@ const KachaReceiptsTable = () => {
   // View receipt details
   const handleViewReceipt = (receiptId) => {
     console.log('View receipt:', receiptId);
-    navigate(`/kachareceipts_view/${receiptId}`);
+    navigate(`/receipts_view/${receiptId}`);
   };
 
-  // Delete receipt
-  const handleDeleteReceipt = async (receiptId) => {
-    if (window.confirm('Are you sure you want to delete this receipt?')) {
-      try {
-        const response = await fetch(`${baseurl}/api/receipts/${receiptId}`, {
-          method: 'DELETE',
-        });
-        if (response.ok) {
-          alert('Receipt deleted successfully!');
-          await fetchReceipts();
-          await fetchNextReceiptNumber();
-        } else {
-          alert('Failed to delete receipt. Please try again.');
-        }
-      } catch (err) {
-        console.error('Error deleting receipt:', err);
-        alert('Error deleting receipt. Please try again.');
-      }
-    }
-  };
-
-  // Download receipts
   const handleDownload = () => {
     alert(`Downloading receipts for ${month} ${year}`);
   };
@@ -732,424 +825,448 @@ const KachaReceiptsTable = () => {
     alert(`Downloading receipts from ${startDate} to ${endDate}`);
   };
 
-return (
-  <div className="receipts-wrapper">
-    <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-    <div className={`receipts-main-content ${isCollapsed ? 'collapsed' : ''}`}>
-      <AdminHeader isCollapsed={isCollapsed} />
-      <div className="receipts-content-area">
-        {/* Tabs Section */}
-        <div className="receipts-tabs-section">
-          <div className="receipts-tabs-container">
-            {tabs.map((tab) => (
-              <button
-                key={tab.name}
-                className={`receipts-tab ${activeTab === tab.name ? 'receipts-tab--active' : ''}`}
-                onClick={() => handleTabClick(tab)}
-              >
-                {tab.name}
-              </button>
+  const filteredInvoices = formData.retailerId
+  ? invoices.filter(
+      (inv) => String(inv.PartyID) === String(formData.retailerId)
+    )
+  : [];
+
+  return (
+    <div className="receipts-wrapper">
+      <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+      <div className={`receipts-main-content ${isCollapsed ? 'collapsed' : ''}`}>
+        <AdminHeader isCollapsed={isCollapsed} />
+        <div className="receipts-content-area">
+          {/* Tabs Section */}
+          <div className="receipts-tabs-section">
+            <div className="receipts-tabs-container">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.name}
+                  className={`receipts-tab ${activeTab === tab.name ? 'receipts-tab--active' : ''}`}
+                  onClick={() => handleTabClick(tab)}
+                >
+                  {tab.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Header Section */}
+          <div className="receipts-header-section">
+            <div className="receipts-header-top">
+              <div className="receipts-title-section">
+                <h1 className="receipts-main-title">Receipt Management</h1>
+                <p className="receipts-subtitle">Create, manage and track all your payment receipts</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="receipts-stats-grid">
+            {receiptStats.map((stat, index) => (
+              <div key={index} className={`receipts-stat-card receipts-stat-card--${stat.type}`}>
+                <h3 className="receipts-stat-label">{stat.label}</h3>
+                <div className="receipts-stat-value">{stat.value}</div>
+                <div className={`receipts-stat-change ${stat.change.startsWith('+') ? 'receipts-stat-change--positive' : 'receipts-stat-change--negative'}`}>
+                  {stat.change} from last month
+                </div>
+              </div>
             ))}
           </div>
-        </div>
 
-        {/* Header Section */}
-        <div className="receipts-header-section">
-          <div className="receipts-header-top">
-            <div className="receipts-title-section">
-              <h1 className="receipts-main-title">Receipt Management</h1>
-              <p className="receipts-subtitle">Create, manage and track all your payment receipts</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="receipts-stats-grid">
-          {receiptStats.map((stat, index) => (
-            <div key={index} className={`receipts-stat-card receipts-stat-card--${stat.type}`}>
-              <h3 className="receipts-stat-label">{stat.label}</h3>
-              <div className="receipts-stat-value">{stat.value}</div>
-              <div className={`receipts-stat-change ${stat.change.startsWith('+') ? 'receipts-stat-change--positive' : 'receipts-stat-change--negative'}`}>
-                {stat.change} from last month
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Actions Section */}
-        <div className="receipts-actions-section">
-          <div className="quotation-container p-3">
-            <h5 className="mb-3 fw-bold">View Receipts</h5>
-            {/* Filters and Actions */}
-            <div className="row align-items-end g-3 mb-3">
-              <div className="col-md-auto">
-                <label className="form-label mb-1">Select Month and Year Data:</label>
-                <div className="d-flex">
-                  <select
-                    className="form-select me-2"
-                    value={month}
-                    onChange={(e) => setMonth(e.target.value)}
-                  >
-                    <option>January</option>
-                    <option>February</option>
-                    <option>March</option>
-                    <option>April</option>
-                    <option>May</option>
-                    <option>June</option>
-                    <option>July</option>
-                    <option>August</option>
-                    <option>September</option>
-                    <option>October</option>
-                    <option>November</option>
-                    <option>December</option>
-                  </select>
-                  <select
-                    className="form-select"
-                    value={year}
-                    onChange={(e) => setYear(e.target.value)}
-                  >
-                    <option>2025</option>
-                    <option>2024</option>
-                    <option>2023</option>
-                  </select>
+          {/* Actions Section */}
+          <div className="receipts-actions-section">
+            <div className="quotation-container p-3">
+              <h5 className="mb-3 fw-bold">View Receipts</h5>
+              {/* Filters and Actions */}
+              <div className="row align-items-end g-3 mb-3">
+                <div className="col-md-auto">
+                  <label className="form-label mb-1">Select Month and Year Data:</label>
+                  <div className="d-flex">
+                    <select
+                      className="form-select me-2"
+                      value={month}
+                      onChange={(e) => setMonth(e.target.value)}
+                    >
+                      <option>January</option>
+                      <option>February</option>
+                      <option>March</option>
+                      <option>April</option>
+                      <option>May</option>
+                      <option>June</option>
+                      <option>July</option>
+                      <option>August</option>
+                      <option>September</option>
+                      <option>October</option>
+                      <option>November</option>
+                      <option>December</option>
+                    </select>
+                    <select
+                      className="form-select"
+                      value={year}
+                      onChange={(e) => setYear(e.target.value)}
+                    >
+                      <option>2025</option>
+                      <option>2024</option>
+                      <option>2023</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
-              <div className="col-md-auto">
-                <button
-                  className="btn btn-success mt-4"
-                  onClick={handleDownload}
-                  disabled={isLoading}
-                >
-                  <i className="bi bi-download me-1"></i> Download
-                </button>
-              </div>
-              <div className="col-md-auto">
-                <label className="form-label mb-1">Select Date Range:</label>
-                <div className="d-flex">
-                  <input
-                    type="date"
-                    className="form-control me-2"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                  <input
-                    type="date"
-                    className="form-control"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="col-md-auto">
-                <button
-                  className="btn btn-success mt-4"
-                  onClick={handleDownloadRange}
-                  disabled={isLoading}
-                >
-                  <i className="bi bi-download me-1"></i> Download Range
-                </button>
-              </div>
-              <div className="col-md-auto">
-                <button
-                  className="btn btn-info text-white mt-4"
-                  onClick={handleCreateClick}
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Creating...' : 'Create Receipt'}
-                </button>
-              </div>
-            </div>
-
-            {/* Receipts Table */}
-            <ReusableTable
-              title="Receipts"
-              data={receiptData}
-              columns={columns}
-              searchPlaceholder="Search receipts..."
-              initialEntriesPerPage={5}
-              showSearch={true}
-              showEntriesSelector={false}
-              showPagination={true}
-              isLoading={isLoading}
-            />
-          </div>
-        </div>
-
-        {/* Create Receipt Modal */}
-        {isModalOpen && (
-          <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-            <div className="modal-dialog modal-lg">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Create Receipt</h5>
+                <div className="col-md-auto">
                   <button
-                    type="button"
-                    className="btn-close"
-                    onClick={handleCloseModal}
-                    disabled={isLoading}
-                  ></button>
-                </div>
-                <div className="modal-body">
-                  <div className="row mb-4">
-                    <div className="col-md-6">
-                      <div className="company-info-recepits-table text-center">
-                        <label className="form-label-recepits-table">Navkar Exports</label>
-                        <p>NO.63/603 AND 64/604, NEAR JAIN TEMPLE</p>
-                        <p>1ST MAIN ROAD, T DASARAHALLI</p>
-                        <p>GST : 29AAAMPC7994B1ZE</p>
-                        <p>Email: akshay555.ak@gmail.com</p>
-                        <p>Phone: 09880990431</p>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="mb-3">
-                        <label className="form-label">Receipt Number</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          name="receiptNumber"
-                          value={formData.receiptNumber}
-                          onChange={handleInputChange}
-                          placeholder="REC0001"
-                          readOnly
-                        />
-                      </div>
-                      <div className="mb-3">
-                        <label className="form-label">Receipt Date</label>
-                        <input
-                          type="date"
-                          className="form-control"
-                          name="receiptDate"
-                          value={formData.receiptDate}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                      <div className="mb-3">
-                        <label className="form-label">Payment Method</label>
-                        <select
-                          className="form-select"
-                          name="paymentMethod"
-                          value={formData.paymentMethod}
-                          onChange={handleInputChange}
-                        >
-                          <option>Direct Deposit</option>
-                          <option>Online Payment</option>
-                          <option>Credit/Debit Card</option>
-                          <option>Demand Draft</option>
-                          <option>Cheque</option>
-                          <option>Cash</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Retailer and Invoice Selection Row */}
-                  <div className="row mb-4">
-                    <div className="col-md-6">
-                      <div className="mb-3">
-                        <label className="form-label">Retailer *</label>
-                        <select
-                          className="form-select"
-                          name="retailerId"
-                          value={formData.retailerId}
-                          onChange={handleRetailerChange}
-                          required
-                        >
-                          <option value="">Select Retailer</option>
-                                              {accounts
-  .filter(acc => acc.role === "retailer" && (acc.name || acc.display_name))
-  .map((acc) => (
-    <option key={acc.id} value={acc.id}>
-      {acc.gstin?.trim() ? acc.display_name : acc.name}
-    </option>
-  ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="mb-3">
-                        <label className="form-label">Invoice Number *</label>
-                        <select
-                          className="form-select"
-                          name="invoiceNumber"
-                          value={formData.invoiceNumber}
-                          onChange={handleInvoiceChange}
-                          required
-                        >
-                          <option value="">Select Invoice Number</option>
-                          {invoices.map((invoice) => (
-                            <option key={invoice.VoucherID} value={invoice.VchNo}>
-                              {invoice.VchNo}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Balance and Amount Row */}
-                  <div className="row mb-4">
-                    <div className="col-md-6">
-                      <div className="mb-3">
-                        <label className="form-label">Amount *</label>
-                        <div className="input-group custom-amount-receipts-table">
-                          <select
-                            className="form-select currency-select-receipts-table"
-                            name="currency"
-                            value={formData.currency}
-                            onChange={handleInputChange}
-                          >
-                            <option>INR</option>
-                            <option>USD</option>
-                            <option>EUR</option>
-                            <option>GBP</option>
-                          </select>
-                          <input
-                            type="number"
-                            className="form-control amount-input-receipts-table"
-                            name="amount"
-                            value={formData.amount}
-                            onChange={handleInputChange}
-                            placeholder={isFetchingBalance ? "Fetching balance..." : (invoiceBalance > 0 ? "Auto-filled from balance" : "Enter amount")}
-                            min="0"
-                            step="0.01"
-                            required
-                            disabled={isFetchingBalance}
-                          />
-                          {isFetchingBalance && (
-                            <div className="input-group-text">
-                              <div className="spinner-border spinner-border-sm" role="status">
-                                <span className="visually-hidden">Loading...</span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="mb-3">
-                        <label className="form-label">Note</label>
-                        <textarea
-                          className="form-control"
-                          rows="3"
-                          name="note"
-                          value={formData.note}
-                          onChange={handleInputChange}
-                          placeholder="Additional notes..."
-                        ></textarea>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bank and Transaction Details Row */}
-                  <div className="row mb-4">
-                    <div className="col-md-6">
-                      <div className="mb-3">
-                        <label className="form-label">Bank Name</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          name="bankName"
-                          value={formData.bankName}
-                          onChange={handleInputChange}
-                          placeholder="Bank Name"
-                        />
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="mb-3">
-                        <label className="form-label">Transaction Date</label>
-                        <input
-                          type="date"
-                          className="form-control"
-                          name="transactionDate"
-                          value={formData.transactionDate}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* File Upload and Reconciliation Row */}
-                  <div className="row mb-4">
-                    <div className="col-md-6">
-                      <div className="mb-3">
-                        <label className="form-label">Transaction Proof Document</label>
-                        <input 
-                          type="file" 
-                          className="form-control" 
-                          onChange={handleFileChange}
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                        />
-                        <small className="text-muted">
-                          {formData.transactionProofFile ? formData.transactionProofFile.name : 'No file chosen'}
-                        </small>
-                        
-                        {formData.transactionProofFile && (
-                          <div className="mt-2">
-                            <div className="d-flex align-items-center">
-                              <span className="badge bg-success me-2">
-                                <i className="bi bi-file-earmark-check"></i>
-                              </span>
-                              <span className="small">
-                                {formData.transactionProofFile.name} 
-                                ({Math.round(formData.transactionProofFile.size / 1024)} KB)
-                              </span>
-                              <button 
-                                type="button" 
-                                className="btn btn-sm btn-outline-danger ms-2"
-                                onClick={handleRemoveFile}
-                              >
-                                <i className="bi bi-x"></i>
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="mb-3">
-                        <label className="form-label">Reconciliation Option</label>
-                        <select
-                          className="form-select"
-                          name="reconciliationOption"
-                          value={formData.reconciliationOption}
-                          onChange={handleInputChange}
-                        >
-                          <option>Do Not Reconcile</option>
-                          <option>Customer Reconcile</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={handleCloseModal}
+                    className="btn btn-success mt-4"
+                    onClick={handleDownload}
                     disabled={isLoading}
                   >
-                    Close
+                    <i className="bi bi-download me-1"></i> Download
                   </button>
+                </div>
+                <div className="col-md-auto">
+                  <label className="form-label mb-1">Select Date Range:</label>
+                  <div className="d-flex">
+                    <input
+                      type="date"
+                      className="form-control me-2"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="col-md-auto">
                   <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleCreateReceipt}
+                    className="btn btn-success mt-4"
+                    onClick={handleDownloadRange}
+                    disabled={isLoading}
+                  >
+                    <i className="bi bi-download me-1"></i> Download Range
+                  </button>
+                </div>
+                <div className="col-md-auto">
+                  <button
+                    className="btn btn-info text-white mt-4"
+                    onClick={handleCreateClick}
                     disabled={isLoading}
                   >
                     {isLoading ? 'Creating...' : 'Create Receipt'}
                   </button>
                 </div>
               </div>
+
+              {/* Receipts Table */}
+              <ReusableTable
+                title="Receipts"
+                data={receiptData} 
+                columns={columns}
+                searchPlaceholder="Search receipts..."
+                initialEntriesPerPage={5}
+                showSearch={true}
+                showEntriesSelector={false} 
+                showPagination={true}
+                isLoading={isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Create Receipt Modal */}
+          {isModalOpen && (
+            <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+              <div className="modal-dialog modal-lg">
+                <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">Create Receipt</h5>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={handleCloseModal}
+                      disabled={isLoading}
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <div className="row mb-4">
+                      <div className="col-md-6">
+                        <div className="company-info-recepits-table text-center">
+                          <label className="form-label-recepits-table">Navkar Exports</label>
+                          <p>NO.63/603 AND 64/604, NEAR JAIN TEMPLE</p>
+                          <p>1ST MAIN ROAD, T DASARAHALLI</p>
+                          <p>GST : 29AAAMPC7994B1ZE</p>
+                          <p>Email: akshay555.ak@gmail.com</p>
+                          <p>Phone: 09880990431</p>
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="mb-3">
+                          <label className="form-label">Receipt Number</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            name="receiptNumber"
+                            value={formData.receiptNumber}
+                            onChange={handleInputChange}
+                            placeholder="REC0001"
+                            readOnly
+                          />
+                        </div>
+                        <div className="mb-3">
+                          <label className="form-label">Receipt Date</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            name="receiptDate"
+                            value={formData.receiptDate}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                        <div className="mb-3">
+                          <label className="form-label">Payment Method</label>
+                          <select
+                            className="form-select"
+                            name="paymentMethod"
+                            value={formData.paymentMethod}
+                            onChange={handleInputChange}
+                          >
+                            <option>Direct Deposit</option>
+                            <option>Online Payment</option>
+                            <option>Credit/Debit Card</option>
+                            <option>Demand Draft</option>
+                            <option>Cheque</option>
+                            <option>Cash</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Retailer and Invoice Selection Row */}
+                    <div className="row mb-4">
+                      <div className="col-md-6">
+                        <div className="mb-3">
+                          <label className="form-label">Retailer *</label>
+                          <select
+                            className="form-select"
+                            name="retailerId"
+                            value={formData.retailerId}
+                            onChange={handleRetailerChange}
+                            required
+                          >
+                            <option value="">Select Retailer</option>
+                        {accounts
+  .filter(acc => acc.role === "retailer" && (acc.name || acc.display_name))
+  .map((acc) => (
+    <option key={acc.id} value={acc.id}>
+      {acc.gstin?.trim() ? acc.display_name : acc.name}
+    </option>
+  ))}
+
+                          </select>
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="mb-1">
+                          <label className="form-label">Invoice Number *</label>
+                          <div className="input-group">
+<select
+  className="form-select"
+  name="invoiceNumber"
+  value={formData.invoiceNumber}
+  onChange={handleInvoiceChange}
+  disabled={!formData.retailerId}
+>
+  <option value="">Select Invoice Number</option>
+  {filteredInvoices.map((invoice) => (
+    <option key={invoice.VoucherID} value={invoice.InvoiceNumber}>
+      {invoice.InvoiceNumber}
+    </option>
+  ))}
+</select>
+
+
+               
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+<div className="row mb-4">
+  <div className="col-md-6">
+    <div className="mb-1">
+      <label className="form-label">Amount *</label>
+      <div className="input-group custom-amount-receipts-table">
+        <select
+          className="form-select currency-select-receipts-table"
+          name="currency"
+          value={formData.currency}
+          onChange={handleInputChange}
+        >
+          <option>INR</option>
+          <option>USD</option>
+          <option>EUR</option>
+          <option>GBP</option>
+        </select>
+        <input
+          type="number"
+          className="form-control amount-input-receipts-table"
+          name="amount"
+          value={formData.amount}
+          onChange={handleInputChange}
+          placeholder={isFetchingBalance ? "Fetching balance..." : (invoiceBalance > 0 ? "Auto-filled from balance" : "Enter amount")}
+          min="0"
+          step="0.01"
+          required
+          disabled={isFetchingBalance}
+        />
+        {isFetchingBalance && (
+          <div className="input-group-text">
+            <div className="spinner-border spinner-border-sm" role="status">
+              <span className="visually-hidden">Loading...</span>
             </div>
           </div>
         )}
       </div>
+      {isFetchingBalance ? (
+        <small className="text-info">
+          <i className="bi bi-arrow-clockwise me-1"></i>
+          Fetching invoice balance...
+        </small>
+      ) : invoiceBalance > 0 && formData.amount && formData.amount === invoiceBalance.toString() ? (
+        <small className="text-success">
+          <i className="bi bi-check-circle me-1"></i>
+          {/* Auto-filled from invoice balance (₹{invoiceBalance.toLocaleString('en-IN')}) */}
+        </small>
+      ) : null}
     </div>
   </div>
-);;
+</div>
+
+                    <div className="row mb-4">
+                      <div className="col-md-12">
+                        <div className="mb-3">
+                          <label className="form-label">Note</label>
+                          <textarea
+                            className="form-control"
+                            rows="3"
+                            name="note"
+                            value={formData.note}
+                            onChange={handleInputChange}
+                            placeholder="Additional notes..."
+                          ></textarea>
+                        </div>
+                      </div>
+                 
+                    </div>
+                    
+                    <div className="row">
+                      <div className="col-md-6">
+                        <div className="mb-3">
+                          <label className="form-label">Bank Name</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            name="bankName"
+                            value={formData.bankName}
+                            onChange={handleInputChange}
+                            placeholder="Bank Name"
+                          />
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="mb-3">
+                          <label className="form-label">Transaction Date</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            name="transactionDate"
+                            value={formData.transactionDate}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="row">
+                      <div className="col-md-6">
+                        
+                        <div className="mb-3">
+                          <label className="form-label">Reconciliation Option</label>
+                          <select
+                            className="form-select"
+                            name="reconciliationOption"
+                            value={formData.reconciliationOption}
+                            onChange={handleInputChange}
+                          >
+                            <option>Do Not Reconcile</option>
+                            <option>Customer Reconcile</option>
+                          </select>
+                        </div>
+                      </div>
+                           <div className="col-md-6">
+                        <div className="mb-3">
+                          <label className="form-label">Transaction Proof Document</label>
+                          <input 
+                            type="file" 
+                            className="form-control" 
+                            onChange={(e) => handleFileChange(e)}
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                          />
+                          <small className="text-muted">
+                            {formData.transactionProofFile ? formData.transactionProofFile.name : 'No file chosen'}
+                          </small>
+                          
+                          {formData.transactionProofFile && (
+                            <div className="mt-2">
+                              <div className="d-flex align-items-center">
+                                <span className="badge bg-success me-2">
+                                  <i className="bi bi-file-earmark-check"></i>
+                                </span>
+                                <span className="small">
+                                  {formData.transactionProofFile.name} 
+                                  ({Math.round(formData.transactionProofFile.size / 1024)} KB)
+                                </span>
+                                <button 
+                                  type="button" 
+                                  className="btn btn-sm btn-outline-danger ms-2"
+                                  onClick={() => handleRemoveFile()}
+                                >
+                                  <i className="bi bi-x"></i>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleCloseModal}
+                      disabled={isLoading}
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleCreateReceipt}
+                      disabled={isLoading || !formData.amount || parseFloat(formData.amount) <= 0}
+                    >
+                      {isLoading ? 'Creating...' : 'Create Receipt'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default KachaReceiptsTable;

@@ -1156,7 +1156,7 @@ const handleGenerateInvoice = async () => {
           state: accountDetails?.billing_state || periodInvoiceData.customerInfo?.state,
           id: periodInvoiceData.customerInfo?.id,
           email: accountDetails?.email || '',
-          phone: accountDetails?.phone_number || accountDetails?.mobile_number || '',
+          phone:  accountDetails?.mobile_number || '',
           pan: accountDetails?.pan || '',
           // Include credit info in payload
           credit_limit: creditLimit,

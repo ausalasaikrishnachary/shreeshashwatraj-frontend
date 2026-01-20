@@ -21,10 +21,10 @@ const ReceiptsTable = () => {
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
   const [activeTab, setActiveTab] = useState('Receipts');
-  const [invoices, setInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState('');
   const [invoiceBalance, setInvoiceBalance] = useState(0);
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
+const [invoices, setInvoices] = useState([]);
 
   const [formData, setFormData] = useState({
     receiptNumber: 'REC001',
@@ -167,7 +167,9 @@ const fetchInvoiceBalance = async (retailerId, invoiceNumber) => {
 
     // Check invoices data
     console.warn('No balance found from receipts API, checking invoices data');
-    const selectedInvoiceData = invoices.find(inv => inv.VchNo === invoiceNumber);
+const selectedInvoiceData = invoices.find(
+  inv => inv.InvoiceNumber === invoiceNumber
+);
     
     if (selectedInvoiceData) {
       const invoiceRetailerId = selectedInvoiceData.PartyID || selectedInvoiceData.AccountID;
@@ -450,11 +452,10 @@ const fetchReceipts = async () => {
       ? data
       : data.data || data.receipts || [];
 
-    const salesOnlyData = receiptsArray.filter(item =>
-      (item.data_type || "").trim().toLowerCase() === "sales"
-    );
-
-    const sortedData = salesOnlyData.sort((a, b) => {
+    /* ===============================
+       ✅ SORT DATA (NO EXTRA FILTER)
+    =============================== */
+    const sortedData = receiptsArray.sort((a, b) => {
       const dateA = new Date(a.receipt_date || a.created_at || a.Date);
       const dateB = new Date(b.receipt_date || b.created_at || b.Date);
       return (
@@ -477,25 +478,15 @@ const fetchReceipts = async () => {
         receipt.PartyName ||
         "N/A";
 
-      const amount = parseFloat(
-        receipt.paid_amount ||
-        0
-      );
-
-      const retailerId =
-        receipt.PartyID ||
-        receipt.retailer_id ||
-        "";
+      const amount = parseFloat(receipt.paid_amount || 0);
 
       return {
         ...receipt,
         id: voucherId,
         VoucherID: voucherId,
-        retailerId,
+        retailerId: receipt.PartyID || receipt.retailer_id || "",
         payee: retailerName,
-        VchNo:
-          receipt.VchNo ||
-          "",
+        VchNo: receipt.VchNo || "",
         amount: `₹ ${amount.toLocaleString("en-IN")}`,
         paid_amount: amount,
         Date: receipt.receipt_date || receipt.Date || receipt.created_at,
@@ -536,6 +527,7 @@ const fetchReceipts = async () => {
     setIsLoading(false);
   }
 };
+
 
 
   // Fetch accounts for retailer dropdown
@@ -659,18 +651,23 @@ const fetchReceipts = async () => {
   };
 
   // Handle invoice selection change
-  const handleInvoiceChange = (e) => {
-    const selectedVchNo = e.target.value;
-    setSelectedInvoice(selectedVchNo);
-    setFormData(prev => ({
-      ...prev,
-      invoiceNumber: selectedVchNo,
-      amount: '' 
-    }));
-    if (formData.retailerId) {
-      fetchInvoiceBalance(formData.retailerId, selectedVchNo);
-    }
-  };
+const handleInvoiceChange = (e) => {
+  const selectedInvoiceNumber = e.target.value;
+
+  const selectedInvoice = invoices.find(
+    inv => inv.InvoiceNumber === selectedInvoiceNumber
+  );
+
+  setFormData(prev => ({
+    ...prev,
+    invoiceNumber: selectedInvoiceNumber,
+    amount: selectedInvoice?.TotalAmount || ''
+  }));
+
+  setInvoiceBalance(
+    selectedInvoice ? parseFloat(selectedInvoice.TotalAmount) : 0
+  );
+};
 
   // Create receipt - Fixed with 2 second delay
   const handleCreateReceipt = async () => {
@@ -828,6 +825,12 @@ const fetchReceipts = async () => {
   const handleDownloadRange = () => {
     alert(`Downloading receipts from ${startDate} to ${endDate}`);
   };
+
+  const filteredInvoices = formData.retailerId
+  ? invoices.filter(
+      (inv) => String(inv.PartyID) === String(formData.retailerId)
+    )
+  : [];
 
   return (
     <div className="receipts-wrapper">
@@ -1068,20 +1071,22 @@ const fetchReceipts = async () => {
                         <div className="mb-1">
                           <label className="form-label">Invoice Number *</label>
                           <div className="input-group">
-                            <select
-                              className="form-select"
-                              name="invoiceNumber"
-                              value={formData.invoiceNumber}
-                              onChange={handleInvoiceChange}
-                              required
-                            >
-                              <option value="">Select Invoice Number</option>
-                              {invoices.map((invoice) => (
-                                <option key={invoice.VoucherID} value={invoice.VchNo}>
-                                  {invoice.VchNo}
-                                </option>
-                              ))}
-                            </select>
+<select
+  className="form-select"
+  name="invoiceNumber"
+  value={formData.invoiceNumber}
+  onChange={handleInvoiceChange}
+  disabled={!formData.retailerId}
+>
+  <option value="">Select Invoice Number</option>
+  {filteredInvoices.map((invoice) => (
+    <option key={invoice.VoucherID} value={invoice.InvoiceNumber}>
+      {invoice.InvoiceNumber}
+    </option>
+  ))}
+</select>
+
+
                
                           </div>
                         </div>
@@ -1132,7 +1137,7 @@ const fetchReceipts = async () => {
       ) : invoiceBalance > 0 && formData.amount && formData.amount === invoiceBalance.toString() ? (
         <small className="text-success">
           <i className="bi bi-check-circle me-1"></i>
-          Auto-filled from invoice balance (₹{invoiceBalance.toLocaleString('en-IN')})
+          {/* Auto-filled from invoice balance (₹{invoiceBalance.toLocaleString('en-IN')}) */}
         </small>
       ) : null}
     </div>
