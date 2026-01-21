@@ -46,7 +46,7 @@ const response = await fetch(
         bank_name: data.BankName || '',
         transaction_date: data.paid_date ? data.paid_date.split('T')[0] : '',
         reconciliation_option: data.status || '',
-        invoiceNumber: data.invoiceNumber || data.InvoiceNumber || data.invoice_number || data.Invoice_Number || data.inv_number || data.invoice_no || data.InvoiceNo || '',
+invoiceNumber: data.InvoiceNumber || '',
         transaction_proof: data.transaction_proof || data.transaction_proof_filename || '' // Add this
       });
 
@@ -164,7 +164,7 @@ const fetchInvoices = async () => {
       // formDataToSend.append('transaction_date', editFormData.transaction_date || '');
       // formDataToSend.append('reconciliation_option', editFormData.reconciliation_option);
       formDataToSend.append('DC', "C");
-       formDataToSend.append('invoiceNumber', editFormData.invoiceNumber || '');
+formDataToSend.append('invoiceNumber', editFormData.invoiceNumber);
 
 
 //       formDataToSend.append('PartyID', '2');
@@ -897,7 +897,7 @@ const fetchAllAccountsAndFindRetailer = async (retailerId) => {
   </div>
   <div className="row">
     <div className="col-md-6">
-  <p><strong>Invoice Number :</strong> {receipt.invoiceNumber || receipt.InvoiceNumber  || 'Not available'}</p>
+  <p><strong>Invoice Number :</strong> {receipt.InvoiceNumber  || 'Not available'}</p>
 </div>
 
 </div>

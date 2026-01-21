@@ -700,6 +700,13 @@ const handleCreateReceipt = async () => {
     alert('Please enter a valid amount');
     return;
   }
+
+   if (!formData.invoiceNumber) {
+  alert('Please select an invoice number');
+  return;
+}
+
+
   if (!formData.receiptDate) {
     alert('Please select a receipt date');
     return;

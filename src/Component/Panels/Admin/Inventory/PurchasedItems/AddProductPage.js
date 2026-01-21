@@ -1314,7 +1314,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                         placeholder="Opening Stock"
                         name="opening_stock"
                         type="number"
-                        value={formData.opening_stock || (batches.length > 0 ? batches[0].opening_stock : '')}
+                        value={formData.opening_stock}
                         onChange={handleChange}
                         required
                       />
