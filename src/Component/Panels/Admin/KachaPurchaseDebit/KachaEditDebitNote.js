@@ -256,7 +256,7 @@ const response = await axios.put(`${baseurl}/debitnoteupdate/${id}`, requestData
 
     if(response.data){
       window.alert("✅ Debit Note updated successfully!");
-      navigate("/purchase/debit-note");
+      navigate("/kachadebitnotetable");
     }
   } catch (err) {
     console.error("Error updating Debit note:", err);
