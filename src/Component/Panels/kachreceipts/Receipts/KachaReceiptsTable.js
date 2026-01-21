@@ -817,7 +817,7 @@ const handleInvoiceChange = (e) => {
   // View receipt details
   const handleViewReceipt = (receiptId) => {
     console.log('View receipt:', receiptId);
-    navigate(`/receipts_view/${receiptId}`);
+    navigate(`/kachareceipts_view/${receiptId}`);
   };
 
   const handleDownload = () => {

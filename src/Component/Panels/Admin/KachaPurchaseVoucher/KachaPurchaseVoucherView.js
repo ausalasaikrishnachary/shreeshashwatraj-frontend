@@ -48,10 +48,8 @@ const fetchReceipt = async () => {
         bank_name: data.BankName || '',
         transaction_date: data.paid_date ? data.paid_date.split('T')[0] : '',
         reconciliation_option: data.status || '',
-        invoiceNumber:
-          data.invoiceNumber ||
-          data.InvoiceNumber ||
-          ''
+          invoiceNumber: data.InvoiceNumber || '',
+
       });
 
       const retailerId = data.PartyID || data.retailer_id;
@@ -639,7 +637,7 @@ const fetchAllAccountsAndFindRetailer = async (retailerId) => {
                     </div>
                   </div>
                 </div>
-                <div className="row mb-3">
+<div className="row mb-3">
   <div className="col-md-6">
     <div className="mb-3">
       <label className="form-label">Invoice Number *</label>
@@ -652,14 +650,16 @@ const fetchAllAccountsAndFindRetailer = async (retailerId) => {
       >
         <option value="">Select Invoice Number</option>
         {invoices.map((invoice) => (
-          <option key={invoice.VoucherID} value={invoice.VchNo}>
-            {invoice.VchNo}
+          <option key={invoice.VoucherID} value={invoice.InvoiceNumber || invoice.InvoiceNumber}>
+            {/* Show both InvoiceNumber and VchNo if available */}
+            {invoice.InvoiceNumber} 
+            {invoice.VchNo && ` (Vch: ${invoice.VchNo})`}
           </option>
         ))}
       </select>
     </div>
   </div>
-</div>  
+</div>
                 <div className="row">
                   <div className="col-12">
                     <div className="mb-3">
