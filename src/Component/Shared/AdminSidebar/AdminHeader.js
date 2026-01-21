@@ -56,7 +56,8 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
    "/purchase/debit-note/edit":"Edit Purchase DebitNote",
    "/sales/credit_note":"Sales CreditNotes Table",
    "/sales/credit-note/edit":"Edit Sales CreditNote",
-   "/purchase/debit-note":"Purchae DebitNotes Table"
+   "/purchase/debit-note":"Purchae DebitNotes Table",
+   "/Purchase/editinvoice":"Purchase Edit Invoice"
 
   };
 

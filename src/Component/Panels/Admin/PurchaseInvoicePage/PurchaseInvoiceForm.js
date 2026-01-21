@@ -1007,7 +1007,7 @@ const handleSubmit = async (e) => {
 
               {/* Item Section - Filter products by Purchaseditems */}
               <div className="item-section mb-3 mt-3 bg-white p-3 rounded">
-                <h6 className="text-primary mb-3">Add Item</h6>
+                <h6 className="text-primary mb-3">Add Items</h6>
                 <Row className="align-items-end">
                   <Col md={2}>
                     <div className="d-flex justify-content-between align-items-center mb-1">
@@ -1238,22 +1238,42 @@ const handleSubmit = async (e) => {
                       />
                     </Col>
 
-          <Col md={1}>
-  {editingIndex !== null ? (
-    <div className="d-flex">
-      <Button variant="success" onClick={updateItem} className="me-1">
-        Update
+   <Col md={1} className="sales-invoice-add px-0">
+  <div className="d-flex flex-column h-100 justify-content-end">
+    {editingIndex !== null ? (
+      <>
+        <Button
+          variant="success"
+          onClick={updateItem}
+          className="sales-invoice-add-btn mb-1"
+          size="sm"
+        >
+          Update
+        </Button>
+
+        <Button
+          variant="secondary"
+          onClick={cancelEdit}
+          className="sales-invoice-cancel-btn"
+          size="sm"
+        >
+          <FaTimes />
+        </Button>
+      </>
+    ) : (
+      <Button
+        variant="success"
+        onClick={addItem}
+        className="sales-invoice-add-btn"
+        size="sm"
+      >
+        Add
       </Button>
-      <Button variant="secondary" onClick={cancelEdit}>
-        <FaTimes />
-      </Button>
-    </div>
-  ) : (
-    <Button variant="success" onClick={addItem} className="w-100">
-      Add
-    </Button>
-  )}
+    )}
+  </div>
 </Col>
+
+
                 </Row>
 
                 <Row className="mt-2">
@@ -1265,6 +1285,7 @@ const handleSubmit = async (e) => {
                       placeholder="Product description"
                       readOnly
                       className="border-primary bg-light"
+                        style={{width:'1150px', marginLeft:"10px"}}
                     />
                   </Col>
                 </Row>
@@ -1322,9 +1343,10 @@ const handleSubmit = async (e) => {
                               </small>
                             )}
                           </td>
-                   <td className="text-center ">
+                   <td className="salesinvoice-edit">
+                    <div className="d-flex flex-column gap-1 align-items-center">
   <Button 
-    variant="warning" 
+variant="warning" 
     size="sm" 
     onClick={() => editItem(index)}
     className="me-1"
@@ -1335,6 +1357,7 @@ const handleSubmit = async (e) => {
   <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
     <FaTrash />
   </Button>
+  </div >
 </td>
                         </tr>
                       ))

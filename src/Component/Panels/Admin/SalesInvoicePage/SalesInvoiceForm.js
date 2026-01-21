@@ -1278,7 +1278,7 @@ onChange={(e) => {
   </Row>
 </div>
               {/* Item Section */}
-              <div className="item-section mb-3 mt-3 bg-white p-3 rounded">
+              <div className="item-section mb-3 mt-3 bg-white p-2 rounded">
               <h6 className="text-primary mb-3">
   {editingItemIndex !== null ? `Edit Item (${editingItemIndex + 1})` : 'Add Items'}
 </h6>
@@ -1317,7 +1317,7 @@ if (selectedProduct) {
     price: selectedProduct.net_price || 0,
     gst: parseFloat(selectedProduct.gst_rate?.replace("%", "") || 0),
     description: selectedProduct.description || "",
-    discount: retailerDiscount,   // ← Keeps retailer discount
+    discount: retailerDiscount,  
     quantity: prev.quantity || 1,
     batch: "",
     batch_id: ""
@@ -1566,26 +1566,32 @@ const currentDiscount = itemForm.discount || 0;
       className="border-primary bg-light"
     />
   </Col>
- <Col md={1}>
-  <Button 
-    variant={editingItemIndex !== null ? "warning" : "success"} 
-    onClick={addItem} 
-    className="w-100 me-1"
-  >
-    {editingItemIndex !== null ? <FaSave /> : "Add"}
-  </Button>
-  {editingItemIndex !== null && (
+<Col md={1} className="sales-invoice-add px-0">
+  <div className="d-flex flex-column h-100 justify-content-end">
     <Button 
-      variant="secondary" 
-      onClick={cancelEdit} 
-      className="w-100 mt-1"
+      variant={editingItemIndex !== null ? "warning" : "success"} 
+      onClick={addItem} 
+      className="sales-invoice-add-btn mb-1"
+      size="sm"
     >
-      <FaTimes />
+      {editingItemIndex !== null ? <FaSave /> : "Add"}
     </Button>
-  )}
+
+    {editingItemIndex !== null && (
+      <Button 
+        variant="secondary" 
+        onClick={cancelEdit} 
+        className="sales-invoice-cancel-btn"
+        size="sm"
+      >
+        <FaTimes />
+      </Button>
+    )}
+  </div>
 </Col>
+
 </Row>
-                <Row className="mt-2">
+                <Row className="mt-3">
                   <Col>
                     <Form.Control
                       name="description"
@@ -1594,6 +1600,7 @@ const currentDiscount = itemForm.discount || 0;
                       placeholder="Product description"
                       readOnly
                       className="border-primary bg-light"
+                      style={{width:'1150px', marginLeft:"10px"}}
                     />
                   </Col>
                 </Row>
@@ -1661,24 +1668,26 @@ const currentDiscount = itemForm.discount || 0;
 
                             )}
                           </td>
-<td className="text-center salesinvoice-edit">
-  <Button 
-    variant="warning" 
-    size="sm" 
-    onClick={() => editItem(index)}
-    className="me-1"
-  >
-    <FaEdit />
-  </Button>
-  <Button 
-    variant="danger" 
-    size="sm" 
-    onClick={() => removeItem(index)}
-  >
-    <FaTrash />
-  </Button>
+<td className="salesinvoice-edit">
+  <div className="d-flex flex-column gap-1 align-items-center">
+    <Button 
+      variant="warning" 
+      size="sm" 
+      onClick={() => editItem(index)}
+      className="w-100"
+    >
+      <FaEdit />
+    </Button>
+    <Button 
+      variant="danger" 
+      size="sm" 
+      onClick={() => removeItem(index)}
+      className="w-100"
+    >
+      <FaTrash />
+    </Button>
+  </div>
 </td>
-
                         </tr>
                       ))
                     )}
