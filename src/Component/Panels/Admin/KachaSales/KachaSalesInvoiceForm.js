@@ -1150,7 +1150,7 @@ const KachaSalesInvoiceForm = ({ user }) => {
                     )}
                   </Col>
 
-                  <Col md={2}>
+                  <Col md={1}>
                     <Form.Label className="fw-bold">Qty</Form.Label>
                     <Form.Control
                       name="quantity"
