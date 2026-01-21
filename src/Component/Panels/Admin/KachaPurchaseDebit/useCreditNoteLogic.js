@@ -338,7 +338,7 @@ const useCreditNoteLogic = () => {
     await axios.post(`${baseurl}/transaction`, payload);
 
     alert(" Kacha Debit Note Created!");
-    navigate("/purchase/debit-note");
+    navigate("/kachadebitnotetable");
   };
 
   // ------------------------------------------------------------------------------------

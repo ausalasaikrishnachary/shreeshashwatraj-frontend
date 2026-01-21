@@ -86,7 +86,7 @@ const response = await fetch(`${baseurl}/api/credit-notes-table?data_type=stock 
     { name: 'Receipts', path: '/kachareceipts' },
     // { name: 'Quotations', path: '/sales/quotations' },
     // { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
-    { name: 'CreditNote', path: '/kachacreditenote' },
+    { name: 'CreditNote', path: '/kachacreditenotetable' },
     // { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
     // { name: 'Receivables', path: '/sales/receivables' }
   ];

@@ -360,7 +360,7 @@ const selectedInvoiceData = invoices.find(
     { name: 'Receipts', path: '/kachareceipts' },
     // { name: 'Quotations', path: '/sales/quotations' },
     // { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
-    { name: 'CreditNote', path: '/kachacreditenote' },
+    { name: 'CreditNote', path: '/kachacreditenotetable' },
     // { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
     // { name: 'Receivables', path: '/sales/receivables' }
   ];
