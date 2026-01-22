@@ -574,17 +574,12 @@ const handleUpdateCreditNote = async () => {
                     <div>Total IGST</div>
                     <div className="text-end">₹{totals.totalIGST}</div>
                   </div>
-                  <div className="d-flex justify-content-between align-items-center mt-2">
-                    <div style={{ width: "55%" }}>
-                      <select className="form-select form-select-sm">
-                        <option>Select Additional Charges</option>
-                      </select>
-                    </div>
-                    <div className="text-end" style={{ width: "40%" }}>
-                      <div className="fw-bold">Grand Total</div>
-                      <div className="fs-5 fw-bold">₹{totals.grandTotal}</div>
-                    </div>
-                  </div>
+              
+                    <div className="d-flex justify-content-between">
+                         <div>Grand Total</div>
+                      
+                      <div className="text-end">₹{totals.grandTotal}</div>
+                 </div>
                 </div>
               </div>
             </div>

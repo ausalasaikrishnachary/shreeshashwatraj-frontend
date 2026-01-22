@@ -1145,31 +1145,13 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                   <Row>
                     <Col md={6} className="d-flex flex-column align-items-start">
                       <div className="mb-2 fw-bold">Taxable Amount</div>
-                      <div className="mb-2 fw-bold">Additional Charges</div>
                       <div className="mb-2 fw-bold text-success">Grand Total</div>
                     </Col>
 
                     <Col md={6} className="d-flex flex-column align-items-end">
                       <div className="mb-2">₹{invoiceData.taxableAmount}</div>
 
-                      <Form.Select
-                        className="mb-2 border-primary"
-                        style={{ width: "100%" }}
-                        value={invoiceData.additionalCharge || ""}
-                        onChange={(e) => {
-                          handleInputChange(e);
-                          setInvoiceData(prev => ({
-                            ...prev,
-                            additionalChargeAmount: e.target.value ? 100 : 0
-                          }));
-                        }}
-                        name="additionalCharge"
-                      >
-                        <option value="">Select Additional Charges</option>
-                        <option value="Packing">Packing Charges</option>
-                        <option value="Transport">Transport Charges</option>
-                        <option value="Service">Service Charges</option>
-                      </Form.Select>
+            
 
                       <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
                     </Col>

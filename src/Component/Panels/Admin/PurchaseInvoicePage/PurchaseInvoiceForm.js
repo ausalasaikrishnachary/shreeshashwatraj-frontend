@@ -1390,7 +1390,6 @@ variant="warning"
                       <div className="mb-2 fw-bold">Taxable Amount</div>
                       <div className="mb-2 fw-bold">Total GST</div>
                       <div className="mb-2 fw-bold">Total Cess</div>
-                      <div className="mb-2 fw-bold">Additional Charges</div>
                       <div className="mb-2 fw-bold text-success">Grand Total</div>
                     </Col>
 
@@ -1399,24 +1398,7 @@ variant="warning"
                       <div className="mb-2">₹{invoiceData.totalGST}</div>
                       <div className="mb-2">₹{invoiceData.totalCess}</div>
 
-                      <Form.Select
-                        className="mb-2 border-primary"
-                        style={{ width: "100%" }}
-                        value={invoiceData.additionalCharge || ""}
-                        onChange={(e) => {
-                          handleInputChange(e);
-                          setInvoiceData(prev => ({
-                            ...prev,
-                            additionalChargeAmount: e.target.value ? 100 : 0
-                          }));
-                        }}
-                        name="additionalCharge"
-                      >
-                        <option value="">Select Additional Charges</option>
-                        <option value="Packing">Packing Charges</option>
-                        <option value="Transport">Transport Charges</option>
-                        <option value="Service">Service Charges</option>
-                      </Form.Select>
+               
 
                       <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
                     </Col>
