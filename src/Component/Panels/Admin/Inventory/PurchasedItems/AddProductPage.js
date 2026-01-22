@@ -112,6 +112,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
       const product = response.data;
       console.log('📦 Fetched product:', product);
 
+      
       // Handle images
       if (product.images) {
         try {
@@ -230,9 +231,9 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
           batchNumber: batch.batch_number || '',
           mfgDate: batch.mfg_date?.split('T')[0] || '',
           expDate: batch.exp_date?.split('T')[0] || '',
-          quantity: batch.quantity || '',
+          quantity: batch.quantity || batch.opening_stock || '', // Add batch.opening_stock as fallback
           min_sale_price: batch.min_sale_price || '',
-          opening_stock: batch.opening_stock || '',
+           opening_stock: batch.opening_stock || batch.quantity || '', // Map opening_stock
           sellingPrice: batch.selling_price || '',
           purchasePrice: batch.purchase_price || '',
           mrp: batch.mrp || '',
@@ -315,7 +316,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
       mfgDate: '',
       expDate: '',
       quantity: '', // Empty initially
-      min_sale_price: '',
+    min_sale_price: '', // Always empty for new batches
       sellingPrice: '', // Empty initially
       purchasePrice: '', // Empty initially
       mrp: '', // Empty initially
@@ -383,8 +384,44 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     if (name === 'mrp') {
       calculateAndUpdateMainMRP(updated);
     }
+      // NEW: Calculate min_sale_price when batch min_sale_price changes
+  if (name === 'min_sale_price') {
+    calculateAndUpdateMainMinSalePrice(updated);
+  }
   };
 
+  const calculateAndUpdateMainMinSalePrice = (updatedBatches) => {
+  // Calculate MINIMUM of all batch min_sale_prices
+  const minSalePrices = updatedBatches
+    .map(batch => parseFloat(batch.min_sale_price) || 0)
+    .filter(price => price > 0); // Only consider positive values
+  
+  let finalMinSalePrice = 0;
+  
+  if (minSalePrices.length > 0) {
+    // Use the minimum value from all batches
+    finalMinSalePrice = Math.min(...minSalePrices);
+  }
+  
+  // Update the main form min_sale_price field with minimum value
+  if (finalMinSalePrice > 0) {
+    setFormData(prev => ({
+      ...prev,
+      min_sale_price: finalMinSalePrice.toFixed(2)
+    }));
+  } else {
+    // If no batch has min_sale_price, clear the field
+    setFormData(prev => ({
+      ...prev,
+      min_sale_price: ''
+    }));
+  }
+  
+  console.log('💰 Min Sale Price calculated:', {
+    batchValues: updatedBatches.map(b => b.min_sale_price),
+    finalMinSalePrice: finalMinSalePrice
+  });
+};
   const calculateAndUpdateMainPurchasePrice = (updatedBatches) => {
     // Calculate SUM of all batch purchase prices
     const totalPurchasePrice = updatedBatches.reduce((sum, batch) => {
@@ -568,6 +605,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
         purchasePrice: name === 'purchase_price' ? value : batch.purchasePrice,
         sellingPrice: name === 'price' ? value : batch.sellingPrice, // Map price to sellingPrice in batches
         mrp: name === 'mrp' ? value : batch.mrp,
+        min_sale_price: name === 'min_sale_price' ? value : batch.min_sale_price,
         quantity: name === 'opening_stock' ? value : batch.quantity
       }));
       setBatches(updatedBatches);
@@ -659,30 +697,40 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     setFormData(updatedFormData);
   };
 
-  const addNewBatch = async () => {
-    try {
-      console.log('➕ Starting to add new batch...');
-      console.log('📊 Current batches count:', batches.length);
-      console.log('📦 Current product ID:', productId);
+const addNewBatch = async () => {
+  try {
+    console.log('➕ Starting to add new batch...');
+    console.log('📊 Current batches count:', batches.length);
+    console.log('📦 Current product ID:', productId);
 
-      const newBatch = await createDefaultBatch();
-      console.log('✅ New batch created:', {
-        batchNumber: newBatch.batchNumber,
-        id: newBatch.id
-      });
-
-      setBatches(prev => {
-        const updated = [...prev, newBatch];
-        console.log('📦 Batches after add:', updated.map(b => b.batchNumber));
-
-        return updated;
-      });
-
-    } catch (error) {
-      console.error('❌ Error adding new batch:', error);
-      showAlert('Error adding new batch. Please try again.', 'danger');
+    const newBatch = await createDefaultBatch();
+    
+    // Set min_sale_price from main form if it exists
+    if (formData.min_sale_price) {
+      newBatch.min_sale_price = formData.min_sale_price;
     }
-  };
+    
+    console.log('✅ New batch created:', {
+      batchNumber: newBatch.batchNumber,
+      id: newBatch.id,
+      min_sale_price: newBatch.min_sale_price
+    });
+
+    setBatches(prev => {
+      const updated = [...prev, newBatch];
+      console.log('📦 Batches after add:', updated.map(b => b.batchNumber));
+
+      // Recalculate min_sale_price after adding new batch
+      calculateAndUpdateMainMinSalePrice(updated);
+      
+      return updated;
+    });
+
+  } catch (error) {
+    console.error('❌ Error adding new batch:', error);
+    showAlert('Error adding new batch. Please try again.', 'danger');
+  }
+};
 
   const removeBatch = (id) => {
     if (batches.length <= 1 && maintainBatch) {
@@ -697,6 +745,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     calculateAndUpdateMainPurchasePrice(updated);
     calculateAndUpdateMainPrice(updated); // Changed from selling price to price
     calculateAndUpdateMainMRP(updated);
+      calculateAndUpdateMainMinSalePrice(updated); // NEW: Recalculate min_sale_price
   };
 
   const showAlert = (message, variant = 'success') => {
@@ -748,262 +797,339 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     }
   };
   
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsLoading(true);
 
-    if (formData.can_be_sold) {
-      const price = parseFloat(formData.price);
-
-      if (!price || price <= 0) {
-        showAlert('Price is required when "Can be Sold" is checked', 'danger');
-        setIsLoading(false);
-        return;
-      }
-
-      // Also validate that price is not less than purchase price
-      const purchasePrice = parseFloat(formData.purchase_price);
-      if (price < purchasePrice) {
-        showAlert('Price cannot be less than Purchase Price', 'danger');
-        setIsLoading(false);
-        return;
-      }
-    }
-
-    // Calculate total stock for batch-managed products
-    const calculateTotalStockFromBatches = () => {
-      if (!batches || batches.length === 0) return 0;
-      const total = batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
-      console.log('📊 Calculated total stock from batches:', total);
-      return total;
-    };
-
-    if (maintainBatch) {
-      // Check for required fields
-      const invalidBatches = batches.filter(
-        (batch) => !batch.batchNumber || !batch.quantity || !batch.purchasePrice || !batch.barcode
-      );
-
-      if (invalidBatches.length > 0) {
-        showAlert(
-          'Please fill all required fields in batch details (Batch Number, Quantity, Purchase Price, and Barcode)',
-          'danger'
+  if (createSalesCatalogCopy && productId) {
+    try {
+      const checkResponse = await axios.get(`${baseurl}/products/sales-catalog-check/${productId}`);
+      if (checkResponse.data.hasSalesCatalogCopy) {
+        const proceed = window.confirm(
+          'This product already has a Sales Catalog copy. Do you want to update the existing Sales Catalog item?'
         );
-        setIsLoading(false);
-        return;
-      }
-
-      // Validate unique batch numbers within the same product
-      const batchNumbers = batches.map(b => b.batchNumber);
-      const uniqueBatchNumbers = new Set(batchNumbers);
-      if (batchNumbers.length !== uniqueBatchNumbers.size) {
-        showAlert('Batch numbers must be unique within this product. Please check your batch numbers.', 'danger');
-        setIsLoading(false);
-        return;
-      }
-
-      // Check if batch number already exists in the same group
-      try {
-        const batchCheckPromises = batches.map(async (batch) => {
-          if (!batch.isExisting) {
-            try {
-              const response = await axios.get(`${baseurl}/batches/check-batch-number`, {
-                params: {
-                  batch_number: batch.batchNumber,
-                  group_by: formData.group_by || 'Purchaseditems',
-                  product_id: productId || ''
-                }
-              });
-              return response.data.exists;
-            } catch (error) {
-              console.error('Error checking batch number:', error);
-              return false;
-            }
-          }
-          return false;
-        });
-
-        const batchCheckResults = await Promise.all(batchCheckPromises);
-        const hasDuplicateBatches = batchCheckResults.some(exists => exists);
-
-        if (hasDuplicateBatches) {
-          showAlert('One or more batch numbers already exist in the same category. Please use unique batch numbers.', 'danger');
+        if (!proceed) {
           setIsLoading(false);
           return;
         }
-      } catch (error) {
-        console.error('Error during batch number validation:', error);
       }
+    } catch (error) {
+      console.error('Error checking sales catalog:', error);
+    }
+  }
+
+  // Your existing validation code...
+  if (formData.can_be_sold) {
+    const price = parseFloat(formData.price);
+
+    if (!price || price <= 0) {
+      showAlert('Price is required when "Can be Sold" is checked', 'danger');
+      setIsLoading(false);
+      return;
     }
 
+    const purchasePrice = parseFloat(formData.purchase_price);
+    if (price < purchasePrice) {
+      showAlert('Price cannot be less than Purchase Price', 'danger');
+      setIsLoading(false);
+      return;
+    }
+  }
+
+
+  if (maintainBatch) {
+    const invalidBatches = batches.filter(
+      (batch) => !batch.batchNumber || !batch.quantity || !batch.purchasePrice || !batch.barcode
+    );
+
+    if (invalidBatches.length > 0) {
+      showAlert(
+        'Please fill all required fields in batch details (Batch Number, Quantity, Purchase Price, and Barcode)',
+        'danger'
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    const batchNumbers = batches.map(b => b.batchNumber);
+    const uniqueBatchNumbers = new Set(batchNumbers);
+    if (batchNumbers.length !== uniqueBatchNumbers.size) {
+      showAlert('Batch numbers must be unique within this product. Please check your batch numbers.', 'danger');
+      setIsLoading(false);
+      return;
+    }
+
+    // Check if batch number already exists in the same group
     try {
-      // Calculate final opening stock
-      let finalOpeningStock = parseFloat(formData.opening_stock) || 0;
-      if (maintainBatch && batches.length > 0) {
-        finalOpeningStock = calculateTotalStockFromBatches();
-        console.log('🔄 Using batch-based opening stock:', finalOpeningStock);
-      }
-
-      // Calculate final purchase price from batches or form
-      let finalPurchasePrice = parseFloat(formData.purchase_price) || 0;
-      if (maintainBatch && batches.length > 0) {
-        const totalPurchasePrice = batches.reduce((sum, batch) => {
-          return sum + (parseFloat(batch.purchasePrice) || 0);
-        }, 0);
-        finalPurchasePrice = totalPurchasePrice || 0;
-        console.log('🔄 Using batch-based purchase price (total):', finalPurchasePrice);
-      }
-
-      // Calculate final price and MRP
-      let finalPrice = parseFloat(formData.price) || 0;
-      let finalMRP = parseFloat(formData.mrp) || 0;
-
-      if (maintainBatch && batches.length > 0) {
-        // Get total price and MRP from batches
-        const totalPrice = batches.reduce((sum, batch) => {
-          return sum + (parseFloat(batch.sellingPrice) || 0);
-        }, 0);
-
-        const totalMRP = batches.reduce((sum, batch) => {
-          return sum + (parseFloat(batch.mrp) || 0);
-        }, 0);
-
-        finalPrice = totalPrice;
-        finalMRP = totalMRP;
-
-        console.log('🔄 Using batch-based price (total):', finalPrice);
-        console.log('🔄 Using batch-based MRP (total):', finalMRP);
-      }
-
-      // Generate barcodes
-      let defaultBarcode = null;
-      if (!maintainBatch) {
-        defaultBarcode = await generateUniqueBarcode();
-      }
-
-      // Prepare batches for backend
-      const batchesForBackend = await Promise.all(batches.map(async (batch) => {
-        const batchData = {
-          batch_number: maintainBatch ? batch.batchNumber : 'DEFAULT',
-          mfg_date: maintainBatch ? (batch.mfgDate || null) : null,
-          exp_date: maintainBatch ? (batch.expDate || null) : null,
-          quantity: maintainBatch ? (parseFloat(batch.quantity) || 0) : finalOpeningStock,
-          min_sale_price: parseFloat(batch.min_sale_price) || 0,
-          selling_price: parseFloat(batch.sellingPrice) || finalPrice, // selling_price in batches table
-          purchase_price: parseFloat(batch.purchasePrice) || finalPurchasePrice,
-          mrp: parseFloat(batch.mrp) || finalMRP,
-          barcode: maintainBatch ? batch.barcode : defaultBarcode || await generateUniqueBarcode(),
-          group_by: formData.group_by || 'Purchaseditems',
-          isExisting: batch.isExisting || false
-        };
-
-        // For non-batch items, use a default batch structure
-        if (!maintainBatch) {
-          batchData.batch_number = 'DEFAULT';
-          batchData.quantity = finalOpeningStock;
-          batchData.purchase_price = finalPurchasePrice;
-          batchData.selling_price = finalPrice; // From main form price
-          batchData.mrp = finalMRP; // From main form mrp
+      const batchCheckPromises = batches.map(async (batch) => {
+        if (!batch.isExisting) {
+          try {
+            const response = await axios.get(`${baseurl}/batches/check-batch-number`, {
+              params: {
+                batch_number: batch.batchNumber,
+                group_by: formData.group_by || 'Purchaseditems',
+                product_id: productId || ''
+              }
+            });
+            return response.data.exists;
+          } catch (error) {
+            console.error('Error checking batch number:', error);
+            return false;
+          }
         }
-
-        if (batch.isExisting && batch.dbId && !batch.dbId.toString().includes('temp_')) {
-          batchData.id = batch.dbId;
-        }
-
-        console.log(`📦 Batch data - Selling Price: ${batchData.selling_price}, MRP: ${batchData.mrp}`);
-        return batchData;
-      }));
-
-      // If no batches exist, create a default batch
-      if (batchesForBackend.length === 0) {
-        const barcode = defaultBarcode || await generateUniqueBarcode();
-        batchesForBackend.push({
-          batch_number: 'DEFAULT',
-          mfg_date: null,
-          exp_date: null,
-          quantity: finalOpeningStock,
-          min_sale_price: parseFloat(formData.min_sale_price) || 0,
-          selling_price: finalPrice,
-          purchase_price: finalPurchasePrice,
-          mrp: finalMRP,
-          barcode: barcode,
-          group_by: formData.group_by || 'Purchaseditems',
-          isExisting: false
-        });
-      }
-
-      const dataToSend = {
-        ...formData,
-        images: images,
-        group_by: groupType,
-        opening_stock: finalOpeningStock,
-        purchase_price: finalPurchasePrice,
-        price: finalPrice, 
-        mrp: finalMRP,
-        stock_in: finalOpeningStock,
-        stock_out: 0,
-        balance_stock: finalOpeningStock,
-        batches: batchesForBackend,
-        maintain_batch: maintainBatch,
-        product_type: formData.product_type, 
-        min_sale_price: formData.min_sale_price || 0,
-      };
-
-      delete dataToSend.selling_price;
-
-      console.log('📤 Preparing data to send:', {
-        maintain_batch: maintainBatch,
-        product_purchase_price: dataToSend.purchase_price,
-        product_price: dataToSend.price, 
-        product_mrp: dataToSend.mrp,
-        batch_count: batchesForBackend.length,
-        min_sale_price: dataToSend.min_sale_price
+        return false;
       });
 
-      if (productId) {
-        // Editing existing product
-        console.log(`🔄 Updating product ID: ${productId}`);
+      const batchCheckResults = await Promise.all(batchCheckPromises);
+      const hasDuplicateBatches = batchCheckResults.some(exists => exists);
+
+      if (hasDuplicateBatches) {
+        showAlert('One or more batch numbers already exist in the same category. Please use unique batch numbers.', 'danger');
+        setIsLoading(false);
+        return;
+      }
+    } catch (error) {
+      console.error('Error during batch number validation:', error);
+    }
+  }
+
+  try {
+let finalOpeningStock = parseFloat(formData.opening_stock) || 0;
+if (maintainBatch && batches.length > 0) {
+  const batchTotal = batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
+  finalOpeningStock = batchTotal;
+  console.log('🔄 Using batch-based opening stock:', finalOpeningStock);
+} else if (!maintainBatch && batches.length > 0) {
+  const batchTotal = batches.reduce((total, batch) => total + (parseFloat(batch.quantity) || 0), 0);
+  finalOpeningStock = batchTotal > 0 ? batchTotal : finalOpeningStock;
+  console.log('🔄 Using batch quantity for opening stock:', finalOpeningStock);
+}
+
+    // Calculate final purchase price from batches or form
+    let finalPurchasePrice = parseFloat(formData.purchase_price) || 0;
+    if (maintainBatch && batches.length > 0) {
+      const totalPurchasePrice = batches.reduce((sum, batch) => {
+        return sum + (parseFloat(batch.purchasePrice) || 0);
+      }, 0);
+      finalPurchasePrice = totalPurchasePrice || 0;
+      console.log('🔄 Using batch-based purchase price (total):', finalPurchasePrice);
+    }
+
+    // Calculate final price and MRP
+    let finalPrice = parseFloat(formData.price) || 0;
+    let finalMRP = parseFloat(formData.mrp) || 0;
+
+    if (maintainBatch && batches.length > 0) {
+      const totalPrice = batches.reduce((sum, batch) => {
+        return sum + (parseFloat(batch.sellingPrice) || 0);
+      }, 0);
+
+      const totalMRP = batches.reduce((sum, batch) => {
+        return sum + (parseFloat(batch.mrp) || 0);
+      }, 0);
+
+      finalPrice = totalPrice;
+      finalMRP = totalMRP;
+
+      console.log('🔄 Using batch-based price (total):', finalPrice);
+      console.log('🔄 Using batch-based MRP (total):', finalMRP);
+    }
+
+    // Generate barcodes
+    let defaultBarcode = null;
+    if (!maintainBatch) {
+      defaultBarcode = await generateUniqueBarcode();
+    }
+
+    // Prepare batches for backend
+    const batchesForBackend = await Promise.all(batches.map(async (batch) => {
+      const batchData = {
+        batch_number: maintainBatch ? batch.batchNumber : 'DEFAULT',
+        mfg_date: maintainBatch ? (batch.mfgDate || null) : null,
+        exp_date: maintainBatch ? (batch.expDate || null) : null,
+        quantity: maintainBatch ? (parseFloat(batch.quantity) || 0) : finalOpeningStock,
+        min_sale_price: parseFloat(batch.min_sale_price) || 0,
+        selling_price: parseFloat(batch.sellingPrice) || finalPrice,
+        purchase_price: parseFloat(batch.purchasePrice) || finalPurchasePrice,
+        mrp: parseFloat(batch.mrp) || finalMRP,
+        barcode: maintainBatch ? batch.barcode : defaultBarcode || await generateUniqueBarcode(),
+        group_by: formData.group_by || 'Purchaseditems',
+        isExisting: batch.isExisting || false
+      };
+
+      if (!maintainBatch) {
+        batchData.batch_number = 'DEFAULT';
+        batchData.quantity = finalOpeningStock;
+        batchData.purchase_price = finalPurchasePrice;
+        batchData.selling_price = finalPrice;
+        batchData.mrp = finalMRP;
+      }
+
+      if (batch.isExisting && batch.dbId && !batch.dbId.toString().includes('temp_')) {
+        batchData.id = batch.dbId;
+      }
+
+      console.log(`📦 Batch data - Selling Price: ${batchData.selling_price}, MRP: ${batchData.mrp}`);
+      return batchData;
+    }));
+
+    // If no batches exist, create a default batch
+    if (batchesForBackend.length === 0) {
+      const barcode = defaultBarcode || await generateUniqueBarcode();
+      batchesForBackend.push({
+        batch_number: 'DEFAULT',
+        mfg_date: null,
+        exp_date: null,
+        quantity: finalOpeningStock,
+        min_sale_price: parseFloat(formData.min_sale_price) || 0,
+        selling_price: finalPrice,
+        purchase_price: finalPurchasePrice,
+        mrp: finalMRP,
+        barcode: barcode,
+        group_by: formData.group_by || 'Purchaseditems',
+        isExisting: false
+      });
+    }
+
+    const dataToSend = {
+      ...formData,
+      images: images,
+      group_by: groupType,
+      opening_stock: finalOpeningStock,
+      purchase_price: finalPurchasePrice,
+      price: finalPrice,
+      mrp: finalMRP,
+      stock_in: finalOpeningStock,
+      stock_out: 0,
+      balance_stock: finalOpeningStock,
+      batches: batchesForBackend,
+      maintain_batch: maintainBatch,
+      product_type: formData.product_type,
+      min_sale_price: formData.min_sale_price || 0,
+    };
+
+    delete dataToSend.selling_price;
+
+    console.log('📤 Preparing data to send:', {
+      maintain_batch: maintainBatch,
+      product_purchase_price: dataToSend.purchase_price,
+      product_price: dataToSend.price,
+      product_mrp: dataToSend.mrp,
+      batch_count: batchesForBackend.length,
+      min_sale_price: dataToSend.min_sale_price,
+      createSalesCatalogCopy: createSalesCatalogCopy
+    });
+
+    if (productId) {
+      // EDITING EXISTING PRODUCT
+      console.log(`🔄 Updating product ID: ${productId}`);
+      
+      if (createSalesCatalogCopy) {
+        // When editing and checkbox is checked, create/update a copy in Sales Catalog
+        console.log('🔄 Creating/Updating Sales Catalog copy...');
+        
+        // First, update the existing purchased product
+        const updateResponse = await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        console.log('✅ Purchased item updated:', updateResponse.data);
+        
+        // Prepare sales catalog data
+        const salesCatalogData = {
+          ...dataToSend,
+          group_by: 'Salescatalog',
+          purchase_product_id: productId, // Reference to the purchased item
+          can_be_sold: true, 
+          opening_stock: finalOpeningStock,
+          id: undefined,
+          created_at: undefined,
+          updated_at: undefined
+        };
+        
+        // Check if sales catalog already exists
+        try {
+          const checkResponse = await axios.get(`${baseurl}/products/sales-catalog-check/${productId}`);
+          
+          if (checkResponse.data.hasSalesCatalogCopy && checkResponse.data.salesCatalogProductId) {
+            // Update existing sales catalog item
+            console.log('🔄 Updating existing Sales Catalog item:', checkResponse.data.salesCatalogProductId);
+            const salesResponse = await axios.put(
+              `${baseurl}/products/${checkResponse.data.salesCatalogProductId}`,
+              salesCatalogData,
+              {
+                headers: { 'Content-Type': 'application/json' }
+              }
+            );
+            console.log('✅ Sales Catalog item updated:', salesResponse.data);
+            showAlert('Product updated and Sales Catalog copy updated successfully!', 'success');
+          } else {
+            // Create new sales catalog item
+            console.log('➕ Creating new Sales Catalog copy');
+            const salesResponse = await axios.post(`${baseurl}/products`, salesCatalogData, {
+              headers: { 'Content-Type': 'application/json' }
+            });
+            console.log('✅ Sales Catalog copy created:', salesResponse.data);
+            showAlert('Product updated and copied to Sales Catalog successfully!', 'success');
+          }
+        } catch (error) {
+          console.error('Error checking/creating sales catalog:', error);
+          // Fallback: Try to create new sales catalog item
+          try {
+            const salesResponse = await axios.post(`${baseurl}/products`, salesCatalogData, {
+              headers: { 'Content-Type': 'application/json' }
+            });
+            console.log('✅ Sales Catalog copy created (fallback):', salesResponse.data);
+            showAlert('Product updated and copied to Sales Catalog successfully!', 'success');
+          } catch (fallbackError) {
+            console.error('Fallback creation failed:', fallbackError);
+            showAlert('Product updated but failed to create Sales Catalog copy', 'warning');
+          }
+        }
+      } else {
+        // Normal update without copying to sales catalog
         const response = await axios.put(`${baseurl}/products/${productId}`, dataToSend, {
           headers: { 'Content-Type': 'application/json' }
         });
         console.log('✅ Update response:', response.data);
         showAlert('Product updated successfully!', 'success');
-        await fetchBatches(productId);
+      }
+      
+      await fetchBatches(productId);
+    } else {
+      // CREATING NEW PRODUCT
+      if (createSalesCatalogCopy) {
+        // Create both Purchaseditems and Salescatalog simultaneously
+        console.log('🔄 Creating products for both Purchaseditems and Salescatalog...');
+        const result = await createProductsSimultaneously(dataToSend);
+        console.log('✅ Both products created successfully:', result);
+        showAlert('Product added to Purchase Catalog and Sales Catalog successfully!', 'success');
       } else {
-        // Creating new product
-        if (createSalesCatalogCopy) {
-          // Create both Purchaseditems and Salescatalog simultaneously
-          console.log('🔄 Creating products for both Purchaseditems and Salescatalog...');
-          const result = await createProductsSimultaneously(dataToSend);
-          console.log('✅ Both products created successfully:', result);
-          showAlert('Product added to Purchase Catalog and Sales Catalog successfully!', 'success');
-        } else {
-          // Create only Purchaseditems product
-          console.log('➕ Creating Purchaseditems product only');
-          const response = await axios.post(`${baseurl}/products`, dataToSend, {
-            headers: { 'Content-Type': 'application/json' }
-          });
-          console.log('✅ Product created:', response.data);
-          showAlert('New product added successfully!', 'success');
-        }
+        // Create only Purchaseditems product
+        console.log('➕ Creating Purchaseditems product only');
+        const response = await axios.post(`${baseurl}/products`, dataToSend, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        console.log('✅ Product created:', response.data);
+        showAlert('New product added successfully!', 'success');
       }
-
-      setTimeout(() => navigate('/purchased_items'), 1500);
-    } catch (error) {
-      console.error('❌ Failed to add/update product:', error);
-      console.error('❌ Error response:', error.response?.data);
-
-      let errorMessage = error.response?.data?.message || error.message || 'Failed to add/update product';
-
-      if (errorMessage.includes('batch number') && errorMessage.includes('already exists')) {
-        errorMessage = 'Batch number already exists in this category. Please use a unique batch number.';
-      }
-
-      showAlert(errorMessage, 'danger');
-    } finally {
-      setIsLoading(false);
     }
-  };
+
+    setTimeout(() => navigate('/purchased_items'), 1500);
+  } catch (error) {
+    console.error('❌ Failed to add/update product:', error);
+    console.error('❌ Error response:', error.response?.data);
+
+    let errorMessage = error.response?.data?.message || error.message || 'Failed to add/update product';
+
+    if (errorMessage.includes('batch number') && errorMessage.includes('already exists')) {
+      errorMessage = 'Batch number already exists in this category. Please use a unique batch number.';
+    }
+
+    showAlert(errorMessage, 'danger');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const pageTitle = productId
     ? `Edit Product in Purchase Catalog`
@@ -1314,7 +1440,7 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                         placeholder="Opening Stock"
                         name="opening_stock"
                         type="number"
-                        value={formData.opening_stock}
+                        value={formData.opening_stock || (batches.length > 0 ? batches[0].opening_stock : '')}
                         onChange={handleChange}
                         required
                       />
@@ -1404,19 +1530,41 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
                     />
                   </div>
                 </div>
-
                 <div className="row mb-3">
-                  <div className="col">
-                    <Form.Label>Min Sale Price</Form.Label>
-                    <Form.Control
-                      placeholder="Min Sale Price"
-                      name="min_sale_price"
-                      type="number"
-                      step="0.01"
-                      value={formData.min_sale_price}
-                      onChange={handleChange}
-                    />
-                  </div>
+               {maintainBatch && batches.length > 0 && (
+    <div className="col">
+      <Form.Label>Min Sale Price (Auto-calculated)</Form.Label>
+      <Form.Control
+        placeholder="Min Sale Price"
+        name="min_sale_price"
+        type="number"
+        step="0.01"
+        value={formData.min_sale_price}
+        onChange={handleChange}
+        readOnly={maintainBatch}
+        className={maintainBatch ? "bg-light" : ""}
+      />
+      {maintainBatch && (
+        <Form.Text className="text-muted">
+          Auto-calculated as minimum of all batch min sale prices
+        </Form.Text>
+      )}
+    </div>
+  )}
+  
+  {!maintainBatch && (
+    <div className="col">
+      <Form.Label>Min Sale Price</Form.Label>
+      <Form.Control
+        placeholder="Min Sale Price"
+        name="min_sale_price"
+        type="number"
+        step="0.01"
+        value={formData.min_sale_price}
+        onChange={handleChange}
+      />
+    </div>
+  )}
                   <div className="col d-flex align-items-center">
                     <Form.Check
                       type="checkbox"
