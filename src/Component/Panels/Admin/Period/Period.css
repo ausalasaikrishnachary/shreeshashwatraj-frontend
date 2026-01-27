@@ -511,6 +511,31 @@
   background-color: #fff0f0 !important;
 }
 
+.p-period-tabs {
+  display: flex;
+  gap: 2px;
+  margin: 1.5rem 0 1rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.p-tab-btn {
+  padding: 12px 24px;
+  font-size: 1.05rem;
+  background: #f8f9fa;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.p-tab-btn.active {
+  border-bottom: 3px solid #0d6efd;
+  font-weight: 600;
+  color: #0d6efd;
+}
+
+
+
 /* Stock indicator in quantity column */
 .stock-warning {
   font-size: 0.8em;

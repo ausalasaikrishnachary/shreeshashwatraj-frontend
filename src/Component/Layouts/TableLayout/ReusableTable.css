@@ -150,9 +150,54 @@
   text-align: left;
   font-size: 0.9rem;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 300px;
+  overflow: visible !important; /* IMPORTANT: Make sure content is visible */
+  text-overflow: clip; /* Don't clip content */
+}
+
+/* Action buttons container */
+.rt-table__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+/* Action buttons */
+.rt-table__action-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  flex-shrink: 0; /* Prevent buttons from shrinking */
+  padding: 0;
+  background: transparent;
+}
+
+
+.rt-table__action-btn--view {
+  color: #1976d2;
+}
+
+.rt-table__action-btn--edit {
+  color: #f57c00;
+}
+
+.rt-table__action-btn--delete {
+  color: #d32f2f;
+}
+
+/* Special styling for action cells */
+.rt-table__cell--actions {
+  min-width: 150px !important; /* Ensure enough width for buttons */
+  white-space: nowrap !important;
 }
 
 .rt-footer {
@@ -176,6 +221,10 @@
   padding: 0;
   margin: 0;
   gap: 4px;
+}
+
+.rt-pagination__item {
+  display: inline-block;
 }
 
 .rt-pagination__item--active .rt-pagination__link {
@@ -238,6 +287,21 @@
     padding: 12px 8px;
   }
 
+  /* Mobile adjustments for action buttons */
+  .rt-table__actions {
+    gap: 6px;
+  }
+
+  .rt-table__action-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+
+  .rt-table__cell--actions {
+    min-width: 120px !important;
+  }
+
   .rt-footer {
     flex-direction: column;
     align-items: stretch;
@@ -266,5 +330,15 @@
   .rt-entries-select {
     justify-content: space-between;
     width: 100%;
+  }
+
+  .rt-table__actions {
+    gap: 4px;
+  }
+
+  .rt-table__action-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
   }
 }

@@ -27,6 +27,7 @@ const Period = () => {
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
   const [nextInvoiceNumber, setNextInvoiceNumber] = useState("");
   const [itemApprovalStatus, setItemApprovalStatus] = useState({}); 
+const [activeTab, setActiveTab] = useState("pending");
 
   useEffect(() => {
     fetchOrders();
@@ -1001,16 +1002,32 @@ const fetchOrders = async () => {
   }
 };
 
-  const filteredOrders = orders.filter(order => {
-    const customerMatch = order.customer_name.toLowerCase().includes(search.toLowerCase());
-    let startMatch = true;
-    let endMatch = true;
 
-    if (startDate) startMatch = new Date(order.created_at) >= new Date(startDate);
-    if (endDate) endMatch = new Date(order.created_at) <= new Date(endDate);
+const pendingOrders = orders.filter(order =>
+  order.items.some(item => item.invoice_status !== 1)
+);
 
-    return customerMatch && startMatch && endMatch;
-  });
+const completedOrders = orders.filter(order =>
+  order.items.every(item => item.invoice_status === 1)
+);
+
+const displayedOrders = activeTab === "pending" ? pendingOrders : completedOrders;
+
+
+
+
+const filteredOrders = orders.filter(order => {
+  const customerMatch = order.customer_name.toLowerCase().includes(search.toLowerCase());
+  let dateMatch = true;
+  if (startDate) dateMatch = dateMatch && new Date(order.created_at) >= new Date(startDate);
+  if (endDate)   dateMatch = dateMatch && new Date(order.created_at) <= new Date(endDate);
+
+  if (activeTab === "pending") {
+    return customerMatch && dateMatch && order.items.some(item => item.invoice_status !== 1);
+  } else {
+    return customerMatch && dateMatch && order.items.some(item => item.invoice_status === 1);
+  }
+});
 
   if (loading) return <div className="p-admin-layout">Loading orders...</div>;
 
@@ -1053,6 +1070,20 @@ const fetchOrders = async () => {
               </div>
             </div>
           </div>
+<div className="p-period-tabs" style={{ display: 'flex', justifyContent: 'center', gap: '50px' }}>
+  <button
+    className={`p-tab-btn ${activeTab === "pending" ? "active" : ""}`}
+    onClick={() => setActiveTab("pending")}
+  >
+    Orders (Pending Invoice)
+  </button>
+  <button
+    className={`p-tab-btn ${activeTab === "completed" ? "active" : ""}`}
+    onClick={() => setActiveTab("completed")}
+  >
+    Orders Completed (Invoiced)
+  </button>
+</div>
 
           <div className="p-table-container">
             <table className="p-customers-table">

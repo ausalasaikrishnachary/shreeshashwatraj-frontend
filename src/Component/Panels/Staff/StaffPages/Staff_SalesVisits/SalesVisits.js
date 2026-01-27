@@ -15,6 +15,8 @@ function SalesVisits() {
   const [error, setError] = useState(null);
   const [editingVisitId, setEditingVisitId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState('');
 
   // Get logged-in user
   const storedData = localStorage.getItem("user");
@@ -103,7 +105,14 @@ function SalesVisits() {
       sales_amount: visit.sales_amount,
       transaction_type: visit.transaction_type,
       visit_type: visit.visit_type,
+      location: visit.location || '',
+      image_filename: visit.image_filename || ''
     });
+  };
+
+  const handleShowLocation = (location) => {
+    setSelectedLocation(location);
+    setShowLocationModal(true);
   };
 
   const handleUpdateVisit = async (visitId) => {
@@ -181,16 +190,15 @@ function SalesVisits() {
     <StaffMobileLayout>
       <div className="sales-visits-mobile">
         <div className="page-header">
-     <div className="header-content">
-  <div className="header-text">
-    <h1>Sales Visits ({salesVisitsData.length})</h1>
-    <p>Track your retailer visits and outcomes</p>
-  </div>
-  <button className="log-visit-btn" onClick={handleLogVisit}>
-    + Log Visit
-  </button>
-</div>
-
+          <div className="header-content">
+            <div className="header-text">
+              <h1>Sales Visits ({salesVisitsData.length})</h1>
+              <p>Track your retailer visits and outcomes</p>
+            </div>
+            <button className="log-visit-btn" onClick={handleLogVisit}>
+              + Log Visit
+            </button>
+          </div>
         </div>
 
         {error && <div className="error-message">{error}</div>}
@@ -296,10 +304,31 @@ function SalesVisits() {
                         <option value="Issue Resolution">Issue Resolution</option>
                       </select>
 
+                      {/* Location field in edit form */}
+                      <label>Location</label>
+                      <textarea
+                        name="location"
+                        value={editFormData.location || ''}
+                        onChange={handleInputChange}
+                        className="edit-input"
+                        rows="2"
+                        placeholder="Location"
+                      />
+
+                      {/* Image filename field in edit form */}
+                      <label>Image Filename</label>
+                      <input
+                        type="text"
+                        name="image_filename"
+                        value={editFormData.image_filename || ''}
+                        onChange={handleInputChange}
+                        className="edit-input"
+                        placeholder="Image filename"
+                      />
+
                       <div className="edit-actions">
-                      
                         <button className="cancel-btn" onClick={() => setEditingVisitId(null)}>Cancel</button>
-                          <button className="update-btn" onClick={() => handleUpdateVisit(visit.id)}>Update</button>
+                        <button className="update-btn" onClick={() => handleUpdateVisit(visit.id)}>Update</button>
                       </div>
                     </div>
                   ) : (
@@ -317,6 +346,22 @@ function SalesVisits() {
                           <span className="detail-label">Date & Type:</span>
                           <span className="detail-value">{new Date(visit.created_at).toLocaleDateString("en-GB")} • {visit.visit_type}</span>
                         </div>
+                        
+                        {/* Location row - show only if exists */}
+                        {visit.location && (
+                          <div className="detail-row">
+                            <span className="detail-label">Location:</span>
+                            <span 
+                              className="detail-value location-text" 
+                              style={{cursor: 'pointer', color: '#007bff'}}
+                              onClick={() => handleShowLocation(visit.location)}
+                              title="Click to view full location"
+                            >
+                              {visit.location.length > 30 ? `${visit.location.substring(0, 30)}...` : visit.location}
+                            </span>
+                          </div>
+                        )}
+                        
                         <div className="detail-row">
                           <span className="detail-label">Sales Amount:</span>
                           <span className="detail-value">{visit.sales_amount}</span>
@@ -325,6 +370,22 @@ function SalesVisits() {
                           <span className="detail-label">Transaction Type:</span>
                           <span className="detail-value">{visit.transaction_type}</span>
                         </div>
+                        
+                        {/* Image row - show only if exists */}
+                        {visit.image_filename && (
+                          <div className="detail-row">
+                            <span className="detail-label">Photo:</span>
+                            <span className="detail-value">
+                              <button 
+                                className="view-image-btn"
+                                onClick={() => window.open(`${baseurl}/uploads/visits/${visit.image_filename}`, '_blank')}
+                              >
+                                📸 View Photo
+                              </button>
+                            </span>
+                          </div>
+                        )}
+                        
                         <div className="detail-row">
                           <span className="detail-label">Staff:</span>
                           <span className="detail-value">{visit.staff_name}</span>
@@ -343,6 +404,24 @@ function SalesVisits() {
                 </div>
               ))
             )}
+          </div>
+        )}
+        
+        {/* Location Modal */}
+        {showLocationModal && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h3>Location Details</h3>
+                <button className="modal-close" onClick={() => setShowLocationModal(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <p className="full-location">{selectedLocation}</p>
+              </div>
+              <div className="modal-footer">
+                <button className="modal-btn" onClick={() => setShowLocationModal(false)}>Close</button>
+              </div>
+            </div>
           </div>
         )}
       </div>

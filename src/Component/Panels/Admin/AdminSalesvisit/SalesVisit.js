@@ -6,8 +6,8 @@ import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import { useParams, useNavigate } from "react-router-dom";
-import {  FaSearch} from "react-icons/fa";
-
+import { FaSearch, FaMapMarkerAlt } from "react-icons/fa";
+import { MdImage } from "react-icons/md";
 
 const SalesVisit = ({ mode = "list" }) => {
   const { id } = useParams();
@@ -16,17 +16,23 @@ const SalesVisit = ({ mode = "list" }) => {
   const [salesVisitsData, setSalesVisitsData] = useState([]);
   const [selectedVisit, setSelectedVisit] = useState(null);
   const [loading, setLoading] = useState(true);
-const [filteredSalesVisits, setFilteredSalesVisits] = useState([]); // filtered based on search
-
+  const [filteredSalesVisits, setFilteredSalesVisits] = useState([]);
   const [error, setError] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  
   const [formData, setFormData] = useState({
+    retailer_id: "",
     retailer_name: "",
+    staff_id: "",
     staff_name: "",
     visit_type: "",
     visit_outcome: "",
     sales_amount: "",
     transaction_type: "",
     description: "",
+    location: "",
+    image_filename: "",
     created_at: "",
   });
 
@@ -47,6 +53,8 @@ const [filteredSalesVisits, setFilteredSalesVisits] = useState([]); // filtered 
             month: "2-digit",
             year: "numeric",
           }),
+          location: item.location || "No location",
+          image_url: item.image_url || null,
         }));
         setSalesVisitsData(mappedData);
 
@@ -54,7 +62,18 @@ const [filteredSalesVisits, setFilteredSalesVisits] = useState([]); // filtered 
           const visit = mappedData.find((v) => v.id.toString() === id);
           if (visit) {
             setSelectedVisit(visit);
-            setFormData(visit);
+            setFormData({
+              ...visit,
+              created_at: new Date(visit.created_at).toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              }),
+            });
+            // Set image preview if exists
+            if (visit.image_url) {
+              setImagePreview(visit.image_url);
+            }
           } else {
             setError(`Sales visit with ID ${id} not found`);
           }
@@ -86,8 +105,32 @@ const [filteredSalesVisits, setFilteredSalesVisits] = useState([]); // filtered 
       window.alert("Invalid date format. Use DD/MM/YYYY");
       return;
     }
+    
     try {
-      const res = await axios.put(`${baseurl}/api/salesvisits/${id}`, formData);
+      const formDataToSend = new FormData();
+      
+      // Append all form data
+      formDataToSend.append('retailer_id', formData.retailer_id);
+      formDataToSend.append('retailer_name', formData.retailer_name);
+      formDataToSend.append('staff_id', formData.staff_id);
+      formDataToSend.append('staff_name', formData.staff_name);
+      formDataToSend.append('visit_type', formData.visit_type);
+      formDataToSend.append('visit_outcome', formData.visit_outcome);
+      formDataToSend.append('sales_amount', formData.sales_amount || '');
+      formDataToSend.append('transaction_type', formData.transaction_type || '');
+      formDataToSend.append('description', formData.description || '');
+      formDataToSend.append('location', formData.location || '');
+      
+      if (imageFile) {
+        formDataToSend.append('image', imageFile);
+      }
+      
+      const res = await axios.put(`${baseurl}/api/salesvisits/${id}`, formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
       if (res.data.success) {
         window.alert(`Sales Visit for ${formData.retailer_name} updated successfully ✅`);
         navigate("/sales_visit");
@@ -100,8 +143,137 @@ const [filteredSalesVisits, setFilteredSalesVisits] = useState([]); // filtered 
     }
   };
 
+  // Function to get current location
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          
+          // Call backend endpoint for reverse geocoding
+          const response = await fetch(
+            `${baseurl}/api/reverse-geocode?lat=${latitude}&lon=${longitude}`
+          );
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          if (data.success && data.address) {
+            setFormData(prev => ({
+              ...prev,
+              location: data.address
+            }));
+          } else {
+            // Fallback to coordinates
+            setFormData(prev => ({
+              ...prev,
+              location: `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`
+            }));
+          }
+        } catch (error) {
+          console.error("Error fetching location:", error);
+          const { latitude, longitude } = position.coords;
+          setFormData(prev => ({
+            ...prev,
+            location: `Coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+          }));
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            alert("Location access denied. Please enable location services.");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            alert("Location information unavailable.");
+            break;
+          case error.TIMEOUT:
+            alert("Location request timed out.");
+            break;
+          default:
+            alert("An unknown error occurred while getting location.");
+            break;
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
+
+  // Handle image change for editing
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.match('image.*')) {
+        alert("Please select an image file (JPG, PNG, GIF)");
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Image size should be less than 5MB");
+        return;
+      }
+      
+      setImageFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Remove image
+  const removeImage = () => {
+    setImagePreview(null);
+    setImageFile(null);
+    setFormData(prev => ({
+      ...prev,
+      image_filename: ""
+    }));
+    const fileInput = document.getElementById("editImageUpload");
+    if (fileInput) {
+      fileInput.value = "";
+    }
+  };
+
+  // Function to view image in new tab
+  const handleViewImage = (imageUrl) => {
+    if (imageUrl) {
+      window.open(imageUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      window.alert("No image available for this visit");
+    }
+  };
+
+  // Function to view location
+  const handleViewLocation = (location) => {
+    if (location && location !== "No location") {
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+      window.open(mapsUrl, '_blank');
+    } else {
+      window.alert("No location data available");
+    }
+  };
+
   const handleView = (id) => navigate(`/sales_visit/view/${id}`);
   const handleEdit = (id) => navigate(`/sales_visit/edit/${id}`);
+  
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Are you sure you want to delete visit by ${name}?`)) return;
 
@@ -120,64 +292,165 @@ const [filteredSalesVisits, setFilteredSalesVisits] = useState([]); // filtered 
   };
 
   // Filter data based on search input
-useEffect(() => {
-  if (salesVisitsData.length > 0) {
-    const filtered = salesVisitsData.filter((item) => 
-      (item.id?.toString().includes(searchTerm)) ||
-      (item.retailer_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.staff_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.visit_type?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.visit_outcome?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.transaction_type?.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-    setFilteredSalesVisits(filtered);
-  }
-}, [searchTerm, salesVisitsData]);
+  useEffect(() => {
+    if (salesVisitsData.length > 0) {
+      const filtered = salesVisitsData.filter((item) => 
+        (item.id?.toString().includes(searchTerm)) ||
+        (item.retailer_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.staff_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.visit_type?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.visit_outcome?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.transaction_type?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.location?.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      setFilteredSalesVisits(filtered);
+    }
+  }, [searchTerm, salesVisitsData]);
 
-
+  // Table columns configuration
   const columns = [
-    { title: "ID", key: "id" },
-    { title: "Retailer Name", key: "retailer_name" },
-    { title: "Staff Name", key: "staff_name" },
-    { title: "Visit Type", key: "visit_type" },
-    { title: "Visit Outcome", key: "visit_outcome" },
-    { title: "Sales Amount", key: "sales_amount" },
-    { title: "Transaction Type", key: "transaction_type" },
-    { title: "Description", key: "description" },
-    { title: "Date", key: "created_at" },
- {
-  title: "Actions",
-  key: "actions",
-  render: (value, row) => {
-    if (!row) return null; // safeguard
-    return (
-      <div className="retailers-table__actions">
-        <button
-          className="retailers-table__action-btn retailers-table__action-btn--view"
-          onClick={() => handleView(row.id)}
-          title="View"
-        >
-          👁️
-        </button>
-        <button
-          className="retailers-table__action-btn retailers-table__action-btn--edit"
-          onClick={() => handleEdit(row.id)}
-          title="Edit"
-        >
-          ✏️
-        </button>
-        <button
-          className="retailers-table__action-btn retailers-table__action-btn--delete"
-          onClick={() => handleDelete(row.id, row.retailer_name || row.staff_name)}
-          title="Delete"
-        >
-          🗑️
-        </button>
-      </div>
-    );
-  },
-}
-
+    // { 
+    //   title: "ID", 
+    //   key: "id", 
+    //   width: "80px",
+    //   className: "rt-table__cell--id"
+    // },
+    { 
+      title: "RETAILER NAME", 
+      key: "retailer_name", 
+      width: "180px",
+      className: "rt-table__cell--retailer"
+    },
+    { 
+      title: "STAFF NAME", 
+      key: "staff_name", 
+      width: "150px",
+      className: "rt-table__cell--staff"
+    },
+    // { 
+    //   title: "VISIT TYPE", 
+    //   key: "visit_type", 
+    //   width: "120px",
+    //   className: "rt-table__cell--visit-type"
+    // },
+    { 
+      title: "VISIT OUTCOME", 
+      key: "visit_outcome", 
+      width: "140px",
+      className: "rt-table__cell--outcome"
+    },
+    { 
+      title: "SALES AMOUNT", 
+      key: "sales_amount", 
+      width: "140px",
+      className: "rt-table__cell--amount",
+      render: (value) => `₹${value || 0}`
+    },
+    { 
+      title: "TRANSACTION TYPE", 
+      key: "transaction_type", 
+      width: "160px",
+      className: "rt-table__cell--transaction"
+    },
+    { 
+      title: "LOCATION", 
+      key: "location",
+      width: "220px",
+      className: "rt-table__cell--location",
+      render: (value, row) => {
+        if (!row) return "No location";
+        return (
+          <div className="location-cell">
+            <span className="location-text">
+              {value && value.length > 25 ? `${value.substring(0, 25)}...` : value || "No location"}
+            </span>
+            {value && value !== "No location" && (
+              <button
+                className="rt-table__action-btn rt-table__action-btn--location"
+                onClick={() => handleViewLocation(value)}
+                title="View on map"
+              >
+                <FaMapMarkerAlt />
+              </button>
+            )}
+          </div>
+        );
+      }
+    },
+    { 
+      title: "IMAGE", 
+      key: "image_url",
+      width: "120px",
+      className: "rt-table__cell--image",
+      render: (value, row) => {
+        if (!row || !value) return <span className="no-image">No image</span>;
+        
+        return (
+          <div className="image-cell">
+            <div 
+              className="image-thumbnail"
+              onClick={() => handleViewImage(value)}
+              title="Click to view image in new tab"
+            >
+              <img 
+                src={value} 
+                alt="Visit" 
+                className="thumbnail-img"
+                loading="lazy"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.parentElement.innerHTML = '<span class="no-image">Error</span>';
+                }}
+              />
+              <div className="image-overlay">
+                <MdImage className="view-icon" />
+                <span className="view-text">View</span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+    },
+    { 
+      title: "DATE", 
+      key: "created_at", 
+      width: "120px",
+      className: "rt-table__cell--date"
+    },
+    {
+      title: "ACTIONS",
+      key: "actions",
+      width: "180px",
+      className: "rt-table__cell--actions",
+      render: (value, row) => {
+        if (!row) return null;
+        return (
+          <div className="rt-table__actions">
+            <button
+              className="rt-table__action-btn rt-table__action-btn--view"
+              onClick={() => handleView(row.id)}
+              title="View"
+            >
+              👁️
+            </button>
+            <button
+              className="rt-table__action-btn rt-table__action-btn--edit"
+              onClick={() => handleEdit(row.id)}
+              title="Edit"
+            >
+              ✏️
+            </button>
+            <button
+              className="rt-table__action-btn rt-table__action-btn--delete"
+              onClick={() => handleDelete(row.id, row.retailer_name || row.staff_name)}
+              title="Delete"
+            >
+              🗑️
+            </button>
+          </div>
+        );
+      },
+    }
   ];
 
   const renderViewMode = () => (
@@ -224,6 +497,57 @@ useEffect(() => {
               <label>Date (DD/MM/YYYY)</label>
               <input type="text" value={selectedVisit.created_at} readOnly />
             </div>
+          </div>
+          <div className="form-group form-group-row">
+            <div className="full-width">
+              <label>Location</label>
+              <div className="location-display">
+                <input 
+                  type="text" 
+                  value={selectedVisit.location || "No location"} 
+                  readOnly 
+                />
+                {selectedVisit.location && selectedVisit.location !== "No location" && (
+                  <button
+                    type="button"
+                    className="location-view-btn"
+                    onClick={() => handleViewLocation(selectedVisit.location)}
+                    title="View on map"
+                  >
+                    <FaMapMarkerAlt />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="form-group form-group-row">
+       <div className="full-width">
+  <label>Visit Image</label>
+
+  <div className="image-display">
+    {selectedVisit.image_url ? (
+      <>
+        {/* IMAGE PREVIEW */}
+        <img
+          src={selectedVisit.image_url}
+          alt="Visit"
+          className="visit-image-preview"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = "/no-image.png"; // optional fallback
+          }}
+        />
+
+       
+
+    
+      </>
+    ) : (
+      <input type="text" value="No image available" readOnly />
+    )}
+  </div>
+</div>
+
           </div>
           <div className="form-group full-width">
             <label>Description</label>
@@ -329,7 +653,73 @@ useEffect(() => {
                 required
               />
             </div>
+            <div>
+              <label>Location</label>
+              <div className="location-input-wrapper">
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  placeholder="Enter location"
+                />
+                <button
+                  type="button"
+                  className="location-icon-btn"
+                  onClick={getCurrentLocation}
+                  title="Get current location"
+                >
+                  <FaMapMarkerAlt />
+                </button>
+              </div>
+            </div>
           </div>
+          
+          {/* Image Upload Field */}
+          <div className="form-group form-group-row">
+            <div className="full-width">
+              <label>Update Image</label>
+              <div className="image-upload-container">
+                <input
+                  type="file"
+                  id="editImageUpload"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="image-input"
+                />
+                <label htmlFor="editImageUpload" className="upload-btn">
+                  <MdImage />
+                  Choose New Image
+                </label>
+              </div>
+              
+              {/* Current/Preview Image */}
+              {(imagePreview || selectedVisit.image_url) && (
+                <div className="image-preview-container">
+                  <div className="image-preview">
+                    <img src={imagePreview || selectedVisit.image_url} alt="Preview" />
+                    <button
+                      type="button"
+                      className="remove-image-btn"
+                      onClick={removeImage}
+                    >
+                      <MdImage /> Remove
+                    </button>
+                    <button
+                      type="button"
+                      className="view-image-btn"
+                      onClick={() => handleViewImage(imagePreview || selectedVisit.image_url)}
+                    >
+                      <MdImage /> View
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              <p className="image-hint">Max file size: 5MB. Leave empty to keep current image</p>
+            </div>
+          </div>
+          
           <div className="form-group full-width">
             <label>Description</label>
             <textarea
@@ -359,37 +749,6 @@ useEffect(() => {
     </div>
   );
 
-  if (loading) {
-    return (
-      <div className="sales-visits-wrapper">
-        <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-        <div className={`sales-visits-content-area ${isCollapsed ? "collapsed" : ""}`}>
-          <div className="sales-visits-main-content">
-            <div className="sales-visits-loading">Loading sales visits...</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error && mode !== "view" && mode !== "edit") {
-    return (
-      <div className="sales-visits-wrapper">
-        <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-        <div className={`sales-visits-content-area ${isCollapsed ? "collapsed" : ""}`}>
-          <div className="sales-visits-main-content">
-            <div className="sales-visits-error">
-              <p>{error}</p>
-              <button onClick={fetchSalesVisits} className="retry-button">
-                Try Again
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="sales-visits-wrapper">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
@@ -402,33 +761,31 @@ useEffect(() => {
             <>
               <div className="sales-visits-section-header">
                 <h2 className="sales-visits-main-title">Sales Visits</h2>
-                <p className="sales-visits-subtitle">View all logged sales visits</p>
               </div>
 
-              {/* Search box */}
-            <div className="sales-visit-search-container">
+              <div className="sales-visit-search-container">
                 <div className="sales-visit-search-box">
                   <input
                     type="text"
-      placeholder="Search by ID, Retailer, Staff, or Transaction..."
-      className="sales-visits-search-input"
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-    />
-       <FaSearch className="sales-visits-search-icon" size={18} />
-  </div>
-</div>
+                    placeholder="Search by ID, Retailer, Staff, Location, or Transaction..."
+                    className="sales-visits-search-input"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <FaSearch className="sales-visits-search-icon" size={18} />
+                </div>
+              </div>
 
               <div className="sales-visits-table-container">
-  <ReusableTable
-    data={filteredSalesVisits} // filtered array based on searchTerm
-    columns={columns}
-    initialEntriesPerPage={10}
-    showSearch={false} // hide built-in search
-    showEntriesSelector={true}
-    showPagination={true}
-  />
-</div>
+                <ReusableTable
+                  data={filteredSalesVisits}
+                  columns={columns}
+                  initialEntriesPerPage={10}
+                  showSearch={false}
+                  showEntriesSelector={true}
+                  showPagination={true}
+                />
+              </div>
             </>
           )}
         </div>
@@ -437,4 +794,4 @@ useEffect(() => {
   );
 };
 
-export default SalesVisit;
+export default SalesVisit;  
