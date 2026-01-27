@@ -824,7 +824,7 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
               <div className="item-section mb-3 mt-3 bg-white p-3 rounded">
                 <h6 className="text-primary mb-3">Add Item</h6>
                 <Row className="align-items-end">
-                  <Col md={2}>
+                  <Col md={3}>
                     <div className="d-flex justify-content-between align-items-center mb-1">
                       <Form.Label className="mb-0 fw-bold">Item</Form.Label>
                       <button
