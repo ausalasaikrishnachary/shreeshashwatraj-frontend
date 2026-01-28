@@ -56,7 +56,7 @@ const KachaPurchaseDebitView = () => {
 
   const handleEdit = () => {
     setShowDropdown(false);
-    navigate(`/purchase/debit-note/edit/${id}`);
+    navigate(`/kachaeditdebitenote/${id}`);
   };
 
   // Fixed handleDelete function with your API

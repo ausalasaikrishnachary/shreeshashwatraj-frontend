@@ -849,6 +849,8 @@ const KachaSalesInvoiceForm = ({ user }) => {
                       value={invoiceData.invoiceNumber || nextInvoiceNumber} 
                       onChange={handleInputChange}
                       className="border-primary"
+                      disabled   
+
                       readOnly={isEditMode}
                     />
                     <Form.Label className="fw-bold">Invoice No</Form.Label>
@@ -920,6 +922,7 @@ const KachaSalesInvoiceForm = ({ user }) => {
     state: supplier.billing_state,
     staffid: supplier.staffid,
     gstin: supplier.gstin || '', 
+     accountId: supplier.id,
     assigned_staff: supplier.assigned_staff,
     staff_incentive: supplier.staff_incentive || 0
   },

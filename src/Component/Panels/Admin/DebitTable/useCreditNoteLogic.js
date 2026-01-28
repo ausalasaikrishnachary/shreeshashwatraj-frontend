@@ -102,9 +102,9 @@ const useCreditNoteLogic = () => {
       try {
         const creditNo = await axios.get(`${baseurl}/api/next-debitnote-number`);
         setCreditNoteNumber(creditNo.data.nextCreditNoteNumber || "DNOTE001");
-
+        console.log("🎫 Next Debit Note Number:", creditNo.data.nextCreditNoteNumber);
         const all = await fetchAllTransactions();
-        // Store all transactions for quantity calculations
+ 
         localStorage.setItem('allTransactions', JSON.stringify(all));
         
         console.log("🔄 INITIAL LOAD - All Transactions Count:", all.length);
@@ -121,9 +121,6 @@ const useCreditNoteLogic = () => {
     init();
   }, []);
 
-  // ------------------------------------------------------------------------------------
-  // LOAD CUSTOMER + ITEM DETAILS WHEN INVOICE SELECTED
-  // ------------------------------------------------------------------------------------
   useEffect(() => {
     const loadCustomer = async () => {
       if (!selectedInvoice) {
@@ -203,10 +200,6 @@ const useCreditNoteLogic = () => {
 
     loadCustomer();
   }, [selectedInvoice]);
-
-  // ------------------------------------------------------------------------------------
-  // EDIT LOGIC - UPDATED WITH QUANTITY VALIDATION
-  // ------------------------------------------------------------------------------------
   const handleEditClick = (index, item) => {
     console.log("✏️ EDIT CLICKED - Index:", index, "Available Qty:", item.availableQuantity);
     setEditingIndex(index);
@@ -311,14 +304,18 @@ const useCreditNoteLogic = () => {
        data_type: "Purchase",
 
       TransactionType: "DebitNote",
-      creditNoteNumber,
+       creditNoteNumber: creditNoteNumber, 
+
       noteDate,
       InvoiceNumber: selectedInvoice, // Store original invoice reference
-        PartyID: customerData?.PartyID || customerData?.customer_id || null,
-    account_name: customerData.account_name || customerData?.account_name || '',
-    business_name: customerData.business_name || customerData?.business_name || '',
-    
-    PartyName: customerData?.PartyName || customerData.name ||  'Customer',
+       AccountID: customerData?.AccountID || null,
+      PartyID: customerData?.PartyID || null,
+      PartyName: customerData?.PartyName ||  "Customer",
+
+      account_name:
+    customerData.AccountName  || "",
+      business_name: customerData.business_name || "",
+
 
       items: items.map(item => ({
         ...item,
@@ -333,6 +330,7 @@ const useCreditNoteLogic = () => {
     console.log("📦 FINAL PAYLOAD - Items:", payload.items);
 
     await axios.post(`${baseurl}/transaction`, payload);
+console.log("📦 FINAL CREDIT NOTE PAYLOAD:", payload);
 
     alert("Debit Note Created!");
     navigate("/purchase/debit-note");

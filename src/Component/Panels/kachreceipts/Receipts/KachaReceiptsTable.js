@@ -32,7 +32,7 @@ const [invoices, setInvoices] = useState([]);
     retailerName: '',  
     amount: '',
     currency: 'INR',
-    paymentMethod: 'Direct Deposit',
+    paymentMethod: 'Cash',
     receiptDate: new Date().toISOString().split('T')[0],
     note: '',
     bankName: '',

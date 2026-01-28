@@ -29,7 +29,7 @@ const KachaPurchaseInvoicePDFPreview = () => {
     retailerId: '',
     amount: '',
     currency: 'INR',
-    paymentMethod: 'Direct Deposit',
+    paymentMethod: 'Cash',
     receiptDate: new Date().toISOString().split('T')[0],
     note: '',
     bankName: '',

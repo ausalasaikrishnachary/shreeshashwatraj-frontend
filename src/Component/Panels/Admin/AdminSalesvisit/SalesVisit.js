@@ -246,7 +246,7 @@ const SalesVisit = ({ mode = "list" }) => {
       ...prev,
       image_filename: ""
     }));
-    const fileInput = document.getElementById("editImageUpload");
+    const fileInput = document.getElementById("asv-editImageUpload");
     if (fileInput) {
       fileInput.value = "";
     }
@@ -313,60 +313,60 @@ const SalesVisit = ({ mode = "list" }) => {
     //   title: "ID", 
     //   key: "id", 
     //   width: "80px",
-    //   className: "rt-table__cell--id"
+    //   className: "asv-rt-table__cell--id"
     // },
     { 
       title: "RETAILER NAME", 
       key: "retailer_name", 
       width: "180px",
-      className: "rt-table__cell--retailer"
+      className: "asv-rt-table__cell--retailer"
     },
     { 
       title: "STAFF NAME", 
       key: "staff_name", 
       width: "150px",
-      className: "rt-table__cell--staff"
+      className: "asv-rt-table__cell--staff"
     },
     // { 
     //   title: "VISIT TYPE", 
     //   key: "visit_type", 
     //   width: "120px",
-    //   className: "rt-table__cell--visit-type"
+    //   className: "asv-rt-table__cell--visit-type"
     // },
     { 
       title: "VISIT OUTCOME", 
       key: "visit_outcome", 
       width: "140px",
-      className: "rt-table__cell--outcome"
+      className: "asv-rt-table__cell--outcome"
     },
     { 
       title: "SALES AMOUNT", 
       key: "sales_amount", 
       width: "140px",
-      className: "rt-table__cell--amount",
+      className: "asv-rt-table__cell--amount",
       render: (value) => `₹${value || 0}`
     },
     { 
       title: "TRANSACTION TYPE", 
       key: "transaction_type", 
       width: "160px",
-      className: "rt-table__cell--transaction"
+      className: "asv-rt-table__cell--transaction"
     },
     { 
       title: "LOCATION", 
       key: "location",
       width: "220px",
-      className: "rt-table__cell--location",
+      className: "asv-rt-table__cell--location",
       render: (value, row) => {
         if (!row) return "No location";
         return (
-          <div className="location-cell">
-            <span className="location-text">
+          <div className="asv-location-cell">
+            <span className="asv-location-text">
               {value && value.length > 25 ? `${value.substring(0, 25)}...` : value || "No location"}
             </span>
             {value && value !== "No location" && (
               <button
-                className="rt-table__action-btn rt-table__action-btn--location"
+                className="asv-rt-table__action-btn asv-rt-table__action-btn--location"
                 onClick={() => handleViewLocation(value)}
                 title="View on map"
               >
@@ -381,30 +381,30 @@ const SalesVisit = ({ mode = "list" }) => {
       title: "IMAGE", 
       key: "image_url",
       width: "120px",
-      className: "rt-table__cell--image",
+      className: "asv-rt-table__cell--image",
       render: (value, row) => {
-        if (!row || !value) return <span className="no-image">No image</span>;
+        if (!row || !value) return <span className="asv-no-image">No image</span>;
         
         return (
-          <div className="image-cell">
+          <div className="asv-image-cell">
             <div 
-              className="image-thumbnail"
+              className="asv-image-thumbnail"
               onClick={() => handleViewImage(value)}
               title="Click to view image in new tab"
             >
               <img 
                 src={value} 
                 alt="Visit" 
-                className="thumbnail-img"
+                className="asv-thumbnail-img"
                 loading="lazy"
                 onError={(e) => {
                   e.target.style.display = 'none';
-                  e.target.parentElement.innerHTML = '<span class="no-image">Error</span>';
+                  e.target.parentElement.innerHTML = '<span class="asv-no-image">Error</span>';
                 }}
               />
-              <div className="image-overlay">
-                <MdImage className="view-icon" />
-                <span className="view-text">View</span>
+              <div className="asv-image-overlay">
+                <MdImage className="asv-view-icon" />
+                <span className="asv-view-text">View</span>
               </div>
             </div>
           </div>
@@ -415,33 +415,33 @@ const SalesVisit = ({ mode = "list" }) => {
       title: "DATE", 
       key: "created_at", 
       width: "120px",
-      className: "rt-table__cell--date"
+      className: "asv-rt-table__cell--date"
     },
     {
       title: "ACTIONS",
       key: "actions",
       width: "180px",
-      className: "rt-table__cell--actions",
+      className: "asv-rt-table__cell--actions",
       render: (value, row) => {
         if (!row) return null;
         return (
-          <div className="rt-table__actions">
+          <div className="asv-rt-table__actions">
             <button
-              className="rt-table__action-btn rt-table__action-btn--view"
+              className="asv-rt-table__action-btn asv-rt-table__action-btn--view"
               onClick={() => handleView(row.id)}
               title="View"
             >
               👁️
             </button>
             <button
-              className="rt-table__action-btn rt-table__action-btn--edit"
+              className="asv-rt-table__action-btn asv-rt-table__action-btn--edit"
               onClick={() => handleEdit(row.id)}
               title="Edit"
             >
               ✏️
             </button>
             <button
-              className="rt-table__action-btn rt-table__action-btn--delete"
+              className="asv-rt-table__action-btn asv-rt-table__action-btn--delete"
               onClick={() => handleDelete(row.id, row.retailer_name || row.staff_name)}
               title="Delete"
             >
@@ -454,11 +454,11 @@ const SalesVisit = ({ mode = "list" }) => {
   ];
 
   const renderViewMode = () => (
-    <div className="sales-visit-card">
+    <div className="asv-sales-visit-card">
       <h3>Sales Visit Details</h3>
       {selectedVisit ? (
-        <div className="card-content">
-          <div className="form-group form-group-row">
+        <div className="asv-card-content">
+          <div className="asv-form-group asv-form-group-row">
             <div>
               <label>ID</label>
               <input type="text" value={selectedVisit.id} readOnly />
@@ -468,7 +468,7 @@ const SalesVisit = ({ mode = "list" }) => {
               <input type="text" value={selectedVisit.retailer_name} readOnly />
             </div>
           </div>
-          <div className="form-group form-group-row">
+          <div className="asv-form-group asv-form-group-row">
             <div>
               <label>Staff Name</label>
               <input type="text" value={selectedVisit.staff_name} readOnly />
@@ -478,7 +478,7 @@ const SalesVisit = ({ mode = "list" }) => {
               <input type="text" value={selectedVisit.visit_type} readOnly />
             </div>
           </div>
-          <div className="form-group form-group-row">
+          <div className="asv-form-group asv-form-group-row">
             <div>
               <label>Visit Outcome</label>
               <input type="text" value={selectedVisit.visit_outcome} readOnly />
@@ -488,7 +488,7 @@ const SalesVisit = ({ mode = "list" }) => {
               <input type="number" value={selectedVisit.sales_amount} readOnly />
             </div>
           </div>
-          <div className="form-group form-group-row">
+          <div className="asv-form-group asv-form-group-row">
             <div>
               <label>Transaction Type</label>
               <input type="text" value={selectedVisit.transaction_type} readOnly />
@@ -498,10 +498,10 @@ const SalesVisit = ({ mode = "list" }) => {
               <input type="text" value={selectedVisit.created_at} readOnly />
             </div>
           </div>
-          <div className="form-group form-group-row">
-            <div className="full-width">
+          <div className="asv-form-group asv-form-group-row">
+            <div className="asv-full-width">
               <label>Location</label>
-              <div className="location-display">
+              <div className="asv-location-display">
                 <input 
                   type="text" 
                   value={selectedVisit.location || "No location"} 
@@ -510,7 +510,7 @@ const SalesVisit = ({ mode = "list" }) => {
                 {selectedVisit.location && selectedVisit.location !== "No location" && (
                   <button
                     type="button"
-                    className="location-view-btn"
+                    className="asv-location-view-btn"
                     onClick={() => handleViewLocation(selectedVisit.location)}
                     title="View on map"
                   >
@@ -520,27 +520,23 @@ const SalesVisit = ({ mode = "list" }) => {
               </div>
             </div>
           </div>
-          <div className="form-group form-group-row">
-       <div className="full-width">
+          <div className="asv-form-group asv-form-group-row">
+       <div className="asv-full-width">
   <label>Visit Image</label>
 
-  <div className="image-display">
+  <div className="asv-image-display">
     {selectedVisit.image_url ? (
       <>
         {/* IMAGE PREVIEW */}
         <img
           src={selectedVisit.image_url}
           alt="Visit"
-          className="visit-image-preview"
+          className="asv-visit-image-preview"
           onError={(e) => {
             e.target.onerror = null;
-            e.target.src = "/no-image.png"; // optional fallback
+            e.target.src = "/no-image.png";
           }}
         />
-
-       
-
-    
       </>
     ) : (
       <input type="text" value="No image available" readOnly />
@@ -549,20 +545,20 @@ const SalesVisit = ({ mode = "list" }) => {
 </div>
 
           </div>
-          <div className="form-group full-width">
+          <div className="asv-form-group asv-full-width">
             <label>Description</label>
             <textarea value={selectedVisit.description} readOnly />
           </div>
-          <div className="form-actions">
-            <button className="back-button" onClick={() => navigate("/sales_visit")}>
+          <div className="asv-form-actions">
+            <button className="asv-back-button" onClick={() => navigate("/sales_visit")}>
               Back to List
             </button>
           </div>
         </div>
       ) : (
-        <div className="sales-visit-error">
+        <div className="asv-sales-visit-error">
           <p>Sales visit with ID {id} not found</p>
-          <button className="back-button" onClick={() => navigate("/sales_visit")}>
+          <button className="asv-back-button" onClick={() => navigate("/sales_visit")}>
             Back to List
           </button>
         </div>
@@ -571,11 +567,11 @@ const SalesVisit = ({ mode = "list" }) => {
   );
 
   const renderEditMode = () => (
-    <div className="sales-visit-card">
+    <div className="asv-sales-visit-card">
       <h3>Edit Sales Visit</h3>
       {selectedVisit ? (
-        <form onSubmit={handleEditSubmit} className="sales-visit-edit-form">
-          <div className="form-group form-group-row">
+        <form onSubmit={handleEditSubmit} className="asv-sales-visit-edit-form">
+          <div className="asv-form-group asv-form-group-row">
             <div>
               <label>Retailer Name</label>
               <input
@@ -597,7 +593,7 @@ const SalesVisit = ({ mode = "list" }) => {
               />
             </div>
           </div>
-          <div className="form-group form-group-row">
+          <div className="asv-form-group asv-form-group-row">
             <div>
               <label>Visit Type</label>
               <input
@@ -619,7 +615,7 @@ const SalesVisit = ({ mode = "list" }) => {
               />
             </div>
           </div>
-          <div className="form-group form-group-row">
+          <div className="asv-form-group asv-form-group-row">
             <div>
               <label>Sales Amount</label>
               <input
@@ -641,7 +637,7 @@ const SalesVisit = ({ mode = "list" }) => {
               />
             </div>
           </div>
-          <div className="form-group form-group-row">
+          <div className="asv-form-group asv-form-group-row">
             <div>
               <label>Date (DD/MM/YYYY)</label>
               <input
@@ -655,7 +651,7 @@ const SalesVisit = ({ mode = "list" }) => {
             </div>
             <div>
               <label>Location</label>
-              <div className="location-input-wrapper">
+              <div className="asv-location-input-wrapper">
                 <input
                   type="text"
                   name="location"
@@ -665,7 +661,7 @@ const SalesVisit = ({ mode = "list" }) => {
                 />
                 <button
                   type="button"
-                  className="location-icon-btn"
+                  className="asv-location-icon-btn"
                   onClick={getCurrentLocation}
                   title="Get current location"
                 >
@@ -676,18 +672,18 @@ const SalesVisit = ({ mode = "list" }) => {
           </div>
           
           {/* Image Upload Field */}
-          <div className="form-group form-group-row">
-            <div className="full-width">
+          <div className="asv-form-group asv-form-group-row">
+            <div className="asv-full-width">
               <label>Update Image</label>
-              <div className="image-upload-container">
+              <div className="asv-image-upload-container">
                 <input
                   type="file"
-                  id="editImageUpload"
+                  id="asv-editImageUpload"
                   accept="image/*"
                   onChange={handleImageChange}
-                  className="image-input"
+                  className="asv-image-input"
                 />
-                <label htmlFor="editImageUpload" className="upload-btn">
+                <label htmlFor="asv-editImageUpload" className="asv-upload-btn">
                   <MdImage />
                   Choose New Image
                 </label>
@@ -695,19 +691,19 @@ const SalesVisit = ({ mode = "list" }) => {
               
               {/* Current/Preview Image */}
               {(imagePreview || selectedVisit.image_url) && (
-                <div className="image-preview-container">
-                  <div className="image-preview">
+                <div className="asv-image-preview-container">
+                  <div className="asv-image-preview">
                     <img src={imagePreview || selectedVisit.image_url} alt="Preview" />
                     <button
                       type="button"
-                      className="remove-image-btn"
+                      className="asv-remove-image-btn"
                       onClick={removeImage}
                     >
                       <MdImage /> Remove
                     </button>
                     <button
                       type="button"
-                      className="view-image-btn"
+                      className="asv-view-image-btn"
                       onClick={() => handleViewImage(imagePreview || selectedVisit.image_url)}
                     >
                       <MdImage /> View
@@ -716,11 +712,11 @@ const SalesVisit = ({ mode = "list" }) => {
                 </div>
               )}
               
-              <p className="image-hint">Max file size: 5MB. Leave empty to keep current image</p>
+              <p className="asv-image-hint">Max file size: 5MB. Leave empty to keep current image</p>
             </div>
           </div>
           
-          <div className="form-group full-width">
+          <div className="asv-form-group asv-full-width">
             <label>Description</label>
             <textarea
               name="description"
@@ -729,19 +725,19 @@ const SalesVisit = ({ mode = "list" }) => {
               required
             />
           </div>
-          <div className="form-actions">
-            <button type="button" className="cancel-button" onClick={() => navigate("/sales_visit")}>
+          <div className="asv-form-actions">
+            <button type="button" className="asv-cancel-button" onClick={() => navigate("/sales_visit")}>
               Cancel
             </button>
-            <button type="submit" className="save-button">
+            <button type="submit" className="asv-save-button">
               Save Changes
             </button>
           </div>
         </form>
       ) : (
-        <div className="sales-visit-error">
+        <div className="asv-sales-visit-error">
           <p>Sales visit with ID {id} not found</p>
-          <button className="back-button" onClick={() => navigate("/sales_visit")}>
+          <button className="asv-back-button" onClick={() => navigate("/sales_visit")}>
             Back to List
           </button>
         </div>
@@ -750,33 +746,33 @@ const SalesVisit = ({ mode = "list" }) => {
   );
 
   return (
-    <div className="sales-visits-wrapper">
+    <div className="asv-sales-visits-wrapper">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-      <div className={`sales-visits-content-area ${isCollapsed ? "collapsed" : ""}`}>
+      <div className={`asv-sales-visits-content-area ${isCollapsed ? "asv-collapsed" : ""}`}>
         <AdminHeader isCollapsed={isCollapsed} />
-        <div className="sales-visits-content-section">
+        <div className="asv-sales-visits-content-section">
           {mode === "view" && renderViewMode()}
           {mode === "edit" && renderEditMode()}
           {mode === "list" && (
             <>
-              <div className="sales-visits-section-header">
-                <h2 className="sales-visits-main-title">Sales Visits</h2>
+              <div className="asv-sales-visits-section-header">
+                <h2 className="asv-sales-visits-main-title">Sales Visits</h2>
               </div>
 
-              <div className="sales-visit-search-container">
-                <div className="sales-visit-search-box">
+              <div className="asv-sales-visit-search-container">
+                <div className="asv-sales-visit-search-box">
                   <input
                     type="text"
                     placeholder="Search by ID, Retailer, Staff, Location, or Transaction..."
-                    className="sales-visits-search-input"
+                    className="asv-sales-visits-search-input"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                  <FaSearch className="sales-visits-search-icon" size={18} />
+                  <FaSearch className="asv-sales-visits-search-icon" size={18} />
                 </div>
               </div>
 
-              <div className="sales-visits-table-container">
+              <div className="asv-sales-visits-table-container">
                 <ReusableTable
                   data={filteredSalesVisits}
                   columns={columns}

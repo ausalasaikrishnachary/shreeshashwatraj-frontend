@@ -211,12 +211,98 @@
   flex-shrink: 0;
 }
 
+.dropdown-btn-link {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dropdown-arrow {
+  margin-left: auto;
+}
+
+
 .dropdown-btn-link .link-text {
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: left;
+}
+/* Add these CSS fixes at the end of your AdminSidebar.css file */
+
+/* Fix for dropdown staying open */
+.dropdown-btn-link.open + .submenu {
+  display: block;
+}
+
+/* Prevent submenu from going outside sidebar */
+.submenu {
+  position: static;
+  width: 100%;
+  max-height: none;
+  box-shadow: none;
+  border: none;
+  background: transparent;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+/* Ensure submenu links stay within sidebar */
+.submenu-link {
+  width: calc(100% - 20px);
+  margin: 2px 10px;
+  box-sizing: border-box;
+}
+
+/* Mobile submenu fixes */
+.sidebar.mobile .submenu,
+.sidebar.tablet .submenu,
+.sidebar.collapsed .submenu {
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+.sidebar.mobile .submenu-link,
+.sidebar.tablet .submenu-link,
+.sidebar.collapsed .submenu-link {
+  margin: 2px 5px;
+  width: calc(100% - 10px);
+}
+
+/* Fix for dropdown arrow alignment */
+.dropdown-btn-link {
+  position: relative;
+}
+
+.dropdown-arrow {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Active state for dropdown parent */
+.dropdown-btn-link.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+/* Hover effect for dropdown */
+.dropdown-btn-link:hover:not(.active) {
+  background: rgba(37, 99, 235, 0.1);
+}
+
+/* Smooth transition for submenu */
+.submenu {
+  transition: max-height 0.3s ease;
+  overflow: hidden;
+}
+
+/* Keep submenu visible when dropdown is open */
+.dropdown-btn-link.open + .submenu {
+  max-height: 500px;
 }
 
 .dropdown-arrow {
@@ -278,7 +364,6 @@
 
 /* Desktop submenu */
 .sidebar:not(.mobile):not(.tablet) .submenu-link {
-  padding: 12px 20px 12px 50px;
   gap: 12px;
   justify-content: flex-start;
   width: calc(100% - 20px);

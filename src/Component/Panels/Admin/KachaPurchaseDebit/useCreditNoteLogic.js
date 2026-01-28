@@ -317,12 +317,13 @@ const useCreditNoteLogic = () => {
       creditNoteNumber,
       noteDate,
       InvoiceNumber: selectedInvoice, // Store original invoice reference
-        PartyID: customerData?.PartyID || customerData?.customer_id || null,
-      account_name: customerData.account_name || customerData?.account_name || '',
-    business_name: customerData.business_name || customerData?.business_name || '',
-    name: customerData.name || customerData?.name || '',
-    
-    PartyName: customerData?.PartyName || customerData.name || customerData?.business_name || 'Customer',
+    AccountID: customerData?.AccountID || null,
+      PartyID: customerData?.PartyID || null,
+      PartyName: customerData?.PartyName ||  "Customer",
+
+      account_name:
+    customerData.AccountName  || "",
+      business_name: customerData.business_name || "",
 
       items: items.map(item => ({
         ...item,

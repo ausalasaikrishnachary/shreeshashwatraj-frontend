@@ -166,10 +166,9 @@ const useCreditNoteLogic = () => {
         
         const enhancedItem = {
           ...item,
-          originalQuantity: parseFloat(item.quantity) || 0, // Store original sales quantity
-          availableQuantity: availableQty, // Available for credit (Sales - Previous Credits)
-          quantity: availableQty > 0 ? availableQty : 0, // Default to available quantity
-          // Add calculated fields for display
+          originalQuantity: parseFloat(item.quantity) || 0, 
+          availableQuantity: availableQty,
+          quantity: availableQty > 0 ? availableQty : 0, 
           soldQuantity: parseFloat(item.quantity) || 0,
           creditedQuantity: (parseFloat(item.quantity) || 0) - availableQty
         };
@@ -317,7 +316,7 @@ const handleCreateCreditNote = async () => {
       creditNoteNumber,
       noteDate,
       InvoiceNumber: selectedInvoice,
-
+      AccountID: customerData?.AccountID || null,
       PartyID: customerData?.PartyID || null,
       PartyName: customerData?.PartyName || accountData.name || "Customer",
 

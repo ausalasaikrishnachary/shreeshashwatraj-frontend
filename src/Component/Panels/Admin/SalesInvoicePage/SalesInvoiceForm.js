@@ -1101,6 +1101,7 @@ const [tempPrice, setTempPrice] = useState("");
                       value={invoiceData.invoiceNumber || nextInvoiceNumber} 
                       onChange={handleInputChange}
                       className="border-primary"
+                        disabled   
                       readOnly={isEditMode}
                     />
                     <Form.Label className="fw-bold">Invoice No</Form.Label>

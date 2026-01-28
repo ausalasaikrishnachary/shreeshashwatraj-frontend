@@ -310,14 +310,12 @@ const payload = {
   creditNoteNumber,
   noteDate,
   InvoiceNumber: selectedInvoice,
-      account_name: customerData.account_name || customerData?.account_name || '',
-    business_name: customerData.business_name || customerData?.business_name || '',
-    name: customerData.name || customerData?.name || '',
-    
-    PartyName: customerData?.PartyName || customerData.name || customerData?.business_name || 'Customer',
-    
+    AccountID: customerData?.AccountID || customerData?.id || null,
+      PartyID: customerData?.PartyID || null,
+      PartyName: customerData?.PartyName || customerData.name || "Customer",
 
-  PartyID: customerData?.PartyID || customerData?.customer_id || null,
+      account_name: customerData.AccountName || "",
+      business_name: customerData.business_name || "",
   items: items.map(item => ({
     ...item,
     originalQuantity: undefined,
@@ -327,12 +325,12 @@ const payload = {
   })),
 };
 
-    console.log("📦 FINAL PAYLOAD - Items:", payload.items);
+    console.log("📦 creditnote post PAYLOAD - Items:", payload.items);
 
     await axios.post(`${baseurl}/transaction`, payload);
 
     alert("Credit Note Created!");
-    navigate("/sales/credit_note");
+    navigate("/kachacreditenotetable");
   };
 
   // ------------------------------------------------------------------------------------

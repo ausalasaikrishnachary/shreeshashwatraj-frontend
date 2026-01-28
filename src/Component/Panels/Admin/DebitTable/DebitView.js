@@ -75,7 +75,7 @@ const DebitView = () => {
           const result = await response.json();
           if (result.success) {
             alert('Debit Note deleted successfully!');
-            navigate('/sales/credit_note');
+            navigate('/purchase/debit-note');
           } else {
             alert('Failed to delete Debit Note: ' + (result.message || 'Unknown error'));
           }
