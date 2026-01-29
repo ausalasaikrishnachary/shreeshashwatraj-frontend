@@ -6,7 +6,7 @@ import './Period.css';
 import { baseurl } from "../../../BaseURL/BaseURL";
 import { FaFilePdf, FaTrash, FaDownload, FaCheck, FaTimes, FaEdit } from 'react-icons/fa';
 import axios from "axios";
-
+import ReusableTable from './../../../Layouts/TableLayout/ReusableTable';
 const Period = () => {
   const [openRow, setOpenRow] = useState(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
