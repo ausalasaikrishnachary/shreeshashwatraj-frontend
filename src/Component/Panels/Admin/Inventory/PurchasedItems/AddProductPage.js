@@ -1553,7 +1553,7 @@ if (maintainBatch && batches.length > 0) {
   )}
   
   {!maintainBatch && (
-    <div className="col">
+    <div className="col-md-3">
       <Form.Label>Min Sale Price</Form.Label>
       <Form.Control
         placeholder="Min Sale Price"
@@ -1565,7 +1565,7 @@ if (maintainBatch && batches.length > 0) {
       />
     </div>
   )}
-                  <div className="col d-flex align-items-center">
+                  {/* <div className="col d-flex align-items-center">
                     <Form.Check
                       type="checkbox"
                       label="Show in Sales Catalogue"
@@ -1575,7 +1575,7 @@ if (maintainBatch && batches.length > 0) {
                       className="mt-4"
                     />
                 
-                  </div>
+                  </div> */}
                 </div>
 
                 <Form.Group className="mt-3 mb-2">
