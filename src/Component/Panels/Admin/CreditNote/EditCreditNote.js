@@ -483,24 +483,33 @@ const handleUpdateCreditNote = async () => {
                               item.batch
                             )}
                           </td>
-                          <td className="text-end">
-                            {isEditing ? (
-                              <input
-                                type="number"
-                                className="form-control form-control-sm"
-                                value={editedQuantity}
-                                min="0"
-                                max={maxForInput}
-                                step="0.01"
-                                onChange={handleQuantityChange}
-                                style={{
-                                  border: isOver ? '1px solid #ced4da' : '1px solid #ced4da'
-                                }}
-                              />
-                            ) : (
-                              item.quantity
-                            )}
-                          </td>
+<td className="text-center" style={{ width: "90px" }}>
+  {isEditing ? (
+    <input
+      type="number"
+      step="1"
+      min="0"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      className="form-control form-control-sm text-center mx-auto"
+      style={{ width: "70px" }}
+      value={editedQuantity}
+      onChange={(e) => {
+        const value = e.target.value;
+        if (value === '' || /^[0-9]+$/.test(value)) {
+          handleQuantityChange(e);
+        }
+      }}
+      onWheel={(e) => e.target.blur()}
+    />
+  ) : (
+    <span className="d-block text-center">
+      {Math.floor(item.quantity)}
+    </span>
+  )}
+</td>
+
+
                           <td className="text-end">₹{isEditing ? displayPrice.toFixed(2) : parseFloat(item.price).toFixed(2)}</td>
                           <td className="text-end">{isEditing ? displayDiscount : item.discount}</td>
                           <td className="text-end">{isEditing ? displayGst : item.gst}%</td>

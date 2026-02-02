@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Table, Alert } from 'react-bootstrap';
-import './PurchaseInvoice.css';
+import './PurchaseInvoiceEdit.css';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
-import { FaEdit, FaTrash, FaEye, FaTimes } from "react-icons/fa";
+import { FaEdit, FaTrash, FaEye, FaSave, FaTimes } from "react-icons/fa";
 import { baseurl } from '../../../BaseURL/BaseURL';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-const KachaPurchaseInvoiceForm = ({ user }) => {
+const KachaPurchaseInvoiceEdit = ({ user }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [inputName, setInputName] = useState("");
   const [selected, setSelected] = useState(false);
@@ -17,36 +17,38 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
   const [selectedBatchDetails, setSelectedBatchDetails] = useState(null);
   const [products, setProducts] = useState([]);
   const [accounts, setAccounts] = useState([]);
-  const [nextInvoiceNumber, setNextInvoiceNumber] = useState("PINV001");
-  const [editingIndex, setEditingIndex] = useState(null); 
+  const [nextInvoiceNumber, setNextInvoiceNumber] = useState("INV001");
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const [hasFetchedInvoiceNumber, setHasFetchedInvoiceNumber] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingItemIndex, setEditingItemIndex] = useState(null);
+  const [editingVoucherId, setEditingVoucherId] = useState(null);
   const navigate = useNavigate();
+  const { id } = useParams();
 
   const [invoiceData, setInvoiceData] = useState(() => {
-    const savedData = localStorage.getItem('draftPurchaseInvoice');
+    const savedData = localStorage.getItem('draftInvoice');
     if (savedData) {
       const parsedData = JSON.parse(savedData);
       return parsedData;
     }
     return {
-      invoiceNumber: "", // Changed from "PINV001" to empty string
+      invoiceNumber: "INV001",
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
-        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-        address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-        email: "spmathur56@gmail.com",
-        phone: "9801049700",
-        state: "Bihar"
+        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+        email: "sumukhusr7@gmail.com",
+        phone: "3456549876543",
+        state: "Karnataka"
       },
       supplierInfo: {
         name: "",
         businessName: "",
-        account_name: "",
         state: "",
-        gstin: "", // Keep GSTIN field
-        discount: 0 // Add discount field
+        discount: 0,
+         gstin: "" // Add this line
       },
       billingAddress: {
         addressLine1: "",
@@ -76,13 +78,14 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
 
   const [itemForm, setItemForm] = useState({
     product: "",
-    product_id: null,
+    product_id: "",
     description: "",
     quantity: 1,
     price: 0,
     discount: 0,
     total: 0,
     batch: "",
+    batch_id: "",
     batchDetails: null
   });
 
@@ -90,28 +93,246 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
-  // Save to localStorage whenever invoiceData changes
+  useEffect(() => {
+    if (id) {
+      setIsEditMode(true);
+      setEditingVoucherId(id);
+      fetchInvoiceDataForEdit(id);
+    } else {
+      fetchNextInvoiceNumber();
+    }
+  }, [id]);
+
+  const fetchInvoiceDataForEdit = async (voucherId) => {
+    try {
+      setLoading(true);
+      console.log('Fetching invoice data for editing:', voucherId);
+      
+      const response = await fetch(`${baseurl}/transactions/${voucherId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch invoice data');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const apiData = result.data;
+        const transformedData = transformApiDataToFormFormat(apiData);
+        
+        setInvoiceData(transformedData);
+        setSelectedSupplierId(apiData.PartyID);
+        setSelected(true);
+        
+        const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
+        if (supplierAccount) {
+          setInputName(supplierAccount.business_name);
+        }
+        
+        window.alert('✅ Invoice loaded for editing successfully!');
+      } else {
+        throw new Error('No valid data received');
+      }
+    } catch (err) {
+      console.error('Error fetching invoice for edit:', err);
+      setError('Failed to load invoice for editing: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const transformApiDataToFormFormat = (apiData) => {
+    console.log('Transforming API data for form:', apiData);
+    
+    let batchDetails = [];
+    try {
+      if (apiData.batch_details && typeof apiData.batch_details === 'string') {
+        batchDetails = JSON.parse(apiData.batch_details);
+      } else if (Array.isArray(apiData.batch_details)) {
+        batchDetails = apiData.batch_details;
+      } else if (apiData.BatchDetails && typeof apiData.BatchDetails === 'string') {
+        batchDetails = JSON.parse(apiData.BatchDetails);
+      }
+    } catch (error) {
+      console.error('Error parsing batch details:', error);
+    }
+
+    const items = batchDetails.map((batch, index) => {
+      const quantity = parseFloat(batch.quantity) || 0;
+      const price = parseFloat(batch.price) || 0;
+      const discount = parseFloat(batch.discount) || 0;
+      
+      const subtotal = quantity * price;
+      const discountAmount = subtotal * (discount / 100);
+      const total = subtotal - discountAmount;
+
+      return {
+        product: batch.product || 'Product',
+        product_id: batch.product_id || '',
+        description: batch.description || '',
+        quantity: quantity,
+        price: price,
+        discount: discount,
+        total: total.toFixed(2),
+        batch: batch.batch || '',
+        batch_id: batch.batch_id || '',
+        batchDetails: batch.batchDetails || null
+      };
+    }) || [];
+
+    return {
+      voucherId: apiData.VoucherID,
+      invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
+      invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      
+      companyInfo: {
+        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+        email: "sumukhusr7@gmail.com",
+        phone: "3456549876543",
+        state: "Karnataka"
+      },
+      
+      supplierInfo: {
+        name: apiData.PartyName || 'Customer',
+        businessName: apiData.AccountName || 'Business',
+        state: apiData.billing_state || apiData.BillingState || '',
+        discount: parseFloat(apiData.supplierDiscount) || 0,
+        id: apiData.PartyID || null
+      },
+      
+      billingAddress: {
+        addressLine1: apiData.billing_address_line1 || apiData.BillingAddress || '',
+        addressLine2: apiData.billing_address_line2 || '',
+        city: apiData.billing_city || apiData.BillingCity || '',
+        pincode: apiData.billing_pin_code || apiData.BillingPincode || '',
+        state: apiData.billing_state || apiData.BillingState || ''
+      },
+      
+      shippingAddress: {
+        addressLine1: apiData.shipping_address_line1 || apiData.ShippingAddress || apiData.billing_address_line1 || apiData.BillingAddress || '',
+        addressLine2: apiData.shipping_address_line2 || apiData.billing_address_line2 || '',
+        city: apiData.shipping_city || apiData.ShippingCity || apiData.billing_city || apiData.BillingCity || '',
+        pincode: apiData.shipping_pin_code || apiData.ShippingPincode || apiData.billing_pin_code || apiData.BillingPincode || '',
+        state: apiData.shipping_state || apiData.ShippingState || apiData.billing_state || apiData.BillingState || ''
+      },
+      
+      items: items,
+      note: apiData.Notes || "Thank you for your business!",
+      taxableAmount: parseFloat(apiData.BasicAmount) || 0,
+      grandTotal: parseFloat(apiData.TotalAmount) || 0,
+      transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
+      additionalCharge: "",
+      additionalChargeAmount: "0.00"
+    };
+  };
+
+  const fetchNextInvoiceNumber = async () => {
+    try {
+      console.log('Fetching next invoice number...');
+      const response = await fetch(`${baseurl}/next-invoice-number`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Received next invoice number:', data.nextInvoiceNumber);
+        setNextInvoiceNumber(data.nextInvoiceNumber);
+        
+        setInvoiceData(prev => ({
+          ...prev,
+          invoiceNumber: data.nextInvoiceNumber
+        }));
+        
+        setHasFetchedInvoiceNumber(true);
+        
+        const currentDraft = localStorage.getItem('draftInvoice');
+        if (currentDraft) {
+          const draftData = JSON.parse(currentDraft);
+          draftData.invoiceNumber = data.nextInvoiceNumber;
+          localStorage.setItem('draftInvoice', JSON.stringify(draftData));
+        }
+      } else {
+        console.error('Failed to fetch next invoice number');
+        generateFallbackInvoiceNumber();
+      }
+    } catch (err) {
+      console.error('Error fetching next invoice number:', err);
+      generateFallbackInvoiceNumber();
+    }
+  };
+
+  const generateFallbackInvoiceNumber = async () => {
+    try {
+      const response = await fetch(`${baseurl}/last-invoice`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.lastInvoiceNumber) {
+          const lastNumber = data.lastInvoiceNumber;
+          const numberMatch = lastNumber.match(/INV(\d+)/);
+          if (numberMatch) {
+            const nextNum = parseInt(numberMatch[1]) + 1;
+            const fallbackInvoiceNumber = `INV${nextNum.toString().padStart(3, '0')}`;
+            setNextInvoiceNumber(fallbackInvoiceNumber);
+            setInvoiceData(prev => ({
+              ...prev,
+              invoiceNumber: fallbackInvoiceNumber
+            }));
+            setHasFetchedInvoiceNumber(true);
+            return;
+          }
+        }
+      }
+      
+      const currentDraft = localStorage.getItem('draftInvoice');
+      if (currentDraft) {
+        const draftData = JSON.parse(currentDraft);
+        if (draftData.invoiceNumber && draftData.invoiceNumber !== 'INV001') {
+          setNextInvoiceNumber(draftData.invoiceNumber);
+          setHasFetchedInvoiceNumber(true);
+          return;
+        }
+      }
+      
+      setNextInvoiceNumber('INV001');
+      setInvoiceData(prev => ({
+        ...prev,
+        invoiceNumber: 'INV001'
+      }));
+      setHasFetchedInvoiceNumber(true);
+      
+    } catch (err) {
+      console.error('Error in fallback invoice number generation:', err);
+      setNextInvoiceNumber('INV001');
+      setInvoiceData(prev => ({
+        ...prev,
+        invoiceNumber: 'INV001'
+      }));
+      setHasFetchedInvoiceNumber(true);
+    }
+  };
+
   useEffect(() => {
     if (hasFetchedInvoiceNumber) {
-      localStorage.setItem('draftPurchaseInvoice', JSON.stringify(invoiceData));
+      localStorage.setItem('draftInvoice', JSON.stringify(invoiceData));
     }
   }, [invoiceData, hasFetchedInvoiceNumber]);
 
-  // Open PDF preview - ONLY after form is submitted
   const handlePreview = () => {
     if (!isPreviewReady) {
-   window.alert("Please submit the purchase invoice first to generate preview");
-         return;
+      window.alert("⚠️ Please submit the invoice first to generate preview");
+      return;
     }
 
     const previewData = {
       ...invoiceData,
       invoiceNumber: invoiceData.invoiceNumber || nextInvoiceNumber
     };
-
-    localStorage.setItem('previewPurchaseInvoice', JSON.stringify(previewData));
-
-    navigate("/purchase/invoice-preview");
+    
+    localStorage.setItem('previewInvoice', JSON.stringify(previewData));
+    
+    if (isEditMode && editingVoucherId) {
+      navigate(`/sales/invoice-preview/${editingVoucherId}`);
+    } else {
+      navigate("/sales/invoice-preview");
+    }
   };
 
   const handleItemChange = (e) => {
@@ -122,148 +343,41 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
     }));
   };
 
-  // Fetch products - Filter by Purchaseditems
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        console.log('Fetching products for purchase invoice...');
         const res = await fetch(`${baseurl}/products`);
-        if (res.ok) {
-          const data = await res.json();
-          console.log('All products fetched:', data);
-          setProducts(data);
-        } else {
-          console.error('Failed to fetch products');
-          setError('Failed to load products');
-        }
+        const data = await res.json();
+        setProducts(data);
       } catch (err) {
         console.error("Failed to fetch products:", err);
-        setError('Failed to load products');
       }
     };
     fetchProducts();
   }, []);
 
-  // Fetch suppliers
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
-        console.log('Fetching suppliers for purchase invoice...');
         const res = await fetch(`${baseurl}/accounts`);
-        if (res.ok) {
-          const data = await res.json();
-          console.log('All accounts fetched:', data);
-          setAccounts(data);
-        } else {
-          console.error('Failed to fetch accounts');
-          setError('Failed to load suppliers');
-        }
+        const data = await res.json();
+        setAccounts(data);
       } catch (err) {
         console.error("Failed to fetch accounts:", err);
-        setError('Failed to load suppliers');
       }
     };
     fetchAccounts();
   }, []);
 
-  const editItem = async (index) => {
-    const itemToEdit = invoiceData.items[index];
-    
-    // Set the form data
-    setItemForm({
-      ...itemToEdit,
-      product: itemToEdit.product,
-      product_id: itemToEdit.product_id,
-      batch: itemToEdit.batch,
-      batchDetails: itemToEdit.batchDetails
-    });
-    
-    setSelectedBatch(itemToEdit.batch || "");
-    setSelectedBatchDetails(itemToEdit.batchDetails || null);
-    setEditingIndex(index);
-
-    // Fetch batches for the product being edited
-    if (itemToEdit.product_id) {
-      try {
-        const res = await fetch(`${baseurl}/products/${itemToEdit.product_id}/batches`);
-        if (res.ok) {
-          const batchData = await res.json();
-          setBatches(batchData);
-        } else {
-          console.error("Failed to fetch batches for editing");
-          setBatches([]);
-        }
-      } catch (err) {
-        console.error("Failed to fetch batches for editing:", err);
-        setBatches([]);
-      }
-    } else {
-      setBatches([]);
-    }
-  };
-
-  const updateItem = () => {
-    if (editingIndex === null) return;
-
-    const calculatedItem = {
-      ...calculateItemTotal(),
-      batch: selectedBatch,
-      batchDetails: selectedBatchDetails,
-      product_id: itemForm.product_id
-    };
-
-    setInvoiceData(prev => ({
-      ...prev,
-      items: prev.items.map((item, index) => 
-        index === editingIndex ? calculatedItem : item
-      )
-    }));
-
-    // Reset form and editing state
-    setItemForm({
-      product: "",
-      product_id: null,
-      description: "",
-      quantity: 1,
-      price: 0,
-      discount: invoiceData.supplierInfo.discount || 0, // Keep supplier discount
-      total: 0,
-      batch: "",
-      batchDetails: null
-    });
-    setBatches([]);
-    setSelectedBatch("");
-    setSelectedBatchDetails(null);
-    setEditingIndex(null);
-  };
-
-  const cancelEdit = () => {
-    setItemForm({
-      product: "",
-      product_id: null,
-      description: "",
-      quantity: 1,
-      price: 0,
-      discount: invoiceData.supplierInfo.discount || 0, // Keep supplier discount
-      total: 0,
-      batch: "",
-      batchDetails: null
-    });
-    setBatches([]);
-    setSelectedBatch("");
-    setSelectedBatchDetails(null);
-    setEditingIndex(null);
-  };
-
   const calculateItemTotal = () => {
     const quantity = parseFloat(itemForm.quantity) || 0;
     const price = parseFloat(itemForm.price) || 0;
     const discount = parseFloat(itemForm.discount) || 0;
-
+    
     const subtotal = quantity * price;
     const discountAmount = subtotal * (discount / 100);
     const total = subtotal - discountAmount;
-
+    
     return {
       ...itemForm,
       total: total.toFixed(2),
@@ -276,17 +390,17 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
       const quantity = parseFloat(item.quantity) || 0;
       const price = parseFloat(item.price) || 0;
       const discount = parseFloat(item.discount) || 0;
-
+      
       const subtotal = quantity * price;
       const discountAmount = subtotal * (discount / 100);
       const total = subtotal - discountAmount;
-
+      
       return {
         ...item,
         total: total.toFixed(2)
       };
     });
-
+    
     setInvoiceData(prev => ({
       ...prev,
       items: updatedItems
@@ -295,31 +409,100 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
 
   const addItem = () => {
     if (!itemForm.product) {
-   window.alert("Please select a product");
-         return;
+      window.alert("⚠️ Please select a product");
+      return;
     }
 
     const calculatedItem = {
       ...calculateItemTotal(),
       batch: selectedBatch,
-      batchDetails: selectedBatchDetails,
-      product_id: itemForm.product_id
+      batch_id: itemForm.batch_id,
+      product_id: itemForm.product_id,
+      batchDetails: selectedBatchDetails
     };
 
-    setInvoiceData(prev => ({
-      ...prev,
-      items: [...prev.items, calculatedItem]
-    }));
+    if (editingItemIndex !== null) {
+      setInvoiceData(prev => ({
+        ...prev,
+        items: prev.items.map((item, index) => 
+          index === editingItemIndex ? calculatedItem : item
+        )
+      }));
+      setEditingItemIndex(null);
+      window.alert("✅ Item updated successfully!");
+    } else {
+      setInvoiceData(prev => ({
+        ...prev,
+        items: [...prev.items, calculatedItem]
+      }));
+      window.alert("✅ Item added successfully!");
+    }
 
     setItemForm({
       product: "",
-      product_id: null,
+      product_id: "",
       description: "",
       quantity: 1,
       price: 0,
-      discount: invoiceData.supplierInfo.discount || 0, // Keep supplier discount
+      discount: 0,
       total: 0,
       batch: "",
+      batch_id: "",
+      batchDetails: null
+    });
+    setBatches([]);
+    setSelectedBatch("");
+    setSelectedBatchDetails(null);
+  };
+
+  const editItem = (index) => {
+    const itemToEdit = invoiceData.items[index];
+    
+    setItemForm({
+      product: itemToEdit.product,
+      product_id: itemToEdit.product_id,
+      description: itemToEdit.description,
+      quantity: itemToEdit.quantity,
+      price: itemToEdit.price,
+      discount: itemToEdit.discount,
+      total: itemToEdit.total,
+      batch: itemToEdit.batch,
+      batch_id: itemToEdit.batch_id,
+      batchDetails: itemToEdit.batchDetails
+    });
+    
+    setSelectedBatch(itemToEdit.batch);
+    setSelectedBatchDetails(itemToEdit.batchDetails);
+    setEditingItemIndex(index);
+    
+    if (itemToEdit.product_id) {
+      fetchBatchesForProduct(itemToEdit.product_id);
+    }
+  };
+
+  const fetchBatchesForProduct = async (productId) => {
+    try {
+      const res = await fetch(`${baseurl}/products/${productId}/batches`);
+      const batchData = await res.json();
+      setBatches(batchData);
+    } catch (err) {
+      console.error("Failed to fetch batches:", err);
+      setBatches([]);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingItemIndex(null);
+    setItemForm({
+      product: "",
+      product_id: "",
+      description: "",
+      quantity: 1,
+      price: 0,
+      discount: 0,
+      total: 0,
+      batch: "",
+      batch_id: "",
       batchDetails: null
     });
     setBatches([]);
@@ -339,15 +522,15 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
       const quantity = parseFloat(item.quantity) || 0;
       const price = parseFloat(item.price) || 0;
       const discount = parseFloat(item.discount) || 0;
-
+      
       const subtotal = quantity * price;
       const discountAmount = subtotal * (discount / 100);
       return sum + (subtotal - discountAmount);
     }, 0);
-
+    
     const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
     const grandTotal = taxableAmount + additionalChargeAmount;
-
+    
     setInvoiceData(prev => ({
       ...prev,
       taxableAmount: taxableAmount.toFixed(2),
@@ -367,29 +550,25 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
     }));
   };
 
-  const clearDraft = async () => {
-    localStorage.removeItem('draftPurchaseInvoice');
-
+  const clearDraft = () => {
+    localStorage.removeItem('draftInvoice');
+    
     const resetData = {
-      invoiceNumber: "", // Changed to empty string
+      invoiceNumber: nextInvoiceNumber,
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyInfo: {
-        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-        address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-        email: "spmathur56@gmail.com",
-        phone: "9801049700",
-        state: "Bihar"
+        name: "J P MORGAN SERVICES INDIA PRIVATE LIMITED",
+        address: "Prestige, Technology Park, Sarjapur Outer Ring Road",
+        email: "sumukhusr7@gmail.com",
+        phone: "3456549876543",
+        state: "Karnataka"
       },
       supplierInfo: {
         name: "",
         businessName: "",
-        business_name: "",
-        account_name: "",
         state: "",
-        gstin: "",
-        discount: 0,
-        accountId: ""
+        discount: 0
       },
       billingAddress: {
         addressLine1: "",
@@ -415,23 +594,14 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
       otherDetails: "Authorized Signatory",
       batchDetails: []
     };
-
+    
     setInvoiceData(resetData);
-    localStorage.setItem('draftPurchaseInvoice', JSON.stringify(resetData));
-
+    localStorage.setItem('draftInvoice', JSON.stringify(resetData));
+    
     setSelected(false);
     setSelectedSupplierId(null);
     setIsPreviewReady(false);
- window.alert("Draft cleared successfully!");
-  };
-
-  const incrementInvoiceNumber = (currentNumber) => {
-    const numberMatch = currentNumber.match(/PINV(\d+)/);
-    if (numberMatch) {
-      const nextNum = parseInt(numberMatch[1]) + 1;
-      return `PINV${nextNum.toString().padStart(3, '0')}`;
-    }
-    return 'PINV001'; // fallback
+    window.alert("✅ Draft cleared successfully!");
   };
 
   const handleSubmit = async (e) => {
@@ -439,26 +609,35 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
     setLoading(true);
     setError(null);
     setSuccess(false);
-
+    
     if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-  window.alert("Please select a supplier");
-       setLoading(false);
-   
+      window.alert("⚠️ Please select a supplier/customer");
+      setLoading(false);
       return;
     }
 
     if (invoiceData.items.length === 0) {
-      window.alert("Please add at least one item to the purchase invoice");
+      window.alert("⚠️ Please add at least one item to the invoice");
       setLoading(false);
-    
       return;
     }
 
     try {
       const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
-      console.log('Submitting purchase invoice with number:', finalInvoiceNumber);
+      console.log('Submitting invoice with number:', finalInvoiceNumber);
 
-      // Extract batch details from items with ALL data including discount
+      console.log('🔍 Debugging Items Array Before Processing:');
+      invoiceData.items.forEach((item, index) => {
+        console.log(`Item ${index + 1}:`, {
+          product: item.product,
+          product_id: item.product_id,
+          batch: item.batch,
+          batch_id: item.batch_id,
+          has_product_id: !!item.product_id,
+          has_batch_id: !!item.batch_id
+        });
+      });
+
       const batchDetails = invoiceData.items.map(item => ({
         product: item.product,
         product_id: item.product_id,
@@ -485,6 +664,12 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
       const firstItemProductId = invoiceData.items[0]?.product_id || null;
       const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
       
+      console.log('📦 Product and Batch IDs Summary:');
+      console.log('First item product_id:', firstItemProductId);
+      console.log('First item batch_id:', firstItemBatchId);
+      console.log('All items product_ids:', invoiceData.items.map(item => item.product_id));
+      console.log('All items batch_ids:', invoiceData.items.map(item => item.batch_id));
+
       const missingProductIds = invoiceData.items.filter(item => !item.product_id);
       const missingBatchIds = invoiceData.items.filter(item => !item.batch_id);
       
@@ -499,49 +684,29 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
         ...invoiceData,
         invoiceNumber: finalInvoiceNumber,
         selectedSupplierId: selectedSupplierId,
-        TransactionType: 'stock inward', 
-        batchDetails: batchDetails,
-        primaryProductId: firstItemProductId,
-        primaryBatchId: firstItemBatchId,
-        PartyID: selectedSupplierId,
-        AccountID: selectedSupplierId,
-        PartyName: invoiceData.supplierInfo.name,
-        AccountName: invoiceData.supplierInfo.account_name,
-        businessName: invoiceData.supplierInfo.businessName,
-        shippingAddress: invoiceData.shippingAddress?.addressLine1 || '',
-        shippingState: invoiceData.shippingAddress?.state || '',
-        shippingCity: invoiceData.shippingAddress?.city || '',
-        shippingPincode: invoiceData.shippingAddress?.pincode || '',
-        billingAddress: invoiceData.billingAddress?.addressLine1 || '',
-        billingState: invoiceData.billingAddress?.state || '',
-        billingCity: invoiceData.billingAddress?.city || '',
-        billingPincode: invoiceData.billingAddress?.pincode || '',
-        PaymentTerms: invoiceData.PaymentTerms || "Immediate",
-        Freight: parseFloat(invoiceData.Freight) || 0,
-        BillSundryAmount: parseFloat(invoiceData.BillSundryAmount) || 0,
-        transportDetails: invoiceData.transportDetails || '',
-        note: invoiceData.note || '',
-        // Mark as kacha invoice
         invoiceType: "KACHA",
         isGstInvoice: false,
-        supplierDiscount: invoiceData.supplierInfo.discount || 0 // Include supplier discount in payload
+        batchDetails: batchDetails,
+        product_id: 123,
+        batch_id: "bth0001",
+        primaryProductId: firstItemProductId,
+        primaryBatchId: firstItemBatchId,
+        supplierDiscount: invoiceData.supplierInfo.discount || 0
       };
 
-      // Remove items field from payload
+      delete payload.companyState;
+      delete payload.supplierState;
       delete payload.items;
 
-      // 🔥 LOG THE FINAL PAYLOAD
-      console.log('🚀 Final Purchase Payload (KACHA):', {
-        PartyID: payload.PartyID,
-        AccountID: payload.AccountID,
-        selectedSupplierId: payload.selectedSupplierId,
-        supplierInfo: payload.supplierInfo,
-        supplierDiscount: payload.supplierDiscount,
-        invoiceType: payload.invoiceType,
-        TransactionType: payload.TransactionType
-      });
+      console.log('🚀 Final Payload Analysis:');
+      console.log('Payload product_id:', payload.product_id);
+      console.log('Payload batch_id:', payload.batch_id);
+      console.log('Payload primaryProductId:', payload.primaryProductId);
+      console.log('Payload primaryBatchId:', payload.primaryBatchId);
+      console.log('Payload batchDetails length:', payload.batchDetails.length);
+      console.log('First batchDetail product_id:', payload.batchDetails[0]?.product_id);
+      console.log('First batchDetail batch_id:', payload.batchDetails[0]?.batch_id);
       
-      // Final validation
       if (!payload.product_id || !payload.batch_id) {
         console.error('❌ CRITICAL: product_id or batch_id is still undefined in payload!');
         console.error('Payload structure:', JSON.stringify(payload, null, 2));
@@ -549,50 +714,58 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
         console.log('✅ SUCCESS: product_id and batch_id are properly set in payload!');
       }
 
-      console.log('Submitting kacha purchase invoice payload with invoice number:', payload.invoiceNumber);
-
-      const response = await fetch(`${baseurl}/transaction`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.error || 'Failed to submit purchase invoice');
+      let response;
+      if (isEditMode && editingVoucherId) {
+        console.log('🔄 Updating existing invoice with ID:', editingVoucherId);
+        response = await fetch(`${baseurl}/transactions/${editingVoucherId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        console.log('🆕 Creating new invoice');
+        response = await fetch(`${baseurl}/transaction`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload)
+        });
       }
-
-      // Clear localStorage and set success
-      localStorage.removeItem('draftPurchaseInvoice');
-   window.alert('stock inward invoice submitted successfully!');
-         setIsPreviewReady(true);
-
-      const newDraftData = {
-        ...invoiceData,
-        items: [],
-        taxableAmount: 0,
-        grandTotal: 0
-      };
-      localStorage.setItem('draftPurchaseInvoice', JSON.stringify(newDraftData));
+      
+      const responseData = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(responseData.error || 'Failed to submit invoice');
+      }
+      
+      console.log('✅ Server Response:', responseData);
+      console.log('Response voucherId:', responseData.voucherId);
+      console.log('Response product_id:', responseData.product_id);
+      console.log('Response batch_id:', responseData.batch_id);
+      
+      localStorage.removeItem('draftInvoice');
+      window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice submitted successfully!');
+      setIsPreviewReady(true);
 
       const previewData = {
         ...invoiceData,
-        invoiceNumber: finalInvoiceNumber,
-        voucherId: responseData.voucherId,
-        invoiceType: "KACHA"
+        invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
+        voucherId: responseData.voucherId || editingVoucherId,
+        product_id: responseData.product_id || firstItemProductId,
+        batch_id: responseData.batch_id || firstItemBatchId
       };
-      localStorage.setItem('previewPurchaseInvoice', JSON.stringify(previewData));
-
+      localStorage.setItem('previewInvoice', JSON.stringify(previewData));
+      
       setTimeout(() => {
-        navigate(`/kachapurchasepdf/${responseData.voucherId}`);
+        navigate(`/kachapurchasepdf/${responseData.voucherId || editingVoucherId}`);
       }, 2000);
-
+      
     } catch (err) {
       console.error('❌ Error in handleSubmit:', err);
-        window.alert(`Error: ${err.message}`);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -609,9 +782,9 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
 
   return (
     <div className="admin-layout">
-      <AdminSidebar
-        isCollapsed={sidebarCollapsed}
-        setIsCollapsed={setSidebarCollapsed}
+      <AdminSidebar 
+        isCollapsed={sidebarCollapsed} 
+        setIsCollapsed={setSidebarCollapsed} 
       />
       <div className={`admin-main-content ${sidebarCollapsed ? "collapsed" : ""}`}>
         <AdminHeader
@@ -619,15 +792,17 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           isMobile={window.innerWidth <= 768}
         />
-
+        
         <div className="admin-content-wrapper">
           <Container fluid className="invoice-container">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h3 className="text-primary">Create Kacha Purchase Invoice</h3>
+              <h3 className="text-primary">
+                {isEditMode ? `Edit Invoice - ${invoiceData.invoiceNumber}` : 'Create Invoice'}
+              </h3>
               <div>
-                <Button
-                  variant="info"
-                  size="sm"
+                <Button 
+                  variant="info" 
+                  size="sm" 
                   onClick={handlePreview}
                   className="me-2"
                   disabled={!isPreviewReady}
@@ -639,17 +814,19 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                 </Button>
               </div>
             </div>
-
+            
             {error && <Alert variant="danger">{error}</Alert>}
             {success && <Alert variant="success">{success}</Alert>}
-
+            
             {/* Invoice Type Indicator */}
             <Alert variant="info" className="mb-3">
-              <strong>Invoice Type: </strong>KACHA (Non-GST Purchase Invoice)
+              <strong>Invoice Type: </strong>KACHA (Non-GST Invoice)
             </Alert>
-
+            
             <div className="invoice-box p-3 bg-light rounded">
-              <h5 className="section-title text-primary mb-3">Create Kacha Purchase Invoice</h5>
+              <h5 className="section-title text-primary mb-3">
+                {isEditMode ? 'Edit Invoice' : 'Create Invoice'}
+              </h5>
 
               {/* Company Info Section */}
               <Row className="mb-3 company-info bg-white p-3 rounded">
@@ -664,30 +841,33 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                 </Col>
                 <Col md={4}>
                   <Form.Group className="mb-2">
-                    <Form.Control
-                      name="invoiceNumber"
-                      value={invoiceData.invoiceNumber}
+                    <Form.Control 
+                      name="invoiceNumber" 
+                      value={invoiceData.invoiceNumber || nextInvoiceNumber} 
                       onChange={handleInputChange}
                       className="border-primary"
-                      placeholder="Enter purchase invoice number"
+                      readOnly={isEditMode}
                     />
-                    <Form.Label className="fw-bold">Purchase Invoice No</Form.Label>
+                    <Form.Label className="fw-bold">Invoice No</Form.Label>
+                    {!hasFetchedInvoiceNumber && !isEditMode && (
+                      <small className="text-muted">Loading invoice number...</small>
+                    )}
                   </Form.Group>
                   <Form.Group className="mb-2">
-                    <Form.Control
-                      type="date"
+                    <Form.Control 
+                      type="date" 
                       name="invoiceDate"
-                      value={invoiceData.invoiceDate}
+                      value={invoiceData.invoiceDate} 
                       onChange={handleInputChange}
                       className="border-primary"
                     />
                     <Form.Label className="fw-bold">Invoice Date</Form.Label>
                   </Form.Group>
                   <Form.Group>
-                    <Form.Control
-                      type="date"
+                    <Form.Control 
+                      type="date" 
                       name="validityDate"
-                      value={invoiceData.validityDate}
+                      value={invoiceData.validityDate} 
                       onChange={handleInputChange}
                       className="border-primary"
                     />
@@ -722,17 +902,14 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                             if (supplier) {
                               setSelectedSupplierId(supplier.id);
                               setSelected(true);
-
-                              const accountDiscount = parseFloat(supplier.discount) || 0;
                               setInvoiceData(prev => ({
                                 ...prev,
                                 supplierInfo: {
-                                  name: supplier.gstin ? supplier.display_name || supplier.business_name : supplier.name || supplier.business_name,
+                                  name: supplier.name,
                                   businessName: supplier.business_name,
-                                  account_name: supplier.account_name,
                                   state: supplier.billing_state,
-                                  gstin: supplier.gstin || "", // Fetch GSTIN
-                                  discount: accountDiscount // Fetch discount
+                                  discount: parseFloat(supplier.discount) || 0,
+                                      gstin: supplier.gstin || "" // Add this line
                                 },
                                 billingAddress: {
                                   addressLine1: supplier.billing_address_line1,
@@ -751,19 +928,17 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                               }));
                               setItemForm(prev => ({
                                 ...prev,
-                                discount: accountDiscount // Apply supplier discount to item form
+                                discount: parseFloat(supplier.discount) || 0
                               }));
                             }
                           }}
                         >
-                          <option value="">Select Supplier</option> 
+                          <option value="">Select Supplier</option>
                           {accounts
-                            .filter(acc => acc.role === "supplier") 
+                            .filter(acc => acc.role === "supplier")
                             .map(acc => (
                               <option key={acc.id} value={acc.business_name}>
-                                {acc.gstin?.trim()
-                                  ? acc.display_name || acc.business_name
-                                  : acc.name || acc.business_name}
+                                {acc.business_name} ({acc.mobile_number})
                               </option>
                             ))}
                         </Form.Select>
@@ -784,12 +959,12 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                             <FaEdit /> Edit
                           </Button>
                         </div>
-                        <div className="bg-light p-2 rounded">
-                          <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
-                          <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
-                          <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin || "Not Available"}</div>
-                          <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
-                        </div>
+  <div className="bg-light p-2 rounded">
+  <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
+  <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
+  <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin || "Not Applicable"}</div>
+  <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
+</div>
                       </>
                     )}
                   </Col>
@@ -818,9 +993,11 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
 
               {/* Item Section */}
               <div className="item-section mb-3 mt-3 bg-white p-3 rounded">
-                <h6 className="text-primary mb-3">Add Item</h6>
+                <h6 className="text-primary mb-3">
+                  {editingItemIndex !== null ? `Edit Item (${editingItemIndex + 1})` : 'Add Items'}
+                </h6>
                 <Row className="align-items-end">
-                  <Col md={3}>
+                  <Col md={2}>
                     <div className="d-flex justify-content-between align-items-center mb-1">
                       <Form.Label className="mb-0 fw-bold">Item</Form.Label>
                       <button
@@ -832,6 +1009,7 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                         + New Item
                       </button>
                     </div>
+                   
                     <Form.Select
                       name="product"
                       value={itemForm.product}
@@ -841,47 +1019,31 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                           (p) => p.goods_name === selectedName
                         );
 
+                        console.log('🔍 Selected Product:', selectedProduct);
+
                         if (selectedProduct) {
-                          // Get discount from selected supplier account
-                          const supplierDiscount = invoiceData.supplierInfo.discount || 0;
-                          
                           setItemForm((prev) => ({
                             ...prev,
                             product: selectedProduct.goods_name,
                             product_id: selectedProduct.id,
-                            price: selectedProduct.net_price || 0,
+                            price: selectedProduct.net_price,
                             description: selectedProduct.description || "",
-                            discount: supplierDiscount, // Apply supplier discount
                             batch: "",
                             batch_id: ""
                           }));
 
+                          console.log('✅ Product ID set:', selectedProduct.id);
+
                           try {
                             const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
                             const batchData = await res.json();
+                            console.log('📦 Batches fetched:', batchData);
                             setBatches(batchData);
-
-                            if (selectedProduct.maintain_batch === 0 && batchData.length > 0) {
-                              const defaultBatch = batchData[0];
-                              setSelectedBatch(defaultBatch.batch_number);
-                              setSelectedBatchDetails(defaultBatch);
-                              setItemForm(prev => ({
-                                ...prev,
-                                batch: defaultBatch.batch_number,
-                                batch_id: defaultBatch.batch_number,
-                                price: defaultBatch.selling_price,
-                                discount: supplierDiscount // Keep supplier discount when batch is selected
-                              }));
-                            } else {
-                              setSelectedBatch("");
-                              setSelectedBatchDetails(null);
-                            }
-
+                            setSelectedBatch("");
+                            setSelectedBatchDetails(null);
                           } catch (err) {
                             console.error("Failed to fetch batches:", err);
                             setBatches([]);
-                            setSelectedBatch("");
-                            setSelectedBatchDetails(null);
                           }
                         } else {
                           setItemForm(prev => ({
@@ -890,7 +1052,6 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                             product_id: "",
                             description: "",
                             price: 0,
-                            discount: invoiceData.supplierInfo.discount || 0, // Keep supplier discount
                             batch: "",
                             batch_id: ""
                           }));
@@ -903,7 +1064,7 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                     >
                       <option value="">Select Product</option>
                       {products
-                        .filter((p) => p.group_by === "Purchaseditems" && p.product_type === "KACHA")
+                        .filter((p) => p.group_by === "Purchaseditems")
                         .map((p) => (
                           <option key={p.id} value={p.goods_name}>
                             {p.goods_name}
@@ -911,46 +1072,42 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                         ))}
                     </Form.Select>
 
-                    {/* Batch Dropdown */}
-                    {batches.length > 0 && itemForm.maintain_batch !== 0 && (
-                      <Form.Select
-                        className="mt-2 border-primary"
-                        name="batch"
-                        value={selectedBatch}
-                        onChange={(e) => {
-                          const batchNumber = e.target.value;
-                          setSelectedBatch(batchNumber);
-                          const batch = batches.find(b => b.batch_number === batchNumber);
-                          setSelectedBatchDetails(batch || null);
-                          
-                          // Get supplier discount
-                          const supplierDiscount = invoiceData.supplierInfo.discount || 0;
+                    <Form.Select
+                      className="mt-2 border-primary"
+                      name="batch"
+                      value={selectedBatch}
+                      onChange={(e) => {
+                        const batchNumber = e.target.value;
+                        setSelectedBatch(batchNumber);
+                        const batch = batches.find(b => b.batch_number === batchNumber);
+                        setSelectedBatchDetails(batch || null);
 
-                          if (batch) {
-                            setItemForm(prev => ({
-                              ...prev,
-                              batch: batchNumber,
-                              batch_id: batch.batch_number,
-                              price: batch.selling_price,
-                              discount: supplierDiscount // Keep supplier discount
-                            }));
-                          } else {
-                            setItemForm(prev => ({
-                              ...prev,
-                              batch: "",
-                              batch_id: ""
-                            }));
-                          }
-                        }}
-                      >
-                        <option value="">Select Batch</option>
-                        {batches.map((batch) => (
-                          <option key={batch.id} value={batch.batch_number}>
-                            {batch.batch_number} (Qty: {batch.quantity})
-                          </option>
-                        ))}
-                      </Form.Select>
-                    )}
+                        console.log('🔍 Selected Batch:', batch);
+
+                        if (batch) {
+                          setItemForm(prev => ({
+                            ...prev,
+                            batch: batchNumber,
+                            batch_id: batch.batch_number,
+                            price: batch.selling_price
+                          }));
+                          console.log('✅ Batch ID set:', batch.batch_number);
+                        } else {
+                          setItemForm(prev => ({
+                            ...prev,
+                            batch: "",
+                            batch_id: ""
+                          }));
+                        }
+                      }}
+                    >
+                      <option value="">Select Batch</option>
+                      {batches.map((batch) => (
+                        <option key={batch.id} value={batch.batch_number}>
+                          {batch.batch_number} (Qty: {batch.quantity} )
+                        </option>
+                      ))}
+                    </Form.Select>
                   </Col>
 
                   <Col md={1}>
@@ -966,43 +1123,23 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                   </Col>
 
                   <Col md={2}>
-                    <Form.Label className="fw-bold text-primary">
-                      Price (₹)
-                    </Form.Label>
+                    <Form.Label className="fw-bold">Price (₹)</Form.Label>
                     <Form.Control
                       name="price"
                       type="number"
-                      step="0.01"
-                      min="0"
-                      value={itemForm.price || ""}
-                      onChange={handleItemChange}
-                      placeholder="Enter price manually"
-                      className="border-primary shadow-sm"
-                      style={{
-                        height: "42px"
-                      }}
+                      value={itemForm.price}
+                      readOnly
+                      className="border-primary bg-light"
                     />
                   </Col>
 
                   <Col md={2}>
-                    <div className="d-flex justify-content-between align-items-center mb-1">
-                      <Form.Label className="fw-bold">Discount (%)</Form.Label>
-                      {invoiceData.retailerDiscount > 0 && (
-                        <small className="text-primary">Retailer: {invoiceData.retailerDiscount}%</small>
-                      )}
-                    
-                    </div>
+                    <Form.Label className="fw-bold">Discount (%)</Form.Label>
                     <Form.Control
                       name="discount"
                       type="number"
                       value={itemForm.discount}
-                      onChange={(e) => {
-                        const newDiscount = parseFloat(e.target.value) || 0;
-                        setItemForm(prev => ({
-                          ...prev,
-                          discount: newDiscount
-                        }));
-                      }}
+                      onChange={handleItemChange}
                       min="0"
                       max="100"
                       className="border-primary"
@@ -1025,23 +1162,24 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                   </Col>
 
                   <Col md={1}>
-                    {editingIndex !== null ? (
-                      <div className="d-flex">
-                        <Button variant="success" onClick={updateItem} className="me-1">
-                          Update
-                        </Button>
-                        <Button variant="secondary" onClick={cancelEdit}>
-                          <FaTimes />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button variant="success" onClick={addItem} className="w-100">
-                        Add
+                    <Button 
+                      variant={editingItemIndex !== null ? "warning" : "success"} 
+                      onClick={addItem} 
+                      className="w-100 me-1"
+                    >
+                      {editingItemIndex !== null ? <FaSave /> : "Add"}
+                    </Button>
+                    {editingItemIndex !== null && (
+                      <Button 
+                        variant="secondary" 
+                        onClick={cancelEdit} 
+                        className="w-100 mt-1"
+                      >
+                        <FaTimes />
                       </Button>
                     )}
                   </Col>
                 </Row>
-
                 <Row className="mt-2">
                   <Col>
                     <Form.Control
@@ -1093,22 +1231,34 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                           <td>
                             {item.batchDetails && (
                               <small>
-                                MFG: {item.batchDetails.mfg_date || item.batchDetails.manufacturing_date}<br />
-                                EXP: {item.batchDetails.exp_date || item.batchDetails.expiry_date}
+                                MFG: {item.batchDetails.mfg_date 
+                                  ? new Date(item.batchDetails.mfg_date).toLocaleDateString('en-GB') 
+                                  : item.batchDetails.manufacturing_date 
+                                    ? new Date(item.batchDetails.manufacturing_date).toLocaleDateString('en-GB') 
+                                    : ''}<br/>
+
+                                EXP: {item.batchDetails.exp_date 
+                                  ? new Date(item.batchDetails.exp_date).toLocaleDateString('en-GB') 
+                                  : item.batchDetails.expiry_date 
+                                    ? new Date(item.batchDetails.expiry_date).toLocaleDateString('en-GB') 
+                                    : ''}
                               </small>
                             )}
                           </td>
-                          <td className="text-center ">
+                          <td className="text-center">
                             <Button 
                               variant="warning" 
                               size="sm" 
                               onClick={() => editItem(index)}
                               className="me-1"
-                              disabled={editingIndex !== null}
                             >
                               <FaEdit />
                             </Button>
-                            <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
+                            <Button 
+                              variant="danger" 
+                              size="sm" 
+                              onClick={() => removeItem(index)}
+                            >
                               <FaTrash />
                             </Button>
                           </td>
@@ -1147,7 +1297,7 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                     <Col md={6} className="d-flex flex-column align-items-end">
                       <div className="mb-2">₹{invoiceData.taxableAmount}</div>
 
-            
+                     
 
                       <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
                     </Col>
@@ -1159,10 +1309,10 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
               <Row className="mb-3 bg-white p-3 rounded">
                 <Col md={6}>
                   <h6 className="text-primary">Transportation Details</h6>
-                  <Form.Control
-                    as="textarea"
-                    placeholder="Enter transportation details..."
-                    rows={2}
+                  <Form.Control 
+                    as="textarea" 
+                    placeholder="Enter transportation details..." 
+                    rows={2} 
                     name="transportDetails"
                     value={invoiceData.transportDetails}
                     onChange={handleInputChange}
@@ -1181,23 +1331,23 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
 
               {/* Action Buttons */}
               <div className="text-center bg-white p-3 rounded">
-                <Button
-                  variant="primary"
+                <Button 
+                  variant="primary" 
                   className="me-3 px-4"
                   onClick={handleSubmit}
                   disabled={loading}
                 >
-                  {loading ? 'Submitting...' : 'Submit Kacha Purchase Invoice'}
+                  {loading ? (isEditMode ? 'Updating...' : 'Submitting...') : (isEditMode ? 'Update Invoice' : 'Submit Invoice')}
                 </Button>
-                <Button
-                  variant="info"
+                <Button 
+                  variant="info" 
                   className="me-3 px-4"
                   onClick={handlePreview}
                   disabled={!isPreviewReady}
                 >
                   {isPreviewReady ? 'View Invoice Preview' : 'Submit to Enable Preview'}
                 </Button>
-                <Button variant="danger" onClick={() => navigate("/purchase/purchase-invoice")}>
+                <Button variant="danger" onClick={() => navigate("/kachapurchasepdf")}>
                   Cancel
                 </Button>
               </div>
@@ -1209,4 +1359,4 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
   );
 };
 
-export default KachaPurchaseInvoiceForm;
+export default KachaPurchaseInvoiceEdit;

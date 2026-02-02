@@ -167,8 +167,17 @@ const EditDebitNote = () => {
 
   const handleProductChange = (e) => { setEditedProduct(e.target.value); setEditedBatch(""); };
   const handleBatchChange = (e) => setEditedBatch(e.target.value);
-  const handleQuantityChange = (e) => setEditedQuantity(e.target.value);
-
+const handleQuantityChange = (e) => {
+  const value = e.target.value;
+  
+  // Parse as integer
+  const intValue = parseInt(value);
+  
+  // Only update if it's a valid integer or empty
+  if (value === '' || (!isNaN(intValue) && intValue >= 0)) {
+    setEditedQuantity(value);
+  }
+};
   const handleUpdateItem = (index) => {
     const newQty = parseFloat(editedQuantity);
     if (isNaN(newQty) || newQty<0){ window.alert("Please enter valid quantity"); return; }
@@ -466,24 +475,40 @@ const response = await axios.put(`${baseurl}/debitnoteupdate/${id}`, requestData
                               item.batch
                             )}
                           </td>
-                          <td className="text-end">
-                            {isEditing ? (
-                              <input
-                                type="number"
-                                className="form-control form-control-sm"
-                                value={editedQuantity}
-                                min="0"
-                                max={maxForInput}
-                                step="0.01"
-                                onChange={handleQuantityChange}
-                                style={{
-                                  border: isOver ? '1px solid #ced4da' : '1px solid #ced4da'
-                                }}
-                              />
-                            ) : (
-                              item.quantity
-                            )}
-                          </td>
+ <td className="text-center" style={{ width: "90px" }}>
+  {isEditing ? (
+    <input
+      type="number"
+      min="0"
+      max={maxForInput}
+      step="1"
+      inputMode="numeric"
+      className="form-control form-control-sm text-center mx-auto"
+      style={{ width: "70px" }}
+      value={editedQuantity}
+      onChange={(e) => {
+        const value = e.target.value;
+        
+        // Allow empty value or valid numbers
+        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+          handleQuantityChange(e);
+        }
+      }}
+      onKeyDown={(e) => {
+        // Prevent decimal point and scientific notation
+        if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') {
+          e.preventDefault();
+        }
+      }}
+      onWheel={(e) => e.target.blur()}
+    />
+  ) : (
+    <span className="d-block text-center">
+      {Math.floor(item.quantity)}
+    </span>
+  )}
+</td>
+
                           <td className="text-end">₹{isEditing ? displayPrice.toFixed(2) : parseFloat(item.price).toFixed(2)}</td>
                           <td className="text-end">{isEditing ? displayDiscount : item.discount}</td>
                           <td className="text-end">{isEditing ? displayGst : item.gst}%</td>

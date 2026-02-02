@@ -106,95 +106,138 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
     loadProductData();
   }, [productId, groupType]);
 
-  const fetchProductById = async (id) => {
-    try {
-      const response = await axios.get(`${baseurl}/products/${id}`);
-      const product = response.data;
-      console.log('📦 Fetched product:', product);
+const fetchProductById = async (id) => {
+  try {
+    const response = await axios.get(`${baseurl}/products/${id}`);
+    const product = response.data;
+    console.log('📦 Fetched product:', product);
 
+    // Helper function to format date properly
+    const formatDateForInput = (dateString) => {
+      if (!dateString) return new Date().toISOString().split('T')[0];
       
-      // Handle images
-      if (product.images) {
-        try {
-          const parsedImages = typeof product.images === 'string'
-            ? JSON.parse(product.images)
-            : product.images;
-          setImages(Array.isArray(parsedImages) ? parsedImages : []);
-        } catch (e) {
-          setImages([]);
+      try {
+        // Try different date formats
+        let date;
+        
+        // If it's already in YYYY-MM-DD format
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+          return dateString;
         }
-      } else {
+        
+        // If it has T separator (ISO format)
+        if (dateString.includes('T')) {
+          date = new Date(dateString);
+        } else {
+          // Try parsing as-is
+          date = new Date(dateString);
+        }
+        
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+          console.log('⚠️ Invalid date, using current date');
+          return new Date().toISOString().split('T')[0];
+        }
+        
+        // Format as YYYY-MM-DD
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        
+        console.log('📅 Date conversion:', {
+          original: dateString,
+          formatted: `${year}-${month}-${day}`
+        });
+        
+        return `${year}-${month}-${day}`;
+      } catch (error) {
+        console.log('⚠️ Error formatting date, using current date');
+        return new Date().toISOString().split('T')[0];
+      }
+    };
+
+    // Handle images
+    if (product.images) {
+      try {
+        const parsedImages = typeof product.images === 'string'
+          ? JSON.parse(product.images)
+          : product.images;
+        setImages(Array.isArray(parsedImages) ? parsedImages : []);
+      } catch (e) {
         setImages([]);
       }
-
-      await fetchBatches(id);
-
-      setTimeout(() => {
-        let finalPurchasePrice = product.purchase_price || 0;
-        let finalPrice = product.price || 0; 
-        let finalMRP = product.mrp || 0;
-
-        if (product.maintain_batch && batches.length > 0) {
-          const totalPurchasePrice = batches.reduce((sum, batch) => {
-            return sum + (parseFloat(batch.purchasePrice) || 0);
-          }, 0);
-
-          const totalPrice = batches.reduce((sum, batch) => {
-            return sum + (parseFloat(batch.sellingPrice) || 0);
-          }, 0);
-
-          const totalMRP = batches.reduce((sum, batch) => {
-            return sum + (parseFloat(batch.mrp) || 0);
-          }, 0);
-
-          finalPurchasePrice = totalPurchasePrice > 0 ? totalPurchasePrice : product.purchase_price || 0;
-          finalPrice = totalPrice > 0 ? totalPrice : product.price || 0;
-          finalMRP = totalMRP > 0 ? totalMRP : product.mrp || 0;
-        }
-
-        console.log('💰 Calculated prices:', {
-          purchase: finalPurchasePrice,
-          price: finalPrice,
-          mrp: finalMRP,
-          hasBatches: batches.length,
-          maintainBatch: product.maintain_batch
-        });
-
-        setFormData({
-          group_by: product.group_by || groupType,
-          goods_name: product.goods_name || product.name || '',
-          category_id: product.category_id || '',
-          company_id: product.company_id || '',
-          purchase_price: finalPurchasePrice,
-          price: finalPrice, 
-          mrp: finalMRP,
-          inclusive_gst: product.inclusive_gst || '',
-          gst_rate: product.gst_rate || '',
-          non_taxable: product.non_taxable || '',
-          net_price: product.net_price || '',
-          hsn_code: product.hsn_code || '',
-          unit: product.unit,
-          cess_rate: product.cess_rate || '',
-          cess_amount: product.cess_amount || '',
-          sku: product.sku || '',
-          opening_stock: product.opening_stock || '',
-          opening_stock_date: product.opening_stock_date ? product.opening_stock_date.split('T')[0] : new Date().toISOString().split('T')[0],
-          min_stock_alert: product.min_stock_alert || '',
-          max_stock_alert: product.max_stock_alert || '',
-          description: product.description || '',
-          maintain_batch: product.maintain_batch || false,
-          can_be_sold: product.can_be_sold || false,
-          product_type: product.product_type || '', 
-          min_sale_price: product.min_sale_price || '',
-        });
-
-        setMaintainBatch(product.maintain_batch || false);
-      }, 100);
-    } catch (error) {
-      console.error('Error fetching product:', error);
-      showAlert('Error fetching product data', 'danger');
+    } else {
+      setImages([]);
     }
-  };
+
+    await fetchBatches(id);
+
+    setTimeout(() => {
+      let finalPurchasePrice = product.purchase_price || 0;
+      let finalPrice = product.price || 0; 
+      let finalMRP = product.mrp || 0;
+
+      if (product.maintain_batch && batches.length > 0) {
+        const totalPurchasePrice = batches.reduce((sum, batch) => {
+          return sum + (parseFloat(batch.purchasePrice) || 0);
+        }, 0);
+
+        const totalPrice = batches.reduce((sum, batch) => {
+          return sum + (parseFloat(batch.sellingPrice) || 0);
+        }, 0);
+
+        const totalMRP = batches.reduce((sum, batch) => {
+          return sum + (parseFloat(batch.mrp) || 0);
+        }, 0);
+
+        finalPurchasePrice = totalPurchasePrice > 0 ? totalPurchasePrice : product.purchase_price || 0;
+        finalPrice = totalPrice > 0 ? totalPrice : product.price || 0;
+        finalMRP = totalMRP > 0 ? totalMRP : product.mrp || 0;
+      }
+
+      console.log('💰 Calculated prices:', {
+        purchase: finalPurchasePrice,
+        price: finalPrice,
+        mrp: finalMRP,
+        hasBatches: batches.length,
+        maintainBatch: product.maintain_batch
+      });
+
+      setFormData({
+        group_by: product.group_by || groupType,
+        goods_name: product.goods_name || product.name || '',
+        category_id: product.category_id || '',
+        company_id: product.company_id || '',
+        purchase_price: finalPurchasePrice,
+        price: finalPrice, 
+        mrp: finalMRP,
+        inclusive_gst: product.inclusive_gst || '',
+        gst_rate: product.gst_rate || '',
+        non_taxable: product.non_taxable || '',
+        net_price: product.net_price || '',
+        hsn_code: product.hsn_code || '',
+        unit: product.unit,
+        cess_rate: product.cess_rate || '',
+        cess_amount: product.cess_amount || '',
+        sku: product.sku || '',
+        opening_stock: product.opening_stock || '',
+        opening_stock_date: formatDateForInput(product.opening_stock_date), // Use helper function
+        min_stock_alert: product.min_stock_alert || '',
+        max_stock_alert: product.max_stock_alert || '',
+        description: product.description || '',
+        maintain_batch: product.maintain_batch || false,
+        can_be_sold: product.can_be_sold || false,
+        product_type: product.product_type || '', 
+        min_sale_price: product.min_sale_price || '',
+      });
+
+      setMaintainBatch(product.maintain_batch || false);
+    }, 100);
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    showAlert('Error fetching product data', 'danger');
+  }
+};
 
   const fetchCategories = async () => {
     try {

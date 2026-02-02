@@ -120,7 +120,6 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
 
     loadProductData();
   }, [productId, groupType]);
-
 const fetchProductById = async (id) => {
   try {
     const response = await axios.get(`${baseurl}/products/${id}`);
@@ -131,9 +130,35 @@ const fetchProductById = async (id) => {
       mrp: product.mrp,
       purchase_price: product.purchase_price,
       opening_stock: product.opening_stock,
-      unit_id: product.unit_id // Log unit_id for debugging
+      unit_id: product.unit_id,
+      opening_stock_date: product.opening_stock_date // Add this for debugging
     });
- 
+
+    // Helper function to format date properly
+    const formatDateForInput = (dateString) => {
+      if (!dateString) return new Date().toISOString().split('T')[0];
+      
+      try {
+        // Try parsing the date
+        const date = new Date(dateString);
+        
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+          console.log('⚠️ Invalid date, using current date');
+          return new Date().toISOString().split('T')[0];
+        }
+        
+        // Format as YYYY-MM-DD
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}`;
+      } catch (error) {
+        console.log('⚠️ Error formatting date, using current date');
+        return new Date().toISOString().split('T')[0];
+      }
+    };
 
     // Set initial form data
     setFormData({
@@ -149,18 +174,24 @@ const fetchProductById = async (id) => {
       non_taxable: product.non_taxable || '',
       net_price: product.net_price || '',
       hsn_code: product.hsn_code || '',
-      unit:product.unit ,
-        cess_rate: product.cess_rate || '',
+      unit: product.unit || product.unit_id || '',
+      cess_rate: product.cess_rate || '',
       cess_amount: product.cess_amount || '',
       sku: product.sku || '',
       opening_stock: product.opening_stock || '',
-      opening_stock_date: product.opening_stock_date ? product.opening_stock_date.split('T')[0] : new Date().toISOString().split('T')[0],
+      opening_stock_date: formatDateForInput(product.opening_stock_date), // Use helper function
       min_stock_alert: product.min_stock_alert || '',
       max_stock_alert: product.max_stock_alert || '',
       min_sale_price: product.min_sale_price || '',
       description: product.description || '',
       maintain_batch: product.maintain_batch || false,
-        product_type: product.product_type || '',
+      product_type: product.product_type || '',
+    });
+
+    // Log the formatted date
+    console.log('📅 Date conversion:', {
+      fromDb: product.opening_stock_date,
+      formatted: formatDateForInput(product.opening_stock_date)
     });
 
     // Load images

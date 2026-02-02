@@ -134,8 +134,7 @@ const CreateProductInvoice = ({ user }) => {
   // Open PDF preview - ONLY after form is submitted
   const handlePreview = () => {
     if (!isPreviewReady) {
-      setError("Please submit the purchase invoice first to generate preview");
-      setTimeout(() => setError(null), 3000);
+      window.alert("⚠️ Please submit the purchase invoice first to generate preview");
       return;
     }
 
@@ -276,6 +275,7 @@ const updateItem = () => {
   setSelectedBatch("");
   setSelectedBatchDetails(null);
   setEditingIndex(null);
+    window.alert("✅ Item updated successfully!");
 };
 
 const cancelEdit = () => {
@@ -384,8 +384,7 @@ const cancelEdit = () => {
 
   const addItem = () => {
     if (!itemForm.product) {
-      setError("Please select a product");
-      setTimeout(() => setError(null), 3000);
+    window.alert("⚠️ Please select a product");
       return;
     }
 
@@ -420,6 +419,7 @@ const cancelEdit = () => {
     setBatches([]);
     setSelectedBatch("");
     setSelectedBatchDetails(null);
+     window.alert("✅ Item added successfully!");
   };
 
   const removeItem = (index) => {
@@ -550,8 +550,7 @@ const cancelEdit = () => {
     setSelected(false);
     setSelectedSupplierId(null);
     setIsPreviewReady(false);
-    setSuccess("Draft cleared successfully!");
-    setTimeout(() => setSuccess(false), 3000);
+   window.alert("✅ Draft cleared successfully!");
   };
 
 
@@ -573,16 +572,14 @@ const handleSubmit = async (e) => {
   setSuccess(false);
 
   if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-    setError("Please select a supplier");
+     window.alert("⚠️ Please select a supplier");
     setLoading(false);
-    setTimeout(() => setError(null), 3000);
     return;
   }
 
   if (invoiceData.items.length === 0) {
-    setError("Please add at least one item to the purchase invoice");
+        window.alert("⚠️ Please add at least one item to the invoice"); 
     setLoading(false);
-    setTimeout(() => setError(null), 3000);
     return;
   }
 
@@ -737,8 +734,8 @@ const handleSubmit = async (e) => {
 
     // Clear localStorage and set success
     localStorage.removeItem('draftPurchaseInvoice');
-    setSuccess('Purchase invoice submitted successfully!');
-    setIsPreviewReady(true);
+   window.alert('✅ Purchase invoice submitted successfully!');
+       setIsPreviewReady(true);
 
     // Also update invoiceData with the new number
     setInvoiceData(prev => ({

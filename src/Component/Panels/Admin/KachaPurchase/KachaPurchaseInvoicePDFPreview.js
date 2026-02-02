@@ -54,7 +54,7 @@ const KachaPurchaseInvoicePDFPreview = () => {
 
   const handleEditInvoice = () => {
     if (invoiceData && invoiceData.voucherId) {
-      navigate(`/Purchase/editinvoice/${invoiceData.voucherId}`);
+      navigate(`/kachapurchaseedit/${invoiceData.voucherId}`);
     } else {
       setError('Cannot edit invoice: Voucher ID not found');
       setTimeout(() => setError(null), 3000);

@@ -115,48 +115,52 @@ const [tempPrice, setTempPrice] = useState("");
     }
   }, [id]);
 
-  const fetchInvoiceDataForEdit = async (voucherId) => {
-    try {
-      setLoading(true);
-      console.log('Fetching invoice data for editing:', voucherId);
-      
-      const response = await fetch(`${baseurl}/transactions/${voucherId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch invoice data');
-      }
-      
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        const apiData = result.data;
-        const transformedData = transformApiDataToFormFormat(apiData);
-        
-        setInvoiceData(transformedData);
-        setSelectedSupplierId(apiData.PartyID);
-        setSelected(true);
-        
-        const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
-        if (supplierAccount) {
-          setInputName(supplierAccount.business_name);
-        }
-        
-        if (apiData.staffid) {
-          setSelectedStaffId(apiData.staffid);
-        }
-        
-        setSuccess('Invoice loaded for editing');
-        setTimeout(() => setSuccess(false), 3000);
-      } else {
-        throw new Error('No valid data received');
-      }
-    } catch (err) {
-      console.error('Error fetching invoice for edit:', err);
-      setError('Failed to load invoice for editing: ' + err.message);
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setLoading(false);
+const fetchInvoiceDataForEdit = async (voucherId) => {
+  try {
+    setLoading(true);
+    console.log('Fetching invoice data for editing:', voucherId);
+    
+    const response = await fetch(`${baseurl}/transactions/${voucherId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch invoice data');
     }
-  };
+    
+    const result = await response.json();
+    
+    if (result.success && result.data) {
+      const apiData = result.data;
+      const transformedData = transformApiDataToFormFormat(apiData);
+      
+      setInvoiceData(transformedData);
+      setSelectedSupplierId(apiData.PartyID);
+      setSelected(true);
+      
+      const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
+      if (supplierAccount) {
+        setInputName(supplierAccount.business_name);
+      }
+      
+      if (apiData.staffid) {
+        setSelectedStaffId(apiData.staffid);
+      }
+      
+      // OLD: setSuccess('Invoice loaded for editing');
+      // OLD: setTimeout(() => setSuccess(false), 3000);
+      // NEW:
+      window.alert('✅ Invoice loaded for editing successfully!');
+    } else {
+      throw new Error('No valid data received');
+    }
+  } catch (err) {
+    console.error('Error fetching invoice for edit:', err);
+    // OLD: setError('Failed to load invoice for editing: ' + err.message);
+    // OLD: setTimeout(() => setError(null), 5000);
+    // NEW:
+    window.alert(`❌ Failed to load invoice for editing: ${err.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const transformApiDataToFormFormat = (apiData) => {
     console.log('Transforming API data for form:', apiData);
@@ -393,8 +397,7 @@ const [tempPrice, setTempPrice] = useState("");
   // Open PDF preview - ONLY after form is submitted
   const handlePreview = () => {
     if (!isPreviewReady) {
-      setError("Please submit the invoice first to generate preview");
-      setTimeout(() => setError(null), 3000);
+         window.alert("⚠️ Please submit the invoice first to generate preview");
       return;
     }
 
@@ -532,68 +535,62 @@ const [tempPrice, setTempPrice] = useState("");
     }));
   };
 
-  const addItem = () => {
-    if (!itemForm.product) {
-      setError("Please select a product");
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
+const addItem = () => {
+  if (!itemForm.product) {
+    window.alert("⚠️ Please select a product");
+    return;
+  }
 
-    const calculatedItem = calculateItemTotal();
-    
-
-
-    const finalItem = {
-      ...calculatedItem,
-      batch: selectedBatch,
-      batch_id: itemForm.batch_id,
-      product_id: itemForm.product_id,
-      batchDetails: selectedBatchDetails
-    };
-
-    if (editingItemIndex !== null) {
-      // Update existing item
-      setInvoiceData(prev => ({
-        ...prev,
-        items: prev.items.map((item, index) => 
-          index === editingItemIndex ? finalItem : item
-        )
-      }));
-      setEditingItemIndex(null);
-      setSuccess(`Item "${finalItem.product}" updated successfully!`);
-    } else {
-      // Add new item
-      setInvoiceData(prev => ({
-        ...prev,
-        items: [...prev.items, finalItem]
-      }));
-      setSuccess(`Item "${finalItem.product}" added successfully!`);
-    }
-    
-    setTimeout(() => setSuccess(false), 2000);
-
-    // Reset form
-    setItemForm({
-      product: "",
-      product_id: "",
-      description: "",
-      quantity: 0,
-      price: 0,
-      discount: 0,
-      gst: 0,
-      cgst: 0,
-      sgst: 0,
-      igst: 0,
-      cess: 0,
-      total: 0,
-      batch: "",
-      batch_id: "",
-      batchDetails: null
-    });
-    setBatches([]);
-    setSelectedBatch("");
-    setSelectedBatchDetails(null);
+  const calculatedItem = calculateItemTotal();
+  const finalItem = {
+    ...calculatedItem,
+    batch: selectedBatch,
+    batch_id: itemForm.batch_id,
+    product_id: itemForm.product_id,
+    batchDetails: selectedBatchDetails
   };
+
+  if (editingItemIndex !== null) {
+    // Update existing item
+    setInvoiceData(prev => ({
+      ...prev,
+      items: prev.items.map((item, index) => 
+        index === editingItemIndex ? finalItem : item
+      )
+    }));
+    setEditingItemIndex(null);
+    window.alert(`✅ Item "${finalItem.product}" updated successfully!`);
+  } else {
+    // Add new item
+    setInvoiceData(prev => ({
+      ...prev,
+      items: [...prev.items, finalItem]
+    }));
+    window.alert(`✅ Item "${finalItem.product}" added successfully!`);
+  }
+
+  // Reset form
+  setItemForm({
+    product: "",
+    product_id: "",
+    description: "",
+    quantity: 0,
+    price: 0,
+    discount: 0,
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0,
+    total: 0,
+    batch: "",
+    batch_id: "",
+    batchDetails: null
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+};
 
   const editItem = (index) => {
     const itemToEdit = invoiceData.items[index];
@@ -787,8 +784,7 @@ const [tempPrice, setTempPrice] = useState("");
     setSelected(false);
     setSelectedSupplierId(null);
     setIsPreviewReady(false);
-    setSuccess("Draft cleared successfully!");
-    setTimeout(() => setSuccess(false), 3000);
+  window.alert("✅ Draft cleared successfully!");
   };
 
   const handleSubmit = async (e) => {
@@ -798,14 +794,14 @@ const [tempPrice, setTempPrice] = useState("");
     setSuccess(false);
     
     if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-      setError("Please select a supplier/customer");
+       window.alert("⚠️ Please select a supplier/customer");
       setLoading(false);
       setTimeout(() => setError(null), 3000);
       return;
     }
 
     if (invoiceData.items.length === 0) {
-      setError("Please add at least one item to the invoice");
+         window.alert("⚠️ Please add at least one item to the invoice");
       setLoading(false);
       setTimeout(() => setError(null), 3000);
       return;
@@ -980,7 +976,7 @@ const [tempPrice, setTempPrice] = useState("");
       console.log('✅ Server Response:', responseData);
       
       localStorage.removeItem('draftInvoice');
-      setSuccess(isEditMode ? 'Invoice updated successfully!' : 'Invoice submitted successfully!');
+window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice submitted successfully!');
       setIsPreviewReady(true);
 
       // Store preview data

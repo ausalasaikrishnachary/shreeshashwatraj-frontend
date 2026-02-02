@@ -140,8 +140,7 @@ const PurchaseInvoiceEdit = ({ user }) => {
           setInputName(supplierAccount.business_name);
         }
         
-        setSuccess('Invoice loaded for editing');
-        setTimeout(() => setSuccess(false), 3000);
+       window.alert('✅ Invoice loaded for editing successfully!');
       } else {
         throw new Error('No valid data received');
       }
@@ -375,8 +374,7 @@ const PurchaseInvoiceEdit = ({ user }) => {
   // Open PDF preview - ONLY after form is submitted
   const handlePreview = () => {
     if (!isPreviewReady) {
-      setError("Please submit the invoice first to generate preview");
-      setTimeout(() => setError(null), 3000);
+      window.alert("⚠️ Please submit the invoice first to generate preview");
       return;
     }
 
@@ -544,8 +542,7 @@ const PurchaseInvoiceEdit = ({ user }) => {
 
 const addItem = () => {
   if (!itemForm.product) {
-    setError("Please select a product");
-    setTimeout(() => setError(null), 3000);
+    window.alert("⚠️ Please select a product");
     return;
   }
 
@@ -566,12 +563,15 @@ const addItem = () => {
       )
     }));
     setEditingItemIndex(null);
+     window.alert("✅ Item updated successfully!");
   } else {
     // Add new item
     setInvoiceData(prev => ({
       ...prev,
       items: [...prev.items, calculatedItem]
+      
     }));
+        window.alert("✅ Item added successfully!");
   }
 
   // Reset form
@@ -789,8 +789,7 @@ const cancelEdit = () => {
     setSelected(false);
     setSelectedSupplierId(null);
     setIsPreviewReady(false);
-    setSuccess("Draft cleared successfully!");
-    setTimeout(() => setSuccess(false), 3000);
+     window.alert("✅ Draft cleared successfully!");
   };
 
  const handleSubmit = async (e) => {
@@ -800,16 +799,14 @@ const cancelEdit = () => {
   setSuccess(false);
   
   if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-    setError("Please select a supplier/customer");
+    window.alert("⚠️ Please select a supplier/customer");
     setLoading(false);
-    setTimeout(() => setError(null), 3000);
     return;
   }
 
   if (invoiceData.items.length === 0) {
-    setError("Please add at least one item to the invoice");
+    window.alert("⚠️ Please add at least one item to the invoice");
     setLoading(false);
-    setTimeout(() => setError(null), 3000);
     return;
   }
 
@@ -969,8 +966,8 @@ const cancelEdit = () => {
     console.log('Response batch_id:', responseData.batch_id);
     
     localStorage.removeItem('draftInvoice');
-    setSuccess(isEditMode ? 'Invoice updated successfully!' : 'Invoice submitted successfully!');
-    setIsPreviewReady(true);
+   window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice submitted successfully!');
+       setIsPreviewReady(true);
 
     // Store preview data with voucher ID
     const previewData = {
@@ -1546,7 +1543,6 @@ const cancelEdit = () => {
                       <div className="mb-2 fw-bold">Taxable Amount</div>
                       <div className="mb-2 fw-bold">Total GST</div>
                       <div className="mb-2 fw-bold">Total Cess</div>
-                      <div className="mb-2 fw-bold">Additional Charges</div>
                       <div className="mb-2 fw-bold text-success">Grand Total</div>
                     </Col>
 
@@ -1555,7 +1551,7 @@ const cancelEdit = () => {
                       <div className="mb-2">₹{invoiceData.totalGST}</div>
                       <div className="mb-2">₹{invoiceData.totalCess}</div>
 
-                      <Form.Select
+                      {/* <Form.Select
                         className="mb-2 border-primary"
                         style={{ width: "100%" }}
                         value={invoiceData.additionalCharge || ""}
@@ -1572,7 +1568,7 @@ const cancelEdit = () => {
                         <option value="Packing">Packing Charges</option>
                         <option value="Transport">Transport Charges</option>
                         <option value="Service">Service Charges</option>
-                      </Form.Select>
+                      </Form.Select> */}
 
                       <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
                     </Col>

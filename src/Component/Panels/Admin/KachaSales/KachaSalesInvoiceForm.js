@@ -153,8 +153,7 @@ const KachaSalesInvoiceForm = ({ user }) => {
           setSelectedStaffId(apiData.staffid);
         }
         
-        setSuccess('Invoice loaded for editing');
-        setTimeout(() => setSuccess(false), 3000);
+        window.alert('✅ Invoice loaded for editing successfully!');
       } else {
         throw new Error('No valid data received');
       }
@@ -346,8 +345,7 @@ const KachaSalesInvoiceForm = ({ user }) => {
   // Open PDF preview - ONLY after form is submitted
   const handlePreview = () => {
     if (!isPreviewReady) {
-      setError("Please submit the invoice first to generate preview");
-      setTimeout(() => setError(null), 3000);
+  window.alert("⚠️ Please submit the invoice first to generate preview");
       return;
     }
 
@@ -437,56 +435,56 @@ const KachaSalesInvoiceForm = ({ user }) => {
     }));
   };
 
-  const addItem = () => {
-    if (!itemForm.product) {
-      setError("Please select a product");
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
+const addItem = () => {
+  if (!itemForm.product) {
+    window.alert("⚠️ Please select a product");
+    return;
+  }
 
-    const calculatedItem = {
-      ...calculateItemTotal(),
-      batch: selectedBatch,
-      batch_id: itemForm.batch_id,
-      product_id: itemForm.product_id,
-      batchDetails: selectedBatchDetails
-    };
-
-    if (editingItemIndex !== null) {
-      // Update existing item
-      setInvoiceData(prev => ({
-        ...prev,
-        items: prev.items.map((item, index) => 
-          index === editingItemIndex ? calculatedItem : item
-        )
-      }));
-      setEditingItemIndex(null);
-    } else {
-      // Add new item
-      setInvoiceData(prev => ({
-        ...prev,
-        items: [...prev.items, calculatedItem]
-      }));
-    }
-
-    // Reset form
-    setItemForm({
-      product: "",
-      product_id: "",
-      description: "",
-      quantity: 1,
-      price: 0,
-      discount: 0,
-      total: 0,
-      batch: "",
-      batch_id: "",
-      batchDetails: null
-    });
-    setBatches([]);
-    setSelectedBatch("");
-    setSelectedBatchDetails(null);
+  const calculatedItem = {
+    ...calculateItemTotal(),
+    batch: selectedBatch,
+    batch_id: itemForm.batch_id,
+    product_id: itemForm.product_id,
+    batchDetails: selectedBatchDetails
   };
 
+  if (editingItemIndex !== null) {
+    // Update existing item
+    setInvoiceData(prev => ({
+      ...prev,
+      items: prev.items.map((item, index) => 
+        index === editingItemIndex ? calculatedItem : item
+      )
+    }));
+    setEditingItemIndex(null);
+    window.alert("✅ Item updated successfully!");
+  } else {
+    // Add new item
+    setInvoiceData(prev => ({
+      ...prev,
+      items: [...prev.items, calculatedItem]
+    }));
+    window.alert("✅ Item added successfully!");
+  }
+
+  // Reset form
+  setItemForm({
+    product: "",
+    product_id: "",
+    description: "",
+    quantity: 1,
+    price: 0,
+    discount: 0,
+    total: 0,
+    batch: "",
+    batch_id: "",
+    batchDetails: null
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+};
   const editItem = (index) => {
     const itemToEdit = invoiceData.items[index];
     
@@ -638,8 +636,7 @@ const KachaSalesInvoiceForm = ({ user }) => {
     setSelectedSupplierId(null);
     setSelectedStaffId("");
     setIsPreviewReady(false);
-    setSuccess("Draft cleared successfully!");
-    setTimeout(() => setSuccess(false), 3000);
+ window.alert("✅ Draft cleared successfully!");
   };
 
   const handleSubmit = async (e) => {
@@ -649,14 +646,13 @@ const KachaSalesInvoiceForm = ({ user }) => {
     setSuccess(false);
     
     if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-      setError("Please select a supplier/customer");
+     window.alert("⚠️ Please select a supplier/customer");
       setLoading(false);
-      setTimeout(() => setError(null), 3000);
       return;
     }
 
     if (invoiceData.items.length === 0) {
-      setError("Please add at least one item to the invoice");
+        window.alert("⚠️ Please add at least one item to the invoice");
       setLoading(false);
       setTimeout(() => setError(null), 3000);
       return;
@@ -750,8 +746,8 @@ const KachaSalesInvoiceForm = ({ user }) => {
       }
       
       localStorage.removeItem('draftInvoice');
-      setSuccess(isEditMode ? 'Transaction updated successfully!' : 'Stock transfer completed successfully!');
-      setIsPreviewReady(true);
+ window.alert(isEditMode ? '✅ Transaction updated successfully!' : '✅ Stock transfer completed successfully!');
+       setIsPreviewReady(true);
 
       // Store preview data with voucher ID
       const previewData = {
