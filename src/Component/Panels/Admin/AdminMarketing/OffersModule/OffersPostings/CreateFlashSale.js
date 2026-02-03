@@ -76,19 +76,19 @@ function CreateFlashSale({ editingFlashSale, onBack, onSuccess }) {
           console.log("Found product from string/number ID:", selectedProduct);
         }
       }
-      
-      // Format dates for input fields
-      const formatDateForInput = (dateString) => {
-        if (!dateString) return "";
-        try {
-          const date = new Date(dateString);
-          if (isNaN(date.getTime())) return "";
-          return date.toISOString().split('T')[0];
-        } catch (error) {
-          console.error("Error formatting date:", error);
-          return "";
-        }
-      };
+const formatDateForInput = (dateString) => {
+  if (!dateString) return "";
+
+  const d = new Date(dateString);
+
+  // Use LOCAL date values, not UTC
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
 
       // Set up the form data
       const newFormData = {

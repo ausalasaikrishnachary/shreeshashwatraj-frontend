@@ -274,6 +274,7 @@ const fetchOrders = async () => {
           let itemsData = [];
           
           try {
+            // Try first API
             const itemsRes = await axios.get(`${baseurl}/orders/details/${order.order_number}`);
             console.log(`Response for order ${order.order_number}:`, itemsRes.data);
             
@@ -286,6 +287,7 @@ const fetchOrders = async () => {
             console.log(`First API failed for ${order.order_number}, trying alternatives:`, error1.message);
             
             try {
+              // Try second API - this one has flash offer details
               const itemsRes2 = await axios.get(`${baseurl}/orders/order-items/${order.order_number}`);
               console.log(`Alternative response for order ${order.order_number}:`, itemsRes2.data);
               
@@ -317,35 +319,33 @@ const fetchOrders = async () => {
           const items = await Promise.all(
             itemsData.map(async (item) => {
               let min_sale_price = 0;
-                   let stock_quantity = 0;
+              let stock_quantity = 0;
               let stock_insufficient = false;
 
               try {
                 const productRes = await axios.get(`${baseurl}/products/${item.product_id}`);
                 min_sale_price = productRes.data.min_sale_price || 0;
 
-                 try {
-                                  const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
-                                  console.log(`Batches for product ${item.product_id}:`, batchesRes.data);
-                                  
-                                  if (batchesRes.data && Array.isArray(batchesRes.data)) {
-                                    // Sum up all available quantities from batches
-                                    stock_quantity = batchesRes.data.reduce((total, batch) => {
-                                      return total + (parseFloat(batch.quantity) || 0);
-                                    }, 0);
-                                    
-                                    console.log(`Total stock quantity for product ${item.product_id}: ${stock_quantity}`);
-                                    
-                                    // Check if item quantity exceeds available stock
-                                    const itemQuantity = parseInt(item.quantity) || 1;
-                                    if (itemQuantity > stock_quantity) {
-                                      stock_insufficient = true;
-                                      console.warn(`Insufficient stock for product ${item.product_id}: Ordered ${itemQuantity}, Available ${stock_quantity}`);
-                                    }
-                                  }
-                                } catch (batchErr) {
-                                  console.warn(`Could not fetch batches for product ${item.product_id}:`, batchErr.message);
-                                }
+                try {
+                  const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
+                  console.log(`Batches for product ${item.product_id}:`, batchesRes.data);
+                  
+                  if (batchesRes.data && Array.isArray(batchesRes.data)) {
+                    stock_quantity = batchesRes.data.reduce((total, batch) => {
+                      return total + (parseFloat(batch.quantity) || 0);
+                    }, 0);
+                    
+                    console.log(`Total stock quantity for product ${item.product_id}: ${stock_quantity}`);
+                    
+                    const itemQuantity = parseInt(item.quantity) || 1;
+                    if (itemQuantity > stock_quantity) {
+                      stock_insufficient = true;
+                      console.warn(`Insufficient stock for product ${item.product_id}: Ordered ${itemQuantity}, Available ${stock_quantity}`);
+                    }
+                  }
+                } catch (batchErr) {
+                  console.warn(`Could not fetch batches for product ${item.product_id}:`, batchErr.message);
+                }
 
               } catch (productErr) {
                 console.warn(`Could not fetch product details for product ID ${item.product_id}:`, productErr.message);
@@ -355,8 +355,12 @@ const fetchOrders = async () => {
               const salePrice = parseFloat(item.sale_price) || 0;
               const editedSalePrice = parseFloat(item.edited_sale_price) || salePrice;
               
-              // Check if sale price is less than minimum sale price
               const needsApproval = salePrice < parseFloat(min_sale_price);
+              
+              // Extract flash offer details
+              const flashOffer = parseInt(item.flash_offer) || 0;
+              const buyQuantity = parseInt(item.buy_quantity) || 0;
+              const getQuantity = parseInt(item.get_quantity) || 0;
               
               return {
                 id: item.id || item.item_id || 0,
@@ -366,6 +370,7 @@ const fetchOrders = async () => {
                 mrp: parseFloat(item.mrp) || 0,
                 sale_price: salePrice,
                 edited_sale_price: editedSalePrice,
+                  net_price: parseFloat(item.net_price) || 0, // Add this line
                 credit_charge: parseFloat(item.credit_charge) || 0,
                 customer_sale_price: parseFloat(item.customer_sale_price) || editedSalePrice,
                 final_amount: parseFloat(item.final_amount) || editedSalePrice,
@@ -398,11 +403,14 @@ const fetchOrders = async () => {
                 staff_incentive: parseFloat(item.staff_incentive) || 0,
                 price: editedSalePrice,
                 
-                   // Stock information
                 stock_quantity: stock_quantity,
                 stock_insufficient: stock_insufficient,
-                // NEW: Flag to show edit button
-                can_edit: salePrice < parseFloat(min_sale_price)
+                can_edit: salePrice < parseFloat(min_sale_price),
+                
+                // FLASH OFFER DETAILS
+                flash_offer: flashOffer, // 0 or 1
+                buy_quantity: buyQuantity, // e.g., 2
+                get_quantity: getQuantity  // e.g., 1
               };
             })
           );
@@ -816,11 +824,15 @@ const fetchOrders = async () => {
       mrp: item.mrp,
       sale_price: item.sale_price,
       edited_sale_price: item.edited_sale_price,
+      net_price: item.net_price || 0, 
+   flash_offer: item.flash_offer || 0,
+      buy_quantity: item.buy_quantity || 0,
+      get_quantity: item.get_quantity || 0,
       credit_charge: item.credit_charge,
       customer_sale_price: item.customer_sale_price,
       final_amount: item.final_amount,
-      quantity: item.quantity,
-      total_amount: item.total_amount,
+  quantity: item.flash_offer === 1 ? item.buy_quantity : item.quantity,
+        total_amount: item.total_amount,
       discount_percentage: item.discount_percentage,
       discount_amount: item.discount_amount,
       taxable_amount: item.taxable_amount,
@@ -873,6 +885,12 @@ const fetchOrders = async () => {
       originalOrder: {
         ...order,
         items: undefined
+      },
+
+        // Add flash offer summary
+      flashOfferSummary: {
+        hasFlashOffer: selectedItemsData.some(item => item.flash_offer === 1),
+        totalItemsWithFlashOffer: selectedItemsData.filter(item => item.flash_offer === 1).length
       },
 
       selectedItems: selectedItemsWithAllColumns,
@@ -966,8 +984,9 @@ const fetchOrders = async () => {
         order_number: item.order_number,
         item_name: item.item_name,
         product_id: item.product_id,
-        quantity: item.quantity,
+      quantity: item.flash_offer === 1 ? item.buy_quantity : item.quantity,
         edited_sale_price: item.edited_sale_price,
+          net_price: item.net_price || 0, 
         credit_charge: item.credit_charge,
         customer_sale_price: item.customer_sale_price,
         final_amount: item.final_amount,
@@ -1206,249 +1225,307 @@ const filteredOrders = orders.filter(order => {
                           </div>
                         </td>
                       </tr>
+{isOrderOpen && (
+  <tr className="p-invoices-row">
+    <td colSpan={10}>
+      <div className="p-invoices-section">
+        <div className="p-items-header">
+          <h4>Order Items</h4>
+          {orderSelectedItems.length > 0 && (
+            <button
+              className="p-generate-invoice-btn p-bulk-btn"
+              onClick={() => handleGenerateInvoice(order)}
+              disabled={generatingInvoice}
+              title={`Generate invoice for ${orderSelectedItems.length} selected item(s)`}
+            >
+              {generatingInvoice ? "Preparing..." : `Generate Invoice for ${orderSelectedItems.length} Item(s)`}
+            </button>
+          )}
+        </div>
+        {order.items && order.items.length > 0 ? (
+          <table className="p-invoices-table">
+            <thead>
+              <tr>
+                <th style={{ width: '50px' }}>
+                  <input
+                    type="checkbox"
+                    checked={allItemsSelected}
+                    onChange={() => handleSelectAll(order.id, order.items)}
+                    className="p-item-checkbox"
+                    disabled={(() => {
+                      const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
+                      return creditPeriods.length > 1;
+                    })()}
+                    title={(() => {
+                      const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
+                      if (creditPeriods.length > 1) {
+                        return `Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days`;
+                      }
+                      return allItemsSelected ? "Deselect all items" : "Select all items";
+                    })()}
+                  />
+                </th>
+                <th>Item Name</th>
+                
+                {/* DYNAMIC COLUMNS BASED ON FLASH OFFER */}
+                {(() => {
+                  // Check if ANY item in this order has flash_offer === 1
+                  const hasFlashOfferInOrder = order.items.some(item => item.flash_offer === 1);
+                  
+                  if (hasFlashOfferInOrder) {
+                    // Show FLASH OFFER columns
+                    return (
+                      <>
+                        <th>Qty</th>
+                        <th>Get Free</th>
+                      </>
+                    );
+                  } else {
+                    // Show REGULAR columns
+                    return (
+                      <>
+                        <th>Qty</th>
+                        <th>Dst Amnt</th>
+                      </>
+                    );
+                  }
+                })()}
+                
+                <th>Sale Price</th>
+                <th>MSP</th>
+                <th>Edited Price</th>
+                <th>Credit Charge</th>
+                <th>CP</th>
+                <th>Inv No</th>
+                <th>Approval Status</th>
+                <th>Action</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {order.items.map((item) => {
+                const isItemSelected = orderSelectedItems.includes(item.id);
+                const hasInvoiceGenerated = item.invoice_status === 1;
+                const needsApproval = item.needs_approval;
+                const approvalStatus = item.approval_status;
+                const canEdit = item.can_edit;
+                
+                // Flash offer details
+                const hasFlashOffer = item.flash_offer === 1;
+                const buyQuantity = item.buy_quantity || 0;
+                const getQuantity = item.get_quantity || 0;
 
-                      {isOrderOpen && (
-                        <tr className="p-invoices-row">
-                          <td colSpan={10}>
-                            <div className="p-invoices-section">
-                              <div className="p-items-header">
-                                <h4>Order Items</h4>
-                                {orderSelectedItems.length > 0 && (
-                                  <button
-                                    className="p-generate-invoice-btn p-bulk-btn"
-                                    onClick={() => handleGenerateInvoice(order)}
-                                    disabled={generatingInvoice}
-                                    title={`Generate invoice for ${orderSelectedItems.length} selected item(s)`}
-                                  >
-                                    {generatingInvoice ? "Preparing..." : `Generate Invoice for ${orderSelectedItems.length} Item(s)`}
-                                  </button>
-                                )}
-                              </div>
-                              {order.items && order.items.length > 0 ? (
-                                <table className="p-invoices-table">
-                                  <thead>
-                                    <tr>
-                                      <th style={{ width: '50px' }}>
-                                        <input
-                                          type="checkbox"
-                                          checked={allItemsSelected}
-                                          onChange={() => handleSelectAll(order.id, order.items)}
-                                          className="p-item-checkbox"
-                                          disabled={(() => {
-                                            const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
-                                            return creditPeriods.length > 1;
-                                          })()}
-                                          title={(() => {
-                                            const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
-                                            if (creditPeriods.length > 1) {
-                                              return `Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days`;
-                                            }
-                                            return allItemsSelected ? "Deselect all items" : "Select all items";
-                                          })()}
-                                        />
-                                      </th>
-                                      <th>Item Name</th>
-                                      <th>Qty</th>
-                                      <th>Sale Price</th>
-                                      <th>MSP</th>
-                                      <th>Edited Price</th>
-                                      <th>Credit Charge</th>
-                                      <th>Dst Amnt</th>
-                                      <th>CP</th>
-                                      <th>Inv No</th>
-                                      <th>Approval Status</th>
-                                      <th>Action</th>
-                                      <th>Status</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {order.items.map((item) => {
-                                      const isItemSelected = orderSelectedItems.includes(item.id);
-                                      const hasInvoiceGenerated = item.invoice_status === 1;
-                                      const needsApproval = item.needs_approval;
-                                      const approvalStatus = item.approval_status;
-                                      const canEdit = item.can_edit;
+                return (
+                  <tr key={item.id}>
+                    <td>
+                      {hasInvoiceGenerated ? (
+                        <span title="Invoice Already Generated">✅</span>
+                      ) : (
+                        (() => {
+                          const currentSelectedIds = selectedItems[order.id] || [];
 
-                                      return (
-                                        <tr key={item.id}>
-                                          <td>
-                                            {hasInvoiceGenerated ? (
-                                              <span title="Invoice Already Generated">✅</span>
-                                            ) : (
-                                              (() => {
-                                                const currentSelectedIds = selectedItems[order.id] || [];
+                          if (currentSelectedIds.length === 0) {
+                            const canSelect = !needsApproval || approvalStatus === "approved";
+                            return (
+                              <input
+                                type="checkbox"
+                                checked={isItemSelected && canSelect}
+                                onChange={(e) => {
+                                  if (!canSelect) {
+                                    alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
+                                    return;
+                                  }
+                                  handleItemSelect(order.id, item.id, e.target.checked, item.credit_period);
+                                }}
+                                className="p-item-checkbox"
+                                disabled={!canSelect}
+                                title={!canSelect ? 
+                                  "Item requires approval before selection" : 
+                                  "Select for invoice generation"}
+                              />
+                            );
+                          }
 
-                                                if (currentSelectedIds.length === 0) {
-                                                  const canSelect = !needsApproval || approvalStatus === "approved";
-                                                  return (
-                                                    <input
-                                                      type="checkbox"
-                                                      checked={isItemSelected && canSelect}
-                                                      onChange={(e) => {
-                                                        if (!canSelect) {
-                                                          alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
-                                                          return;
-                                                        }
-                                                        handleItemSelect(order.id, item.id, e.target.checked, item.credit_period);
-                                                      }}
-                                                      className="p-item-checkbox"
-                                                      disabled={!canSelect}
-                                                      title={!canSelect ? 
-                                                        "Item requires approval before selection" : 
-                                                        "Select for invoice generation"}
-                                                    />
-                                                  );
-                                                }
+                          const firstSelectedId = currentSelectedIds[0];
+                          const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
+                          const selectedCreditPeriod = firstSelectedItem?.credit_period;
 
-                                                const firstSelectedId = currentSelectedIds[0];
-                                                const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
-                                                const selectedCreditPeriod = firstSelectedItem?.credit_period;
+                          const isSelectable = selectedCreditPeriod === item.credit_period;
+                          const canSelect = isSelectable && (!needsApproval || approvalStatus === "approved");
 
-                                                const isSelectable = selectedCreditPeriod === item.credit_period;
-                                                const canSelect = isSelectable && (!needsApproval || approvalStatus === "approved");
-
-                                                return (
-                                                  <input
-                                                    type="checkbox"
-                                                    checked={isItemSelected && canSelect}
-                                                    onChange={(e) => {
-                                                      if (!canSelect) {
-                                                        if (!isSelectable) {
-                                                          alert(`Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.`);
-                                                        } else {
-                                                          alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
-                                                        }
-                                                        return;
-                                                      }
-                                                      handleItemSelect(order.id, item.id, e.target.checked, item.credit_period);
-                                                    }}
-                                                    className="p-item-checkbox"
-                                                    disabled={!canSelect}
-                                                    title={!canSelect ? 
-                                                      (!isSelectable ? 
-                                                        `Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.` :
-                                                        "Item requires approval before selection") :
-                                                      "Select for invoice generation"}
-                                                  />
-                                                );
-                                              })()
-                                            )}
-                                          </td>
-                                          <td>{item.item_name}</td>
-                                          <td>{item.quantity}</td>
-                                          <td>₹{item.sale_price.toLocaleString()}</td>
-                                          <td>₹{item.min_sale_price.toLocaleString()}</td>
-                                          <td>₹{item.edited_sale_price.toLocaleString()}</td>
-                                          <td>₹{item.credit_charge.toLocaleString()}</td>
-                                          <td>₹{item.discount_amount.toLocaleString()}</td>
-                                          <td>{item.credit_period}</td>
-                                          <td>{item.invoice_number || "N/A"}</td>
-                                          <td>
-                                            {needsApproval ? (
-                                              <div className="p-approval-status">
-                                                <span className={`p-approval-badge p-${approvalStatus}`}>
-                                                  {approvalStatus === "approved" ? "Approved" : 
-                                                   approvalStatus === "rejected" ? "Rejected" : "Pending"}
-                                                </span>
-                                                {approvalStatus === "pending" && (
-                                                  <div className="p-approval-buttons">
-                                                    <button
-                                                      className="p-btn p-btn-approve"
-                                                      onClick={() => handleApproveItem(item.id, order.id)}
-                                                      title="Approve this item"
-                                                    >
-                                                      <FaCheck />
-                                                    </button>
-                                                    <button
-                                                      className="p-btn p-btn-reject"
-                                                      onClick={() => handleRejectItem(item.id, order.id)}
-                                                      title="Reject this item"
-                                                    >
-                                                      <FaTimes />
-                                                    </button>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            ) : (
-                                              <span className="p-approval-badge p-not-required">
-                                                Not Required
-                                              </span>
-                                            )}
-                                          </td>
-                                          <td>
-                                            <div className="p-action-buttons">
-                                              <button
-                                                className="p-eye-btn"
-                                                onClick={() => openItemModal(order.order_number, item.id)}
-                                                title="View Item Details"
-                                              >
-                                                👁️
-                                              </button>
-                                              {canEdit && (
-                                                <button
-                                                  className="p-edit-btn"
-                                                  onClick={() => handleEditItem(order, item)}
-                                                  title="Edit Item Price"
-                                                >
-                                                  <FaEdit />
-                                                </button>
-                                              )}
-                                            </div>
-                                          </td>
-                                          <td>
-                                            {hasInvoiceGenerated ? (
-                                              <span className="p-invoice-generated-text" title="Invoice Already Generated">
-                                                Invoice Generated
-                                              </span>
-                                            ) : isItemSelected ? (
-                                              <span className="p-selected-text" title="Selected for invoice">
-                                                Selected ✓
-                                              </span>
-                                            ) : (() => {
-                                              const currentSelectedIds = selectedItems[order.id] || [];
-                                              if (currentSelectedIds.length > 0) {
-                                                const firstSelectedId = currentSelectedIds[0];
-                                                const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
-                                                if (firstSelectedItem && firstSelectedItem.credit_period !== item.credit_period) {
-                                                  return (
-                                                    <span className="p-different-period-text"
-                                                      title={`Different credit period (${item.credit_period} days vs selected ${firstSelectedItem.credit_period} days)`}>
-                                                      Different Period
-                                                    </span>
-                                                  );
-                                                }
-                                              }
-                                              
-                                              if (needsApproval && approvalStatus !== "approved") {
-                                                return (
-                                                  <span className="p-requires-approval-text"
-                                                    title={`Requires approval. Sale price (₹${item.sale_price}) < Min price (₹${item.min_sale_price})`}>
-                                                    Requires Approval
-                                                  </span>
-                                                );
-                                              }
-                                              
-                                              return (
-                                                <span className="p-select-prompt-text" title="Select this item to generate invoice">
-                                                  Available
-                                                </span>
-                                              );
-                                            })()}
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              ) : (
-                                <div className="p-no-items">
-                                  <p>No items found for this order.</p>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
+                          return (
+                            <input
+                              type="checkbox"
+                              checked={isItemSelected && canSelect}
+                              onChange={(e) => {
+                                if (!canSelect) {
+                                  if (!isSelectable) {
+                                    alert(`Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.`);
+                                  } else {
+                                    alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
+                                  }
+                                  return;
+                                }
+                                handleItemSelect(order.id, item.id, e.target.checked, item.credit_period);
+                              }}
+                              className="p-item-checkbox"
+                              disabled={!canSelect}
+                              title={!canSelect ? 
+                                (!isSelectable ? 
+                                  `Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.` :
+                                  "Item requires approval before selection") :
+                                "Select for invoice generation"}
+                            />
+                          );
+                        })()
                       )}
+                    </td>
+                    <td>{item.item_name}</td>
+                    
+                    {hasFlashOffer ? (
+                      <>
+                        {/* FLASH OFFER MODE: Show Buy Qty */}
+                        <td className="p-flash-column">
+                          <div>
+                            <span className="p-flash-buy" title="Quantity">{buyQuantity}</span>
+                           
+                          </div>
+                        </td>
+                        
+                        {/* FLASH OFFER MODE: Show Get Free */}
+                        <td className="p-flash-column">
+                          <div className="p-flash-free" title="Get Free Quantity">
+                            {getQuantity}
+                            <span className="p-flash-badge"></span>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        {/* NORMAL MODE: Show Quantity */}
+                        <td className="p-regular-column">
+                          <span title="Ordered Quantity">{item.quantity}</span>
+                        </td>
+                        
+                        {/* NORMAL MODE: Show Discount Amount */}
+                        <td className="p-regular-column">
+                          ₹{item.discount_amount.toLocaleString()}
+                        </td>
+                      </>
+                    )}
+                    
+                    <td>₹{item.sale_price.toLocaleString()}</td>
+                    <td>₹{item.min_sale_price.toLocaleString()}</td>
+                    <td>₹{item.edited_sale_price.toLocaleString()}</td>
+                    <td>₹{item.credit_charge.toLocaleString()}</td>
+                    <td>{item.credit_period}</td>
+                    <td>{item.invoice_number || "N/A"}</td>
+                    <td>
+                      {needsApproval ? (
+                        <div className="p-approval-status">
+                          <span className={`p-approval-badge p-${approvalStatus}`}>
+                            {approvalStatus === "approved" ? "Approved" : 
+                             approvalStatus === "rejected" ? "Rejected" : "Pending"}
+                          </span>
+                          {approvalStatus === "pending" && (
+                            <div className="p-approval-buttons">
+                              <button
+                                className="p-btn p-btn-approve"
+                                onClick={() => handleApproveItem(item.id, order.id)}
+                                title="Approve this item"
+                              >
+                                <FaCheck />
+                              </button>
+                              <button
+                                className="p-btn p-btn-reject"
+                                onClick={() => handleRejectItem(item.id, order.id)}
+                                title="Reject this item"
+                              >
+                                <FaTimes />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="p-approval-badge p-not-required">
+                          Not Required
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="p-action-buttons">
+                        <button
+                          className="p-eye-btn"
+                          onClick={() => openItemModal(order.order_number, item.id)}
+                          title="View Item Details"
+                        >
+                          👁️
+                        </button>
+                        {canEdit && (
+                          <button
+                            className="p-edit-btn"
+                            onClick={() => handleEditItem(order, item)}
+                            title="Edit Item Price"
+                          >
+                            <FaEdit />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      {hasInvoiceGenerated ? (
+                        <span className="p-invoice-generated-text" title="Invoice Already Generated">
+                          Invoice Generated
+                        </span>
+                      ) : isItemSelected ? (
+                        <span className="p-selected-text" title="Selected for invoice">
+                          Selected ✓
+                        </span>
+                      ) : (() => {
+                        const currentSelectedIds = selectedItems[order.id] || [];
+                        if (currentSelectedIds.length > 0) {
+                          const firstSelectedId = currentSelectedIds[0];
+                          const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
+                          if (firstSelectedItem && firstSelectedItem.credit_period !== item.credit_period) {
+                            return (
+                              <span className="p-different-period-text"
+                                title={`Different credit period (${item.credit_period} days vs selected ${firstSelectedItem.credit_period} days)`}>
+                                Different Period
+                              </span>
+                            );
+                          }
+                        }
+                        
+                        if (needsApproval && approvalStatus !== "approved") {
+                          return (
+                            <span className="p-requires-approval-text"
+                              title={`Requires approval. Sale price (₹${item.sale_price}) < Min price (₹${item.min_sale_price})`}>
+                              Requires Approval
+                            </span>
+                          );
+                        }
+                        
+                        return (
+                          <span className="p-select-prompt-text" title="Select this item to generate invoice">
+                            Available
+                          </span>
+                        );
+                      })()}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <div className="p-no-items">
+            <p>No items found for this order.</p>
+          </div>
+        )}
+      </div>
+    </td>
+  </tr>
+)}
                     </React.Fragment>
                   );
                 })}
@@ -1782,6 +1859,12 @@ const filteredOrders = orders.filter(order => {
             <div className="p-detail-row">
               <span className="p-detail-label">Staff ID:</span>
               <span className="p-detail-value">{modalData.staff_id || "N/A"}</span>
+            </div>
+          </div>
+                <div className="p-column">
+            <div className="p-detail-row">
+              <span className="p-detail-label">Net Price:</span>
+              <span className="p-detail-value">{modalData.net_price || "N/A"}</span>
             </div>
           </div>
           <div className="p-column">

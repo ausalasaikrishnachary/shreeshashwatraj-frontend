@@ -54,29 +54,29 @@ const SalesItemsPage = ({ groupType = 'Salescatalog', user }) => {
     };
   };
 
-  // Tax calculation function
-  const calculateTaxAndNetPrice = (price, gstRate, inclusiveGst) => {
-    if (!price || !gstRate) return { netPrice: price || '', taxAmount: 0 };
+const calculateTaxAndNetPrice = (price, gstRate, inclusiveGst) => {
+  if (!price || !gstRate) {
+    return { netPrice: price || '', taxAmount: 0 };
+  }
 
-    const numericPrice = parseFloat(price);
-    const numericGstRate = parseFloat(gstRate) / 100;
+  const numericPrice = parseFloat(price);
+  const numericGstRate = parseFloat(gstRate) / 100;
 
-    if (inclusiveGst === 'Inclusive') {
-      const taxAmount = (numericPrice * numericGstRate) / (1 + numericGstRate);
-      const netPrice = numericPrice - taxAmount;
-      return {
-        netPrice: netPrice.toFixed(2),
-        taxAmount: taxAmount.toFixed(2)
-      };
-    } else {
-      const taxAmount = numericPrice * numericGstRate;
-      const netPrice = numericPrice + taxAmount;
-      return {
-        netPrice: netPrice.toFixed(2),
-        taxAmount: taxAmount.toFixed(2)
-      };
-    }
-  };
+  if (inclusiveGst === 'Inclusive') {
+    const taxAmount = (numericPrice * numericGstRate) / (1 + numericGstRate);
+    const netPrice = numericPrice - taxAmount;
+    return {
+      netPrice: netPrice.toFixed(2),
+      taxAmount: taxAmount.toFixed(2)
+    };
+  } else {
+    return {
+      netPrice: numericPrice.toFixed(2), 
+      taxAmount: 0 
+    };
+  }
+};
+
 
   const fetchUnits = async () => {
     try {
@@ -538,8 +538,7 @@ const createDefaultBatch = async () => {
      product_type: '', 
   });
 
-  // Updated handleChange to update batch totals when maintain_batch changes
-  const handleChange = async (e) => {
+const handleChange = async (e) => {
   const { name, value, type, checked } = e.target;
   console.log(`🔄 Handling change: ${name} = ${type === 'checkbox' ? checked : value}`);
 
@@ -548,15 +547,20 @@ const createDefaultBatch = async () => {
     [name]: type === 'checkbox' ? checked : value
   };
 
-  // Calculate net price if price or GST changes
-  if ((name === 'price' || name === 'gst_rate' || name === 'inclusive_gst') &&
-    updatedFormData.price && updatedFormData.gst_rate) {
-    const { netPrice } = calculateTaxAndNetPrice(
-      updatedFormData.price,
-      updatedFormData.gst_rate,
-      updatedFormData.inclusive_gst
-    );
-    updatedFormData.net_price = netPrice;
+  if (name === 'price' || name === 'gst_rate' || name === 'inclusive_gst') {
+    if (updatedFormData.inclusive_gst === 'Inclusive' && 
+        updatedFormData.price && 
+        updatedFormData.gst_rate) {
+      const numericPrice = parseFloat(updatedFormData.price);
+      const numericGstRate = parseFloat(updatedFormData.gst_rate) / 100;
+      const taxAmount = (numericPrice * numericGstRate) / (1 + numericGstRate);
+      const netPrice = numericPrice - taxAmount;
+      updatedFormData.net_price = netPrice.toFixed(2);
+    } else if (updatedFormData.inclusive_gst === 'Exclusive' && updatedFormData.price) {
+      updatedFormData.net_price = parseFloat(updatedFormData.price).toFixed(2);
+    } else {
+      updatedFormData.net_price = updatedFormData.price || '';
+    }
   }
 
   // Handle maintain_batch toggle
@@ -565,7 +569,6 @@ const createDefaultBatch = async () => {
       const defaultBatch = await createDefaultBatch();
       setBatches([defaultBatch]);
       
-      // Set initial values from first batch (which will be empty)
       setFormData(prev => ({
         ...prev,
         opening_stock: '0',
@@ -609,15 +612,15 @@ const createDefaultBatch = async () => {
     const newBatch = {
       id: `temp_${Date.now()}_${Math.random()}`,
       dbId: null,
-      batchNumber: '', // Empty for manual entry
+      batchNumber: '', 
       mfgDate: '',
       expDate: '',
-      quantity: '0', // Start with 0
+      quantity: '0',
       min_sale_price: '',
-      opening_stock: '0', // Start with 0
-      sellingPrice: '', // Empty instead of using formData.price
-      purchasePrice: '', // Empty instead of using formData.purchase_price
-      mrp: '', // Empty instead of using formData.mrp
+      opening_stock: '0', 
+      sellingPrice: '',
+      purchasePrice: '',
+      mrp: '', 
       barcode: newBarcode,
       stock_in: 0,
       stock_out: 0,
@@ -681,9 +684,7 @@ const createDefaultBatch = async () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Validate batches if maintainBatch is enabled
     if (maintainBatch) {
-      // Check for required fields
       const invalidBatches = batches.filter(
         (batch) => !batch.batchNumber || !batch.opening_stock || !batch.sellingPrice || !batch.barcode
       );

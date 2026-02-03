@@ -258,6 +258,14 @@ const adjustedTotals = getAdjustedTotals();
   return `${day}/${month}/${year}`;
 };
 
+// Get net price PER UNIT from database - ADD THIS FUNCTION
+const getNetPricePerUnit = (item) => {
+  if (item.net_price !== undefined && item.net_price !== null) {
+    return parseFloat(item.net_price) || 0;
+  }
+  return 0;
+};
+
   return (
     <div className="invoice-pdf-preview bg-white p-4 shadow-sm" id="invoice-pdf-content">
       {/* Header - unchanged */}
@@ -366,9 +374,7 @@ const adjustedTotals = getAdjustedTotals();
           <th className="text-center" style={{ width: '3%' }}>#</th>
           <th style={{ width: '12%' }}>Product</th>
           <th style={{ width: '15%' }}>Description</th>
-          <th className="text-center" style={{ width: '4%' }}>flash</th>
-           <th className="text-center" style={{ width: '4%' }}>Qty</th>
-            <th className="text-center" style={{ width: '4%' }}>get Qty</th>
+          <th className="text-center" style={{ width: '4%' }}>Qty</th>
           <th className="text-end" style={{ width: '7%' }}>Price</th>
             <th className="text-end" style={{ width: '7%' }}>Discount Amt</th> 
           <th className="text-end" style={{ width: '7%' }}>Credit Charge</th>
@@ -380,37 +386,31 @@ const adjustedTotals = getAdjustedTotals();
           <th className="text-end" style={{ width: '7%' }}>Item Total</th>
         </tr>
       </thead>
-     <tbody>
-  {invoiceData.items.map((item, index) => {
-    const quantity = parseFloat(item.quantity) || 1;
-    
-    // DEFINE FLASH OFFER VARIABLES HERE
-    const flashOffer = parseInt(item.flash_offer) || 0;
-    const buyQuantity = parseInt(item.buy_quantity) || 0;
-    const getQuantity = parseInt(item.get_quantity) || 0;
-    
-    // Get PER UNIT values
-    const taxablePerUnit = getTaxableAmountPerUnit(item);
-    const totalAmountPerUnit = taxablePerUnit + (localOrderMode === "KACHA" ? 0 : getGSTAmountPerUnit(item));
-    const gstPerUnit = localOrderMode === "KACHA" ? 0 : getGSTAmountPerUnit(item);
-    const cgstPerUnit = localOrderMode === "KACHA" ? 0 : getCGSTAmountPerUnit(item);
-    const sgstPerUnit = localOrderMode === "KACHA" ? 0 : getSGSTAmountPerUnit(item);
-    const discountAmountPerUnit = parseFloat(item.discount_amount) || 0;
-    const creditChargePerUnit = parseFloat(item.credit_charge) || 0;
-    
-    const totalTaxableAmount = taxablePerUnit * quantity;
-    const totalAmount = totalAmountPerUnit * quantity;
-    const totalGSTAmount = gstPerUnit * quantity;
-    const totalCGSTAmount = cgstPerUnit * quantity;
-    const totalSGSTAmount = sgstPerUnit * quantity;
-    const totalDiscountAmount = discountAmountPerUnit * quantity;
-    const totalCreditCharge = creditChargePerUnit * quantity;
-    const itemTotal = calculateItemTotal(item);
-    
-    const gstPercentage = localOrderMode === "KACHA" ? 0 : (parseFloat(item.gst) || 0);
-    const creditCharge = parseFloat(item.credit_charge) || 0;
-    const salePrice = parseFloat(item.sale_price) || parseFloat(item.sales_price) || 0;
-    const editedPrice = parseFloat(item.edited_sale_price) || parseFloat(item.price) || 0;
+      <tbody>
+        {invoiceData.items.map((item, index) => {
+          const quantity = parseFloat(item.quantity) || 1;
+          
+          // Get PER UNIT values
+          const taxablePerUnit = getTaxableAmountPerUnit(item);
+          const totalAmountPerUnit = taxablePerUnit + (localOrderMode === "KACHA" ? 0 : getGSTAmountPerUnit(item));
+          const gstPerUnit = localOrderMode === "KACHA" ? 0 : getGSTAmountPerUnit(item);
+          const cgstPerUnit = localOrderMode === "KACHA" ? 0 : getCGSTAmountPerUnit(item);
+          const sgstPerUnit = localOrderMode === "KACHA" ? 0 : getSGSTAmountPerUnit(item);
+            const discountAmountPerUnit = parseFloat(item.discount_amount) || 0;
+        const creditChargePerUnit = parseFloat(item.credit_charge) || 0;
+          const totalTaxableAmount = taxablePerUnit * quantity;
+          const totalAmount = totalAmountPerUnit * quantity;
+          const totalGSTAmount = gstPerUnit * quantity;
+          const totalCGSTAmount = cgstPerUnit * quantity;
+          const totalSGSTAmount = sgstPerUnit * quantity;
+            const totalDiscountAmount = discountAmountPerUnit * quantity;
+        const totalCreditCharge = creditChargePerUnit * quantity;
+          const itemTotal = calculateItemTotal(item);
+          
+          const gstPercentage = localOrderMode === "KACHA" ? 0 : (parseFloat(item.gst) || 0);
+          const creditCharge = parseFloat(item.credit_charge) || 0;
+          const salePrice = parseFloat(item.sale_price) || parseFloat(item.sales_price) || 0; // Get sale price
+          const editedPrice = parseFloat(item.edited_sale_price) || parseFloat(item.price) || 0;
           
           return (
             <tr key={index}>
@@ -432,40 +432,42 @@ const adjustedTotals = getAdjustedTotals();
                   <div className="small text-muted">{item.description || 'No description'}</div>
                 )}
               </td>
- <td className="text-center align-middle">
-                <div className={`badge ${flashOffer === 1 ? 'bg-success' : 'bg-secondary'} p-1`}>
-                  {flashOffer === 1 ? 'YES' : 'NO'}
-                </div>
-              </td>
-              
-           <td className="text-center align-middle">
-  {flashOffer === 1 ? (
-    <div className="fw-bold text-primary">{buyQuantity}</div>
-  ) : (
-    <div className="fw-medium text-muted">{quantity}</div>
-  )}
-</td>
-              
               <td className="text-center align-middle">
-                {flashOffer === 1 ? (
-                  <div className="fw-bold text-success">
-                    {getQuantity}
-                    <span className="ms-1 small"></span>
-                  </div>
-                ) : (
-                  <div className="text-muted">-</div>
-                )}
-              </td>
+                {quantity}
               
-      
+              </td>
               
            
               
-              {/* EDP (Edited Price) Column */}
-              <td className="text-end align-middle">
-                <div className="fw-medium">₹{editedPrice.toFixed(2)}</div>
-                
-              </td>
+<td className="text-end align-middle">
+  <div className="fw-medium">
+    {(() => {
+      const netPricePerUnit = getNetPricePerUnit(item);
+      const editedPricePerUnit = editedPrice;
+      
+      // Calculate total price based on quantity
+      const totalPrice = (localOrderMode === "PAKKA" && netPricePerUnit > 0) 
+        ? (netPricePerUnit * quantity)
+        : (editedPricePerUnit * quantity);
+      
+      if (localOrderMode === "PAKKA" && netPricePerUnit > 0) {
+        return (
+          <>
+            <div className="text-primary">₹{totalPrice.toFixed(2)}</div>
+           
+          </>
+        );
+      } else {
+        return (
+          <>
+            <div>₹{totalPrice.toFixed(2)}</div>
+      
+          </>
+        );
+      }
+    })()}
+  </div>
+</td>
         {/* Discount Amount Column - NEW */}
             <td className="text-end align-middle">
               <div className="fw-medium text-warning">₹{totalDiscountAmount.toFixed(2)}</div>
@@ -544,7 +546,7 @@ const adjustedTotals = getAdjustedTotals();
         
         {/* Add Total GST Row */}
         <tr className='text-end'>
-          <td colSpan={14} className="text-end fw-bold">
+          <td colSpan={12} className="text-end fw-bold">
             Total GST:
           </td>
           <td className="text-end fw-bold text-success">
@@ -555,7 +557,7 @@ const adjustedTotals = getAdjustedTotals();
         
         {/* Add Grand Total Row */}
         <tr>
-          <td colSpan={14} className="text-end fw-bold">
+          <td colSpan={12} className="text-end fw-bold">
             Grand Total:
           </td>
           <td className="text-end fw-bold text-danger fs-5">
