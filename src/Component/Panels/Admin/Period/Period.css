@@ -59,8 +59,9 @@
 }
 
 .p-filter-group {
-  flex: 1;
-  min-width: 200px;
+display: flex;
+justify-content: space-between;
+  min-width: 150px;
 }
 
 .p-filter-group:last-child {
@@ -1551,6 +1552,91 @@
   }
 }
 
+/* Add to Period.css */
+.p-btn-dispatch {
+  background-color: #2196F3 !important;
+  color: white !important;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.p-btn-dispatch:hover {
+  background-color: #1976D2 !important;
+}
+
+.p-dispatch-search-section {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 4px;
+  margin-top: 15px;
+  border: 1px solid #dee2e6;
+}
+
+.p-dispatch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.p-dispatch-header h4 {
+  margin: 0;
+  color: #2196F3;
+}
+
+.p-dispatch-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.p-btn-generate-dispatch {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.p-btn-generate-dispatch:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.p-btn-clear {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.p-dispatch-search-box {
+  margin-top: 10px;
+}
+
+.p-dispatch-search-box input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* Checkbox styling */
+.p-customer-row td:first-child {
+  width: 30px;
+  text-align: center;
+}
+
+.p-customer-row td:first-child input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
 /* If you want the pagination to be separate from table */
 .p-pagination-container.standalone {
   margin-top: 20px;

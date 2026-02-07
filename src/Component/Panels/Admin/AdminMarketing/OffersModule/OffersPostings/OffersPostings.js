@@ -13,7 +13,7 @@ function OffersPostings() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState("regular");
-  const [currentView, setCurrentView] = useState("list"); // "list", "create", "edit"
+  const [currentView, setCurrentView] = useState("list"); 
   const [editingOffer, setEditingOffer] = useState(null);
   const [editingFlashSale, setEditingFlashSale] = useState(null);
   const [regularSearchTerm, setRegularSearchTerm] = useState("");

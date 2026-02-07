@@ -447,7 +447,7 @@ const columns = [
   // },
   {
     key: 'actions',
-    title: 'ACTIONS',
+    title: 'ACTION',
     style: { textAlign: 'center' },
     render: (value, row) => (
       <div className="d-flex justify-content-center gap-2">

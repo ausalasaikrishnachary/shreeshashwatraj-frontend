@@ -564,7 +564,7 @@
           ...invoiceData,
           note: editableNote,
           items: updatedItems,
-          order_mode: editableOrderMode // Add this
+          order_mode: editableOrderMode 
         };
         
         setInvoiceData(updatedInvoiceData);
@@ -761,98 +761,98 @@ for (const item of selectedItems) {
   }
 }
         
-      if (fromPeriod && periodInvoiceData) {
-        const selectedItems = periodInvoiceData.selectedItems || [];
+      // if (fromPeriod && periodInvoiceData) {
+      //   const selectedItems = periodInvoiceData.selectedItems || [];
         
-        // Check stock for each item
-        const itemsWithStockIssue = [];
+      //   // Check stock for each item
+      //   const itemsWithStockIssue = [];
         
-        for (const item of selectedItems) {
-          const itemQuantity = parseFloat(item.quantity) || 0;
+      //   for (const item of selectedItems) {
+      //     const itemQuantity = parseFloat(item.quantity) || 0;
           
-          if (item.product_id) {
-            try {
-              const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
+      //     if (item.product_id) {
+      //       try {
+      //         const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
               
-              if (batchesRes.data && Array.isArray(batchesRes.data)) {
-                const stock_quantity = batchesRes.data.reduce((total, batch) => {
-                  return total + (parseFloat(batch.quantity) || 0);
-                }, 0);
+      //         if (batchesRes.data && Array.isArray(batchesRes.data)) {
+      //           const stock_quantity = batchesRes.data.reduce((total, batch) => {
+      //             return total + (parseFloat(batch.quantity) || 0);
+      //           }, 0);
                 
-                if (itemQuantity > stock_quantity) {
-                  itemsWithStockIssue.push({
-                    ...item,
-                    stock_quantity,
-                    shortage: itemQuantity - stock_quantity
-                  });
-                }
-              }
-            } catch (batchError) {
-              console.error(`Error fetching batches for product ${item.product_id}:`, batchError);
-            }
-          }
-        }
+      //           if (itemQuantity > stock_quantity) {
+      //             itemsWithStockIssue.push({
+      //               ...item,
+      //               stock_quantity,
+      //               shortage: itemQuantity - stock_quantity
+      //             });
+      //           }
+      //         }
+      //       } catch (batchError) {
+      //         console.error(`Error fetching batches for product ${item.product_id}:`, batchError);
+      //       }
+      //     }
+      //   }
         
-        // If stock issues found
-        if (itemsWithStockIssue.length > 0) {
-          // ✅ Prepare detailed message for notification
-          let notificationMessage = `⚠️ Order ${periodInvoiceData.orderNumber} requires modification.\n`;
-          notificationMessage += `${itemsWithStockIssue.length} item(s) are out of stock.\n\n`;
+      //   // If stock issues found
+      //   if (itemsWithStockIssue.length > 0) {
+      //     // ✅ Prepare detailed message for notification
+      //     let notificationMessage = `⚠️ Order ${periodInvoiceData.orderNumber} requires modification.\n`;
+      //     notificationMessage += `${itemsWithStockIssue.length} item(s) are out of stock.\n\n`;
           
-          itemsWithStockIssue.forEach((item, index) => {
-            notificationMessage += `${index + 1}. ${item.item_name}\n`;
-            notificationMessage += `   Ordered: ${item.quantity} | Available: ${item.stock_quantity}\n`;
-            notificationMessage += `   Shortage: ${item.shortage} units\n`;
-            notificationMessage += `   Action: Reduce quantity or remove item\n\n`;
-          });
+      //     itemsWithStockIssue.forEach((item, index) => {
+      //       notificationMessage += `${index + 1}. ${item.item_name}\n`;
+      //       notificationMessage += `   Ordered: ${item.quantity} | Available: ${item.stock_quantity}\n`;
+      //       notificationMessage += `   Shortage: ${item.shortage} units\n`;
+      //       notificationMessage += `   Action: Reduce quantity or remove item\n\n`;
+      //     });
           
-          // ✅ Prepare alert data
-          const alertPayload = {
-            order_number: periodInvoiceData.orderNumber,
-            retailer_mobile: periodInvoiceData.originalOrder?.retailer_mobile,
-            retailer_id: periodInvoiceData.customerInfo?.id, // PartyID from customerInfo
-            customer_name: periodInvoiceData.originalOrder?.customer_name || 'Customer',
-            items_with_issues: itemsWithStockIssue.map(item => ({
-              product_id: item.product_id,
-              item_name: item.item_name,
-              ordered_quantity: item.quantity,
-              available_quantity: item.stock_quantity,
-              shortage: item.shortage
-            })),
-            message: notificationMessage // Detailed message
-          };
+      //     // ✅ Prepare alert data
+      //     const alertPayload = {
+      //       order_number: periodInvoiceData.orderNumber,
+      //       retailer_mobile: periodInvoiceData.originalOrder?.retailer_mobile,
+      //       retailer_id: periodInvoiceData.customerInfo?.id, // PartyID from customerInfo
+      //       customer_name: periodInvoiceData.originalOrder?.customer_name || 'Customer',
+      //       items_with_issues: itemsWithStockIssue.map(item => ({
+      //         product_id: item.product_id,
+      //         item_name: item.item_name,
+      //         ordered_quantity: item.quantity,
+      //         available_quantity: item.stock_quantity,
+      //         shortage: item.shortage
+      //       })),
+      //       message: notificationMessage // Detailed message
+      //     };
           
-          // ✅ Send alert to backend
-          try {
-            await axios.post(`${baseurl}/orders/send-retailer-alert`, alertPayload);
+      //     // ✅ Send alert to backend
+      //     try {
+      //       await axios.post(`${baseurl}/orders/send-retailer-alert`, alertPayload);
             
-            // Update order status
-            await axios.put(`${baseurl}/orders/${periodInvoiceData.orderNumber}/mark-modification-required`, {
-              modification_reason: 'Item out of stock'
-            });
+      //       // Update order status
+      //       await axios.put(`${baseurl}/orders/${periodInvoiceData.orderNumber}/mark-modification-required`, {
+      //         modification_reason: 'Item out of stock'
+      //       });
             
-          } catch (alertError) {
-            console.error('Error sending alert:', alertError);
-          }
+      //     } catch (alertError) {
+      //       console.error('Error sending alert:', alertError);
+      //     }
           
-          // ✅ Show Windows alert to admin
-          let windowsAlert = "⚠️ STOCK INSUFFICIENCY DETECTED!\n\n";
-          windowsAlert += `Order: ${periodInvoiceData.orderNumber}\n`;
-          // windowsAlert += `Retailer: ${periodInvoiceData.originalOrder?.retailer_mobile}\n\n`;
-          windowsAlert += `Items requiring modification:\n`;
+      //     // ✅ Show Windows alert to admin
+      //     let windowsAlert = "⚠️ STOCK INSUFFICIENCY DETECTED!\n\n";
+      //     windowsAlert += `Order: ${periodInvoiceData.orderNumber}\n`;
+      //     // windowsAlert += `Retailer: ${periodInvoiceData.originalOrder?.retailer_mobile}\n\n`;
+      //     windowsAlert += `Items requiring modification:\n`;
           
-          itemsWithStockIssue.forEach((item, index) => {
-            windowsAlert += `${index + 1}. ${item.item_name || 'Unknown Item'}\n`;
-          windowsAlert += `Ordered ${item.quantity}, Available ${item.stock_quantity}, Shortage ${item.shortage} units\n`;
+      //     itemsWithStockIssue.forEach((item, index) => {
+      //       windowsAlert += `${index + 1}. ${item.item_name || 'Unknown Item'}\n`;
+      //     windowsAlert += `Ordered ${item.quantity}, Available ${item.stock_quantity}, Shortage ${item.shortage} units\n`;
 
-          });
+      //     });
           
           
-          alert(windowsAlert);
-          setGenerating(false);
-          return;
-        }
-      }
+      //     alert(windowsAlert);
+      //     setGenerating(false);
+      //     return;
+      //   }
+      // }
       
       }
       // ========== END STOCK CHECK ==========

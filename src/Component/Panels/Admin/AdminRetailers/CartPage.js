@@ -224,6 +224,8 @@ function CartPage() {
             name: product.name,
             unit: product.unit,
             gst_rate: parseFloat(product.gst_rate) || 0,
+             net_price: parseFloat(product.net_price) || 0, // Add net_price
+          weight: product.weight || null, // Add weight
             price: parseFloat(product.price) || 0, // This is sale_price
             mrp: parseFloat(product.mrp) || 0,
             inclusive_gst: product.inclusive_gst || "Exclusive",
@@ -693,7 +695,11 @@ function CartPage() {
         // Additional fields needed for checkout
         item_name: product.name || `Product ${item.product_id}`,
         product_details: product,
-        breakdown: breakdownObj
+        breakdown: breakdownObj,
+
+           // Include net_price and weight from product details
+      net_price: product.net_price || 0,
+      weight: product.weight || null
       };
     });
 

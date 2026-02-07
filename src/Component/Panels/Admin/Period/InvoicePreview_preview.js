@@ -366,9 +366,9 @@ const adjustedTotals = getAdjustedTotals();
           <th className="text-center" style={{ width: '3%' }}>#</th>
           <th style={{ width: '12%' }}>Product</th>
           <th style={{ width: '15%' }}>Description</th>
-          <th className="text-center" style={{ width: '4%' }}>flash</th>
+          {/* <th className="text-center" style={{ width: '4%' }}>flash</th> */}
            <th className="text-center" style={{ width: '4%' }}>Qty</th>
-            <th className="text-center" style={{ width: '4%' }}>get Qty</th>
+            <th className="text-center" style={{ width: '4%' }}>Free Qty</th>
           <th className="text-end" style={{ width: '7%' }}>Price</th>
             <th className="text-end" style={{ width: '7%' }}>Discount Amt</th> 
           <th className="text-end" style={{ width: '7%' }}>Credit Charge</th>
@@ -432,11 +432,11 @@ const adjustedTotals = getAdjustedTotals();
                   <div className="small text-muted">{item.description || 'No description'}</div>
                 )}
               </td>
- <td className="text-center align-middle">
+ {/* <td className="text-center align-middle">
                 <div className={`badge ${flashOffer === 1 ? 'bg-success' : 'bg-secondary'} p-1`}>
                   {flashOffer === 1 ? 'YES' : 'NO'}
                 </div>
-              </td>
+              </td> */}
               
            <td className="text-center align-middle">
   {flashOffer === 1 ? (
@@ -544,7 +544,7 @@ const adjustedTotals = getAdjustedTotals();
         
         {/* Add Total GST Row */}
         <tr className='text-end'>
-          <td colSpan={14} className="text-end fw-bold">
+          <td colSpan={13} className="text-end fw-bold">
             Total GST:
           </td>
           <td className="text-end fw-bold text-success">
@@ -555,7 +555,7 @@ const adjustedTotals = getAdjustedTotals();
         
         {/* Add Grand Total Row */}
         <tr>
-          <td colSpan={14} className="text-end fw-bold">
+          <td colSpan={13} className="text-end fw-bold">
             Grand Total:
           </td>
           <td className="text-end fw-bold text-danger fs-5">

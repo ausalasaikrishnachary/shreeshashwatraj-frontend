@@ -194,6 +194,7 @@ import KachaEditDebitNote from "./Component/Panels/Admin/KachaPurchaseDebit/Kach
 import KachaCreditview from "./Component/Panels/Admin/KachaCreditNote/KachaCreditview";
 import KachaPurchaseDebitView from "./Component/Panels/Admin/KachaPurchaseDebit/KachaPurchaseDebitView";
 import KachaPurchaseInvoiceEdit from "./Component/Panels/Admin/KachaPurchase/KachaPurchaseInvoiceEdit";
+import DispatchReportPDF from "./Component/Panels/Admin/Period/DispatchReportPDF";
 
 
 
@@ -408,8 +409,7 @@ function App() {
 
 <Route path="/kachapurchaseedit/:id" element={<KachaPurchaseInvoiceEdit />} />
 
-
-
+<Route path="/dispatch-report" element={<DispatchReportPDF />} />
 
       </Routes>
     </Router>

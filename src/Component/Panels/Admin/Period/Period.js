@@ -6,7 +6,12 @@ import './Period.css';
 import { baseurl } from "../../../BaseURL/BaseURL";
 import { FaFilePdf, FaTrash, FaDownload, FaCheck, FaTimes, FaEdit } from 'react-icons/fa';
 import axios from "axios";
-import ReusableTable from './../../../Layouts/TableLayout/ReusableTable';
+// In your Period.jsx component, add this import and function
+import DispatchReportPDF from './DispatchReportPDF';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { PDFViewer } from "@react-pdf/renderer";
+
+
 const Period = () => {
   const [openRow, setOpenRow] = useState(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -28,6 +33,9 @@ const Period = () => {
   const [nextInvoiceNumber, setNextInvoiceNumber] = useState("");
   const [itemApprovalStatus, setItemApprovalStatus] = useState({}); 
 const [activeTab, setActiveTab] = useState("pending");
+const [selectedOrdersForDispatch, setSelectedOrdersForDispatch] = useState([]);
+
+
 
   useEffect(() => {
     fetchOrders();
@@ -371,6 +379,7 @@ const fetchOrders = async () => {
                 sale_price: salePrice,
                 edited_sale_price: editedSalePrice,
                   net_price: parseFloat(item.net_price) || 0, // Add this line
+                     weight: parseFloat(item.weight) || 0, // Add this line
                 credit_charge: parseFloat(item.credit_charge) || 0,
                 customer_sale_price: parseFloat(item.customer_sale_price) || editedSalePrice,
                 final_amount: parseFloat(item.final_amount) || editedSalePrice,
@@ -394,7 +403,6 @@ const fetchOrders = async () => {
                 discount_applied_scheme: item.discount_applied_scheme || "N/A",
                 created_at: item.created_at,
                 updated_at: item.updated_at,
-                
                 min_sale_price: min_sale_price,
                 needs_approval: needsApproval,
                 approval_status: item.approval_status || "pending",
@@ -825,6 +833,7 @@ const fetchOrders = async () => {
       sale_price: item.sale_price,
       edited_sale_price: item.edited_sale_price,
       net_price: item.net_price || 0, 
+      weight: item.weight || 0, 
    flash_offer: item.flash_offer || 0,
       buy_quantity: item.buy_quantity || 0,
       get_quantity: item.get_quantity || 0,
@@ -1022,6 +1031,186 @@ const fetchOrders = async () => {
 };
 
 
+const toggleOrderForDispatch = (orderId) => {
+  setSelectedOrdersForDispatch(prev => {
+    if (prev.includes(orderId)) {
+      return prev.filter(id => id !== orderId);
+    } else {
+      return [...prev, orderId];
+    }
+  });
+};
+
+const toggleAllOrdersForDispatch = () => {
+  if (selectedOrdersForDispatch.length === filteredOrders.length) {
+    setSelectedOrdersForDispatch([]);
+  } else {
+    setSelectedOrdersForDispatch(filteredOrders.map(order => order.id));
+  }
+};
+const handleGenerateDispatchReport = async () => {
+  try {
+    if (selectedOrdersForDispatch.length === 0) {
+      alert("Please select at least one order to generate dispatch report!");
+      return;
+    }
+
+    // Get selected orders data from FILTERED orders
+    const selectedOrdersData = filteredOrders.filter(order => 
+      selectedOrdersForDispatch.includes(order.id)
+    );
+
+    // Check if any selected orders match date filters
+    const ordersWithDateMatch = selectedOrdersData.filter(order => {
+      let dateMatch = true;
+      if (startDate) dateMatch = dateMatch && new Date(order.created_at) >= new Date(startDate);
+      if (endDate) dateMatch = dateMatch && new Date(order.created_at) <= new Date(endDate);
+      return dateMatch;
+    });
+
+    if (ordersWithDateMatch.length === 0) {
+      alert("No orders match the selected date range. Please adjust dates or select different orders.");
+      return;
+    }
+
+    // Prepare dispatch items for all selected orders
+    const allDispatchItems = [];
+    let totalWeightAllOrders = 0;
+    let totalAmountAllOrders = 0;
+
+    ordersWithDateMatch.forEach(order => {
+      order.items.forEach(item => {
+        if (item.invoice_status !== 1) {
+          const salePrice = parseFloat(item.sale_price) || 0;
+          const quantity = item.flash_offer === 1 ? 
+            (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
+            (parseInt(item.quantity) || 1);
+          
+          const amount = salePrice * quantity;
+          const itemWeight = item.weight || calculateWeight(item);
+          
+          allDispatchItems.push({
+            item_name: item.item_name,
+            weight: itemWeight,
+            quantity: item.flash_offer === 1 ? 
+              `${item.buy_quantity || item.quantity}` : 
+              item.quantity,
+            actual_quantity: quantity,
+            amount: amount,
+            sale_price: salePrice,
+            flash_offer: item.flash_offer,
+            buy_quantity: item.buy_quantity,
+            get_quantity: item.get_quantity,
+            order_number: order.order_number,
+            customer_name: order.customer_name,
+            invoice_number: item.invoice_number || order.invoice_number,
+            created_at: order.created_at
+          });
+          
+          totalWeightAllOrders += itemWeight;
+          totalAmountAllOrders += amount;
+        }
+      });
+    });
+
+    if (allDispatchItems.length === 0) {
+      alert("No items available for dispatch (all items may already have invoices).");
+      return;
+    }
+
+    // Prepare dispatch data
+    const dispatchData = {
+      orders: ordersWithDateMatch.map(order => ({
+        orderNumber: order.order_number,
+        customerName: order.account_details?.name || order.customer_name,
+        invoiceNumber: order.invoice_number || `ORD${order.order_number.replace('ORD', '')}`,
+        invoiceDate: new Date().toISOString().split('T')[0],
+        orderDate: order.created_at,
+        items: order.items.filter(item => item.invoice_status !== 1).map(item => {
+          const salePrice = parseFloat(item.sale_price) || 0;
+          const quantity = item.flash_offer === 1 ? 
+            (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
+            (parseInt(item.quantity) || 1);
+          const amount = salePrice * quantity;
+          
+          return {
+            item_name: item.item_name,
+            weight: item.weight || calculateWeight(item),
+            quantity: item.flash_offer === 1 ? 
+              `${item.buy_quantity || item.quantity}` : 
+              item.quantity,
+            actual_quantity: quantity,
+            amount: amount,
+            sale_price: salePrice,
+            get_quantity: item.get_quantity || 0,
+            flash_offer: item.flash_offer
+          };
+        })
+      })),
+      
+      allItems: allDispatchItems,
+      totalWeight: totalWeightAllOrders.toFixed(2),
+      totalAmount: totalAmountAllOrders,
+      
+      companyInfo: {
+        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+        address: "PATNA ROAD, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+        email: "spmathur56@gmail.com",
+        phone: "9801049700",
+        gstin: "10AAOCS1541B1ZZ"
+      },
+      
+      transportDetails: {
+        vehicleNo: "To be filled"
+      },
+      
+      filterInfo: {
+        fromDate: startDate,
+        toDate: endDate,
+        customerSearch: search,
+        totalOrders: selectedOrdersForDispatch.length,
+        ordersInDateRange: ordersWithDateMatch.length
+      },
+      
+      totalSelectedOrders: selectedOrdersForDispatch.length,
+      totalFilteredOrders: ordersWithDateMatch.length,
+      totalItems: allDispatchItems.length,
+      reportDate: new Date().toISOString().split('T')[0]
+    };
+
+    // ✅ 1. Create PDF blob using your existing DispatchReportPDF component
+    const { pdf } = await import('@react-pdf/renderer');
+    const pdfDoc = <DispatchReportPDF invoiceData={dispatchData} />;
+    const blob = await pdf(pdfDoc).toBlob();
+    
+    // ✅ 2. Create blob URL
+    const blobUrl = URL.createObjectURL(blob);
+    
+    // ✅ 3. Open in new tab
+    const newTab = window.open(blobUrl, '_blank');
+    
+    // ✅ 4. Revoke URL after loading
+    if (newTab) {
+      // Wait a bit then revoke URL
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+      }, 1000);
+    }
+
+  } catch (error) {
+    console.error("Error generating dispatch report:", error);
+    alert("Failed to generate dispatch report. Please try again.");
+  }
+};
+
+const calculateWeight = (item) => {
+  if (item.weight && item.weight > 0) return item.weight;
+  
+  // Calculate based on quantity
+  const itemWeight = item.weight || 0;
+  return itemWeight * (item.quantity || 1);
+};
+
 const pendingOrders = orders.filter(order =>
   order.items.some(item => item.invoice_status !== 1)
 );
@@ -1057,38 +1246,62 @@ const filteredOrders = orders.filter(order => {
         <AdminHeader isCollapsed={isCollapsed} />
 
         <div className="p-period-page">
-          <div className="p-filters-section">
-            <div className="p-filter-row">
-              <div className="p-filter-group">
-                <input
-                  type="text"
-                  className="p-form-control"
-                  placeholder="Search Customer Name..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-              <div className="p-filter-group">
-                <input
-                  type="date"
-                  className="p-form-control"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div className="p-filter-group">
-                <input
-                  type="date"
-                  className="p-form-control"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-              <div className="p-filter-group">
-                <button className="p-btn p-btn-primary" onClick={() => { }}>Search</button>
-              </div>
-            </div>
-          </div>
+<div className="p-filters-section">
+  <div className="p-filter-row">
+    <div className="p-filter-group">
+      <input
+        type="text"
+        className="p-form-control"
+        placeholder="Search Customer Name..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+    </div>
+    <div className="p-filter-group">
+      <input
+        type="date"
+        className="p-form-control"
+        value={startDate}
+        onChange={(e) => setStartDate(e.target.value)}
+      />
+    </div>
+    <div className="p-filter-group">
+      <input
+        type="date"
+        className="p-form-control"
+        value={endDate}
+        onChange={(e) => setEndDate(e.target.value)}
+      />
+    </div>
+    <div className="p-filter-group">
+      <button className="p-btn p-btn-primary" onClick={() => { }}>Search</button>
+    </div>
+    {/* DISPATCH BUTTON - Always visible when orders are selected */}
+    <div className="p-filter-group">
+ <button 
+  className="p-btn p-btn-dispatch"
+  onClick={handleGenerateDispatchReport}
+  disabled={selectedOrdersForDispatch.length === 0}
+>
+  {selectedOrdersForDispatch.length > 0 
+    ? `Dispatch Report (${selectedOrdersForDispatch.length})` 
+    : 'Select orders for dispatch'}
+</button> 
+    </div>
+    {/* CLEAR BUTTON */}
+    {selectedOrdersForDispatch.length > 0 && (
+      <div className="p-filter-group">
+        <button
+          className="p-btn p-btn-clear"
+          onClick={() => setSelectedOrdersForDispatch([])}
+          style={{ backgroundColor: '#f44336', color: 'white' }}
+        >
+          Clear Selected ({selectedOrdersForDispatch.length})
+        </button>
+      </div>
+    )}
+  </div>
+</div>
 <div className="p-period-tabs" style={{ display: 'flex', justifyContent: 'center', gap: '50px' }}>
   <button
     className={`p-tab-btn ${activeTab === "pending" ? "active" : ""}`}
@@ -1103,435 +1316,491 @@ const filteredOrders = orders.filter(order => {
     Orders Completed (Invoiced)
   </button>
 </div>
+{/* {showDispatchModal && dispatchData && (
+  <div className="p-modal-overlay" onClick={() => setShowDispatchModal(false)}>
+    <div className="p-modal-content p-wide-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="p-modal-header">
+        <h3>Dispatch Report</h3>
+        <button className="p-modal-close" onClick={() => setShowDispatchModal(false)}>×</button>
+      </div>
+      <div className="p-modal-body">
+        <div style={{ height: '500px' }}>
+          <PDFViewer width="100%" height="100%">
+            <DispatchReportPDF invoiceData={dispatchData} />
+          </PDFViewer>
+        </div>
+        <div className="p-modal-footer" style={{ textAlign: 'center', marginTop: '20px' }}>
+          <PDFDownloadLink
+            document={<DispatchReportPDF invoiceData={dispatchData} />}
+            fileName={`Dispatch_Report_${dispatchData.orderNumber}.pdf`}
+            style={{
+              textDecoration: 'none',
+              padding: '10px 20px',
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              borderRadius: '4px',
+              fontWeight: 'bold'
+            }}
+          >
+            {({ blob, url, loading, error }) =>
+              loading ? 'Loading document...' : 'Download Dispatch Report'
+            }
+          </PDFDownloadLink>
+        </div>
+      </div>
+    </div>
+  </div>
+)} */}
 
-          <div className="p-table-container">
-            <table className="p-customers-table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Order Number</th>
-                  <th>Customer Name</th>
-                  <th>Order Total</th>
-                  <th>Discount Amount</th>
-                  <th>Assigned Staff</th>
-                  <th>Order Status</th>
-                  <th>Created At</th>
-                  <th>Action</th>
-                  <th>Download Invoice</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.map((order) => {
-                  const isOrderOpen = openRow === order.id;
-                  const orderSelectedItems = selectedItems[order.id] || [];
-                  const allItemsSelected = order.items &&
-                    orderSelectedItems.length === order.items.length;
+<div className="p-table-container">
+  <table className="p-customers-table">
+  <thead>
+  <tr>
+    <th style={{ width: '50px' }}>
+      {/* ALWAYS SHOW CHECKBOX (not conditional) */}
+      <input
+        type="checkbox"
+        checked={filteredOrders.length > 0 && selectedOrdersForDispatch.length === filteredOrders.length}
+        onChange={toggleAllOrdersForDispatch}
+        title={filteredOrders.length > 0 ? 
+          (selectedOrdersForDispatch.length === filteredOrders.length ? 
+            "Deselect all orders" : 
+            "Select all orders") : 
+          "No orders to select"}
+        disabled={filteredOrders.length === 0}
+      />
+    </th>
+    <th></th> {/* Toggle column */}
+    <th>Order Number</th>
+    <th>Customer Name</th>
+    <th>Order Total</th>
+    <th>Discount Amount</th>
+    <th>Assigned Staff</th>
+    <th>Order Status</th>
+    <th>Created At</th>
+    <th>Action</th>
+    <th>Download Invoice</th>
+  </tr>
+</thead>
+   <tbody>
+  {filteredOrders.map((order) => {
+    const isOrderOpen = openRow === order.id;
+    const orderSelectedItems = selectedItems[order.id] || [];
+    const allItemsSelected = order.items &&
+      orderSelectedItems.length === order.items.length;
+    const isSelectedForDispatch = selectedOrdersForDispatch.includes(order.id);
 
-                  return (
-                    <React.Fragment key={order.id}>
-                      <tr className="p-customer-row">
-                        <td>
-                          <button className="p-toggle-btn" onClick={() => toggleRow(order.id)}>
-                            <span className={isOrderOpen ? "p-arrow-up" : "p-arrow-down"}></span>
+    return (
+      <React.Fragment key={order.id}>
+        <tr className="p-customer-row">
+          <td>
+            {/* ALWAYS SHOW CHECKBOX (not conditional) */}
+            <input
+              type="checkbox"
+              checked={isSelectedForDispatch}
+              onChange={() => toggleOrderForDispatch(order.id)}
+              title={isSelectedForDispatch ? 
+                "Deselect for dispatch" : 
+                "Select for dispatch"}
+            />
+          </td>
+          <td>
+            <button className="p-toggle-btn" onClick={() => toggleRow(order.id)}>
+              <span className={isOrderOpen ? "p-arrow-up" : "p-arrow-down"}></span>
+            </button>
+              </td>
+              <td>{order.order_number}</td>
+              <td>{order.customer_name}</td>
+              <td>₹{(order.order_total ?? 0).toLocaleString()}</td>
+              <td>₹{(order.discount_amount ?? 0).toLocaleString()}</td>
+              <td>{order.assigned_staff || "N/A"}</td>
+              <td>{order.order_status || "N/A"}</td>
+              <td>
+                {new Date(order.created_at).toLocaleDateString('en-GB')}
+              </td>
+              <td>
+                <div className="p-action-buttons">
+                  <button
+                    className="p-eye-btn"
+                    onClick={() => openOrderModal(order.id)}
+                    title="View Order Details"
+                  >
+                    👁️
+                  </button>
+                </div>
+              </td>
+              <td>
+                <div className="p-invoice-dropdown">
+                  <div className="p-dropdown-toggle">
+                    <button
+                      className={`p-btn p-btn-pdf ${orderInvoices[order.order_number]?.length > 0 ? 'p-btn-success' : 'p-btn-warning'}`}
+                      disabled={loadingInvoices[order.order_number]}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!orderInvoices[order.order_number]) {
+                          fetchInvoicesForOrder(order.order_number);
+                        }
+                        setOpenDropdown(openDropdown === order.order_number ? null : order.order_number);
+                      }}
+                      title={orderInvoices[order.order_number]?.length > 0
+                        ? `Click to view ${orderInvoices[order.order_number].length} invoice(s)`
+                        : "Generate PDF"}
+                    >
+                      {loadingInvoices[order.order_number] ? (
+                        <span className="p-download-spinner">Loading...</span>
+                      ) : orderInvoices[order.order_number]?.length > 0 ? (
+                        <>
+                          <FaDownload className="p-icon" />
+                          {orderInvoices[order.order_number].length} Invoice(s)
+                          <span className="p-dropdown-arrow">▼</span>
+                        </>
+                      ) : (
+                        <>
+                          <FaFilePdf className="p-icon" />
+                          Generate PDF
+                        </>
+                      )}
+                    </button>
+
+                    {openDropdown === order.order_number && orderInvoices[order.order_number]?.length > 0 && (
+                      <div className="p-dropdown-menu">
+                        <div className="p-dropdown-header">
+                          <span>Available Invoices</span>
+                          <button
+                            className="p-close-dropdown"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdown(null);
+                            }}
+                            title="Close"
+                          >
+                            ×
                           </button>
-                        </td>
-                        <td>{order.order_number}</td>
-                        <td>{order.customer_name}</td>
-                        <td>₹{(order.order_total ?? 0).toLocaleString()}</td>
-                        <td>₹{(order.discount_amount ?? 0).toLocaleString()}</td>
-                        <td>{order.assigned_staff || "N/A"}</td>
-                        <td>{order.order_status || "N/A"}</td>
-                        <td>
-                          {new Date(order.created_at).toLocaleDateString('en-GB')}
-                        </td>
-                        <td>
-                          <div className="p-action-buttons">
-                            <button
-                              className="p-eye-btn"
-                              onClick={() => openOrderModal(order.id)}
-                              title="View Order Details"
-                            >
-                              👁️
-                            </button>
+                        </div>
+                        {orderInvoices[order.order_number].map((pdf, index) => (
+                          <div
+                            key={index}
+                            className="p-dropdown-item"
+                            onClick={() => {
+                              handleDownloadSpecificPDF(order.order_number, pdf);
+                              setOpenDropdown(null);
+                            }}
+                          >
+                            <FaFilePdf className="p-icon-sm" />
+                            <span className="p-invoice-filename">
+                              {pdf.fileName || `Invoice_${index + 1}.pdf`}
+                            </span>
+                            <FaDownload className="p-icon-sm p-download-icon" />
                           </div>
-                        </td>
-                        <td>
-                          <div className="p-invoice-dropdown">
-                            <div className="p-dropdown-toggle">
-                              <button
-                                className={`p-btn p-btn-pdf ${orderInvoices[order.order_number]?.length > 0 ? 'p-btn-success' : 'p-btn-warning'}`}
-                                disabled={loadingInvoices[order.order_number]}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!orderInvoices[order.order_number]) {
-                                    fetchInvoicesForOrder(order.order_number);
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            {isOrderOpen && (
+              <tr className="p-invoices-row">
+                <td colSpan={11}>
+                  <div className="p-invoices-section">
+                    <div className="p-items-header">
+                      <h4>Order Items</h4>
+                      {orderSelectedItems.length > 0 && (
+                        <div className="p-bulk-buttons">
+                          <button
+                            className="p-generate-invoice-btn p-bulk-btn"
+                            onClick={() => handleGenerateInvoice(order)}
+                            disabled={generatingInvoice}
+                            title={`Generate invoice for ${orderSelectedItems.length} selected item(s)`}
+                          >
+                            {generatingInvoice ? "Preparing..." : `Generate Invoice for ${orderSelectedItems.length} Item(s)`}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {order.items && order.items.length > 0 ? (
+                      <table className="p-invoices-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '50px' }}>
+                              <input
+                                type="checkbox"
+                                checked={allItemsSelected}
+                                onChange={() => handleSelectAll(order.id, order.items)}
+                                className="p-item-checkbox"
+                                disabled={(() => {
+                                  const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
+                                  return creditPeriods.length > 1;
+                                })()}
+                                title={(() => {
+                                  const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
+                                  if (creditPeriods.length > 1) {
+                                    return `Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days`;
                                   }
-                                  setOpenDropdown(openDropdown === order.order_number ? null : order.order_number);
-                                }}
-                                title={orderInvoices[order.order_number]?.length > 0
-                                  ? `Click to view ${orderInvoices[order.order_number].length} invoice(s)`
-                                  : "Generate PDF"}
-                              >
-                                {loadingInvoices[order.order_number] ? (
-                                  <span className="p-download-spinner">Loading...</span>
-                                ) : orderInvoices[order.order_number]?.length > 0 ? (
+                                  return allItemsSelected ? "Deselect all items" : "Select all items";
+                                })()}
+                              />
+                            </th>
+                            <th>Item Name</th>
+                            
+                            {(() => {
+                              const hasFlashOfferInOrder = order.items.some(item => item.flash_offer === 1);
+                              
+                              if (hasFlashOfferInOrder) {
+                                return (
                                   <>
-                                    <FaDownload className="p-icon" />
-                                    {orderInvoices[order.order_number].length} Invoice(s)
-                                    <span className="p-dropdown-arrow">▼</span>
+                                    <th>Qty</th>
+                                    <th>Get Free</th>
+                                  </>
+                                );
+                              } else {
+                                return (
+                                  <>
+                                    <th>Qty</th>
+                                    <th>Dst Amnt</th>
+                                    <th>Weight</th>
+                                  </>
+                                );
+                              }
+                            })()}
+                            
+                            <th>Sale Price</th>
+                            <th>MSP</th>
+                            <th>Edited Price</th>
+                            <th>Credit Charge</th>
+                            <th>CP</th>
+                            <th>Inv No</th>
+                            <th>Approval Status</th>
+                            <th>Action</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {order.items.map((item) => {
+                            const isItemSelected = orderSelectedItems.includes(item.id);
+                            const hasInvoiceGenerated = item.invoice_status === 1;
+                            const needsApproval = item.needs_approval;
+                            const approvalStatus = item.approval_status;
+                            const canEdit = item.can_edit;
+                            
+                            const hasFlashOffer = item.flash_offer === 1;
+                            const buyQuantity = item.buy_quantity || 0;
+                            const getQuantity = item.get_quantity || 0;
+
+                            return (
+                              <tr key={item.id}>
+                                <td>
+                                  {hasInvoiceGenerated ? (
+                                    <span title="Invoice Already Generated">✅</span>
+                                  ) : (
+                                    (() => {
+                                      const currentSelectedIds = selectedItems[order.id] || [];
+
+                                      if (currentSelectedIds.length === 0) {
+                                        const canSelect = !needsApproval || approvalStatus === "approved";
+                                        return (
+                                          <input
+                                            type="checkbox"
+                                            checked={isItemSelected && canSelect}
+                                            onChange={(e) => {
+                                              if (!canSelect) {
+                                                alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
+                                                return;
+                                              }
+                                              handleItemSelect(order.id, item.id, e.target.checked, item.credit_period);
+                                            }}
+                                            className="p-item-checkbox"
+                                            disabled={!canSelect}
+                                            title={!canSelect ? 
+                                              "Item requires approval before selection" : 
+                                              "Select for invoice generation"}
+                                          />
+                                        );
+                                      }
+
+                                      const firstSelectedId = currentSelectedIds[0];
+                                      const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
+                                      const selectedCreditPeriod = firstSelectedItem?.credit_period;
+
+                                      const isSelectable = selectedCreditPeriod === item.credit_period;
+                                      const canSelect = isSelectable && (!needsApproval || approvalStatus === "approved");
+
+                                      return (
+                                        <input
+                                          type="checkbox"
+                                          checked={isItemSelected && canSelect}
+                                          onChange={(e) => {
+                                            if (!canSelect) {
+                                              if (!isSelectable) {
+                                                alert(`Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.`);
+                                              } else {
+                                                alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
+                                              }
+                                              return;
+                                            }
+                                            handleItemSelect(order.id, item.id, e.target.checked, item.credit_period);
+                                          }}
+                                          className="p-item-checkbox"
+                                          disabled={!canSelect}
+                                          title={!canSelect ? 
+                                            (!isSelectable ? 
+                                              `Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.` :
+                                              "Item requires approval before selection") :
+                                            "Select for invoice generation"}
+                                        />
+                                      );
+                                    })()
+                                  )}
+                                </td>
+                                <td>{item.item_name}</td>
+                                
+                                {hasFlashOffer ? (
+                                  <>
+                                    <td className="p-flash-column">
+                                      <div>
+                                        <span className="p-flash-buy" title="Quantity">{buyQuantity}</span>
+                                      </div>
+                                    </td>
+                                    <td className="p-flash-column">
+                                      <div className="p-flash-free" title="Get Free Quantity">
+                                        {getQuantity}
+                                        <span className="p-flash-badge"></span>
+                                      </div>
+                                    </td>
                                   </>
                                 ) : (
                                   <>
-                                    <FaFilePdf className="p-icon" />
-                                    Generate PDF
+                                    <td className="p-regular-column">
+                                      <span title="Ordered Quantity">{item.quantity}</span>
+                                    </td>
+                                    <td className="p-regular-column">
+                                      ₹{item.discount_amount.toLocaleString()}
+                                    </td>
+                                    <td className="p-regular-column">
+                                      <span title="Weight">{item.weight || 0}</span>
+                                    </td>
                                   </>
                                 )}
-                              </button>
-
-                              {openDropdown === order.order_number && orderInvoices[order.order_number]?.length > 0 && (
-                                <div className="p-dropdown-menu">
-                                  <div className="p-dropdown-header">
-                                    <span>Available Invoices</span>
-                                    <button
-                                      className="p-close-dropdown"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setOpenDropdown(null);
-                                      }}
-                                      title="Close"
-                                    >
-                                      ×
-                                    </button>
-                                  </div>
-                                  {orderInvoices[order.order_number].map((pdf, index) => (
-                                    <div
-                                      key={index}
-                                      className="p-dropdown-item"
-                                      onClick={() => {
-                                        handleDownloadSpecificPDF(order.order_number, pdf);
-                                        setOpenDropdown(null);
-                                      }}
-                                    >
-                                      <FaFilePdf className="p-icon-sm" />
-                                      <span className="p-invoice-filename">
-                                        {pdf.fileName || `Invoice_${index + 1}.pdf`}
+                                
+                                <td>₹{item.sale_price.toLocaleString()}</td>
+                                <td>₹{item.min_sale_price.toLocaleString()}</td>
+                                <td>₹{item.edited_sale_price.toLocaleString()}</td>
+                                <td>₹{item.credit_charge.toLocaleString()}</td>
+                                <td>{item.credit_period}</td>
+                                <td>{item.invoice_number || "N/A"}</td>
+                                <td>
+                                  {needsApproval ? (
+                                    <div className="p-approval-status">
+                                      <span className={`p-approval-badge p-${approvalStatus}`}>
+                                        {approvalStatus === "approved" ? "Approved" : 
+                                         approvalStatus === "rejected" ? "Rejected" : "Pending"}
                                       </span>
-                                      <FaDownload className="p-icon-sm p-download-icon" />
+                                      {approvalStatus === "pending" && (
+                                        <div className="p-approval-buttons">
+                                          <button
+                                            className="p-btn p-btn-approve"
+                                            onClick={() => handleApproveItem(item.id, order.id)}
+                                            title="Approve this item"
+                                          >
+                                            <FaCheck />
+                                          </button>
+                                          <button
+                                            className="p-btn p-btn-reject"
+                                            onClick={() => handleRejectItem(item.id, order.id)}
+                                            title="Reject this item"
+                                          >
+                                            <FaTimes />
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-{isOrderOpen && (
-  <tr className="p-invoices-row">
-    <td colSpan={10}>
-      <div className="p-invoices-section">
-        <div className="p-items-header">
-          <h4>Order Items</h4>
-          {orderSelectedItems.length > 0 && (
-            <button
-              className="p-generate-invoice-btn p-bulk-btn"
-              onClick={() => handleGenerateInvoice(order)}
-              disabled={generatingInvoice}
-              title={`Generate invoice for ${orderSelectedItems.length} selected item(s)`}
-            >
-              {generatingInvoice ? "Preparing..." : `Generate Invoice for ${orderSelectedItems.length} Item(s)`}
-            </button>
-          )}
-        </div>
-        {order.items && order.items.length > 0 ? (
-          <table className="p-invoices-table">
-            <thead>
-              <tr>
-                <th style={{ width: '50px' }}>
-                  <input
-                    type="checkbox"
-                    checked={allItemsSelected}
-                    onChange={() => handleSelectAll(order.id, order.items)}
-                    className="p-item-checkbox"
-                    disabled={(() => {
-                      const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
-                      return creditPeriods.length > 1;
-                    })()}
-                    title={(() => {
-                      const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
-                      if (creditPeriods.length > 1) {
-                        return `Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days`;
-                      }
-                      return allItemsSelected ? "Deselect all items" : "Select all items";
-                    })()}
-                  />
-                </th>
-                <th>Item Name</th>
-                
-                {/* DYNAMIC COLUMNS BASED ON FLASH OFFER */}
-                {(() => {
-                  // Check if ANY item in this order has flash_offer === 1
-                  const hasFlashOfferInOrder = order.items.some(item => item.flash_offer === 1);
-                  
-                  if (hasFlashOfferInOrder) {
-                    // Show FLASH OFFER columns
-                    return (
-                      <>
-                        <th>Qty</th>
-                        <th>Get Free</th>
-                      </>
-                    );
-                  } else {
-                    // Show REGULAR columns
-                    return (
-                      <>
-                        <th>Qty</th>
-                        <th>Dst Amnt</th>
-                      </>
-                    );
-                  }
-                })()}
-                
-                <th>Sale Price</th>
-                <th>MSP</th>
-                <th>Edited Price</th>
-                <th>Credit Charge</th>
-                <th>CP</th>
-                <th>Inv No</th>
-                <th>Approval Status</th>
-                <th>Action</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.items.map((item) => {
-                const isItemSelected = orderSelectedItems.includes(item.id);
-                const hasInvoiceGenerated = item.invoice_status === 1;
-                const needsApproval = item.needs_approval;
-                const approvalStatus = item.approval_status;
-                const canEdit = item.can_edit;
-                
-                // Flash offer details
-                const hasFlashOffer = item.flash_offer === 1;
-                const buyQuantity = item.buy_quantity || 0;
-                const getQuantity = item.get_quantity || 0;
-
-                return (
-                  <tr key={item.id}>
-                    <td>
-                      {hasInvoiceGenerated ? (
-                        <span title="Invoice Already Generated">✅</span>
-                      ) : (
-                        (() => {
-                          const currentSelectedIds = selectedItems[order.id] || [];
-
-                          if (currentSelectedIds.length === 0) {
-                            const canSelect = !needsApproval || approvalStatus === "approved";
-                            return (
-                              <input
-                                type="checkbox"
-                                checked={isItemSelected && canSelect}
-                                onChange={(e) => {
-                                  if (!canSelect) {
-                                    alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
-                                    return;
-                                  }
-                                  handleItemSelect(order.id, item.id, e.target.checked, item.credit_period);
-                                }}
-                                className="p-item-checkbox"
-                                disabled={!canSelect}
-                                title={!canSelect ? 
-                                  "Item requires approval before selection" : 
-                                  "Select for invoice generation"}
-                              />
+                                  ) : (
+                                    <span className="p-approval-badge p-not-required">
+                                      Not Required
+                                    </span>
+                                  )}
+                                </td>
+                                <td>
+                                  <div className="p-action-buttons">
+                                    <button
+                                      className="p-eye-btn"
+                                      onClick={() => openItemModal(order.order_number, item.id)}
+                                      title="View Item Details"
+                                    >
+                                      👁️
+                                    </button>
+                                    {canEdit && (
+                                      <button
+                                        className="p-edit-btn"
+                                        onClick={() => handleEditItem(order, item)}
+                                        title="Edit Item Price"
+                                      >
+                                        <FaEdit />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                                <td>
+                                  {hasInvoiceGenerated ? (
+                                    <span className="p-invoice-generated-text" title="Invoice Already Generated">
+                                      Invoice Generated
+                                    </span>
+                                  ) : isItemSelected ? (
+                                    <span className="p-selected-text" title="Selected for invoice">
+                                      Selected ✓
+                                    </span>
+                                  ) : (() => {
+                                    const currentSelectedIds = selectedItems[order.id] || [];
+                                    if (currentSelectedIds.length > 0) {
+                                      const firstSelectedId = currentSelectedIds[0];
+                                      const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
+                                      if (firstSelectedItem && firstSelectedItem.credit_period !== item.credit_period) {
+                                        return (
+                                          <span className="p-different-period-text"
+                                            title={`Different credit period (${item.credit_period} days vs selected ${firstSelectedItem.credit_period} days)`}>
+                                            Different Period
+                                          </span>
+                                        );
+                                      }
+                                    }
+                                    
+                                    if (needsApproval && approvalStatus !== "approved") {
+                                      return (
+                                        <span className="p-requires-approval-text"
+                                          title={`Requires approval. Sale price (₹${item.sale_price}) < Min price (₹${item.min_sale_price})`}>
+                                          Requires Approval
+                                        </span>
+                                      );
+                                    }
+                                    
+                                    return (
+                                      <span className="p-select-prompt-text" title="Select this item to generate invoice">
+                                        Available
+                                      </span>
+                                    );
+                                  })()}
+                                </td>
+                              </tr>
                             );
-                          }
-
-                          const firstSelectedId = currentSelectedIds[0];
-                          const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
-                          const selectedCreditPeriod = firstSelectedItem?.credit_period;
-
-                          const isSelectable = selectedCreditPeriod === item.credit_period;
-                          const canSelect = isSelectable && (!needsApproval || approvalStatus === "approved");
-
-                          return (
-                            <input
-                              type="checkbox"
-                              checked={isItemSelected && canSelect}
-                              onChange={(e) => {
-                                if (!canSelect) {
-                                  if (!isSelectable) {
-                                    alert(`Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.`);
-                                  } else {
-                                    alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
-                                  }
-                                  return;
-                                }
-                                handleItemSelect(order.id, item.id, e.target.checked, item.credit_period);
-                              }}
-                              className="p-item-checkbox"
-                              disabled={!canSelect}
-                              title={!canSelect ? 
-                                (!isSelectable ? 
-                                  `Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.` :
-                                  "Item requires approval before selection") :
-                                "Select for invoice generation"}
-                            />
-                          );
-                        })()
-                      )}
-                    </td>
-                    <td>{item.item_name}</td>
-                    
-                    {hasFlashOffer ? (
-                      <>
-                        {/* FLASH OFFER MODE: Show Buy Qty */}
-                        <td className="p-flash-column">
-                          <div>
-                            <span className="p-flash-buy" title="Quantity">{buyQuantity}</span>
-                           
-                          </div>
-                        </td>
-                        
-                        {/* FLASH OFFER MODE: Show Get Free */}
-                        <td className="p-flash-column">
-                          <div className="p-flash-free" title="Get Free Quantity">
-                            {getQuantity}
-                            <span className="p-flash-badge"></span>
-                          </div>
-                        </td>
-                      </>
+                          })}
+                        </tbody>
+                      </table>
                     ) : (
-                      <>
-                        {/* NORMAL MODE: Show Quantity */}
-                        <td className="p-regular-column">
-                          <span title="Ordered Quantity">{item.quantity}</span>
-                        </td>
-                        
-                        {/* NORMAL MODE: Show Discount Amount */}
-                        <td className="p-regular-column">
-                          ₹{item.discount_amount.toLocaleString()}
-                        </td>
-                      </>
-                    )}
-                    
-                    <td>₹{item.sale_price.toLocaleString()}</td>
-                    <td>₹{item.min_sale_price.toLocaleString()}</td>
-                    <td>₹{item.edited_sale_price.toLocaleString()}</td>
-                    <td>₹{item.credit_charge.toLocaleString()}</td>
-                    <td>{item.credit_period}</td>
-                    <td>{item.invoice_number || "N/A"}</td>
-                    <td>
-                      {needsApproval ? (
-                        <div className="p-approval-status">
-                          <span className={`p-approval-badge p-${approvalStatus}`}>
-                            {approvalStatus === "approved" ? "Approved" : 
-                             approvalStatus === "rejected" ? "Rejected" : "Pending"}
-                          </span>
-                          {approvalStatus === "pending" && (
-                            <div className="p-approval-buttons">
-                              <button
-                                className="p-btn p-btn-approve"
-                                onClick={() => handleApproveItem(item.id, order.id)}
-                                title="Approve this item"
-                              >
-                                <FaCheck />
-                              </button>
-                              <button
-                                className="p-btn p-btn-reject"
-                                onClick={() => handleRejectItem(item.id, order.id)}
-                                title="Reject this item"
-                              >
-                                <FaTimes />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="p-approval-badge p-not-required">
-                          Not Required
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="p-action-buttons">
-                        <button
-                          className="p-eye-btn"
-                          onClick={() => openItemModal(order.order_number, item.id)}
-                          title="View Item Details"
-                        >
-                          👁️
-                        </button>
-                        {canEdit && (
-                          <button
-                            className="p-edit-btn"
-                            onClick={() => handleEditItem(order, item)}
-                            title="Edit Item Price"
-                          >
-                            <FaEdit />
-                          </button>
-                        )}
+                      <div className="p-no-items">
+                        <p>No items found for this order.</p>
                       </div>
-                    </td>
-                    <td>
-                      {hasInvoiceGenerated ? (
-                        <span className="p-invoice-generated-text" title="Invoice Already Generated">
-                          Invoice Generated
-                        </span>
-                      ) : isItemSelected ? (
-                        <span className="p-selected-text" title="Selected for invoice">
-                          Selected ✓
-                        </span>
-                      ) : (() => {
-                        const currentSelectedIds = selectedItems[order.id] || [];
-                        if (currentSelectedIds.length > 0) {
-                          const firstSelectedId = currentSelectedIds[0];
-                          const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
-                          if (firstSelectedItem && firstSelectedItem.credit_period !== item.credit_period) {
-                            return (
-                              <span className="p-different-period-text"
-                                title={`Different credit period (${item.credit_period} days vs selected ${firstSelectedItem.credit_period} days)`}>
-                                Different Period
-                              </span>
-                            );
-                          }
-                        }
-                        
-                        if (needsApproval && approvalStatus !== "approved") {
-                          return (
-                            <span className="p-requires-approval-text"
-                              title={`Requires approval. Sale price (₹${item.sale_price}) < Min price (₹${item.min_sale_price})`}>
-                              Requires Approval
-                            </span>
-                          );
-                        }
-                        
-                        return (
-                          <span className="p-select-prompt-text" title="Select this item to generate invoice">
-                            Available
-                          </span>
-                        );
-                      })()}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <div className="p-no-items">
-            <p>No items found for this order.</p>
-          </div>
-        )}
-      </div>
-    </td>
-  </tr>
-)}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </tbody>
+  </table>
+</div>
         </div>
       </div>
 
@@ -1880,6 +2149,12 @@ const filteredOrders = orders.filter(order => {
                   <span className="p-approval-badge p-not-required">Not Required</span>
                 )}
               </span>
+            </div>
+          </div>
+           <div className="p-column">
+            <div className="p-detail-row">
+              <span className="p-detail-label">Weight:</span>
+              <span className="p-detail-value">{modalData.weight || 0} g</span>
             </div>
           </div>
         </div>

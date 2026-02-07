@@ -244,7 +244,6 @@ const formatDateForInput = (dateString) => {
           {product.name} - {product.category}
           {product.price && ` - Price: ₹${product.price}`}
           {product.unit && ` Stock(${product.unit})`}
-          {product.group_by && ` [${product.group_by}]`}
           {expiryText}
         </option>
       );
@@ -652,7 +651,7 @@ const formatDateForInput = (dateString) => {
         </div>
 
         {/* Purchase Limit */}
-        <div className="offers-form-group">
+        {/* <div className="offers-form-group">
           <label className="offers-form-label">Purchase Limit per Customer</label>
           <input
             type="number"
@@ -663,7 +662,7 @@ const formatDateForInput = (dateString) => {
             min="1"
             placeholder="Maximum quantity a customer can purchase"
           />
-        </div>
+        </div> */}
 
         {/* Additional Fields */}
         <div className="offers-form-group">

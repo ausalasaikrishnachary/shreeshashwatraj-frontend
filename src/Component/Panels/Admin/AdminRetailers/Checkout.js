@@ -569,6 +569,8 @@ function Checkout() {
           mrp: breakdown.mrp || 0,
           sale_price: breakdown.sale_price || 0,
           edited_sale_price: breakdown.edited_sale_price || 0,
+           net_price: item.net_price || 0, // Add net_price from item
+      weight: item.weight || null, // Add weight from item
           credit_charge: creditCharge,
           credit_period: item.credit_period || 0,
           credit_percentage: (breakdown.credit_percentage || 0).toString(),
