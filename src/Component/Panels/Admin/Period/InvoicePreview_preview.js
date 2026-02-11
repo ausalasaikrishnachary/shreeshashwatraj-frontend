@@ -446,9 +446,9 @@ const handleOrderModeChange = async (value) => {
       <div className="items-section mb-4">
         <div className="d-flex justify-content-between align-items-center mb-2">
           <h6 className="text-primary mb-0">Items Details</h6>
-          <div className="badge bg-info">
+          {/* <div className="badge bg-info">
             {localOrderMode} MODE
-          </div>
+          </div> */}
         </div>
         <div className="table-responsive">
           <table className="items-table table table-bordered mb-0">
@@ -500,7 +500,7 @@ const handleOrderModeChange = async (value) => {
                     <td className="text-center align-middle">{index + 1}</td>
                     <td className="align-middle">
                       <div className="fw-medium">{item.product}</div>
-                      <small className="text-muted">ID: {item.product_id}</small>
+                      {/* <small className="text-muted">ID: {item.product_id}</small> */}
                     </td>
                     <td className="align-middle">
                       {isEditing ? (
