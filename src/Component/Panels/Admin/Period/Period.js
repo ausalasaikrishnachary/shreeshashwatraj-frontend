@@ -1055,12 +1055,10 @@ const handleGenerateDispatchReport = async () => {
       return;
     }
 
-    // Get selected orders data from FILTERED orders
-    const selectedOrdersData = filteredOrders.filter(order => 
+    const selectedOrdersData = orders.filter(order => 
       selectedOrdersForDispatch.includes(order.id)
     );
 
-    // Check if any selected orders match date filters
     const ordersWithDateMatch = selectedOrdersData.filter(order => {
       let dateMatch = true;
       if (startDate) dateMatch = dateMatch && new Date(order.created_at) >= new Date(startDate);
@@ -1073,48 +1071,49 @@ const handleGenerateDispatchReport = async () => {
       return;
     }
 
-    // Prepare dispatch items for all selected orders
     const allDispatchItems = [];
     let totalWeightAllOrders = 0;
     let totalAmountAllOrders = 0;
 
     ordersWithDateMatch.forEach(order => {
       order.items.forEach(item => {
-        if (item.invoice_status !== 1) {
-          const salePrice = parseFloat(item.sale_price) || 0;
-          const quantity = item.flash_offer === 1 ? 
-            (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
-            (parseInt(item.quantity) || 1);
-          
-          const amount = salePrice * quantity;
-          const itemWeight = item.weight || calculateWeight(item);
-          
-          allDispatchItems.push({
-            item_name: item.item_name,
-            weight: itemWeight,
-            quantity: item.flash_offer === 1 ? 
-              `${item.buy_quantity || item.quantity}` : 
-              item.quantity,
-            actual_quantity: quantity,
-            amount: amount,
-            sale_price: salePrice,
-            flash_offer: item.flash_offer,
-            buy_quantity: item.buy_quantity,
-            get_quantity: item.get_quantity,
-            order_number: order.order_number,
-            customer_name: order.customer_name,
-            invoice_number: item.invoice_number || order.invoice_number,
-            created_at: order.created_at
-          });
-          
-          totalWeightAllOrders += itemWeight;
-          totalAmountAllOrders += amount;
-        }
+        // For dispatch report, we want ALL items regardless of invoice status
+        // But we'll mark which ones have invoices
+        const salePrice = parseFloat(item.sale_price) || 0;
+        const quantity = item.flash_offer === 1 ? 
+          (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
+          (parseInt(item.quantity) || 1);
+        
+        const amount = salePrice * quantity;
+        const itemWeight = item.weight || calculateWeight(item);
+        
+        allDispatchItems.push({
+          item_name: item.item_name,
+          weight: itemWeight,
+          quantity: item.flash_offer === 1 ? 
+            `${item.buy_quantity || item.quantity}` : 
+            item.quantity,
+          actual_quantity: quantity,
+          amount: amount,
+          sale_price: salePrice,
+          flash_offer: item.flash_offer,
+          buy_quantity: item.buy_quantity,
+          get_quantity: item.get_quantity,
+          order_number: order.order_number,
+          customer_name: order.customer_name,
+          invoice_number: item.invoice_number || order.invoice_number,
+          invoice_status: item.invoice_status || 0, // Add invoice status
+          created_at: order.created_at,
+          has_invoice: item.invoice_status === 1 // Add flag for invoice status
+        });
+        
+        totalWeightAllOrders += itemWeight;
+        totalAmountAllOrders += amount;
       });
     });
 
     if (allDispatchItems.length === 0) {
-      alert("No items available for dispatch (all items may already have invoices).");
+      alert("No items found in selected orders.");
       return;
     }
 
@@ -1126,7 +1125,8 @@ const handleGenerateDispatchReport = async () => {
         invoiceNumber: order.invoice_number || `ORD${order.order_number.replace('ORD', '')}`,
         invoiceDate: new Date().toISOString().split('T')[0],
         orderDate: order.created_at,
-        items: order.items.filter(item => item.invoice_status !== 1).map(item => {
+        orderStatus: order.order_status || "N/A",
+        items: order.items.map(item => {
           const salePrice = parseFloat(item.sale_price) || 0;
           const quantity = item.flash_offer === 1 ? 
             (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
@@ -1143,7 +1143,9 @@ const handleGenerateDispatchReport = async () => {
             amount: amount,
             sale_price: salePrice,
             get_quantity: item.get_quantity || 0,
-            flash_offer: item.flash_offer
+            flash_offer: item.flash_offer,
+            invoice_status: item.invoice_status || 0,
+            has_invoice: item.invoice_status === 1
           };
         })
       })),
@@ -1151,6 +1153,8 @@ const handleGenerateDispatchReport = async () => {
       allItems: allDispatchItems,
       totalWeight: totalWeightAllOrders.toFixed(2),
       totalAmount: totalAmountAllOrders,
+      totalItemsWithInvoice: allDispatchItems.filter(item => item.has_invoice).length,
+      totalItemsWithoutInvoice: allDispatchItems.filter(item => !item.has_invoice).length,
       
       companyInfo: {
         name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
@@ -1169,7 +1173,8 @@ const handleGenerateDispatchReport = async () => {
         toDate: endDate,
         customerSearch: search,
         totalOrders: selectedOrdersForDispatch.length,
-        ordersInDateRange: ordersWithDateMatch.length
+        ordersInDateRange: ordersWithDateMatch.length,
+        activeTab: activeTab // Include which tab we're on
       },
       
       totalSelectedOrders: selectedOrdersForDispatch.length,
@@ -1201,7 +1206,7 @@ const handleGenerateDispatchReport = async () => {
     console.error("Error generating dispatch report:", error);
     alert("Failed to generate dispatch report. Please try again.");
   }
-};
+};;
 
 const calculateWeight = (item) => {
   if (item.weight && item.weight > 0) return item.weight;

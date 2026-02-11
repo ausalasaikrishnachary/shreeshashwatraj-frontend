@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Button, Form } from 'react-bootstrap';
+import { baseurl } from "../../../BaseURL/BaseURL";
+import axios from "axios";
 
 const InvoicePreview_preview = ({
   invoiceData,
@@ -10,16 +12,123 @@ const InvoicePreview_preview = ({
   onDescriptionChange,
   gstBreakdown,
   isSameState,
-  onOrderModeChange
+  onOrderModeChange,
+  periodInvoiceData // Add this prop to get original order items
 }) => {
   const [localOrderMode, setLocalOrderMode] = useState("PAKKA");
+  const [allProducts, setAllProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [updatedItems, setUpdatedItems] = useState([]);
 
+  // Fetch all products on component mount
   useEffect(() => {
-    if (invoiceData && invoiceData.order_mode) {
-      const mode = invoiceData.order_mode.toUpperCase();
-      setLocalOrderMode(mode === "KACHA" ? "KACHA" : "PAKKA");
+    const fetchAllProducts = async () => {
+      try {
+        setLoadingProducts(true);
+        const response = await axios.get(`${baseurl}/products`);
+        setAllProducts(response.data || []);
+        console.log("📦 All products loaded:", response.data?.length);
+      } catch (error) {
+        console.error('Error fetching products:', error);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+    
+    fetchAllProducts();
+  }, []);
+
+  // Initialize with invoiceData
+  useEffect(() => {
+    if (invoiceData) {
+      const mode = invoiceData.order_mode?.toUpperCase() || "PAKKA";
+      setLocalOrderMode(mode);
+      
+      // Initialize items
+      if (invoiceData.items) {
+        setUpdatedItems(invoiceData.items);
+      }
     }
   }, [invoiceData]);
+
+  // Function to find matching product variant
+  const findProductVariant = (currentProductName, targetProductType) => {
+    if (!allProducts || allProducts.length === 0) return null;
+    
+    // Find product by goods_name and product_type
+    return allProducts.find(product => 
+      product.goods_name === currentProductName && 
+      product.product_type?.toUpperCase() === targetProductType.toUpperCase()
+    );
+  };
+
+  // Function to switch product variant for an item
+  const switchItemVariant = (item, newProductType) => {
+    if (!item.product) return item;
+    
+    // Find matching variant
+    const variant = findProductVariant(item.product, newProductType);
+    
+    if (variant) {
+      console.log(`🔄 Switching ${item.product} from ${item.product_type || 'N/A'} to ${newProductType}`, {
+        oldId: item.product_id,
+        newId: variant.id
+      });
+      
+      // Return updated item with new product details
+      return {
+        ...item,
+        product_id: variant.id,
+        product_type: variant.product_type,
+        ...(newProductType.toUpperCase() === "KACHA" ? {
+          gst: 0,
+          cgst: 0,
+          sgst: 0,
+          tax_amount: 0,
+          cgst_amount: 0,
+          sgst_amount: 0
+        } : {})
+      };
+    }
+    
+    return item;
+  };
+
+// In InvoicePreview_preview component - modify handleOrderModeChange:
+const handleOrderModeChange = async (value) => {
+  const normalizedValue = value.toUpperCase();
+  
+  if (normalizedValue !== localOrderMode) {
+    console.log(`🔄 Switching order mode from ${localOrderMode} to ${normalizedValue}`);
+    
+    if (updatedItems.length > 0 && allProducts.length > 0) {
+      // Switch product variants for all items
+      const newItems = updatedItems.map(item => 
+        switchItemVariant(item, normalizedValue)
+      );
+      
+      setUpdatedItems(newItems);
+      
+      // Notify parent with updated items containing new product_ids
+      if (onOrderModeChange) {
+        onOrderModeChange({
+          orderMode: normalizedValue,
+          updatedItems: newItems // Pass items with updated product_ids
+        });
+      }
+    } else {
+      // Just pass the order mode
+      if (onOrderModeChange) {
+        onOrderModeChange({
+          orderMode: normalizedValue,
+          updatedItems: []
+        });
+      }
+    }
+    
+    setLocalOrderMode(normalizedValue);
+  }
+};
 
   // Get taxable amount PER UNIT from database
   const getTaxableAmountPerUnit = (item) => {
@@ -36,23 +145,11 @@ const InvoicePreview_preview = ({
     return taxablePerUnit * quantity;
   };
 
-  // Get total_amount from database (should already be multiplied by quantity)
-  const getItemTotalAmount = (item) => {
-    if (item.total_amount !== undefined && item.total_amount !== null) {
-      return parseFloat(item.total_amount) || 0;
-    }
-    // Fallback: calculate from taxable amount and GST
-    const taxableAmount = getItemTotalTaxableAmount(item);
-    const gstAmount = getItemTotalGSTAmount(item);
-    return taxableAmount + gstAmount;
-  };
-
   // Get GST amount PER UNIT from database
   const getGSTAmountPerUnit = (item) => {
     if (item.tax_amount !== undefined && item.tax_amount !== null) {
       return parseFloat(item.tax_amount) || 0;
     }
-    // Calculate GST from taxable amount and GST percentage
     if (item.gst && item.taxable_amount) {
       const gstPercentage = parseFloat(item.gst) || 0;
       const taxablePerUnit = getTaxableAmountPerUnit(item);
@@ -77,7 +174,6 @@ const InvoicePreview_preview = ({
     if (item.cgst_amount !== undefined && item.cgst_amount !== null) {
       return parseFloat(item.cgst_amount) || 0;
     }
-    // If CGST not in database, calculate half of total GST
     const gstPerUnit = getGSTAmountPerUnit(item);
     return gstPerUnit / 2;
   };
@@ -89,6 +185,7 @@ const InvoicePreview_preview = ({
     return cgstPerUnit * quantity;
   };
 
+  // Get SGST amount PER UNIT from database
   const getSGSTAmountPerUnit = (item) => {
     if (item.sgst_amount !== undefined && item.sgst_amount !== null) {
       return parseFloat(item.sgst_amount) || 0;
@@ -97,26 +194,29 @@ const InvoicePreview_preview = ({
     return gstPerUnit / 2;
   };
 
+  // Get total SGST amount (PER UNIT × QUANTITY)
   const getItemTotalSGSTAmount = (item) => {
     const sgstPerUnit = getSGSTAmountPerUnit(item);
     const quantity = parseFloat(item.quantity) || 1;
     return sgstPerUnit * quantity;
   };
 
+  // Calculate item total
   const calculateItemTotal = (item) => {
     if (localOrderMode === "KACHA") {
-      // For KACHA, use total taxable amount
       return getItemTotalTaxableAmount(item);
     } else {
-      // For PAKKA, calculate: taxable amount + GST
       const taxableAmount = getItemTotalTaxableAmount(item);
       const gstAmount = getItemTotalGSTAmount(item);
       return taxableAmount + gstAmount;
     }
   };
 
+  // Calculate adjusted GST breakdown
   const calculateAdjustedGSTBreakdown = () => {
-    if (!invoiceData || !invoiceData.items) return {
+    const itemsToUse = updatedItems.length > 0 ? updatedItems : (invoiceData?.items || []);
+    
+    if (!itemsToUse || itemsToUse.length === 0) return {
       totalTaxableAmount: "0.00",
       totalCGST: "0.00",
       totalSGST: "0.00", 
@@ -133,15 +233,13 @@ const InvoicePreview_preview = ({
     let totalItemsTotalAmount = 0;
     let grandTotal = 0;
     
-    // Calculate from all items
-    invoiceData.items.forEach(item => {
-      const taxableAmount = getItemTotalTaxableAmount(item); // Already multiplied by quantity
-      const itemTotalAmount = getItemTotalAmount(item); // Should be multiplied by quantity
-      const itemTotal = calculateItemTotal(item); // Calculated correctly
+    itemsToUse.forEach(item => {
+      const taxableAmount = getItemTotalTaxableAmount(item);
+      const itemTotal = calculateItemTotal(item);
       
       totalTaxableAmount += taxableAmount;
-      totalItemsTotalAmount += itemTotalAmount;
-      grandTotal += itemTotal; // This should be correct now
+      totalItemsTotalAmount += itemTotal;
+      grandTotal += itemTotal;
       
       if (localOrderMode === "PAKKA") {
         const cgstAmount = getItemTotalCGSTAmount(item);
@@ -167,100 +265,88 @@ const InvoicePreview_preview = ({
 
   const adjustedGstBreakdown = calculateAdjustedGSTBreakdown();
   
-
-  
-const getAdjustedTotals = () => {
-  if (!invoiceData || !invoiceData.items) return {
-    taxableAmount: "0.00",
-    totalGST: "0.00",
-    grandTotal: "0.00",
-    totalItemsAmount: "0.00",
-    totalCGST: "0.00",
-    totalSGST: "0.00"
-  };
-  
-  let totalTaxableAmount = 0;
-  let totalGSTAmount = 0;
-  let totalGrandTotal = 0;
-  let totalItemsAmount = 0;
-  let totalCGSTAmount = 0;
-  let totalSGSTAmount = 0;
-  
-  invoiceData.items.forEach(item => {
-    const quantity = parseFloat(item.quantity) || 1;
-    const taxablePerUnit = getTaxableAmountPerUnit(item);
-    const gstPerUnit = getGSTAmountPerUnit(item);
-    const cgstPerUnit = getCGSTAmountPerUnit(item);
-    const sgstPerUnit = getSGSTAmountPerUnit(item);
+  // Get adjusted totals
+  const getAdjustedTotals = () => {
+    const itemsToUse = updatedItems.length > 0 ? updatedItems : (invoiceData?.items || []);
     
-    // Calculate totals by multiplying with quantity
-    const itemTaxableAmount = taxablePerUnit * quantity;
-    const itemGSTAmount = localOrderMode === "KACHA" ? 0 : gstPerUnit * quantity;
-    const itemCGSTAmount = localOrderMode === "KACHA" ? 0 : cgstPerUnit * quantity;
-    const itemSGSTAmount = localOrderMode === "KACHA" ? 0 : sgstPerUnit * quantity;
-    const itemTotal = calculateItemTotal(item);
-    const itemTotalAmount = getItemTotalAmount(item);
+    if (!itemsToUse || itemsToUse.length === 0) return {
+      taxableAmount: "0.00",
+      totalGST: "0.00",
+      grandTotal: "0.00",
+      totalItemsAmount: "0.00",
+      totalCGST: "0.00",
+      totalSGST: "0.00"
+    };
     
-    totalTaxableAmount += itemTaxableAmount;
-    totalGSTAmount += itemGSTAmount;
-    totalCGSTAmount += itemCGSTAmount;
-    totalSGSTAmount += itemSGSTAmount;
-    totalItemsAmount += itemTotalAmount;
-    totalGrandTotal += itemTotal;
-  });
-  
-  return {
-    taxableAmount: totalTaxableAmount.toFixed(2),
-    totalGST: totalGSTAmount.toFixed(2),
-    totalCGST: totalCGSTAmount.toFixed(2),
-    totalSGST: totalSGSTAmount.toFixed(2),
-    grandTotal: totalGrandTotal.toFixed(2),
-    totalItemsAmount: totalItemsAmount.toFixed(2)
-  };
-};
-
-const adjustedTotals = getAdjustedTotals();
-
-  // Debug: Log the calculations
-  useEffect(() => {
-    if (invoiceData && invoiceData.items) {
+    let totalTaxableAmount = 0;
+    let totalGSTAmount = 0;
+    let totalGrandTotal = 0;
+    let totalItemsAmount = 0;
+    let totalCGSTAmount = 0;
+    let totalSGSTAmount = 0;
+    
+    itemsToUse.forEach(item => {
+      const quantity = parseFloat(item.quantity) || 1;
+      const taxablePerUnit = getTaxableAmountPerUnit(item);
+      const gstPerUnit = getGSTAmountPerUnit(item);
+      const cgstPerUnit = getCGSTAmountPerUnit(item);
+      const sgstPerUnit = getSGSTAmountPerUnit(item);
       
-      invoiceData.items.forEach((item, index) => {
-        console.log(`Item ${index + 1}:`, {
-          product: item.product,
-          quantity: item.quantity,
-          taxablePerUnit: getTaxableAmountPerUnit(item),
-          totalTaxable: getItemTotalTaxableAmount(item),
-          gstPerUnit: getGSTAmountPerUnit(item),
-          totalGST: getItemTotalGSTAmount(item),
-          itemTotal: calculateItemTotal(item)
-        });
-      });
-    }
-  }, [invoiceData, localOrderMode]);
-
-  const handleOrderModeChange = (value) => {
-    const normalizedValue = value.toUpperCase();
-    setLocalOrderMode(normalizedValue);
+      const itemTaxableAmount = taxablePerUnit * quantity;
+      const itemGSTAmount = localOrderMode === "KACHA" ? 0 : gstPerUnit * quantity;
+      const itemCGSTAmount = localOrderMode === "KACHA" ? 0 : cgstPerUnit * quantity;
+      const itemSGSTAmount = localOrderMode === "KACHA" ? 0 : sgstPerUnit * quantity;
+      const itemTotal = calculateItemTotal(item);
+      
+      totalTaxableAmount += itemTaxableAmount;
+      totalGSTAmount += itemGSTAmount;
+      totalCGSTAmount += itemCGSTAmount;
+      totalSGSTAmount += itemSGSTAmount;
+      totalItemsAmount += itemTotal;
+      totalGrandTotal += itemTotal;
+    });
     
-    if (onOrderModeChange) {
-      onOrderModeChange(normalizedValue);
+    return {
+      taxableAmount: totalTaxableAmount.toFixed(2),
+      totalGST: totalGSTAmount.toFixed(2),
+      totalCGST: totalCGSTAmount.toFixed(2),
+      totalSGST: totalSGSTAmount.toFixed(2),
+      grandTotal: totalGrandTotal.toFixed(2),
+      totalItemsAmount: totalItemsAmount.toFixed(2)
+    };
+  };
+
+  const adjustedTotals = getAdjustedTotals();
+
+  // Debug: Log product switching
+  useEffect(() => {
+    if (updatedItems.length > 0) {
+      console.log("🔄 Current items with product IDs:", updatedItems.map(item => ({
+        product: item.product,
+        product_id: item.product_id,
+        product_type: item.product_type
+      })));
     }
+  }, [updatedItems, localOrderMode]);
+
+  // Format date to Indian format
+  const formatIndianDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   if (!invoiceData) return null;
 
-             const formatIndianDate = (dateString) => {
-  const date = new Date(dateString);
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
-};
+  // Use updatedItems or fallback to invoiceData.items
+  const displayItems = updatedItems.length > 0 ? updatedItems : invoiceData.items;
 
   return (
     <div className="invoice-pdf-preview bg-white p-4 shadow-sm" id="invoice-pdf-content">
-      {/* Header - unchanged */}
+      {/* Header */}
       <div className="invoice-header border-bottom pb-3 mb-3">
         <Row>
           <Col md={8}>
@@ -277,15 +363,14 @@ const adjustedTotals = getAdjustedTotals();
             <h3 className="invoice-title text-danger mb-2">TAX INVOICE</h3>
             <div className="invoice-meta bg-light p-2 rounded">
               <p className="mb-1"><strong>Invoice No:</strong> {invoiceData.invoiceNumber}</p>
-  
-<p className="mb-1"><strong>Invoice Date:</strong> {formatIndianDate(invoiceData.invoiceDate)}</p>
-<p className="mb-0"><strong>Due Date:</strong> {formatIndianDate(invoiceData.validityDate)}</p>
+              <p className="mb-1"><strong>Invoice Date:</strong> {formatIndianDate(invoiceData.invoiceDate)}</p>
+              <p className="mb-0"><strong>Due Date:</strong> {formatIndianDate(invoiceData.validityDate)}</p>
             </div>
           </Col>
         </Row>
       </div>
 
-      {/* Address Section - unchanged */}
+      {/* Address Section */}
       <div className="address-section mb-4">
         <Row>
           <Col md={6}>
@@ -314,6 +399,7 @@ const adjustedTotals = getAdjustedTotals();
                       onChange={(e) => handleOrderModeChange(e.target.value)}
                       size="sm"
                       className="flex-grow-1"
+                      disabled={loadingProducts}
                     >
                       <option value="PAKKA">PAKKA</option>
                       <option value="KACHA">KACHA</option>
@@ -323,6 +409,9 @@ const adjustedTotals = getAdjustedTotals();
                     <small className={localOrderMode === "KACHA" ? "text-danger" : "text-success"}>
                       {localOrderMode === "KACHA" ? "No GST applicable" : "GST applicable as per item rates"}
                     </small>
+                    {loadingProducts && (
+                      <small className="text-warning ms-2">Loading products...</small>
+                    )}
                   </div>
                 </Form.Group>
               </div>
@@ -342,7 +431,7 @@ const adjustedTotals = getAdjustedTotals();
             </div>
             
             {invoiceData.assigned_staff && invoiceData.assigned_staff !== 'N/A' && (
-              <div className="assigned-staff-section mt-3 p-2 bg-light rounded flex-start">
+              <div className="assigned-staff-section mt-3 p-2 bg-light rounded">
                 <div className="d-flex justify-content-between align-items-center">
                   <span className="text-muted">Sales Person:</span>
                   <strong className="text-primary">{invoiceData.assigned_staff}</strong>
@@ -353,226 +442,173 @@ const adjustedTotals = getAdjustedTotals();
         </Row>
       </div>
 
-      {/* Items Table - Fixed calculations */}
-   {/* Items Table - Fixed calculations */}
-<div className="items-section mb-4">
-  <div className="d-flex justify-content-between align-items-center mb-2">
-    <h6 className="text-primary mb-0">Items Details</h6>
-  </div>
-  <div className="table-responsive">
-    <table className="items-table table table-bordered mb-0">
-      <thead className="table-dark">
-        <tr>
-          <th className="text-center" style={{ width: '3%' }}>#</th>
-          <th style={{ width: '12%' }}>Product</th>
-          <th style={{ width: '15%' }}>Description</th>
-          {/* <th className="text-center" style={{ width: '4%' }}>flash</th> */}
-           <th className="text-center" style={{ width: '4%' }}>Qty</th>
-            <th className="text-center" style={{ width: '4%' }}>Free Qty</th>
-          <th className="text-end" style={{ width: '7%' }}>Price</th>
-            <th className="text-end" style={{ width: '7%' }}>Discount Amt</th> 
-          <th className="text-end" style={{ width: '7%' }}>Credit Charge</th>
-          <th className="text-end" style={{ width: '7%' }}>Taxable Amount</th>
-          <th className="text-center" style={{ width: '5%' }}>GST %</th>
-          <th className="text-end" style={{ width: '7%' }}>GST Amt</th>
-          <th className="text-end" style={{ width: '7%' }}>CGST Amt</th>
-          <th className="text-end" style={{ width: '7%' }}>SGST Amt</th>
-          <th className="text-end" style={{ width: '7%' }}>Item Total</th>
-        </tr>
-      </thead>
-     <tbody>
-  {invoiceData.items.map((item, index) => {
-    const quantity = parseFloat(item.quantity) || 1;
-    
-    // DEFINE FLASH OFFER VARIABLES HERE
-    const flashOffer = parseInt(item.flash_offer) || 0;
-    const buyQuantity = parseInt(item.buy_quantity) || 0;
-    const getQuantity = parseInt(item.get_quantity) || 0;
-    
-    // Get PER UNIT values
-    const taxablePerUnit = getTaxableAmountPerUnit(item);
-    const totalAmountPerUnit = taxablePerUnit + (localOrderMode === "KACHA" ? 0 : getGSTAmountPerUnit(item));
-    const gstPerUnit = localOrderMode === "KACHA" ? 0 : getGSTAmountPerUnit(item);
-    const cgstPerUnit = localOrderMode === "KACHA" ? 0 : getCGSTAmountPerUnit(item);
-    const sgstPerUnit = localOrderMode === "KACHA" ? 0 : getSGSTAmountPerUnit(item);
-    const discountAmountPerUnit = parseFloat(item.discount_amount) || 0;
-    const creditChargePerUnit = parseFloat(item.credit_charge) || 0;
-    
-    const totalTaxableAmount = taxablePerUnit * quantity;
-    const totalAmount = totalAmountPerUnit * quantity;
-    const totalGSTAmount = gstPerUnit * quantity;
-    const totalCGSTAmount = cgstPerUnit * quantity;
-    const totalSGSTAmount = sgstPerUnit * quantity;
-    const totalDiscountAmount = discountAmountPerUnit * quantity;
-    const totalCreditCharge = creditChargePerUnit * quantity;
-    const itemTotal = calculateItemTotal(item);
-    
-    const gstPercentage = localOrderMode === "KACHA" ? 0 : (parseFloat(item.gst) || 0);
-    const creditCharge = parseFloat(item.credit_charge) || 0;
-    const salePrice = parseFloat(item.sale_price) || parseFloat(item.sales_price) || 0;
-    const editedPrice = parseFloat(item.edited_sale_price) || parseFloat(item.price) || 0;
-          
-          return (
-            <tr key={index}>
-              <td className="text-center align-middle">{index + 1}</td>
-              <td className="align-middle">
-                <div className="fw-medium">{item.product}</div>
-              </td>
-              <td className="align-middle">
-                {isEditing ? (
-                  <Form.Control
-                    as="textarea"
-                    rows={1}
-                    value={editableDescriptions[item.id || index] || item.description || ''}
-                    onChange={(e) => onDescriptionChange(item.id || index, e.target.value)}
-                    placeholder="Enter description..."
-                    className="form-control-sm"
-                  />
-                ) : (
-                  <div className="small text-muted">{item.description || 'No description'}</div>
-                )}
-              </td>
- {/* <td className="text-center align-middle">
-                <div className={`badge ${flashOffer === 1 ? 'bg-success' : 'bg-secondary'} p-1`}>
-                  {flashOffer === 1 ? 'YES' : 'NO'}
-                </div>
-              </td> */}
-              
-           <td className="text-center align-middle">
-  {flashOffer === 1 ? (
-    <div className="fw-bold text-primary">{buyQuantity}</div>
-  ) : (
-    <div className="fw-medium text-muted">{quantity}</div>
-  )}
-</td>
-              
-              <td className="text-center align-middle">
-                {flashOffer === 1 ? (
-                  <div className="fw-bold text-success">
-                    {getQuantity}
-                    <span className="ms-1 small"></span>
-                  </div>
-                ) : (
-                  <div className="text-muted">-</div>
-                )}
-              </td>
-              
-      
-              
-           
-              
-              {/* EDP (Edited Price) Column */}
-              <td className="text-end align-middle">
-                <div className="fw-medium">₹{editedPrice.toFixed(2)}</div>
+      {/* Items Table */}
+      <div className="items-section mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-2">
+          <h6 className="text-primary mb-0">Items Details</h6>
+          <div className="badge bg-info">
+            {localOrderMode} MODE
+          </div>
+        </div>
+        <div className="table-responsive">
+          <table className="items-table table table-bordered mb-0">
+            <thead className="table-dark">
+              <tr>
+                <th className="text-center" style={{ width: '3%' }}>#</th>
+                <th style={{ width: '12%' }}>Product</th>
+                <th style={{ width: '15%' }}>Description</th>
+                <th className="text-center" style={{ width: '4%' }}>Qty</th>
+                <th className="text-center" style={{ width: '4%' }}>Free Qty</th>
+                <th className="text-end" style={{ width: '7%' }}>Price</th>
+                <th className="text-end" style={{ width: '7%' }}>Discount Amt</th>
+                <th className="text-end" style={{ width: '7%' }}>Credit Charge</th>
+                <th className="text-end" style={{ width: '7%' }}>Taxable Amount</th>
+                <th className="text-center" style={{ width: '5%' }}>GST %</th>
+                <th className="text-end" style={{ width: '7%' }}>GST Amt</th>
+                <th className="text-end" style={{ width: '7%' }}>CGST Amt</th>
+                <th className="text-end" style={{ width: '7%' }}>SGST Amt</th>
+                <th className="text-end" style={{ width: '7%' }}>Item Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayItems?.map((item, index) => {
+                const quantity = parseFloat(item.quantity) || 1;
+                const flashOffer = parseInt(item.flash_offer) || 0;
+                const buyQuantity = parseInt(item.buy_quantity) || 0;
+                const getQuantity = parseInt(item.get_quantity) || 0;
                 
-              </td>
-        {/* Discount Amount Column - NEW */}
-            <td className="text-end align-middle">
-              <div className="fw-medium text-warning">₹{totalDiscountAmount.toFixed(2)}</div>
-             
-            </td>
-              
-              {/* Credit Charge Column */}
-              <td className="text-end align-middle">
-                <div className="fw-medium">₹{creditCharge.toFixed(2)}</div>
-             
-              </td>
-              
-              {/* Taxable Amount Column */}
-              <td className="text-end align-middle">
-                <div className="fw-bold text-primary">₹{totalTaxableAmount.toFixed(2)}</div>
-                <div className="text-muted small">
-               
-                </div>
-              </td>
-              
-              <td className="text-center align-middle">
-                <span className={`badge ${localOrderMode === "KACHA" ? "bg-secondary" : "bg-primary"}`}>
-                  {localOrderMode === "KACHA" ? "0%" : `${gstPercentage}%`}
-                </span>
-              </td>
-              
-              {/* GST Amount Column */}
-              <td className="text-end align-middle">
-                <div className="fw-medium">
-                  {localOrderMode === "KACHA" ? "₹0.00" : `₹${totalGSTAmount.toFixed(2)}`}
-                </div>
-                {localOrderMode === "PAKKA" && quantity > 1 && (
-                  <div className="text-muted small">
+                const taxablePerUnit = getTaxableAmountPerUnit(item);
+                const gstPerUnit = localOrderMode === "KACHA" ? 0 : getGSTAmountPerUnit(item);
+                const cgstPerUnit = localOrderMode === "KACHA" ? 0 : getCGSTAmountPerUnit(item);
+                const sgstPerUnit = localOrderMode === "KACHA" ? 0 : getSGSTAmountPerUnit(item);
+                const discountAmountPerUnit = parseFloat(item.discount_amount) || 0;
+                const creditChargePerUnit = parseFloat(item.credit_charge) || 0;
+                
+                const totalTaxableAmount = taxablePerUnit * quantity;
+                const totalGSTAmount = gstPerUnit * quantity;
+                const totalCGSTAmount = cgstPerUnit * quantity;
+                const totalSGSTAmount = sgstPerUnit * quantity;
+                const totalDiscountAmount = discountAmountPerUnit * quantity;
+                const totalCreditCharge = creditChargePerUnit * quantity;
+                const itemTotal = calculateItemTotal(item);
+                
+                const gstPercentage = localOrderMode === "KACHA" ? 0 : (parseFloat(item.gst) || 0);
+                const editedPrice = parseFloat(item.edited_sale_price) || parseFloat(item.price) || 0;
+                
+                return (
+                  <tr key={index}>
+                    <td className="text-center align-middle">{index + 1}</td>
+                    <td className="align-middle">
+                      <div className="fw-medium">{item.product}</div>
+                      <small className="text-muted">ID: {item.product_id}</small>
+                    </td>
+                    <td className="align-middle">
+                      {isEditing ? (
+                        <Form.Control
+                          as="textarea"
+                          rows={1}
+                          value={editableDescriptions[item.id || index] || item.description || ''}
+                          onChange={(e) => onDescriptionChange(item.id || index, e.target.value)}
+                          placeholder="Enter description..."
+                          className="form-control-sm"
+                        />
+                      ) : (
+                        <div className="small text-muted">{item.description || 'No description'}</div>
+                      )}
+                    </td>
                     
-                  </div>
-                )}
-              </td>
+                    <td className="text-center align-middle">
+                      {flashOffer === 1 ? (
+                        <div className="fw-bold text-primary">{buyQuantity}</div>
+                      ) : (
+                        <div className="fw-medium text-muted">{quantity}</div>
+                      )}
+                    </td>
+                    
+                    <td className="text-center align-middle">
+                      {flashOffer === 1 ? (
+                        <div className="fw-bold text-success">
+                          {getQuantity}
+                        </div>
+                      ) : (
+                        <div className="text-muted">-</div>
+                      )}
+                    </td>
+                    
+                    <td className="text-end align-middle">
+                      <div className="fw-medium">₹{editedPrice.toFixed(2)}</div>
+                    </td>
+                    
+                    <td className="text-end align-middle">
+                      <div className="fw-medium text-warning">₹{totalDiscountAmount.toFixed(2)}</div>
+                    </td>
+                    
+                    <td className="text-end align-middle">
+                      <div className="fw-medium">₹{totalCreditCharge.toFixed(2)}</div>
+                    </td>
+                    
+                    <td className="text-end align-middle">
+                      <div className="fw-bold text-primary">₹{totalTaxableAmount.toFixed(2)}</div>
+                    </td>
+                    
+                    <td className="text-center align-middle">
+                      <span className={`badge ${localOrderMode === "KACHA" ? "bg-secondary" : "bg-primary"}`}>
+                        {localOrderMode === "KACHA" ? "0%" : `${gstPercentage}%`}
+                      </span>
+                    </td>
+                    
+                    <td className="text-end align-middle">
+                      <div className="fw-medium">
+                        {localOrderMode === "KACHA" ? "₹0.00" : `₹${totalGSTAmount.toFixed(2)}`}
+                      </div>
+                    </td>
+                    
+                    <td className="text-end align-middle">
+                      <div className="fw-medium">
+                        {localOrderMode === "KACHA" ? "₹0.00" : `₹${totalCGSTAmount.toFixed(2)}`}
+                      </div>
+                    </td>
+                    
+                    <td className="text-end align-middle">
+                      <div className="fw-medium">
+                        {localOrderMode === "KACHA" ? "₹0.00" : `₹${totalSGSTAmount.toFixed(2)}`}
+                      </div>
+                    </td>
+                    
+                    <td className="text-end align-middle">
+                      <div className="fw-bold text-success">₹{itemTotal.toFixed(2)}</div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot className="table-active">
+              <tr className='text-end'>
+                <td colSpan={13} className="text-end fw-bold">
+                  Total GST:
+                </td>
+                <td className="text-end fw-bold text-success">
+                  ₹{adjustedGstBreakdown.totalGST}
+                </td>
+              </tr>
               
-              {/* CGST Column */}
-              <td className="text-end align-middle">
-                <div className="fw-medium">
-                  {localOrderMode === "KACHA" ? "₹0.00" : `₹${totalCGSTAmount.toFixed(2)}`}
-                </div>
-                {localOrderMode === "PAKKA" && quantity > 1 && (
-                  <div className="text-muted small">
-                  
-                  </div>
-                )}
-              </td>
-              
-              {/* SGST Column */}
-              <td className="text-end align-middle">
-                <div className="fw-medium">
-                  {localOrderMode === "KACHA" ? "₹0.00" : `₹${totalSGSTAmount.toFixed(2)}`}
-                </div>
-                {localOrderMode === "PAKKA" && quantity > 1 && (
-                  <div className="text-muted small">
-                 
-                  </div>
-                )}
-              </td>
-              
-              {/* Item Total Column */}
-              <td className="text-end align-middle">
-                <div className="fw-bold text-success">₹{itemTotal.toFixed(2)}</div>
-                <div className="text-muted small">
-                 
-                </div>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-      <tfoot className="table-active">
-   
-        
-        {/* Add Total GST Row */}
-        <tr className='text-end'>
-          <td colSpan={13} className="text-end fw-bold">
-            Total GST:
-          </td>
-          <td className="text-end fw-bold text-success">
-            ₹{adjustedGstBreakdown.totalGST}
-          </td>
-        
-        </tr>
-        
-        {/* Add Grand Total Row */}
-        <tr>
-          <td colSpan={13} className="text-end fw-bold">
-            Grand Total:
-          </td>
-          <td className="text-end fw-bold text-danger fs-5">
-            ₹{adjustedTotals.grandTotal}
-          </td>
-      
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-</div>
+              <tr>
+                <td colSpan={13} className="text-end fw-bold">
+                  Grand Total:
+                </td>
+                <td className="text-end fw-bold text-danger fs-5">
+                  ₹{adjustedTotals.grandTotal}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
 
-      {/* Totals Section - unchanged */}
+      {/* Totals Section */}
       <div className="totals-section mb-4">
         <Row>
           <Col md={7}>
-            {/* Notes section remains the same */}
             <div className="notes-section">
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <h6 className="text-primary">Notes:</h6>
@@ -607,19 +643,6 @@ const adjustedTotals = getAdjustedTotals();
               
               <table className="amount-table w-100">
                 <tbody>
-            
-                  
-                  {/* 2. Discount (if any) */}
-                  {/* <tr>
-                    <td className="pb-1">
-                      <span className="text-muted">Less: Discount:</span>
-                    </td>
-                    <td className="text-end pb-1">
-                      <span className="text-muted">₹0.00</span>
-                    </td>
-                  </tr> */}
-                  
-                  {/* 3. Taxable Amount */}
                   <tr>
                     <td className="pb-2">
                       <strong>Taxable Amount:</strong>
@@ -629,10 +652,8 @@ const adjustedTotals = getAdjustedTotals();
                     </td>
                   </tr>
                   
-                  {/* 4. GST Breakdown - only show for PAKKA */}
                   {localOrderMode === "PAKKA" && (
                     <>
-                      {/* CGST */}
                       <tr>
                         <td className="pb-1">
                           <span className="text-muted">CGST:</span>
@@ -642,7 +663,6 @@ const adjustedTotals = getAdjustedTotals();
                         </td>
                       </tr>
                       
-                      {/* SGST */}
                       <tr>
                         <td className="pb-2">
                           <span className="text-muted">SGST:</span>
@@ -652,7 +672,6 @@ const adjustedTotals = getAdjustedTotals();
                         </td>
                       </tr>
                       
-                      {/* Total GST */}
                       <tr>
                         <td className="pb-2 pt-1">
                           <strong>Total GST:</strong>
@@ -664,7 +683,6 @@ const adjustedTotals = getAdjustedTotals();
                     </>
                   )}
                   
-                  {/* 5. Grand Total with clear separation */}
                   <tr className="border-top">
                     <td className="pt-3">
                       <strong className="fs-5">Grand Total:</strong>
@@ -682,7 +700,7 @@ const adjustedTotals = getAdjustedTotals();
         </Row>
       </div>
       
-      {/* Footer - unchanged */}
+      {/* Footer */}
       <div className="invoice-footer border-top pt-3">
         <Row>
           <Col md={6}>

@@ -245,20 +245,60 @@
     }
   }, [invoiceData]);
 
-
-
-  const handleOrderModeChange = (value) => {
-    const normalizedValue = value.toUpperCase();
-    setEditableOrderMode(normalizedValue);
+// In Period_InvoicePDFPreview component - modify handleOrderModeChange:
+const handleOrderModeChange = (switchData) => {
+  const { orderMode, updatedItems } = switchData;
+  const normalizedValue = orderMode.toUpperCase();
+  
+  setEditableOrderMode(normalizedValue);
+  
+  // Update invoiceData with new items (including updated product_ids)
+  if (updatedItems && updatedItems.length > 0 && invoiceData) {
+    console.log("🔄 Received updated items with new product_ids:", updatedItems);
     
-    // Update invoiceData
+    // Update invoiceData items
+    setInvoiceData(prev => ({
+      ...prev,
+      order_mode: normalizedValue,
+      items: updatedItems
+    }));
+    
+    // Also update periodInvoiceData if it exists
+    if (periodInvoiceData && periodInvoiceData.selectedItems) {
+      const updatedSelectedItems = periodInvoiceData.selectedItems.map((item, index) => {
+        // Find matching item from updatedItems
+        const updatedItem = updatedItems.find(ui => 
+          ui.product === item.item_name || 
+          ui.product_id !== item.product_id // If product_id changed
+        );
+        
+        if (updatedItem && updatedItem.product_id !== item.product_id) {
+          console.log(`🔄 Updating product_id for ${item.item_name}: ${item.product_id} → ${updatedItem.product_id}`);
+          return {
+            ...item,
+            product_id: updatedItem.product_id, // Update with new product_id
+            product_type: normalizedValue
+          };
+        }
+        return item;
+      });
+      
+      setPeriodInvoiceData(prev => ({
+        ...prev,
+        selectedItems: updatedSelectedItems,
+        order_mode: normalizedValue
+      }));
+    }
+  } else {
+    // Update only order mode
     if (invoiceData) {
       setInvoiceData(prev => ({
         ...prev,
         order_mode: normalizedValue
       }));
     }
-  };
+  }
+};
 
   const transformApiDataToInvoiceFormat = (apiData) => {
     console.log('Transforming API data:', apiData);
@@ -983,7 +1023,7 @@ for (const item of selectedItems) {
           balanceAmount
         });
         
-    const itemsWithCalculations = selectedItems.map(item => {
+const itemsWithCalculations = selectedItems.map(item => {
   const flashOffer = parseInt(item.flash_offer) || 0;
   const buyQuantity = parseInt(item.buy_quantity) || 0;
   const getQuantity = parseInt(item.get_quantity) || 0;
@@ -1022,10 +1062,12 @@ for (const item of selectedItems) {
   totalDiscount += itemDiscountAmount;
   grandTotal += itemTotal;
   
+  // Return item with updated product_id (already updated in selectedItems)
   return {
     originalItemId: item.id,
     product: item.item_name,
-    product_id: item.product_id,
+    product_id: item.product_id, // This now contains the updated product_id (e.g., 1231)
+    product_type: orderMode, // Include product type
     description: editableDescriptions[item.id] || item.description || '',
     
     // FOR BILLING/INVOICE - send only buyQuantity when flash offer
@@ -1067,8 +1109,7 @@ for (const item of selectedItems) {
     
     _calculation_note: `Flash: ${flashOffer}, Bill Qty: ${quantity}, Stock Qty: ${stock_deduction_quantity}`
   };
-});
-        
+});  
         // FIXED: Perform credit limit check with better logic
         console.log('📊 CREDIT CHECK - ALL VALUES:', {
           creditLimit,
