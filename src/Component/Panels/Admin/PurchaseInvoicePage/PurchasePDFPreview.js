@@ -53,6 +53,11 @@ const PurchasePDFPreview = () => {
   const invoiceRef = useRef(null);
 
   const handleEditInvoice = () => {
+   if (!isInvoiceEditable(paymentData)) {
+    alert('Cannot edit invoice: This invoice has purchase vouchers/debit notes');
+    return;
+  }
+
     if (invoiceData && invoiceData.voucherId) {
       navigate(`/Purchase/editinvoice/${invoiceData.voucherId}`);
     } else {
@@ -467,6 +472,11 @@ const transformPaymentData = (apiData) => {
       taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST"
     };
   };
+  const isInvoiceEditable = (paymentData) => {
+  const hasVouchers = paymentData?.purchasevoucher?.length > 0;
+  const hasDebitNotes = paymentData?.debitNotes?.length > 0;
+  return !(hasVouchers || hasDebitNotes);
+};
 
 const PaymentStatus = () => {
   if (paymentLoading) {
@@ -1205,9 +1215,15 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                   <Button variant="info" className="me-2 text-white" onClick={handleOpenReceiptModal}>
                     <FaRegFileAlt className="me-1" /> Create Voucher
                   </Button>
-                  <Button variant="warning" onClick={handleEditInvoice} className="me-2">
-                    <FaEdit className="me-1" /> Edit Invoice
-                  </Button>
+              {paymentData && !isInvoiceEditable(paymentData) ? (
+  <Button variant="warning" className="me-2" disabled title="Cannot edit - invoice has purchase vouchers/debit notes">
+    <FaEdit className="me-1" /> Edit Invoice 
+  </Button>
+) : (
+  <Button variant="warning" onClick={handleEditInvoice} className="me-2">
+    <FaEdit className="me-1" /> Edit Invoice
+  </Button>
+)}
                   {/* <Button variant="success" onClick={handlePrint} className="me-2">
                     <FaPrint className="me-1" /> Print
                   </Button> */}

@@ -6,6 +6,8 @@ import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import { baseurl } from "../../../BaseURL/BaseURL"
 import './Invoices.css';
 import { FaFilePdf, FaTrash, FaDownload } from 'react-icons/fa';
+import Select from "react-select";
+
 
 const InvoicesTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -17,11 +19,14 @@ const InvoicesTable = () => {
   const [deleting, setDeleting] = useState({});
 
   const [month, setMonth] = useState('July');
-  const [year, setYear] = useState('2025');
+  const [year, setYear] = useState('2026');
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
   const [activeTab, setActiveTab] = useState('Invoices');
-
+const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
+  const y = 2025 + i;
+  return { value: y, label: y };
+});
   // Fetch invoices from API
   useEffect(() => {
     fetchInvoices();
@@ -70,22 +75,49 @@ const fetchInvoices = async () => {
     setLoading(false);
   }
 };
-  // Helper function to determine payment status
-  const getPaymentStatus = (invoice) => {
-    if (invoice.ChequeNo && invoice.ChequeNo !== 'NULL') {
-      return 'Paid';
+
+// Add this after fetchInvoices() and before handleDownloadPDF
+useEffect(() => {
+  const fetchPaymentDataForInvoices = async () => {
+    if (invoices.length === 0) return;
+    
+    const updatedInvoices = [...invoices];
+    
+    for (let i = 0; i < updatedInvoices.length; i++) {
+      const invoice = updatedInvoices[i];
+      try {
+        const response = await fetch(`${baseurl}/invoices/${invoice.number}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            updatedInvoices[i] = {
+              ...invoice,
+              originalData: {
+                ...invoice.originalData,
+                receipts: result.data.receipts || [],
+                creditnotes: result.data.creditnotes || []
+              }
+            };
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching payment data for ${invoice.number}:`, error);
+      }
     }
     
-    const invoiceDate = new Date(invoice.Date || invoice.EntryDate);
-    const today = new Date();
-    const daysDiff = Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24));
-    
-    if (daysDiff > 30) {
-      return 'Overdue';
-    }
-    
-    return 'Pending';
+    setInvoices(updatedInvoices);
   };
+
+  if (invoices.length > 0) {
+    fetchPaymentDataForInvoices();
+  }
+}, [invoices.length]); 
+
+const canDeleteInvoice = (invoice) => {
+  const hasReceipts = invoice.originalData?.receipts?.length > 0;
+  const hasCreditNotes = invoice.originalData?.creditnotes?.length > 0;
+  return !(hasReceipts || hasCreditNotes);
+};
 
 const handleDownloadPDF = async (invoice) => {
   const voucherId = invoice.originalData?.VoucherID || invoice.id;
@@ -171,40 +203,37 @@ const handleDownloadPDF = async (invoice) => {
   }
 };
 
-  // Handle Delete Invoice
-  const handleDeleteInvoice = async (invoice) => {
-    const voucherId = invoice.originalData?.VoucherID || invoice.id;
-    const invoiceNumber = invoice.number;
+
+
+const handleDeleteInvoice = async (invoice) => {
+  const hasReceipts = invoice.originalData?.receipts?.length > 0;
+  const hasCreditNotes = invoice.originalData?.creditnotes?.length > 0;
+  
+  if (hasReceipts || hasCreditNotes) {
+    alert('Cannot delete: Invoice has receipts/credit notes');
+    return;
+  }
+  
+  const voucherId = invoice.originalData?.VoucherID || invoice.id;
+  
+  if (!window.confirm(`Delete invoice ${invoice.number}?`)) return;
+  
+  try {
+    setDeleting(prev => ({ ...prev, [voucherId]: true }));
     
-    if (!window.confirm(`Are you sure you want to delete invoice ${invoiceNumber}? This action cannot be undone and will update stock values.`)) {
-      return;
-    }
+    const response = await fetch(`${baseurl}/transactions/${voucherId}`, { method: 'DELETE' });
     
-    try {
-      setDeleting(prev => ({ ...prev, [voucherId]: true }));
-      
-      const response = await fetch(`${baseurl}/transactions/${voucherId}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete invoice');
-      }
-      
-      const result = await response.json();
-      
-      // Remove from local state
-      setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
-      
-      alert('Invoice deleted successfully!');
-      
-    } catch (error) {
-      console.error('Error deleting invoice:', error);
-      alert('Error deleting invoice: ' + error.message);
-    } finally {
-      setDeleting(prev => ({ ...prev, [voucherId]: false }));
-    }
-  };
+    if (!response.ok) throw new Error('Failed to delete');
+    
+    setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
+    alert('Invoice deleted!');
+    
+  } catch (error) {
+    alert('Error: ' + error.message);
+  } finally {
+    setDeleting(prev => ({ ...prev, [voucherId]: false }));
+  }
+};
 
   const handleInvoiceNumberClick = async (invoice) => {
     console.log('Opening preview for invoice:', invoice);
@@ -445,53 +474,38 @@ const columns = [
   //     </span>
   //   )
   // },
-  {
-    key: 'actions',
-    title: 'ACTION',
-    style: { textAlign: 'center' },
-    render: (value, row) => (
+ {
+  key: 'actions',
+  title: 'ACTION',
+  style: { textAlign: 'center' },
+  render: (value, row) => {
+    const canDelete = canDeleteInvoice(row);
+    
+    return (
       <div className="d-flex justify-content-center gap-2">
-        {/* Download PDF Button */}
-        {/* <button
-          className={`btn btn-sm ${row.hasPDF ? 'btn-success' : 'btn-outline-warning'}`}
-          onClick={() => handleDownloadPDF(row)}
-          disabled={downloading[row.id]}
-          title={row.hasPDF ? 'Download PDF' : 'Generate and Download PDF'}
-        >
-          {downloading[row.id] ? (
-            <div className="spinner-border spinner-border-sm" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          ) : row.hasPDF ? (
-            <>
-              <FaDownload className="me-1" />
-            </>
-          ) : (
-            <>
-              <FaFilePdf className="me-1" />
-              Generate PDF
-            </>
-          )}
-        </button> */}
-        
-        {/* Delete Button */}
+        {/* Delete Button - Disabled if has receipts/credit notes */}
         <button
-          className="btn btn-sm btn-outline-danger"
-          onClick={() => handleDeleteInvoice(row)}
-          disabled={deleting[row.id]}
-          title="Delete Invoice"
+          className={`btn btn-sm ${canDelete ? 'btn-outline-danger' : 'btn-secondary'}`}
+          onClick={() => {
+            if (!canDelete) {
+              alert('Cannot delete: Invoice has receipts/credit notes');
+              return;
+            }
+            handleDeleteInvoice(row);
+          }}
+          disabled={deleting[row.id] || !canDelete}
+          title={canDelete ? 'Delete' : 'Has receipts/credit notes'}
         >
           {deleting[row.id] ? (
-            <div className="spinner-border spinner-border-sm" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
+            <div className="spinner-border spinner-border-sm" role="status"></div>
           ) : (
             <FaTrash />
           )}
         </button>
       </div>
-    )
+    );
   }
+}
 ];
 
   const handleCreateClick = () => navigate("/sales/createinvoice");
@@ -627,9 +641,30 @@ const columns = [
                       <select className="form-select me-2" value={month} onChange={(e) => setMonth(e.target.value)}>
                         {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m}>{m}</option>)}
                       </select>
-                      <select className="form-select" value={year} onChange={(e) => setYear(e.target.value)}>
-                        {['2025','2024','2023'].map(y => <option key={y}>{y}</option>)}
-                      </select>
+     
+<Select
+  options={yearOptions}
+  value={{ value: year, label: year }}
+  onChange={(selected) => setYear(selected.value)}
+  maxMenuHeight={150}
+  styles={{
+    control: (provided) => ({
+      ...provided,
+      width: '100px',  // Adjust width as needed
+      minWidth: '100px',
+    }),
+    menu: (provided) => ({
+      ...provided,
+      width: '100px',  // Same width as control
+      minWidth: '100px',
+    }),
+    option: (provided) => ({
+      ...provided,
+      whiteSpace: 'nowrap',
+      padding: '8px 12px',
+    })
+  }}
+/>
                     </div>
                   </div>
 

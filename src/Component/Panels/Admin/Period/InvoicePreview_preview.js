@@ -138,6 +138,20 @@ const handleOrderModeChange = async (value) => {
     return 0;
   };
 
+const getNetPricePerUnit = (item) => {
+  if (item.net_price !== undefined && item.net_price !== null) {
+    const netPrice = parseFloat(item.net_price);
+    if (!isNaN(netPrice) && netPrice > 0) {
+      console.log(`📊 Using net_price: ${netPrice} for ${item.product || item.item_name}`);
+      return netPrice;
+    } else {
+      console.log(`⚠️ net_price found but invalid: ${item.net_price} for ${item.product || item.item_name}`);
+    }
+  }
+  
+  console.log(`❌ No valid net_price found for ${item.product || item.item_name}, returning 0`);
+  return 0;
+};
   // Get total taxable amount (PER UNIT × QUANTITY)
   const getItemTotalTaxableAmount = (item) => {
     const taxablePerUnit = getTaxableAmountPerUnit(item);
@@ -318,13 +332,15 @@ const handleOrderModeChange = async (value) => {
 
   const adjustedTotals = getAdjustedTotals();
 
-  // Debug: Log product switching
+  // Debug: Log product switching and net_price usage
   useEffect(() => {
     if (updatedItems.length > 0) {
-      console.log("🔄 Current items with product IDs:", updatedItems.map(item => ({
+      console.log("🔄 Current items with net_price:", updatedItems.map(item => ({
         product: item.product,
         product_id: item.product_id,
-        product_type: item.product_type
+        net_price: item.net_price,
+        edited_sale_price: item.edited_sale_price,
+        using_net_price: !!item.net_price && parseFloat(item.net_price) > 0
       })));
     }
   }, [updatedItems, localOrderMode]);
@@ -446,9 +462,6 @@ const handleOrderModeChange = async (value) => {
       <div className="items-section mb-4">
         <div className="d-flex justify-content-between align-items-center mb-2">
           <h6 className="text-primary mb-0">Items Details</h6>
-          {/* <div className="badge bg-info">
-            {localOrderMode} MODE
-          </div> */}
         </div>
         <div className="table-responsive">
           <table className="items-table table table-bordered mb-0">
@@ -459,7 +472,7 @@ const handleOrderModeChange = async (value) => {
                 <th style={{ width: '15%' }}>Description</th>
                 <th className="text-center" style={{ width: '4%' }}>Qty</th>
                 <th className="text-center" style={{ width: '4%' }}>Free Qty</th>
-                <th className="text-end" style={{ width: '7%' }}>Price</th>
+                <th className="text-end" style={{ width: '7%' }}> Price</th>
                 <th className="text-end" style={{ width: '7%' }}>Discount Amt</th>
                 <th className="text-end" style={{ width: '7%' }}>Credit Charge</th>
                 <th className="text-end" style={{ width: '7%' }}>Taxable Amount</th>
@@ -493,14 +506,14 @@ const handleOrderModeChange = async (value) => {
                 const itemTotal = calculateItemTotal(item);
                 
                 const gstPercentage = localOrderMode === "KACHA" ? 0 : (parseFloat(item.gst) || 0);
-                const editedPrice = parseFloat(item.edited_sale_price) || parseFloat(item.price) || 0;
+                // REPLACED: edited_sale_price with net_price
+                const netPrice = getNetPricePerUnit(item);
                 
                 return (
                   <tr key={index}>
                     <td className="text-center align-middle">{index + 1}</td>
                     <td className="align-middle">
                       <div className="fw-medium">{item.product}</div>
-                      {/* <small className="text-muted">ID: {item.product_id}</small> */}
                     </td>
                     <td className="align-middle">
                       {isEditing ? (
@@ -536,7 +549,7 @@ const handleOrderModeChange = async (value) => {
                     </td>
                     
                     <td className="text-end align-middle">
-                      <div className="fw-medium">₹{editedPrice.toFixed(2)}</div>
+                      <div className="fw-medium">₹{netPrice.toFixed(2)}</div>
                     </td>
                     
                     <td className="text-end align-middle">

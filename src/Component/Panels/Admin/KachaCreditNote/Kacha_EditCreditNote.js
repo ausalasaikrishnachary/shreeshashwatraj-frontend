@@ -472,14 +472,14 @@ setNoteDate(formattedDate);
                               item.batch
                             )}
                           </td>
-                    <td className="text-end">
+                    <td className="text-end"  style={{ width: "100px" }}>
   {isEditing ? (
     <input
       type="number"
       className="form-control form-control-sm"
       value={editedQuantity}
       min="0"
-      max={maxForInput}
+      // max={maxForInput}
       step="1"   // ✅ only whole numbers
       onChange={handleQuantityChange}
     />

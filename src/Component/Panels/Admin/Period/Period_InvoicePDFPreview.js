@@ -34,202 +34,207 @@
     const [editableOrderMode, setEditableOrderMode] = useState('');
     const [qrData, setQrData] = useState(''); // For QR code data
 
+const transformPeriodDataToInvoiceFormat = (periodData) => {
+  const accountDetails = periodData.fullAccountDetails || periodData.customerInfo?.account_details;
+  const orderNumber = periodData.orderNumber || periodData.originalOrder?.order_number;
+  const orderMode = periodData.order_mode || periodData.originalOrder?.order_mode || "Pakka";
 
-    const transformPeriodDataToInvoiceFormat = (periodData) => {
-      const accountDetails = periodData.fullAccountDetails || periodData.customerInfo?.account_details;
-      const orderNumber = periodData.orderNumber || periodData.originalOrder?.order_number;
-      const orderMode = periodData.order_mode || periodData.originalOrder?.order_mode || "Pakka";
+  const TransactionType = orderMode.toUpperCase() === "PAKKA" ? "Sales" : "stock transfer";  
 
-    const TransactionType = orderMode.toUpperCase() === "PAKKA" ? "Sales" : "stock transfer";  
-
-      let totalTaxableAmount = 0;
-      let totalTaxAmount = 0;
-      let totalGrandTotal = 0;
-      let totalSGST = 0;
-      let totalCGST = 0;
-        let totalDiscountAmount = 0; // Add this
-    let totalCreditCharge = 0; // Add this
-      
-      const items = (periodData.selectedItems || []).map((item, index) => {
-        const flashOffer = parseInt(item.flash_offer) || 0;
-      const buyQuantity = parseInt(item.buy_quantity) || 0;
-      const getQuantity = parseInt(item.get_quantity) || 0;
+  let totalTaxableAmount = 0;
+  let totalTaxAmount = 0;
+  let totalGrandTotal = 0;
+  let totalSGST = 0;
+  let totalCGST = 0;
+  let totalDiscountAmount = 0;
+  let totalCreditCharge = 0;
+  
+  const items = (periodData.selectedItems || []).map((item, index) => {
+    const flashOffer = parseInt(item.flash_offer) || 0;
+    const buyQuantity = parseInt(item.buy_quantity) || 0;
+    const getQuantity = parseInt(item.get_quantity) || 0;
     const stockDeductionQuantity = flashOffer === 1 ? buyQuantity + getQuantity : parseFloat(item.quantity) || 1;    
-        const itemTaxableAmount = parseFloat(item.taxable_amount) || 0;
-        const itemTaxAmount = parseFloat(item.tax_amount) || 0;
-        const itemTotal = parseFloat(item.item_total) || 0;
-        const quantity = parseFloat(item.quantity) || 1;
-        const price = parseFloat(item.edited_sale_price) || parseFloat(item.sale_price) || 0; // Use edited_sale_price
-        const discount = parseFloat(item.discount_percentage) || 0;
-        const discountAmount = parseFloat(item.discount_amount) || 0;
-        const creditCharge = parseFloat(item.credit_charge) || 0; // Get credit_charge
-        
-        // Use ACTUAL values from database
-        const actualCGSTPercentage = parseFloat(item.cgst_percentage) || 0;
-        const actualSGSTPercentage = parseFloat(item.sgst_percentage) || 0;
-        const actualCGSTAmount = parseFloat(item.cgst_amount) || 0;
-        const actualSGSTAmount = parseFloat(item.sgst_amount) || 0;
-        
-        totalTaxableAmount += itemTaxableAmount;
-        totalTaxAmount += itemTaxAmount;
-        totalGrandTotal += itemTotal;
-        totalSGST += actualSGSTAmount;
-        totalCGST += actualCGSTAmount;
-          totalDiscountAmount += discountAmount;
-      totalCreditCharge += creditCharge; 
-        
-        return {
-          id: index + 1,
-          product: item.item_name || `Item ${index + 1}`,
-          product_id: item.product_id || '',
-          quantity: quantity,
-          price: price, // Use edited_sale_price as price
-          discount: discount,
-          discount_amount: discountAmount,
-          gst: parseFloat(item.tax_percentage) || 0,
-          
-          cgst: actualCGSTPercentage,
-          sgst: actualSGSTPercentage,
-          cgst_amount: actualCGSTAmount,
-          sgst_amount: actualSGSTAmount,
-          
-            stock_deduction_quantity: stockDeductionQuantity, 
-        flash_offer: flashOffer,
-        stock_deduction_quantity: stockDeductionQuantity, // ADD THIS
-        buy_quantity: buyQuantity,
-        get_quantity: getQuantity,
-            original_quantity: parseFloat(item.quantity) || 1,
-          igst: 0,
-          cess: 0,
-          total: itemTotal.toFixed(2),
-          batch: '',
-          batch_id: item.batch_id || '',
-          assigned_staff: item.assigned_staff || periodData.assigned_staff || 'N/A',
-          staff_incentive: item.staff_incentive || 0,
-          taxable_amount: itemTaxableAmount, 
-          tax_amount: itemTaxAmount,
-          credit_charge: creditCharge, 
-          
-          original_sgst_percentage: item.sgst_percentage,
-          original_sgst_amount: item.sgst_amount,
-          original_cgst_percentage: item.cgst_percentage,
-          original_cgst_amount: item.cgst_amount,
-          edited_sale_price: price,
-          sale_price: parseFloat(item.sale_price) || 0,
-          
-        };
-      });
-      
-      const taxableAmount = parseFloat(periodData.selectedItemsTotal?.taxableAmount) || totalTaxableAmount;
-      const taxAmount = parseFloat(periodData.selectedItemsTotal?.taxAmount) || totalTaxAmount;
-      const grandTotal = parseFloat(periodData.selectedItemsTotal?.grandTotal) || totalGrandTotal;
-      
-      console.log("📊 Database SGST/CGST Totals:", {
-        totalSGST: totalSGST,
-        totalCGST: totalCGST,
-        totalTaxAmount: taxAmount
-      });
-      
-      return {
-        // Dynamic transaction type based on order mode
-        TransactionType: TransactionType,
-        
-        invoiceNumber: periodData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`,
-        invoiceDate: periodData.invoiceDate || new Date().toISOString().split('T')[0],
-        validityDate: periodData.validityDate || 
-                      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        
-        orderNumber: orderNumber,
-        originalOrderNumber: orderNumber,
-        order_mode: orderMode,
-        
-        companyInfo: periodData.companyInfo || {
-          name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-          address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-          email: "spmathur56@gmail.com",
-          phone: "9801049700",
-          gstin: "10AAOCS1541B1ZZ",
-          state: "Bihar"
-        },
-        
-        supplierInfo: {
-          name: accountDetails?.name || periodData.customerInfo?.name || periodData.originalOrder?.customer_name || 'Customer',
-          businessName: accountDetails?.business_name || periodData.customerInfo?.businessName || periodData.originalOrder?.customer_name || 'Business',
-          gstin: accountDetails?.gstin || periodData.customerInfo?.gstin || '',
-          state: accountDetails?.billing_state || periodData.customerInfo?.state || '',
-          id: periodData.customerInfo?.id || '',
-          email: accountDetails?.email || '',
-          phone: accountDetails?.phone_number || accountDetails?.mobile_number || '',
-          pan: accountDetails?.pan || '',
-          fullDetails: accountDetails
-        },
-        
-        billingAddress: accountDetails ? {
-          addressLine1: accountDetails.billing_address_line1 || "Address not specified",
-          addressLine2: accountDetails.billing_address_line2 || "",
-          city: accountDetails.billing_city || "City not specified",
-          pincode: accountDetails.billing_pin_code || "000000",
-          state: accountDetails.billing_state || "Karnataka",
-          country: accountDetails.billing_country || "India",
-          gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
-          branch_name: accountDetails.billing_branch_name || ""
-        } : periodData.billingAddress || {
-          addressLine1: periodData.originalOrder?.billing_address || "Address not specified",
-          addressLine2: "",
-          city: periodData.originalOrder?.billing_city || "City not specified",
-          pincode: periodData.originalOrder?.billing_pincode || "000000",
-          state: periodData.originalOrder?.billing_state || "Karnataka"
-        },
-        
-        shippingAddress: accountDetails ? {
-          addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
-          addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
-          city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
-          pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
-          state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
-          country: accountDetails.shipping_country || accountDetails.billing_country || "India",
-          gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
-          branch_name: accountDetails.shipping_branch_name || accountDetails.billing_branch_name || ""
-        } : periodData.shippingAddress || periodData.billingAddress || {
-          addressLine1: periodData.originalOrder?.shipping_address || "Address not specified",
-          addressLine2: "",
-          city: periodData.originalOrder?.shipping_city || "City not specified",
-          pincode: periodData.originalOrder?.shipping_pincode || "000000",
-          state: periodData.originalOrder?.shipping_state || "Karnataka"
-        },
-        
-        items: items,
-        
-        flashOfferSummary: periodData.flashOfferSummary || {
-        hasFlashOffer: items.some(item => item.flash_offer === 1),
-        totalItemsWithFlashOffer: items.filter(item => item.flash_offer === 1).length
-      },
-        taxableAmount: (typeof taxableAmount === 'number' ? taxableAmount : parseFloat(taxableAmount) || 0).toFixed(2),
-        totalGST: (typeof taxAmount === 'number' ? taxAmount : parseFloat(taxAmount) || 0).toFixed(2),
-        grandTotal: (typeof grandTotal === 'number' ? grandTotal : parseFloat(grandTotal) || 0).toFixed(2),
-        totalCess: "0.00",
-          totalDiscountAmount: totalDiscountAmount.toFixed(2), // Add total discount
-      totalCreditCharge: totalCreditCharge.toFixed(2), // Add total credit charge
-        note: periodData.note || "",
-        transportDetails: periodData.transportDetails || "Standard delivery",
-        additionalCharge: "",
-        additionalChargeAmount: "0.00",
-        
-        // Use actual SGST/CGST totals from database
-        totalCGST: totalCGST.toFixed(2),
-        totalSGST: totalSGST.toFixed(2),
-        totalIGST: "0.00",
-        taxType: "CGST/SGST",
-        
-        assigned_staff: periodData.assigned_staff || periodData.originalOrder?.assigned_staff || 'N/A',
-        staffid: periodData.staff_id || periodData.staffid || periodData.originalOrder?.staff_id || null,
-        staff_id: periodData.staff_id || periodData.staffid || periodData.originalOrder?.staff_id || null,
-        staff_incentive: periodData.originalOrder?.staff_incentive || 0,
-        
-        accountDetails: accountDetails
-      };
-    };
     
+    const itemTaxableAmount = parseFloat(item.taxable_amount) || 0;
+    const itemTaxAmount = parseFloat(item.tax_amount) || 0;
+    const itemTotal = parseFloat(item.item_total) || 0;
+    const quantity = parseFloat(item.quantity) || 1;
+    
+    // CRITICAL FIX: Get net_price from the item and prioritize it
+    const netPrice = parseFloat(item.net_price) || 0;
+    const editedSalePrice = parseFloat(item.edited_sale_price) || 0;
+    const salePrice = parseFloat(item.sale_price) || 0;
+    
+    // Use net_price as the primary price, fallback to edited_sale_price, then sale_price
+const price = netPrice;
+    
+    const discount = parseFloat(item.discount_percentage) || 0;
+    const discountAmount = parseFloat(item.discount_amount) || 0;
+    const creditCharge = parseFloat(item.credit_charge) || 0;
+    
+    // Use ACTUAL values from database
+    const actualCGSTPercentage = parseFloat(item.cgst_percentage) || 0;
+    const actualSGSTPercentage = parseFloat(item.sgst_percentage) || 0;
+    const actualCGSTAmount = parseFloat(item.cgst_amount) || 0;
+    const actualSGSTAmount = parseFloat(item.sgst_amount) || 0;
+    
+    totalTaxableAmount += itemTaxableAmount;
+    totalTaxAmount += itemTaxAmount;
+    totalGrandTotal += itemTotal;
+    totalSGST += actualSGSTAmount;
+    totalCGST += actualCGSTAmount;
+    totalDiscountAmount += discountAmount;
+    totalCreditCharge += creditCharge; 
+    
+    return {
+      id: index + 1,
+      product: item.item_name || `Item ${index + 1}`,
+      product_id: item.product_id || '',
+      quantity: quantity,
+      price: price, // This will now use net_price first
+      discount: discount,
+      discount_amount: discountAmount,
+      discount_amount_per_unit: parseFloat(item.discount_amount) || 0,
+      gst: parseFloat(item.tax_percentage) || 0,
+      
+      cgst: actualCGSTPercentage,
+      sgst: actualSGSTPercentage,
+      cgst_amount: actualCGSTAmount,
+      sgst_amount: actualSGSTAmount,
+      
+      stock_deduction_quantity: stockDeductionQuantity, 
+      flash_offer: flashOffer,
+      buy_quantity: buyQuantity,
+      get_quantity: getQuantity,
+      original_quantity: parseFloat(item.quantity) || 1,
+      igst: 0,
+      cess: 0,
+      total: itemTotal.toFixed(2),
+      batch: '',
+      batch_id: item.batch_id || '',
+      assigned_staff: item.assigned_staff || periodData.assigned_staff || 'N/A',
+      staff_incentive: item.staff_incentive || 0,
+      taxable_amount: itemTaxableAmount, 
+      tax_amount: itemTaxAmount,
+      credit_charge: creditCharge, 
+      
+      // CRITICAL FIX: Include net_price in the transformed item
+      net_price: netPrice,
+      
+      original_sgst_percentage: item.sgst_percentage,
+      original_sgst_amount: item.sgst_amount,
+      original_cgst_percentage: item.cgst_percentage,
+      original_cgst_amount: item.cgst_amount,
+      edited_sale_price: editedSalePrice,
+      sale_price: salePrice,
+      
+    };
+  });
+  
+  const taxableAmount = parseFloat(periodData.selectedItemsTotal?.taxableAmount) || totalTaxableAmount;
+  const taxAmount = parseFloat(periodData.selectedItemsTotal?.taxAmount) || totalTaxAmount;
+  const grandTotal = parseFloat(periodData.selectedItemsTotal?.grandTotal) || totalGrandTotal;
+  
+  return {
+    // Dynamic transaction type based on order mode
+    TransactionType: TransactionType,
+    
+    invoiceNumber: periodData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`,
+    invoiceDate: periodData.invoiceDate || new Date().toISOString().split('T')[0],
+    validityDate: periodData.validityDate || 
+                  new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    
+    orderNumber: orderNumber,
+    originalOrderNumber: orderNumber,
+    order_mode: orderMode,
+    
+    companyInfo: periodData.companyInfo || {
+      name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+      email: "spmathur56@gmail.com",
+      phone: "9801049700",
+      gstin: "10AAOCS1541B1ZZ",
+      state: "Bihar"
+    },
+    
+    supplierInfo: {
+      name: accountDetails?.name || periodData.customerInfo?.name || periodData.originalOrder?.customer_name || 'Customer',
+      businessName: accountDetails?.business_name || periodData.customerInfo?.businessName || periodData.originalOrder?.customer_name || 'Business',
+      gstin: accountDetails?.gstin || periodData.customerInfo?.gstin || '',
+      state: accountDetails?.billing_state || periodData.customerInfo?.state || '',
+      id: periodData.customerInfo?.id || '',
+      email: accountDetails?.email || '',
+      phone: accountDetails?.phone_number || accountDetails?.mobile_number || '',
+      pan: accountDetails?.pan || '',
+      fullDetails: accountDetails
+    },
+    
+    billingAddress: accountDetails ? {
+      addressLine1: accountDetails.billing_address_line1 || "Address not specified",
+      addressLine2: accountDetails.billing_address_line2 || "",
+      city: accountDetails.billing_city || "City not specified",
+      pincode: accountDetails.billing_pin_code || "000000",
+      state: accountDetails.billing_state || "Karnataka",
+      country: accountDetails.billing_country || "India",
+      gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
+      branch_name: accountDetails.billing_branch_name || ""
+    } : periodData.billingAddress || {
+      addressLine1: periodData.originalOrder?.billing_address || "Address not specified",
+      addressLine2: "",
+      city: periodData.originalOrder?.billing_city || "City not specified",
+      pincode: periodData.originalOrder?.billing_pincode || "000000",
+      state: periodData.originalOrder?.billing_state || "Karnataka"
+    },
+    
+    shippingAddress: accountDetails ? {
+      addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
+      addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
+      city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
+      pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
+      state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
+      country: accountDetails.shipping_country || accountDetails.billing_country || "India",
+      gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
+      branch_name: accountDetails.shipping_branch_name || accountDetails.billing_branch_name || ""
+    } : periodData.shippingAddress || periodData.billingAddress || {
+      addressLine1: periodData.originalOrder?.shipping_address || "Address not specified",
+      addressLine2: "",
+      city: periodData.originalOrder?.shipping_city || "City not specified",
+      pincode: periodData.originalOrder?.shipping_pincode || "000000",
+      state: periodData.originalOrder?.shipping_state || "Karnataka"
+    },
+    
+    items: items,
+    
+    flashOfferSummary: periodData.flashOfferSummary || {
+      hasFlashOffer: items.some(item => item.flash_offer === 1),
+      totalItemsWithFlashOffer: items.filter(item => item.flash_offer === 1).length
+    },
+    
+    taxableAmount: (typeof taxableAmount === 'number' ? taxableAmount : parseFloat(taxableAmount) || 0).toFixed(2),
+    totalGST: (typeof taxAmount === 'number' ? taxAmount : parseFloat(taxAmount) || 0).toFixed(2),
+    grandTotal: (typeof grandTotal === 'number' ? grandTotal : parseFloat(grandTotal) || 0).toFixed(2),
+    totalCess: "0.00",
+    totalDiscountAmount: totalDiscountAmount.toFixed(2),
+    totalCreditCharge: totalCreditCharge.toFixed(2),
+    note: periodData.note || "",
+    transportDetails: periodData.transportDetails || "Standard delivery",
+    additionalCharge: "",
+    additionalChargeAmount: "0.00",
+    
+    // Use actual SGST/CGST totals from database
+    totalCGST: totalCGST.toFixed(2),
+    totalSGST: totalSGST.toFixed(2),
+    totalIGST: "0.00",
+    taxType: "CGST/SGST",
+    
+    assigned_staff: periodData.assigned_staff || periodData.originalOrder?.assigned_staff || 'N/A',
+    staffid: periodData.staff_id || periodData.staffid || periodData.originalOrder?.staff_id || null,
+    staff_id: periodData.staff_id || periodData.staffid || periodData.originalOrder?.staff_id || null,
+    staff_incentive: periodData.originalOrder?.staff_incentive || 0,
+    
+    accountDetails: accountDetails
+  };
+};
   useEffect(() => {
     if (invoiceData) {
       const mode = invoiceData.order_mode || "PAKKA";
@@ -1028,17 +1033,22 @@ const itemsWithCalculations = selectedItems.map(item => {
   const buyQuantity = parseInt(item.buy_quantity) || 0;
   const getQuantity = parseInt(item.get_quantity) || 0;
   
-  // CRITICAL FIX: For billing (quantity field) - send buyQuantity when flash offer
   const quantity = flashOffer === 1 ? buyQuantity : (parseFloat(item.quantity) || 1);
-  
-  // For stock deduction (stock_deduction_quantity field)
   const stock_deduction_quantity = flashOffer === 1 ? buyQuantity + getQuantity : quantity;
   
   const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
   const taxAmountPerUnit = parseFloat(item.tax_amount) || 0;
   const cgstAmountPerUnit = parseFloat(item.cgst_amount) || 0;
   const sgstAmountPerUnit = parseFloat(item.sgst_amount) || 0;
-  const editedSalePrice = parseFloat(item.edited_sale_price) || parseFloat(item.sale_price) || 0;
+  
+  // CRITICAL FIX: Get net_price from the item
+  const netPrice = parseFloat(item.net_price) || 0;
+  const editedSalePrice = parseFloat(item.edited_sale_price) || 0;
+  const salePrice = parseFloat(item.sale_price) || 0;
+  
+  // Use net_price as the primary price
+const price = netPrice;
+  
   const discountAmountPerUnit = parseFloat(item.discount_amount) || 0;
   const creditChargePerUnit = parseFloat(item.credit_charge) || 0;
   
@@ -1062,21 +1072,22 @@ const itemsWithCalculations = selectedItems.map(item => {
   totalDiscount += itemDiscountAmount;
   grandTotal += itemTotal;
   
-  // Return item with updated product_id (already updated in selectedItems)
   return {
     originalItemId: item.id,
     product: item.item_name,
-    product_id: item.product_id, // This now contains the updated product_id (e.g., 1231)
-    product_type: orderMode, // Include product type
+    product_id: item.product_id,
+    product_type: orderMode,
     description: editableDescriptions[item.id] || item.description || '',
     
-    // FOR BILLING/INVOICE - send only buyQuantity when flash offer
     quantity: quantity,
-    
-    // FOR STOCK DEDUCTION - send buy+get when flash offer
     stock_deduction_quantity: stock_deduction_quantity,
     
-    price: editedSalePrice, 
+    // CRITICAL FIX: Include net_price in the payload
+    net_price: netPrice,
+    price: price,
+    edited_sale_price: editedSalePrice,
+    sale_price: salePrice,
+    
     discount_amount: itemDiscountAmount,
     credit_charge: itemCreditCharge, 
     discount_amount_per_unit: discountAmountPerUnit,
@@ -1099,17 +1110,14 @@ const itemsWithCalculations = selectedItems.map(item => {
     batch_id: item.batch_id || '',
     item_total: itemTotal,
     
-    edited_sale_price: editedSalePrice,
-    sale_price: parseFloat(item.sale_price) || 0,
-    
-    // FLASH OFFER FIELDS - send to backend
+    // FLASH OFFER FIELDS
     flash_offer: flashOffer,
     buy_quantity: buyQuantity,
     get_quantity: getQuantity,
     
-    _calculation_note: `Flash: ${flashOffer}, Bill Qty: ${quantity}, Stock Qty: ${stock_deduction_quantity}`
+    _calculation_note: `Flash: ${flashOffer}, Price: ${price} (net: ${netPrice}, edited: ${editedSalePrice})`
   };
-});  
+}); 
         // FIXED: Perform credit limit check with better logic
         console.log('📊 CREDIT CHECK - ALL VALUES:', {
           creditLimit,

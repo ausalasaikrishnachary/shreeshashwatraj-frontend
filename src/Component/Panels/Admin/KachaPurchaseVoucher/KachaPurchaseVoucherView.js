@@ -218,7 +218,7 @@ const fetchInvoices = async () => {
 
       if (response.ok) {
         alert('voucher deleted successfully!');
-        navigate('/purchase/voucher');
+        navigate('/kachaPurchasevoucher');
       } else {
         const errorData = await response.json();
         alert(errorData.error || 'Failed to delete receipt');

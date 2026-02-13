@@ -403,6 +403,7 @@
   opacity: 1;
 }
 
+
 .asv-view-icon {
   color: white;
   font-size: 18px;
@@ -488,30 +489,75 @@
   border-color: #e53e3e;
 }
 
-/* Location Input */
+/* Add/Update these styles in your SalesVisit.css */
+
+/* Location Input Wrapper - Fix for spinner alignment */
 .asv-location-input-wrapper {
   display: flex;
   gap: 8px;
   align-items: center;
+  width: 100%;
 }
 
 .asv-location-input-wrapper input {
   flex: 1;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
 }
 
 .asv-location-icon-btn {
   background: #f7fafc;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
-  padding: 12px;
+  padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: 46px;
+  width: 46px;
   height: 46px;
   transition: all 0.3s ease;
   color: #4a5568;
+  position: relative;
+}
+
+.asv-location-icon-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background: #f1f5f9;
+}
+
+.asv-location-icon-btn svg {
+  font-size: 18px;
+  display: block;
+}
+
+/* Spinner styles - Fixed for proper display */
+.asv-spinner {
+  animation: spin 1s linear infinite;
+  font-size: 18px;
+  display: block;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Ensure the spinner is centered in the button */
+.asv-location-icon-btn .asv-spinner {
+  margin: 0;
+  padding: 0;
+}
+
+.asv-location-input-wrapper input:disabled {
+  background-color: #f8fafc;
+  cursor: not-allowed;
+  color: #64748b;
 }
 
 .asv-location-icon-btn:hover {

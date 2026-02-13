@@ -54,14 +54,18 @@ const [receiptFormData, setReceiptFormData] = useState({
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
 
-  const handleEditInvoice = () => {
-    if (invoiceData && invoiceData.voucherId) {
-      navigate(`/sales/createinvoice/${invoiceData.voucherId}`);
-    } else {
-      setError('Cannot edit invoice: Voucher ID not found');
-      setTimeout(() => setError(null), 3000);
-    }
-  };
+const handleEditInvoice = () => {
+  if (!isInvoiceEditable(paymentData)) {
+    alert('Cannot edit invoice: This invoice has receipts/credit notes');
+    return;
+  }  
+  if (invoiceData && invoiceData.voucherId) {
+    navigate(`/sales/createinvoice/${invoiceData.voucherId}`);
+  } else {
+    setError('Cannot edit invoice: Voucher ID not found');
+    setTimeout(() => setError(null), 3000);
+  }
+};
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -493,6 +497,11 @@ business_name: apiData.business_name || '',
   };
 };
 
+const isInvoiceEditable = (paymentData) => {
+  const hasReceipts = paymentData?.receipts?.length > 0;
+  const hasCreditNotes = paymentData?.creditnotes?.length > 0;
+  return !(hasReceipts || hasCreditNotes);
+};
 const PaymentStatus = () => {
   if (paymentLoading) {
     return (
@@ -1291,9 +1300,20 @@ const handleCreateReceiptFromInvoice = async () => {
                   <Button variant="info" className="me-2 text-white" onClick={handleOpenReceiptModal}>
                     <FaRegFileAlt className="me-1" /> Create Receipt
                   </Button>
-                  <Button variant="warning" onClick={handleEditInvoice} className="me-2">
-                    <FaEdit className="me-1" /> Edit Invoice
-                  </Button>
+          {paymentData && !isInvoiceEditable(paymentData) ? (
+  <Button 
+    variant="warning" 
+    className="me-2"
+    disabled
+    title="Cannot edit - invoice has receipts/credit notes"
+  >
+    <FaEdit className="me-1" /> Edit Invoice 
+  </Button>
+) : (
+  <Button variant="warning" onClick={handleEditInvoice} className="me-2">
+    <FaEdit className="me-1" /> Edit Invoice
+  </Button>
+)}
                   {/* <Button variant="success" onClick={handlePrint} className="me-2">
                     <FaPrint className="me-1" /> Print
                   </Button> */}

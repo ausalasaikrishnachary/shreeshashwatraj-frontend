@@ -6,6 +6,7 @@ import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import { baseurl } from "../../../BaseURL/BaseURL";
 import { FaFilePdf, FaTrash, FaDownload } from 'react-icons/fa';
 import './PurchaseInvoice.css';
+  import Select from "react-select";
 
 const KachaPurchaseInvoiceTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -17,10 +18,15 @@ const KachaPurchaseInvoiceTable = () => {
   const [error, setError] = useState(null);
 
   const [month, setMonth] = useState('July');
-  const [year, setYear] = useState('2025');
+  const [year, setYear] = useState('2026');
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
     const [deleting, setDeleting] = useState({});
+  const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
+  const y = 2025 + i;
+  return { value: y, label: y };
+});
+
 
   useEffect(() => {
     fetchPurchaseInvoices();
@@ -274,6 +280,67 @@ const handleInvoiceNumberClick = async (invoice) => {
   }
 };
 
+const canDeleteKachaPurchaseInvoice = (invoice) => {
+  const hasVouchers = invoice.originalData?.purchasevoucher?.length > 0;
+  const hasDebitNotes = invoice.originalData?.debitNotes?.length > 0;
+  return !(hasVouchers || hasDebitNotes);
+};
+
+// Add this after fetchPurchaseInvoices() and before handleDeleteInvoice
+useEffect(() => {
+  const fetchPaymentDataForInvoices = async () => {
+    if (purchaseInvoices.length === 0) return;
+    
+    const updatedInvoices = [...purchaseInvoices];
+    
+    for (let i = 0; i < updatedInvoices.length; i++) {
+      const invoice = updatedInvoices[i];
+      const invoiceNumber = invoice.pinvoice || invoice.originalData?.InvoiceNumber;
+      
+      if (!invoiceNumber) continue;
+      
+      try {
+        console.log(`Fetching payment data for stock inward: ${invoiceNumber}`);
+        const response = await fetch(`${baseurl}/invoices/${invoiceNumber}`);
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            const purchasevoucher = result.data.purchasevoucher || [];
+            const allEntries = result.data.allEntries || [];
+            
+            const debitNotes = allEntries.filter(entry => 
+              entry.TransactionType === 'DebitNote'
+            );
+            
+            updatedInvoices[i] = {
+              ...invoice,
+              originalData: {
+                ...invoice.originalData,
+                purchasevoucher: purchasevoucher,
+                debitNotes: debitNotes
+              }
+            };
+            
+            console.log(`Stock inward ${invoiceNumber} has:`, {
+              vouchers: purchasevoucher.length,
+              debitNotes: debitNotes.length
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching payment data for ${invoiceNumber}:`, error);
+      }
+    }
+    
+    setPurchaseInvoices(updatedInvoices);
+  };
+
+  if (purchaseInvoices.length > 0) {
+    fetchPaymentDataForInvoices();
+  }
+}, [purchaseInvoices.length]);
+
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
   
@@ -343,12 +410,19 @@ const formatDate = (dateString) => {
 
     // Handle Delete Invoice
 const handleDeleteInvoice = async (invoice) => {
+  // Check if invoice has purchase vouchers or debit notes
+  const hasVouchers = invoice.originalData?.purchasevoucher?.length > 0;
+  const hasDebitNotes = invoice.originalData?.debitNotes?.length > 0;
+  
+  if (hasVouchers || hasDebitNotes) {
+    alert('Cannot delete: This stock inward has vouchers/debit notes');
+    return;
+  }
+  
   const voucherId = invoice.originalData?.VoucherID || invoice.id;
   const invoiceNumber = invoice.pinvoice || invoice.originalData?.InvoiceNumber;
   
-  if (!window.confirm(`Are you sure you want to delete purchase invoice ${invoiceNumber}? This action cannot be undone and will update stock values.`)) {
-    return;
-  }
+  if (!window.confirm(`Delete stock inward ${invoiceNumber}?`)) return;
   
   try {
     setDeleting(prev => ({ ...prev, [voucherId]: true }));
@@ -359,29 +433,25 @@ const handleDeleteInvoice = async (invoice) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        transactionType: 'Purchase', // Important: Specify this is a Purchase transaction
+        transactionType: 'stock inward',
         invoiceNumber: invoiceNumber
       })
     });
     
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to delete invoice');
+      throw new Error(errorData.error || 'Failed to delete');
     }
     
-    const result = await response.json();
-    
-    // Remove from local state
     setPurchaseInvoices(prev => prev.filter(inv => {
       const invVoucherId = inv.originalData?.VoucherID || inv.id;
       return invVoucherId !== voucherId;
     }));
     
-    alert('Purchase invoice deleted successfully! Stock has been updated accordingly.');
+    alert('Stock inward deleted successfully!');
     
   } catch (error) {
-    console.error('Error deleting purchase invoice:', error);
-    alert('Error deleting purchase invoice: ' + error.message);
+    alert('Error: ' + error.message);
   } finally {
     setDeleting(prev => ({ ...prev, [voucherId]: false }));
   }
@@ -449,54 +519,38 @@ const handleDeleteInvoice = async (invoice) => {
     });
   }
 },
- {
-    key: 'actions',
-    title: 'ACTIONS',
-    style: { textAlign: 'center' },
-    render: (value, row) => (
+{
+  key: 'actions',
+  title: 'ACTIONS',
+  style: { textAlign: 'center' },
+  render: (value, row) => {
+    const canDelete = canDeleteKachaPurchaseInvoice(row);
+    
+    return (
       <div className="d-flex justify-content-center gap-2">
-        
-        {/* <button
-          className={`btn btn-sm ${row.hasPDF ? 'btn-success' : 'btn-outline-warning'}`}
-          onClick={() => handleDownloadPDF(row)}
-          disabled={downloading[row.id]}
-          title={row.hasPDF ? 'Download PDF' : 'Generate and Download PDF'}
-        >
-          {downloading[row.id] ? (
-            <div className="spinner-border spinner-border-sm" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          ) : row.hasPDF ? (
-            <>
-              <FaDownload className="me-1" />
-              
-            </>
-          ) : (
-            <>
-              <FaFilePdf className="me-1" />
-              Generate PDF
-            </>
-          )}
-        </button> */}
-        
-        {/* Delete Button */}
+        {/* Delete Button - Disabled if has vouchers/debit notes */}
         <button
-          className="btn btn-sm btn-outline-danger"
-          onClick={() => handleDeleteInvoice(row)}
-          disabled={deleting[row.id]}
-          title="Delete Invoice"
+          className={`btn btn-sm ${canDelete ? 'btn-outline-danger' : 'btn-secondary'}`}
+          onClick={() => {
+            if (!canDelete) {
+              alert('Cannot delete: This stock inward has vouchers/debit notes');
+              return;
+            }
+            handleDeleteInvoice(row);
+          }}
+          disabled={deleting[row.id] || !canDelete}
+          title={canDelete ? 'Delete' : 'Has vouchers/debit notes'}
         >
           {deleting[row.id] ? (
-            <div className="spinner-border spinner-border-sm" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
+            <div className="spinner-border spinner-border-sm" role="status"></div>
           ) : (
             <FaTrash />
           )}
         </button>
       </div>
-    )
-  },
+    );
+  }
+}
     // {
     //   key: 'action',
     //   title: 'ACTION',
@@ -644,11 +698,29 @@ const handleDeleteInvoice = async (invoice) => {
                           <option key={m}>{m}</option>
                         )}
                       </select>
-                      <select className="form-select" value={year} onChange={(e) => setYear(e.target.value)}>
-                        {['2025','2024','2023'].map(y => 
-                          <option key={y}>{y}</option>
-                        )}
-                      </select>
+                                                                <Select
+  options={yearOptions}
+  value={{ value: year, label: year }}
+  onChange={(selected) => setYear(selected.value)}
+  maxMenuHeight={150}
+  styles={{
+    control: (provided) => ({
+      ...provided,
+      width: '100px',  // Adjust width as needed
+      minWidth: '100px',
+    }),
+    menu: (provided) => ({
+      ...provided,
+      width: '100px',  // Same width as control
+      minWidth: '100px',
+    }),
+    option: (provided) => ({
+      ...provided,
+      whiteSpace: 'nowrap',
+      padding: '8px 12px',
+    })
+  }}
+/>
                     </div>
                   </div>
 

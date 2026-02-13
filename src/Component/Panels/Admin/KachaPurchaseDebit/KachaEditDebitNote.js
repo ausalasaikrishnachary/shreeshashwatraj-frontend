@@ -467,24 +467,21 @@ const response = await axios.put(`${baseurl}/debitnoteupdate/${id}`, requestData
                               item.batch
                             )}
                           </td>
-                          <td className="text-end">
-                            {isEditing ? (
-                              <input
-                                type="number"
-                                className="form-control form-control-sm"
-                                value={editedQuantity}
-                                min="0"
-                                max={maxForInput}
-                                step="0.01"
-                                onChange={handleQuantityChange}
-                                style={{
-                                  border: isOver ? '1px solid #ced4da' : '1px solid #ced4da'
-                                }}
-                              />
-                            ) : (
-                              item.quantity
-                            )}
-                          </td>
+                                      <td className="text-end"  style={{ width: "100px" }}>
+  {isEditing ? (
+    <input
+      type="number"
+      className="form-control form-control-sm"
+      value={editedQuantity}
+      min="0"
+      // max={maxForInput}
+      step="1"   // ✅ only whole numbers
+      onChange={handleQuantityChange}
+    />
+  ) : (
+    item.quantity
+  )}
+</td>
                           <td className="text-end">₹{isEditing ? displayPrice.toFixed(2) : parseFloat(item.price).toFixed(2)}</td>
                           <td className="text-end">{isEditing ? displayDiscount : item.discount}</td>
                           <td className="text-end">{isEditing ? displayGst : item.gst}%</td>

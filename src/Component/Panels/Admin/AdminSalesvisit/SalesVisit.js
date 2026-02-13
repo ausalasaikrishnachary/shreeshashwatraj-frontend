@@ -6,7 +6,7 @@ import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import { useParams, useNavigate } from "react-router-dom";
-import { FaSearch, FaMapMarkerAlt } from "react-icons/fa";
+import { FaSearch, FaMapMarkerAlt, FaSpinner } from "react-icons/fa";
 import { MdImage } from "react-icons/md";
 
 const SalesVisit = ({ mode = "list" }) => {
@@ -20,6 +20,8 @@ const SalesVisit = ({ mode = "list" }) => {
   const [error, setError] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [isImageRemoved, setIsImageRemoved] = useState(false);
   
   const [formData, setFormData] = useState({
     retailer_id: "",
@@ -33,10 +35,52 @@ const SalesVisit = ({ mode = "list" }) => {
     description: "",
     location: "",
     image_filename: "",
-    created_at: "",
+    date: "",
   });
 
   const [searchTerm, setSearchTerm] = useState("");
+
+  // SIMPLE FIX: Extract YYYY-MM-DD directly from string without using Date object
+  const extractDateFromString = (dateString) => {
+    if (!dateString) return "";
+    
+    // If it's already YYYY-MM-DD format
+    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return dateString;
+    }
+    
+    // If it's ISO string like "2026-02-13T00:00:00.000Z"
+    if (typeof dateString === 'string' && dateString.includes('T')) {
+      return dateString.split('T')[0];
+    }
+    
+    // If it's DD/MM/YYYY format
+    if (typeof dateString === 'string' && dateString.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+      const [day, month, year] = dateString.split('/');
+      return `${year}-${month}-${day}`;
+    }
+    
+    return "";
+  };
+
+  // Format date for display (DD/MM/YYYY)
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return "";
+    
+    // Extract YYYY-MM-DD first
+    let ymd = dateString;
+    if (dateString.includes('T')) {
+      ymd = dateString.split('T')[0];
+    }
+    
+    // Convert YYYY-MM-DD to DD/MM/YYYY
+    if (ymd.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = ymd.split('-');
+      return `${day}/${month}/${year}`;
+    }
+    
+    return dateString;
+  };
 
   // Fetch sales visits data
   const fetchSalesVisits = async () => {
@@ -48,11 +92,10 @@ const SalesVisit = ({ mode = "list" }) => {
         const mappedData = res.data.data.map((item) => ({
           ...item,
           sales_amount: parseFloat(item.sales_amount) || 0,
-          created_at: new Date(item.created_at).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          }),
+          // Store the date field directly from DB
+          visit_date: item.date || item.created_at,
+          // Format for display in list
+          formatted_date: formatDateForDisplay(item.date || item.created_at),
           location: item.location || "No location",
           image_url: item.image_url || null,
         }));
@@ -62,18 +105,21 @@ const SalesVisit = ({ mode = "list" }) => {
           const visit = mappedData.find((v) => v.id.toString() === id);
           if (visit) {
             setSelectedVisit(visit);
+            
+            // DIRECT FIX: Get the date string from DB and extract YYYY-MM-DD
+            const dbDateString = visit.date || visit.created_at;
+            const yyyyMmDd = extractDateFromString(dbDateString);
+            
             setFormData({
               ...visit,
-              created_at: new Date(visit.created_at).toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              }),
+              date: yyyyMmDd, // Direct string extraction, no Date object
             });
+            
             // Set image preview if exists
             if (visit.image_url) {
               setImagePreview(visit.image_url);
             }
+            setIsImageRemoved(false);
           } else {
             setError(`Sales visit with ID ${id} not found`);
           }
@@ -100,11 +146,6 @@ const SalesVisit = ({ mode = "list" }) => {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
-    const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
-    if (!dateRegex.test(formData.created_at)) {
-      window.alert("Invalid date format. Use DD/MM/YYYY");
-      return;
-    }
     
     try {
       const formDataToSend = new FormData();
@@ -120,9 +161,15 @@ const SalesVisit = ({ mode = "list" }) => {
       formDataToSend.append('transaction_type', formData.transaction_type || '');
       formDataToSend.append('description', formData.description || '');
       formDataToSend.append('location', formData.location || '');
+      formDataToSend.append('date', formData.date); // Send the YYYY-MM-DD string
       
       if (imageFile) {
         formDataToSend.append('image', imageFile);
+      }
+      
+      if (isImageRemoved || (formData.image_filename === "" && !imageFile && selectedVisit?.image_url)) {
+        formDataToSend.append('remove_image', 'true');
+        formDataToSend.append('image_filename', '');
       }
       
       const res = await axios.put(`${baseurl}/api/salesvisits/${id}`, formDataToSend, {
@@ -132,7 +179,7 @@ const SalesVisit = ({ mode = "list" }) => {
       });
       
       if (res.data.success) {
-        window.alert(`Sales Visit for ${formData.retailer_name} updated successfully ✅`);
+        window.alert(`Sales Visit for ${formData.retailer_name} updated successfully`);
         navigate("/sales_visit");
       } else {
         window.alert("Failed to update Sales Visit ❌");
@@ -150,12 +197,13 @@ const SalesVisit = ({ mode = "list" }) => {
       return;
     }
 
+    setIsGettingLocation(true);
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
           
-          // Call backend endpoint for reverse geocoding
           const response = await fetch(
             `${baseurl}/api/reverse-geocode?lat=${latitude}&lon=${longitude}`
           );
@@ -172,7 +220,6 @@ const SalesVisit = ({ mode = "list" }) => {
               location: data.address
             }));
           } else {
-            // Fallback to coordinates
             setFormData(prev => ({
               ...prev,
               location: `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`
@@ -185,6 +232,8 @@ const SalesVisit = ({ mode = "list" }) => {
             ...prev,
             location: `Coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
           }));
+        } finally {
+          setIsGettingLocation(false);
         }
       },
       (error) => {
@@ -203,6 +252,7 @@ const SalesVisit = ({ mode = "list" }) => {
             alert("An unknown error occurred while getting location.");
             break;
         }
+        setIsGettingLocation(false);
       },
       {
         enableHighAccuracy: true,
@@ -216,7 +266,6 @@ const SalesVisit = ({ mode = "list" }) => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file type
       if (!file.type.match('image.*')) {
         alert("Please select an image file (JPG, PNG, GIF)");
         return;
@@ -229,12 +278,18 @@ const SalesVisit = ({ mode = "list" }) => {
       
       setImageFile(file);
       
-      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
       };
       reader.readAsDataURL(file);
+      
+      setFormData(prev => ({
+        ...prev,
+        image_filename: file.name
+      }));
+      
+      setIsImageRemoved(false);
     }
   };
 
@@ -242,10 +297,21 @@ const SalesVisit = ({ mode = "list" }) => {
   const removeImage = () => {
     setImagePreview(null);
     setImageFile(null);
+    
     setFormData(prev => ({
       ...prev,
+      image_filename: "",
+      image_url: null
+    }));
+    
+    setIsImageRemoved(true);
+    
+    setSelectedVisit(prev => ({
+      ...prev,
+      image_url: null,
       image_filename: ""
     }));
+    
     const fileInput = document.getElementById("asv-editImageUpload");
     if (fileInput) {
       fileInput.value = "";
@@ -309,12 +375,6 @@ const SalesVisit = ({ mode = "list" }) => {
 
   // Table columns configuration
   const columns = [
-    // { 
-    //   title: "ID", 
-    //   key: "id", 
-    //   width: "80px",
-    //   className: "asv-rt-table__cell--id"
-    // },
     { 
       title: "RETAILER NAME", 
       key: "retailer_name", 
@@ -327,12 +387,6 @@ const SalesVisit = ({ mode = "list" }) => {
       width: "150px",
       className: "asv-rt-table__cell--staff"
     },
-    // { 
-    //   title: "VISIT TYPE", 
-    //   key: "visit_type", 
-    //   width: "120px",
-    //   className: "asv-rt-table__cell--visit-type"
-    // },
     { 
       title: "VISIT OUTCOME", 
       key: "visit_outcome", 
@@ -413,9 +467,12 @@ const SalesVisit = ({ mode = "list" }) => {
     },
     { 
       title: "DATE", 
-      key: "created_at", 
+      key: "formatted_date",
       width: "120px",
-      className: "asv-rt-table__cell--date"
+      className: "asv-rt-table__cell--date",
+      render: (value, row) => {
+        return row?.formatted_date || formatDateForDisplay(row?.date || row?.created_at) || "N/A";
+      }
     },
     {
       title: "ACTIONS",
@@ -495,7 +552,11 @@ const SalesVisit = ({ mode = "list" }) => {
             </div>
             <div>
               <label>Date (DD/MM/YYYY)</label>
-              <input type="text" value={selectedVisit.created_at} readOnly />
+              <input 
+                type="text" 
+                value={formatDateForDisplay(selectedVisit.date || selectedVisit.created_at)} 
+                readOnly 
+              />
             </div>
           </div>
           <div className="asv-form-group asv-form-group-row">
@@ -521,29 +582,26 @@ const SalesVisit = ({ mode = "list" }) => {
             </div>
           </div>
           <div className="asv-form-group asv-form-group-row">
-       <div className="asv-full-width">
-  <label>Visit Image</label>
-
-  <div className="asv-image-display">
-    {selectedVisit.image_url ? (
-      <>
-        {/* IMAGE PREVIEW */}
-        <img
-          src={selectedVisit.image_url}
-          alt="Visit"
-          className="asv-visit-image-preview"
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = "/no-image.png";
-          }}
-        />
-      </>
-    ) : (
-      <input type="text" value="No image available" readOnly />
-    )}
-  </div>
-</div>
-
+            <div className="asv-full-width">
+              <label>Visit Image</label>
+              <div className="asv-image-display">
+                {selectedVisit.image_url ? (
+                  <>
+                    <img
+                      src={selectedVisit.image_url}
+                      alt="Visit"
+                      className="asv-visit-image-preview"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "/no-image.png";
+                      }}
+                    />
+                  </>
+                ) : (
+                  <input type="text" value="No image available" readOnly />
+                )}
+              </div>
+            </div>
           </div>
           <div className="asv-form-group asv-full-width">
             <label>Description</label>
@@ -639,13 +697,12 @@ const SalesVisit = ({ mode = "list" }) => {
           </div>
           <div className="asv-form-group asv-form-group-row">
             <div>
-              <label>Date (DD/MM/YYYY)</label>
+              <label>Visit Date *</label>
               <input
-                type="text"
-                name="created_at"
-                value={formData.created_at}
+                type="date"
+                name="date"
+                value={formData.date || ""}
                 onChange={handleInputChange}
-                placeholder="DD/MM/YYYY"
                 required
               />
             </div>
@@ -658,14 +715,20 @@ const SalesVisit = ({ mode = "list" }) => {
                   value={formData.location}
                   onChange={handleInputChange}
                   placeholder="Enter location"
+                  disabled={isGettingLocation}
                 />
                 <button
                   type="button"
                   className="asv-location-icon-btn"
                   onClick={getCurrentLocation}
                   title="Get current location"
+                  disabled={isGettingLocation}
                 >
-                  <FaMapMarkerAlt />
+                  {isGettingLocation ? (
+                    <FaSpinner className="asv-spinner" />
+                  ) : (
+                    <FaMapMarkerAlt />
+                  )}
                 </button>
               </div>
             </div>
@@ -689,8 +752,8 @@ const SalesVisit = ({ mode = "list" }) => {
                 </label>
               </div>
               
-              {/* Current/Preview Image */}
-              {(imagePreview || selectedVisit.image_url) && (
+              {/* Current/Preview Image - Show only if image exists AND not removed */}
+              {!isImageRemoved && (imagePreview || selectedVisit.image_url) && (
                 <div className="asv-image-preview-container">
                   <div className="asv-image-preview">
                     <img src={imagePreview || selectedVisit.image_url} alt="Preview" />
@@ -712,7 +775,26 @@ const SalesVisit = ({ mode = "list" }) => {
                 </div>
               )}
               
-              <p className="asv-image-hint">Max file size: 5MB. Leave empty to keep current image</p>
+              {/* Show message when image is removed */}
+              {isImageRemoved && (
+                <div className="asv-image-preview-container">
+                  <div className="asv-image-preview" style={{ border: '2px dashed #fc8181', background: '#fff5f5' }}>
+                    <p style={{ color: '#e53e3e', margin: '10px 0' }}>
+                      <strong>Image will be removed</strong>
+                    </p>
+                    <button
+                      type="button"
+                      className="asv-upload-btn"
+                      onClick={() => document.getElementById("asv-editImageUpload").click()}
+                      style={{ background: '#4299e1' }}
+                    >
+                      <MdImage /> Upload New Image
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              <p className="asv-image-hint">Max file size: 5MB. Click Remove to delete existing image</p>
             </div>
           </div>
           
@@ -790,4 +872,4 @@ const SalesVisit = ({ mode = "list" }) => {
   );
 };
 
-export default SalesVisit;  
+export default SalesVisit;

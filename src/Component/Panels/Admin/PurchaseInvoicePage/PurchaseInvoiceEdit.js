@@ -1355,17 +1355,25 @@ const cancelEdit = () => {
       className="border-primary"
     />
   </Col>
+<Col md={2}>
+  <Form.Label className="fw-bold text-primary">
+    Price (₹)
+  </Form.Label>
 
-  <Col md={2}>
-    <Form.Label className="fw-bold">Price (₹)</Form.Label>
-    <Form.Control
-      name="price"
-      type="number"
-      value={itemForm.price}
-      readOnly
-      className="border-primary bg-light"
-    />
-  </Col>
+  <Form.Control
+    name="price"
+    type="number"
+    step="1"  // Changed from 0.01 to 1
+    min="0"
+    value={itemForm.price || ""}
+    onChange={handleItemChange}
+    placeholder="Enter price manually"
+    className="border-primary shadow-sm"
+    style={{ 
+      height: "42px"
+    }}
+  />
+</Col>
 
   <Col md={2}>
     <Form.Label className="fw-bold">Discount (%)</Form.Label>

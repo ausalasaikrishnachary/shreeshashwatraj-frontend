@@ -39,6 +39,7 @@
     "react-qr-scanner": "^1.0.0-alpha.11",
     "react-router-dom": "^7.9.1",
     "react-scripts": "5.0.1",
+    "react-select": "^5.10.2",
     "recharts": "^2.15.4",
     "styled-components": "^6.1.19",
     "toastify-js": "^1.12.0",

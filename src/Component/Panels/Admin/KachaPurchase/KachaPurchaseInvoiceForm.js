@@ -972,7 +972,7 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                     <Form.Control
                       name="price"
                       type="number"
-                      step="0.01"
+                      step="1"
                       min="0"
                       value={itemForm.price || ""}
                       onChange={handleItemChange}

@@ -704,7 +704,7 @@ justify-content: space-between;
   border: 1px solid #ddd;
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  z-index: 1000;
+  z-index: 999;
   margin-top: 5px;
   max-height: 350px;
   overflow-y: auto;
@@ -1516,7 +1516,7 @@ justify-content: space-between;
 .p-table-container {
   border: 1px solid #dee2e6;
   border-radius: 8px 8px 0 0;
-  overflow: hidden;
+  overflow: visible;
   background: white;
 }
 

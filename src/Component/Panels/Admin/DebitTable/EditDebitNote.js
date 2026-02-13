@@ -166,15 +166,15 @@ const EditDebitNote = () => {
   const totals = calculateTotals();
 
   const handleProductChange = (e) => { setEditedProduct(e.target.value); setEditedBatch(""); };
+
   const handleBatchChange = (e) => setEditedBatch(e.target.value);
+
 const handleQuantityChange = (e) => {
   const value = e.target.value;
   
-  // Parse as integer
-  const intValue = parseInt(value);
-  
-  // Only update if it's a valid integer or empty
-  if (value === '' || (!isNaN(intValue) && intValue >= 0)) {
+  // Allow empty or numeric values (including decimals)
+  // This ensures arrow buttons work properly
+  if (value === '' || /^\d*\.?\d*$/.test(value)) {
     setEditedQuantity(value);
   }
 };
@@ -475,31 +475,18 @@ const response = await axios.put(`${baseurl}/debitnoteupdate/${id}`, requestData
                               item.batch
                             )}
                           </td>
- <td className="text-center" style={{ width: "90px" }}>
+<td className="text-center" style={{ width: "90px" }}>
   {isEditing ? (
     <input
       type="number"
       min="0"
-      max={maxForInput}
+      // max={maxForInput}
       step="1"
       inputMode="numeric"
       className="form-control form-control-sm text-center mx-auto"
       style={{ width: "70px" }}
       value={editedQuantity}
-      onChange={(e) => {
-        const value = e.target.value;
-        
-        // Allow empty value or valid numbers
-        if (value === '' || /^\d*\.?\d*$/.test(value)) {
-          handleQuantityChange(e);
-        }
-      }}
-      onKeyDown={(e) => {
-        // Prevent decimal point and scientific notation
-        if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') {
-          e.preventDefault();
-        }
-      }}
+      onChange={handleQuantityChange}  // Direct function reference
       onWheel={(e) => e.target.blur()}
     />
   ) : (

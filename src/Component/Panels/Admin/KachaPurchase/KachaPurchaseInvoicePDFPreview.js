@@ -52,7 +52,18 @@ const KachaPurchaseInvoicePDFPreview = () => {
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
 
+  const isInvoiceEditable = (paymentData) => {
+  // For Stock Inward - check if there are any purchase vouchers or debit notes
+  const hasVouchers = paymentData?.purchasevoucher?.length > 0;
+  const hasDebitNotes = paymentData?.debitNotes?.length > 0;
+  return !(hasVouchers || hasDebitNotes);
+};
+
   const handleEditInvoice = () => {
+      if (!isInvoiceEditable(paymentData)) {
+    alert('Cannot edit invoice: This invoice has purchase vouchers/debit notes');
+    return;
+  }
     if (invoiceData && invoiceData.voucherId) {
       navigate(`/kachapurchaseedit/${invoiceData.voucherId}`);
     } else {
@@ -60,6 +71,7 @@ const KachaPurchaseInvoicePDFPreview = () => {
       setTimeout(() => setError(null), 3000);
     }
   };
+
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -1206,9 +1218,15 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                   <Button variant="info" className="me-2 text-white" onClick={handleOpenReceiptModal}>
                     <FaRegFileAlt className="me-1" /> Create Voucher
                   </Button>
-                  <Button variant="warning" onClick={handleEditInvoice} className="me-2">
-                    <FaEdit className="me-1" /> Edit Invoice
-                  </Button>
+                 {paymentData && !isInvoiceEditable(paymentData) ? (
+  <Button variant="warning" className="me-2" disabled title="Cannot edit - invoice has purchase vouchers/debit notes">
+    <FaEdit className="me-1" /> Edit Invoice
+  </Button>
+) : (
+  <Button variant="warning" onClick={handleEditInvoice} className="me-2">
+    <FaEdit className="me-1" /> Edit Invoice
+  </Button>
+)}
                   {/* <Button variant="success" onClick={handlePrint} className="me-2">
                     <FaPrint className="me-1" /> Print
                   </Button> */}

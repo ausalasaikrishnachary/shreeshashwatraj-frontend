@@ -219,7 +219,7 @@ const fetchInvoices = async () => {
 
       if (response.ok) {
         alert('Receipt deleted successfully!');
-        navigate('/sales/receipts');
+        navigate('/kachareceipts');
       } else {
         const errorData = await response.json();
         alert(errorData.error || 'Failed to delete receipt');

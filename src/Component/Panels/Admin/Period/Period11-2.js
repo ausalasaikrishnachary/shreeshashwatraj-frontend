@@ -985,7 +985,7 @@ const fetchOrders = async () => {
 
       staff_id: staffId,
       staff_incentive: staffIncentive,
-      order_mode: order.order_mode || "",
+      order_mode: order.order_mode || "Pakka",
       fullAccountDetails: accountDetails,
       
       itemDetails: selectedItemsWithAllColumns.map(item => ({
@@ -1435,73 +1435,73 @@ const filteredOrders = orders.filter(order => {
                 </div>
               </td>
               <td>
-                  <div className="p-invoice-dropdown">
-                                         <div className="p-dropdown-toggle">
-                                           <button
-                                             className={`p-btn p-btn-pdf ${orderInvoices[order.order_number]?.length > 0 ? 'p-btn-success' : 'p-btn-warning'}`}
-                                             disabled={loadingInvoices[order.order_number]}
-                                             onClick={(e) => {
-                                               e.stopPropagation();
-                                               if (!orderInvoices[order.order_number]) {
-                                                 fetchInvoicesForOrder(order.order_number);
-                                               }
-                                               setOpenDropdown(openDropdown === order.order_number ? null : order.order_number);
-                                             }}
-                                             title={orderInvoices[order.order_number]?.length > 0
-                                               ? `Click to view ${orderInvoices[order.order_number].length} invoice(s)`
-                                               : "Generate PDF"}
-                                           >
-                                             {loadingInvoices[order.order_number] ? (
-                                               <span className="p-download-spinner">Loading...</span>
-                                             ) : orderInvoices[order.order_number]?.length > 0 ? (
-                                               <>
-                                                 <FaDownload className="p-icon" />
-                                                 {orderInvoices[order.order_number].length} Invoice(s)
-                                                 <span className="p-dropdown-arrow">▼</span>
-                                               </>
-                                             ) : (
-                                               <>
-                                                 <FaFilePdf className="p-icon" />
-                                                 Generate PDF
-                                               </>
-                                             )}
-                                           </button>
-             
-                                           {openDropdown === order.order_number && orderInvoices[order.order_number]?.length > 0 && (
-                                             <div className="p-dropdown-menu">
-                                               <div className="p-dropdown-header">
-                                                 <span>Available Invoices</span>
-                                                 <button
-                                                   className="p-close-dropdown"
-                                                   onClick={(e) => {
-                                                     e.stopPropagation();
-                                                     setOpenDropdown(null);
-                                                   }}
-                                                   title="Close"
-                                                 >
-                                                   ×
-                                                 </button>
-                                               </div>
-                                               {orderInvoices[order.order_number].map((pdf, index) => (
-                                                 <div
-                                                   key={index}
-                                                   className="p-dropdown-item"
-                                                   onClick={() => {
-                                                     handleDownloadSpecificPDF(order.order_number, pdf);
-                                                     setOpenDropdown(null);
-                                                   }}
-                                                 >
-                                                   <FaFilePdf className="p-icon-sm" />
-                                                   <span className="p-invoice-filename">
-                                                     {pdf.fileName || `Invoice_${index + 1}.pdf`}
-                                                   </span>
-                                                   <FaDownload className="p-icon-sm p-download-icon" />
-                                                 </div>
-                                               ))}
-                                             </div>
-                                           )}
-                                         </div>
-                                         </div>
+                <div className="p-invoice-dropdown">
+                  <div className="p-dropdown-toggle">
+                    <button
+                      className={`p-btn p-btn-pdf ${orderInvoices[order.order_number]?.length > 0 ? 'p-btn-success' : 'p-btn-warning'}`}
+                      disabled={loadingInvoices[order.order_number]}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!orderInvoices[order.order_number]) {
+                          fetchInvoicesForOrder(order.order_number);
+                        }
+                        setOpenDropdown(openDropdown === order.order_number ? null : order.order_number);
+                      }}
+                      title={orderInvoices[order.order_number]?.length > 0
+                        ? `Click to view ${orderInvoices[order.order_number].length} invoice(s)`
+                        : "Generate PDF"}
+                    >
+                      {loadingInvoices[order.order_number] ? (
+                        <span className="p-download-spinner">Loading...</span>
+                      ) : orderInvoices[order.order_number]?.length > 0 ? (
+                        <>
+                          <FaDownload className="p-icon" />
+                          {orderInvoices[order.order_number].length} Invoice(s)
+                          <span className="p-dropdown-arrow">▼</span>
+                        </>
+                      ) : (
+                        <>
+                          <FaFilePdf className="p-icon" />
+                          Generate PDF
+                        </>
+                      )}
+                    </button>
+
+                    {openDropdown === order.order_number && orderInvoices[order.order_number]?.length > 0 && (
+                      <div className="p-dropdown-menu">
+                        <div className="p-dropdown-header">
+                          <span>Available Invoices</span>
+                          <button
+                            className="p-close-dropdown"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdown(null);
+                            }}
+                            title="Close"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {orderInvoices[order.order_number].map((pdf, index) => (
+                          <div
+                            key={index}
+                            className="p-dropdown-item"
+                            onClick={() => {
+                              handleDownloadSpecificPDF(order.order_number, pdf);
+                              setOpenDropdown(null);
+                            }}
+                          >
+                            <FaFilePdf className="p-icon-sm" />
+                            <span className="p-invoice-filename">
+                              {pdf.fileName || `Invoice_${index + 1}.pdf`}
+                            </span>
+                            <FaDownload className="p-icon-sm p-download-icon" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </td>
             </tr>
 
