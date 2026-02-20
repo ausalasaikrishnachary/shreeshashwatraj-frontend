@@ -78,7 +78,7 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
     product: "",
     product_id: null,
     description: "",
-    quantity: 1,
+    quantity: 0,
     price: 0,
     discount: 0,
     total: 0,
@@ -224,7 +224,7 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
       product: "",
       product_id: null,
       description: "",
-      quantity: 1,
+      quantity: 0,
       price: 0,
       discount: invoiceData.supplierInfo.discount || 0, // Keep supplier discount
       total: 0,
@@ -242,7 +242,7 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
       product: "",
       product_id: null,
       description: "",
-      quantity: 1,
+      quantity: 0,
       price: 0,
       discount: invoiceData.supplierInfo.discount || 0, // Keep supplier discount
       total: 0,
@@ -293,39 +293,66 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
     }));
   };
 
-  const addItem = () => {
-    if (!itemForm.product) {
-   window.alert("Please select a product");
-         return;
+ const addItem = () => {
+  if (!itemForm.product) {
+    window.alert("⚠️ Please select a product");
+    return;
+  }
+
+  const quantity = parseFloat(itemForm.quantity) || 0;
+  if (quantity <= 0) {
+    window.alert("⚠️ Cannot add item - Quantity is zero. Please enter a quantity greater than 0.");
+    return;
+  }
+
+  if (selectedBatchDetails) {
+    const availableQuantity = parseFloat(selectedBatchDetails.quantity) || 0;
+    
+    if (availableQuantity <= 0) {
+      window.alert(`⚠️ Cannot add item - Selected batch "${selectedBatch}" has zero stock available. Please select a different batch.`);
+      return;
     }
+    
+    if (quantity > availableQuantity) {
+      window.alert(
+        `⚠️ Insufficient stock - Only ${availableQuantity} units available in this batch. ` +
+        `You tried to set quantity to ${quantity}. Please reduce quantity or select another batch.`
+      );
+      return;
+    }
+  }
 
-    const calculatedItem = {
-      ...calculateItemTotal(),
-      batch: selectedBatch,
-      batchDetails: selectedBatchDetails,
-      product_id: itemForm.product_id
-    };
-
-    setInvoiceData(prev => ({
-      ...prev,
-      items: [...prev.items, calculatedItem]
-    }));
-
-    setItemForm({
-      product: "",
-      product_id: null,
-      description: "",
-      quantity: 1,
-      price: 0,
-      discount: invoiceData.supplierInfo.discount || 0, // Keep supplier discount
-      total: 0,
-      batch: "",
-      batchDetails: null
-    });
-    setBatches([]);
-    setSelectedBatch("");
-    setSelectedBatchDetails(null);
+  const calculatedItem = {
+    ...calculateItemTotal(),
+    batch: selectedBatch,
+    batch_id: itemForm.batch_id,
+    batchDetails: selectedBatchDetails,
+    product_id: itemForm.product_id
   };
+
+  setInvoiceData(prev => ({
+    ...prev,
+    items: [...prev.items, calculatedItem]
+  }));
+
+  window.alert(`✅ Item "${calculatedItem.product}" added successfully!`);
+
+  setItemForm({
+    product: "",
+    product_id: null,
+    description: "",
+    quantity: 0,
+    price: 0,
+    discount: invoiceData.supplierInfo.discount || 0,
+    total: 0,
+    batch: "",
+    batch_id: "",
+    batchDetails: null
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+};
 
   const removeItem = (index) => {
     setInvoiceData(prev => ({

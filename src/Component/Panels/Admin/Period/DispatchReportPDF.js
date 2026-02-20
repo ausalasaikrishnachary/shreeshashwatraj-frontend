@@ -41,15 +41,15 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   label: {
-    fontFamily: 'Helvetica-Bold', // BOLD - labels only
+    fontFamily: 'Helvetica-Bold',
     width: '40%',
   },
   value: {
     width: '60%',
-    fontFamily: 'Helvetica', // REGULAR - values
+    fontFamily: 'Helvetica',
   },
   boldValue: {
-    fontFamily: 'Helvetica-Bold', // BOLD - for invoice number, date, party name values
+    fontFamily: 'Helvetica-Bold',
     width: '60%',
   },
   invoiceSection: {
@@ -134,22 +134,22 @@ const styles = StyleSheet.create({
   },
   tableCellHeader: {
     fontSize: 10,
-    fontFamily: 'Helvetica-Bold', // BOLD - Table headers
+    fontFamily: 'Helvetica-Bold',
     textAlign: 'center',
   },
   tableCell: {
     fontSize: 9,
-    fontFamily: 'Helvetica', // REGULAR - Table data
+    fontFamily: 'Helvetica',
     textAlign: 'center',
   },
   tableCellTotal: {
     fontSize: 10,
-    fontFamily: 'Helvetica-Bold', // BOLD - Total row
+    fontFamily: 'Helvetica-Bold',
     textAlign: 'center',
   },
   tableCellGrandTotal: {
     fontSize: 11,
-    fontFamily: 'Helvetica-Bold', // BOLD - Grand Total
+    fontFamily: 'Helvetica-Bold',
     textAlign: 'center',
     paddingVertical: 6,
   },
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     right: 0,
     textAlign: 'center',
     fontSize: 8,
-    fontFamily: 'Helvetica', // REGULAR - Page number
+    fontFamily: 'Helvetica',
     color: '#666',
   },
 });
@@ -222,15 +222,36 @@ const DispatchReportPDF = ({ invoiceData }) => {
 
         {/* Render each order/invoice section */}
         {orders.map((order, orderIndex) => {
-          const orderTotalWeight = order.items.reduce((sum, item) => sum + (parseFloat(item.weight) || 0), 0);
-          const orderTotalQty = order.items.reduce((sum, item) => sum + (parseInt(item.actual_quantity || item.quantity) || 0), 0);
-          const orderTotalAmount = order.items.reduce((sum, item) => {
-            const salePrice = parseFloat(item.sale_price) || 0;
+          let orderTotalWeight = 0;
+          let orderTotalQty = 0;
+          let orderTotalAmount = 0;
+
+          // Process items - USE THE PRE-CALCULATED VALUES
+          const processedItems = order.items.map(item => {
+            // Get quantity
             const quantity = item.flash_offer === 1 ? 
               (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
               (parseInt(item.quantity) || 1);
-            return sum + (salePrice * quantity);
-          }, 0);
+            
+            const totalItemWeight = parseFloat(item.weight) || 0;
+            
+            const totalItemAmount = parseFloat(item.amount) || 
+              ((parseFloat(item.sale_price) || 0) * quantity);
+            
+            orderTotalWeight += totalItemWeight;
+            orderTotalQty += quantity;
+            orderTotalAmount += totalItemAmount;
+            
+            return {
+              ...item,
+              quantity,
+              totalWeight: totalItemWeight,
+              totalAmount: totalItemAmount,
+              displayQty: item.flash_offer === 1 && item.get_quantity > 0
+                ? `${item.quantity} + ${item.get_quantity} FREE`
+                : item.quantity
+            };
+          });
 
           return (
             <View key={orderIndex} style={styles.invoiceSection} wrap={false}>
@@ -256,7 +277,7 @@ const DispatchReportPDF = ({ invoiceData }) => {
 
               {/* Items Table */}
               <View style={styles.table}>
-                {/* Table Header - BOLD */}
+                {/* Table Header */}
                 <View style={styles.tableHeader}>
                   <View style={styles.tableColHeader}>
                     <Text style={styles.tableCellHeader}>S No</Text>
@@ -275,44 +296,32 @@ const DispatchReportPDF = ({ invoiceData }) => {
                   </View>
                 </View>
 
-                {/* Table Rows - REGULAR TEXT (not bold) */}
-                {order.items.map((item, itemIndex) => {
-                  const salePrice = parseFloat(item.sale_price) || 0;
-                  const quantity = item.flash_offer === 1 ? 
-                    (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
-                    (parseInt(item.quantity) || 1);
-                  const amount = salePrice * quantity;
-                  
-                  const displayQty = item.flash_offer === 1 && item.get_quantity > 0
-                    ? `${item.quantity} + ${item.get_quantity} FREE`
-                    : item.quantity;
-
-                  return (
-                    <View style={styles.tableRow} key={itemIndex}>
-                      <View style={styles.tableCol}>
-                        <Text style={styles.tableCell}>{itemIndex + 1}</Text>
-                      </View>
-                      <View style={styles.tableCol}>
-                        <Text style={styles.tableCell}>{item.item_name}</Text>
-                      </View>
-                      <View style={styles.tableCol}>
-                        <Text style={styles.tableCell}>
-                          {parseFloat(item.weight || 0).toFixed(2)}
-                        </Text>
-                      </View>
-                      <View style={styles.tableCol}>
-                        <Text style={styles.tableCell}>{displayQty}</Text>
-                      </View>
-                      <View style={styles.tableColLast}>
-                        <Text style={styles.tableCell}>
-                          {formatCurrency(amount)}
-                        </Text>
-                      </View>
+                {/* Table Rows - USE PRE-CALCULATED VALUES */}
+                {processedItems.map((item, itemIndex) => (
+                  <View style={styles.tableRow} key={itemIndex}>
+                    <View style={styles.tableCol}>
+                      <Text style={styles.tableCell}>{itemIndex + 1}</Text>
                     </View>
-                  );
-                })}
+                    <View style={styles.tableCol}>
+                      <Text style={styles.tableCell}>{item.item_name}</Text>
+                    </View>
+                    <View style={styles.tableCol}>
+                      <Text style={styles.tableCell}>
+                        {item.totalWeight.toFixed(2)} {/* Use pre-calculated total weight */}
+                      </Text>
+                    </View>
+                    <View style={styles.tableCol}>
+                      <Text style={styles.tableCell}>{item.displayQty}</Text>
+                    </View>
+                    <View style={styles.tableColLast}>
+                      <Text style={styles.tableCell}>
+                        {formatCurrency(item.totalAmount)} {/* Use pre-calculated total amount */}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
 
-                {/* Total Row - BOLD TEXT */}
+                {/* Total Row */}
                 <View style={styles.tableTotalRow}>
                   <View style={styles.tableCol}>
                     <Text style={styles.tableCellTotal}></Text>
@@ -322,7 +331,7 @@ const DispatchReportPDF = ({ invoiceData }) => {
                   </View>
                   <View style={styles.tableCol}>
                     <Text style={styles.tableCellTotal}>
-                      {orderTotalWeight.toFixed(2)}
+                      {orderTotalWeight.toFixed(2)} {/* Use accumulated order total */}
                     </Text>
                   </View>
                   <View style={styles.tableCol}>
@@ -341,7 +350,7 @@ const DispatchReportPDF = ({ invoiceData }) => {
           );
         })}
 
-        {/* Grand Total - BOLD TEXT */}
+        {/* Grand Total */}
         {orders.length > 1 && (
           <View style={styles.tableGrandTotalContainer}>
             <View style={styles.table}>
@@ -350,11 +359,18 @@ const DispatchReportPDF = ({ invoiceData }) => {
                   <Text style={styles.tableCellGrandTotal}>GRAND TOTAL:</Text>
                 </View>
                 <View style={styles.tableCol}>
-                  <Text style={styles.tableCellGrandTotal}>{totalWeight || '0.00'}</Text>
+                  <Text style={styles.tableCellGrandTotal}>
+                    {totalWeight || '0.00'}
+                  </Text>
                 </View>
                 <View style={styles.tableCol}>
                   <Text style={styles.tableCellGrandTotal}>
-                    {allItems.reduce((sum, item) => sum + (parseInt(item.actual_quantity || item.quantity) || 0), 0)}
+                    {allItems.reduce((sum, item) => {
+                      const quantity = item.flash_offer === 1 ? 
+                        (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
+                        (parseInt(item.quantity) || 1);
+                      return sum + quantity;
+                    }, 0)}
                   </Text>
                 </View>
                 <View style={styles.tableColLast}>
@@ -367,7 +383,7 @@ const DispatchReportPDF = ({ invoiceData }) => {
           </View>
         )}
 
-        {/* Page Number - REGULAR TEXT */}
+        {/* Page Number */}
         <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => (
           `Page ${pageNumber} of ${totalPages}`
         )} fixed />
@@ -376,4 +392,4 @@ const DispatchReportPDF = ({ invoiceData }) => {
   );
 };
 
-export default DispatchReportPDF;
+export default DispatchReportPDF; 

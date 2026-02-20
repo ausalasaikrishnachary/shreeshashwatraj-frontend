@@ -1072,24 +1072,28 @@ const handleGenerateDispatchReport = async () => {
     }
 
     const allDispatchItems = [];
-    let totalWeightAllOrders = 0;
+    let totalWeightAllOrders = 0; // This will store sum of (weight per unit * quantity)
     let totalAmountAllOrders = 0;
 
     ordersWithDateMatch.forEach(order => {
       order.items.forEach(item => {
-        // For dispatch report, we want ALL items regardless of invoice status
-        // But we'll mark which ones have invoices
         const salePrice = parseFloat(item.sale_price) || 0;
+        // Get quantity (handle flash offers)
         const quantity = item.flash_offer === 1 ? 
           (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
           (parseInt(item.quantity) || 1);
         
+        // Calculate amount = salePrice * quantity
         const amount = salePrice * quantity;
-        const itemWeight = item.weight || calculateWeight(item);
+        
+        // FIXED: Calculate weight = weight per unit * quantity
+        const weightPerUnit = parseFloat(item.weight) || 0;
+        const itemWeight = weightPerUnit * quantity; // Multiply weight by quantity!
         
         allDispatchItems.push({
           item_name: item.item_name,
-          weight: itemWeight,
+          weight: itemWeight, // Store the total weight (weight per unit * quantity)
+          weight_per_unit: weightPerUnit, // Store per unit weight for reference
           quantity: item.flash_offer === 1 ? 
             `${item.buy_quantity || item.quantity}` : 
             item.quantity,
@@ -1102,12 +1106,13 @@ const handleGenerateDispatchReport = async () => {
           order_number: order.order_number,
           customer_name: order.customer_name,
           invoice_number: item.invoice_number || order.invoice_number,
-          invoice_status: item.invoice_status || 0, // Add invoice status
+          invoice_status: item.invoice_status || 0,
           created_at: order.created_at,
-          has_invoice: item.invoice_status === 1 // Add flag for invoice status
+          has_invoice: item.invoice_status === 1
         });
         
-        totalWeightAllOrders += itemWeight;
+        // Add to totals (now itemWeight is already quantity-multiplied)
+        totalWeightAllOrders += itemWeight; // This will now be correct!
         totalAmountAllOrders += amount;
       });
     });
@@ -1116,6 +1121,9 @@ const handleGenerateDispatchReport = async () => {
       alert("No items found in selected orders.");
       return;
     }
+
+    console.log("Total Weight All Orders:", totalWeightAllOrders); // Should now be 300.00 for your example
+    console.log("All Dispatch Items:", allDispatchItems);
 
     // Prepare dispatch data
     const dispatchData = {
@@ -1133,9 +1141,14 @@ const handleGenerateDispatchReport = async () => {
             (parseInt(item.quantity) || 1);
           const amount = salePrice * quantity;
           
+          // FIXED: Calculate weight = weight per unit * quantity
+          const weightPerUnit = parseFloat(item.weight) || 0;
+          const itemWeight = weightPerUnit * quantity;
+          
           return {
             item_name: item.item_name,
-            weight: item.weight || calculateWeight(item),
+            weight: itemWeight, // Store total weight
+            weight_per_unit: weightPerUnit, // Store per unit weight
             quantity: item.flash_offer === 1 ? 
               `${item.buy_quantity || item.quantity}` : 
               item.quantity,
@@ -1151,7 +1164,7 @@ const handleGenerateDispatchReport = async () => {
       })),
       
       allItems: allDispatchItems,
-      totalWeight: totalWeightAllOrders.toFixed(2),
+      totalWeight: totalWeightAllOrders.toFixed(2), // This will now be the sum of (weight per unit * quantity)
       totalAmount: totalAmountAllOrders,
       totalItemsWithInvoice: allDispatchItems.filter(item => item.has_invoice).length,
       totalItemsWithoutInvoice: allDispatchItems.filter(item => !item.has_invoice).length,
@@ -1174,7 +1187,7 @@ const handleGenerateDispatchReport = async () => {
         customerSearch: search,
         totalOrders: selectedOrdersForDispatch.length,
         ordersInDateRange: ordersWithDateMatch.length,
-        activeTab: activeTab // Include which tab we're on
+        activeTab: activeTab
       },
       
       totalSelectedOrders: selectedOrdersForDispatch.length,
@@ -1183,20 +1196,15 @@ const handleGenerateDispatchReport = async () => {
       reportDate: new Date().toISOString().split('T')[0]
     };
 
-    // ✅ 1. Create PDF blob using your existing DispatchReportPDF component
+    // Generate PDF as before...
     const { pdf } = await import('@react-pdf/renderer');
     const pdfDoc = <DispatchReportPDF invoiceData={dispatchData} />;
     const blob = await pdf(pdfDoc).toBlob();
     
-    // ✅ 2. Create blob URL
     const blobUrl = URL.createObjectURL(blob);
-    
-    // ✅ 3. Open in new tab
     const newTab = window.open(blobUrl, '_blank');
     
-    // ✅ 4. Revoke URL after loading
     if (newTab) {
-      // Wait a bit then revoke URL
       setTimeout(() => {
         URL.revokeObjectURL(blobUrl);
       }, 1000);
@@ -1206,7 +1214,7 @@ const handleGenerateDispatchReport = async () => {
     console.error("Error generating dispatch report:", error);
     alert("Failed to generate dispatch report. Please try again.");
   }
-};;
+};
 
 const calculateWeight = (item) => {
   if (item.weight && item.weight > 0) return item.weight;

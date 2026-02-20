@@ -87,7 +87,7 @@ const [tempPrice, setTempPrice] = useState("");
     product: "",
     product_id: "",
     description: "",
-    quantity: 1,
+    quantity: 0,
     price: 0,
     discount: 0,
     gst: 0,
@@ -144,18 +144,12 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
         setSelectedStaffId(apiData.staffid);
       }
       
-      // OLD: setSuccess('Invoice loaded for editing');
-      // OLD: setTimeout(() => setSuccess(false), 3000);
-      // NEW:
       window.alert('✅ Invoice loaded for editing successfully!');
     } else {
       throw new Error('No valid data received');
     }
   } catch (err) {
     console.error('Error fetching invoice for edit:', err);
-    // OLD: setError('Failed to load invoice for editing: ' + err.message);
-    // OLD: setTimeout(() => setError(null), 5000);
-    // NEW:
     window.alert(`❌ Failed to load invoice for editing: ${err.message}`);
   } finally {
     setLoading(false);
@@ -275,6 +269,15 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
       assigned_staff: apiData.assigned_staff || apiData.AssignedStaff || 'N/A'
     };
   };
+
+
+useEffect(() => {
+  return () => {
+    if (!isEditMode) {
+      localStorage.removeItem('draftInvoice');
+    }
+  };
+}, [isEditMode]); 
 
   const fetchNextInvoiceNumber = async () => {
     try {
@@ -534,11 +537,52 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
       items: updatedItems
     }));
   };
-
 const addItem = () => {
   if (!itemForm.product) {
     window.alert("⚠️ Please select a product");
     return;
+  }
+
+  const quantity = parseFloat(itemForm.quantity) || 0;
+  if (quantity <= 0) {
+    window.alert("⚠️ Cannot add item - Quantity is zero. Please enter a quantity greater than 0.");
+    return;
+  }
+
+  if (selectedBatchDetails) {
+    const availableQuantity = parseFloat(selectedBatchDetails.quantity) || 0;
+    
+    if (availableQuantity <= 0) {
+      window.alert(`⚠️ Cannot add item - Selected batch "${selectedBatch}" has zero stock available. Please select a different batch.`);
+      return;
+    }
+    
+    if (editingItemIndex !== null) {
+      const existingItem = invoiceData.items[editingItemIndex];
+      
+      if (existingItem.batch_id === selectedBatchDetails.batch_number) {
+        if (quantity > availableQuantity) {
+          window.alert(
+            `⚠️ Cannot update - Only ${availableQuantity} units available in this batch. ` +
+            `You tried to set quantity to ${quantity}.`
+          );
+          return;
+        }
+      } else {
+        if (quantity > availableQuantity) {
+          window.alert(
+            `⚠️ Cannot update - Only ${availableQuantity} units available in the selected batch. ` +
+            `You tried to set quantity to ${quantity}.`
+          );
+          return;
+        }
+      }
+    } else {
+      if (quantity > availableQuantity) {
+        window.alert(`⚠️ Insufficient stock - Only ${availableQuantity} units available in this batch. Please reduce quantity or select another batch.`);
+        return;
+      }
+    }
   }
 
   const calculatedItem = calculateItemTotal();
@@ -551,7 +595,6 @@ const addItem = () => {
   };
 
   if (editingItemIndex !== null) {
-    // Update existing item
     setInvoiceData(prev => ({
       ...prev,
       items: prev.items.map((item, index) => 
@@ -1315,7 +1358,7 @@ if (selectedProduct) {
     gst: parseFloat(selectedProduct.gst_rate?.replace("%", "") || 0),
     description: selectedProduct.description || "",
     discount: retailerDiscount,  
-    quantity: prev.quantity || 1,
+    quantity: prev.quantity || 0,
     batch: "",
     batch_id: ""
   }));
@@ -1427,85 +1470,10 @@ const currentDiscount = itemForm.discount || 0;
       type="number"
       value={itemForm.quantity}
       onChange={handleItemChange}
-      min="1"
       className="border-primary"
     />
   </Col>
-{/* <Col md={2}>
-  <div className="d-flex align-items-center justify-content-between mb-1">
-    <Form.Label className="fw-bold text-primary mb-0">
-      Price (₹)
-    </Form.Label>
 
-    <div className="d-flex gap-2">
-      {!isPriceEditing ? (
-        <FaEdit
-          className="text-warning cursor-pointer"
-          size={14}
-          title="Click to edit price manually"
-          onClick={() => {
-            setIsPriceEditing(true);
-            setTempPrice(itemForm.price || "");
-            window.alert("✏️ You can now edit the price manually.");
-          }}
-          style={{ cursor: "pointer" }}
-        />
-      ) : (
-        <>
-          <FaSave
-            className="text-success cursor-pointer"
-            size={14}
-            title="Save price"
-            onClick={() => {
-              const newPrice = parseFloat(tempPrice) || 0;
-              setItemForm(prev => ({
-                ...prev,
-                price: newPrice
-              }));
-              setIsPriceEditing(false);
-              setTempPrice("");
-              window.alert(`✅ Manual price updated successfully!\nNew Price: ₹${newPrice.toFixed(2)}`);
-            }}
-            style={{ cursor: "pointer" }}
-          />
-          <FaTimes
-            className="text-danger cursor-pointer"
-            size={14}
-            title="Cancel editing"
-            onClick={() => {
-              setIsPriceEditing(false);
-              setTempPrice("");
-              window.alert("❌ Price editing cancelled. Reverted to original price.");
-            }}
-            style={{ cursor: "pointer" }}
-          />
-        </>
-      )}
-    </div>
-  </div>
-
-  <Form.Control
-    name="price"
-    type="number"
-    step="0.01"
-    min="0"
-    value={isPriceEditing ? tempPrice : (itemForm.price || "")}
-    onChange={(e) => {
-      if (isPriceEditing) {
-        setTempPrice(e.target.value);
-      }
-    }}
-    placeholder={isPriceEditing ? "Enter custom price" : "Auto-filled / Click edit icon"}
-    className={`border-primary shadow-sm ${!isPriceEditing ? 'bg-light' : 'border-success'}`}
-    readOnly={!isPriceEditing}
-    style={{ 
-      fontWeight: "500",
-      height: "42px"
-    }}
-  />
-
-
-</Col> */}
 
 
 <Col md={2}>

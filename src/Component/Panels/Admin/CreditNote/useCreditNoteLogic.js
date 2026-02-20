@@ -58,7 +58,6 @@ const useCreditNoteLogic = () => {
       return 0;
     }
     
-    // Find the item in sales transaction
     const salesItems = salesTransaction.batch_details || salesTransaction.items || [];
     const salesItem = salesItems.find(item => item.product === product && item.batch === batch);
     
@@ -72,12 +71,11 @@ const useCreditNoteLogic = () => {
     
     const creditNotes = allTransactions.filter(t => 
       t.TransactionType === "CreditNote" && 
-      t.InvoiceNumber === invoiceNumber  // Changed from originalInvoiceNumber to InvoiceNumber
+      t.InvoiceNumber === invoiceNumber  
     );
     
     console.log("Credit Notes for this invoice:", creditNotes.length);
     
-    // Calculate total credited quantity for this product and batch
     let totalCreditedQty = 0;
     creditNotes.forEach((cn, index) => {
       const cnItems = cn.batch_details || cn.items || [];

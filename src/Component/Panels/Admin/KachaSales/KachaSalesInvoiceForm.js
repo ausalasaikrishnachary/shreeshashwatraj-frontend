@@ -82,7 +82,7 @@ const KachaSalesInvoiceForm = ({ user }) => {
     product: "",
     product_id: "",
     description: "",
-    quantity: 1,
+    quantity: 0,
     price: 0,
     discount: 0,
     total: 0,
@@ -441,8 +441,51 @@ const addItem = () => {
     return;
   }
 
-  const calculatedItem = {
-    ...calculateItemTotal(),
+  const quantity = parseFloat(itemForm.quantity) || 0;
+  if (quantity <= 0) {
+    window.alert("⚠️ Cannot add item - Quantity is zero. Please enter a quantity greater than 0.");
+    return;
+  }
+
+  if (selectedBatchDetails) {
+    const availableQuantity = parseFloat(selectedBatchDetails.quantity) || 0;
+    
+    if (availableQuantity <= 0) {
+      window.alert(`⚠️ Cannot add item - Selected batch "${selectedBatch}" has zero stock available. Please select a different batch.`);
+      return;
+    }
+    
+    if (editingItemIndex !== null) {
+      const existingItem = invoiceData.items[editingItemIndex];
+      
+      if (existingItem.batch_id === selectedBatchDetails.batch_number) {
+        if (quantity > availableQuantity) {
+          window.alert(
+            `⚠️ Cannot update - Only ${availableQuantity} units available in this batch. ` +
+            `You tried to set quantity to ${quantity}.`
+          );
+          return;
+        }
+      } else {
+        if (quantity > availableQuantity) {
+          window.alert(
+            `⚠️ Cannot update - Only ${availableQuantity} units available in the selected batch. ` +
+            `You tried to set quantity to ${quantity}.`
+          );
+          return;
+        }
+      }
+    } else {
+      if (quantity > availableQuantity) {
+        window.alert(`⚠️ Insufficient stock - Only ${availableQuantity} units available in this batch. Please reduce quantity or select another batch.`);
+        return;
+      }
+    }
+  }
+
+  const calculatedItem = calculateItemTotal();
+  const finalItem = {
+    ...calculatedItem,
     batch: selectedBatch,
     batch_id: itemForm.batch_id,
     product_id: itemForm.product_id,
@@ -450,22 +493,21 @@ const addItem = () => {
   };
 
   if (editingItemIndex !== null) {
-    // Update existing item
     setInvoiceData(prev => ({
       ...prev,
       items: prev.items.map((item, index) => 
-        index === editingItemIndex ? calculatedItem : item
+        index === editingItemIndex ? finalItem : item
       )
     }));
     setEditingItemIndex(null);
-    window.alert("✅ Item updated successfully!");
+    window.alert(`✅ Item "${finalItem.product}" updated successfully!`);
   } else {
     // Add new item
     setInvoiceData(prev => ({
       ...prev,
-      items: [...prev.items, calculatedItem]
+      items: [...prev.items, finalItem]
     }));
-    window.alert("✅ Item added successfully!");
+    window.alert(`✅ Item "${finalItem.product}" added successfully!`);
   }
 
   // Reset form
@@ -473,9 +515,14 @@ const addItem = () => {
     product: "",
     product_id: "",
     description: "",
-    quantity: 1,
+    quantity: 0,
     price: 0,
     discount: 0,
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0,
     total: 0,
     batch: "",
     batch_id: "",
@@ -638,6 +685,17 @@ const addItem = () => {
     setIsPreviewReady(false);
  window.alert("✅ Draft cleared successfully!");
   };
+
+
+
+useEffect(() => {
+  return () => {
+    // Only clear draft if NOT in edit mode
+    if (!isEditMode) {
+      localStorage.removeItem('draftInvoice');
+    }
+  };
+}, [isEditMode]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
