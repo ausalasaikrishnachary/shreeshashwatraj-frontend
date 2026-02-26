@@ -21,7 +21,7 @@ const Salesitems_productsdetails = ({ user }) => {
     try {
       setLoading(true);
       const response = await axios.get(`${baseurl}/products/${id}/with-batches`);
-      debugger
+   console.log("Product Data from API:", response.data); // ADD THIS LINE
       setProductData(response.data);
       setLoading(false);
     } catch (error) {
@@ -216,8 +216,9 @@ const Salesitems_productsdetails = ({ user }) => {
             <div className="page-header mb-4">
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <h1 className="page-title text-primary fw-bold">{productData.goods_name}</h1>
-                  <p className="page-subtitle text-muted">Product Details & Inventory Management</p>
+<h1 className="page-title text-primary fw-bold">
+  {productData.goods_name} ({productData.product_type || 'N/A'})
+</h1>                  <p className="page-subtitle text-muted">Product Details & Inventory Management</p>
                 </div>
               </div>
             </div>

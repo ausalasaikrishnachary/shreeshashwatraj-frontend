@@ -134,7 +134,8 @@ function AddStaff() {
     panNumber: "",
     bloodGroup: "",
     emergencyContact: "",
-    status: "Active"
+    status: "Active",
+      password: "" // Add this line
   });
 
   const tabs = [
@@ -164,6 +165,7 @@ const fetchStaffData = async () => {
     
     // Log the data to see what's being returned
     console.log('Staff Data Response:', staffData);
+     console.log('Password from API:', staffData.password || staffData[0]?.password); // Add this lin
     
     // Handle if staffData is an array or single object
     const data = Array.isArray(staffData) ? staffData[0] : staffData;
@@ -195,7 +197,8 @@ const fetchStaffData = async () => {
       panNumber: data.pan || data.pan_number || data.panNumber || "",
       bloodGroup: data.blood_group || data.bloodGroup || "",
       emergencyContact: data.emergency_contact || data.emergencyContact || "",
-      status: data.status || "Active"
+      status: data.status || "Active",
+        password: data.password || "" // Add this line
     });
   } catch (err) {
     console.error('Error fetching staff data:', err);
@@ -532,6 +535,10 @@ const handleSubmit = async (e) => {
                     onChange={handleInputChange} 
                     required 
                   />
+
+
+
+                  
                   <Input 
                     type="date" 
                     label="Date of Birth" 
@@ -539,6 +546,7 @@ const handleSubmit = async (e) => {
                     value={formData.dateOfBirth} 
                     onChange={handleInputChange} 
                   />
+
                   <Select 
                     label="Gender" 
                     name="gender" 
@@ -546,14 +554,30 @@ const handleSubmit = async (e) => {
                     onChange={handleInputChange} 
                     options={["Male", "Female", "Other"]} 
                   />
-                  <FullInput 
-                    label="Address" 
-                    name="address" 
-                    value={formData.address} 
-                    onChange={handleInputChange} 
-                  />
+ <div className="two-fields-row">
+    <FullInput 
+      label="Address" 
+      name="address" 
+      value={formData.address} 
+      onChange={handleInputChange} 
+    />
+
+    <FullInput 
+      label="Password"
+      name="password"
+      type="password"
+      value={formData.password}
+      readOnly
+      disabled
+    />
+  </div>
+
+                  
                 </div>
               </FormSection>
+
+
+
 
               <FormSection
                 id="job"

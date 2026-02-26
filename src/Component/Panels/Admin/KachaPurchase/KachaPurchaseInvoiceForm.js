@@ -166,42 +166,42 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
     fetchAccounts();
   }, []);
 
-  const editItem = async (index) => {
-    const itemToEdit = invoiceData.items[index];
-    
-    // Set the form data
-    setItemForm({
-      ...itemToEdit,
-      product: itemToEdit.product,
-      product_id: itemToEdit.product_id,
-      batch: itemToEdit.batch,
-      batchDetails: itemToEdit.batchDetails
-    });
-    
-    setSelectedBatch(itemToEdit.batch || "");
-    setSelectedBatchDetails(itemToEdit.batchDetails || null);
-    setEditingIndex(index);
+const editItem = async (index) => {
+  const itemToEdit = invoiceData.items[index];
+  
+  // Set the form data with the item's discount
+  setItemForm({
+    ...itemToEdit,
+    product: itemToEdit.product,
+    product_id: itemToEdit.product_id,
+    batch: itemToEdit.batch,
+    batchDetails: itemToEdit.batchDetails,
+    discount: itemToEdit.discount // Preserve the item's discount
+  });
+  
+  setSelectedBatch(itemToEdit.batch || "");
+  setSelectedBatchDetails(itemToEdit.batchDetails || null);
+  setEditingIndex(index);
 
-    // Fetch batches for the product being edited
-    if (itemToEdit.product_id) {
-      try {
-        const res = await fetch(`${baseurl}/products/${itemToEdit.product_id}/batches`);
-        if (res.ok) {
-          const batchData = await res.json();
-          setBatches(batchData);
-        } else {
-          console.error("Failed to fetch batches for editing");
-          setBatches([]);
-        }
-      } catch (err) {
-        console.error("Failed to fetch batches for editing:", err);
+  // Fetch batches for the product being edited
+  if (itemToEdit.product_id) {
+    try {
+      const res = await fetch(`${baseurl}/products/${itemToEdit.product_id}/batches`);
+      if (res.ok) {
+        const batchData = await res.json();
+        setBatches(batchData);
+      } else {
+        console.error("Failed to fetch batches for editing");
         setBatches([]);
       }
-    } else {
+    } catch (err) {
+      console.error("Failed to fetch batches for editing:", err);
       setBatches([]);
     }
-  };
-
+  } else {
+    setBatches([]);
+  }
+};
   const updateItem = () => {
     if (editingIndex === null) return;
 
@@ -293,7 +293,7 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
     }));
   };
 
- const addItem = () => {
+const addItem = () => {
   if (!itemForm.product) {
     window.alert("⚠️ Please select a product");
     return;
@@ -327,7 +327,8 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
     batch: selectedBatch,
     batch_id: itemForm.batch_id,
     batchDetails: selectedBatchDetails,
-    product_id: itemForm.product_id
+    product_id: itemForm.product_id,
+    discount: itemForm.discount // Make sure discount is included
   };
 
   setInvoiceData(prev => ({
@@ -337,13 +338,14 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
 
   window.alert(`✅ Item "${calculatedItem.product}" added successfully!`);
 
+  // Reset form but keep supplier discount
   setItemForm({
     product: "",
     product_id: null,
     description: "",
     quantity: 0,
     price: 0,
-    discount: invoiceData.supplierInfo.discount || 0,
+    discount: parseFloat(invoiceData.supplierInfo?.discount) || 0, // Keep supplier discount
     total: 0,
     batch: "",
     batch_id: "",
@@ -739,61 +741,66 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                             New
                           </Button>
                         </div>
-                        <Form.Select
-                          className="mb-2 border-primary"
-                          value={inputName}
-                          onChange={(e) => {
-                            const selectedName = e.target.value;
-                            setInputName(selectedName);
-                            const supplier = accounts.find(acc => acc.business_name === selectedName);
-                            if (supplier) {
-                              setSelectedSupplierId(supplier.id);
-                              setSelected(true);
+                     <Form.Select
+  className="mb-2 border-primary"
+  value={inputName}
+  onChange={(e) => {
+    const selectedName = e.target.value;
+    setInputName(selectedName);
+    const supplier = accounts.find(acc => acc.business_name === selectedName);
+    if (supplier) {
+      setSelectedSupplierId(supplier.id);
+      setSelected(true);
 
-                              const accountDiscount = parseFloat(supplier.discount) || 0;
-                              setInvoiceData(prev => ({
-                                ...prev,
-                                supplierInfo: {
-                                  name: supplier.gstin ? supplier.display_name || supplier.business_name : supplier.name || supplier.business_name,
-                                  businessName: supplier.business_name,
-                                  account_name: supplier.account_name,
-                                  state: supplier.billing_state,
-                                  gstin: supplier.gstin || "", // Fetch GSTIN
-                                  discount: accountDiscount // Fetch discount
-                                },
-                                billingAddress: {
-                                  addressLine1: supplier.billing_address_line1,
-                                  addressLine2: supplier.billing_address_line2 || "",
-                                  city: supplier.billing_city,
-                                  pincode: supplier.billing_pin_code,
-                                  state: supplier.billing_state
-                                },
-                                shippingAddress: {
-                                  addressLine1: supplier.shipping_address_line1,
-                                  addressLine2: supplier.shipping_address_line2 || "",
-                                  city: supplier.shipping_city,
-                                  pincode: supplier.shipping_pin_code,
-                                  state: supplier.shipping_state
-                                }
-                              }));
-                              setItemForm(prev => ({
-                                ...prev,
-                                discount: accountDiscount // Apply supplier discount to item form
-                              }));
-                            }
-                          }}
-                        >
-                          <option value="">Select Supplier</option> 
-                          {accounts
-                            .filter(acc => acc.role === "supplier") 
-                            .map(acc => (
-                              <option key={acc.id} value={acc.business_name}>
-                                {acc.gstin?.trim()
-                                  ? acc.display_name || acc.business_name
-                                  : acc.name || acc.business_name}
-                              </option>
-                            ))}
-                        </Form.Select>
+      // Define the discount here
+      const accountDiscount = parseFloat(supplier.discount) || 0;
+      
+      setInvoiceData(prev => ({
+        ...prev,
+        supplierInfo: {
+          name: supplier.gstin ? supplier.display_name || supplier.business_name : supplier.name || supplier.business_name,
+          businessName: supplier.business_name,
+          account_name: supplier.account_name,
+          state: supplier.billing_state,
+          gstin: supplier.gstin || "",
+          discount: accountDiscount, // Store discount in supplierInfo
+          accountId: supplier.id
+        },
+        billingAddress: {
+          addressLine1: supplier.billing_address_line1,
+          addressLine2: supplier.billing_address_line2 || "",
+          city: supplier.billing_city,
+          pincode: supplier.billing_pin_code,
+          state: supplier.billing_state
+        },
+        shippingAddress: {
+          addressLine1: supplier.shipping_address_line1,
+          addressLine2: supplier.shipping_address_line2 || "",
+          city: supplier.shipping_city,
+          pincode: supplier.shipping_pin_code,
+          state: supplier.shipping_state
+        }
+      }));
+      
+      // Apply discount to item form
+      setItemForm(prev => ({
+        ...prev,
+        discount: accountDiscount
+      }));
+    }
+  }}
+>
+  <option value="">Select Supplier</option> 
+  {accounts
+    .filter(acc => acc.role === "supplier") 
+    .map(acc => (
+      <option key={acc.id} value={acc.business_name}>
+        {acc.gstin?.trim()
+          ? acc.display_name || acc.business_name
+          : acc.name || acc.business_name}
+      </option>
+    ))}
+</Form.Select>
                       </>
                     ) : (
                       <>
@@ -859,125 +866,125 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                         + New Item
                       </button>
                     </div>
-                    <Form.Select
-                      name="product"
-                      value={itemForm.product}
-                      onChange={async (e) => {
-                        const selectedName = e.target.value;
-                        const selectedProduct = products.find(
-                          (p) => p.goods_name === selectedName
-                        );
+             <Form.Select
+  name="product"
+  value={itemForm.product}
+  onChange={async (e) => {
+    const selectedName = e.target.value;
+    const selectedProduct = products.find(
+      (p) => p.goods_name === selectedName && p.product_type === "KACHA"
+    );
 
-                        if (selectedProduct) {
-                          // Get discount from selected supplier account
-                          const supplierDiscount = invoiceData.supplierInfo.discount || 0;
-                          
-                          setItemForm((prev) => ({
-                            ...prev,
-                            product: selectedProduct.goods_name,
-                            product_id: selectedProduct.id,
-                            price: selectedProduct.net_price || 0,
-                            description: selectedProduct.description || "",
-                            discount: supplierDiscount, // Apply supplier discount
-                            batch: "",
-                            batch_id: ""
-                          }));
+    if (selectedProduct) {
+      // Get discount from supplierInfo
+      const supplierDiscount = parseFloat(invoiceData.supplierInfo?.discount) || 0;
+      
+      setItemForm((prev) => ({
+        ...prev,
+        product: selectedProduct.goods_name,
+        product_id: selectedProduct.id,
+        price: selectedProduct.net_price || 0,
+        description: selectedProduct.description || "",
+        discount: supplierDiscount, // Apply supplier discount
+        batch: "",
+        batch_id: ""
+      }));
 
-                          try {
-                            const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
-                            const batchData = await res.json();
-                            setBatches(batchData);
+      try {
+        const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
+        const batchData = await res.json();
+        setBatches(batchData);
 
-                            if (selectedProduct.maintain_batch === 0 && batchData.length > 0) {
-                              const defaultBatch = batchData[0];
-                              setSelectedBatch(defaultBatch.batch_number);
-                              setSelectedBatchDetails(defaultBatch);
-                              setItemForm(prev => ({
-                                ...prev,
-                                batch: defaultBatch.batch_number,
-                                batch_id: defaultBatch.batch_number,
-                                price: defaultBatch.selling_price,
-                                discount: supplierDiscount // Keep supplier discount when batch is selected
-                              }));
-                            } else {
-                              setSelectedBatch("");
-                              setSelectedBatchDetails(null);
-                            }
+        if (selectedProduct.maintain_batch === 0 && batchData.length > 0) {
+          const defaultBatch = batchData[0];
+          setSelectedBatch(defaultBatch.batch_number);
+          setSelectedBatchDetails(defaultBatch);
+          setItemForm(prev => ({
+            ...prev,
+            batch: defaultBatch.batch_number,
+            batch_id: defaultBatch.batch_number,
+            price: defaultBatch.selling_price,
+            discount: supplierDiscount // Keep supplier discount
+          }));
+        } else {
+          setSelectedBatch("");
+          setSelectedBatchDetails(null);
+        }
 
-                          } catch (err) {
-                            console.error("Failed to fetch batches:", err);
-                            setBatches([]);
-                            setSelectedBatch("");
-                            setSelectedBatchDetails(null);
-                          }
-                        } else {
-                          setItemForm(prev => ({
-                            ...prev,
-                            product: "",
-                            product_id: "",
-                            description: "",
-                            price: 0,
-                            discount: invoiceData.supplierInfo.discount || 0, // Keep supplier discount
-                            batch: "",
-                            batch_id: ""
-                          }));
-                          setBatches([]);
-                          setSelectedBatch("");
-                          setSelectedBatchDetails(null);
-                        }
-                      }}
-                      className="border-primary"
-                    >
-                      <option value="">Select Product</option>
-                      {products
-                        .filter((p) => p.group_by === "Purchaseditems" && p.product_type === "KACHA")
-                        .map((p) => (
-                          <option key={p.id} value={p.goods_name}>
-                            {p.goods_name}
-                          </option>
-                        ))}
-                    </Form.Select>
+      } catch (err) {
+        console.error("Failed to fetch batches:", err);
+        setBatches([]);
+        setSelectedBatch("");
+        setSelectedBatchDetails(null);
+      }
+    } else {
+      setItemForm(prev => ({
+        ...prev,
+        product: "",
+        product_id: "",
+        description: "",
+        price: 0,
+        discount: parseFloat(invoiceData.supplierInfo?.discount) || 0, // Keep supplier discount
+        batch: "",
+        batch_id: ""
+      }));
+      setBatches([]);
+      setSelectedBatch("");
+      setSelectedBatchDetails(null);
+    }
+  }}
+  className="border-primary"
+>
+  <option value="">Select Product</option>
+  {products
+    .filter((p) => p.group_by === "Purchaseditems" && p.product_type === "KACHA")
+    .map((p) => (
+      <option key={p.id} value={p.goods_name}>
+        {p.goods_name}
+      </option>
+    ))}
+</Form.Select>
 
                     {/* Batch Dropdown */}
-                    {batches.length > 0 && itemForm.maintain_batch !== 0 && (
-                      <Form.Select
-                        className="mt-2 border-primary"
-                        name="batch"
-                        value={selectedBatch}
-                        onChange={(e) => {
-                          const batchNumber = e.target.value;
-                          setSelectedBatch(batchNumber);
-                          const batch = batches.find(b => b.batch_number === batchNumber);
-                          setSelectedBatchDetails(batch || null);
-                          
-                          // Get supplier discount
-                          const supplierDiscount = invoiceData.supplierInfo.discount || 0;
+               {batches.length > 0 && itemForm.maintain_batch !== 0 && (
+  <Form.Select
+    className="mt-2 border-primary"
+    name="batch"
+    value={selectedBatch}
+    onChange={(e) => {
+      const batchNumber = e.target.value;
+      setSelectedBatch(batchNumber);
+      const batch = batches.find(b => b.batch_number === batchNumber);
+      setSelectedBatchDetails(batch || null);
+      
+      // Get supplier discount
+      const supplierDiscount = parseFloat(invoiceData.supplierInfo?.discount) || 0;
 
-                          if (batch) {
-                            setItemForm(prev => ({
-                              ...prev,
-                              batch: batchNumber,
-                              batch_id: batch.batch_number,
-                              price: batch.selling_price,
-                              discount: supplierDiscount // Keep supplier discount
-                            }));
-                          } else {
-                            setItemForm(prev => ({
-                              ...prev,
-                              batch: "",
-                              batch_id: ""
-                            }));
-                          }
-                        }}
-                      >
-                        <option value="">Select Batch</option>
-                        {batches.map((batch) => (
-                          <option key={batch.id} value={batch.batch_number}>
-                            {batch.batch_number} (Qty: {batch.quantity})
-                          </option>
-                        ))}
-                      </Form.Select>
-                    )}
+      if (batch) {
+        setItemForm(prev => ({
+          ...prev,
+          batch: batchNumber,
+          batch_id: batch.batch_number,
+          price: batch.selling_price,
+          discount: supplierDiscount // Keep supplier discount
+        }));
+      } else {
+        setItemForm(prev => ({
+          ...prev,
+          batch: "",
+          batch_id: ""
+        }));
+      }
+    }}
+  >
+    <option value="">Select Batch</option>
+    {batches.map((batch) => (
+      <option key={batch.id} value={batch.batch_number}>
+        {batch.batch_number} (Qty: {batch.quantity})
+      </option>
+    ))}
+  </Form.Select>
+)}
                   </Col>
 
                   <Col md={1}>
@@ -1010,36 +1017,32 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                       }}
                     />
                   </Col>
-
-                  <Col md={2}>
-                    <div className="d-flex justify-content-between align-items-center mb-1">
-                      <Form.Label className="fw-bold">Discount (%)</Form.Label>
-                      {invoiceData.retailerDiscount > 0 && (
-                        <small className="text-primary">Retailer: {invoiceData.retailerDiscount}%</small>
-                      )}
-                    
-                    </div>
-                    <Form.Control
-                      name="discount"
-                      type="number"
-                      value={itemForm.discount}
-                      onChange={(e) => {
-                        const newDiscount = parseFloat(e.target.value) || 0;
-                        setItemForm(prev => ({
-                          ...prev,
-                          discount: newDiscount
-                        }));
-                      }}
-                      min="0"
-                      max="100"
-                      className="border-primary"
-                      placeholder={
-                        invoiceData.supplierInfo.discount > 0 
-                          ? `Default: ${invoiceData.supplierInfo.discount}%` 
-                          : ""
-                      }
-                    />
-                  </Col>
+<Col md={2}>
+  <div className="d-flex justify-content-between align-items-center mb-1">
+    <Form.Label className="fw-bold">Discount (%)</Form.Label>
+   
+  </div>
+  <Form.Control
+    name="discount"
+    type="number"
+    value={itemForm.discount}
+    onChange={(e) => {
+      const newDiscount = parseFloat(e.target.value) || 0;
+      setItemForm(prev => ({
+        ...prev,
+        discount: newDiscount
+      }));
+    }}
+    min="0"
+    max="100"
+    className="border-primary"
+    placeholder={
+      invoiceData.supplierInfo?.discount > 0 
+        ? `Default: ${invoiceData.supplierInfo.discount}%` 
+        : "Enter discount"
+    }
+  />
+</Col>
 
                   <Col md={2}>
                     <Form.Label className="fw-bold">Total Price (₹)</Form.Label>

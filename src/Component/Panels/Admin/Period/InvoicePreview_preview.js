@@ -642,11 +642,8 @@ const getNetPricePerUnit = (item) => {
                   {invoiceData.note || 'No note added'}
                 </div>
               )}
+            
               
-              <h6 className="text-primary mt-3">Transportation Details:</h6>
-              <p className="bg-light p-2 rounded">
-                {invoiceData.transportDetails}
-              </p>
             </div>
           </Col>
           

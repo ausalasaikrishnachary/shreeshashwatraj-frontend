@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import './VoucherView.css';
-
+import Select from "react-select";
 const KachaPurchaseVoucherView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -18,7 +18,10 @@ const KachaPurchaseVoucherView = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transactionProofFile, setTransactionProofFile] = useState(null);
   const [invoices, setInvoices] = useState([]);
-
+  const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
+  const y = 2025 + i;
+  return { value: y, label: y };
+});
   useEffect(() => {
     fetchReceipt();
      fetchInvoices(); 

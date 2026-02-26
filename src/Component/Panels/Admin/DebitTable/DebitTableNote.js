@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
@@ -6,7 +6,10 @@ import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import './DebitNote.css';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import { FaPencilAlt, FaTrash } from "react-icons/fa";
-
+import Select from "react-select";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import DebitNotePDF from './DebitNotePDF';
 const DebitNoteTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
@@ -15,11 +18,17 @@ const DebitNoteTable = () => {
   const [error, setError] = useState(null);
 
   const [month, setMonth] = useState('July');
-  const [year, setYear] = useState('2025');
+  const [year, setYear] = useState('2026');
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
   const [activeTab, setActiveTab] = useState('Debit Note');
-
+  const [isDownloading, setIsDownloading] = useState(false);
+const [isRangeDownloading, setIsRangeDownloading] = useState(false);
+const pdfRef = useRef();
+const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
+  const y = 2025 + i;
+  return { value: y, label: y };
+});
   // Fetch debit notes from API
   useEffect(() => {
     fetchCreditNotes();
@@ -87,12 +96,198 @@ const response = await fetch(`${baseurl}/api/debit-notes-table?data_type=Purchas
     // { name: 'Payables', path: '/purchase/payables' }
   ];
 
-  // Handle tab click - navigate to corresponding route
   const handleTabClick = (tab) => {
     setActiveTab(tab.name);
     navigate(tab.path);
   };
 
+
+const filterDebitNotesByDateRange = (debitNotes, start, end) => {
+  if (!start || !end) return debitNotes;
+  
+  const startDate = new Date(start);
+  startDate.setHours(0, 0, 0, 0);
+  
+  const endDate = new Date(end);
+  endDate.setHours(23, 59, 59, 999);
+  
+  return debitNotes.filter(note => {
+    if (!note.created) return false;
+    const parts = note.created.split('/');
+    if (parts.length === 3) {
+      const noteDate = new Date(parts[2], parts[1] - 1, parts[0]);
+      return noteDate >= startDate && noteDate <= endDate;
+    }
+    return false;
+  });
+};
+
+const filterDebitNotesByMonthYear = (debitNotes, month, year) => {
+  if (!month || !year) return debitNotes;
+  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthIndex = monthNames.indexOf(month);
+  
+  return debitNotes.filter(note => {
+    if (!note.created) return false;
+    const parts = note.created.split('/');
+    if (parts.length === 3) {
+      const noteDate = new Date(parts[2], parts[1] - 1, parts[0]);
+      return noteDate.getMonth() === monthIndex && 
+             noteDate.getFullYear() === parseInt(year);
+    }
+    return false;
+  });
+};
+
+// Generate PDF from the DebitNotePDF component
+const generatePDF = async (filteredData, type = 'month') => {
+  if (!filteredData || filteredData.length === 0) {
+    alert('No debit notes found for the selected period');
+    return;
+  }
+
+  try {
+    // Create a temporary div to render the PDF component
+    const element = document.createElement('div');
+    element.style.position = 'absolute';
+    element.style.left = '-9999px';
+    element.style.top = '-9999px';
+    document.body.appendChild(element);
+
+    // Use ReactDOM to render the component
+    const ReactDOM = require('react-dom');
+    await new Promise((resolve) => {
+      ReactDOM.render(
+        <DebitNotePDF 
+          ref={pdfRef}
+          debitNotes={filteredData}
+          startDate={type === 'range' ? startDate : null}
+          endDate={type === 'range' ? endDate : null}
+          month={type === 'month' ? month : null}
+          year={type === 'month' ? year : null}
+          title="Debit Notes Report"
+        />,
+        element,
+        resolve
+      );
+    });
+
+    // Wait for rendering to complete
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Capture the element as canvas
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff'
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    
+    // Create PDF
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+    const width = imgWidth * ratio;
+    const height = imgHeight * ratio;
+
+    pdf.addImage(imgData, 'PNG', 0, 0, width, height);
+
+    // Generate filename
+    let filename = 'debit_notes_report';
+    if (type === 'range') {
+      filename = `debit_notes_${startDate}_to_${endDate}.pdf`;
+    } else {
+      filename = `debit_notes_${month}_${year}.pdf`;
+    }
+
+    // Save PDF
+    pdf.save(filename);
+
+    // Cleanup
+    ReactDOM.unmountComponentAtNode(element);
+    document.body.removeChild(element);
+
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    alert('Error generating PDF. Please try again.');
+  }
+};
+
+
+const handleDownload = async () => {
+  try {
+    setIsDownloading(true);
+    
+    // Filter debit notes by selected month and year
+    const filteredDebitNotes = filterDebitNotesByMonthYear(creditNoteData, month, year);
+    
+    if (filteredDebitNotes.length === 0) {
+      alert(`No debit notes found for ${month} ${year}`);
+      setIsDownloading(false);
+      return;
+    }
+    
+    console.log(`Downloading ${filteredDebitNotes.length} debit notes for:`, month, year);
+    
+    // Generate PDF
+    await generatePDF(filteredDebitNotes, 'month');
+    
+  } catch (err) {
+    console.error('Download error:', err);
+    alert('Error downloading debit notes: ' + err.message);
+  } finally {
+    setIsDownloading(false);
+  }
+};
+
+const handleDownloadRange = async () => {
+  try {
+    if (!startDate || !endDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
+
+    if (new Date(startDate) > new Date(endDate)) {
+      alert('Start date cannot be after end date');
+      return;
+    }
+
+    setIsRangeDownloading(true);
+    
+    // Filter debit notes by date range
+    const filteredDebitNotes = filterDebitNotesByDateRange(creditNoteData, startDate, endDate);
+    
+    if (filteredDebitNotes.length === 0) {
+      alert(`No debit notes found from ${startDate} to ${endDate}`);
+      setIsRangeDownloading(false);
+      return;
+    }
+    
+    console.log(`Downloading ${filteredDebitNotes.length} debit notes for date range:`, startDate, 'to', endDate);
+    
+    // Generate PDF
+    await generatePDF(filteredDebitNotes, 'range');
+    
+  } catch (err) {
+    console.error('Download range error:', err);
+    alert('Error downloading debit notes: ' + err.message);
+  } finally {
+    setIsRangeDownloading(false);
+  }
+};
   // Action handlers
   const handleView = (item) => {
     console.log('View debit note:', item);
@@ -229,9 +424,6 @@ const response = await fetch(`${baseurl}/api/debit-notes-table?data_type=Purchas
     }
   ];
 
-  const handleRefreshData = () => {
-    fetchCreditNotes();
-  };
 
   return (
     <div className="debit-note-wrapper">
@@ -296,18 +488,45 @@ const response = await fetch(`${baseurl}/api/debit-notes-table?data_type=Purchas
                       <option>November</option>
                       <option>December</option>
                     </select>
-                    <select className="form-select" value={year} onChange={(e) => setYear(e.target.value)}>
-                      <option>2025</option>
-                      <option>2024</option>
-                      <option>2023</option>
-                    </select>
+                                     <Select
+  options={yearOptions}
+  value={{ value: year, label: year }}
+  onChange={(selected) => setYear(selected.value)}
+  maxMenuHeight={150}
+  styles={{
+    control: (provided) => ({
+      ...provided,
+      width: '100px',  // Adjust width as needed
+      minWidth: '100px',
+    }),
+    menu: (provided) => ({
+      ...provided,
+      width: '100px',  // Same width as control
+      minWidth: '100px',
+    }),
+    option: (provided) => ({
+      ...provided,
+      whiteSpace: 'nowrap',
+      padding: '8px 12px',
+    })
+  }}
+/>
+
                   </div>
                 </div>
 
                 <div className="col-md-auto">
-                  <button className="btn btn-success mt-4" onClick={handleRefreshData}>
-                    <i className="bi bi-download me-1"></i> Download
-                  </button>
+                 <button 
+  className="btn btn-success mt-4" 
+  onClick={handleDownload}
+  disabled={isDownloading}
+>
+  {isDownloading ? (
+    <div className="spinner-border spinner-border-sm" role="status"></div>
+  ) : (
+    <i className="bi bi-download me-1"></i>
+  )} Download
+</button>
                 </div>
 
                 <div className="col-md-auto">
@@ -329,9 +548,17 @@ const response = await fetch(`${baseurl}/api/debit-notes-table?data_type=Purchas
                 </div>
 
                 <div className="col-md-auto">
-                  <button className="btn btn-success mt-4" onClick={handleRefreshData}>
-                    <i className="bi bi-download me-1"></i> Download Range
-                  </button>
+                 <button 
+  className="btn btn-success mt-4" 
+  onClick={handleDownloadRange}
+  disabled={isRangeDownloading}
+>
+  {isRangeDownloading ? (
+    <div className="spinner-border spinner-border-sm" role="status"></div>
+  ) : (
+    <i className="bi bi-download me-1"></i>
+  )} Download Range
+</button>
                 </div>
 
                 <div className="col-md-auto">

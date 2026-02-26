@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
@@ -7,12 +7,17 @@ import { baseurl } from "../../../BaseURL/BaseURL";
 import { FaFilePdf, FaTrash, FaDownload } from 'react-icons/fa';
 import './PurchaseInvoice.css';
   import Select from "react-select";
+  import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import PurchaseInvoicePDF from './PurchaseInvoicePDF'; // You'll create this
 
 const PurchaseInvoiceTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('Purchase Invoice');
   const navigate = useNavigate();
-  
+  const [isDownloading, setIsDownloading] = useState(false);
+const [isRangeDownloading, setIsRangeDownloading] = useState(false);
+const pdfRef = useRef();
   const [purchaseInvoices, setPurchaseInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -453,6 +458,123 @@ const handleDeleteInvoice = async (invoice) => {
   }
 };
 
+
+// Filter invoices by date range
+const filterInvoicesByDateRange = (invoices, start, end) => {
+  if (!start || !end) return invoices;
+  
+  const startDate = new Date(start);
+  startDate.setHours(0, 0, 0, 0);
+  
+  const endDate = new Date(end);
+  endDate.setHours(23, 59, 59, 999);
+  
+  return invoices.filter(invoice => {
+    if (!invoice.created) return false;
+    const invoiceDate = new Date(invoice.created);
+    return invoiceDate >= startDate && invoiceDate <= endDate;
+  });
+};
+
+// Filter invoices by month and year
+const filterInvoicesByMonthYear = (invoices, month, year) => {
+  if (!month || !year) return invoices;
+  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthIndex = monthNames.indexOf(month);
+  
+  return invoices.filter(invoice => {
+    if (!invoice.created) return false;
+    const invoiceDate = new Date(invoice.created);
+    return invoiceDate.getMonth() === monthIndex && 
+           invoiceDate.getFullYear() === parseInt(year);
+  });
+};
+// Generate PDF from the PurchaseInvoicePDF component
+const generatePDF = async (filteredData, type = 'month') => {
+  if (!filteredData || filteredData.length === 0) {
+    alert('No purchase invoices found for the selected period');
+    return;
+  }
+
+  try {
+    // Create a temporary div to render the PDF component
+    const element = document.createElement('div');
+    element.style.position = 'absolute';
+    element.style.left = '-9999px';
+    element.style.top = '-9999px';
+    document.body.appendChild(element);
+
+    // Use ReactDOM to render the component
+    const ReactDOM = require('react-dom');
+    await new Promise((resolve) => {
+      ReactDOM.render(
+        <PurchaseInvoicePDF 
+          ref={pdfRef}
+          invoices={filteredData}
+          startDate={type === 'range' ? startDate : null}
+          endDate={type === 'range' ? endDate : null}
+          month={type === 'month' ? month : null}
+          year={type === 'month' ? year : null}
+          title="Purchase Invoices Report"
+        />,
+        element,
+        resolve
+      );
+    });
+
+    // Wait for rendering to complete
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Capture the element as canvas
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff'
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    
+    // Create PDF
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+    const width = imgWidth * ratio;
+    const height = imgHeight * ratio;
+
+    pdf.addImage(imgData, 'PNG', 0, 0, width, height);
+
+    // Generate filename
+    let filename = 'purchase_invoices_report';
+    if (type === 'range') {
+      filename = `purchase_invoices_${startDate}_to_${endDate}.pdf`;
+    } else {
+      filename = `purchase_invoices_${month}_${year}.pdf`;
+    }
+
+    // Save PDF
+    pdf.save(filename);
+
+    // Cleanup
+    ReactDOM.unmountComponentAtNode(element);
+    document.body.removeChild(element);
+
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    alert('Error generating PDF. Please try again.');
+  }
+};
   const purchaseInvoiceStats = calculatePurchaseStats();
 
   const tabs = [
@@ -571,19 +693,67 @@ const handleDeleteInvoice = async (invoice) => {
     console.log('View purchase invoice:', invoice);
     // navigate(`/purchase/purchase-invoice/${invoice.id}`);
   };
+const handleDownloadMonth = async () => {
+  try {
+    setIsDownloading(true);
+    
+    // Filter invoices by selected month and year
+    const filteredInvoices = filterInvoicesByMonthYear(purchaseInvoices, month, year);
+    
+    if (filteredInvoices.length === 0) {
+      alert(`No purchase invoices found for ${month} ${year}`);
+      setIsDownloading(false);
+      return;
+    }
+    
+    console.log(`Downloading ${filteredInvoices.length} purchase invoices for:`, month, year);
+    
+    // Generate PDF
+    await generatePDF(filteredInvoices, 'month');
+    
+  } catch (err) {
+    console.error('Download error:', err);
+    alert('Error downloading purchase invoices: ' + err.message);
+  } finally {
+    setIsDownloading(false);
+  }
+};
 
-  const handleDownloadMonth = () => {
-    // Handle month download
-    console.log('Download month data:', month, year);
-    // Implement download logic here
-  };
+const handleDownloadRange = async () => {
+  try {
+    if (!startDate || !endDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
 
-  const handleDownloadRange = () => {
-    // Handle date range download
-    console.log('Download range data:', startDate, endDate);
-    // Implement download logic here
-  };
+    if (new Date(startDate) > new Date(endDate)) {
+      alert('Start date cannot be after end date');
+      return;
+    }
 
+    setIsRangeDownloading(true);
+    
+    // Filter invoices by date range
+    const filteredInvoices = filterInvoicesByDateRange(purchaseInvoices, startDate, endDate);
+    
+    if (filteredInvoices.length === 0) {
+      alert(`No purchase invoices found from ${startDate} to ${endDate}`);
+      setIsRangeDownloading(false);
+      return;
+    }
+    
+    console.log(`Downloading ${filteredInvoices.length} purchase invoices for date range:`, startDate, 'to', endDate);
+    
+    // Generate PDF
+    await generatePDF(filteredInvoices, 'range');
+    
+  } catch (err) {
+    console.error('Download range error:', err);
+    alert('Error downloading purchase invoices: ' + err.message);
+  } finally {
+    setIsRangeDownloading(false);
+  }
+};
   // Loading state
   if (loading) {
     return (
@@ -725,9 +895,18 @@ const handleDeleteInvoice = async (invoice) => {
                   </div>
 
                   <div className="col-md-auto">
-                    <button className="btn btn-success mt-4" onClick={handleDownloadMonth}>
-                      <i className="bi bi-download me-1"></i> Download
-                    </button>
+                    <button 
+  className="btn btn-success mt-4" 
+  onClick={handleDownloadMonth}
+  disabled={isDownloading}
+>
+  {isDownloading ? (
+    <div className="spinner-border spinner-border-sm" role="status"></div>
+  ) : (
+    <i className="bi bi-download me-1"></i>
+  )} Download
+</button>
+
                   </div>
 
                   <div className="col-md-auto">
@@ -749,9 +928,17 @@ const handleDeleteInvoice = async (invoice) => {
                   </div>
 
                   <div className="col-md-auto">
-                    <button className="btn btn-success mt-4" onClick={handleDownloadRange}>
-                      <i className="bi bi-download me-1"></i> Download Range
-                    </button>
+                  <button 
+  className="btn btn-success mt-4" 
+  onClick={handleDownloadRange}
+  disabled={isRangeDownloading}
+>
+  {isRangeDownloading ? (
+    <div className="spinner-border spinner-border-sm" role="status"></div>
+  ) : (
+    <i className="bi bi-download me-1"></i>
+  )} Download Range
+</button>
                   </div>
 
                   <div className="col-md-auto">

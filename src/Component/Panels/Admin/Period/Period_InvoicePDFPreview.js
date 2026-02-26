@@ -1,7 +1,7 @@
   import React, { useState, useEffect } from 'react';
   import { Container, Row, Col, Button, Alert, Modal, Card } from 'react-bootstrap';
   import './Period_InvoicePDFPreview.css';
-  import { FaFilePdf, FaEdit, FaArrowLeft, FaSave, FaQrcode } from "react-icons/fa";
+  import { FaFilePdf, FaEdit, FaArrowLeft, FaSave, FaQrcode ,FaPrint} from "react-icons/fa";
   import { useNavigate, useParams, useLocation } from "react-router-dom";
   import { baseurl } from "../../../BaseURL/BaseURL";
   import InvoicePreview_preview from './InvoicePreview_preview';
@@ -563,6 +563,82 @@ const handleOrderModeChange = (switchData) => {
       };
     };
 
+
+       const handlePrint = async () => {
+  try {
+    setDownloading(true);
+    setError(null);
+    
+    if (!invoiceData) {
+      throw new Error('No invoice data available');
+    }
+
+    // Dynamically import PDF libraries
+    let pdf;
+    let InvoicceprintOrder;
+    
+    try {
+      const reactPdf = await import('@react-pdf/renderer');
+      pdf = reactPdf.pdf;
+      
+      const pdfModule = await import('./InvoicceprintOrder');
+      InvoicceprintOrder = pdfModule.default;
+    } catch (importError) {
+      console.error('Error importing PDF modules:', importError);
+      throw new Error('Failed to load PDF generation libraries');
+    }
+
+    // Calculate GST breakdown
+    const gstBreakdown = calculateGSTBreakdown();
+    const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+
+    // Create PDF document
+    const pdfDoc = (
+      <InvoicceprintOrder 
+        invoiceData={invoiceData}
+        invoiceNumber={invoiceData.invoiceNumber}
+        gstBreakdown={gstBreakdown}
+        isSameState={isSameState}
+      />
+    );
+
+    // Generate PDF blob
+    const blob = await pdf(pdfDoc).toBlob();
+    
+    // Create URL for the blob
+    const pdfUrl = URL.createObjectURL(blob);
+    
+    // Open in new tab - this will show only the PDF, no HTML
+    const printWindow = window.open(pdfUrl, '_blank');
+    
+    if (printWindow) {
+      console.log('PDF opened in new tab for printing');
+    } else {
+      // Fallback if popup blocked
+      alert('Popup blocked. Please allow popups or use download option.');
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Invoice_${invoiceData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+    }
+
+    // Clean up URL after delay
+    setTimeout(() => {
+      URL.revokeObjectURL(pdfUrl);
+    }, 1000);
+
+  } catch (error) {
+    console.error('Error generating PDF for print:', error);
+    setError('Failed to generate PDF for printing: ' + error.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setDownloading(false);
+  }
+};
     const handleEdit = () => {
       setIsEditing(true);
       setEditableNote(invoiceData?.note || '');
@@ -1624,6 +1700,9 @@ const price = netPrice;
     };
     
     const breakdown = calculateBreakdown();
+
+ 
+
     
     return (
       <Card className="shadow-sm border-0 mb-3">
@@ -1716,6 +1795,8 @@ const price = netPrice;
             <div className="d-flex justify-content-between align-items-center">
               <h4 className="mb-0">Invoice Preview - {displayInvoiceNumber}</h4>
               <div>
+
+
                 {fromPeriod && (
                   <Button 
                     variant="primary" 
@@ -1748,6 +1829,8 @@ const price = netPrice;
                         </>
                       )}
                     </Button>
+
+
                     <Button 
                       variant="secondary" 
                       onClick={handleCancelEdit}
@@ -1764,6 +1847,25 @@ const price = netPrice;
                     <FaEdit className="me-1" /> Edit Note & Descriptions
                   </Button>
                 )}
+                                  <Button 
+  variant="success" 
+  onClick={handlePrint} 
+  className="me-2"
+  disabled={downloading || !invoiceData}
+>
+  {downloading ? (
+    <>
+      <div className="spinner-border spinner-border-sm me-1" role="status">
+        <span className="visually-hidden">Loading...</span>
+      </div>
+      Preparing Print...
+    </>
+  ) : (
+    <>
+      <FaPrint className="me-1" /> Prints
+    </>
+  )}
+</Button>
 
                 <Button variant="secondary" onClick={() => window.history.back()}>
                   <FaArrowLeft className="me-1" /> Go Back

@@ -608,9 +608,81 @@ const PaymentStatus = () => {
   );
 };
 
-  // const handlePrint = () => {
-  //   window.print();
-  // };
+ const handlePrint = async () => {
+  try {
+    setDownloading(true);
+    setError(null);
+    
+    if (!currentData) {
+      throw new Error('No invoice data available');
+    }
+
+    // Dynamically import PDF libraries
+    let pdf;
+    let SalesPdfDocument;
+    
+    try {
+      const reactPdf = await import('@react-pdf/renderer');
+      pdf = reactPdf.pdf;
+      
+      const pdfModule = await import('./SalesPdfDocument');
+      SalesPdfDocument = pdfModule.default;
+    } catch (importError) {
+      console.error('Error importing PDF modules:', importError);
+      throw new Error('Failed to load PDF generation libraries');
+    }
+
+    // Calculate GST breakdown
+    const gstBreakdown = calculateGSTBreakdown();
+    const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+
+    // Create PDF document
+    const pdfDoc = (
+      <SalesPdfDocument 
+        invoiceData={currentData}
+        invoiceNumber={currentData.invoiceNumber}
+        gstBreakdown={gstBreakdown}
+        isSameState={isSameState}
+      />
+    );
+
+    // Generate PDF blob
+    const blob = await pdf(pdfDoc).toBlob();
+    
+    // Create URL for the blob
+    const pdfUrl = URL.createObjectURL(blob);
+    
+    // Open in new tab - this will show only the PDF, no HTML
+    const printWindow = window.open(pdfUrl, '_blank');
+    
+    if (printWindow) {
+      console.log('PDF opened in new tab for printing');
+    } else {
+      // Fallback if popup blocked
+      alert('Popup blocked. Please allow popups or use download option.');
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Invoice_${currentData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+    }
+
+    // Clean up URL after delay
+    setTimeout(() => {
+      URL.revokeObjectURL(pdfUrl);
+    }, 1000);
+
+  } catch (error) {
+    console.error('Error generating PDF for print:', error);
+    setError('Failed to generate PDF for printing: ' + error.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setDownloading(false);
+  }
+};
 
   const handleDownloadPDF = async () => {
     try {
@@ -1227,9 +1299,25 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
     <FaEdit className="me-1" /> Edit Invoice
   </Button>
 )}
-                  {/* <Button variant="success" onClick={handlePrint} className="me-2">
-                    <FaPrint className="me-1" /> Print
-                  </Button> */}
+                  <Button 
+                                    variant="success" 
+                                    onClick={handlePrint} 
+                                    className="me-2"
+                                    disabled={downloading || !currentData}
+                                  >
+                                    {downloading ? (
+                                      <>
+                                        <div className="spinner-border spinner-border-sm me-1" role="status">
+                                          <span className="visually-hidden">Loading...</span>
+                                        </div>
+                                        Preparing Print...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <FaPrint className="me-1" /> Print
+                                      </>
+                                    )}
+                                  </Button>
                   <Button 
                     variant="danger" 
                     onClick={handleDownloadPDF} 
@@ -1876,7 +1964,7 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                         </p>
                       )}
                       
-                      <h6 className="text-primary mt-3">Transportation Details:</h6>
+                      {/* <h6 className="text-primary mt-3">Transportation Details:</h6>
                       {isEditMode ? (
                         <Form.Control 
                           as="textarea"
@@ -1889,7 +1977,7 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                         <p className="bg-light p-2 rounded">
                           {currentData.transportDetails}
                         </p>
-                      )}
+                      )} */}
                     </div>
                   </Col>
                   <Col md={5}>

@@ -966,20 +966,25 @@ useEffect(() => {
       if (supplier.staffid) {
         setSelectedStaffId(supplier.staffid);
       }
-    setInvoiceData(prev => ({
-  ...prev,
-  supplierInfo: {
-  name: supplier.gstin ? supplier.display_name : supplier.name,
-  businessName: supplier.business_name, 
- business_name: supplier.business_name, 
-    account_name: supplier.account_name,   
-    state: supplier.billing_state,
-    staffid: supplier.staffid,
-    gstin: supplier.gstin || '', 
-     accountId: supplier.id,
-    assigned_staff: supplier.assigned_staff,
-    staff_incentive: supplier.staff_incentive || 0
-  },
+
+      // Get retailer discount
+      const retailerDiscount = parseFloat(supplier.discount) || 0;
+      
+      setInvoiceData(prev => ({
+        ...prev,
+        supplierInfo: {
+          name: supplier.gstin ? supplier.display_name : supplier.name,
+          businessName: supplier.business_name, 
+          business_name: supplier.business_name, 
+          account_name: supplier.account_name,   
+          state: supplier.billing_state,
+          staffid: supplier.staffid,
+          gstin: supplier.gstin || '', 
+          accountId: supplier.id,
+          assigned_staff: supplier.assigned_staff,
+          staff_incentive: supplier.staff_incentive || 0,
+          discount: retailerDiscount // Store discount in supplierInfo
+        },
         billingAddress: {
           addressLine1: supplier.billing_address_line1,
           addressLine2: supplier.billing_address_line2 || "",
@@ -995,6 +1000,12 @@ useEffect(() => {
           state: supplier.shipping_state
         }
       }));
+
+      // THIS IS THE KEY FIX: Set the discount in itemForm
+      setItemForm(prev => ({
+        ...prev,
+        discount: retailerDiscount
+      }));
     }
   }}
 >
@@ -1002,11 +1013,11 @@ useEffect(() => {
   {accounts
     .filter(acc => acc.role === "retailer")
     .map(acc => (
-     <option key={acc.id} value={acc.business_name}>
-  {acc.gstin?.trim()
-    ? acc.display_name || acc.name
-    : acc.name || acc.display_name}
-</option>
+      <option key={acc.id} value={acc.business_name}>
+        {acc.gstin?.trim()
+          ? acc.display_name || acc.name
+          : acc.name || acc.display_name}
+      </option>
     ))}
 </Form.Select>
                         
@@ -1088,86 +1099,87 @@ useEffect(() => {
                         + New Item
                       </button>
                     </div>
-                    <Form.Select
-                      name="product"
-                      value={itemForm.product}
-                      onChange={async (e) => {
-                        const selectedName = e.target.value;
-                        const selectedProduct = products.find(
-                          (p) => p.goods_name === selectedName
-                        );
+                 <Form.Select
+  name="product"
+  value={itemForm.product}
+  onChange={async (e) => {
+    const selectedName = e.target.value;
+    
+    const selectedProduct = products.find(
+      (p) => p.goods_name === selectedName && p.product_type === "KACHA"
+    );
 
-                        if (selectedProduct) {
-                          setItemForm((prev) => ({
-                            ...prev,
-                            product: selectedProduct.goods_name,
-                            product_id: selectedProduct.id,
-                            price: selectedProduct.net_price,
-                            description: selectedProduct.description || "",
-                            batch: "",
-                            batch_id: ""
-                          }));
+    if (selectedProduct) {
+      setItemForm((prev) => ({
+        ...prev,
+        product: selectedProduct.goods_name,
+        product_id: selectedProduct.id,
+        price: selectedProduct.net_price,
+        description: selectedProduct.description || "",
+        batch: "",
+        batch_id: ""
+      }));
 
-                          try {
-                            const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
-                            const batchData = await res.json();
-                            setBatches(batchData);
+      try {
+        const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
+        const batchData = await res.json();
+        setBatches(batchData);
 
-                            if (selectedProduct.maintain_batch === 0 && batchData.length > 0) {
-                              const defaultBatch = batchData[0];
-                              setSelectedBatch(defaultBatch.batch_number);
-                              setSelectedBatchDetails(defaultBatch);
-                              setItemForm(prev => ({
-                                ...prev,
-                                batch: defaultBatch.batch_number,
-                                batch_id: defaultBatch.batch_number,
-                                price: defaultBatch.selling_price
-                              }));
-                            } else {
-                              // If maintain_batch > 0, let user choose from dropdown
-                              setSelectedBatch("");
-                              setSelectedBatchDetails(null);
-                            }
+        if (selectedProduct.maintain_batch === 0 && batchData.length > 0) {
+          const defaultBatch = batchData[0];
+          setSelectedBatch(defaultBatch.batch_number);
+          setSelectedBatchDetails(defaultBatch);
+          setItemForm(prev => ({
+            ...prev,
+            batch: defaultBatch.batch_number,
+            batch_id: defaultBatch.batch_number,
+            price: defaultBatch.selling_price,
+          }));
+        } else {
+          // If maintain_batch > 0, let user choose from dropdown
+          setSelectedBatch("");
+          setSelectedBatchDetails(null);
+        }
 
-                          } catch (err) {
-                            console.error("Failed to fetch batches:", err);
-                            setBatches([]);
-                            setSelectedBatch("");
-                            setSelectedBatchDetails(null);
-                          }
-                        } else {
-                          // Reset if no product selected
-                          setItemForm(prev => ({
-                            ...prev,
-                            product: "",
-                            product_id: "",
-                            description: "",
-                            price: 0,
-                            batch: "",
-                            batch_id: ""
-                          }));
-                          setBatches([]);
-                          setSelectedBatch("");
-                          setSelectedBatchDetails(null);
-                        }
-                      }}
-                      className="border-primary"
-                    >
-                      <option value="">Select Product</option>
-                      {products
-                        .filter(
-                          (p) =>
-                            (p.group_by === "Salescatalog" ||
-                            p.can_be_sold === 1 ||
-                            p.can_be_sold === true) &&
-                            p.product_type === "KACHA"
-                        )
-                        .map((p) => (
-                          <option key={p.id} value={p.goods_name}>
-                            {p.goods_name}
-                          </option>
-                        ))}
-                    </Form.Select>
+      } catch (err) {
+        console.error("Failed to fetch batches:", err);
+        setBatches([]);
+        setSelectedBatch("");
+        setSelectedBatchDetails(null);
+      }
+    } else {
+      // Reset if no product selected
+      setItemForm(prev => ({
+        ...prev,
+        product: "",
+        product_id: "",
+        description: "",
+        price: 0,
+        batch: "",
+        batch_id: ""
+      }));
+      setBatches([]);
+      setSelectedBatch("");
+      setSelectedBatchDetails(null);
+    }
+  }}
+  className="border-primary"
+>
+  <option value="">Select Product</option>
+  {products
+    .filter(
+      (p) =>
+        (p.group_by === "Salescatalog" ||
+        p.can_be_sold === 1 ||
+        p.can_be_sold === true) &&
+        p.product_type === "KACHA"
+    )
+    .map((p) => (
+      <option key={p.id} value={p.goods_name}>
+        {p.goods_name}
+      </option>
+    ))}
+</Form.Select>
 
                     {/* Batch Dropdown */}
                     {batches.length > 0 && itemForm.maintain_batch !== 0 && (
