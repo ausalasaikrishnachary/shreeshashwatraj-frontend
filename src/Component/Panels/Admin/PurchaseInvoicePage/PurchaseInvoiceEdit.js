@@ -1244,7 +1244,7 @@ const cancelEdit = () => {
   onChange={async (e) => {
     const selectedName = e.target.value;
     const selectedProduct = products.find(
-      (p) => p.goods_name === selectedName
+      (p) => p.goods_name === selectedName && p.product_type === "PAKKA"
     );
 
     console.log('🔍 Selected Product:', selectedProduct); // Debug log

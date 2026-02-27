@@ -487,12 +487,7 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
               </Text>
             </View>
             
-            <Text style={[styles.sectionTitle, { marginTop: 10 }]}>Transportation Details:</Text>
-            <View style={styles.notesBox}>
-              <Text style={[styles.tableCell, styles.tableCellLeft]}>
-                {getSafeData(currentData, 'transportDetails', 'Standard delivery')}
-              </Text>
-            </View>
+          
           </View>
           
           {/* Amount Summary */}

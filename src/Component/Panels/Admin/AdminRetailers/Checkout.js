@@ -545,7 +545,7 @@ function Checkout() {
         estimated_delivery_date: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
         order_placed_by: actualStaffId,
         order_mode: orderMode,
-        approval_status: "Pending",
+        approval_status: "Approved",
         ordered_by: staffName,
         order_status: "Pending",
         staffid: actualStaffId,

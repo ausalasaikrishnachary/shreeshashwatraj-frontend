@@ -1059,11 +1059,11 @@ const handleSubmit = async (e) => {
   onChange={async (e) => {
     const selectedName = e.target.value;
     const selectedProduct = products.find(
-      (p) => p.goods_name === selectedName
+           (p) => p.goods_name === selectedName && p.product_type === "PAKKA"
+
     );
 
     if (selectedProduct) {
-      // Get discount from selected supplier account
       const supplierAccount = accounts.find(acc => acc.id === selectedSupplierId);
       const supplierDiscount = parseFloat(supplierAccount?.discount) || 0;
       
@@ -1074,7 +1074,7 @@ const handleSubmit = async (e) => {
         price: selectedProduct.net_price || 0,
         gst: parseFloat(selectedProduct.gst_rate?.replace("%", "") || 0),
         description: selectedProduct.description || "",
-        discount: supplierDiscount, // Apply supplier discount
+        discount: supplierDiscount, 
         batch: "",
         batch_id: ""
       }));
@@ -1093,7 +1093,7 @@ const handleSubmit = async (e) => {
             batch: defaultBatch.batch_number,
             batch_id: defaultBatch.batch_number,
             price: defaultBatch.selling_price,
-            discount: supplierDiscount // Keep supplier discount when batch is selected
+            discount: supplierDiscount 
           }));
         } else {
           setSelectedBatch("");
@@ -1126,13 +1126,22 @@ const handleSubmit = async (e) => {
   className="border-primary"
 >
   <option value="">Select Product</option>
-  {products
-    .filter((p) => p.group_by === "Purchaseditems" && p.product_type === "PAKKA")
-    .map((p) => (
-      <option key={p.id} value={p.goods_name}>
-        {p.goods_name}
-      </option>
-    ))}
+
+{products
+  .filter((p) => {
+    // Log each product's filter status
+    const groupMatch = p.group_by === "Purchaseditems" || p.can_be_sold === true;
+    const typeMatch = p.product_type === "PAKKA";
+    
+    console.log(`Product: ${p.goods_name}, Type: ${p.product_type}, Group: ${p.group_by}, Passes filter: ${groupMatch && typeMatch}`);
+    
+    return groupMatch && typeMatch;
+  })
+  .map((p) => (
+    <option key={p.id} value={p.goods_name}>
+      {p.goods_name} 
+    </option>
+  ))}
 </Form.Select>
 
 {/* Batch Dropdown */}

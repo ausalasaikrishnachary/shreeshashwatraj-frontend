@@ -137,125 +137,214 @@ const [selectedOrdersForDispatch, setSelectedOrdersForDispatch] = useState([]);
     }
   };
 
-  const handleDownloadSpecificPDF = async (orderNumber, pdfData) => {
-    try {
-      const binaryString = window.atob(pdfData.data);
-      const bytes = new Uint8Array(binaryString.length);
-
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-
-      const pdfBlob = new Blob([bytes], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = pdfData.fileName || `Invoice_${orderNumber}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      console.log(`Downloaded PDF: ${pdfData.fileName}`);
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      alert('Error downloading PDF: ' + error.message);
-    }
-  };
-
-  const handleDownloadPDF = async (invoice) => {
-    const orderNumber = invoice.order_number || invoice.originalData?.order_number;
-
-    if (!orderNumber) {
-      alert('Order number not found for this invoice');
+const handleDownloadSpecificPDF = async (orderNumber, pdfData) => {
+  try {
+    console.log('Generating new PDF for order:', orderNumber);
+    
+    const pdfModule = await import('./InvoicceprintOrder');
+    const InvoicceprintOrder = pdfModule.default;
+    
+    const { pdf } = await import('@react-pdf/renderer');
+    
+    const order = orders.find(o => o.order_number === orderNumber);
+    
+    if (!order) {
+      alert('Order not found');
       return;
     }
+    
+    const invoiceNumber = `INV${order.order_number.replace('ORD', '')}`;
+    
+    const accountDetails = order.account_details || {};
+    
+    const invoiceData = {
+      orderNumber: order.order_number,
+      invoiceNumber: invoiceNumber,
+      invoiceDate: new Date().toISOString().split('T')[0],
+      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      
+      companyInfo: {
+        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+        address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+        email: "spmathur56@gmail.com",
+        phone: "9801049700",
+        gstin: "10AAOCS1541B1ZZ",
+        state: "Bihar"
+      },
+      
+      supplierInfo: {
+        name: accountDetails?.name || order.customer_name,
+        businessName: accountDetails?.business_name || order.customer_name,
+        gstin: accountDetails?.gstin || order.gstin || "N/A",
+        state: accountDetails?.billing_state || order.billing_state || "Karnataka",
+        email: accountDetails?.email || "customer@example.com"
+      },
+      
+      shippingAddress: accountDetails ? {
+        addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
+        addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
+        city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
+        pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
+        state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
+        country: accountDetails.shipping_country || "India"
+      } : {
+        addressLine1: order.shipping_address || order.billing_address || "Address not specified",
+        city: order.shipping_city || order.billing_city || "City not specified",
+        pincode: order.shipping_pincode || order.billing_pincode || "000000",
+        state: order.shipping_state || order.billing_state || "Karnataka"
+      },
+      
+      items: order.items.map(item => ({
+        product: item.item_name,
+        description: item.item_name,
+        quantity: item.flash_offer === 1 ? item.buy_quantity || item.quantity : item.quantity,
+        flash_offer: item.flash_offer || 0,
+        buy_quantity: item.buy_quantity || 0,
+        get_quantity: item.get_quantity || 0,
+        price: item.edited_sale_price || item.sale_price,
+        net_price: item.net_price || item.edited_sale_price || item.sale_price,
+        discount_amount: item.discount_amount || 0,
+        credit_charge: item.credit_charge || 0,
+        taxable_amount: item.taxable_amount || 0,
+        gst: item.tax_percentage || 0,
+        tax_amount: item.tax_amount || 0,
+        cgst_amount: item.cgst_amount || 0,
+        sgst_amount: item.sgst_amount || 0
+      })),
+      
+      order_mode: order.order_mode || "PAKKA",
+      assigned_staff: order.assigned_staff || "N/A",
+      note: "Thank you for your business!"
+    };
+    
+    const pdfDoc = <InvoicceprintOrder 
+      invoiceData={invoiceData} 
+      invoiceNumber={invoiceNumber}
+      gstBreakdown={{}}
+      isSameState={true}
+    />;
+    
+    const blob = await pdf(pdfDoc).toBlob();
+    
+    const fileName = `Invoice_${orderNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+    
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.target = '_blank';
+    
+    document.body.appendChild(link);
+    link.click();
+    
+    setTimeout(() => {
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+    
+    console.log(`Generated and downloaded PDF for order ${orderNumber} as ${fileName}`);
+    
+  } catch (error) {
+    console.error('Error downloading PDF:', error);
+    alert('Error downloading PDF: ' + error.message);
+  }
+};
 
-    try {
-      setDownloading(prev => ({ ...prev, [orderNumber]: true }));
 
-      const downloadResponse = await fetch(`${baseurl}/transactions/download-pdf?order_number=${encodeURIComponent(orderNumber)}`);
 
-      if (downloadResponse.ok) {
-        const pdfBlob = await downloadResponse.blob();
-        const url = window.URL.createObjectURL(pdfBlob);
-        const link = document.createElement('a');
-        link.href = url;
+  // const handleDownloadPDF = async (invoice) => {
+  //   const orderNumber = invoice.order_number || invoice.originalData?.order_number;
 
-        const contentDisposition = downloadResponse.headers.get('content-disposition');
-        let filename = `Invoice_${invoice.number || orderNumber}.pdf`;
+  //   if (!orderNumber) {
+  //     alert('Order number not found for this invoice');
+  //     return;
+  //   }
 
-        if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-          if (filenameMatch) {
-            filename = filenameMatch[1];
-          }
-        }
+  //   try {
+  //     setDownloading(prev => ({ ...prev, [orderNumber]: true }));
 
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+  //     const downloadResponse = await fetch(`${baseurl}/transactions/download-pdf?order_number=${encodeURIComponent(orderNumber)}`);
 
-        console.log('PDF downloaded successfully');
+  //     if (downloadResponse.ok) {
+  //       const pdfBlob = await downloadResponse.blob();
+  //       const url = window.URL.createObjectURL(pdfBlob);
+  //       const link = document.createElement('a');
+  //       link.href = url;
 
-      } else if (downloadResponse.status === 404) {
-        console.log('PDF not found, generating new PDF...');
+  //       const contentDisposition = downloadResponse.headers.get('content-disposition');
+  //       let filename = `Invoice_${invoice.number || orderNumber}.pdf`;
 
-        const generateResponse = await fetch(`${baseurl}/transactions/generate-pdf`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ order_number: orderNumber })
-        });
+  //       if (contentDisposition) {
+  //         const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+  //         if (filenameMatch) {
+  //           filename = filenameMatch[1];
+  //         }
+  //       }
 
-        if (generateResponse.ok) {
-          const result = await generateResponse.json();
-          console.log('PDF generated successfully:', result);
+  //       link.download = filename;
+  //       document.body.appendChild(link);
+  //       link.click();
+  //       document.body.removeChild(link);
+  //       window.URL.revokeObjectURL(url);
 
-          const retryDownload = await fetch(`${baseurl}/transactions/download-pdf?order_number=${encodeURIComponent(orderNumber)}`);
+  //       console.log('PDF downloaded successfully');
 
-          if (retryDownload.ok) {
-            const pdfBlob = await retryDownload.blob();
-            const url = window.URL.createObjectURL(pdfBlob);
-            const link = document.createElement('a');
-            link.href = url;
+  //     } else if (downloadResponse.status === 404) {
+  //       console.log('PDF not found, generating new PDF...');
 
-            const retryContentDisposition = retryDownload.headers.get('content-disposition');
-            let retryFilename = `Invoice_${invoice.number || orderNumber}.pdf`;
+  //       const generateResponse = await fetch(`${baseurl}/transactions/generate-pdf`, {
+  //         method: 'POST',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //         },
+  //         body: JSON.stringify({ order_number: orderNumber })
+  //       });
 
-            if (retryContentDisposition) {
-              const filenameMatch = retryContentDisposition.match(/filename="(.+)"/);
-              if (filenameMatch) {
-                retryFilename = filenameMatch[1];
-              }
-            }
+  //       if (generateResponse.ok) {
+  //         const result = await generateResponse.json();
+  //         console.log('PDF generated successfully:', result);
 
-            link.download = retryFilename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
+  //         const retryDownload = await fetch(`${baseurl}/transactions/download-pdf?order_number=${encodeURIComponent(orderNumber)}`);
 
-            console.log('PDF downloaded after generation');
-          } else {
-            throw new Error('Failed to download PDF after generation');
-          }
-        } else {
-          throw new Error('Failed to generate PDF');
-        }
-      } else {
-        throw new Error(`Failed to download PDF: ${downloadResponse.status}`);
-      }
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      alert('Error downloading PDF: ' + error.message);
-    } finally {
-      setDownloading(prev => ({ ...prev, [orderNumber]: false }));
-    }
-  };
+  //         if (retryDownload.ok) {
+  //           const pdfBlob = await retryDownload.blob();
+  //           const url = window.URL.createObjectURL(pdfBlob);
+  //           const link = document.createElement('a');
+  //           link.href = url;
+
+  //           const retryContentDisposition = retryDownload.headers.get('content-disposition');
+  //           let retryFilename = `Invoice_${invoice.number || orderNumber}.pdf`;
+
+  //           if (retryContentDisposition) {
+  //             const filenameMatch = retryContentDisposition.match(/filename="(.+)"/);
+  //             if (filenameMatch) {
+  //               retryFilename = filenameMatch[1];
+  //             }
+  //           }
+
+  //           link.download = retryFilename;
+  //           document.body.appendChild(link);
+  //           link.click();
+  //           document.body.removeChild(link);
+  //           window.URL.revokeObjectURL(url);
+
+  //           console.log('PDF downloaded after generation');
+  //         } else {
+  //           throw new Error('Failed to download PDF after generation');
+  //         }
+  //       } else {
+  //         throw new Error('Failed to generate PDF');
+  //       }
+  //     } else {
+  //       throw new Error(`Failed to download PDF: ${downloadResponse.status}`);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error downloading PDF:', error);
+  //     alert('Error downloading PDF: ' + error.message);
+  //   } finally {
+  //     setDownloading(prev => ({ ...prev, [orderNumber]: false }));
+  //   }
+  // };
 
 const fetchOrders = async () => {
   try {
@@ -1111,7 +1200,6 @@ const handleGenerateDispatchReport = async () => {
           has_invoice: item.invoice_status === 1
         });
         
-        // Add to totals (now itemWeight is already quantity-multiplied)
         totalWeightAllOrders += itemWeight; // This will now be correct!
         totalAmountAllOrders += amount;
       });
@@ -1367,10 +1455,9 @@ const filteredOrders = orders.filter(order => {
 
 <div className="p-table-container">
   <table className="p-customers-table">
-  <thead>
+<thead>
   <tr>
     <th style={{ width: '50px' }}>
-      {/* ALWAYS SHOW CHECKBOX (not conditional) */}
       <input
         type="checkbox"
         checked={filteredOrders.length > 0 && selectedOrdersForDispatch.length === filteredOrders.length}
@@ -1392,7 +1479,8 @@ const filteredOrders = orders.filter(order => {
     <th>Order Status</th>
     <th>Created At</th>
     <th>Action</th>
-    <th>Download Invoice</th>
+    {/* ONLY SHOW DOWNLOAD INVOICE COLUMN IN COMPLETED TAB */}
+    {activeTab === "completed" && <th>Download Invoice</th>}
   </tr>
 </thead>
    <tbody>
@@ -1431,91 +1519,94 @@ const filteredOrders = orders.filter(order => {
               <td>
                 {new Date(order.created_at).toLocaleDateString('en-GB')}
               </td>
-              <td>
-                <div className="p-action-buttons">
-                  <button
-                    className="p-eye-btn"
-                    onClick={() => openOrderModal(order.id)}
-                    title="View Order Details"
-                  >
-                    👁️
-                  </button>
-                </div>
-              </td>
-              <td>
-                  <div className="p-invoice-dropdown">
-                                         <div className="p-dropdown-toggle">
-                                           <button
-                                             className={`p-btn p-btn-pdf ${orderInvoices[order.order_number]?.length > 0 ? 'p-btn-success' : 'p-btn-warning'}`}
-                                             disabled={loadingInvoices[order.order_number]}
-                                             onClick={(e) => {
-                                               e.stopPropagation();
-                                               if (!orderInvoices[order.order_number]) {
-                                                 fetchInvoicesForOrder(order.order_number);
-                                               }
-                                               setOpenDropdown(openDropdown === order.order_number ? null : order.order_number);
-                                             }}
-                                             title={orderInvoices[order.order_number]?.length > 0
-                                               ? `Click to view ${orderInvoices[order.order_number].length} invoice(s)`
-                                               : "Generate PDF"}
-                                           >
-                                             {loadingInvoices[order.order_number] ? (
-                                               <span className="p-download-spinner">Loading...</span>
-                                             ) : orderInvoices[order.order_number]?.length > 0 ? (
-                                               <>
-                                                 <FaDownload className="p-icon" />
-                                                 {orderInvoices[order.order_number].length} Invoice(s)
-                                                 <span className="p-dropdown-arrow">▼</span>
-                                               </>
-                                             ) : (
-                                               <>
-                                                 <FaFilePdf className="p-icon" />
-                                                 Generate PDF
-                                               </>
-                                             )}
-                                           </button>
-             
-                                           {openDropdown === order.order_number && orderInvoices[order.order_number]?.length > 0 && (
-                                             <div className="p-dropdown-menu">
-                                               <div className="p-dropdown-header">
-                                                 <span>Available Invoices</span>
-                                                 <button
-                                                   className="p-close-dropdown"
-                                                   onClick={(e) => {
-                                                     e.stopPropagation();
-                                                     setOpenDropdown(null);
-                                                   }}
-                                                   title="Close"
-                                                 >
-                                                   ×
-                                                 </button>
-                                               </div>
-                                               {orderInvoices[order.order_number].map((pdf, index) => (
-                                                 <div
-                                                   key={index}
-                                                   className="p-dropdown-item"
-                                                   onClick={() => {
-                                                     handleDownloadSpecificPDF(order.order_number, pdf);
-                                                     setOpenDropdown(null);
-                                                   }}
-                                                 >
-                                                   <FaFilePdf className="p-icon-sm" />
-                                                   <span className="p-invoice-filename">
-                                                     {pdf.fileName || `Invoice_${index + 1}.pdf`}
-                                                   </span>
-                                                   <FaDownload className="p-icon-sm p-download-icon" />
-                                                 </div>
-                                               ))}
-                                             </div>
-                                           )}
-                                         </div>
-                                         </div>
-              </td>
+           <td>
+  <div className="p-action-buttons">
+    <button
+      className="p-eye-btn"
+      onClick={() => openOrderModal(order.id)}
+      title="View Order Details"
+    >
+      👁️
+    </button>
+  </div>
+</td>
+{/* ONLY SHOW DOWNLOAD INVOICE BUTTON IN COMPLETED TAB */}
+{activeTab === "completed" && (
+  <td>
+    <div className="p-invoice-dropdown">
+      <div className="p-dropdown-toggle">
+        <button
+          className={`p-btn p-btn-pdf ${orderInvoices[order.order_number]?.length > 0 ? 'p-btn-success' : 'p-btn-warning'}`}
+          disabled={loadingInvoices[order.order_number]}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!orderInvoices[order.order_number]) {
+              fetchInvoicesForOrder(order.order_number);
+            }
+            setOpenDropdown(openDropdown === order.order_number ? null : order.order_number);
+          }}
+          title={orderInvoices[order.order_number]?.length > 0
+            ? `Click to view ${orderInvoices[order.order_number].length} invoice(s)`
+            : "Generate PDF"}
+        >
+          {loadingInvoices[order.order_number] ? (
+            <span className="p-download-spinner">Loading...</span>
+          ) : orderInvoices[order.order_number]?.length > 0 ? (
+            <>
+              <FaDownload className="p-icon" />
+              {orderInvoices[order.order_number].length} Invoice(s)
+              <span className="p-dropdown-arrow">▼</span>
+            </>
+          ) : (
+            <>
+              <FaFilePdf className="p-icon" />
+              Generate PDF
+            </>
+          )}
+        </button>
+
+        {openDropdown === order.order_number && orderInvoices[order.order_number]?.length > 0 && (
+          <div className="p-dropdown-menu">
+            <div className="p-dropdown-header">
+              <span>Available Invoices</span>
+              <button
+                className="p-close-dropdown"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenDropdown(null);
+                }}
+                title="Close"
+              >
+                ×
+              </button>
+            </div>
+            {orderInvoices[order.order_number].map((pdf, index) => (
+              <div
+                key={index}
+                className="p-dropdown-item"
+                onClick={() => {
+                  handleDownloadSpecificPDF(order.order_number, pdf);
+                  setOpenDropdown(null);
+                }}
+              >
+                <FaFilePdf className="p-icon-sm" />
+                <span className="p-invoice-filename">
+                  {pdf.fileName || `Invoice_${index + 1}.pdf`}
+                </span>
+                <FaDownload className="p-icon-sm p-download-icon" />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  </td>
+)}
             </tr>
 
-            {isOrderOpen && (
-              <tr className="p-invoices-row">
-                <td colSpan={11}>
+        {isOrderOpen && (
+  <tr className="p-invoices-row">
+    <td colSpan={activeTab === "completed" ? 12 : 11}>
                   <div className="p-invoices-section">
                     <div className="p-items-header">
                       <h4>Order Items</h4>

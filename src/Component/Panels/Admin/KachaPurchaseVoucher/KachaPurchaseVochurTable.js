@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect ,useRef} from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import './Voucher.css';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import VoucherPDF from '../Vochur/VoucherPDF';
+import Select from 'react-select';
+
 
 const KachaPurchaseVochurTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -16,15 +21,22 @@ const KachaPurchaseVochurTable = () => {
   const [hasFetchedReceiptNumber, setHasFetchedReceiptNumber] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [month, setMonth] = useState('July');
-  const [year, setYear] = useState('2025');
+  const [year, setYear] = useState('2026');
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
   const [activeTab, setActiveTab] = useState('Voucher');
   const [invoices, setInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState('');
   const [invoiceBalance, setInvoiceBalance] = useState(0);
+    const [isDownloading, setIsDownloading] = useState(false);
+const [isRangeDownloading, setIsRangeDownloading] = useState(false);
+const pdfRef = useRef();
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
 
+  const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
+  const y = 2025 + i;
+  return { value: y, label: y };
+});
   const [formData, setFormData] = useState({
     receiptNumber: 'REC001',
     supplierId: '',
@@ -315,6 +327,124 @@ useEffect(() => {
       }));
     }
   };
+
+  // Filter vouchers by date range
+const filterVouchersByDateRange = (vouchers, start, end) => {
+  if (!start || !end) return vouchers;
+  
+  const startDate = new Date(start);
+  startDate.setHours(0, 0, 0, 0);
+  
+  const endDate = new Date(end);
+  endDate.setHours(23, 59, 59, 999);
+  
+  return vouchers.filter(voucher => {
+    const voucherDate = new Date(voucher.Date || voucher.receipt_date || voucher.created_at);
+    return voucherDate >= startDate && voucherDate <= endDate;
+  });
+};
+
+// Filter vouchers by month and year
+const filterVouchersByMonthYear = (vouchers, month, year) => {
+  if (!month || !year) return vouchers;
+  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthIndex = monthNames.indexOf(month);
+  
+  return vouchers.filter(voucher => {
+    const voucherDate = new Date(voucher.Date || voucher.receipt_date || voucher.created_at);
+    return voucherDate.getMonth() === monthIndex && 
+           voucherDate.getFullYear() === parseInt(year);
+  });
+};
+
+// Generate PDF using the VoucherPDF component
+const generatePDF = async (filteredData, type = 'month') => {
+  if (!filteredData || filteredData.length === 0) {
+    alert('No Kacha purchase vouchers found for the selected period');
+    return;
+  }
+
+  try {
+    // Create a temporary div to render the PDF component
+    const element = document.createElement('div');
+    element.style.position = 'absolute';
+    element.style.left = '-9999px';
+    element.style.top = '-9999px';
+    document.body.appendChild(element);
+
+    // Use ReactDOM to render the component
+    const ReactDOM = require('react-dom');
+    await new Promise((resolve) => {
+      ReactDOM.render(
+        <VoucherPDF 
+          ref={pdfRef}
+          vouchers={filteredData}
+          startDate={type === 'range' ? startDate : null}
+          endDate={type === 'range' ? endDate : null}
+          month={type === 'month' ? month : null}
+          year={type === 'month' ? year : null}
+          title="Kacha Purchase Vouchers Report" // Custom title for Kacha
+        />,
+        element,
+        resolve
+      );
+    });
+
+    // Wait for rendering to complete
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Capture the element as canvas
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff'
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    
+    // Create PDF
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+    const width = imgWidth * ratio;
+    const height = imgHeight * ratio;
+
+    pdf.addImage(imgData, 'PNG', 0, 0, width, height);
+
+    // Generate filename
+    let filename = 'kacha_purchase_vouchers_report';
+    if (type === 'range') {
+      filename = `kacha_purchase_vouchers_${startDate}_to_${endDate}.pdf`;
+    } else {
+      filename = `kacha_purchase_vouchers_${month}_${year}.pdf`;
+    }
+
+    // Save PDF
+    pdf.save(filename);
+
+    // Cleanup
+    ReactDOM.unmountComponentAtNode(element);
+    document.body.removeChild(element);
+
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    alert('Error generating PDF. Please try again.');
+  }
+};
+
+
 
   // File remove handler
   const handleRemoveFile = () => {
@@ -805,13 +935,67 @@ const handleCreateReceipt = async () => {
     navigate(`/kachaPurchasevoucherview/${receiptId}`);
   };
 
-  const handleDownload = () => {
-    alert(`Downloading receipts for ${month} ${year}`);
-  };
+ const handleDownload = async () => {
+  try {
+    setIsDownloading(true);
+    
+    // Filter vouchers by selected month and year
+    const filteredVouchers = filterVouchersByMonthYear(receiptData, month, year);
+    
+    if (filteredVouchers.length === 0) {
+      alert(`No Kacha purchase vouchers found for ${month} ${year}`);
+      setIsDownloading(false);
+      return;
+    }
+    
+    console.log(`Downloading ${filteredVouchers.length} Kacha purchase vouchers for:`, month, year);
+    
+    // Generate PDF
+    await generatePDF(filteredVouchers, 'month');
+    
+  } catch (err) {
+    console.error('Download error:', err);
+    alert('Error downloading Kacha purchase vouchers: ' + err.message);
+  } finally {
+    setIsDownloading(false);
+  }
+};
 
-  const handleDownloadRange = () => {
-    alert(`Downloading receipts from ${startDate} to ${endDate}`);
-  };
+const handleDownloadRange = async () => {
+  try {
+    if (!startDate || !endDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
+
+    if (new Date(startDate) > new Date(endDate)) {
+      alert('Start date cannot be after end date');
+      return;
+    }
+
+    setIsRangeDownloading(true);
+    
+    // Filter vouchers by date range
+    const filteredVouchers = filterVouchersByDateRange(receiptData, startDate, endDate);
+    
+    if (filteredVouchers.length === 0) {
+      alert(`No Kacha purchase vouchers found from ${startDate} to ${endDate}`);
+      setIsRangeDownloading(false);
+      return;
+    }
+    
+    console.log(`Downloading ${filteredVouchers.length} Kacha purchase vouchers for date range:`, startDate, 'to', endDate);
+    
+    // Generate PDF
+    await generatePDF(filteredVouchers, 'range');
+    
+  } catch (err) {
+    console.error('Download range error:', err);
+    alert('Error downloading Kacha purchase vouchers: ' + err.message);
+  } finally {
+    setIsRangeDownloading(false);
+  }
+};
     const filteredInvoices = formData.supplierId
   ? invoices.filter(
       inv => String(inv.supplier_id) === String(formData.supplierId)
@@ -889,25 +1073,44 @@ const handleCreateReceipt = async () => {
                       <option>November</option>
                       <option>December</option>
                     </select>
-                    <select
-                      className="form-select"
-                      value={year}
-                      onChange={(e) => setYear(e.target.value)}
-                    >
-                      <option>2025</option>
-                      <option>2024</option>
-                      <option>2023</option>
-                    </select>
+                              
+                                                                <Select
+  options={yearOptions}
+  value={{ value: year, label: year }}
+  onChange={(selected) => setYear(selected.value)}
+  maxMenuHeight={150}
+  styles={{
+    control: (provided) => ({
+      ...provided,
+      width: '100px',  // Adjust width as needed
+      minWidth: '100px',
+    }),
+    menu: (provided) => ({
+      ...provided,
+      width: '100px',  // Same width as control
+      minWidth: '100px',
+    }),
+    option: (provided) => ({
+      ...provided,
+      whiteSpace: 'nowrap',
+      padding: '8px 12px',
+    })
+  }}
+/>
                   </div>
                 </div>
                 <div className="col-md-auto">
-                  <button
-                    className="btn btn-success mt-4"
-                    onClick={handleDownload}
-                    disabled={isLoading}
-                  >
-                    <i className="bi bi-download me-1"></i> Download
-                  </button>
+            <button
+  className="btn btn-success mt-4"
+  onClick={handleDownload}
+  disabled={isDownloading}
+>
+  {isDownloading ? (
+    <div className="spinner-border spinner-border-sm" role="status"></div>
+  ) : (
+    <i className="bi bi-download me-1"></i>
+  )} Download
+</button>
                 </div>
                 <div className="col-md-auto">
                   <label className="form-label mb-1">Select Date Range:</label>
@@ -927,13 +1130,17 @@ const handleCreateReceipt = async () => {
                   </div>
                 </div>
                 <div className="col-md-auto">
-                  <button
-                    className="btn btn-success mt-4"
-                    onClick={handleDownloadRange}
-                    disabled={isLoading}
-                  >
-                    <i className="bi bi-download me-1"></i> Download Range
-                  </button>
+                 <button
+  className="btn btn-success mt-4"
+  onClick={handleDownloadRange}
+  disabled={isRangeDownloading}
+>
+  {isRangeDownloading ? (
+    <div className="spinner-border spinner-border-sm" role="status"></div>
+  ) : (
+    <i className="bi bi-download me-1"></i>
+  )} Download Range
+</button>
                 </div>
                 <div className="col-md-auto">
                   <button

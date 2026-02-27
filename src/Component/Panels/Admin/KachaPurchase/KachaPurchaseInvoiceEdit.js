@@ -407,78 +407,98 @@ const KachaPurchaseInvoiceEdit = ({ user }) => {
     }));
   };
 
-  const addItem = () => {
-    if (!itemForm.product) {
-      window.alert("⚠️ Please select a product");
+const addItem = () => {
+  if (!itemForm.product) {
+    window.alert("⚠️ Please select a product");
+    return;
+  }
+
+  // Check quantity if batch is selected
+  if (selectedBatchDetails) {
+    const availableQuantity = parseFloat(selectedBatchDetails.quantity) || 0;
+    const quantity = parseFloat(itemForm.quantity) || 0;
+    
+    if (availableQuantity <= 0) {
+      window.alert(`⚠️ Cannot add item - Selected batch "${selectedBatch}" has zero stock available.`);
       return;
     }
-
-    const calculatedItem = {
-      ...calculateItemTotal(),
-      batch: selectedBatch,
-      batch_id: itemForm.batch_id,
-      product_id: itemForm.product_id,
-      batchDetails: selectedBatchDetails
-    };
-
-    if (editingItemIndex !== null) {
-      setInvoiceData(prev => ({
-        ...prev,
-        items: prev.items.map((item, index) => 
-          index === editingItemIndex ? calculatedItem : item
-        )
-      }));
-      setEditingItemIndex(null);
-      window.alert("✅ Item updated successfully!");
-    } else {
-      setInvoiceData(prev => ({
-        ...prev,
-        items: [...prev.items, calculatedItem]
-      }));
-      window.alert("✅ Item added successfully!");
+    
+    if (quantity > availableQuantity) {
+      window.alert(
+        `⚠️ Insufficient stock - Only ${availableQuantity} units available in this batch.`
+      );
+      return;
     }
+  }
 
-    setItemForm({
-      product: "",
-      product_id: "",
-      description: "",
-      quantity: 1,
-      price: 0,
-      discount: 0,
-      total: 0,
-      batch: "",
-      batch_id: "",
-      batchDetails: null
-    });
-    setBatches([]);
-    setSelectedBatch("");
-    setSelectedBatchDetails(null);
+  const calculatedItem = {
+    ...calculateItemTotal(),
+    batch: selectedBatch,
+    batch_id: itemForm.batch_id,
+    product_id: itemForm.product_id,
+    batchDetails: selectedBatchDetails,
+    discount: itemForm.discount // Make sure discount is included
   };
+
+  if (editingItemIndex !== null) {
+    setInvoiceData(prev => ({
+      ...prev,
+      items: prev.items.map((item, index) => 
+        index === editingItemIndex ? calculatedItem : item
+      )
+    }));
+    setEditingItemIndex(null);
+    window.alert("✅ Item updated successfully!");
+  } else {
+    setInvoiceData(prev => ({
+      ...prev,
+      items: [...prev.items, calculatedItem]
+    }));
+    window.alert("✅ Item added successfully!");
+  }
+
+  // Reset form but keep supplier discount
+  setItemForm({
+    product: "",
+    product_id: "",
+    description: "",
+    quantity: 1,
+    price: 0,
+    discount: parseFloat(invoiceData.supplierInfo?.discount) || 0, // Keep supplier discount
+    total: 0,
+    batch: "",
+    batch_id: "",
+    batchDetails: null
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+};
 
   const editItem = (index) => {
-    const itemToEdit = invoiceData.items[index];
-    
-    setItemForm({
-      product: itemToEdit.product,
-      product_id: itemToEdit.product_id,
-      description: itemToEdit.description,
-      quantity: itemToEdit.quantity,
-      price: itemToEdit.price,
-      discount: itemToEdit.discount,
-      total: itemToEdit.total,
-      batch: itemToEdit.batch,
-      batch_id: itemToEdit.batch_id,
-      batchDetails: itemToEdit.batchDetails
-    });
-    
-    setSelectedBatch(itemToEdit.batch);
-    setSelectedBatchDetails(itemToEdit.batchDetails);
-    setEditingItemIndex(index);
-    
-    if (itemToEdit.product_id) {
-      fetchBatchesForProduct(itemToEdit.product_id);
-    }
-  };
+  const itemToEdit = invoiceData.items[index];
+  
+  setItemForm({
+    product: itemToEdit.product,
+    product_id: itemToEdit.product_id,
+    description: itemToEdit.description,
+    quantity: itemToEdit.quantity,
+    price: itemToEdit.price,
+    discount: itemToEdit.discount, // Preserve the item's discount
+    total: itemToEdit.total,
+    batch: itemToEdit.batch,
+    batch_id: itemToEdit.batch_id,
+    batchDetails: itemToEdit.batchDetails
+  });
+  
+  setSelectedBatch(itemToEdit.batch);
+  setSelectedBatchDetails(itemToEdit.batchDetails);
+  setEditingItemIndex(index);
+  
+  if (itemToEdit.product_id) {
+    fetchBatchesForProduct(itemToEdit.product_id);
+  }
+};
 
   const fetchBatchesForProduct = async (productId) => {
     try {
@@ -491,24 +511,24 @@ const KachaPurchaseInvoiceEdit = ({ user }) => {
     }
   };
 
-  const cancelEdit = () => {
-    setEditingItemIndex(null);
-    setItemForm({
-      product: "",
-      product_id: "",
-      description: "",
-      quantity: 1,
-      price: 0,
-      discount: 0,
-      total: 0,
-      batch: "",
-      batch_id: "",
-      batchDetails: null
-    });
-    setBatches([]);
-    setSelectedBatch("");
-    setSelectedBatchDetails(null);
-  };
+const cancelEdit = () => {
+  setEditingItemIndex(null);
+  setItemForm({
+    product: "",
+    product_id: "",
+    description: "",
+    quantity: 1,
+    price: 0,
+    discount: parseFloat(invoiceData.supplierInfo?.discount) || 0, // Reset to supplier discount
+    total: 0,
+    batch: "",
+    batch_id: "",
+    batchDetails: null
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+};
 
   const removeItem = (index) => {
     setInvoiceData(prev => ({
@@ -892,56 +912,63 @@ const KachaPurchaseInvoiceEdit = ({ user }) => {
                             New
                           </Button>
                         </div>
-                        <Form.Select
-                          className="mb-2 border-primary"
-                          value={inputName}
-                          onChange={(e) => {
-                            const selectedName = e.target.value;
-                            setInputName(selectedName);
-                            const supplier = accounts.find(acc => acc.business_name === selectedName);
-                            if (supplier) {
-                              setSelectedSupplierId(supplier.id);
-                              setSelected(true);
-                              setInvoiceData(prev => ({
-                                ...prev,
-                                supplierInfo: {
-                                  name: supplier.name,
-                                  businessName: supplier.business_name,
-                                  state: supplier.billing_state,
-                                  discount: parseFloat(supplier.discount) || 0,
-                                      gstin: supplier.gstin || "" // Add this line
-                                },
-                                billingAddress: {
-                                  addressLine1: supplier.billing_address_line1,
-                                  addressLine2: supplier.billing_address_line2 || "",
-                                  city: supplier.billing_city,
-                                  pincode: supplier.billing_pin_code,
-                                  state: supplier.billing_state
-                                },
-                                shippingAddress: {
-                                  addressLine1: supplier.shipping_address_line1,
-                                  addressLine2: supplier.shipping_address_line2 || "",
-                                  city: supplier.shipping_city,
-                                  pincode: supplier.shipping_pin_code,
-                                  state: supplier.shipping_state
-                                }
-                              }));
-                              setItemForm(prev => ({
-                                ...prev,
-                                discount: parseFloat(supplier.discount) || 0
-                              }));
-                            }
-                          }}
-                        >
-                          <option value="">Select Supplier</option>
-                          {accounts
-                            .filter(acc => acc.role === "supplier")
-                            .map(acc => (
-                              <option key={acc.id} value={acc.business_name}>
-                                {acc.business_name} ({acc.mobile_number})
-                              </option>
-                            ))}
-                        </Form.Select>
+                   <Form.Select
+  className="mb-2 border-primary"
+  value={inputName}
+  onChange={(e) => {
+    const selectedName = e.target.value;
+    setInputName(selectedName);
+    const supplier = accounts.find(acc => acc.business_name === selectedName);
+    if (supplier) {
+      setSelectedSupplierId(supplier.id);
+      setSelected(true);
+      
+      // Get supplier discount
+      const supplierDiscount = parseFloat(supplier.discount) || 0;
+      
+      setInvoiceData(prev => ({
+        ...prev,
+        supplierInfo: {
+          name: supplier.name,
+          businessName: supplier.business_name,
+          state: supplier.billing_state,
+          discount: supplierDiscount,
+          gstin: supplier.gstin || "",
+          accountId: supplier.id
+        },
+        billingAddress: {
+          addressLine1: supplier.billing_address_line1,
+          addressLine2: supplier.billing_address_line2 || "",
+          city: supplier.billing_city,
+          pincode: supplier.billing_pin_code,
+          state: supplier.billing_state
+        },
+        shippingAddress: {
+          addressLine1: supplier.shipping_address_line1,
+          addressLine2: supplier.shipping_address_line2 || "",
+          city: supplier.shipping_city,
+          pincode: supplier.shipping_pin_code,
+          state: supplier.shipping_state
+        }
+      }));
+      
+      // Apply discount to item form
+      setItemForm(prev => ({
+        ...prev,
+        discount: supplierDiscount
+      }));
+    }
+  }}
+>
+  <option value="">Select Supplier</option>
+  {accounts
+    .filter(acc => acc.role === "supplier")
+    .map(acc => (
+      <option key={acc.id} value={acc.business_name}>
+        {acc.business_name} ({acc.mobile_number})
+      </option>
+    ))}
+</Form.Select>
                       </>
                     ) : (
                       <>
@@ -1016,7 +1043,7 @@ const KachaPurchaseInvoiceEdit = ({ user }) => {
                       onChange={async (e) => {
                         const selectedName = e.target.value;
                         const selectedProduct = products.find(
-                          (p) => p.goods_name === selectedName
+      (p) => p.goods_name === selectedName && p.product_type === "KACHA"
                         );
 
                         console.log('🔍 Selected Product:', selectedProduct);
@@ -1142,23 +1169,34 @@ const KachaPurchaseInvoiceEdit = ({ user }) => {
   />
 </Col>
 
-                  <Col md={2}>
-                    <Form.Label className="fw-bold">Discount (%)</Form.Label>
-                    <Form.Control
-                      name="discount"
-                      type="number"
-                      value={itemForm.discount}
-                      onChange={handleItemChange}
-                      min="0"
-                      max="100"
-                      className="border-primary"
-                      placeholder={
-                        invoiceData.supplierInfo.discount > 0 
-                          ? `Default: ${invoiceData.supplierInfo.discount}%` 
-                          : ""
-                      }
-                    />
-                  </Col>
+          <Col md={2}>
+  <div className="d-flex justify-content-between align-items-center mb-1">
+    <Form.Label className="fw-bold">Discount (%)</Form.Label>
+    {invoiceData.supplierInfo?.discount > 0 && (
+      <small className="text-primary">Supplier: {invoiceData.supplierInfo.discount}%</small>
+    )}
+  </div>
+  <Form.Control
+    name="discount"
+    type="number"
+    value={itemForm.discount}
+    onChange={(e) => {
+      const newDiscount = parseFloat(e.target.value) || 0;
+      setItemForm(prev => ({
+        ...prev,
+        discount: newDiscount
+      }));
+    }}
+    min="0"
+    max="100"
+    className="border-primary"
+    placeholder={
+      invoiceData.supplierInfo?.discount > 0 
+        ? `Default: ${invoiceData.supplierInfo.discount}%` 
+        : "Enter discount"
+    }
+  />
+</Col>
 
                   <Col md={2}>
                     <Form.Label className="fw-bold">Total Price (₹)</Form.Label>

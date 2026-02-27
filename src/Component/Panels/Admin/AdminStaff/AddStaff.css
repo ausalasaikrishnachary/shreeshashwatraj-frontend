@@ -25,6 +25,14 @@
   letter-spacing: 0.5px; /* Slightly reduce letter spacing */
 }
 
+
+.two-fields-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  grid-column: span 2; /* Makes this row span across both columns */
+  width: 100%;
+}
 /* If you want a more compact version */
 .page-title {
   font-size: 22px;

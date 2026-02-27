@@ -155,10 +155,9 @@ const transformPaymentData = (apiData) => {
     stocktransfer: apiData.stocktransfer,
     receipts: receiptEntries,
     creditnotes: creditNoteEntries,
-    allEntries: apiData.allEntries // For debugging
+    allEntries: apiData.allEntries 
   });
   
-  // FIX: Check if we have valid transaction data
   if (!salesEntry || Object.keys(salesEntry).length === 0) {
     console.warn('No sales or stock transfer data found, creating empty response');
     return {
@@ -195,7 +194,6 @@ const transformPaymentData = (apiData) => {
   const today = new Date();
   const overdueDays = Math.max(0, Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24)));
   
-  // Transform receipts
   const receipts = receiptEntries.map(receipt => ({
     receiptNumber: receipt.VchNo || receipt.receipt_number,
     paidAmount: parseFloat(receipt.paid_amount || receipt.TotalAmount || 0),
@@ -204,7 +202,6 @@ const transformPaymentData = (apiData) => {
     type: 'receipt'
   }));
   
-  // FIX: This was causing the error - ensure creditNoteEntries is always an array
   const creditnotes = (creditNoteEntries || []).map(creditnote => ({
     receiptNumber: creditnote.VchNo || 'CNOTE',
     paidAmount: parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0),
@@ -649,9 +646,83 @@ const PaymentStatus = () => {
     </Card>
   );
 };
-  // const handlePrint = () => {
-  //   window.print();
-  // };
+const handlePrint = async () => {
+  try {
+    setDownloading(true);
+    setError(null);
+    
+    if (!currentData) {
+      throw new Error('No invoice data available');
+    }
+
+    // Dynamically import PDF libraries
+    let pdf;
+    let SalesPdfDocument;
+    
+    try {
+      const reactPdf = await import('@react-pdf/renderer');
+      pdf = reactPdf.pdf;
+      
+      const pdfModule = await import('./SalesPdfDocument');
+      SalesPdfDocument = pdfModule.default;
+    } catch (importError) {
+      console.error('Error importing PDF modules:', importError);
+      throw new Error('Failed to load PDF generation libraries');
+    }
+
+    // Calculate GST breakdown
+    const gstBreakdown = calculateGSTBreakdown();
+    const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+
+    // Create PDF document
+    const pdfDoc = (
+      <SalesPdfDocument 
+        invoiceData={currentData}
+        invoiceNumber={currentData.invoiceNumber}
+        gstBreakdown={gstBreakdown}
+        isSameState={isSameState}
+      />
+    );
+
+    // Generate PDF blob
+    const blob = await pdf(pdfDoc).toBlob();
+    
+    // Create URL for the blob
+    const pdfUrl = URL.createObjectURL(blob);
+    
+    // Open in new tab - this will show only the PDF, no HTML
+    const printWindow = window.open(pdfUrl, '_blank');
+    
+    if (printWindow) {
+      // Don't auto-trigger print, let user click print button in PDF viewer
+      // This prevents the double print issue
+      console.log('PDF opened in new tab for printing');
+    } else {
+      // Fallback if popup blocked
+      alert('Popup blocked. Please allow popups or use download option.');
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Invoice_${currentData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+    }
+
+    // Clean up URL after delay
+    setTimeout(() => {
+      URL.revokeObjectURL(pdfUrl);
+    }, 1000);
+
+  } catch (error) {
+    console.error('Error generating PDF for print:', error);
+    setError('Failed to generate PDF for printing: ' + error.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setDownloading(false);
+  }
+};
 
   const handleDownloadPDF = async () => {
     try {
@@ -1314,9 +1385,25 @@ const handleCreateReceiptFromInvoice = async () => {
     <FaEdit className="me-1" /> Edit Invoice
   </Button>
 )}
-                  {/* <Button variant="success" onClick={handlePrint} className="me-2">
-                    <FaPrint className="me-1" /> Print
-                  </Button> */}
+<Button 
+  variant="success" 
+  onClick={handlePrint} 
+  className="me-2"
+  disabled={downloading || !currentData}
+>
+  {downloading ? (
+    <>
+      <div className="spinner-border spinner-border-sm me-1" role="status">
+        <span className="visually-hidden">Loading...</span>
+      </div>
+      Preparing Print...
+    </>
+  ) : (
+    <>
+      <FaPrint className="me-1" /> Print
+    </>
+  )}
+</Button>
                   <Button 
                     variant="danger" 
                     onClick={handleDownloadPDF} 
@@ -1985,7 +2072,7 @@ const handleCreateReceiptFromInvoice = async () => {
                         </p>
                       )}
                       
-                      <h6 className="text-primary mt-3">Transportation Details:</h6>
+                      {/* <h6 className="text-primary mt-3">Transportation Details:</h6>
                       {isEditMode ? (
                         <Form.Control 
                           as="textarea"
@@ -1998,7 +2085,7 @@ const handleCreateReceiptFromInvoice = async () => {
                         <p className="bg-light p-2 rounded">
                           {currentData.transportDetails}
                         </p>
-                      )}
+                      )} */}
                     </div>
                   </Col>
                   <Col md={5}>
