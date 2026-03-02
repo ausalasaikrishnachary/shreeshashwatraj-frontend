@@ -245,7 +245,7 @@
 .reports-nav-content {
   padding: 25px;
 }
-
+/* 
 .report-links-grid {
   display: flex;
   gap: 20px;
@@ -255,6 +255,18 @@
 .report-link-item {
   flex: 1;
   min-width: 200px;
+} */
+
+.report-links-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 20px;
+}
+
+.report-link-item {
+  flex: 0 0 auto;
+  min-width: 175px;   /* increase width */
 }
 
 .report-link-text {
