@@ -1900,6 +1900,7 @@ const handleOpenReceiptModal = () => {
                         <th width="20%">Description</th>
                         <th width="10%">Qty</th>
                         <th width="15%">Price</th>
+                          <th width="8%">Discount %</th> 
                         <th width="10%">GST %</th>
                         <th width="15%"> Amount (₹)</th>
                         <th width="5%">Action</th>
@@ -1939,6 +1940,17 @@ const handleOpenReceiptModal = () => {
                               onChange={(e) => handleItemChange(index, 'price', e.target.value)}
                             />
                           </td>
+                           <td> 
+              <Form.Control 
+                type="number"
+                size="sm"
+                value={item.discount || 0}
+                onChange={(e) => handleItemChange(index, 'discount', e.target.value)}
+                step="0.1"
+                min="0"
+                max="100"
+              />
+            </td>
                           <td>
                             <Form.Control 
                               type="number"
@@ -1970,6 +1982,7 @@ const handleOpenReceiptModal = () => {
                         <th width="25%">Description</th>
                         <th width="10%">Qty</th>
                         <th width="15%">Price</th>
+                           <th width="8%">Discount %</th>
                         <th width="10%">GST %</th>
                         <th width="10%"> Taxable Amount (₹)</th>
                       </tr>
@@ -1982,6 +1995,7 @@ const handleOpenReceiptModal = () => {
                           <td>{item.description}</td>
                           <td className="text-center">{item.quantity}</td>
                           <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
+                           <td className="text-center">{parseFloat(item.discount || 0).toFixed(1)}%</td> 
                           <td className="text-center">{item.gst}%</td>
                           <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
                         </tr>

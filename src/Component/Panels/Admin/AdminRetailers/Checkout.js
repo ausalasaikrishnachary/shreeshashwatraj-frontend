@@ -105,6 +105,25 @@ function Checkout() {
     return numValue.toLocaleString('en-IN');
   };
 
+    // ✅ Clear all cart items for a retailer after order is placed
+  const clearCartAfterOrder = async (retailerIdToClear) => {
+    try {
+      const cartResponse = await fetch(`${baseurl}/api/cart/customer-cart/${retailerIdToClear}`);
+      if (!cartResponse.ok) return;
+      const items = await cartResponse.json();
+      if (!Array.isArray(items) || items.length === 0) return;
+
+      await Promise.all(
+        items.map(item =>
+          fetch(`${baseurl}/api/cart/remove-cart-item/${item.id}`, { method: "DELETE" })
+        )
+      );
+      console.log("Cart cleared successfully for retailer:", retailerIdToClear);
+    } catch (err) {
+      console.error("Error clearing cart after order:", err);
+    }
+  };
+
   // NEW: Function to recalculate all values based on edited price
   const recalculateAllValues = (newPrice) => {
     if (!cartItems.length) return { updatedCartItems: cartItems, updatedOrderTotals: orderTotals };
@@ -607,6 +626,7 @@ function Checkout() {
       console.log("Order response:", result);
 
       if (response.ok && result.success) {
+         await clearCartAfterOrder(retailerId);
         setOrderDetails({
           orderNumber: result.order_number || orderData.order.order_number,
           orderId: result.order_id,

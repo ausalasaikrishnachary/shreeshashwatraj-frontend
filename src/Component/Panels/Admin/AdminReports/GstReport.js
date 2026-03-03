@@ -12,7 +12,7 @@ const GstReport = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [transactionTypeFilter, setTransactionTypeFilter] = useState("ALL");
-  const [kachaPakkaFilter, setKachaPakkaFilter] = useState("ALL"); // New filter for KACHA/PAKKA
+  const [kachaPakkaFilter, setKachaPakkaFilter] = useState("ALL");
   const [gstData, setGstData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -75,10 +75,9 @@ const GstReport = () => {
           sgstAmt: sgstAmount,
           cgstAmt: cgstAmount,
           igstAmt: igstAmount,
-          transactionType: transactionType, // PAKKA/KACHA/UNKNOWN
-          specificTransactionType: specificTransactionType, // Specific transaction type
+          transactionType: transactionType,
+          specificTransactionType: specificTransactionType,
           voucherType: voucher.TransactionType || '',
-          dataType: voucher.data_type || '',
           originalData: voucher
         };
       });
@@ -91,58 +90,53 @@ const GstReport = () => {
       setLoading(false);
     }
   };
+const getTransactionType = (voucher) => {
+  const trantype = (voucher.TransactionType || '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '');
 
-  // Function to determine transaction type (PAKKA or KACHA)
-  const getTransactionType = (voucher) => {
-    const trantype = (voucher.TransactionType || '').toLowerCase();
-    const dataType = (voucher.data_type || '').toLowerCase();
-    
-    if (trantype === 'purchase' || 
-        trantype === 'sales' || 
-        trantype === 'credit note' || 
-        trantype === 'debit note' ||
-        dataType === 'sales' || 
-        dataType === 'purchase') {
-      return 'PAKKA';
-    }
-    
-    if (trantype === 'stock inward' || 
-        trantype === 'stock transfer' || 
-        dataType === 'stock inward' || 
-        dataType === 'stock transfer') {
-      return 'KACHA';
-    }
-    
-    if ((trantype === 'credit note' || trantype === 'debit note') && 
-        (dataType === 'sales' || dataType === 'purchase')) {
-      return 'PAKKA';
-    }
-    
-    if ((trantype === 'credit note' || trantype === 'debit note') && 
-        (dataType === 'stock inward' || dataType === 'stock transfer')) {
-      return 'KACHA';
-    }
-    
-    return 'UNKNOWN';
+  const dataType = (voucher.data_type || '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '');
+
+  const pakkaTypes = ['sales', 'purchase'];
+  const kachaTypes = ['stocktransfer', 'stockinward'];
+
+  // 🔹 data_type has first priority
+  if (pakkaTypes.includes(dataType)) return 'PAKKA';
+  if (kachaTypes.includes(dataType)) return 'KACHA';
+
+  // 🔹 Direct transaction types
+  if (pakkaTypes.includes(trantype)) return 'PAKKA';
+  if (kachaTypes.includes(trantype)) return 'KACHA';
+
+  return 'UNKNOWN';
+};
+
+const getSpecificTransactionType = (voucher) => {
+  const trantype = (voucher.TransactionType || '')
+    .trim()
+    .toLowerCase();
+
+  const typeMap = {
+    sales: 'Sales',
+    purchase: 'Purchase',
+    receipt: 'Receipt',
+    creditnote: 'Credit Note',
+    debitnote: 'Debit Note',
+    stockinward: 'Stock Inward',
+    stocktransfer: 'Stock Transfer',
+    purchasevoucher: 'Purchase Voucher'
   };
 
-  // Function to get specific transaction type
-  const getSpecificTransactionType = (voucher) => {
-    const trantype = (voucher.TransactionType || '').toLowerCase();
-    const dataType = (voucher.data_type || '').toLowerCase();
-    
-    // Map to standard transaction types
-    if (trantype === 'sales' || dataType === 'sales') return 'Sales';
-    if (trantype === 'purchase' || dataType === 'purchase') return 'Purchase';
-    if (trantype === 'receipt') return 'Receipt';
-    if (trantype === 'credit note') return 'Credit Note';
-    if (trantype === 'debit note') return 'Debit Note';
-    if (trantype === 'stock inward' || dataType === 'stock inward') return 'Stock Inward';
-    if (trantype === 'stock transfer' || dataType === 'stock transfer') return 'Stock Transfer';
-    
-    // If no match, return the original or Unknown
-    return voucher.TransactionType || 'Unknown';
-  };
+  const cleanType = trantype.replace(/\s+/g, '');
+
+  return typeMap[cleanType] || voucher.TransactionType;
+};
+
+
 
   const formatDateForComparison = (dateString) => {
     if (!dateString) return null;
@@ -180,7 +174,7 @@ const GstReport = () => {
       }
     }
 
-    // Filter by specific transaction type (Sales, Purchase, etc.)
+    // Filter by specific transaction type
     let matchesSpecificTransactionType = true;
     if (transactionTypeFilter !== "ALL") {
       matchesSpecificTransactionType = item.specificTransactionType === transactionTypeFilter;
@@ -377,7 +371,6 @@ const GstReport = () => {
       title: "IGST Amt",
       style: { textAlign: "right", width: "100px" }
     },
-   
   ];
 
   // Calculate totals for footer
@@ -415,31 +408,30 @@ const GstReport = () => {
 
   return (
     <div className="gst-report-container">
-          <div className="gst-report-kacha-pakka-wrapper">
-            <button
-              className={`gst-report-kacha-pakka-btn ${kachaPakkaFilter === 'ALL' ? 'active' : ''}`}
-              onClick={() => setKachaPakkaFilter('ALL')}
-            >
-              ALL
-            </button>
-            <button
-              className={`gst-report-kacha-pakka-btn pakka-btn ${kachaPakkaFilter === 'PAKKA' ? 'active' : ''}`}
-              onClick={() => setKachaPakkaFilter('PAKKA')}
-            >
-              PAKKA
-            </button>
-            <button
-              className={`gst-report-kacha-pakka-btn kacha-btn ${kachaPakkaFilter === 'KACHA' ? 'active' : ''}`}
-              onClick={() => setKachaPakkaFilter('KACHA')}
-            >
-              KACHA
-            </button>
-          </div>
+      <div className="gst-report-kacha-pakka-wrapper">
+        <button
+          className={`gst-report-kacha-pakka-btn ${kachaPakkaFilter === 'ALL' ? 'active' : ''}`}
+          onClick={() => setKachaPakkaFilter('ALL')}
+        >
+          ALL
+        </button>
+        <button
+          className={`gst-report-kacha-pakka-btn pakka-btn ${kachaPakkaFilter === 'PAKKA' ? 'active' : ''}`}
+          onClick={() => setKachaPakkaFilter('PAKKA')}
+        >
+          PAKKA
+        </button>
+        <button
+          className={`gst-report-kacha-pakka-btn kacha-btn ${kachaPakkaFilter === 'KACHA' ? 'active' : ''}`}
+          onClick={() => setKachaPakkaFilter('KACHA')}
+        >
+          KACHA
+        </button>
+      </div>
+      
       {/* Filters Section */}
       <div className="gst-report-filters-section">
-        
         <div className="gst-report-filters-wrapper">
-
           
           {/* Search */}
           <div className="gst-report-search-wrapper">
@@ -463,9 +455,7 @@ const GstReport = () => {
               )}
             </div>
           </div>
-
-   
-
+{/* Transaction Type Dropdown Filter */}
 <div className="gst-report-filter-wrapper">
   <label htmlFor="transaction-type" className="gst-report-filter-label">Transaction Type</label>
   <select
@@ -482,6 +472,7 @@ const GstReport = () => {
         <option value="Sales">Sales</option>
         <option value="Purchase">Purchase</option>
         <option value="Receipt">Receipt</option>
+        <option value="Purchase Voucher">Purchase Voucher</option>
         <option value="Credit Note">Credit Note</option>
         <option value="Debit Note">Debit Note</option>
       </>
@@ -491,17 +482,20 @@ const GstReport = () => {
       <>
         <option value="Stock Inward">Stock Inward</option>
         <option value="Stock Transfer">Stock Transfer</option>
-        <option value="Credit Note">Credit Note</option>
+        <option value="Receipt">Receipt</option>
+        <option value="Purchase Voucher">Purchase Voucher</option>
+          <option value="Credit Note">Credit Note</option>
         <option value="Debit Note">Debit Note</option>
       </>
     )}
     
-    {/* Show all options when ALL is selected or no filter */}
-    {(kachaPakkaFilter === 'ALL' || !kachaPakkaFilter) && (
+    {/* Show all options when ALL is selected */}
+    {kachaPakkaFilter === 'ALL' && (
       <>
         <option value="Sales">Sales</option>
         <option value="Purchase">Purchase</option>
         <option value="Receipt">Receipt</option>
+        <option value="Purchase Voucher">Purchase Voucher</option>
         <option value="Credit Note">Credit Note</option>
         <option value="Debit Note">Debit Note</option>
         <option value="Stock Inward">Stock Inward</option>
@@ -589,8 +583,6 @@ const GstReport = () => {
           showPagination={true}
         />
       </div>
-
-    
     </div>
   );
 };
