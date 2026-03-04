@@ -724,7 +724,7 @@ const handleInvoiceChange = (e) => {
       formDataToSend.append('reconciliation_option', formData.reconciliationOption);
       formDataToSend.append('retailer_name', formData.retailerName); 
       formDataToSend.append('invoice_number', formData.invoiceNumber);
-          formDataToSend.append('data_type', 'Sales');
+          formDataToSend.append('data_type', 'stock transfer');
 
       // Append file if exists
       if (formData.transactionProofFile) {
