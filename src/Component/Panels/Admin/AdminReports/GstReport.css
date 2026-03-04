@@ -1,5 +1,4 @@
 .gst-report-container {
-  padding: 20px;
   background-color: #f8f9fa;
   min-height: 100vh;
 }
@@ -62,6 +61,63 @@
   border-color: #999;
 }
 
+/* KACHA/PAKKA Buttons Styles */
+.gst-report-kacha-pakka-wrapper {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+  align-items: flex-end;
+  height: 100%;
+  margin-bottom: 10px;
+}
+
+.gst-report-kacha-pakka-btn {
+  height: 40px;
+  padding: 0 15px;
+  border: 1px solid #ddd;
+  background-color: white;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.gst-report-kacha-pakka-btn:hover {
+  background-color: #f5f5f5;
+  border-color: #999;
+}
+
+.gst-report-kacha-pakka-btn.active {
+  background-color: #4CAF50;
+  color: white;
+  border-color: #4CAF50;
+}
+
+.gst-report-kacha-pakka-btn.pakka-btn.active {
+  background-color: #2196F3;
+  border-color: #2196F3;
+}
+
+.gst-report-kacha-pakka-btn.kacha-btn.active {
+  background-color: #FF9800;
+  border-color: #FF9800;
+}
+
+/* Update responsive styles */
+@media (max-width: 768px) {
+  .gst-report-kacha-pakka-wrapper {
+    width: 100%;
+    justify-content: stretch;
+  }
+  
+  .gst-report-kacha-pakka-btn {
+    flex: 1;
+    text-align: center;
+  }
+}
 /* Update existing responsive styles */
 @media (max-width: 768px) {
   .gst-report-filter-wrapper {
