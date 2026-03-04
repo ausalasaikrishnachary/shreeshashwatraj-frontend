@@ -532,32 +532,32 @@ const addItem = () => {
   setSelectedBatch("");
   setSelectedBatchDetails(null);
 };
-  const editItem = (index) => {
-    const itemToEdit = invoiceData.items[index];
-    
-    // Set the form fields with the item data
-    setItemForm({
-      product: itemToEdit.product,
-      product_id: itemToEdit.product_id,
-      description: itemToEdit.description,
-      quantity: itemToEdit.quantity,
-      price: itemToEdit.price,
-      discount: itemToEdit.discount,
-      total: itemToEdit.total,
-      batch: itemToEdit.batch,
-      batch_id: itemToEdit.batch_id,
-      batchDetails: itemToEdit.batchDetails
-    });
-    
-    setSelectedBatch(itemToEdit.batch);
-    setSelectedBatchDetails(itemToEdit.batchDetails);
-    setEditingItemIndex(index);
-    
-    // Fetch batches for the product
-    if (itemToEdit.product_id) {
-      fetchBatchesForProduct(itemToEdit.product_id);
-    }
-  };
+const editItem = (index) => {
+  const itemToEdit = invoiceData.items[index];
+  
+  // Set the form fields with the item data
+  setItemForm({
+    product: itemToEdit.product,
+    product_id: itemToEdit.product_id,
+    description: itemToEdit.description,
+    quantity: itemToEdit.quantity,
+    price: itemToEdit.price,
+    discount: itemToEdit.discount, // Load the existing discount
+    total: itemToEdit.total,
+    batch: itemToEdit.batch,
+    batch_id: itemToEdit.batch_id,
+    batchDetails: itemToEdit.batchDetails
+  });
+  
+  setSelectedBatch(itemToEdit.batch);
+  setSelectedBatchDetails(itemToEdit.batchDetails);
+  setEditingItemIndex(index);
+  
+  // Fetch batches for the product
+  if (itemToEdit.product_id) {
+    fetchBatchesForProduct(itemToEdit.product_id);
+  }
+};
 
   const fetchBatchesForProduct = async (productId) => {
     try {
@@ -570,24 +570,24 @@ const addItem = () => {
     }
   };
 
-  const cancelEdit = () => {
-    setEditingItemIndex(null);
-    setItemForm({
-      product: "",
-      product_id: "",
-      description: "",
-      quantity: 1,
-      price: 0,
-      discount: 0,
-      total: 0,
-      batch: "",
-      batch_id: "",
-      batchDetails: null
-    });
-    setBatches([]);
-    setSelectedBatch("");
-    setSelectedBatchDetails(null);
-  };
+const cancelEdit = () => {
+  setEditingItemIndex(null);
+  setItemForm({
+    product: "",
+    product_id: "",
+    description: "",
+    quantity: 1,
+    price: 0,
+    discount: 0, // Reset discount
+    total: 0,
+    batch: "",
+    batch_id: "",
+    batchDetails: null
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+};
 
   const removeItem = (index) => {
     setInvoiceData(prev => ({
@@ -630,61 +630,67 @@ const addItem = () => {
   };
 
   const clearDraft = () => {
-    localStorage.removeItem('draftInvoice');
-    
-    const resetData = {
-      invoiceNumber: nextInvoiceNumber,
-      invoiceDate: new Date().toISOString().split('T')[0],
-      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      companyInfo: {
-        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-        address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-        email: "spmathur56@gmail.com",
-        phone: "9801049700",
-        gstin: "10AAOCS1541B1ZZ",
-        state: "Bihar"
-      },
-      supplierInfo: {
-        name: "",
-          business_name: "", // Add this
-      account_name: "", // Add this
-
-        state: "",
-      },
-      billingAddress: {
-        addressLine1: "",
-        addressLine2: "",
-        city: "",
-        pincode: "",
-        state: ""
-      },
-      shippingAddress: {
-        addressLine1: "",
-        addressLine2: "",
-        city: "",
-        pincode: "",
-        state: ""
-      },
-      items: [],
-      note: "",
-      taxableAmount: 0,
-      grandTotal: 0,
-      transportDetails: "",
-      additionalCharge: "",
-      additionalChargeAmount: 0,
-      otherDetails: "Authorized Signatory",
-      batchDetails: []
-    };
-    
-    setInvoiceData(resetData);
-    localStorage.setItem('draftInvoice', JSON.stringify(resetData));
-    
-    setSelected(false);
-    setSelectedSupplierId(null);
-    setSelectedStaffId("");
-    setIsPreviewReady(false);
- window.alert("✅ Draft cleared successfully!");
+  localStorage.removeItem('draftInvoice');
+  
+  const resetData = {
+    invoiceNumber: nextInvoiceNumber,
+    invoiceDate: new Date().toISOString().split('T')[0],
+    validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    companyInfo: {
+      name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
+      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
+      email: "spmathur56@gmail.com",
+      phone: "9801049700",
+      gstin: "10AAOCS1541B1ZZ",
+      state: "Bihar"
+    },
+    supplierInfo: {
+      name: "",
+      business_name: "",
+      state: "",
+      discount: 0 // Initialize discount
+    },
+    billingAddress: {
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      pincode: "",
+      state: ""
+    },
+    shippingAddress: {
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      pincode: "",
+      state: ""
+    },
+    items: [],
+    note: "",
+    taxableAmount: 0,
+    grandTotal: 0,
+    transportDetails: "",
+    additionalCharge: "",
+    additionalChargeAmount: 0,
+    otherDetails: "Authorized Signatory",
+    batchDetails: []
   };
+  
+  setInvoiceData(resetData);
+  localStorage.setItem('draftInvoice', JSON.stringify(resetData));
+  
+  setSelected(false);
+  setSelectedSupplierId(null);
+  setSelectedStaffId("");
+  setIsPreviewReady(false);
+  
+  // Reset itemForm discount
+  setItemForm(prev => ({
+    ...prev,
+    discount: 0
+  }));
+  
+  window.alert("✅ Draft cleared successfully!");
+};
 
 
 
@@ -1001,7 +1007,7 @@ useEffect(() => {
         }
       }));
 
-      // THIS IS THE KEY FIX: Set the discount in itemForm
+      // Set the discount in itemForm
       setItemForm(prev => ({
         ...prev,
         discount: retailerDiscount
@@ -1099,7 +1105,7 @@ useEffect(() => {
                         + New Item
                       </button>
                     </div>
-                 <Form.Select
+<Form.Select
   name="product"
   value={itemForm.product}
   onChange={async (e) => {
@@ -1110,12 +1116,16 @@ useEffect(() => {
     );
 
     if (selectedProduct) {
+      // Get the retailer discount from supplierInfo
+      const retailerDiscount = parseFloat(invoiceData.supplierInfo?.discount || 0);
+
       setItemForm((prev) => ({
         ...prev,
         product: selectedProduct.goods_name,
         product_id: selectedProduct.id,
         price: selectedProduct.net_price,
         description: selectedProduct.description || "",
+        discount: retailerDiscount, // CRITICAL: Set the discount here
         batch: "",
         batch_id: ""
       }));
@@ -1134,6 +1144,7 @@ useEffect(() => {
             batch: defaultBatch.batch_number,
             batch_id: defaultBatch.batch_number,
             price: defaultBatch.selling_price,
+            discount: retailerDiscount // Preserve discount when setting default batch
           }));
         } else {
           // If maintain_batch > 0, let user choose from dropdown
@@ -1181,42 +1192,45 @@ useEffect(() => {
     ))}
 </Form.Select>
 
-                    {/* Batch Dropdown */}
-                    {batches.length > 0 && itemForm.maintain_batch !== 0 && (
-                      <Form.Select
-                        className="mt-2 border-primary"
-                        name="batch"
-                        value={selectedBatch}
-                        onChange={(e) => {
-                          const batchNumber = e.target.value;
-                          setSelectedBatch(batchNumber);
-                          const batch = batches.find(b => b.batch_number === batchNumber);
-                          setSelectedBatchDetails(batch || null);
+                  {batches.length > 0 && itemForm.maintain_batch !== 0 && (
+  <Form.Select
+    className="mt-2 border-primary"
+    name="batch"
+    value={selectedBatch}
+    onChange={(e) => {
+      const batchNumber = e.target.value;
+      setSelectedBatch(batchNumber);
+      const batch = batches.find(b => b.batch_number === batchNumber);
+      setSelectedBatchDetails(batch || null);
 
-                          if (batch) {
-                            setItemForm(prev => ({
-                              ...prev,
-                              batch: batchNumber,
-                              batch_id: batch.batch_number,
-                              price: batch.selling_price
-                            }));
-                          } else {
-                            setItemForm(prev => ({
-                              ...prev,
-                              batch: "",
-                              batch_id: ""
-                            }));
-                          }
-                        }}
-                      >
-                        <option value="">Select Batch</option>
-                        {batches.map((batch) => (
-                          <option key={batch.id} value={batch.batch_number}>
-                            {batch.batch_number} (Qty: {batch.quantity})
-                          </option>
-                        ))}
-                      </Form.Select>
-                    )}
+      // Get the current discount from itemForm
+      const currentDiscount = itemForm.discount || 0;
+
+      if (batch) {
+        setItemForm(prev => ({
+          ...prev,
+          batch: batchNumber,
+          batch_id: batch.batch_number,
+          price: batch.selling_price,
+          discount: currentDiscount // CRITICAL: Preserve discount when selecting batch
+        }));
+      } else {
+        setItemForm(prev => ({
+          ...prev,
+          batch: "",
+          batch_id: ""
+        }));
+      }
+    }}
+  >
+    <option value="">Select Batch</option>
+    {batches.map((batch) => (
+      <option key={batch.id} value={batch.batch_number}>
+        {batch.batch_number} (Qty: {batch.quantity})
+      </option>
+    ))}
+  </Form.Select>
+)}
                   </Col>
 
                   <Col md={1}>
