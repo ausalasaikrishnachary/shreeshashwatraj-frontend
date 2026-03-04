@@ -50,15 +50,14 @@ const fetchFlashSales = async () => {
     }
 
     const result = await response.json();
-    console.log("API Response for flash sales:", result); // Debug log
+    console.log("API Response for flash sales:", result); 
 
     if (!result.success) {
       throw new Error(result.message || "Failed to fetch flash sales");
     }
 
-    // Map backend data to match your component's expected shape
     const mappedSales = result.data.map((sale) => {
-      console.log("Processing sale:", sale); // Debug log
+      console.log("Processing sale:", sale); 
       
       return {
         id: sale.id,
@@ -76,12 +75,10 @@ const fetchFlashSales = async () => {
         purchaseLimit: sale.purchase_limit || null,
         expiryThreshold: sale.expiry_threshold || null,
         termsConditions: sale.terms_conditions || "",
-        // ADD PRODUCT AND CATEGORY INFO:
         product_id: sale.product_id,
         product_name: sale.product_name,
         category_id: sale.category_id,
         category_name: sale.category_name,
-        // Create a products array for the edit form
         products: sale.product_id ? [{
           id: sale.product_id,
           name: sale.product_name,
@@ -258,8 +255,14 @@ const fetchFlashSales = async () => {
                   </span>
                 </div>
 
-                <p className="offers-card-desc">{sale.description}</p>
-
+<p 
+  className="offers-card-desc" 
+  title={sale.description} 
+>
+  {sale.description.length > 40 
+    ? `${sale.description.substring(0, 40)}...` 
+    : sale.description}
+</p>
                 <div className="offers-details-list">
                   <div className="offers-detail-item">
                     <strong>Type:</strong>{" "}

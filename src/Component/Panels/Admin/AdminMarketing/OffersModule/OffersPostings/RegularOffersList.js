@@ -174,7 +174,15 @@ const formatToIndianDate = (dateString) => {
           </span>
         </div>
         
-        <p className="offers-card-desc">{offer.description}</p>
+        {/* <p className="offers-card-desc">{offer.description}</p> */}
+        <p 
+  className="offers-card-desc" 
+  title={offer.description} 
+>
+  {offer.description.length > 40 
+    ? `${offer.description.substring(0, 40)}...` 
+    : offer.description}
+</p>
         
         <div className="offers-details-list">
           <div className="offers-detail-item">
