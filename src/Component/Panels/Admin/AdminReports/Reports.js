@@ -3,7 +3,9 @@ import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
 import SalesReport from "./SalesReport";
 import ExpenseReport from "./ExpenseReport";
 import OfferReport from "./OfferReports";
+import StockReport from "./StockReport";
 import RetailerReports from "./RetailerReports";
+import GstReport from "./GstReport";
 import "./Reports.css";
 import { FaChartBar } from "react-icons/fa";
 
@@ -15,19 +17,24 @@ function Reports() {
   // Export handlers
 
   // Render report content
-  const renderReportContent = () => {
-    switch (activeReport) {
-      case "sales":
-        return <SalesReport />;
-      case "expense":
-        return <ExpenseReport />;
-      case "offer":
-        return <OfferReport />;
-      case "retailers":
-      default:
-        return <RetailerReports loading={loading} setLoading={setLoading} />;
-    }
-  };
+const renderReportContent = () => {
+  switch (activeReport) {
+    case "sales":
+      return <SalesReport />;
+    case "expense":
+      return <ExpenseReport />;
+    case "offer":
+      return <OfferReport />;
+    case "retailers":
+      return <RetailerReports loading={loading} setLoading={setLoading} />;
+    case "catalogue":
+      return <StockReport />;
+         case "gst":
+      return <GstReport />;
+    default:
+      return <RetailerReports loading={loading} setLoading={setLoading} />;
+  }
+};
 
   return (
     <div className="admin-layout">
@@ -67,6 +74,16 @@ function Reports() {
                 <div className="report-link-item" onClick={() => setActiveReport("sales")}>
                   <span className={`report-link-text ${activeReport === "sales" ? "active" : ""}`}>
                     Sales Reports
+                  </span>
+                </div>
+                  <div className="report-link-item" onClick={() => setActiveReport("catalogue")}>
+                  <span className={`report-link-text ${activeReport === "catalogue" ? "active" : ""}`}>
+                  Stock Report
+                  </span>
+                </div>
+                   <div className="report-link-item" onClick={() => setActiveReport("gst")}>
+                  <span className={`report-link-text ${activeReport === "gst" ? "active" : ""}`}>
+                  GST Report
                   </span>
                 </div>
               </div>
