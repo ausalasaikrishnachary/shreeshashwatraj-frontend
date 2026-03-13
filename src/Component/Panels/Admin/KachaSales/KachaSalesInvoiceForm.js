@@ -27,6 +27,7 @@ const KachaSalesInvoiceForm = ({ user }) => {
   const [staffMembers, setStaffMembers] = useState([]);
   const navigate = useNavigate();
   const { id } = useParams();
+const [productStock, setProductStock] = useState({});
 
   const [invoiceData, setInvoiceData] = useState(() => {
     const savedData = localStorage.getItem('draftInvoice');
@@ -559,11 +560,27 @@ const editItem = (index) => {
   }
 };
 
+  useEffect(() => {
+  if (products.length > 0) {
+    products.forEach((p) => {
+      fetchBatchesForProduct(p.id);
+    });
+  }
+}, [products]);
   const fetchBatchesForProduct = async (productId) => {
     try {
       const res = await fetch(`${baseurl}/products/${productId}/batches`);
       const batchData = await res.json();
       setBatches(batchData);
+           setBatches(batchData);
+         const totalQty = batchData.reduce(
+      (sum, batch) => sum + Number(batch.quantity || 0),
+      0
+    );
+   setProductStock(prev => ({
+      ...prev,
+      [productId]: totalQty
+    }));
     } catch (err) {
       console.error("Failed to fetch batches:", err);
       setBatches([]);
@@ -1108,15 +1125,22 @@ useEffect(() => {
 <Form.Select
   name="product"
   value={itemForm.product}
+  title={(() => {
+    const selectedProduct = products.find(
+      (p) => p.goods_name === itemForm.product && p.product_type === "KACHA"
+    );
+    if (!selectedProduct) return "Select a product";
+    const availableQty = productStock[selectedProduct.id] || 0;
+    return `${selectedProduct.goods_name} - Qty: ${availableQty}`;
+  })()}
   onChange={async (e) => {
     const selectedName = e.target.value;
-    
+
     const selectedProduct = products.find(
       (p) => p.goods_name === selectedName && p.product_type === "KACHA"
     );
 
     if (selectedProduct) {
-      // Get the retailer discount from supplierInfo
       const retailerDiscount = parseFloat(invoiceData.supplierInfo?.discount || 0);
 
       setItemForm((prev) => ({
@@ -1125,7 +1149,7 @@ useEffect(() => {
         product_id: selectedProduct.id,
         price: selectedProduct.net_price,
         description: selectedProduct.description || "",
-        discount: retailerDiscount, // CRITICAL: Set the discount here
+        discount: retailerDiscount,
         batch: "",
         batch_id: ""
       }));
@@ -1144,10 +1168,9 @@ useEffect(() => {
             batch: defaultBatch.batch_number,
             batch_id: defaultBatch.batch_number,
             price: defaultBatch.selling_price,
-            discount: retailerDiscount // Preserve discount when setting default batch
+            discount: retailerDiscount
           }));
         } else {
-          // If maintain_batch > 0, let user choose from dropdown
           setSelectedBatch("");
           setSelectedBatchDetails(null);
         }
@@ -1159,7 +1182,6 @@ useEffect(() => {
         setSelectedBatchDetails(null);
       }
     } else {
-      // Reset if no product selected
       setItemForm(prev => ({
         ...prev,
         product: "",
@@ -1181,15 +1203,22 @@ useEffect(() => {
     .filter(
       (p) =>
         (p.group_by === "Salescatalog" ||
-        p.can_be_sold === 1 ||
-        p.can_be_sold === true) &&
+          p.can_be_sold === 1 ||
+          p.can_be_sold === true) &&
         p.product_type === "KACHA"
     )
-    .map((p) => (
-      <option key={p.id} value={p.goods_name}>
-        {p.goods_name}
-      </option>
-    ))}
+    .map((p) => {
+      const availableQty = productStock[p.id] || 0;
+      return (
+        <option
+          key={p.id}
+          value={p.goods_name}
+          title={`${p.goods_name} - Qty: ${availableQty}`}
+        >
+          {p.goods_name} (Qty: {availableQty})
+        </option>
+      );
+    })}
 </Form.Select>
 
                   {batches.length > 0 && itemForm.maintain_batch !== 0 && (

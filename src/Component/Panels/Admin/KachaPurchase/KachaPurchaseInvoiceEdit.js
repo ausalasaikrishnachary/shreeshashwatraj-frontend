@@ -25,6 +25,7 @@ const KachaPurchaseInvoiceEdit = ({ user }) => {
   const [editingVoucherId, setEditingVoucherId] = useState(null);
   const navigate = useNavigate();
   const { id } = useParams();
+  const [productStock, setProductStock] = useState({});
 
   const [invoiceData, setInvoiceData] = useState(() => {
     const savedData = localStorage.getItem('draftInvoice');
@@ -500,11 +501,31 @@ const addItem = () => {
   }
 };
 
+ useEffect(() => {
+  if (products.length > 0) {
+    products.forEach((p) => {
+      fetchBatchesForProduct(p.id);
+    });
+  }
+}, [products]);
+
+
   const fetchBatchesForProduct = async (productId) => {
     try {
       const res = await fetch(`${baseurl}/products/${productId}/batches`);
       const batchData = await res.json();
       setBatches(batchData);
+         // Calculate total quantity from all batches
+    const totalQty = batchData.reduce(
+      (sum, batch) => sum + Number(batch.quantity || 0),
+      0
+    );
+    
+    // Store in productStock state
+    setProductStock(prev => ({
+      ...prev,
+      [productId]: totalQty
+    }));
     } catch (err) {
       console.error("Failed to fetch batches:", err);
       setBatches([]);
@@ -1037,67 +1058,82 @@ const cancelEdit = () => {
                       </button>
                     </div>
                    
-                    <Form.Select
-                      name="product"
-                      value={itemForm.product}
-                      onChange={async (e) => {
-                        const selectedName = e.target.value;
-                        const selectedProduct = products.find(
+                  <Form.Select
+  name="product"
+  value={itemForm.product}
+  title={(() => {
+    const selectedProduct = products.find(
+      (p) => p.goods_name === itemForm.product && p.product_type === "KACHA"
+    );
+    if (!selectedProduct) return "Select a product";
+    const availableQty = productStock[selectedProduct.id] || 0;
+    return `${selectedProduct.goods_name} - Qty: ${availableQty}`;
+  })()}
+  onChange={async (e) => {
+    const selectedName = e.target.value;
+    const selectedProduct = products.find(
       (p) => p.goods_name === selectedName && p.product_type === "KACHA"
-                        );
+    );
 
-                        console.log('🔍 Selected Product:', selectedProduct);
+    console.log('🔍 Selected Product:', selectedProduct);
 
-                        if (selectedProduct) {
-                          setItemForm((prev) => ({
-                            ...prev,
-                            product: selectedProduct.goods_name,
-                            product_id: selectedProduct.id,
-                            price: selectedProduct.net_price,
-                            description: selectedProduct.description || "",
-                            batch: "",
-                            batch_id: ""
-                          }));
+    if (selectedProduct) {
+      setItemForm((prev) => ({
+        ...prev,
+        product: selectedProduct.goods_name,
+        product_id: selectedProduct.id,
+        price: selectedProduct.net_price,
+        description: selectedProduct.description || "",
+        batch: "",
+        batch_id: ""
+      }));
 
-                          console.log('✅ Product ID set:', selectedProduct.id);
+      console.log('✅ Product ID set:', selectedProduct.id);
 
-                          try {
-                            const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
-                            const batchData = await res.json();
-                            console.log('📦 Batches fetched:', batchData);
-                            setBatches(batchData);
-                            setSelectedBatch("");
-                            setSelectedBatchDetails(null);
-                          } catch (err) {
-                            console.error("Failed to fetch batches:", err);
-                            setBatches([]);
-                          }
-                        } else {
-                          setItemForm(prev => ({
-                            ...prev,
-                            product: "",
-                            product_id: "",
-                            description: "",
-                            price: 0,
-                            batch: "",
-                            batch_id: ""
-                          }));
-                          setBatches([]);
-                          setSelectedBatch("");
-                          setSelectedBatchDetails(null);
-                        }
-                      }}
-                      className="border-primary"
-                    >
-                      <option value="">Select Product</option>
-                      {products
-                        .filter((p) => p.group_by === "Purchaseditems")
-                        .map((p) => (
-                          <option key={p.id} value={p.goods_name}>
-                            {p.goods_name}
-                          </option>
-                        ))}
-                    </Form.Select>
+      try {
+        const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
+        const batchData = await res.json();
+        console.log('📦 Batches fetched:', batchData);
+        setBatches(batchData);
+        setSelectedBatch("");
+        setSelectedBatchDetails(null);
+      } catch (err) {
+        console.error("Failed to fetch batches:", err);
+        setBatches([]);
+      }
+    } else {
+      setItemForm(prev => ({
+        ...prev,
+        product: "",
+        product_id: "",
+        description: "",
+        price: 0,
+        batch: "",
+        batch_id: ""
+      }));
+      setBatches([]);
+      setSelectedBatch("");
+      setSelectedBatchDetails(null);
+    }
+  }}
+  className="border-primary"
+>
+  <option value="">Select Product</option>
+  {products
+    .filter((p) => p.group_by === "Purchaseditems")
+    .map((p) => {
+      const availableQty = productStock[p.id] || 0;
+      return (
+        <option
+          key={p.id}
+          value={p.goods_name}
+          title={`${p.goods_name} - Qty: ${availableQty}`}
+        >
+          {p.goods_name} (Qty: {availableQty})
+        </option>
+      );
+    })}
+</Form.Select>
 
                     <Form.Select
                       className="mt-2 border-primary"
