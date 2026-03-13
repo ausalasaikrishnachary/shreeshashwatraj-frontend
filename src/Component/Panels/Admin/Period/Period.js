@@ -21,7 +21,7 @@ const Period = () => {
   const [downloading, setDownloading] = useState({});
   const [orderInvoices, setOrderInvoices] = useState({}); 
   const [loadingInvoices, setLoadingInvoices] = useState({});
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState("");   
   const [endDate, setEndDate] = useState("");
   const navigate = useNavigate();
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -252,99 +252,6 @@ const handleDownloadSpecificPDF = async (orderNumber, pdfData) => {
 
 
 
-  // const handleDownloadPDF = async (invoice) => {
-  //   const orderNumber = invoice.order_number || invoice.originalData?.order_number;
-
-  //   if (!orderNumber) {
-  //     alert('Order number not found for this invoice');
-  //     return;
-  //   }
-
-  //   try {
-  //     setDownloading(prev => ({ ...prev, [orderNumber]: true }));
-
-  //     const downloadResponse = await fetch(`${baseurl}/transactions/download-pdf?order_number=${encodeURIComponent(orderNumber)}`);
-
-  //     if (downloadResponse.ok) {
-  //       const pdfBlob = await downloadResponse.blob();
-  //       const url = window.URL.createObjectURL(pdfBlob);
-  //       const link = document.createElement('a');
-  //       link.href = url;
-
-  //       const contentDisposition = downloadResponse.headers.get('content-disposition');
-  //       let filename = `Invoice_${invoice.number || orderNumber}.pdf`;
-
-  //       if (contentDisposition) {
-  //         const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-  //         if (filenameMatch) {
-  //           filename = filenameMatch[1];
-  //         }
-  //       }
-
-  //       link.download = filename;
-  //       document.body.appendChild(link);
-  //       link.click();
-  //       document.body.removeChild(link);
-  //       window.URL.revokeObjectURL(url);
-
-  //       console.log('PDF downloaded successfully');
-
-  //     } else if (downloadResponse.status === 404) {
-  //       console.log('PDF not found, generating new PDF...');
-
-  //       const generateResponse = await fetch(`${baseurl}/transactions/generate-pdf`, {
-  //         method: 'POST',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //         },
-  //         body: JSON.stringify({ order_number: orderNumber })
-  //       });
-
-  //       if (generateResponse.ok) {
-  //         const result = await generateResponse.json();
-  //         console.log('PDF generated successfully:', result);
-
-  //         const retryDownload = await fetch(`${baseurl}/transactions/download-pdf?order_number=${encodeURIComponent(orderNumber)}`);
-
-  //         if (retryDownload.ok) {
-  //           const pdfBlob = await retryDownload.blob();
-  //           const url = window.URL.createObjectURL(pdfBlob);
-  //           const link = document.createElement('a');
-  //           link.href = url;
-
-  //           const retryContentDisposition = retryDownload.headers.get('content-disposition');
-  //           let retryFilename = `Invoice_${invoice.number || orderNumber}.pdf`;
-
-  //           if (retryContentDisposition) {
-  //             const filenameMatch = retryContentDisposition.match(/filename="(.+)"/);
-  //             if (filenameMatch) {
-  //               retryFilename = filenameMatch[1];
-  //             }
-  //           }
-
-  //           link.download = retryFilename;
-  //           document.body.appendChild(link);
-  //           link.click();
-  //           document.body.removeChild(link);
-  //           window.URL.revokeObjectURL(url);
-
-  //           console.log('PDF downloaded after generation');
-  //         } else {
-  //           throw new Error('Failed to download PDF after generation');
-  //         }
-  //       } else {
-  //         throw new Error('Failed to generate PDF');
-  //       }
-  //     } else {
-  //       throw new Error(`Failed to download PDF: ${downloadResponse.status}`);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error downloading PDF:', error);
-  //     alert('Error downloading PDF: ' + error.message);
-  //   } finally {
-  //     setDownloading(prev => ({ ...prev, [orderNumber]: false }));
-  //   }
-  // };
 
 const fetchOrders = async () => {
   try {
@@ -2264,6 +2171,7 @@ const filteredOrders = orders.filter(order => {
         </div>
       </div>
     </div>
+     
   </div>
 )}
     </div>

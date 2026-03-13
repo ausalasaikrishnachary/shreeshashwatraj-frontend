@@ -387,29 +387,6 @@ const addItem = () => {
     return;
   }
 
-  const quantity = parseFloat(itemForm.quantity) || 0;
-  if (quantity <= 0) {
-    window.alert("⚠️ Cannot add item - Quantity is zero. Please enter a quantity greater than 0.");
-    return;
-  }
-
-  if (selectedBatchDetails) {
-    const availableQuantity = parseFloat(selectedBatchDetails.quantity) || 0;
-    
-    if (availableQuantity <= 0) {
-      window.alert(`⚠️ Cannot add item - Selected batch "${selectedBatch}" has zero stock available. Please select a different batch.`);
-      return;
-    }
-    
-    if (quantity > availableQuantity) {
-      window.alert(
-        `⚠️ Insufficient stock - Only ${availableQuantity} units available in this batch. ` +
-        `You tried to set quantity to ${quantity}. Please reduce quantity or select another batch.`
-      );
-      return;
-    }
-  }
-
   const calculatedItem = {
     ...calculateItemTotal(),
     batch: selectedBatch,
@@ -423,6 +400,7 @@ const addItem = () => {
     items: [...prev.items, calculatedItem]
   }));
 
+  // Reset form after adding item
   setItemForm({
     product: "",
     product_id: null,
@@ -440,10 +418,11 @@ const addItem = () => {
     batch_id: "",
     batchDetails: null
   });
+
   setBatches([]);
   setSelectedBatch("");
   setSelectedBatchDetails(null);
-  
+
   window.alert(`✅ Item "${calculatedItem.product}" added successfully!`);
 };
 
