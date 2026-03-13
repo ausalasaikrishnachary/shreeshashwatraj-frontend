@@ -299,36 +299,13 @@ const addItem = () => {
     return;
   }
 
-  const quantity = parseFloat(itemForm.quantity) || 0;
-  if (quantity <= 0) {
-    window.alert("⚠️ Cannot add item - Quantity is zero. Please enter a quantity greater than 0.");
-    return;
-  }
-
-  if (selectedBatchDetails) {
-    const availableQuantity = parseFloat(selectedBatchDetails.quantity) || 0;
-    
-    if (availableQuantity <= 0) {
-      window.alert(`⚠️ Cannot add item - Selected batch "${selectedBatch}" has zero stock available. Please select a different batch.`);
-      return;
-    }
-    
-    if (quantity > availableQuantity) {
-      window.alert(
-        `⚠️ Insufficient stock - Only ${availableQuantity} units available in this batch. ` +
-        `You tried to set quantity to ${quantity}. Please reduce quantity or select another batch.`
-      );
-      return;
-    }
-  }
-
   const calculatedItem = {
     ...calculateItemTotal(),
     batch: selectedBatch,
     batch_id: itemForm.batch_id,
     batchDetails: selectedBatchDetails,
     product_id: itemForm.product_id,
-    discount: itemForm.discount // Make sure discount is included
+    discount: itemForm.discount
   };
 
   setInvoiceData(prev => ({
@@ -345,17 +322,22 @@ const addItem = () => {
     description: "",
     quantity: 0,
     price: 0,
-    discount: parseFloat(invoiceData.supplierInfo?.discount) || 0, // Keep supplier discount
+    discount: parseFloat(invoiceData.supplierInfo?.discount) || 0,
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0,
     total: 0,
     batch: "",
     batch_id: "",
     batchDetails: null
   });
+
   setBatches([]);
   setSelectedBatch("");
   setSelectedBatchDetails(null);
 };
-
   const removeItem = (index) => {
     setInvoiceData(prev => ({
       ...prev,
