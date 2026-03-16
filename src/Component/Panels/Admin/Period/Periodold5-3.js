@@ -10,7 +10,6 @@ import axios from "axios";
 import DispatchReportPDF from './DispatchReportPDF';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { PDFViewer } from "@react-pdf/renderer";
-import ReusableTable from "../../../Layouts/TableLayout/ReusableTable";
 
 
 const Period = () => {
@@ -2172,14 +2171,7 @@ const filteredOrders = orders.filter(order => {
         </div>
       </div>
     </div>
-      <ReusableTable
-                    data={filteredLedger}
-                    columns={ledgerColumns}
-                    initialEntriesPerPage={10}
-                  
-                    showEntriesSelector={true}
-                    showPagination={true}
-                  />
+      
   </div>
 )}
     </div>
