@@ -553,48 +553,85 @@ const addItem = () => {
     const availableQuantity = parseFloat(selectedBatchDetails.quantity) || 0;
     
     if (availableQuantity <= 0) {
-      window.alert(`⚠️ Cannot add item - Selected batch "${selectedBatch}" has zero stock available. Please select a different batch.`);
-      return;
-    }
-    
-    if (editingItemIndex !== null) {
-      const existingItem = invoiceData.items[editingItemIndex];
+      // Show confirmation dialog for zero stock
+      const confirmAdd = window.confirm(
+        `⚠️ WARNING: Selected batch "${selectedBatch}" has ZERO stock available.\n\n` +
+        `You are trying to add ${quantity} units.\n\n` +
+        `This will create a negative stock entry. Are you sure you want to continue?`
+      );
       
-      if (existingItem.batch_id === selectedBatchDetails.batch_number) {
-        if (quantity > availableQuantity) {
-          window.alert(
-            `⚠️ Cannot update - Only ${availableQuantity} units available in this batch. ` +
-            `You tried to set quantity to ${quantity}.`
-          );
-          return;
-        }
-      } else {
-        if (quantity > availableQuantity) {
-          window.alert(
-            `⚠️ Cannot update - Only ${availableQuantity} units available in the selected batch. ` +
-            `You tried to set quantity to ${quantity}.`
-          );
-          return;
-        }
+      if (!confirmAdd) {
+        return; // User clicked Cancel - don't add item
       }
-    } else {
-      if (quantity > availableQuantity) {
-        window.alert(`⚠️ Insufficient stock - Only ${availableQuantity} units available in this batch. Please reduce quantity or select another batch.`);
-        return;
+      // User clicked OK - proceed with adding item
+    } else if (quantity > availableQuantity) {
+      // Show warning for insufficient stock
+      const confirmAdd = window.confirm(
+        `⚠️ WARNING: Insufficient stock!\n\n` +
+        `Batch: "${selectedBatch}"\n` +
+        `Available stock: ${availableQuantity} units\n` +
+        `Requested quantity: ${quantity} units\n\n` +
+        `This will create a negative stock entry of ${quantity - availableQuantity} units.\n\n` +
+        `Are you sure you want to continue?`
+      );
+      
+      if (!confirmAdd) {
+        return; // User clicked Cancel - don't add item
       }
+      // User clicked OK - proceed with adding item
     }
   }
 
-  const calculatedItem = calculateItemTotal();
-  const finalItem = {
-    ...calculatedItem,
-    batch: selectedBatch,
-    batch_id: itemForm.batch_id,
-    product_id: itemForm.product_id,
-    batchDetails: selectedBatchDetails
-  };
-
   if (editingItemIndex !== null) {
+    // Check if editing an existing item
+    const existingItem = invoiceData.items[editingItemIndex];
+    
+    if (selectedBatchDetails) {
+      const availableQuantity = parseFloat(selectedBatchDetails.quantity) || 0;
+      
+      if (existingItem.batch_id === selectedBatchDetails.batch_number) {
+        if (quantity > availableQuantity && availableQuantity > 0) {
+          const confirmUpdate = window.confirm(
+            `⚠️ WARNING: Insufficient stock!\n\n` +
+            `Batch: "${selectedBatch}"\n` +
+            `Available stock: ${availableQuantity} units\n` +
+            `Updated quantity: ${quantity} units\n\n` +
+            `This will increase negative stock by ${quantity - availableQuantity} units.\n\n` +
+            `Are you sure you want to update?`
+          );
+          
+          if (!confirmUpdate) {
+            return;
+          }
+        }
+      } else {
+        // Changing to a different batch
+        if (quantity > availableQuantity && availableQuantity > 0) {
+          const confirmUpdate = window.confirm(
+            `⚠️ WARNING: Insufficient stock in new batch!\n\n` +
+            `New Batch: "${selectedBatch}"\n` +
+            `Available stock: ${availableQuantity} units\n` +
+            `Requested quantity: ${quantity} units\n\n` +
+            `This will create a negative stock entry.\n\n` +
+            `Are you sure you want to continue?`
+          );
+          
+          if (!confirmUpdate) {
+            return;
+          }
+        }
+      }
+    }
+
+    const calculatedItem = calculateItemTotal();
+    const finalItem = {
+      ...calculatedItem,
+      batch: selectedBatch,
+      batch_id: itemForm.batch_id,
+      product_id: itemForm.product_id,
+      batchDetails: selectedBatchDetails
+    };
+
     setInvoiceData(prev => ({
       ...prev,
       items: prev.items.map((item, index) => 
@@ -602,14 +639,35 @@ const addItem = () => {
       )
     }));
     setEditingItemIndex(null);
-    window.alert(`✅ Item "${finalItem.product}" updated successfully!`);
+    
+    // Success message with stock warning if applicable
+    if (selectedBatchDetails && parseFloat(selectedBatchDetails.quantity) <= 0) {
+      window.alert(`⚠️ Item "${finalItem.product}" updated with ZERO stock! Negative stock created.`);
+    } else {
+      window.alert(`✅ Item "${finalItem.product}" updated successfully!`);
+    }
   } else {
     // Add new item
+    const calculatedItem = calculateItemTotal();
+    const finalItem = {
+      ...calculatedItem,
+      batch: selectedBatch,
+      batch_id: itemForm.batch_id,
+      product_id: itemForm.product_id,
+      batchDetails: selectedBatchDetails
+    };
+
     setInvoiceData(prev => ({
       ...prev,
       items: [...prev.items, finalItem]
     }));
-    window.alert(`✅ Item "${finalItem.product}" added successfully!`);
+    
+    // Success message with stock warning if applicable
+    if (selectedBatchDetails && parseFloat(selectedBatchDetails.quantity) <= 0) {
+      window.alert(`⚠️ Item "${finalItem.product}" added with ZERO stock! Negative stock created.`);
+    } else {
+      window.alert(`✅ Item "${finalItem.product}" added successfully!`);
+    }
   }
 
   // Reset form
