@@ -22,6 +22,8 @@ const CreateProductInvoice = ({ user }) => {
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const [hasFetchedInvoiceNumber, setHasFetchedInvoiceNumber] = useState(false);
   const navigate = useNavigate();
+  const [productStock, setProductStock] = useState({});
+  
 const [isEditMode, setIsEditMode] = useState(false);
   const [invoiceData, setInvoiceData] = useState(() => {
     const savedData = localStorage.getItem('draftPurchaseInvoice');
@@ -201,41 +203,33 @@ const [isEditMode, setIsEditMode] = useState(false);
   }, []);
 
 
-const editItem = async (index) => {
-  const itemToEdit = invoiceData.items[index];
-  
-  // Set the form data
-  setItemForm({
-    ...itemToEdit,
-    product: itemToEdit.product,
-    product_id: itemToEdit.product_id,
-    batch: itemToEdit.batch,
-    batchDetails: itemToEdit.batchDetails
-  });
-  
-  setSelectedBatch(itemToEdit.batch || "");
-  setSelectedBatchDetails(itemToEdit.batchDetails || null);
-  setEditingIndex(index);
 
-  // Fetch batches for the product being edited
-  if (itemToEdit.product_id) {
+  useEffect(() => {
+  if (products.length > 0) {
+    products.forEach((p) => {
+      fetchBatchesForProduct(p.id);
+    });
+  }
+}, [products]);
+  const fetchBatchesForProduct = async (productId) => {
     try {
-      const res = await fetch(`${baseurl}/products/${itemToEdit.product_id}/batches`);
-      if (res.ok) {
-        const batchData = await res.json();
-        setBatches(batchData);
-      } else {
-        console.error("Failed to fetch batches for editing");
-        setBatches([]);
-      }
+      const res = await fetch(`${baseurl}/products/${productId}/batches`);
+      const batchData = await res.json();
+      setBatches(batchData);
+         const totalQty = batchData.reduce(
+      (sum, batch) => sum + Number(batch.quantity || 0),
+      0
+    );
+   setProductStock(prev => ({
+      ...prev,
+      [productId]: totalQty
+    }));
+
     } catch (err) {
-      console.error("Failed to fetch batches for editing:", err);
+      console.error("Failed to fetch batches:", err);
       setBatches([]);
     }
-  } else {
-    setBatches([]);
-  }
-};
+  };
 
 const updateItem = () => {
   if (editingIndex === null) return;
@@ -1035,17 +1029,24 @@ const handleSubmit = async (e) => {
 <Form.Select
   name="product"
   value={itemForm.product}
+  title={(() => {
+    const selectedProduct = products.find(
+      (p) => p.goods_name === itemForm.product && p.product_type === "PAKKA"
+    );
+    if (!selectedProduct) return "Select a product";
+    const availableQty = productStock[selectedProduct.id] || 0;
+    return `${selectedProduct.goods_name} - Qty: ${availableQty}`;
+  })()}
   onChange={async (e) => {
     const selectedName = e.target.value;
     const selectedProduct = products.find(
-           (p) => p.goods_name === selectedName && p.product_type === "PAKKA"
-
+      (p) => p.goods_name === selectedName && p.product_type === "PAKKA"
     );
 
     if (selectedProduct) {
       const supplierAccount = accounts.find(acc => acc.id === selectedSupplierId);
       const supplierDiscount = parseFloat(supplierAccount?.discount) || 0;
-      
+
       setItemForm((prev) => ({
         ...prev,
         product: selectedProduct.goods_name,
@@ -1053,7 +1054,7 @@ const handleSubmit = async (e) => {
         price: selectedProduct.net_price || 0,
         gst: parseFloat(selectedProduct.gst_rate?.replace("%", "") || 0),
         description: selectedProduct.description || "",
-        discount: supplierDiscount, 
+        discount: supplierDiscount,
         batch: "",
         batch_id: ""
       }));
@@ -1062,6 +1063,15 @@ const handleSubmit = async (e) => {
         const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
         const batchData = await res.json();
         setBatches(batchData);
+
+        const totalQty = batchData.reduce(
+          (sum, batch) => sum + Number(batch.quantity || 0),
+          0
+        );
+        setProductStock(prev => ({
+          ...prev,
+          [selectedProduct.id]: totalQty
+        }));
 
         if (selectedProduct.maintain_batch === 0 && batchData.length > 0) {
           const defaultBatch = batchData[0];
@@ -1072,7 +1082,7 @@ const handleSubmit = async (e) => {
             batch: defaultBatch.batch_number,
             batch_id: defaultBatch.batch_number,
             price: defaultBatch.selling_price,
-            discount: supplierDiscount 
+            discount: supplierDiscount
           }));
         } else {
           setSelectedBatch("");
@@ -1093,7 +1103,7 @@ const handleSubmit = async (e) => {
         description: "",
         price: 0,
         gst: 0,
-        discount: 0, // Reset discount
+        discount: 0,
         batch: "",
         batch_id: ""
       }));
@@ -1105,22 +1115,24 @@ const handleSubmit = async (e) => {
   className="border-primary"
 >
   <option value="">Select Product</option>
-
-{products
-  .filter((p) => {
-    // Log each product's filter status
-    const groupMatch = p.group_by === "Purchaseditems" || p.can_be_sold === true;
-    const typeMatch = p.product_type === "PAKKA";
-    
-    console.log(`Product: ${p.goods_name}, Type: ${p.product_type}, Group: ${p.group_by}, Passes filter: ${groupMatch && typeMatch}`);
-    
-    return groupMatch && typeMatch;
-  })
-  .map((p) => (
-    <option key={p.id} value={p.goods_name}>
-      {p.goods_name} 
-    </option>
-  ))}
+  {products
+    .filter((p) => {
+      const groupMatch = p.group_by === "Purchaseditems" || p.can_be_sold === true;
+      const typeMatch = p.product_type === "PAKKA";
+      return groupMatch && typeMatch;
+    })
+    .map((p) => {
+      const availableQty = productStock[p.id] || 0;
+      return (
+        <option
+          key={p.id}
+          value={p.goods_name}
+          title={`${p.goods_name} - Qty: ${availableQty}`}
+        >
+          {p.goods_name} (Qty: {availableQty})
+        </option>
+      );
+    })}
 </Form.Select>
 
 {/* Batch Dropdown */}
@@ -1365,15 +1377,7 @@ const handleSubmit = async (e) => {
                           </td>
                    <td className="salesinvoice-edit">
                     <div className="d-flex flex-column gap-1 align-items-center">
-  <Button 
-variant="warning" 
-    size="sm" 
-    onClick={() => editItem(index)}
-    className="me-1"
-    disabled={editingIndex !== null} // Disable other edit buttons when one is being edited
-  >
-    <FaEdit />
-  </Button>
+
   <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
     <FaTrash />
   </Button>
