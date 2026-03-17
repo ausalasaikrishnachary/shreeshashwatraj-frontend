@@ -71,7 +71,7 @@
 .customer-form-input {
   border: 1px solid #ced4da;
   border-radius: 4px;
-  padding: 0.75rem 1rem;
+  /* padding: 0.75rem 1rem; */
   transition: all 0.3s ease;
 }
 

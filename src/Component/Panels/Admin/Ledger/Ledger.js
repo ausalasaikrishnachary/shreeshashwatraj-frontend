@@ -21,11 +21,12 @@ const Ledger = () => {
   const [exportLoading, setExportLoading] = useState(false);
   const pdfContentRef = useRef(null);
   const [orderModeFilter, setOrderModeFilter] = useState("ALL");
-
+const [accounts, setAccounts] = useState([]);
   useEffect(() => {
     fetchLedger();
     fetchVoucherList();
   }, []);
+
 
   const fetchLedger = async () => {
     try {
@@ -37,6 +38,28 @@ const Ledger = () => {
       setLoading(false);
     }
   };
+  useEffect(() => {
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch(`${baseurl}/accounts`);
+      const data = await res.json();
+      setAccounts(data);
+    } catch (err) {
+      console.error("Failed to fetch accounts:", err);
+    }
+  };
+  fetchAccounts();
+}, []);
+
+const getPartyOpeningBalance = (partyID) => {
+  const account = accounts.find(acc => acc.id === parseInt(partyID));
+  if (!account) return { balance: 0, type: null };
+  
+  const balance = parseFloat(account.opening_balance || 0);
+  const type = account.opening_balance_type || null;
+  
+  return { balance, type };
+};
 
   const fetchVoucherList = async () => {
     try {
@@ -224,127 +247,169 @@ const Ledger = () => {
     }
   };
 
-  // ReusableTable columns
-  const ledgerColumns = [
-    {
-      key: "partyID",
-      title: "",
-      render: (_, ledger) => {
-        const balanceType = ledger.balance >= 0 ? "Cr" : "Dr";
-        const balanceAmt = Math.abs(ledger.balance).toFixed(2);
+const ledgerColumns = [
+  {
+    key: "partyID",
+    title: "",
+    render: (_, ledger) => {
+      const balanceType = ledger.balance >= 0 ? "Cr" : "Dr";
+      const balanceAmt = Math.abs(ledger.balance).toFixed(2);
+      const openingBalanceData = getPartyOpeningBalance(ledger.partyID);
+      const openingBalanceNum = openingBalanceData.balance;
+      const openingBalanceType = openingBalanceData.type;
+      
+      const openingBalanceDisplay = openingBalanceType 
+        ? `₹${openingBalanceNum.toFixed(2)} ${openingBalanceType === 'Debit' ? 'Dr' : 'Cr'}`
+        : `₹${openingBalanceNum.toFixed(2)}`; 
 
-        return (
-          <div className="ledger-party-section">
-            {/* Party Header */}
-            <div className="ledger-party-header">
-              {ledger.partyName} (ID: {ledger.partyID}) — Balance: {balanceAmt}{" "}
-              {balanceType}
-            </div>
+      const sortedTransactions = [...ledger.transactions].sort((a, b) => {
+        const dateA = a.date ? new Date(a.date) : new Date(0);
+        const dateB = b.date ? new Date(b.date) : new Date(0);
+        return dateA - dateB;
+      });
 
-            {/* Transactions Table */}
-            <table className="ledger-transactions-table">
-              <thead>
-                <tr>
-                  <th>Transaction Date</th>
-                  <th>Transaction Type</th>
-                  <th>Rec/Vou No</th>
-                  <th>Credit</th>
-                  <th>Debit</th>
-                  <th>Balance</th>
-                  <th>Created On</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ledger.transactions.map((tx, idx) => {
-                  const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
-                  const voucherId = tx.voucherID;
-                  const voucherDisplay = getVoucherDisplay(voucherId, tx.trantype);
-                  const amount = parseFloat(tx.Amount || 0);
-                  const amountDisplay = amount.toFixed(2);
-                  const transactionType = (tx.trantype || "").toLowerCase();
-                  const showAmountInsteadOfBalance =
-                    transactionType === "stock transfer" ||
-                    transactionType === "stock inward" ||
-                    transactionType === "sales" ||
-                    transactionType === "purchase";
-                  const txBalanceDisplay = showAmountInsteadOfBalance
-                    ? amountDisplay
-                    : tx.balance_amount
-                    ? parseFloat(tx.balance_amount).toFixed(2)
-                    : amountDisplay;
+      let runningBalance = openingBalanceNum;
+      
+      if (openingBalanceType === 'Credit') {
+        runningBalance = -openingBalanceNum; // Credit is negative in running balance
+      }
+      // For Debit, runningBalance stays positive
+      
+      const transactionsWithBalance = sortedTransactions.map((tx) => {
+        const amount = parseFloat(tx.Amount || 0);
+        const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
 
-                  return (
-                    <tr key={tx.id || idx}>
-                      <td>
-                        {tx.date
-                          ? new Date(tx.date).toLocaleDateString("en-IN", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })
-                          : "-"}
-                      </td>
-                      <td>{tx.trantype || "-"}</td>
-                      <td>
-                        {voucherId ? (
-                          <span
-                            onClick={() =>
-                              handleVoucherClick(voucherId, tx.trantype, tx)
-                            }
-                            className="ledger-voucher-link"
-                            title="Click to view invoice"
-                          >
-                            {voucherDisplay}
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td>
-                        {dc === "C" ? (
-                          <span className="ledger-credit-amount">
-                            {amountDisplay}
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td>
-                        {dc === "D" ? (
-                          <span className="ledger-debit-amount">
-                            {amountDisplay}
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td>
-                        <span className="ledger-balance-amount">
-                          {txBalanceDisplay}
-                        </span>
-                      </td>
-                      <td>
-                        {tx.created_at
-                          ? new Date(tx.created_at).toLocaleString("en-IN", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : "-"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+
+        
+        if (openingBalanceType === 'Debit') {
+          // Opening is Dr (positive)
+          if (dc === "D") {
+            runningBalance = runningBalance + amount; // Debit increases Dr
+          } else if (dc === "C") {
+            runningBalance = runningBalance - amount; // Credit decreases Dr
+          }
+        } else if (openingBalanceType === 'Credit') {
+          // Opening is Cr (negative)
+          if (dc === "D") {
+            runningBalance = runningBalance + amount; // Debit decreases Cr (adds to negative)
+          } else if (dc === "C") {
+            runningBalance = runningBalance - amount; // Credit increases Cr (makes more negative)
+          }
+        } else {
+          // No opening balance type specified
+          if (dc === "D") {
+            runningBalance = runningBalance + amount;
+          } else if (dc === "C") {
+            runningBalance = runningBalance - amount;
+          }
+        }
+
+        return { ...tx, runningBalance };
+      });
+
+      return (
+        <div className="ledger-party-section">
+          {/* Party Header */}
+          <div className="ledger-party-header">
+            {ledger.partyName} (ID: {ledger.partyID}) — Opening: {openingBalanceDisplay} | Balance: {balanceAmt} {balanceType}
           </div>
-        );
-      },
-    },
-  ];
 
+          {/* Transactions Table */}
+          <table className="ledger-transactions-table">
+            <thead>
+              <tr>
+                <th>Transaction Date</th>
+                <th>Transaction Type</th>
+                <th>Rec/Vou No</th>
+                <th>Credit</th>
+                <th>Debit</th>
+                <th>Balance</th>
+                <th>Created On</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactionsWithBalance.map((tx, idx) => {
+                const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
+                const voucherId = tx.voucherID;
+                const voucherDisplay = getVoucherDisplay(voucherId, tx.trantype);
+                const amount = parseFloat(tx.Amount || 0);
+                const amountDisplay = amount.toFixed(2);
+
+                // Use the computed runningBalance for this row
+                const txBalanceDisplay = Math.abs(tx.runningBalance).toFixed(2);
+                const balanceSign = tx.runningBalance >= 0 ? "Dr" : "Cr";
+
+                return (
+                  <tr key={tx.id || idx}>
+                    <td>
+                      {tx.date
+                        ? new Date(tx.date).toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })
+                        : "-"}
+                    </td>
+                    <td>{tx.trantype || "-"}</td>
+                    <td>
+                      {voucherId ? (
+                        <span
+                          onClick={() =>
+                            handleVoucherClick(voucherId, tx.trantype, tx)
+                          }
+                          className="ledger-voucher-link"
+                          title="Click to view invoice"
+                        >
+                          {voucherDisplay}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td>
+                      {dc === "C" ? (
+                        <span className="ledger-credit-amount">
+                          {amountDisplay}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td>
+                      {dc === "D" ? (
+                        <span className="ledger-debit-amount">
+                          {amountDisplay}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td>
+                      <span className="ledger-balance-amount">
+                        {txBalanceDisplay} {balanceSign}
+                      </span>
+                    </td>
+                    <td>
+                      {tx.created_at
+                        ? new Date(tx.created_at).toLocaleString("en-IN", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "-"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      );
+    },
+  },
+];
   return (
     <div className="ledger-wrapper">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
@@ -447,15 +512,13 @@ const Ledger = () => {
             ))}
           </div>
 
-          {/* Hidden PDF Content */}
-          <div className="ledger-pdf-hidden">
-            <LedgerPDF
-              ref={pdfContentRef}
-              filteredLedger={filteredLedger}
-              startDate={startDate}
-              endDate={endDate}
-            />
-          </div>
+<div className="ledger-pdf-hidden">
+  <LedgerPDF
+    ref={pdfContentRef}
+    filteredLedger={filteredLedger}
+    getPartyOpeningBalance={getPartyOpeningBalance}
+  />
+</div>
 
           {/* Loading / ReusableTable */}
           {loading ? (

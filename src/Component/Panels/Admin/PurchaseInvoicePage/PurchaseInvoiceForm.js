@@ -791,6 +791,43 @@ const handleSubmit = async (e) => {
   };
 
 
+  
+const editItem = async (index) => {
+  const itemToEdit = invoiceData.items[index];
+  
+  // Set the form data
+  setItemForm({
+    ...itemToEdit,
+    product: itemToEdit.product,
+    product_id: itemToEdit.product_id,
+    batch: itemToEdit.batch,
+    batchDetails: itemToEdit.batchDetails
+  });
+  
+  setSelectedBatch(itemToEdit.batch || "");
+  setSelectedBatchDetails(itemToEdit.batchDetails || null);
+  setEditingIndex(index);
+
+  // Fetch batches for the product being edited
+  if (itemToEdit.product_id) {
+    try {
+      const res = await fetch(`${baseurl}/products/${itemToEdit.product_id}/batches`);
+      if (res.ok) {
+        const batchData = await res.json();
+        setBatches(batchData);
+      } else {
+        console.error("Failed to fetch batches for editing");
+        setBatches([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch batches for editing:", err);
+      setBatches([]);
+    }
+  } else {
+    setBatches([]);
+  }
+};
+
   return (
     <div className="admin-layout">
       <AdminSidebar
@@ -1378,6 +1415,15 @@ const handleSubmit = async (e) => {
                    <td className="salesinvoice-edit">
                     <div className="d-flex flex-column gap-1 align-items-center">
 
+  <Button 
+variant="warning" 
+    size="sm" 
+    onClick={() => editItem(index)}
+    className="me-1"
+    disabled={editingIndex !== null} // Disable other edit buttons when one is being edited
+  >
+    <FaEdit />
+  </Button>
   <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
     <FaTrash />
   </Button>

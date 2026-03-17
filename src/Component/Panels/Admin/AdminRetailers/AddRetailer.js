@@ -86,7 +86,9 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     billing_state: "",
     billing_country: "",
     billing_branch_name: "",
-    billing_gstin: ""
+    billing_gstin: "",
+      opening_balance: 0,  
+       opening_balance_type: "",
   });
 
   // List of mandatory fields
@@ -1015,101 +1017,133 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               )}
             </div>
 
-            <div className="row">
-              {formData.group !== 'SUPPLIERS' ? (
-                <>
-                  <div className="col-md-6">
-                    {renderField({
-                      type: 'tel',
-                      name: 'mobile_number',
-                      label: 'Mobile Number',
-                      required: true
-                    })}
-                  </div>
-                  <div className="col-md-6">
-                    {renderField({
-                      type: 'text',
-                      name: 'password',
-                      label: 'Password',
-                      value: formData.password,
-                      disabled: true
-                    })}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="col-md-6">
-                    {renderField({
-                      type: 'text',
-                      name: 'password',
-                      label: 'Password',
-                      value: formData.password,
-                      disabled: true
-                    })}
-                  </div>
-                  <div className="col-md-6">
-                    {renderField({
-                      type: 'number',
-                      name: 'discount',
-                      label: 'Discount (%)',
-                      min: 0,
-                      max: 100,
-                      step: 0.1
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
+         <div className="row">
+  {formData.group !== 'SUPPLIERS' ? (
+    <>
+      <div className="col-md-6">
+        {renderField({
+          type: 'number',
+          name: 'discount',
+          label: 'Discount (%)',
+          min: 0,
+          max: 100,
+          step: 0.1
+        })}
+      </div>
+      <div className="col-md-6">
+        {renderField({
+          type: 'number',
+          name: 'Target',
+          label: 'Target (₹)',
+          min: 0,
+          step: 1000
+        })}
+      </div>
+    </>
+  ) : (
+    <>
+      <div className="col-md-6">
+        {renderField({
+          type: 'number',
+          name: 'Target',
+          label: 'Target (₹)',
+          min: 0,
+          step: 1000
+        })}
+      </div>
+      <div className="col-md-6">
+        <label className="customer-form-label">Opening Balance</label>
+        <div style={{ display: 'flex', width: '100%' }}>
+          <div style={{ width: '60%' }}>
+            <input
+              type="number"
+              name="opening_balance"
+              value={formData.opening_balance || ''}
+              className="form-control customer-form-input"
+              onChange={handleChange}
+              min={0}
+              step={1000}
+              placeholder="Amount"
+              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+            />
+          </div>
+          <div style={{ width: '40%' }}>
+            <select
+              name="opening_balance_type"
+              value={formData.opening_balance_type || ''}
+              className="form-select customer-form-input"
+              onChange={handleChange}
+              style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+            >
+              <option value="">Select</option>
+              <option value="Credit">Credit</option>
+              <option value="Debit">Debit</option>
+            </select>
+          </div>
+        </div>
+        {renderError('opening_balance')}
+        {renderError('opening_balance_type')}
+      </div>
+    </>
+  )}
+</div>
 
-            <div className="row">
-              {formData.group !== 'SUPPLIERS' ? (
-                <>
-                  <div className="col-md-6">
-                    {renderField({
-                      type: 'number',
-                      name: 'discount',
-                      label: 'Discount (%)',
-                      min: 0,
-                      max: 100,
-                      step: 0.1
-                    })}
-                  </div>
-                  <div className="col-md-6">
-                    {renderField({
-                      type: 'number',
-                      name: 'Target',
-                      label: 'Target (₹)',
-                      min: 0,
-                      step: 1000
-                    })}
-                  </div>
-                </>
-              ) : (
-                <div className="col-md-6">
-                  {renderField({
-                    type: 'number',
-                    name: 'Target',
-                    label: 'Target (₹)',
-                    min: 0,
-                    step: 1000
-                  })}
-                </div>
-              )}
-            </div>
+           
 
-            {formData.group === 'Retailer' && (
-              <div className="row">
-                <div className="col-md-6">
-                  {renderField({
-                    type: 'number',
-                    name: 'credit_limit',
-                    label: 'Credit Limit (₹)',
-                    min: 0,
-                    step: 1000
-                  })}
-                </div>
-              </div>
-            )}
+{formData.group === 'Retailer' ? (
+  <div className="row">
+    <div className="col-md-6">
+      {renderField({
+        type: 'number',
+        name: 'credit_limit',
+        label: 'Credit Limit (₹)',
+        min: 0,
+        step: 1000
+      })}
+    </div>
+    <div className="col-md-6">
+      <label className="customer-form-label">Opening Balance</label>
+      <div style={{ display: 'flex', width: '100%' }}>
+        <div style={{ width: '60%' }}>
+          <input
+            type="number"
+            name="opening_balance"
+            value={formData.opening_balance || ''}
+            className="form-control customer-form-input"
+            onChange={handleChange}
+            min={0}
+            step={1000}
+            placeholder="Amount"
+            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+          />
+        </div>
+        <div style={{ width: '40%' }}>
+          <select
+            name="opening_balance_type"
+            value={formData.opening_balance_type || ''}
+            className="form-select customer-form-input"
+            onChange={handleChange}
+            style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+          >
+            <option value="">Select</option>
+            <option value="Credit">Credit</option>
+            <option value="Debit">Debit</option>
+          </select>
+        </div>
+      </div>
+      {renderError('opening_balance')}
+      {renderError('opening_balance_type')}
+    </div>
+  </div>
+) : (
+  <div className="row">
+   
+  </div>
+)}
+
+
+
+            
           </FormSection>
         );
 

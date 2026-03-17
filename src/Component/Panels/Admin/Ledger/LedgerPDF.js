@@ -1,6 +1,6 @@
 import React from 'react';
 
-const LedgerPDF = React.forwardRef(({ filteredLedger }, ref) => {
+const LedgerPDF = React.forwardRef(({ filteredLedger, getPartyOpeningBalance }, ref) => {
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return '-';
@@ -28,22 +28,54 @@ const LedgerPDF = React.forwardRef(({ filteredLedger }, ref) => {
     return parseFloat(amount || 0).toFixed(2);
   };
 
-  // Calculate running balance for each transaction
-  const calculateRunningBalance = (transactions) => {
-    let balance = 0;
-    return transactions.map(tx => {
+  // Calculate running balance for each transaction with opening balance
+  const calculateRunningBalance = (transactions, openingBalanceNum, openingBalanceType) => {
+    // Sort transactions by date
+    const sortedTransactions = [...transactions].sort((a, b) => {
+      const dateA = a.date ? new Date(a.date) : new Date(0);
+      const dateB = b.date ? new Date(b.date) : new Date(0);
+      return dateA - dateB;
+    });
+
+    // Initialize running balance based on opening balance type
+    let runningBalance = openingBalanceNum;
+    
+    // Adjust running balance based on opening balance type
+    if (openingBalanceType === 'Credit') {
+      runningBalance = -openingBalanceNum; // Credit is negative in running balance
+    }
+    // For Debit, runningBalance stays positive
+
+    return sortedTransactions.map(tx => {
       const amount = parseFloat(tx.Amount || 0);
       const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
-      
-      if (dc === "C") {
-        balance += amount;
-      } else if (dc === "D") {
-        balance -= amount;
+
+      if (openingBalanceType === 'Debit') {
+        // Opening is Dr (positive)
+        if (dc === "D") {
+          runningBalance = runningBalance + amount; // Debit increases Dr
+        } else if (dc === "C") {
+          runningBalance = runningBalance - amount; // Credit decreases Dr
+        }
+      } else if (openingBalanceType === 'Credit') {
+        // Opening is Cr (negative)
+        if (dc === "D") {
+          runningBalance = runningBalance + amount; // Debit decreases Cr (adds to negative)
+        } else if (dc === "C") {
+          runningBalance = runningBalance - amount; // Credit increases Cr (makes more negative)
+        }
+      } else {
+        // No opening balance type specified
+        if (dc === "D") {
+          runningBalance = runningBalance + amount;
+        } else if (dc === "C") {
+          runningBalance = runningBalance - amount;
+        }
       }
-      
+
       return {
         ...tx,
-        runningBalance: balance
+        runningBalance
       };
     });
   };
@@ -65,14 +97,28 @@ const LedgerPDF = React.forwardRef(({ filteredLedger }, ref) => {
 
       {/* Party Sections with Tables */}
       {filteredLedger.map((ledger, index) => {
-        const transactionsWithBalance = calculateRunningBalance(ledger.transactions);
+        // Get opening balance data
+        const openingBalanceData = getPartyOpeningBalance(ledger.partyID);
+        const openingBalanceNum = openingBalanceData.balance;
+        const openingBalanceType = openingBalanceData.type;
+        
+        const openingBalanceDisplay = openingBalanceType 
+          ? `₹${openingBalanceNum.toFixed(2)} ${openingBalanceType === 'Debit' ? 'Dr' : 'Cr'}`
+          : `₹${openingBalanceNum.toFixed(2)}`;
+
+        // Calculate running balance with opening balance
+        const transactionsWithBalance = calculateRunningBalance(
+          ledger.transactions, 
+          openingBalanceNum, 
+          openingBalanceType
+        );
         
         return (
           <div key={index} style={{ 
             marginBottom: '40px',
             pageBreakInside: 'avoid'
           }}>
-            {/* Party Header */}
+            {/* Party Header - Added Opening Balance */}
             <div style={{
               backgroundColor: '#f2f2f2',
               padding: '10px 15px',
@@ -82,7 +128,7 @@ const LedgerPDF = React.forwardRef(({ filteredLedger }, ref) => {
               borderLeft: '4px solid #007bff',
               color: '#333'
             }}>
-              {ledger.partyName} (ID: {ledger.partyID}) — Balance:{" "}
+              {ledger.partyName} (ID: {ledger.partyID}) — Opening: {openingBalanceDisplay} | Balance:{" "}
               {formatAmount(Math.abs(ledger.balance))}{" "}
               <span style={{ 
                 color: ledger.balance >= 0 ? '#28a745' : '#dc3545'
@@ -146,9 +192,9 @@ const LedgerPDF = React.forwardRef(({ filteredLedger }, ref) => {
                         padding: '8px', 
                         textAlign: 'right',
                         fontWeight: 'bold',
-                        color: '#333'  // Normal color for balance
+                        color: '#333'
                       }}>
-                        {formatAmount(Math.abs(runningBalance))} {runningBalance >= 0 ? 'Cr' : 'Dr'}
+                        {formatAmount(Math.abs(runningBalance))} {runningBalance >= 0 ? 'Dr' : 'Cr'}
                       </td>
                       <td style={{ padding: '8px' }}>
                         {tx.created_at ? formatDateTime(tx.created_at) : "-"}

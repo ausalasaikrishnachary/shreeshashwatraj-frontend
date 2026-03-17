@@ -367,25 +367,34 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.companyInfo}>
-            <Text style={styles.companyName}>{getSafeData(companyInfo, 'name', 'SHREE SHASHWAT RAJ AGRO PVT.LTD.')}</Text>
-            <Text style={styles.companyAddress}>
-              {getSafeData(companyInfo, 'address', 'PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113')}
-            </Text>
-            <Text style={styles.companyAddress}>
-              Email: {getSafeData(companyInfo, 'email', 'spmathur56@gmail.com')} | 
-              Phone: {getSafeData(companyInfo, 'phone', '9801049700')} | 
-              GSTIN: {getSafeData(companyInfo, 'gstin', '10AAOCS1541B1ZZ')}
-            </Text>
-          </View>
-          <View style={styles.invoiceMeta}>
-            <Text style={styles.invoiceTitle}>TAX INVOICE</Text>
-            <Text style={styles.tableCell}><Text style={styles.tableCellBold}>Invoice No:</Text> {displayInvoiceNumber}</Text>
-            <Text style={styles.tableCell}><Text style={styles.tableCellBold}>Invoice Date:</Text> {invoiceDate}</Text>
-            <Text style={styles.tableCell}><Text style={styles.tableCellBold}>Due Date:</Text> {dueDate}</Text>
-          </View>
-        </View>
+     <View style={styles.header}>
+  <View style={styles.companyInfo}>
+    <Text style={styles.companyName}>{getSafeData(companyInfo, 'name', 'SHREE SHASHWATRAJ AGRO PVT LTD')}</Text>
+    <Text style={styles.companyAddress}>
+      {getSafeData(companyInfo, 'address', 'Growth Center, Jasoiya, Aurangabad, Bihar, 824101')}
+    </Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 3 }}>
+      <Text style={[styles.companyAddress, { marginRight: 5 }]}>
+        Email: {getSafeData(companyInfo, 'email', 'spmathur56@gmail.com')} |
+      </Text>
+      <Text style={[styles.companyAddress, { marginRight: 5 }]}>
+        Phone: {getSafeData(companyInfo, 'phone', '9801049700')} |
+      </Text>
+      <Text style={[styles.companyAddress, { marginRight: 5 }]}>
+        GSTIN: {getSafeData(companyInfo, 'gstin', '10AAOCS1541B1ZZ')} |
+      </Text>
+      <Text style={styles.companyAddress}>
+        State Code: {getSafeData(companyInfo, 'stateCode', '10')}
+      </Text>
+    </View>
+  </View>
+  <View style={styles.invoiceMeta}>
+    <Text style={styles.invoiceTitle}>TAX INVOICE</Text>
+    <Text style={styles.tableCell}><Text style={styles.tableCellBold}>Invoice No:</Text> {displayInvoiceNumber}</Text>
+    <Text style={styles.tableCell}><Text style={styles.tableCellBold}>Invoice Date:</Text> {invoiceDate}</Text>
+    <Text style={styles.tableCell}><Text style={styles.tableCellBold}>Due Date:</Text> {dueDate}</Text>
+  </View>
+</View>
         
         {/* Address Section */}
         <View style={styles.addressSection}>
@@ -433,7 +442,7 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
         </View>
         
         {/* Sales Person and Order Mode */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+        {/* <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
           {assignedStaff && assignedStaff !== 'N/A' && (
             <View style={styles.salesPersonSection}>
               <Text style={[styles.addressText, styles.tableCellBold]}>Sales Person:</Text>
@@ -447,7 +456,7 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             <Text style={styles.orderModeText}>Order Type: {orderMode}</Text>
           </View>
         </View>
-        
+         */}
         {/* Items Table */}
         <View style={styles.itemsSection}>
           <Text style={styles.itemsTitle}>Items Details</Text>

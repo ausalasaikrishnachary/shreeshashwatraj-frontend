@@ -417,15 +417,15 @@ const transformPaymentData = (apiData) => {
     invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
     invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    
-    companyInfo: {
-      name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-      email: "spmathur56@gmail.com",
-      phone: "9801049700",
-      gstin: "10AAOCS1541B1ZZ",
-      state: "Bihar"
-    },
+  companyInfo: {
+  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+  email: "spmathur56@gmail.com",
+  phone: "9801049700",
+  gstin: "10AAOCS1541B1ZZ",
+  state: "Bihar",
+  stateCode: "10"
+},
     
     supplierInfo: {
       name: apiData.PartyName || 'Customer',
@@ -1764,17 +1764,21 @@ const handleCreateReceiptFromInvoice = async () => {
                           onChange={(e) => handleNestedChange('companyInfo', 'gstin', e.target.value)}
                         />
                       </div>
-                    ) : (
-                      <>
-                        <h2 className="company-name text-primary mb-1">{currentData.companyInfo.name}</h2>
-                        <p className="company-address text-muted mb-1">{currentData.companyInfo.address}</p>
-                        <p className="company-contact text-muted small mb-0">
-                          Email: {currentData.companyInfo.email} | 
-                          Phone: {currentData.companyInfo.phone} | 
-                          GSTIN: {currentData.companyInfo.gstin}
-                        </p>
-                      </>
-                    )}
+            ) : (
+  <>
+    <h2 className="company-name text-primary mb-1">{currentData.companyInfo.name}</h2>
+    <p className="company-address text-muted mb-1">{currentData.companyInfo.address}</p>
+    <p className="company-contact text-muted small mb-1">
+      Email: {currentData.companyInfo.email} | Phone: {currentData.companyInfo.phone}
+    </p>
+    <p className="text-muted small mb-0">
+      GSTIN/UIN: {currentData.companyInfo.gstin}
+    </p>
+    <p className="text-muted small mb-0">
+      State Name : {currentData.companyInfo.state || "Bihar"}, Code : {currentData.companyInfo.stateCode || "10"}
+    </p>
+  </>
+)}
                   </Col>
                   <Col md={4} className="text-end">
                     <h3 className="invoice-title text-danger mb-2">TAX INVOICE</h3>

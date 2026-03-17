@@ -40,14 +40,15 @@ const [productStock, setProductStock] = useState({});
       invoiceNumber: "INV001",
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      companyInfo: {
-        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-        address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-        email: "spmathur56@gmail.com",
-        phone: "9801049700",
-        gstin: "10AAOCS1541B1ZZ",
-        state: "Bihar"
-      },
+    companyInfo: {
+  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+  email: "spmathur56@gmail.com",
+  phone: "9801049700",
+  gstin: "10AAOCS1541B1ZZ",
+  state: "Bihar",
+  stateCode: "10"
+},
       supplierInfo: {
         name: "",
         business_name: "",
@@ -216,14 +217,15 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
       invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       
-      companyInfo: {
-        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-        address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-        email: "spmathur56@gmail.com",
-        phone: "9801049700",
-        gstin: "10AAOCS1541B1ZZ",
-        state: "Bihar"
-      },
+    companyInfo: {
+  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+  email: "spmathur56@gmail.com",
+  phone: "9801049700",
+  gstin: "10AAOCS1541B1ZZ",
+  state: "Bihar",
+  stateCode: "10"
+},
       
       supplierInfo: {
         name: apiData.PartyName || 'Customer',
@@ -853,14 +855,15 @@ const addItem = () => {
       invoiceNumber: nextInvoiceNumber,
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      companyInfo: {
-         name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-      email: "spmathur56@gmail.com",
-      phone: "9801049700",
-      gstin: "10AAOCS1541B1ZZ",
-      state: "Bihar"
-      },
+  companyInfo: {
+  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+  email: "spmathur56@gmail.com",
+  phone: "9801049700",
+  gstin: "10AAOCS1541B1ZZ",
+  state: "Bihar",
+  stateCode: "10"
+},
       supplierInfo: {
         name: "",
         businessName: "",
@@ -1197,16 +1200,15 @@ window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice sub
 
               {/* Company Info Section */}
               <Row className="mb-3 company-info bg-white p-3 rounded">
-                <Col md={8}>
-                  <div>
-                    <strong className="text-primary">{invoiceData.companyInfo.name}</strong><br />
-                    {invoiceData.companyInfo.address}<br />
-                    Email: {invoiceData.companyInfo.email}<br />
-                    Phone: {invoiceData.companyInfo.phone}<br />
-                    GSTIN: {invoiceData.companyInfo.gstin}<br />
-                    <strong>State: {invoiceData.companyInfo.state}</strong>
-                  </div>
-                </Col>
+            <Col md={8}>
+  <div>
+    <strong className="text-primary">{invoiceData.companyInfo.name}</strong><br />
+    {invoiceData.companyInfo.address}<br />
+    Email: {invoiceData.companyInfo.email} | Phone: {invoiceData.companyInfo.phone}<br />
+    GSTIN/UIN: {invoiceData.companyInfo.gstin}<br />
+    State Name : {invoiceData.companyInfo.state || "Bihar"}, Code : {invoiceData.companyInfo.stateCode || "10"}
+  </div>
+</Col>
                 <Col md={4}>
                   <Form.Group className="mb-2">
                     <Form.Control 
