@@ -221,6 +221,43 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
     setEditingIndex(null);
   };
 
+
+  
+const editItem = async (index) => {
+  const itemToEdit = invoiceData.items[index];
+  
+  // Set the form data
+  setItemForm({
+    ...itemToEdit,
+    product: itemToEdit.product,
+    product_id: itemToEdit.product_id,
+    batch: itemToEdit.batch,
+    batchDetails: itemToEdit.batchDetails
+  });
+  
+  setSelectedBatch(itemToEdit.batch || "");
+  setSelectedBatchDetails(itemToEdit.batchDetails || null);
+  setEditingIndex(index);
+
+  // Fetch batches for the product being edited
+  if (itemToEdit.product_id) {
+    try {
+      const res = await fetch(`${baseurl}/products/${itemToEdit.product_id}/batches`);
+      if (res.ok) {
+        const batchData = await res.json();
+        setBatches(batchData);
+      } else {
+        console.error("Failed to fetch batches for editing");
+        setBatches([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch batches for editing:", err);
+      setBatches([]);
+    }
+  } else {
+    setBatches([]);
+  }
+};
   const calculateItemTotal = () => {
     const quantity = parseFloat(itemForm.quantity) || 0;
     const price = parseFloat(itemForm.price) || 0;
@@ -1053,22 +1090,22 @@ const addItem = () => {
                     />
                   </Col>
 
-                  <Col md={1}>
-                    {editingIndex !== null ? (
-                      <div className="d-flex">
-                        <Button variant="success" onClick={updateItem} className="me-1">
-                          Update
-                        </Button>
-                        <Button variant="secondary" onClick={cancelEdit}>
-                          <FaTimes />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button variant="success" onClick={addItem} className="w-100">
-                        Add
-                      </Button>
-                    )}
-                  </Col>
+              <Col md={1}>
+  {editingIndex !== null ? (
+    <div className="d-flex flex-column">
+      <Button variant="success" onClick={updateItem} className="mb-1">
+        Update
+      </Button>
+      <Button variant="secondary" onClick={cancelEdit}>
+        <FaTimes />
+      </Button>
+    </div>
+  ) : (
+    <Button variant="success" onClick={addItem} className="w-100">
+      Add
+    </Button>
+  )}
+</Col>
                 </Row>
 
                 <Row className="mt-2">
@@ -1128,7 +1165,15 @@ const addItem = () => {
                             )}
                           </td>
                           <td className="text-center ">
-                           
+                            <Button 
+variant="warning" 
+    size="sm" 
+    onClick={() => editItem(index)}
+    className="me-1"
+    disabled={editingIndex !== null} // Disable other edit buttons when one is being edited
+  >
+    <FaEdit />
+  </Button>
                             <Button variant="danger" size="sm" onClick={() => removeItem(index)}>
                               <FaTrash />
                             </Button>

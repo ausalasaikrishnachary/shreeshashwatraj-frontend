@@ -366,13 +366,17 @@ const getNetPricePerUnit = (item) => {
       <div className="invoice-header border-bottom pb-3 mb-3">
         <Row>
           <Col md={8}>
-            <h2 className="company-name text-primary mb-1">{invoiceData.companyInfo.name}</h2>
-            <p className="company-address text-muted mb-1">{invoiceData.companyInfo.address}</p>
-            <p className="company-contact text-muted small mb-0">
-              Email: {invoiceData.companyInfo.email} | 
-              Phone: {invoiceData.companyInfo.phone} | 
-              GSTIN: {invoiceData.companyInfo.gstin}
-            </p>
+    <h2 className="company-name text-primary mb-1">{invoiceData.companyInfo.name}</h2>
+      <p className="company-address text-muted mb-1">{invoiceData.companyInfo.address}</p>
+      <p className="company-contact text-muted small mb-1">
+        Email: {invoiceData.companyInfo.email} | Phone: {invoiceData.companyInfo.phone}
+      </p>
+      <p className="text-muted small mb-0">
+        GSTIN/UIN: {invoiceData.companyInfo.gstin}
+      </p>
+      <p className="text-muted small mb-0">
+        State Name : {invoiceData.companyInfo.state || "Bihar"}, Code : {invoiceData.companyInfo.stateCode || "10"}
+      </p>
           </Col>
           
           <Col md={4} className="text-end">

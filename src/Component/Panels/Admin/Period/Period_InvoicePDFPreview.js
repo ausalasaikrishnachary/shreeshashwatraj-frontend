@@ -149,12 +149,13 @@ const price = netPrice;
     order_mode: orderMode,
     
     companyInfo: periodData.companyInfo || {
-      name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-      email: "spmathur56@gmail.com",
-      phone: "9801049700",
-      gstin: "10AAOCS1541B1ZZ",
-      state: "Bihar"
+     name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+  email: "spmathur56@gmail.com",
+  phone: "9801049700",
+  gstin: "10AAOCS1541B1ZZ",
+  state: "Bihar",
+  stateCode: "10"
     },
     
     supplierInfo: {
@@ -390,12 +391,13 @@ const handleOrderModeChange = (switchData) => {
       validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       
       companyInfo: {
-        name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-        address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-        email: "spmathur56@gmail.com",
-        phone: "9801049700",
-        gstin: "10AAOCS1541B1ZZ",
-        state: "Bihar"
+     name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+  email: "spmathur56@gmail.com",
+  phone: "9801049700",
+  gstin: "10AAOCS1541B1ZZ",
+  state: "Bihar",
+  stateCode: "10"
       },
       
       supplierInfo: {

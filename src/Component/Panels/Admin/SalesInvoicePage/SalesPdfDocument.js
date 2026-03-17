@@ -336,15 +336,21 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.companyInfo}>
-            <Text style={styles.companyName}>{getSafeData(companyInfo, 'name', 'SHREE SHASHWAT RAJ AGRO PVT.LTD.')}</Text>
-            <Text style={styles.companyAddress}>
-              {getSafeData(companyInfo, 'address', 'PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113')}
-            </Text>
-            <Text style={styles.companyAddress}>
-              Email: {getSafeData(companyInfo, 'email', 'spmathur56@gmail.com')} | 
-              Phone: {getSafeData(companyInfo, 'phone', '9801049700')} | 
-              GSTIN: {getSafeData(companyInfo, 'gstin', '10AAOCS1541B1ZZ')}
-            </Text>
+      <Text style={styles.companyName}>
+  SHREE SHASHWATRAJ AGRO PVT LTD
+</Text>
+
+<Text style={styles.companyAddress}>
+  Growth Center, Jasoiya, Aurangabad, Bihar - 824101
+</Text>
+
+<Text style={styles.companyAddress}>
+  GSTIN/UIN: 10AAOCS1541B1ZZ
+</Text>
+
+<Text style={styles.companyAddress}>
+  State Name: Bihar | Code: 10
+</Text>
           </View>
           <View style={styles.invoiceMeta}>
             <Text style={styles.invoiceTitle}>TAX INVOICE</Text>
