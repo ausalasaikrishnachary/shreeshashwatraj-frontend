@@ -35,14 +35,15 @@ const [isEditMode, setIsEditMode] = useState(false);
       invoiceNumber: "", // Changed from "PINV001" to empty string
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      companyInfo: {
-                name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-      email: "spmathur56@gmail.com",
-      phone: "9801049700",
-      gstin: "10AAOCS1541B1ZZ",
-      state: "Bihar"
-      },
+           companyInfo: {
+  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+  email: "spmathur56@gmail.com",
+  phone: "9801049700",
+  gstin: "10AAOCS1541B1ZZ",
+  state: "Bihar",
+  stateCode: "10"
+},
       supplierInfo: {
         name: "",
         businessName: "",
@@ -113,14 +114,12 @@ const [isEditMode, setIsEditMode] = useState(false);
     return companyState.toLowerCase() === supplierState.toLowerCase();
   };
 
-  // Save to localStorage whenever invoiceData changes
   useEffect(() => {
     if (hasFetchedInvoiceNumber) {
       localStorage.setItem('draftPurchaseInvoice', JSON.stringify(invoiceData));
     }
   }, [invoiceData, hasFetchedInvoiceNumber]);
 
-  // Update tax type when supplier info changes
   useEffect(() => {
     const taxType = isSameState() ? "CGST/SGST" : "IGST";
     setInvoiceData(prev => ({
@@ -133,7 +132,6 @@ const [isEditMode, setIsEditMode] = useState(false);
     }
   }, [invoiceData.supplierInfo.state, invoiceData.companyInfo.state]);
 
-  // Open PDF preview - ONLY after form is submitted
   const handlePreview = () => {
     if (!isPreviewReady) {
       window.alert("⚠️ Please submit the purchase invoice first to generate preview");
@@ -497,14 +495,15 @@ const addItem = () => {
       invoiceNumber: "", // Changed to empty string
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      companyInfo: {
-                name: "SHREE SHASHWAT RAJ AGRO PVT.LTD.",
-      address: "PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD, BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113",
-      email: "spmathur56@gmail.com",
-      phone: "9801049700",
-      gstin: "10AAOCS1541B1ZZ",
-      state: "Bihar"
-      },
+          companyInfo: {
+  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+  email: "spmathur56@gmail.com",
+  phone: "9801049700",
+  gstin: "10AAOCS1541B1ZZ",
+  state: "Bihar",
+  stateCode: "10"
+},
       supplierInfo: {
         name: "",
         businessName: "",
@@ -562,14 +561,7 @@ useEffect(() => {
 }, [isEditMode]);
 
 
-  const incrementInvoiceNumber = (currentNumber) => {
-    const numberMatch = currentNumber.match(/PINV(\d+)/);
-    if (numberMatch) {
-      const nextNum = parseInt(numberMatch[1]) + 1;
-      return `PINV${nextNum.toString().padStart(3, '0')}`;
-    }
-    return 'PINV001'; // fallback
-  };
+
 
 
 
@@ -585,6 +577,11 @@ const handleSubmit = async (e) => {
     return;
   }
 
+    if (!invoiceData.invoiceNumber || invoiceData.invoiceNumber.trim() === "") {
+    window.alert("⚠️ Please enter an Purchase invoice number"); 
+    setLoading(false);
+    return;
+  }
   if (invoiceData.items.length === 0) {
         window.alert("⚠️ Please add at least one item to the invoice"); 
     setLoading(false);
@@ -882,27 +879,34 @@ const editItem = async (index) => {
               {/* Company Info Section */}
               <Row className="mb-3 company-info bg-white p-3 rounded">
                 <Col md={8}>
-                  <div>
-                    <strong className="text-primary">{invoiceData.companyInfo.name}</strong><br />
-                    {invoiceData.companyInfo.address}<br />
-                    Email: {invoiceData.companyInfo.email}<br />
-                    Phone: {invoiceData.companyInfo.phone}<br />
-                    GSTIN: {invoiceData.companyInfo.gstin}<br />
-                    <strong>State: {invoiceData.companyInfo.state}</strong>
-                  </div>
+                              <div>
+    <strong className="text-primary">{invoiceData.companyInfo.name}</strong><br />
+    {invoiceData.companyInfo.address}<br />
+    Email: {invoiceData.companyInfo.email} | Phone: {invoiceData.companyInfo.phone}<br />
+    GSTIN/UIN: {invoiceData.companyInfo.gstin}<br />
+    State Name : {invoiceData.companyInfo.state || "Bihar"}, Code : {invoiceData.companyInfo.stateCode || "10"}
+  </div>
                 </Col>
                 <Col md={4}>
-                  <Form.Group className="mb-2">
-                    <Form.Control
-                      name="invoiceNumber"
-                      value={invoiceData.invoiceNumber}
-                      onChange={handleInputChange}
-                      className="border-primary"
-                      placeholder="Enter purchase invoice number"
-                    // Remove readOnly attribute to make it editable
-                    />
-                    <Form.Label className="fw-bold">Purchase Invoice No</Form.Label>
-                  </Form.Group>
+               <Form.Group className="mb-2">
+  <Form.Control
+    name="invoiceNumber"
+    value={invoiceData.invoiceNumber}
+    onChange={handleInputChange}
+    className="border-primary"
+    placeholder="Enter purchase invoice number"
+    required // ← Added required attribute
+  />
+  <Form.Label className="fw-bold">
+    Purchase Invoice No <span className="text-danger">*</span> {/* ← Added asterisk */}
+  </Form.Label>
+  {/* ✅ NEW: Visual validation message */}
+  {/* {!invoiceData.invoiceNumber && (
+    <Form.Text className="text-danger">
+      Invoice number is required
+    </Form.Text>
+  )} */}
+</Form.Group>
                   <Form.Group className="mb-2">
                     <Form.Control
                       type="date"

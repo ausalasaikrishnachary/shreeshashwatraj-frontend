@@ -271,9 +271,8 @@ const ledgerColumns = [
       let runningBalance = openingBalanceNum;
       
       if (openingBalanceType === 'Credit') {
-        runningBalance = -openingBalanceNum; // Credit is negative in running balance
+        runningBalance = -openingBalanceNum;
       }
-      // For Debit, runningBalance stays positive
       
       const transactionsWithBalance = sortedTransactions.map((tx) => {
         const amount = parseFloat(tx.Amount || 0);
@@ -282,18 +281,16 @@ const ledgerColumns = [
 
         
         if (openingBalanceType === 'Debit') {
-          // Opening is Dr (positive)
           if (dc === "D") {
-            runningBalance = runningBalance + amount; // Debit increases Dr
+            runningBalance = runningBalance + amount; 
           } else if (dc === "C") {
-            runningBalance = runningBalance - amount; // Credit decreases Dr
+            runningBalance = runningBalance - amount; 
           }
         } else if (openingBalanceType === 'Credit') {
-          // Opening is Cr (negative)
           if (dc === "D") {
-            runningBalance = runningBalance + amount; // Debit decreases Cr (adds to negative)
+            runningBalance = runningBalance + amount; 
           } else if (dc === "C") {
-            runningBalance = runningBalance - amount; // Credit increases Cr (makes more negative)
+            runningBalance = runningBalance - amount;
           }
         } else {
           // No opening balance type specified
@@ -310,9 +307,11 @@ const ledgerColumns = [
       return (
         <div className="ledger-party-section">
           {/* Party Header */}
-          <div className="ledger-party-header">
-            {ledger.partyName} (ID: {ledger.partyID}) — Opening: {openingBalanceDisplay} | Balance: {balanceAmt} {balanceType}
-          </div>
+     <div className="ledger-party-header">
+  {ledger.partyName} (ID: {ledger.partyID}) —
+  {orderModeFilter === "ALL" && ` Opening Balance: ${openingBalanceDisplay} | `}
+  Balance: {balanceAmt} {balanceType}
+</div>
 
           {/* Transactions Table */}
           <table className="ledger-transactions-table">
@@ -323,7 +322,7 @@ const ledgerColumns = [
                 <th>Rec/Vou No</th>
                 <th>Credit</th>
                 <th>Debit</th>
-                <th>Balance</th>
+{orderModeFilter === "ALL" && <th>Balance</th>}
                 <th>Created On</th>
               </tr>
             </thead>
@@ -384,11 +383,13 @@ const ledgerColumns = [
                         "-"
                       )}
                     </td>
-                    <td>
-                      <span className="ledger-balance-amount">
-                        {txBalanceDisplay} {balanceSign}
-                      </span>
-                    </td>
+                  {orderModeFilter === "ALL" && (
+  <td>
+    <span className="ledger-balance-amount">
+      {txBalanceDisplay} {balanceSign}
+    </span>
+  </td>
+)}
                     <td>
                       {tx.created_at
                         ? new Date(tx.created_at).toLocaleString("en-IN", {
@@ -517,6 +518,7 @@ const ledgerColumns = [
     ref={pdfContentRef}
     filteredLedger={filteredLedger}
     getPartyOpeningBalance={getPartyOpeningBalance}
+    orderModeFilter={orderModeFilter} // Pass the filter mode
   />
 </div>
 
