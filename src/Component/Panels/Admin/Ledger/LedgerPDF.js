@@ -122,7 +122,7 @@ const LedgerPDF = React.forwardRef(({ filteredLedger, getPartyOpeningBalance, or
             }}>
             {ledger.partyName} (ID: {ledger.partyID}) —
 {orderModeFilter === "ALL" && (
-  <> Opening: {openingBalanceDisplay} |</>
+  <> Opening Balance: {openingBalanceDisplay} |</>
 )}{" "}
 Balance: {formatAmount(Math.abs(ledger.balance))}{" "}
 <span style={{ color: ledger.balance >= 0 ? '#28a745' : '#dc3545' }}>
