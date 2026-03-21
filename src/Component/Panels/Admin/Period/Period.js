@@ -327,10 +327,12 @@ const fetchOrders = async () => {
               let min_sale_price = 0;
               let stock_quantity = 0;
               let stock_insufficient = false;
+              let hsn_code = ""; // ✅ ADD
 
               try {
                 const productRes = await axios.get(`${baseurl}/products/${item.product_id}`);
                 min_sale_price = productRes.data.min_sale_price || 0;
+                hsn_code = productRes.data.hsn_code || "";
 
                 try {
                   const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
@@ -356,6 +358,7 @@ const fetchOrders = async () => {
               } catch (productErr) {
                 console.warn(`Could not fetch product details for product ID ${item.product_id}:`, productErr.message);
                 min_sale_price = 0;
+                  hsn_code = ""; // ✅ ADD
               }
 
               const salePrice = parseFloat(item.sale_price) || 0;
@@ -408,7 +411,7 @@ const fetchOrders = async () => {
                 assigned_staff: item.assigned_staff || order.assigned_staff || null,
                 staff_incentive: parseFloat(item.staff_incentive) || 0,
                 price: editedSalePrice,
-                
+                hsn_code: hsn_code  ,
                 stock_quantity: stock_quantity,
                 stock_insufficient: stock_insufficient,
                 can_edit: salePrice < parseFloat(min_sale_price),
@@ -833,6 +836,7 @@ const fetchOrders = async () => {
       net_price: item.net_price || 0, 
       weight: item.weight || 0, 
    flash_offer: item.flash_offer || 0,
+     hsn_code: item.hsn_code || ""  ,
       buy_quantity: item.buy_quantity || 0,
       get_quantity: item.get_quantity || 0,
       credit_charge: item.credit_charge,
@@ -1012,6 +1016,7 @@ const fetchOrders = async () => {
         sgst_amount: item.sgst_amount,
         cgst_percentage: item.cgst_percentage,
         cgst_amount: item.cgst_amount,
+          hsn_code: item.hsn_code || ""  ,
         discount_applied_scheme: item.discount_applied_scheme
       }))
     };

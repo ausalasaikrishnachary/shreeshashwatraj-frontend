@@ -86,7 +86,9 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
     discount: 0,
     total: 0,
     batch: "",
-    batchDetails: null
+    batchDetails: null,
+          hsn_code: ""  
+
   });
 
   const [loading, setLoading] = useState(false);
@@ -197,7 +199,9 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
       discount: invoiceData.supplierInfo.discount || 0, // Keep supplier discount
       total: 0,
       batch: "",
-      batchDetails: null
+      batchDetails: null,
+          hsn_code: ""  
+
     });
     setBatches([]);
     setSelectedBatch("");
@@ -215,7 +219,9 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
       discount: invoiceData.supplierInfo.discount || 0, // Keep supplier discount
       total: 0,
       batch: "",
-      batchDetails: null
+      batchDetails: null,
+            hsn_code: ""  // ✅ ADD
+
     });
     setBatches([]);
     setSelectedBatch("");
@@ -234,7 +240,9 @@ const editItem = async (index) => {
     product: itemToEdit.product,
     product_id: itemToEdit.product_id,
     batch: itemToEdit.batch,
-    batchDetails: itemToEdit.batchDetails
+    batchDetails: itemToEdit.batchDetails,
+         hsn_code: itemToEdit.hsn_code || "" 
+
   });
   
   setSelectedBatch(itemToEdit.batch || "");
@@ -272,7 +280,9 @@ const editItem = async (index) => {
     return {
       ...itemForm,
       total: total.toFixed(2),
-      batchDetails: selectedBatchDetails
+      batchDetails: selectedBatchDetails,
+             hsn_code: itemForm.hsn_code || ""  
+
     };
   };
 
@@ -336,7 +346,9 @@ const addItem = () => {
     total: 0,
     batch: "",
     batch_id: "",
-    batchDetails: null
+    batchDetails: null,
+        hsn_code: ""  
+
   });
 
   setBatches([]);
@@ -494,7 +506,9 @@ const addItem = () => {
         price: parseFloat(item.price) || 0,
         discount: parseFloat(item.discount) || 0,
         total: parseFloat(item.total) || 0,
-        batchDetails: item.batchDetails
+        batchDetails: item.batchDetails,
+               hsn_code: item.hsn_code || "" 
+
       }));
 
       console.log('📦 Processed Batch Details:');
@@ -834,30 +848,162 @@ const addItem = () => {
     ))}
 </Form.Select>
                       </>
-                    ) : (
-                      <>
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <strong className="text-primary">Supplier Info</strong>
-                          <Button
-                            variant="info"
-                            size="sm"
+                             ) : (
+                <>
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <strong className="text-primary">Supplier Info</strong>
+              
+                    {/* ✅ Split Button */}
+                    <div className="btn-group position-relative">
+              
+                      {/* Left: Edit navigates to edit page */}
+                      <Button
+                        variant="info"
+                        size="sm"
+                        onClick={() => {
+                          if (selectedSupplierId) {
+                            navigate(`/retailers/edit/${selectedSupplierId}`);
+                          }
+                        }}
+                      >
+                        <FaEdit /> Edit
+                      </Button>
+              
+                      {/* Right: Dropdown toggle */}
+                      <Button
+                        variant="info"
+                        size="sm"
+                        className="border-start border-white"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const menu = e.currentTarget.nextElementSibling;
+                          const isOpen = menu.style.display === 'block';
+                          document.querySelectorAll('.pi-dropdown-menu').forEach(m => m.style.display = 'none');
+                          menu.style.display = isOpen ? 'none' : 'block';
+                        }}
+                      >
+                        ▼
+                      </Button>
+              
+                      {/* Dropdown Menu */}
+                      <div
+                        className="pi-dropdown-menu"
+                        style={{
+                          display: 'none',
+                          position: 'absolute',
+                          right: 0,
+                          top: '100%',
+                          zIndex: 9999,
+                          backgroundColor: '#fff',
+                          border: '1px solid #dee2e6',
+                          borderRadius: '6px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                          minWidth: '280px',
+                          padding: '8px 0'
+                        }}
+                      >
+                        {/* Header */}
+                        <div style={{ padding: '8px 16px', borderBottom: '1px solid #dee2e6', color: '#0d6efd', fontWeight: 600 }}>
+                          Select Supplier
+                        </div>
+              
+                        {/* Scrollable supplier list */}
+                        <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                          {accounts
+                            .filter(acc => acc.role === "supplier")
+                            .map(acc => {
+                              const isCurrentlySelected = acc.id === selectedSupplierId;
+                              return (
+                                <div
+                                  key={acc.id}
+                                  onClick={() => {
+                                    setInputName(acc.business_name);
+                                    setSelectedSupplierId(acc.id);
+                                    setSelected(true);
+              
+                                    const accountDiscount = parseFloat(acc.discount) || 0;
+              
+                                    setInvoiceData(prev => ({
+                                      ...prev,
+                                      supplierInfo: {
+                                        name: acc.gstin ? acc.display_name : acc.name,
+                                        businessName: acc.business_name,
+                                        account_name: acc.account_name,
+                                        state: acc.billing_state,
+                                        gstin: acc.gstin,
+                                      },
+                                      billingAddress: {
+                                        addressLine1: acc.billing_address_line1,
+                                        addressLine2: acc.billing_address_line2 || "",
+                                        city: acc.billing_city,
+                                        pincode: acc.billing_pin_code,
+                                        state: acc.billing_state
+                                      },
+                                      shippingAddress: {
+                                        addressLine1: acc.shipping_address_line1,
+                                        addressLine2: acc.shipping_address_line2 || "",
+                                        city: acc.shipping_city,
+                                        pincode: acc.shipping_pin_code,
+                                        state: acc.shipping_state
+                                      }
+                                    }));
+              
+                                    setItemForm(prev => ({ ...prev, discount: accountDiscount }));
+              
+                                    document.querySelectorAll('.pi-dropdown-menu').forEach(m => m.style.display = 'none');
+                                  }}
+                                  style={{
+                                    padding: '8px 16px',
+                                    cursor: 'pointer',
+                                    backgroundColor: isCurrentlySelected ? '#e8f4fd' : 'transparent',
+                                    borderLeft: isCurrentlySelected ? '3px solid #0d6efd' : '3px solid transparent',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                  }}
+                                  onMouseEnter={e => { if (!isCurrentlySelected) e.currentTarget.style.backgroundColor = '#f8f9fa'; }}
+                                  onMouseLeave={e => { if (!isCurrentlySelected) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                >
+                                  <div>
+                                    <div style={{ fontWeight: isCurrentlySelected ? 600 : 400, fontSize: '13px' }}>
+                                      {acc.gstin?.trim() ? acc.display_name || acc.business_name : acc.name || acc.business_name}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#6c757d' }}>
+                                      {acc.business_name}
+                                    </div>
+                                  </div>
+                                  {isCurrentlySelected && (
+                                    <span style={{ color: '#0d6efd', fontSize: '16px' }}>✓</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+              
+                        {/* Footer */}
+                        <div style={{ padding: '8px 16px', borderTop: '1px solid #dee2e6' }}>
+                          <button
+                            className="btn btn-sm btn-outline-secondary w-100"
                             onClick={() => {
-                              if (selectedSupplierId) {
-                                navigate(`/retailers/edit/${selectedSupplierId}`);
-                              }
+                              document.querySelectorAll('.pi-dropdown-menu').forEach(m => m.style.display = 'none');
                             }}
                           >
-                            <FaEdit /> Edit
-                          </Button>
+                            Close
+                          </button>
                         </div>
-                        <div className="bg-light p-2 rounded">
-                          <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
-                          <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
-                          <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin || "Not Available"}</div>
-                          <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
-                        </div>
-                      </>
-                    )}
+                      </div>
+                    </div>
+                  </div>
+              
+                  {/* Supplier Info Display */}
+                  <div className="bg-light p-2 rounded">
+                    <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
+                    <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
+                    <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
+                    <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
+                  </div>
+                </>
+              )}
                   </Col>
 
                   <Col md={4} className="border-end p-3">
@@ -926,7 +1072,9 @@ const addItem = () => {
         description: selectedProduct.description || "",
         discount: supplierDiscount,
         batch: "",
-        batch_id: ""
+        batch_id: "",
+                 hsn_code: selectedProduct.hsn_code || ""  
+
       }));
 
       try {

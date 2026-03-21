@@ -8,12 +8,11 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
   },
 
-  // Header Section
   shopName: {
     fontSize: 15,
     textAlign: 'center',
     fontFamily: 'Helvetica-Bold',
-    marginBottom: 20, // Increased from 6 to 20 for gap
+    marginBottom: 20,
   },
   reportTitle: {
     fontSize: 11,
@@ -22,7 +21,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
-  // Table Header
   headerRow: {
     flexDirection: 'row',
     borderTopWidth: 1.5,
@@ -32,7 +30,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
 
-  // Data Row
   row: {
     flexDirection: 'row',
     borderBottomWidth: 1,
@@ -40,30 +37,30 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
 
- // Column widths
-colItem: {
-  width: '32%',
-  justifyContent: 'center',
-},
+  // ✅ Slightly reduced widths to fit BL. Qty column
+  colItem: {
+    width: '26%',
+    justifyContent: 'center',
+  },
 
-colSmall: {
-  width: '9%',
-  justifyContent: 'center',
-  alignItems: 'center',   // IMPORTANT
-},
+  colSmall: {
+    width: '8%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
-colMedium: {
-  width: '11%',
-  justifyContent: 'center',
-  alignItems: 'center',   // IMPORTANT
-},
+  colMedium: {
+    width: '10%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
-headerText: {
-  fontFamily: 'Helvetica-Bold',
-  fontSize: 9,
-  textAlign: 'right',
-  width: '100%',   // IMPORTANT
-},
+  headerText: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 9,
+    textAlign: 'right',
+    width: '100%',
+  },
 
   cellLeft: {
     textAlign: 'left',
@@ -101,59 +98,69 @@ const StockReportPDF = ({ reportData }) => {
 
         {/* Header */}
         <Text style={styles.shopName}>{shopName}</Text>
-        {/* Gap of 20px between shop name and report title */}
         <Text style={styles.reportTitle}>
           STOCK REPORT From : {fromDate} To {toDate}
         </Text>
 
         {/* Header Row */}
-<View style={styles.headerRow}>
+        <View style={styles.headerRow}>
 
-  <View style={styles.colItem}>
-    <Text style={{ textAlign: 'left', paddingLeft: 4, fontFamily: 'Helvetica-Bold', fontSize: 9 }}>
-      Item Name
-    </Text>
-  </View>
+          <View style={styles.colItem}>
+            <Text style={{ textAlign: 'left', paddingLeft: 4, fontFamily: 'Helvetica-Bold', fontSize: 9 }}>
+              Item Name
+            </Text>
+          </View>
 
-  <View style={styles.colSmall}>
-    <Text style={styles.headerText}>Op. Qty</Text>
-  </View>
+          <View style={styles.colSmall}>
+            <Text style={styles.headerText}>Op. Qty</Text>
+          </View>
 
-  <View style={styles.colMedium}>
-    <Text style={styles.headerText}>Op. Val</Text>
-  </View>
+          {/* ✅ BL. Qty column header */}
+          <View style={styles.colSmall}>
+            <Text style={styles.headerText}>BL. Qty</Text>
+          </View>
 
-  <View style={styles.colSmall}>
-    <Text style={styles.headerText}>Prch Qty</Text>
-  </View>
+          <View style={styles.colMedium}>
+            <Text style={styles.headerText}>Op. Val</Text>
+          </View>
 
-  <View style={styles.colMedium}>
-    <Text style={styles.headerText}>Prch Val</Text>
-  </View>
+          <View style={styles.colSmall}>
+            <Text style={styles.headerText}>Prch Qty</Text>
+          </View>
 
-  <View style={styles.colSmall}>
-    <Text style={styles.headerText}>Sale Qty</Text>
-  </View>
+          <View style={styles.colMedium}>
+            <Text style={styles.headerText}>Prch Val</Text>
+          </View>
 
-  <View style={styles.colMedium}>
-    <Text style={styles.headerText}>Sale Val</Text>
-  </View>
+          <View style={styles.colSmall}>
+            <Text style={styles.headerText}>Sale Qty</Text>
+          </View>
 
-  <View style={styles.colMedium}>
-    <Text style={styles.headerText}>Clo. Bal</Text>
-  </View>
+          <View style={styles.colMedium}>
+            <Text style={styles.headerText}>Sale Val</Text>
+          </View>
 
-</View>
+          <View style={styles.colMedium}>
+            <Text style={styles.headerText}>Clo. Bal</Text>
+          </View>
+
+        </View>
 
         {/* Data Rows */}
         {items.map((item, index) => (
           <View style={styles.row} key={index}>
+
             <Text style={[styles.colItem, styles.cellLeft]}>
               {item.itemName}
             </Text>
 
             <Text style={[styles.colSmall, styles.cellRight]}>
               {formatNumber(item.opQty)}
+            </Text>
+
+            {/* ✅ BL. Qty column data */}
+            <Text style={[styles.colSmall, styles.cellRight]}>
+              {formatNumber(item.currentStock)}
             </Text>
 
             <Text style={[styles.colMedium, styles.cellRight]}>
@@ -184,6 +191,7 @@ const StockReportPDF = ({ reportData }) => {
                 (item.saleQty || 0)
               )}
             </Text>
+
           </View>
         ))}
 

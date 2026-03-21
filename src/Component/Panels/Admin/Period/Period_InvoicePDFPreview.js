@@ -96,7 +96,7 @@ const price = netPrice;
       discount_amount: discountAmount,
       discount_amount_per_unit: parseFloat(item.discount_amount) || 0,
       gst: parseFloat(item.tax_percentage) || 0,
-      
+       hsn_code: item.hsn_code || "",  
       cgst: actualCGSTPercentage,
       sgst: actualSGSTPercentage,
       cgst_amount: actualCGSTAmount,
@@ -1187,7 +1187,7 @@ const price = netPrice;
     batch: item.batch_id || '',
     batch_id: item.batch_id || '',
     item_total: itemTotal,
-    
+       hsn_code: item.hsn_code || "",  
     // FLASH OFFER FIELDS
     flash_offer: flashOffer,
     buy_quantity: buyQuantity,
@@ -1283,7 +1283,7 @@ const price = netPrice;
           orderNumber: orderNumber,
           order_number: orderNumber,
           order_mode: orderMode.toUpperCase(),
-          
+            hsn_code: itemsWithCalculations[0]?.hsn_code || "",  
           items: itemsWithCalculations,
           originalOrderNumber: orderNumber,
           originalOrderId: periodInvoiceData.originalOrderId,
