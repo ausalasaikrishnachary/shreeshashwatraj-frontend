@@ -7,7 +7,6 @@ import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import "./GstReport.css";
 
 const GstReport = () => {
-  // State for search and date filters
   const [searchTerm, setSearchTerm] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -18,7 +17,6 @@ const GstReport = () => {
   const [error, setError] = useState("");
   const [exportLoading, setExportLoading] = useState(false);
 
-  // Get current date in YYYY-MM-DD format
   const getCurrentDate = () => {
     const today = new Date();
     const year = today.getFullYear();
@@ -27,7 +25,6 @@ const GstReport = () => {
     return `${year}-${month}-${day}`;
   };
 
-  // Fetch GST report data
   useEffect(() => {
     fetchGstData();
   }, []);
@@ -38,7 +35,7 @@ const GstReport = () => {
     try {
       const response = await axios.get(`${baseurl}/gstreport`);
       const vouchers = response.data;
-      
+
       const processedData = vouchers.map((voucher, index) => {
         const formattedDate = voucher.Date ? new Date(voucher.Date).toLocaleDateString('en-IN', {
           day: '2-digit',
@@ -46,23 +43,29 @@ const GstReport = () => {
           year: 'numeric'
         }) : '-';
 
-        const subtotal = parseFloat(voucher.Subtotal) || 
+        const subtotal = parseFloat(voucher.Subtotal) ||
           voucher.items?.reduce((sum, item) => sum + (parseFloat(item.subtotal) || 0), 0) || 0;
-        
-        const sgstAmount = parseFloat(voucher.SGSTAmount) || 
+
+        const sgstAmount = parseFloat(voucher.SGSTAmount) ||
           voucher.items?.reduce((sum, item) => sum + (parseFloat(item.sgst_amount) || 0), 0) || 0;
-        
-        const cgstAmount = parseFloat(voucher.CGSTAmount) || 
+
+        const cgstAmount = parseFloat(voucher.CGSTAmount) ||
           voucher.items?.reduce((sum, item) => sum + (parseFloat(item.cgst_amount) || 0), 0) || 0;
-        
-        const igstAmount = parseFloat(voucher.IGSTAmount) || 
+
+        const igstAmount = parseFloat(voucher.IGSTAmount) ||
           voucher.items?.reduce((sum, item) => sum + (parseFloat(item.igst_amount) || 0), 0) || 0;
-        
-        const totalAmount = parseFloat(voucher.TotalAmount) || 
+
+        const totalAmount = parseFloat(voucher.TotalAmount) ||
           subtotal + sgstAmount + cgstAmount + igstAmount;
 
         const transactionType = getTransactionType(voucher);
         const specificTransactionType = getSpecificTransactionType(voucher);
+
+        // ✅ Fetch hsn_code from voucher or its items
+        const hsnCode =
+          voucher.hsn_code ||
+         
+          'N/A';
 
         return {
           id: voucher.VoucherID || index,
@@ -70,6 +73,7 @@ const GstReport = () => {
           date: formattedDate,
           party: voucher.PartyName || voucher.business_name || 'N/A',
           gstNo: voucher.gstin || 'N/A',
+          hsnCode: hsnCode, // ✅ added
           billAmt: totalAmount,
           taxableAmt: subtotal,
           sgstAmt: sgstAmount,
@@ -90,53 +94,34 @@ const GstReport = () => {
       setLoading(false);
     }
   };
-const getTransactionType = (voucher) => {
-  const trantype = (voucher.TransactionType || '')
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '');
 
-  const dataType = (voucher.data_type || '')
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '');
-
-  const pakkaTypes = ['sales', 'purchase'];
-  const kachaTypes = ['stocktransfer', 'stockinward'];
-
-  // 🔹 data_type has first priority
-  if (pakkaTypes.includes(dataType)) return 'PAKKA';
-  if (kachaTypes.includes(dataType)) return 'KACHA';
-
-  // 🔹 Direct transaction types
-  if (pakkaTypes.includes(trantype)) return 'PAKKA';
-  if (kachaTypes.includes(trantype)) return 'KACHA';
-
-  return 'UNKNOWN';
-};
-
-const getSpecificTransactionType = (voucher) => {
-  const trantype = (voucher.TransactionType || '')
-    .trim()
-    .toLowerCase();
-
-  const typeMap = {
-    sales: 'Sales',
-    purchase: 'Purchase',
-    receipt: 'Receipt',
-    creditnote: 'Credit Note',
-    debitnote: 'Debit Note',
-    stockinward: 'Stock Inward',
-    stocktransfer: 'Stock Transfer',
-    purchasevoucher: 'Purchase Voucher'
+  const getTransactionType = (voucher) => {
+    const trantype = (voucher.TransactionType || '').toLowerCase().trim().replace(/\s+/g, '');
+    const dataType = (voucher.data_type || '').toLowerCase().trim().replace(/\s+/g, '');
+    const pakkaTypes = ['sales', 'purchase'];
+    const kachaTypes = ['stocktransfer', 'stockinward'];
+    if (pakkaTypes.includes(dataType)) return 'PAKKA';
+    if (kachaTypes.includes(dataType)) return 'KACHA';
+    if (pakkaTypes.includes(trantype)) return 'PAKKA';
+    if (kachaTypes.includes(trantype)) return 'KACHA';
+    return 'UNKNOWN';
   };
 
-  const cleanType = trantype.replace(/\s+/g, '');
-
-  return typeMap[cleanType] || voucher.TransactionType;
-};
-
-
+  const getSpecificTransactionType = (voucher) => {
+    const trantype = (voucher.TransactionType || '').trim().toLowerCase();
+    const typeMap = {
+      sales: 'Sales',
+      purchase: 'Purchase',
+      receipt: 'Receipt',
+      creditnote: 'Credit Note',
+      debitnote: 'Debit Note',
+      stockinward: 'Stock Inward',
+      stocktransfer: 'Stock Transfer',
+      purchasevoucher: 'Purchase Voucher'
+    };
+    const cleanType = trantype.replace(/\s+/g, '');
+    return typeMap[cleanType] || voucher.TransactionType;
+  };
 
   const formatDateForComparison = (dateString) => {
     if (!dateString) return null;
@@ -146,41 +131,36 @@ const getSpecificTransactionType = (voucher) => {
         return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
       }
       return dateString;
-    } catch (err) {
+    } catch {
       return null;
     }
   };
 
   const filteredData = gstData.filter((item) => {
-    const matchesSearch = !searchTerm.trim() || 
+    // ✅ hsn_code added to search
+    const matchesSearch = !searchTerm.trim() ||
       item.billNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.party?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.gstNo?.toLowerCase().includes(searchTerm.toLowerCase());
+      item.gstNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.hsnCode?.toLowerCase().includes(searchTerm.toLowerCase());
 
     let matchesDate = true;
     if (fromDate || toDate) {
       const itemDateFormatted = formatDateForComparison(item.date);
-      
       if (itemDateFormatted) {
-        if (fromDate && toDate) {
-          matchesDate = itemDateFormatted >= fromDate && itemDateFormatted <= toDate;
-        } else if (fromDate) {
-          matchesDate = itemDateFormatted >= fromDate;
-        } else if (toDate) {
-          matchesDate = itemDateFormatted <= toDate;
-        }
+        if (fromDate && toDate) matchesDate = itemDateFormatted >= fromDate && itemDateFormatted <= toDate;
+        else if (fromDate) matchesDate = itemDateFormatted >= fromDate;
+        else if (toDate) matchesDate = itemDateFormatted <= toDate;
       } else {
         matchesDate = false;
       }
     }
 
-    // Filter by specific transaction type
     let matchesSpecificTransactionType = true;
     if (transactionTypeFilter !== "ALL") {
       matchesSpecificTransactionType = item.specificTransactionType === transactionTypeFilter;
     }
 
-    // Filter by KACHA/PAKKA
     let matchesKachaPakka = true;
     if (kachaPakkaFilter !== "ALL") {
       matchesKachaPakka = item.transactionType === kachaPakkaFilter;
@@ -189,14 +169,13 @@ const getSpecificTransactionType = (voucher) => {
     return matchesSearch && matchesDate && matchesSpecificTransactionType && matchesKachaPakka;
   });
 
-  // Process data for table display with formatting
   const processedTableData = filteredData.map((item) => ({
     ...item,
     billAmt: `₹${(item.billAmt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     taxableAmt: `₹${(item.taxableAmt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     sgstAmt: `₹${(item.sgstAmt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     cgstAmt: `₹${(item.cgstAmt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-    igstAmt: `₹${(item.igstAmt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    igstAmt: `₹${(item.igstAmt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
   }));
 
   const exportToExcel = () => {
@@ -204,9 +183,7 @@ const getSpecificTransactionType = (voucher) => {
       alert("No data to export");
       return;
     }
-
     setExportLoading(true);
-
     try {
       const companyName = "SHREE SHASHWAT RAJ AGRO PVT.LTD.";
 
@@ -216,27 +193,23 @@ const getSpecificTransactionType = (voucher) => {
         return `${day}-${month}-${year}`;
       };
 
-      const displayFromDate = fromDate
-        ? formatDateForDisplay(fromDate)
-        : formatDateForDisplay(getCurrentDate());
-
-      const displayToDate = toDate
-        ? formatDateForDisplay(toDate)
-        : formatDateForDisplay(getCurrentDate());
+      const displayFromDate = fromDate ? formatDateForDisplay(fromDate) : formatDateForDisplay(getCurrentDate());
+      const displayToDate = toDate ? formatDateForDisplay(toDate) : formatDateForDisplay(getCurrentDate());
 
       const wsData = [
         [companyName],
         [`GST REGISTER REPORT FROM ${displayFromDate} To ${displayToDate}`],
         [],
         [
-          "Bill No.", "Date", "Party", "GST No.", "Bill Amt",
-          "Taxable Amt", "SGST Amt", "CGST Amt", "IGST Amt", "Transaction Type"
+          "Bill No.", "Date", "Party", "GST No.", "HSN Code", // ✅ added HSN Code
+          "Bill Amt", "Taxable Amt", "SGST Amt", "CGST Amt", "IGST Amt", "Transaction Type"
         ],
         ...filteredData.map((item) => [
           item.billNo || "",
           item.date || "",
           item.party || "",
           item.gstNo || "",
+          item.hsnCode || "",  // ✅ added
           Number(item.billAmt || 0),
           Number(item.taxableAmt || 0),
           Number(item.sgstAmt || 0),
@@ -249,51 +222,28 @@ const getSpecificTransactionType = (voucher) => {
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-      // Column Widths
       ws["!cols"] = [
-        { wch: 15 }, { wch: 12 }, { wch: 30 }, { wch: 20 },
+        { wch: 15 }, { wch: 12 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, // ✅ HSN col width
         { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 15 }
       ];
 
-      // Merge Company Name and Date Range rows
       ws["!merges"] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } }, // ✅ extended merge to col 10
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 10 } },
       ];
 
-      // Style helper
-      const centerBold = {
-        font: { bold: true, sz: 13 },
-        alignment: { horizontal: "center", vertical: "center" },
-      };
-
-      const centerBoldSubtitle = {
-        font: { bold: true, sz: 11 },
-        alignment: { horizontal: "center", vertical: "center" },
-      };
-
-      // Apply bold + center to Company Name (row 0)
       ws["A1"] = {
-        v: companyName,
-        t: "s",
-        s: centerBold,
+        v: companyName, t: "s",
+        s: { font: { bold: true, sz: 13 }, alignment: { horizontal: "center", vertical: "center" } }
       };
-
-      // Apply bold + center to Date Range row (row 1)
       ws["A2"] = {
-        v: `GST REGISTER REPORT FROM ${displayFromDate} To ${displayToDate}`,
-        t: "s",
-        s: centerBoldSubtitle,
+        v: `GST REGISTER REPORT FROM ${displayFromDate} To ${displayToDate}`, t: "s",
+        s: { font: { bold: true, sz: 11 }, alignment: { horizontal: "center", vertical: "center" } }
       };
 
-      // Create Workbook
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "GST Register");
-
-      const filename = `GST_Register_${displayFromDate}_to_${displayToDate}.xlsx`;
-
-      // Use writeFile with bookSST and cellStyles enabled
-      XLSX.writeFile(wb, filename, { bookSST: true, cellStyles: true });
+      XLSX.writeFile(wb, `GST_Register_${displayFromDate}_to_${displayToDate}.xlsx`, { bookSST: true, cellStyles: true });
 
     } catch (error) {
       console.error("Error generating Excel:", error);
@@ -303,7 +253,6 @@ const getSpecificTransactionType = (voucher) => {
     }
   };
 
-  // Clear all filters
   const clearFilters = () => {
     setSearchTerm("");
     setFromDate("");
@@ -312,68 +261,26 @@ const getSpecificTransactionType = (voucher) => {
     setKachaPakkaFilter("ALL");
   };
 
-  // Clear date filters only
   const clearDateFilters = () => {
     setFromDate("");
     setToDate("");
   };
 
-  // Table columns for GST Report
+  // ✅ HSN Code column added to table
   const gstColumns = [
-    {
-      key: "sl_no",
-      title: "S.No",
-      style: { textAlign: "center", width: "60px" },
-      render: (value, record, index) => index + 1
-    },
-    {
-      key: "billNo",
-      title: "Bill No.",
-      style: { textAlign: "left", width: "100px" }
-    },
-    {
-      key: "date",
-      title: "Date",
-      style: { textAlign: "center", width: "100px" }
-    },
-    {
-      key: "party",
-      title: "Party",
-      style: { textAlign: "left" }
-    },
-    {
-      key: "gstNo",
-      title: "GST No.",
-      style: { textAlign: "left", width: "150px" }
-    },
-    {
-      key: "billAmt",
-      title: "Bill Amt",
-      style: { textAlign: "right", width: "120px" }
-    },
-    {
-      key: "taxableAmt",
-      title: "Taxable Amt",
-      style: { textAlign: "right", width: "120px" }
-    },
-    {
-      key: "sgstAmt",
-      title: "SGST Amt",
-      style: { textAlign: "right", width: "100px" }
-    },
-    {
-      key: "cgstAmt",
-      title: "CGST Amt",
-      style: { textAlign: "right", width: "100px" }
-    },
-    {
-      key: "igstAmt",
-      title: "IGST Amt",
-      style: { textAlign: "right", width: "100px" }
-    },
+    { key: "sl_no", title: "S.No", style: { textAlign: "center", width: "60px" }, render: (value, record, index) => index + 1 },
+    { key: "billNo", title: "Bill No.", style: { textAlign: "left", width: "100px" } },
+    { key: "date", title: "Date", style: { textAlign: "center", width: "100px" } },
+    { key: "party", title: "Party", style: { textAlign: "left" } },
+    { key: "gstNo", title: "GST No.", style: { textAlign: "left", width: "150px" } },
+    { key: "hsnCode", title: "HSN Code", style: { textAlign: "left", width: "110px" } }, // ✅ new
+    { key: "billAmt", title: "Bill Amt", style: { textAlign: "right", width: "120px" } },
+    { key: "taxableAmt", title: "Taxable Amt", style: { textAlign: "right", width: "120px" } },
+    { key: "sgstAmt", title: "SGST Amt", style: { textAlign: "right", width: "100px" } },
+    { key: "cgstAmt", title: "CGST Amt", style: { textAlign: "right", width: "100px" } },
+    { key: "igstAmt", title: "IGST Amt", style: { textAlign: "right", width: "100px" } },
   ];
 
-  // Calculate totals for footer
   const totals = filteredData.reduce((acc, item) => ({
     billAmt: acc.billAmt + item.billAmt,
     taxableAmt: acc.taxableAmt + item.taxableAmt,
@@ -398,9 +305,7 @@ const getSpecificTransactionType = (voucher) => {
       <div className="gst-report-container">
         <div className="gst-report-error">
           <p>{error}</p>
-          <button onClick={fetchGstData} className="gst-report-retry-btn">
-            Retry
-          </button>
+          <button onClick={fetchGstData} className="gst-report-retry-btn">Retry</button>
         </div>
       </div>
     );
@@ -409,170 +314,111 @@ const getSpecificTransactionType = (voucher) => {
   return (
     <div className="gst-report-container">
       <div className="gst-report-kacha-pakka-wrapper">
-        <button
-          className={`gst-report-kacha-pakka-btn ${kachaPakkaFilter === 'ALL' ? 'active' : ''}`}
-          onClick={() => setKachaPakkaFilter('ALL')}
-        >
-          ALL
-        </button>
-        <button
-          className={`gst-report-kacha-pakka-btn pakka-btn ${kachaPakkaFilter === 'PAKKA' ? 'active' : ''}`}
-          onClick={() => setKachaPakkaFilter('PAKKA')}
-        >
-          PAKKA
-        </button>
-        <button
-          className={`gst-report-kacha-pakka-btn kacha-btn ${kachaPakkaFilter === 'KACHA' ? 'active' : ''}`}
-          onClick={() => setKachaPakkaFilter('KACHA')}
-        >
-          KACHA
-        </button>
+        <button className={`gst-report-kacha-pakka-btn ${kachaPakkaFilter === 'ALL' ? 'active' : ''}`} onClick={() => setKachaPakkaFilter('ALL')}>ALL</button>
+        <button className={`gst-report-kacha-pakka-btn pakka-btn ${kachaPakkaFilter === 'PAKKA' ? 'active' : ''}`} onClick={() => setKachaPakkaFilter('PAKKA')}>PAKKA</button>
+        <button className={`gst-report-kacha-pakka-btn kacha-btn ${kachaPakkaFilter === 'KACHA' ? 'active' : ''}`} onClick={() => setKachaPakkaFilter('KACHA')}>KACHA</button>
       </div>
-      
-      {/* Filters Section */}
+
       <div className="gst-report-filters-section">
         <div className="gst-report-filters-wrapper">
-          
-          {/* Search */}
+
+          {/* Search - ✅ placeholder updated to include HSN Code */}
           <div className="gst-report-search-wrapper">
             <div className="gst-report-search-input-group">
               <FaSearch className="gst-report-search-icon" />
               <input
                 type="text"
-                placeholder="Search by Bill No., Party, GST No..."
+                placeholder="Search by Bill No., Party, GST No., HSN Code..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="gst-report-search-input"
               />
               {searchTerm && (
-                <button
-                  className="gst-report-clear-btn"
-                  onClick={() => setSearchTerm("")}
-                  title="Clear search"
-                >
-                  ×
-                </button>
+                <button className="gst-report-clear-btn" onClick={() => setSearchTerm("")} title="Clear search">×</button>
               )}
             </div>
           </div>
-{/* Transaction Type Dropdown Filter */}
-<div className="gst-report-filter-wrapper">
-  <label htmlFor="transaction-type" className="gst-report-filter-label">Transaction Type</label>
-  <select
-    id="transaction-type"
-    value={transactionTypeFilter}
-    onChange={(e) => setTransactionTypeFilter(e.target.value)}
-    className="gst-report-filter-select"
-  >
-    <option value="ALL">All Transaction Types</option>
-    
-    {/* Show different options based on KACHA/PAKKA filter */}
-    {kachaPakkaFilter === 'PAKKA' && (
-      <>
-        <option value="Sales">Sales</option>
-        <option value="Purchase">Purchase</option>
-        <option value="Receipt">Receipt</option>
-        <option value="Purchase Voucher">Purchase Voucher</option>
-        <option value="Credit Note">Credit Note</option>
-        <option value="Debit Note">Debit Note</option>
-      </>
-    )}
-    
-    {kachaPakkaFilter === 'KACHA' && (
-      <>
-        <option value="Stock Inward">Stock Inward</option>
-        <option value="Stock Transfer">Stock Transfer</option>
-        <option value="Receipt">Receipt</option>
-        <option value="Purchase Voucher">Purchase Voucher</option>
-          <option value="Credit Note">Credit Note</option>
-        <option value="Debit Note">Debit Note</option>
-      </>
-    )}
-    
-    {/* Show all options when ALL is selected */}
-    {kachaPakkaFilter === 'ALL' && (
-      <>
-        <option value="Sales">Sales</option>
-        <option value="Purchase">Purchase</option>
-        <option value="Receipt">Receipt</option>
-        <option value="Purchase Voucher">Purchase Voucher</option>
-        <option value="Credit Note">Credit Note</option>
-        <option value="Debit Note">Debit Note</option>
-        <option value="Stock Inward">Stock Inward</option>
-        <option value="Stock Transfer">Stock Transfer</option>
-      </>
-    )}
-  </select>
-</div>
+
+          {/* Transaction Type Dropdown */}
+          <div className="gst-report-filter-wrapper">
+            <label htmlFor="transaction-type" className="gst-report-filter-label">Transaction Type</label>
+            <select
+              id="transaction-type"
+              value={transactionTypeFilter}
+              onChange={(e) => setTransactionTypeFilter(e.target.value)}
+              className="gst-report-filter-select"
+            >
+              <option value="ALL">All Transaction Types</option>
+              {kachaPakkaFilter === 'PAKKA' && (
+                <>
+                  <option value="Sales">Sales</option>
+                  <option value="Purchase">Purchase</option>
+                  <option value="Receipt">Receipt</option>
+                  <option value="Purchase Voucher">Purchase Voucher</option>
+                  <option value="Credit Note">Credit Note</option>
+                  <option value="Debit Note">Debit Note</option>
+                </>
+              )}
+              {kachaPakkaFilter === 'KACHA' && (
+                <>
+                  <option value="Stock Inward">Stock Inward</option>
+                  <option value="Stock Transfer">Stock Transfer</option>
+                  <option value="Receipt">Receipt</option>
+                  <option value="Purchase Voucher">Purchase Voucher</option>
+                  <option value="Credit Note">Credit Note</option>
+                  <option value="Debit Note">Debit Note</option>
+                </>
+              )}
+              {kachaPakkaFilter === 'ALL' && (
+                <>
+                  <option value="Sales">Sales</option>
+                  <option value="Purchase">Purchase</option>
+                  <option value="Receipt">Receipt</option>
+                  <option value="Purchase Voucher">Purchase Voucher</option>
+                  <option value="Credit Note">Credit Note</option>
+                  <option value="Debit Note">Debit Note</option>
+                  <option value="Stock Inward">Stock Inward</option>
+                  <option value="Stock Transfer">Stock Transfer</option>
+                </>
+              )}
+            </select>
+          </div>
 
           {/* Date Filters */}
           <div className="gst-report-date-filters">
             <div className="gst-report-date-input-wrapper">
               <label htmlFor="from-date" className="gst-report-date-label">From Date</label>
-              <input
-                id="from-date"
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="gst-report-date-input"
-                max={toDate || undefined}
-              />
+              <input id="from-date" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="gst-report-date-input" max={toDate || undefined} />
             </div>
-
             <div className="gst-report-date-input-wrapper">
               <label htmlFor="to-date" className="gst-report-date-label">To Date</label>
-              <input
-                id="to-date"
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="gst-report-date-input"
-                min={fromDate || undefined}
-              />
+              <input id="to-date" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="gst-report-date-input" min={fromDate || undefined} />
             </div>
-
             {(fromDate || toDate) && (
-              <button
-                className="gst-report-clear-date-btn"
-                onClick={clearDateFilters}
-                title="Clear date filters"
-              >
-                Clear Dates
-              </button>
+              <button className="gst-report-clear-date-btn" onClick={clearDateFilters}>Clear Dates</button>
             )}
           </div>
 
-          {/* Export Excel Button */}
+          {/* Export Excel */}
           <button
             onClick={exportToExcel}
             disabled={exportLoading || filteredData.length === 0}
             className={`gst-report-export-btn ${exportLoading ? 'gst-report-export-btn--loading' : ''}`}
           >
             {exportLoading ? (
-              <>
-                <span className="gst-report-spinner-small"></span>
-                Exporting...
-              </>
+              <><span className="gst-report-spinner-small"></span>Exporting...</>
             ) : (
-              <>
-                <FaFileExcel className="gst-report-export-icon" />
-                Export Excel
-              </>
+              <><FaFileExcel className="gst-report-export-icon" />Export Excel</>
             )}
           </button>
 
           {(searchTerm || fromDate || toDate || transactionTypeFilter !== "ALL" || kachaPakkaFilter !== "ALL") && (
-            <button
-              className="gst-report-clear-all-btn"
-              onClick={clearFilters}
-            >
-              Clear All Filters
-            </button>
+            <button className="gst-report-clear-all-btn" onClick={clearFilters}>Clear All Filters</button>
           )}
+
         </div>
       </div>
 
-      {/* Table Section */}
       <div className="gst-report-table-section">
         <ReusableTable
           data={processedTableData}
