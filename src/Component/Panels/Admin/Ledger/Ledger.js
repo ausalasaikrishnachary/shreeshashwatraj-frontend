@@ -17,16 +17,19 @@ const Ledger = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [appliedStartDate, setAppliedStartDate] = useState("");
+  const [appliedEndDate, setAppliedEndDate] = useState("");
+  const [isFiltered, setIsFiltered] = useState(false);
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
   const pdfContentRef = useRef(null);
   const [orderModeFilter, setOrderModeFilter] = useState("ALL");
-const [accounts, setAccounts] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+
   useEffect(() => {
     fetchLedger();
     fetchVoucherList();
   }, []);
-
 
   const fetchLedger = async () => {
     try {
@@ -38,28 +41,27 @@ const [accounts, setAccounts] = useState([]);
       setLoading(false);
     }
   };
-  useEffect(() => {
-  const fetchAccounts = async () => {
-    try {
-      const res = await fetch(`${baseurl}/accounts`);
-      const data = await res.json();
-      setAccounts(data);
-    } catch (err) {
-      console.error("Failed to fetch accounts:", err);
-    }
-  };
-  fetchAccounts();
-}, []);
 
-const getPartyOpeningBalance = (partyID) => {
-  const account = accounts.find(acc => acc.id === parseInt(partyID));
-  if (!account) return { balance: 0, type: null };
-  
-  const balance = parseFloat(account.opening_balance || 0);
-  const type = account.opening_balance_type || null;
-  
-  return { balance, type };
-};
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        const res = await fetch(`${baseurl}/accounts`);
+        const data = await res.json();
+        setAccounts(data);
+      } catch (err) {
+        console.error("Failed to fetch accounts:", err);
+      }
+    };
+    fetchAccounts();
+  }, []);
+
+  const getPartyOpeningBalance = (partyID) => {
+    const account = accounts.find((acc) => acc.id === parseInt(partyID));
+    if (!account) return { balance: 0, type: null };
+    const balance = parseFloat(account.opening_balance || 0);
+    const type = account.opening_balance_type || null;
+    return { balance, type };
+  };
 
   const fetchVoucherList = async () => {
     try {
@@ -195,26 +197,55 @@ const getPartyOpeningBalance = (partyID) => {
 
   const groupedArray = Object.values(groupedLedger);
 
+  // ── helper: convert UTC ISO string → local YYYY-MM-DD ──
+  const getLocalDateStr = (dateStr) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    const year  = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day   = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // ── filteredLedger uses APPLIED dates only (set on button click) ──
   const filteredLedger = groupedArray.filter((item) => {
     const matchesSearch =
       searchTerm === "" ||
       item.partyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.partyID.toString().includes(searchTerm);
+
     if (!matchesSearch) return false;
-    if (startDate && endDate) {
-      return item.transactions.some((tx) => {
-        if (!tx.created_at) return false;
-        const txDate = new Date(tx.created_at).toISOString().split("T")[0];
-        return txDate >= startDate && txDate <= endDate;
+
+    if (appliedStartDate || appliedEndDate) {
+      const hasMatchingTx = item.transactions.some((tx) => {
+        const txDate = getLocalDateStr(tx.date);
+        if (!txDate) return false;
+        if (appliedStartDate && appliedEndDate) return txDate >= appliedStartDate && txDate <= appliedEndDate;
+        if (appliedStartDate) return txDate >= appliedStartDate;
+        if (appliedEndDate)   return txDate <= appliedEndDate;
+        return true;
       });
+      if (!hasMatchingTx) return false;
     }
+
     return true;
   });
 
-  const clearFilters = () => {
+  // ── Apply button: copy input dates → applied dates ──
+  const handleApplyFilter = () => {
+    setAppliedStartDate(startDate);
+    setAppliedEndDate(endDate);
+    setIsFiltered(true);
+  };
+
+  // ── Clear button: reset everything ──
+  const handleClearFilter = () => {
     setSearchTerm("");
     setStartDate("");
     setEndDate("");
+    setAppliedStartDate("");
+    setAppliedEndDate("");
+    setIsFiltered(false);
     setOrderModeFilter("ALL");
   };
 
@@ -247,170 +278,150 @@ const getPartyOpeningBalance = (partyID) => {
     }
   };
 
-const ledgerColumns = [
-  {
-    key: "partyID",
-    title: "",
-    render: (_, ledger) => {
-      const balanceType = ledger.balance >= 0 ? "Cr" : "Dr";
-      const balanceAmt = Math.abs(ledger.balance).toFixed(2);
-      const openingBalanceData = getPartyOpeningBalance(ledger.partyID);
-      const openingBalanceNum = openingBalanceData.balance;
-      const openingBalanceType = openingBalanceData.type;
-      
-      const openingBalanceDisplay = openingBalanceType 
-        ? `₹${openingBalanceNum.toFixed(2)} ${openingBalanceType === 'Debit' ? 'Dr' : 'Cr'}`
-        : `₹${openingBalanceNum.toFixed(2)}`; 
+  const ledgerColumns = [
+    {
+      key: "partyID",
+      title: "",
+      render: (_, ledger) => {
+        const balanceType = ledger.balance >= 0 ? "Cr" : "Dr";
+        const balanceAmt = Math.abs(ledger.balance).toFixed(2);
+        const openingBalanceData = getPartyOpeningBalance(ledger.partyID);
+        const openingBalanceNum = openingBalanceData.balance;
+        const openingBalanceType = openingBalanceData.type;
 
-      const sortedTransactions = [...ledger.transactions].sort((a, b) => {
-        const dateA = a.date ? new Date(a.date) : new Date(0);
-        const dateB = b.date ? new Date(b.date) : new Date(0);
-        return dateA - dateB;
-      });
+        const openingBalanceDisplay = openingBalanceType
+          ? `₹${openingBalanceNum.toFixed(2)} ${openingBalanceType === "Debit" ? "Dr" : "Cr"}`
+          : `₹${openingBalanceNum.toFixed(2)}`;
 
-      let runningBalance = openingBalanceNum;
-      
-      if (openingBalanceType === 'Credit') {
-        runningBalance = -openingBalanceNum;
-      }
-      
-      const transactionsWithBalance = sortedTransactions.map((tx) => {
-        const amount = parseFloat(tx.Amount || 0);
-        const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
+        // ── inner rows also filtered by APPLIED dates ──
+        const sortedTransactions = [...ledger.transactions]
+          .filter((tx) => {
+            if (!appliedStartDate && !appliedEndDate) return true;
+            const txDate = getLocalDateStr(tx.date);
+            if (!txDate) return false;
+            if (appliedStartDate && appliedEndDate) return txDate >= appliedStartDate && txDate <= appliedEndDate;
+            if (appliedStartDate) return txDate >= appliedStartDate;
+            if (appliedEndDate)   return txDate <= appliedEndDate;
+            return true;
+          })
+          .sort((a, b) => {
+            const dateA = a.date ? new Date(a.date) : new Date(0);
+            const dateB = b.date ? new Date(b.date) : new Date(0);
+            return dateA - dateB;
+          });
 
+        let runningBalance = openingBalanceNum;
 
-        
-        if (openingBalanceType === 'Debit') {
-          if (dc === "D") {
-            runningBalance = runningBalance + amount; 
-          } else if (dc === "C") {
-            runningBalance = runningBalance - amount; 
-          }
-        } else if (openingBalanceType === 'Credit') {
-          if (dc === "D") {
-            runningBalance = runningBalance + amount; 
-          } else if (dc === "C") {
-            runningBalance = runningBalance - amount;
-          }
-        } else {
-          // No opening balance type specified
-          if (dc === "D") {
-            runningBalance = runningBalance + amount;
-          } else if (dc === "C") {
-            runningBalance = runningBalance - amount;
-          }
+        if (openingBalanceType === "Credit") {
+          runningBalance = -openingBalanceNum;
         }
 
-        return { ...tx, runningBalance };
-      });
+        const transactionsWithBalance = sortedTransactions.map((tx) => {
+          const amount = parseFloat(tx.Amount || 0);
+          const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
 
-      return (
-        <div className="ledger-party-section">
-          {/* Party Header */}
-     <div className="ledger-party-header">
-  {ledger.partyName} (ID: {ledger.partyID}) —
-  {orderModeFilter === "ALL" && ` Opening Balance: ${openingBalanceDisplay} | `}
-  Balance: {balanceAmt} {balanceType}
-</div>
+          if (openingBalanceType === "Debit") {
+            if (dc === "D") runningBalance = runningBalance + amount;
+            else if (dc === "C") runningBalance = runningBalance - amount;
+          } else if (openingBalanceType === "Credit") {
+            if (dc === "D") runningBalance = runningBalance + amount;
+            else if (dc === "C") runningBalance = runningBalance - amount;
+          } else {
+            if (dc === "D") runningBalance = runningBalance + amount;
+            else if (dc === "C") runningBalance = runningBalance - amount;
+          }
 
-          {/* Transactions Table */}
-          <table className="ledger-transactions-table">
-            <thead>
-              <tr>
-                <th>Transaction Date</th>
-                <th>Transaction Type</th>
-                <th>Rec/Vou No</th>
-                <th>Credit</th>
-                <th>Debit</th>
-{orderModeFilter === "ALL" && <th>Balance</th>}
-                <th>Created On</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactionsWithBalance.map((tx, idx) => {
-                const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
-                const voucherId = tx.voucherID;
-                const voucherDisplay = getVoucherDisplay(voucherId, tx.trantype);
-                const amount = parseFloat(tx.Amount || 0);
-                const amountDisplay = amount.toFixed(2);
+          return { ...tx, runningBalance };
+        });
 
-                // Use the computed runningBalance for this row
-                const txBalanceDisplay = Math.abs(tx.runningBalance).toFixed(2);
-                const balanceSign = tx.runningBalance >= 0 ? "Dr" : "Cr";
+        return (
+          <div className="ledger-party-section">
+            {/* Party Header */}
+            <div className="ledger-party-header">
+              {ledger.partyName} (ID: {ledger.partyID}) —
+              {orderModeFilter === "ALL" && ` Opening Balance: ${openingBalanceDisplay} | `}
+              Balance: {balanceAmt} {balanceType}
+            </div>
 
-                return (
-                  <tr key={tx.id || idx}>
-                    <td>
-                      {tx.date
-                        ? new Date(tx.date).toLocaleDateString("en-IN", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })
-                        : "-"}
-                    </td>
-                    <td>{tx.trantype || "-"}</td>
-                    <td>
-                      {voucherId ? (
-                        <span
-                          onClick={() =>
-                            handleVoucherClick(voucherId, tx.trantype, tx)
-                          }
-                          className="ledger-voucher-link"
-                          title="Click to view invoice"
-                        >
-                          {voucherDisplay}
-                        </span>
-                      ) : (
-                        "-"
+            {/* Transactions Table */}
+            <table className="ledger-transactions-table">
+              <thead>
+                <tr>
+                  <th>Transaction Date</th>
+                  <th>Transaction Type</th>
+                  <th>Rec/Vou No</th>
+                  <th>Credit</th>
+                  <th>Debit</th>
+                  {orderModeFilter === "ALL" && <th>Balance</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {transactionsWithBalance.map((tx, idx) => {
+                  const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
+                  const voucherId = tx.voucherID;
+                  const voucherDisplay = getVoucherDisplay(voucherId, tx.trantype);
+                  const amount = parseFloat(tx.Amount || 0);
+                  const amountDisplay = amount.toFixed(2);
+                  const txBalanceDisplay = Math.abs(tx.runningBalance).toFixed(2);
+                  const balanceSign = tx.runningBalance >= 0 ? "Dr" : "Cr";
+
+                  return (
+                    <tr key={tx.id || idx}>
+                      <td>
+                        {tx.date
+                          ? new Date(tx.date).toLocaleDateString("en-IN", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            })
+                          : "-"}
+                      </td>
+                      <td>{tx.trantype || "-"}</td>
+                      <td>
+                        {voucherId ? (
+                          <span
+                            onClick={() => handleVoucherClick(voucherId, tx.trantype, tx)}
+                            className="ledger-voucher-link"
+                            title="Click to view invoice"
+                          >
+                            {voucherDisplay}
+                          </span>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td>
+                        {dc === "C" ? (
+                          <span className="ledger-credit-amount">{amountDisplay}</span>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td>
+                        {dc === "D" ? (
+                          <span className="ledger-debit-amount">{amountDisplay}</span>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      {orderModeFilter === "ALL" && (
+                        <td>
+                          <span className="ledger-balance-amount">
+                            {txBalanceDisplay} {balanceSign}
+                          </span>
+                        </td>
                       )}
-                    </td>
-                    <td>
-                      {dc === "C" ? (
-                        <span className="ledger-credit-amount">
-                          {amountDisplay}
-                        </span>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td>
-                      {dc === "D" ? (
-                        <span className="ledger-debit-amount">
-                          {amountDisplay}
-                        </span>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                  {orderModeFilter === "ALL" && (
-  <td>
-    <span className="ledger-balance-amount">
-      {txBalanceDisplay} {balanceSign}
-    </span>
-  </td>
-)}
-                    <td>
-                      {tx.created_at
-                        ? new Date(tx.created_at).toLocaleString("en-IN", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "-"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      );
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+      },
     },
-  },
-];
+  ];
+
   return (
     <div className="ledger-wrapper">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
@@ -422,6 +433,7 @@ const ledgerColumns = [
           {/* Search Filters */}
           <div className="ledger-filters">
             <div className="ledger-filters-left">
+
               {/* Search */}
               <div className="ledger-filter-group">
                 <label className="ledger-filter-label">Search:</label>
@@ -457,15 +469,27 @@ const ledgerColumns = [
                 />
               </div>
 
-              {/* Clear Filters */}
+              {/* Apply / Clear toggle button */}
               {(searchTerm || startDate || endDate || orderModeFilter !== "ALL") && (
-                <button
-                  onClick={clearFilters}
-                  className="ledger-clear-filters-btn"
-                >
-                  Clear All
-                </button>
+                <>
+                  {isFiltered ? (
+                    <button
+                      onClick={handleClearFilter}
+                      className="ledger-clear-filters-btn ledger-clear-filters-btn--active"
+                    >
+                      Clear Filter
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleApplyFilter}
+                      className="ledger-clear-filters-btn-apply-filter"
+                    >
+                      Apply Filter
+                    </button>
+                  )}
+                </>
               )}
+
             </div>
 
             {/* Export PDF */}
@@ -500,27 +524,33 @@ const ledgerColumns = [
             </button>
           </div>
 
-          {/* Order Mode Buttons */}
-          <div className="ledger-order-mode">
-            {["ALL", "PAKKA", "KACHA"].map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setOrderModeFilter(mode)}
-                className={`ledger-order-btn ${orderModeFilter === mode ? "ledger-order-btn--active" : ""}`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
-
-<div className="ledger-pdf-hidden">
-  <LedgerPDF
-    ref={pdfContentRef}
-    filteredLedger={filteredLedger}
-    getPartyOpeningBalance={getPartyOpeningBalance}
-    orderModeFilter={orderModeFilter} // Pass the filter mode
-  />
+<div className="ledger-order-mode">
+  {["ALL", "PAKKA", "KACHA"].map((mode) => (
+    <button
+      key={mode}
+      onClick={() => {
+        setOrderModeFilter(mode);
+        if (mode !== "ALL") {
+          setIsFiltered(true);
+        } else {
+          setIsFiltered(false);
+        }
+      }}
+      className={`ledger-order-btn ${orderModeFilter === mode ? "ledger-order-btn--active" : ""}`}
+    >
+      {mode}
+    </button>
+  ))}
 </div>
+
+          <div className="ledger-pdf-hidden">
+            <LedgerPDF
+              ref={pdfContentRef}
+              filteredLedger={filteredLedger}
+              getPartyOpeningBalance={getPartyOpeningBalance}
+              orderModeFilter={orderModeFilter}
+            />
+          </div>
 
           {/* Loading / ReusableTable */}
           {loading ? (

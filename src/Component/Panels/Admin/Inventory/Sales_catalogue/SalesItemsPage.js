@@ -1097,6 +1097,7 @@ const handleSubmit = async (e) => {
                       name="hsn_code"
                       value={formData.hsn_code}
                       onChange={handleChange}
+                       required 
                     />
                   </div>
 <div className="col">

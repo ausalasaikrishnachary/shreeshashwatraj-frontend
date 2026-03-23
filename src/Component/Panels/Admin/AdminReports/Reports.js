@@ -8,6 +8,7 @@ import RetailerReports from "./RetailerReports";
 import GstReport from "./GstReport";
 import "./Reports.css";
 import { FaChartBar } from "react-icons/fa";
+import HsnReport from "./HsnReport";
 
 function Reports() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -31,6 +32,8 @@ const renderReportContent = () => {
       return <StockReport />;
          case "gst":
       return <GstReport />;
+           case "hsn":
+      return <HsnReport />;
     default:
       return <RetailerReports loading={loading} setLoading={setLoading} />;
   }
@@ -84,6 +87,11 @@ const renderReportContent = () => {
                    <div className="report-link-item" onClick={() => setActiveReport("gst")}>
                   <span className={`report-link-text ${activeReport === "gst" ? "active" : ""}`}>
                   GST Report
+                  </span>
+                </div>
+                   <div className="report-link-item" onClick={() => setActiveReport("hsn")}>
+                  <span className={`report-link-text ${activeReport === "hsn" ? "active" : ""}`}>
+                  HSN Report
                   </span>
                 </div>
               </div>
