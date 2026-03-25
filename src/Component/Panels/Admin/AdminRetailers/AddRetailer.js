@@ -13,7 +13,7 @@ const getStateName = (stateCode) => {
     '32': 'Kerala',
     '29': 'Karnataka',
     'TGC022': 'Telangana',
-    // Add more state codes as needed
+    
   };
   return stateMap[stateCode] || stateCode || '';
 };
@@ -33,7 +33,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [loading, setLoading] = useState(mode !== 'add');
   const [staffList, setStaffList] = useState([]);
-
+const [createBoth, setCreateBoth] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     entity_type: "",
@@ -89,6 +89,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     billing_gstin: "",
       opening_balance: 0,  
        opening_balance_type: "",
+        is_dual_account : 0, // ✅ NEW FIELD
   });
 
   // List of mandatory fields
@@ -641,33 +642,57 @@ const RetailerForm = ({ user, mode = 'add' }) => {
 
     const isSupplier = formData.group === "SUPPLIERS";
 
-    try {
-      if (isEditing) {
-        await axios.put(`${baseurl}/accounts/${id}`, finalData);
+   try {
 
-        if (isSupplier) {
-          alert("Supplier updated successfully!");
-        } else {
-          alert("Retailer updated successfully!");
-        }
+  if (createBoth && !isEditing) {
+    // ✅ CREATE BOTH (ONLY FOR ADD MODE)
 
+    // 👉 Supplier Data
+    let supplierData = { ...finalData, group: "SUPPLIERS" };
+    delete supplierData.assigned_staff;
+    delete supplierData.staffid;
+    delete supplierData.entity_type;
+    delete supplierData.role;
+
+    // 👉 Retailer Data
+    let retailerData = { ...finalData, group: "Retailer" };
+
+    // 👉 API Calls
+    await axios.post(`${baseurl}/accounts`, supplierData);
+    await axios.post(`${baseurl}/accounts`, retailerData);
+
+    alert("Retailer & Supplier added successfully!");
+
+  } else {
+
+    // ✅ NORMAL FLOW (ADD / UPDATE SINGLE)
+
+    if (isEditing) {
+      await axios.put(`${baseurl}/accounts/${id}`, finalData);
+
+      if (isSupplier) {
+        alert("Supplier updated successfully!");
       } else {
-        await axios.post(`${baseurl}/accounts`, finalData);
-
-        if (isSupplier) {
-          alert("Supplier added successfully!");
-        } else {
-          alert("Retailer added successfully!");
-        }
+        alert("Retailer updated successfully!");
       }
 
-      navigate('/retailers');
+    } else {
+      await axios.post(`${baseurl}/accounts`, finalData);
 
-    } catch (err) {
-      console.error(err);
-
-      alert(`Failed to ${isEditing ? 'update' : 'add'} ${isSupplier ? 'supplier' : 'retailer'}`);
+      if (isSupplier) {
+        alert("Supplier added successfully!");
+      } else {
+        alert("Retailer added successfully!");
+      }
     }
+  }
+
+  navigate('/retailers');
+
+} catch (err) {
+  console.error(err);
+  alert(`Failed to ${isEditing ? 'update' : 'add'} ${isSupplier ? 'supplier' : 'retailer'}`);
+}
 
   };
 
@@ -732,10 +757,12 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     }
 
     // Hide role, assigned_staff, staffid for SUPPLIERS
-    if (formData.group === 'SUPPLIERS' && ['role', 'assigned_staff', 'staffid'].includes(name)) {
-      return null;
-    }
-
+if (
+  (formData.group === 'SUPPLIERS' && ['role', 'assigned_staff', 'staffid', 'entity_type'].includes(name)) &&
+  !createBoth // ✅ show when checkbox enabled
+) {
+  return null;
+}
     if (type === 'select') {
       return (
         <div className="mb-3">
@@ -829,7 +856,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                 </div>
               </div>
               <div className="col-md-6">
-                {formData.group !== 'SUPPLIERS' && renderField({
+                {(formData.group !== 'SUPPLIERS' || createBoth) && renderField({
                   type: 'select',
                   name: 'entity_type',
                   label: 'Entity Type',
@@ -842,6 +869,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
                 })}
               </div>
             </div>
+
+
 
             <div className="row">
               <div className="col-md-6">
@@ -1142,7 +1171,32 @@ const RetailerForm = ({ user, mode = 'add' }) => {
 )}
 
 
+{/* ✅ NEW CHECKBOX */}
+<div className="mb-3">
+  <div className="form-check">
+  <input
+  type="checkbox"
+  className="form-check-input"
+  id="createBoth"
+  checked={formData.is_dual_account  === 1}
+  onChange={(e) => {
+    const value = e.target.checked ? 1 : 0;
 
+    setCreateBoth(e.target.checked); // for UI logic
+
+    setFormData(prev => ({
+      ...prev,
+      is_dual_account : value // ✅ send 1 or 0
+    }));
+  }}
+/>
+    <label className="form-check-label" htmlFor="createBoth">
+      {formData.group === "SUPPLIERS"
+        ? "Also create as Retailer"
+        : "Also create as Supplier"}
+    </label>
+  </div>
+</div>
             
           </FormSection>
         );

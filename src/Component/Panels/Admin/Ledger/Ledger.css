@@ -76,6 +76,16 @@
   cursor: pointer;
   font-weight: bold;
 }
+.ledger-clear-filters-btn-apply-filter {
+  padding: 8px 15px;
+  background-color: rgba(0, 128, 0, 0.741);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
 
 /* ===== LEDGER EXPORT BUTTON ===== */
 .ledger-export-btn {
