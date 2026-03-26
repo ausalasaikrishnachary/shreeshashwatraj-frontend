@@ -838,7 +838,10 @@ const addItem = () => {
 >
   <option value="">Select Supplier</option> 
   {accounts
-    .filter(acc => acc.role === "supplier") 
+  .filter(acc =>
+  acc.role === "supplier" || 
+  (acc.role === "retailer" && acc.is_dual_account == 1)
+) 
     .map(acc => (
       <option key={acc.id} value={acc.business_name}>
         {acc.gstin?.trim()
@@ -910,7 +913,10 @@ const addItem = () => {
                         {/* Scrollable supplier list */}
                         <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
                           {accounts
-                            .filter(acc => acc.role === "supplier")
+                           .filter(acc =>
+  acc.role === "supplier" || 
+  (acc.role === "retailer" && acc.is_dual_account == 1)
+)  
                             .map(acc => {
                               const isCurrentlySelected = acc.id === selectedSupplierId;
                               return (

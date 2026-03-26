@@ -23,6 +23,73 @@
   flex-direction: column;
 }
 
+  /* Toggle container */
+  .retailers-status-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Switch wrapper */
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+  }
+
+  /* Hide checkbox */
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  /* Slider */
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 20px;
+  }
+
+  /* Circle */
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+  }
+
+  /* ON state */
+  .switch input:checked + .slider {
+    background-color: #28a745;
+  }
+
+  .switch input:checked + .slider:before {
+    transform: translateX(20px);
+  }
+
+  /* Text */
+  .status-text.active {
+    color: green;
+    font-weight: 600;
+  }
+
+  .status-text.inactive {
+    color: red;
+    font-weight: 600;
+  }
 /* Page Header - Replaces AdminHeader */
 .retailers-page-header {
   background: #fff;

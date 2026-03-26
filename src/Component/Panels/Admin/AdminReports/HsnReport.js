@@ -15,9 +15,7 @@ const HsnReport = () => {
   const [loading, setLoading]                 = useState(true);
   const [error, setError]                     = useState("");
   const [exportLoading, setExportLoading]     = useState(false);
-const [appliedFromDate, setAppliedFromDate] = useState("");
-const [appliedToDate, setAppliedToDate] = useState("");
-const [isFiltered, setIsFiltered] = useState(false);
+
   const getCurrentDate = () => {
     const today = new Date();
     const year  = today.getFullYear();
@@ -27,17 +25,17 @@ const [isFiltered, setIsFiltered] = useState(false);
   };
 
   // Re-fetch whenever dates change
-useEffect(() => {
-  fetchGstData(); // only initial load
-}, []);
+  useEffect(() => {
+    fetchGstData();
+  }, [fromDate, toDate]);
 
   const fetchGstData = async () => {
     setLoading(true);
     setError("");
     try {
       const params = {};
-     if (appliedFromDate) params.fromDate = appliedFromDate;
-if (appliedToDate)   params.toDate   = appliedToDate;
+      if (fromDate) params.fromDate = fromDate;
+      if (toDate)   params.toDate   = toDate;
 
       const response = await axios.get(`${baseurl}/hsnreport`, { params });
       const vouchers = response.data;
@@ -123,24 +121,6 @@ if (appliedToDate)   params.toDate   = appliedToDate;
     { totalQty: 0, billAmt: 0, taxableAmt: 0, sgstAmt: 0, cgstAmt: 0, igstAmt: 0 }
   );
 
-
-  const handleFilterClick = () => {
-  if (isFiltered) {
-    // 🔄 CLEAR FILTER
-    setFromDate("");
-    setToDate("");
-    setAppliedFromDate("");
-    setAppliedToDate("");
-    setIsFiltered(false);
-    fetchGstData(); // reload all data
-  } else {
-    // ✅ APPLY FILTER
-    setAppliedFromDate(fromDate);
-    setAppliedToDate(toDate);
-    setIsFiltered(true);
-    fetchGstData(); // fetch filtered data
-  }
-};
   const exportToExcel = () => {
     if (!filteredData || filteredData.length === 0) {
       alert("No data to export");
@@ -351,14 +331,14 @@ if (appliedToDate)   params.toDate   = appliedToDate;
                 min={fromDate || undefined}
               />
             </div>
-     {(fromDate || toDate || isFiltered) && (
-  <button
-    className={`hsn-report-filter-btn ${isFiltered ? 'clear' : ''}`}
-    onClick={handleFilterClick}
-  >
-    {isFiltered ? "Clear Filter" : "Apply Filter"}
-  </button>
-)}
+            {(fromDate || toDate) && (
+              <button
+                className="hsn-report-clear-date-btn"
+                onClick={clearDateFilters}
+              >
+                Clear Dates
+              </button>
+            )}
           </div>
 
           {/* Export */}

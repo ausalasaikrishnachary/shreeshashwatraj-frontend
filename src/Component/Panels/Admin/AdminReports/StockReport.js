@@ -15,7 +15,9 @@ const StockReport = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [exportLoading, setExportLoading] = useState(false);
-  const [qtyFilter, setQtyFilter] = useState("all"); // ✅ NEW
+  const [qtyFilter, setQtyFilter] = useState("all");
+  const [categories, setCategories] = useState([]); // ✅ NEW: Store categories
+  const [categoriesMap, setCategoriesMap] = useState({}); // ✅ NEW: Map for quick lookup
 
   const getCurrentDate = () => {
     const today = new Date();
@@ -25,7 +27,25 @@ const StockReport = () => {
     return `${year}-${month}-${day}`;
   };
 
+  // ✅ NEW: Fetch categories
+  const fetchCategories = async () => {
+    try {
+      const categoriesRes = await axios.get(`${baseurl}/categories`);
+      setCategories(categoriesRes.data);
+      
+      // Create a map for quick lookup
+      const map = {};
+      categoriesRes.data.forEach(category => {
+        map[category.id] = category.category_name;
+      });
+      setCategoriesMap(map);
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+    }
+  };
+
   useEffect(() => {
+    fetchCategories(); // ✅ Fetch categories first
     fetchStockData();
   }, []);
 
@@ -65,6 +85,7 @@ const StockReport = () => {
                 productId: product.id,
                 batchNumber: batch.batch_number,
                 itemName: product.goods_name,
+                categoryId: product.category_id, // ✅ NEW: Store category_id
                 opQty,
                 opVal,
                 prchQty,
@@ -88,6 +109,7 @@ const StockReport = () => {
                 productId: product.id,
                 batchNumber: "DEFAULT",
                 itemName: product.goods_name,
+                categoryId: product.category_id, // ✅ NEW: Store category_id
                 opQty,
                 opVal,
                 prchQty: 0,
@@ -113,6 +135,7 @@ const StockReport = () => {
               productId: product.id,
               batchNumber: "DEFAULT",
               itemName: product.goods_name,
+              categoryId: product.category_id, // ✅ NEW: Store category_id
               opQty,
               opVal,
               prchQty: 0,
@@ -167,12 +190,16 @@ const StockReport = () => {
     }
   };
 
-  // ✅ Filter data including qty dropdown
+  // ✅ Update filteredData to include category name in search
   const filteredData = stockData.filter((item) => {
+    // Get category name for search
+    const categoryName = categoriesMap[item.categoryId] || '';
+    
     const matchesSearch = !searchTerm.trim() ||
       item.itemName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.batchNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.productType?.toLowerCase().includes(searchTerm.toLowerCase());
+      item.productType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      categoryName?.toLowerCase().includes(searchTerm.toLowerCase()); // ✅ Include category in search
 
     let matchesDate = true;
     if (fromDate || toDate) {
@@ -186,16 +213,19 @@ const StockReport = () => {
       }
     }
 
-   const stock = parseFloat(item.currentStock) || 0;
-let matchesQty = true;
-if (qtyFilter === "gt0") matchesQty = stock > 0;     
-else if (qtyFilter === "lt0") matchesQty = stock < 0; 
-else if (qtyFilter === "eq0") matchesQty = stock === 0; 
+    const stock = parseFloat(item.currentStock) || 0;
+    let matchesQty = true;
+    if (qtyFilter === "gt0") matchesQty = stock > 0;     
+    else if (qtyFilter === "lt0") matchesQty = stock < 0; 
+    else if (qtyFilter === "eq0") matchesQty = stock === 0; 
+    
     return matchesSearch && matchesDate && matchesQty;
   });
 
+  // ✅ Add category name to processed data
   const processedData = filteredData.map((item) => ({
     ...item,
+    categoryName: categoriesMap[item.categoryId] || 'Uncategorized', // ✅ Add category name
     opQty: (parseFloat(item.opQty) || 0).toFixed(2),
     currentStock: (parseFloat(item.currentStock) || 0).toFixed(2),
     opVal: `₹${(item.opVal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -209,57 +239,61 @@ else if (qtyFilter === "eq0") matchesQty = stock === 0;
     }) : '-',
   }));
 
-  const exportToPDF = async () => {
-    if (filteredData.length === 0) { alert("No data to export"); return; }
-    setExportLoading(true);
-    try {
-      const pdfData = filteredData.map((item) => ({
-        itemName: item.itemName,
-        opQty: item.opQty || 0,
-         currentStock: item.currentStock || 0, 
-        opVal: item.opVal || 0,
-        prchQty: item.prchQty || 0,
-        prchVal: item.prchVal || 0,
-        saleQty: item.saleQty || 0,
-        saleVal: item.saleVal || 0,
-        cloBal: item.cloBal || 0,
-      }));
+const exportToPDF = async () => {
+  if (filteredData.length === 0) { 
+    alert("No data to export"); 
+    return; 
+  }
+  setExportLoading(true);
+  try {
+    const pdfData = filteredData.map((item) => ({
+      itemName: item.itemName,
+      categoryName: categoriesMap[item.categoryId] || 'Uncategorized', // ✅ Add category name
+      opQty: item.opQty || 0,
+      currentStock: item.currentStock || 0, 
+      opVal: item.opVal || 0,
+      prchQty: item.prchQty || 0,
+      prchVal: item.prchVal || 0,
+      saleQty: item.saleQty || 0,
+      saleVal: item.saleVal || 0,
+      cloBal: item.cloBal || 0,
+    }));
 
-      const displayFromDate = fromDate ? formatDateForDisplay(fromDate) : formatDateForDisplay(getCurrentDate());
-      const displayToDate = toDate ? formatDateForDisplay(toDate) : formatDateForDisplay(getCurrentDate());
+    const displayFromDate = fromDate ? formatDateForDisplay(fromDate) : formatDateForDisplay(getCurrentDate());
+    const displayToDate = toDate ? formatDateForDisplay(toDate) : formatDateForDisplay(getCurrentDate());
 
-      const blob = await pdf(
-        <StockReportPDF
-          reportData={{
-            shopName: "SHREE SHASHWAT RAJ AGRO PVT.LTD",
-            fromDate: displayFromDate,
-            toDate: displayToDate,
-            items: pdfData,
-          }}
-        />
-      ).toBlob();
+    const blob = await pdf(
+      <StockReportPDF
+        reportData={{
+          shopName: "SHREE SHASHWAT RAJ AGRO PVT.LTD",
+          fromDate: displayFromDate,
+          toDate: displayToDate,
+          items: pdfData,
+        }}
+      />
+    ).toBlob();
 
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `stock_report_${displayFromDate}_to_${displayToDate}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF");
-    } finally {
-      setExportLoading(false);
-    }
-  };
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `stock_report_${displayFromDate}_to_${displayToDate}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    alert("Failed to generate PDF");
+  } finally {
+    setExportLoading(false);
+  }
+};
 
   const clearFilters = () => {
     setSearchTerm("");
     setFromDate("");
     setToDate("");
-    setQtyFilter("all"); // ✅ reset dropdown too
+    setQtyFilter("all");
   };
 
   const clearDateFilters = () => {
@@ -267,9 +301,11 @@ else if (qtyFilter === "eq0") matchesQty = stock === 0;
     setToDate("");
   };
 
+  // ✅ Updated columns to include category
   const stockColumns = [
     { key: "sl_no", title: "S.No", style: { textAlign: "center", width: "60px" }, render: (value, record, index) => index + 1 },
     { key: "itemName", title: "Item Name", style: { textAlign: "left" } },
+    { key: "categoryName", title: "Category", style: { textAlign: "left" } }, // ✅ NEW: Category column
     { key: "opQty", title: "Op. Qty", style: { textAlign: "right" } },
     { key: "currentStock", title: "BL. Qty", style: { textAlign: "right" } },
     { key: "opVal", title: "Op. Val", style: { textAlign: "right" } },
@@ -313,7 +349,7 @@ else if (qtyFilter === "eq0") matchesQty = stock === 0;
               <FaSearch className="stock-summary-search-icon" />
               <input
                 type="text"
-                placeholder="Search by item name, batch, type..."
+                placeholder="Search by item name, category, batch, type..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="stock-summary-search-input"
@@ -353,19 +389,19 @@ else if (qtyFilter === "eq0") matchesQty = stock === 0;
             )}
           </div>
 
-          {/* ✅ QTY Dropdown Filter */}
+          {/* QTY Dropdown Filter */}
           <div className="stock-summary-date-input-wrapper">
             <label className="stock-summary-date-label">QTY Filter</label>
-       <select
-  value={qtyFilter}
-  onChange={(e) => setQtyFilter(e.target.value)}
-  className="stock-summary-date-input"
->
-  <option value="all">All</option>
-  <option value="gt0">&#62; 0  ( Available Stock )</option>
-  <option value="lt0">&#60; 0  (Negative Stock)</option>
-  <option value="eq0">= 0  (Zero Stock)</option>
-</select>
+            <select
+              value={qtyFilter}
+              onChange={(e) => setQtyFilter(e.target.value)}
+              className="stock-summary-date-input"
+            >
+              <option value="all">All</option>
+              <option value="gt0">&#62; 0  ( Available Stock )</option>
+              <option value="lt0">&#60; 0  (Negative Stock)</option>
+              <option value="eq0">= 0  (Zero Stock)</option>
+            </select>
           </div>
 
           {/* Export PDF */}

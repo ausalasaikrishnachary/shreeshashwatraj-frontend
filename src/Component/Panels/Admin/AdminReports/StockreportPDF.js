@@ -37,20 +37,25 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
 
-  // ✅ Slightly reduced widths to fit BL. Qty column
+  // Adjusted widths to accommodate category column
   colItem: {
-    width: '26%',
+    width: '18%',
+    justifyContent: 'center',
+  },
+
+  colCategory: {
+    width: '12%',
     justifyContent: 'center',
   },
 
   colSmall: {
-    width: '8%',
+    width: '7%',
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   colMedium: {
-    width: '10%',
+    width: '9%',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -59,6 +64,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     fontSize: 9,
     textAlign: 'right',
+    width: '100%',
+  },
+
+  headerTextLeft: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 9,
+    textAlign: 'left',
     width: '100%',
   },
 
@@ -88,14 +100,13 @@ const StockReportPDF = ({ reportData }) => {
   } = reportData || {};
 
   const formatNumber = (value) => {
-    if (!value) return "0.00";
+    if (!value && value !== 0) return "0.00";
     return Number(value).toFixed(2);
   };
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
-
+      <Page size="A4" style={styles.page} orientation="landscape">
         {/* Header */}
         <Text style={styles.shopName}>{shopName}</Text>
         <Text style={styles.reportTitle}>
@@ -106,8 +117,15 @@ const StockReportPDF = ({ reportData }) => {
         <View style={styles.headerRow}>
 
           <View style={styles.colItem}>
-            <Text style={{ textAlign: 'left', paddingLeft: 4, fontFamily: 'Helvetica-Bold', fontSize: 9 }}>
+            <Text style={[styles.headerTextLeft, { paddingLeft: 4 }]}>
               Item Name
+            </Text>
+          </View>
+
+          {/* Category Column Header */}
+          <View style={styles.colCategory}>
+            <Text style={[styles.headerTextLeft, { paddingLeft: 0 }]}>
+              Category
             </Text>
           </View>
 
@@ -115,7 +133,6 @@ const StockReportPDF = ({ reportData }) => {
             <Text style={styles.headerText}>Op. Qty</Text>
           </View>
 
-          {/* ✅ BL. Qty column header */}
           <View style={styles.colSmall}>
             <Text style={styles.headerText}>BL. Qty</Text>
           </View>
@@ -151,14 +168,18 @@ const StockReportPDF = ({ reportData }) => {
           <View style={styles.row} key={index}>
 
             <Text style={[styles.colItem, styles.cellLeft]}>
-              {item.itemName}
+              {item.itemName || '-'}
+            </Text>
+
+            {/* Category Column Data */}
+            <Text style={[styles.colCategory, styles.cellRight]}>
+              {item.categoryName || 'Uncategorized'}
             </Text>
 
             <Text style={[styles.colSmall, styles.cellRight]}>
               {formatNumber(item.opQty)}
             </Text>
 
-            {/* ✅ BL. Qty column data */}
             <Text style={[styles.colSmall, styles.cellRight]}>
               {formatNumber(item.currentStock)}
             </Text>
@@ -195,6 +216,28 @@ const StockReportPDF = ({ reportData }) => {
           </View>
         ))}
 
+        {/* Footer with total count if needed */}
+        {items.length === 0 && (
+          <View style={{ marginTop: 20, alignItems: 'center' }}>
+            <Text style={{ fontSize: 10, color: '#666' }}>No data available for the selected period</Text>
+          </View>
+        )}
+
+        {/* Page number */}
+        <Text
+          style={{
+            position: 'absolute',
+            bottom: 20,
+            left: 0,
+            right: 0,
+            textAlign: 'center',
+            fontSize: 8,
+            color: '#666',
+          }}
+          fixed
+        >
+          Page 1 of 1
+        </Text>
       </Page>
     </Document>
   );

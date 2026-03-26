@@ -69,7 +69,25 @@ function Retailers() {
       setLoading(false);
     }
   };
+const handleStatusToggle = async (item) => {
+  const newStatus = item.status === 1 ? 0 : 1; // toggle
 
+  try {
+    await axios.put(`${baseurl}/accounts/${item.id}/status`, {
+      status: newStatus
+    });
+
+    // Update UI immediately
+    setRetailersData((prev) =>
+      prev.map((r) =>
+        r.id === item.id ? { ...r, status: Number(newStatus) } : r
+      )
+    );
+  } catch (err) {
+    console.error("Failed to update status:", err);
+    alert("Failed to update status");
+  }
+};
   // Handle delete retailer/supplier
   const handleDelete = async (id, name) => {
     if (window.confirm(`Are you sure you want to delete ${name}?`)) {
@@ -295,11 +313,21 @@ function Retailers() {
     </div>
   );
 
-  const renderStatusCell = (item) => (
-    <span className={`retailers-table__status retailers-table__status--active`}>
-      Active
+const renderStatusCell = (item) => (
+  <div className="retailers-status-toggle">
+    <label className="switch">
+      <input
+        type="checkbox"
+        checked={Number(item.status) === 1} // convert to number
+        onChange={() => handleStatusToggle(item)}
+      />
+      <span className="slider round"></span>
+    </label>
+    <span className={`status-text ${Number(item.status) === 1 ? "active" : "inactive"}`}>
+      {Number(item.status) === 1 ? "Active" : "Inactive"}
     </span>
-  );
+  </div>
+);
 
   const columns = [
     { key: "__item", title: selectedRole === "retailer" ? "Retailer" : "Supplier", render: (value, item) => renderRetailerCell(item) },

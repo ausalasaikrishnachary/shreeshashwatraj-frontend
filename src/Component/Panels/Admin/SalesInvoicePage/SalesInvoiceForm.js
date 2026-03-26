@@ -1268,80 +1268,86 @@ window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice sub
               New
             </Button>
           </div>
-      <Form.Select
+   <Form.Select
   className="mb-2 border-primary"
-  value={inputName}
-onChange={(e) => {
-  const selectedName = e.target.value;
-  setInputName(selectedName);
+  value={selectedSupplierId || ""}
+  onChange={(e) => {
+    const selectedId = e.target.value;
 
-  if (selectedName === "") {
-    setSelected(false);
-    setSelectedSupplierId(null);
-    setSelectedStaffId("");
-    setItemForm(prev => ({ ...prev, discount: 0 })); // Reset discount
-    return;
-  }
-
-  const supplier = accounts.find(acc => acc.business_name === selectedName);
-  if (supplier) {
-    setSelectedSupplierId(supplier.id);
-    setSelected(true);
-
-    if (supplier.staffid) {
-      setSelectedStaffId(supplier.staffid);
+    if (selectedId === "") {
+      setInputName("");
+      setSelected(false);
+      setSelectedSupplierId(null);
+      setSelectedStaffId("");
+      setItemForm(prev => ({ ...prev, discount: 0 }));
+      return;
     }
 
-    const retailerDiscount = parseFloat(supplier.discount) || 0;
+    const supplier = accounts.find(acc => acc.id == selectedId);
 
-    setInvoiceData(prev => ({
-      ...prev,
-      supplierInfo: {
-        name: supplier.gstin ? supplier.display_name : supplier.name,
-        state: supplier.billing_state,
-        gstin: supplier.gstin,
-        accountId: supplier.id,
-        staffid: supplier.staffid,
-        business_name: supplier.business_name,
-        account_name: supplier.account_name,
-        assigned_staff: supplier.assigned_staff,
-        discount: retailerDiscount // optional: store it
-      },
-      billingAddress: {
-        addressLine1: supplier.billing_address_line1,
-        addressLine2: supplier.billing_address_line2 || "",
-        city: supplier.billing_city,
-        pincode: supplier.billing_pin_code,
-        state: supplier.billing_state
-      },
-      shippingAddress: {
-        addressLine1: supplier.shipping_address_line1 || supplier.billing_address_line1,
-        addressLine2: supplier.shipping_address_line2 || supplier.billing_address_line2 || "",
-        city: supplier.shipping_city || supplier.billing_city,
-        pincode: supplier.shipping_pin_code || supplier.billing_pin_code,
-        state: supplier.shipping_state || supplier.billing_state
+    if (supplier) {
+      setSelectedSupplierId(supplier.id);
+      setInputName(supplier.business_name); // only for display if needed
+      setSelected(true);
+
+      if (supplier.staffid) {
+        setSelectedStaffId(supplier.staffid);
       }
-    }));
 
-    setItemForm(prev => ({
-      ...prev,
-      discount: retailerDiscount
-    }));
-  }
-}}
+      const retailerDiscount = parseFloat(supplier.discount) || 0;
+
+      setInvoiceData(prev => ({
+        ...prev,
+        supplierInfo: {
+          name: supplier.gstin ? supplier.display_name : supplier.name,
+          state: supplier.billing_state,
+          gstin: supplier.gstin,
+          accountId: supplier.id,
+          staffid: supplier.staffid,
+          business_name: supplier.business_name,
+          account_name: supplier.account_name,
+          assigned_staff: supplier.assigned_staff,
+          discount: retailerDiscount
+        },
+        billingAddress: {
+          addressLine1: supplier.billing_address_line1,
+          addressLine2: supplier.billing_address_line2 || "",
+          city: supplier.billing_city,
+          pincode: supplier.billing_pin_code,
+          state: supplier.billing_state
+        },
+        shippingAddress: {
+          addressLine1: supplier.shipping_address_line1 || supplier.billing_address_line1,
+          addressLine2: supplier.shipping_address_line2 || supplier.billing_address_line2 || "",
+          city: supplier.shipping_city || supplier.billing_city,
+          pincode: supplier.shipping_pin_code || supplier.billing_pin_code,
+          state: supplier.shipping_state || supplier.billing_state
+        }
+      }));
+
+      setItemForm(prev => ({
+        ...prev,
+        discount: retailerDiscount
+      }));
+    }
+  }}
 >
-            <option value="">Select Retailer </option>
-            {accounts
-              .filter(acc => acc.role === "retailer")
-              .map(acc => (
-<option key={acc.id} value={acc.business_name}>
-  {acc.gstin?.trim()
-    ? acc.display_name || acc.name
-    : acc.name || acc.display_name}
-</option>
-            
-              ))}
-          </Form.Select>
+  <option value="">Select Retailer</option>
+
+  {accounts
+    .filter(acc =>
+      acc.role === "retailer" ||
+      (acc.role === "supplier" && acc.is_dual_account == 1) ||
+      acc.group?.trim().toLowerCase() === "sundry debtors"
+    )
+    .map(acc => (
+      <option key={acc.id} value={acc.id}>
+        {acc.gstin?.trim()
+          ? acc.display_name || acc.name
+          : acc.name || acc.display_name}
+      </option>
+    ))}
+</Form.Select>
         </>
   ) : (
   <>
@@ -1403,7 +1409,10 @@ onChange={(e) => {
           {/* Scrollable retailer list */}
           <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
             {accounts
-              .filter(acc => acc.role === "retailer")
+             .filter(acc =>
+  acc.role === "retailer" || 
+  (acc.role === "supplier" && acc.is_dual_account == 1)
+)
               .map(acc => {
                 const isCurrentlySelected = acc.id === selectedSupplierId;
                 return (
