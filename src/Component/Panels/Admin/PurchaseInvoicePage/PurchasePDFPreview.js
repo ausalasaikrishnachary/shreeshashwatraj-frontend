@@ -333,7 +333,9 @@ const transformPaymentData = (apiData) => {
 
   const transformApiDataToInvoiceFormat = (apiData) => {
     console.log('Transforming API data:', apiData);
-    
+     const assignedStaff = apiData.assigned_staff ||  'N/A';
+  const staffId = apiData.staffid || apiData.staff_id || null;
+
     let batchDetails = [];
     try {
       if (apiData.batch_details && typeof apiData.batch_details === 'string') {
@@ -360,7 +362,6 @@ const transformPaymentData = (apiData) => {
       const gstAmount = amountAfterDiscount * (gst / 100);
       const cessAmount = amountAfterDiscount * (cess / 100);
       const total = amountAfterDiscount + gstAmount + cessAmount;
-
       const isSameState = parseFloat(apiData.IGSTAmount) === 0;
       let cgst, sgst, igst;
       
@@ -420,7 +421,11 @@ const transformPaymentData = (apiData) => {
           account_name: apiData.account_name || apiData.AccountName || '',
       business_name: apiData.business_name || apiData.businessName || '',
         state: apiData.billing_state || apiData.BillingState || '',
-        id: apiData.PartyID || null
+        id: apiData.PartyID || null,
+
+              staffid: staffId,
+      assigned_staff: assignedStaff 
+
       },
       
       billingAddress: {
@@ -470,7 +475,9 @@ const transformPaymentData = (apiData) => {
       totalCGST: parseFloat(apiData.CGSTAmount) || 0,
       totalSGST: parseFloat(apiData.SGSTAmount) || 0,
       totalIGST: parseFloat(apiData.IGSTAmount) || 0,
-      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST"
+      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST",
+      assigned_staff: assignedStaff,
+    staffid: staffId
     };
   };
   const isInvoiceEditable = (paymentData) => {
@@ -623,7 +630,7 @@ const PaymentStatus = () => {
       const reactPdf = await import('@react-pdf/renderer');
       pdf = reactPdf.pdf;
       
-      const pdfModule = await import('./SalesPdfDocument');
+      const pdfModule = await import('../SalesInvoicePage/SalesPdfDocument');
       SalesPdfDocument = pdfModule.default;
     } catch (importError) {
       console.error('Error importing PDF modules:', importError);
@@ -1825,6 +1832,14 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                         </>
                       )}
                     </div>
+      {currentData.assigned_staff && currentData.assigned_staff !== 'N/A' && (
+  <div className="assigned-staff-section mt-3 p-2 bg-light rounded flex-start">
+    <div className="d-flex justify-content-between align-items-center">
+      <span className="text-muted">Sales Person:</span>
+      <strong className="text-primary">{currentData.assigned_staff}</strong>
+    </div>
+  </div>
+)}
                   </Col>
                 </Row>
               </div>

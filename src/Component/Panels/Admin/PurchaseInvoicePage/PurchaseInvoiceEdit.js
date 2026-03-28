@@ -20,14 +20,20 @@ const PurchaseInvoiceEdit = ({ user }) => {
   const [nextInvoiceNumber, setNextInvoiceNumber] = useState("INV001");
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const [hasFetchedInvoiceNumber, setHasFetchedInvoiceNumber] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [editingItemIndex, setEditingItemIndex] = useState(null);
   const [editingVoucherId, setEditingVoucherId] = useState(null);
   const navigate = useNavigate();
-  const { id } = useParams(); // Get voucher ID from URL if editing
+  
+  const [searchTerm, setSearchTerm] = useState("");
+const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+const [productSearchTerm, setProductSearchTerm] = useState("");
+const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+  const { id } = useParams(); 
   const [productStock, setProductStock] = useState({});
+const [staffMembers, setStaffMembers] = useState([]);
+const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState("");
 
-  // Load from localStorage on component mount OR fetch existing invoice data if editing
   const [invoiceData, setInvoiceData] = useState(() => {
     const savedData = localStorage.getItem('draftInvoice');
     if (savedData) {
@@ -51,7 +57,9 @@ const PurchaseInvoiceEdit = ({ user }) => {
         name: "",
         businessName: "",
         state: "",
-        gstin: ""
+        gstin: "",
+         staffid: "",         // Add this
+      assigned_staff: ""   // Add this
       },
       billingAddress: {
         addressLine1: "",
@@ -104,7 +112,6 @@ const PurchaseInvoiceEdit = ({ user }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
-  // Check if we're in edit mode (has ID parameter)
   useEffect(() => {
     if (id) {
       setIsEditMode(true);
@@ -115,150 +122,171 @@ const PurchaseInvoiceEdit = ({ user }) => {
     }
   }, [id]);
 
-  // Fetch existing invoice data for editing
-  const fetchInvoiceDataForEdit = async (voucherId) => {
-    try {
-      setLoading(true);
-      console.log('Fetching invoice data for editing:', voucherId);
+const fetchInvoiceDataForEdit = async (voucherId) => {
+  try {
+    setLoading(true);
+    console.log('Fetching invoice data for editing:', voucherId);
+    
+    const response = await fetch(`${baseurl}/transactions/${voucherId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch invoice data');
+    }
+    
+    const result = await response.json();
+    
+    if (result.success && result.data) {
+      const apiData = result.data;
+      const transformedData = transformApiDataToFormFormat(apiData);
       
-      const response = await fetch(`${baseurl}/transactions/${voucherId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch invoice data');
-      }
+      setInvoiceData(transformedData);
+      setSelectedSupplierId(apiData.PartyID);
+      setSelected(true);
       
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        const apiData = result.data;
-        const transformedData = transformApiDataToFormFormat(apiData);
+      const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
+      if (supplierAccount) {
+        setInputName(supplierAccount.business_name);
         
-        setInvoiceData(transformedData);
-        setSelectedSupplierId(apiData.PartyID);
-        setSelected(true);
+        const accountDiscount = parseFloat(supplierAccount.discount) || 0;
+        setItemForm(prev => ({ ...prev, discount: accountDiscount }));
         
-        // Set the retailer name in the search input
-        const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
-        if (supplierAccount) {
-          setInputName(supplierAccount.business_name);
+        const staffValue = supplierAccount.assigned_staff || supplierAccount.staffid;
+        if (staffValue) {
+          setSelectedStaffId(staffValue);
         }
         
-       window.alert('✅ Invoice loaded for editing successfully!');
-      } else {
-        throw new Error('No valid data received');
+        setInvoiceData(prev => ({
+          ...prev,
+          supplierInfo: {
+            ...prev.supplierInfo,
+            account_name: supplierAccount.account_name || prev.supplierInfo.account_name,
+            business_name: supplierAccount.business_name || prev.supplierInfo.businessName,
+            staffid: supplierAccount.staffid || prev.supplierInfo.staffid,
+            assigned_staff: supplierAccount.assigned_staff || prev.supplierInfo.assigned_staff
+          }
+        }));
       }
-    } catch (err) {
-      console.error('Error fetching invoice for edit:', err);
-      setError('Failed to load invoice for editing: ' + err.message);
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setLoading(false);
+      
+      console.log('✅ Invoice loaded for editing successfully!');
+    } else {
+      throw new Error('No valid data received');
     }
-  };
+  } catch (err) {
+    console.error('Error fetching invoice for edit:', err);
+    setError('Failed to load invoice for editing: ' + err.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Transform API data to form format
-  const transformApiDataToFormFormat = (apiData) => {
-    console.log('Transforming API data for form:', apiData);
-    
-    let batchDetails = [];
-    try {
-      if (apiData.batch_details && typeof apiData.batch_details === 'string') {
-        batchDetails = JSON.parse(apiData.batch_details);
-      } else if (Array.isArray(apiData.batch_details)) {
-        batchDetails = apiData.batch_details;
-      } else if (apiData.BatchDetails && typeof apiData.BatchDetails === 'string') {
-        batchDetails = JSON.parse(apiData.BatchDetails);
-      }
-    } catch (error) {
-      console.error('Error parsing batch details:', error);
+const transformApiDataToFormFormat = (apiData) => {
+  console.log('Transforming API data for form:', apiData);
+  
+  let batchDetails = [];
+  try {
+    if (apiData.batch_details && typeof apiData.batch_details === 'string') {
+      batchDetails = JSON.parse(apiData.batch_details);
+    } else if (Array.isArray(apiData.batch_details)) {
+      batchDetails = apiData.batch_details;
+    } else if (apiData.BatchDetails && typeof apiData.BatchDetails === 'string') {
+      batchDetails = JSON.parse(apiData.BatchDetails);
     }
+  } catch (error) {
+    console.error('Error parsing batch details:', error);
+  }
 
-    // Transform items for form display
-    const items = batchDetails.map((batch, index) => {
-      const quantity = parseFloat(batch.quantity) || 0;
-      const price = parseFloat(batch.price) || 0;
-      const discount = parseFloat(batch.discount) || 0;
-      const gst = parseFloat(batch.gst) || 0;
-      const cess = parseFloat(batch.cess) || 0;
-      
-      // Calculate item total
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const gstAmount = amountAfterDiscount * (gst / 100);
-      const cessAmount = amountAfterDiscount * (cess / 100);
-      const total = amountAfterDiscount + gstAmount + cessAmount;
-
-      return {
-        product: batch.product || 'Product',
-        product_id: batch.product_id || '',
-        description: batch.description || '',
-        quantity: quantity,
-        price: price,
-        discount: discount,
-        gst: gst,
-        cgst: parseFloat(batch.cgst) || 0,
-        sgst: parseFloat(batch.sgst) || 0,
-        igst: parseFloat(batch.igst) || 0,
-        cess: cess,
-        total: total.toFixed(2),
-        batch: batch.batch || '',
-        batch_id: batch.batch_id || '',
-        batchDetails: batch.batchDetails || null
-      };
-    }) || [];
+  // Transform items for form display
+  const items = batchDetails.map((batch, index) => {
+    const quantity = parseFloat(batch.quantity) || 0;
+    const price = parseFloat(batch.price) || 0;
+    const discount = parseFloat(batch.discount) || 0;
+    const gst = parseFloat(batch.gst) || 0;
+    const cess = parseFloat(batch.cess) || 0;
+    
+    // Calculate item total
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    const amountAfterDiscount = subtotal - discountAmount;
+    const gstAmount = amountAfterDiscount * (gst / 100);
+    const cessAmount = amountAfterDiscount * (cess / 100);
+    const total = amountAfterDiscount + gstAmount + cessAmount;
 
     return {
-      voucherId: apiData.VoucherID,
-      invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
-      invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      
-       companyInfo: {
-  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-  email: "spmathur56@gmail.com",
-  phone: "9801049700",
-  gstin: "10AAOCS1541B1ZZ",
-  state: "Bihar",
-  stateCode: "10"
-},
-      
-      supplierInfo: {
-        name: apiData.PartyName || 'Customer',
-        businessName: apiData.AccountName || 'Business',
-        gstin: apiData.gstin || '',
-        state: apiData.billing_state || apiData.BillingState || '',
-        id: apiData.PartyID || null
-      },
-      
-      billingAddress: {
-        addressLine1: apiData.billing_address_line1 || apiData.BillingAddress || '',
-        addressLine2: apiData.billing_address_line2 || '',
-        city: apiData.billing_city || apiData.BillingCity || '',
-        pincode: apiData.billing_pin_code || apiData.BillingPincode || '',
-        state: apiData.billing_state || apiData.BillingState || ''
-      },
-      
-      shippingAddress: {
-        addressLine1: apiData.shipping_address_line1 || apiData.ShippingAddress || apiData.billing_address_line1 || apiData.BillingAddress || '',
-        addressLine2: apiData.shipping_address_line2 || apiData.billing_address_line2 || '',
-        city: apiData.shipping_city || apiData.ShippingCity || apiData.billing_city || apiData.BillingCity || '',
-        pincode: apiData.shipping_pin_code || apiData.ShippingPincode || apiData.billing_pin_code || apiData.BillingPincode || '',
-        state: apiData.shipping_state || apiData.ShippingState || apiData.billing_state || apiData.BillingState || ''
-      },
-      
-      items: items,
-      note: apiData.Notes || "Thank you for your business!",
-      taxableAmount: parseFloat(apiData.BasicAmount) || 0,
-      totalGST: parseFloat(apiData.TaxAmount) || 0,
-      grandTotal: parseFloat(apiData.TotalAmount) || 0,
-      totalCess: "0.00",
-      transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
-      additionalCharge: "",
-      additionalChargeAmount: "0.00",
-      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST"
+      product: batch.product || 'Product',
+      product_id: batch.product_id || '',
+      description: batch.description || '',
+      quantity: quantity,
+      price: price,
+      discount: discount,
+      gst: gst,
+      cgst: parseFloat(batch.cgst) || 0,
+      sgst: parseFloat(batch.sgst) || 0,
+      igst: parseFloat(batch.igst) || 0,
+      cess: cess,
+      total: total.toFixed(2),
+      batch: batch.batch || '',
+      batch_id: batch.batch_id || '',
+      batchDetails: batch.batchDetails || null
     };
+  }) || [];
+
+  return {
+    voucherId: apiData.VoucherID,
+    invoiceNumber: apiData.InvoiceNumber || `PINV${apiData.VoucherID}`,
+    invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    
+    companyInfo: {
+      name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+      address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+      email: "spmathur56@gmail.com",
+      phone: "9801049700",
+      gstin: "10AAOCS1541B1ZZ",
+      state: "Bihar",
+      stateCode: "10"
+    },
+    
+    supplierInfo: {
+      name: apiData.PartyName || '',
+      businessName: apiData.business_name || apiData.BusinessName || apiData.supplierInfo?.businessName || '',
+      account_name: apiData.account_name || apiData.AccountName || apiData.supplierInfo?.account_name || '',
+      business_name: apiData.business_name || apiData.BusinessName || apiData.supplierInfo?.business_name || '',
+      gstin: apiData.gstin || apiData.supplierInfo?.gstin || '',
+      state: apiData.billing_state || apiData.BillingState || apiData.supplierInfo?.state || '',
+      id: apiData.PartyID || null,
+      staffid: apiData.staffid || apiData.supplierInfo?.staffid || null,
+      assigned_staff: apiData.assigned_staff || apiData.supplierInfo?.assigned_staff || null
+    },
+    
+    billingAddress: {
+      addressLine1: apiData.billing_address_line1 || apiData.BillingAddress || '',
+      addressLine2: apiData.billing_address_line2 || '',
+      city: apiData.billing_city || apiData.BillingCity || '',
+      pincode: apiData.billing_pin_code || apiData.BillingPincode || '',
+      state: apiData.billing_state || apiData.BillingState || ''
+    },
+    
+    shippingAddress: {
+      addressLine1: apiData.shipping_address_line1 || apiData.ShippingAddress || apiData.billing_address_line1 || apiData.BillingAddress || '',
+      addressLine2: apiData.shipping_address_line2 || apiData.billing_address_line2 || '',
+      city: apiData.shipping_city || apiData.ShippingCity || apiData.billing_city || apiData.BillingCity || '',
+      pincode: apiData.shipping_pin_code || apiData.ShippingPincode || apiData.billing_pin_code || apiData.BillingPincode || '',
+      state: apiData.shipping_state || apiData.ShippingState || apiData.billing_state || apiData.BillingState || ''
+    },
+    
+    items: items,
+    note: apiData.Notes || "Thank you for your business!",
+    taxableAmount: parseFloat(apiData.BasicAmount) || 0,
+    totalGST: parseFloat(apiData.TaxAmount) || 0,
+    grandTotal: parseFloat(apiData.TotalAmount) || 0,
+    totalCess: "0.00",
+    transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
+    additionalCharge: "",
+    additionalChargeAmount: "0.00",
+    taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST"
   };
+};
 
   const fetchNextInvoiceNumber = async () => {
     try {
@@ -610,20 +638,16 @@ const editItem = (index) => {
   }
 }, [products]);
 
-// Replace your existing fetchBatchesForProduct function with this one
 const fetchBatchesForProduct = async (productId) => {
   try {
     const res = await fetch(`${baseurl}/products/${productId}/batches`);
     const batchData = await res.json();
     setBatches(batchData);
-    
-    // Calculate total quantity from all batches
-    const totalQty = batchData.reduce(
+        const totalQty = batchData.reduce(
       (sum, batch) => sum + Number(batch.quantity || 0),
       0
     );
     
-    // Store in productStock state
     setProductStock(prev => ({
       ...prev,
       [productId]: totalQty
@@ -783,10 +807,26 @@ const cancelEdit = () => {
     
     setSelected(false);
     setSelectedSupplierId(null);
+     setSelectedStaffId(""); 
     setIsPreviewReady(false);
      window.alert("✅ Draft cleared successfully!");
   };
 
+  
+  useEffect(() => {
+    const fetchStaffMembers = async () => {
+      try {
+        const response = await fetch(`${baseurl}/accounts`);
+        const data = await response.json();
+        const staffs = data.filter(acc => acc.role === "staff" || acc.staffid);
+        setStaffMembers(staffs);
+      } catch (err) {
+        console.error("Failed to fetch staff members:", err);
+      }
+    };
+    fetchStaffMembers();
+  }, []);
+  
  const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
@@ -871,12 +911,9 @@ const cancelEdit = () => {
     const firstItemProductId = invoiceData.items[0]?.product_id || null;
     const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
     
-    console.log('📦 Product and Batch IDs Summary:');
-    console.log('First item product_id:', firstItemProductId);
-    console.log('First item batch_id:', firstItemBatchId);
-    console.log('All items product_ids:', invoiceData.items.map(item => item.product_id));
-    console.log('All items batch_ids:', invoiceData.items.map(item => item.batch_id));
-
+   const selectedSupplier = accounts.find(acc => acc.id === selectedSupplierId);
+    const staffId = selectedSupplier?.staffid || selectedStaffId || null;
+    const assignedStaff = selectedSupplier?.assigned_staff || null;
     // Validate that we have product_id and batch_id
     const missingProductIds = invoiceData.items.filter(item => !item.product_id);
     const missingBatchIds = invoiceData.items.filter(item => !item.batch_id);
@@ -901,7 +938,8 @@ const cancelEdit = () => {
       batchDetails: batchDetails,
       product_id: 123,
       batch_id: "bth0001",
-      // Add primary product and batch IDs for voucher table
+     staffid: staffId,
+      assigned_staff: assignedStaff,
       primaryProductId: firstItemProductId,
       primaryBatchId: firstItemBatchId
     };
@@ -947,10 +985,6 @@ const cancelEdit = () => {
       throw new Error(responseData.error || 'Failed to submit invoice');
     }
     
-    console.log('✅ Server Response:', responseData);
-    console.log('Response voucherId:', responseData.voucherId);
-    console.log('Response product_id:', responseData.product_id);
-    console.log('Response batch_id:', responseData.batch_id);
     
     localStorage.removeItem('draftInvoice');
    window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice submitted successfully!');
@@ -962,7 +996,9 @@ const cancelEdit = () => {
       invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
       voucherId: responseData.voucherId || editingVoucherId,
       product_id: responseData.product_id || firstItemProductId,
-      batch_id: responseData.batch_id || firstItemBatchId
+      batch_id: responseData.batch_id || firstItemBatchId,
+       staffid: staffId,
+      assigned_staff: assignedStaff
     };
     localStorage.setItem('previewInvoice', JSON.stringify(previewData));
     
@@ -1096,247 +1132,248 @@ const cancelEdit = () => {
                 </Col>
               </Row>
 
-              {/* Rest of your component remains the same */}
-              {/* Supplier Info Section */}
               <div className="bg-white rounded border">
-                <Row className="mb-0">
-                  <Col md={4} className="border-end p-3">
-                    {!selected ? (
-                      <>
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <strong className="text-primary">Retailer Info</strong>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => navigate("/retailers/add")}
-                          >
-                            New
-                          </Button>
-                        </div>
-                        <Form.Select
-                          className="mb-2 border-primary"
-                          value={inputName}
-                          onChange={(e) => {
-                            const selectedName = e.target.value;
-                            setInputName(selectedName);
-                            const supplier = accounts.find(acc => acc.business_name === selectedName);
-                            if (supplier) {
-                              setSelectedSupplierId(supplier.id);
-                              setSelected(true);
-                              setInvoiceData(prev => ({
-                                ...prev,
-                                supplierInfo: {
-                                  name: supplier.name,
-                                  businessName: supplier.business_name,
-                                  state: supplier.billing_state,
-                                  gstin: supplier.gstin
-                                },
-                                billingAddress: {
-                                  addressLine1: supplier.billing_address_line1,
-                                  addressLine2: supplier.billing_address_line2 || "",
-                                  city: supplier.billing_city,
-                                  pincode: supplier.billing_pin_code,
-                                  state: supplier.billing_state
-                                },
-                                shippingAddress: {
-                                  addressLine1: supplier.shipping_address_line1,
-                                  addressLine2: supplier.shipping_address_line2 || "",
-                                  city: supplier.shipping_city,
-                                  pincode: supplier.shipping_pin_code,
-                                  state: supplier.shipping_state
-                                }
-                              }));
-                            }
-                          }}
-                        >
-                          <option value="">Select Retailer</option>
-                          {accounts
-                            .filter(acc => acc.role === "retailer")
-                            .map(acc => (
-                              <option key={acc.id} value={acc.business_name}>
-                                {acc.business_name} ({acc.mobile_number})
-                              </option>
-                            ))}
-                        </Form.Select>
-                      </>
-                  ) : (
-  <>
-    <div className="d-flex justify-content-between align-items-center mb-2">
-      <strong className="text-primary">Supplier Info</strong>
-
-      {/* ✅ Split Button */}
-      <div className="btn-group position-relative">
-
-        {/* Left: Edit navigates to edit page */}
-        <Button
-          variant="info"
-          size="sm"
-          onClick={() => {
-            if (selectedSupplierId) {
-              navigate(`/retailers/edit/${selectedSupplierId}`);
-            }
-          }}
-        >
-          <FaEdit /> Edit
-        </Button>
-
-        {/* Right: Dropdown toggle */}
-        <Button
-          variant="info"
-          size="sm"
-          className="border-start border-white"
-          onClick={(e) => {
-            e.stopPropagation();
-            const menu = e.currentTarget.nextElementSibling;
-            const isOpen = menu.style.display === 'block';
-            document.querySelectorAll('.pi-dropdown-menu').forEach(m => m.style.display = 'none');
-            menu.style.display = isOpen ? 'none' : 'block';
-          }}
-        >
-          ▼
-        </Button>
-
-        {/* Dropdown Menu */}
-        <div
-          className="pi-dropdown-menu"
-          style={{
-            display: 'none',
-            position: 'absolute',
-            right: 0,
-            top: '100%',
-            zIndex: 9999,
-            backgroundColor: '#fff',
-            border: '1px solid #dee2e6',
-            borderRadius: '6px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            minWidth: '280px',
-            padding: '8px 0'
-          }}
-        >
-          {/* Header */}
-          <div style={{ padding: '8px 16px', borderBottom: '1px solid #dee2e6', color: '#0d6efd', fontWeight: 600 }}>
-            Select Supplier
+   <Row className="mb-0">
+  <Col md={4} className="border-end p-3">
+    {!selected ? (
+      <>
+        <div className="d-flex justify-content-between align-items-center mb-2">
+          <strong className="text-primary">Supplier Info</strong>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate("/retailers/add")}
+          >
+            New
+          </Button>
+        </div>
+        
+        {/* Searchable Dropdown */}
+        <div className="position-relative">
+          <div className="mb-2">
+            <input
+              type="text"
+              className="form-control border-primary"
+              placeholder="Search supplier..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onClick={() => setIsDropdownOpen(true)}
+            />
           </div>
-
-          {/* Scrollable supplier list */}
-          <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
-            {accounts
-              .filter(acc => acc.role === "supplier")
-              .map(acc => {
-                const isCurrentlySelected = acc.id === selectedSupplierId;
-                return (
-                  <div
-                    key={acc.id}
-                    onClick={() => {
-                      setInputName(acc.business_name);
-                      setSelectedSupplierId(acc.id);
-                      setSelected(true);
-
-                      const accountDiscount = parseFloat(acc.discount) || 0;
-
-                      setInvoiceData(prev => ({
-                        ...prev,
-                        supplierInfo: {
-                          name: acc.gstin ? acc.display_name : acc.name,
-                          businessName: acc.business_name,
-                          account_name: acc.account_name,
-                          state: acc.billing_state,
-                          gstin: acc.gstin,
-                        },
-                        billingAddress: {
-                          addressLine1: acc.billing_address_line1,
-                          addressLine2: acc.billing_address_line2 || "",
-                          city: acc.billing_city,
-                          pincode: acc.billing_pin_code,
-                          state: acc.billing_state
-                        },
-                        shippingAddress: {
-                          addressLine1: acc.shipping_address_line1,
-                          addressLine2: acc.shipping_address_line2 || "",
-                          city: acc.shipping_city,
-                          pincode: acc.shipping_pin_code,
-                          state: acc.shipping_state
-                        }
-                      }));
-
-                      setItemForm(prev => ({ ...prev, discount: accountDiscount }));
-
-                      document.querySelectorAll('.pi-dropdown-menu').forEach(m => m.style.display = 'none');
-                    }}
-                    style={{
-                      padding: '8px 16px',
-                      cursor: 'pointer',
-                      backgroundColor: isCurrentlySelected ? '#e8f4fd' : 'transparent',
-                      borderLeft: isCurrentlySelected ? '3px solid #0d6efd' : '3px solid transparent',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={e => { if (!isCurrentlySelected) e.currentTarget.style.backgroundColor = '#f8f9fa'; }}
-                    onMouseLeave={e => { if (!isCurrentlySelected) e.currentTarget.style.backgroundColor = 'transparent'; }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: isCurrentlySelected ? 600 : 400, fontSize: '13px' }}>
-                        {acc.gstin?.trim() ? acc.display_name || acc.business_name : acc.name || acc.business_name}
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#6c757d' }}>
-                        {acc.business_name}
-                      </div>
-                    </div>
-                    {isCurrentlySelected && (
-                      <span style={{ color: '#0d6efd', fontSize: '16px' }}>✓</span>
-                    )}
-                  </div>
-                );
-              })}
-          </div>
-
-          {/* Footer */}
-          <div style={{ padding: '8px 16px', borderTop: '1px solid #dee2e6' }}>
-            <button
-              className="btn btn-sm btn-outline-secondary w-100"
-              onClick={() => {
-                document.querySelectorAll('.pi-dropdown-menu').forEach(m => m.style.display = 'none');
+          
+          {isDropdownOpen && (
+            <div
+              className="position-absolute w-100"
+              style={{
+                top: '100%',
+                left: 0,
+                zIndex: 9999,
+                backgroundColor: '#fff',
+                border: '1px solid #dee2e6',
+                borderRadius: '6px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                maxHeight: '300px',
+                overflowY: 'auto'
               }}
             >
-              Close
-            </button>
+              {/* Header */}
+              <div style={{ 
+                padding: '8px 16px', 
+                borderBottom: '1px solid #dee2e6', 
+                color: '#0d6efd', 
+                fontWeight: 600,
+                position: 'sticky',
+                top: 0,
+                backgroundColor: '#fff',
+                zIndex: 1
+              }}>
+                Select Supplier
+              </div>
+
+              {/* Scrollable supplier list */}
+              <div>
+                {accounts
+                  .filter(acc => {
+                    const searchLower = searchTerm.toLowerCase();
+                    const name = (acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name)?.toLowerCase() || "";
+                    const businessName = acc.business_name?.toLowerCase() || "";
+                    const displayName = acc.display_name?.toLowerCase() || "";
+                    
+                    return (acc.role === "supplier" || 
+                      (acc.role === "retailer" && acc.is_dual_account == 1)) &&
+                      (name.includes(searchLower) || 
+                       businessName.includes(searchLower) || 
+                       displayName.includes(searchLower));
+                  })
+                  .map(acc => (
+                    <div
+                      key={acc.id}
+                      onClick={() => {
+                        setInputName(acc.business_name);
+                        setSelectedSupplierId(acc.id);
+                        setSelected(true);
+                        
+                        const staffValue = acc.assigned_staff || acc.staffid;
+                        if (staffValue) {               
+                          setSelectedStaffId(staffValue); 
+                        } 
+                        
+                        const accountDiscount = parseFloat(acc.discount) || 0;
+
+                        setInvoiceData(prev => ({
+                          ...prev,
+                          supplierInfo: {
+                            name: acc.gstin ? acc.display_name : acc.name,
+                            businessName: acc.business_name,
+                            account_name: acc.account_name,
+                            business_name: acc.business_name,
+                            state: acc.billing_state,
+                            gstin: acc.gstin,
+                            staffid: acc.staffid,        
+                            assigned_staff: acc.assigned_staff,
+                          },
+                          billingAddress: {
+                            addressLine1: acc.billing_address_line1,
+                            addressLine2: acc.billing_address_line2 || "",
+                            city: acc.billing_city,
+                            pincode: acc.billing_pin_code,
+                            state: acc.billing_state
+                          },
+                          shippingAddress: {
+                            addressLine1: acc.shipping_address_line1,
+                            addressLine2: acc.shipping_address_line2 || "",
+                            city: acc.shipping_city,
+                            pincode: acc.shipping_pin_code,
+                            state: acc.shipping_state
+                          }
+                        }));
+                        
+                        setItemForm(prev => ({ ...prev, discount: accountDiscount }));
+                        
+                        setIsDropdownOpen(false);
+                        setSearchTerm("");
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        cursor: 'pointer',
+                        borderLeft: '3px solid transparent',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.backgroundColor = '#f8f9fa';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 400, fontSize: '13px' }}>
+                          {acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#6c757d' }}>
+                          {acc.business_name}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {/* Footer: close button */}
+              <div style={{ 
+                padding: '8px 16px', 
+                borderTop: '1px solid #dee2e6',
+                position: 'sticky',
+                bottom: 0,
+                backgroundColor: '#fff'
+              }}>
+                <button
+                  className="btn btn-sm btn-outline-secondary w-100"
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    setSearchTerm("");
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </>
+    ) : (
+      <>
+        <div className="d-flex justify-content-between align-items-center mb-2">
+          <strong className="text-primary">Supplier Info</strong>
+          
+          {/* Both Buttons */}
+          <div className="btn-group">
+            {/* Edit Button */}
+            <Button
+              variant="info"
+              size="sm"
+              onClick={() => {
+                if (selectedSupplierId) {
+                  navigate(`/retailers/edit/${selectedSupplierId}`);
+                }
+              }}
+            >
+              <FaEdit /> Edit
+            </Button>
+
+            {/* Change Supplier Button */}
+            <Button
+              variant="warning"
+              size="sm"
+              onClick={() => {
+                setSelected(false);
+                setSelectedSupplierId(null);
+                setSelectedStaffId("");
+                setInputName("");
+                setSearchTerm("");
+                setIsDropdownOpen(true);
+              }}
+            >
+              Change Supplier
+            </Button>
           </div>
         </div>
-      </div>
+
+        <div className="bg-light p-2 rounded">
+          <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
+          <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
+          <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
+          <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
+          {selectedStaffId && (                                             
+            <div><strong>Assigned Staff:</strong> {                          
+              staffMembers.find(s => String(s.staffid) === String(selectedStaffId))?.name || 
+              selectedStaffId                                                
+            }</div>                                                          
+          )}                                                               
+        </div>
+      </>
+    )}
+  </Col>
+
+  <Col md={4} className="border-end p-3">
+    <strong className="text-primary">Billing Address</strong>
+    <div className="bg-light p-2 rounded mt-1">
+      <div><strong>Address:</strong> {invoiceData.billingAddress?.addressLine1}</div>
+      <div><strong>City:</strong> {invoiceData.billingAddress?.city}</div>
+      <div><strong>Pincode:</strong> {invoiceData.billingAddress?.pincode}</div>
+      <div><strong>State:</strong> {invoiceData.billingAddress?.state}</div>
     </div>
+  </Col>
 
-    {/* Supplier Info Display */}
-    <div className="bg-light p-2 rounded">
-      <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
-      <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
-      <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
-      <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
+  <Col md={4} className="p-3">
+    <strong className="text-primary">Shipping Address</strong>
+    <div className="bg-light p-2 rounded mt-1">
+      <div><strong>Address:</strong> {invoiceData.shippingAddress?.addressLine1}</div>
+      <div><strong>City:</strong> {invoiceData.shippingAddress?.city}</div>
+      <div><strong>Pincode:</strong> {invoiceData.shippingAddress?.pincode}</div>
+      <div><strong>State:</strong> {invoiceData.shippingAddress?.state}</div>
     </div>
-  </>
-)}
-                  </Col>
-
-                  <Col md={4} className="border-end p-3">
-                    <strong className="text-primary">Billing Address</strong>
-                    <div className="bg-light p-2 rounded mt-1">
-                      <div><strong>Address:</strong> {invoiceData.billingAddress?.addressLine1}</div>
-                      <div><strong>City:</strong> {invoiceData.billingAddress?.city}</div>
-                      <div><strong>Pincode:</strong> {invoiceData.billingAddress?.pincode}</div>
-                      <div><strong>State:</strong> {invoiceData.billingAddress?.state}</div>
-                    </div>
-                  </Col>
-
-                  <Col md={4} className="p-3">
-                    <strong className="text-primary">Shipping Address</strong>
-                    <div className="bg-light p-2 rounded mt-1">
-                      <div><strong>Address:</strong> {invoiceData.shippingAddress?.addressLine1}</div>
-                      <div><strong>City:</strong> {invoiceData.shippingAddress?.city}</div>
-                      <div><strong>Pincode:</strong> {invoiceData.shippingAddress?.pincode}</div>
-                      <div><strong>State:</strong> {invoiceData.shippingAddress?.state}</div>
-                    </div>
-                  </Col>
-                </Row>
+  </Col>
+</Row>
               </div>
 
               {/* Item Section */}
@@ -1345,147 +1382,284 @@ const cancelEdit = () => {
   {editingItemIndex !== null ? `Edit Item (${editingItemIndex + 1})` : 'Add Items'}
 </h6>
             <Row className="align-items-end">
-  <Col md={2}>
-    <div className="d-flex justify-content-between align-items-center mb-1">
-      <Form.Label className="mb-0 fw-bold">Item</Form.Label>
-      <button
-        type="button"
-        className="btn btn-link p-0 text-primary"
-        style={{ textDecoration: "none", fontSize: "14px" }}
-        onClick={() => navigate("/salesitemspage")}
-      >
-        + New Item
-      </button>
-    </div>
-   
-<Form.Select
-  name="product"
-  value={itemForm.product}
-  title={(() => {
-    const selectedProduct = products.find(
-      (p) => p.goods_name === itemForm.product && p.product_type === "PAKKA"
-    );
-    if (!selectedProduct) return "Select a product";
-    const availableQty = productStock[selectedProduct.id] || 0;
-    return `${selectedProduct.goods_name} - Qty: ${availableQty}`;
-  })()}
-  onChange={async (e) => {
-    const selectedName = e.target.value;
-    const selectedProduct = products.find(
-      (p) => p.goods_name === selectedName && p.product_type === "PAKKA"
-    );
+ <Col md={2}>
+  <div className="d-flex justify-content-between align-items-center mb-1">
+    <Form.Label className="mb-0 fw-bold">Item</Form.Label>
+    <button
+      type="button"
+      className="btn btn-link p-0 text-primary"
+      style={{ textDecoration: "none", fontSize: "14px" }}
+      onClick={() => navigate("/salesitemspage")}
+    >
+      + New Item
+    </button>
+  </div>
 
-    console.log('🔍 Selected Product:', selectedProduct);
-
-    if (selectedProduct) {
-      setItemForm((prev) => ({
-        ...prev,
-        product: selectedProduct.goods_name,
-        product_id: selectedProduct.id,
-        price: selectedProduct.net_price,
-        gst: parseFloat(selectedProduct.gst_rate)
-          ? selectedProduct.gst_rate.replace("%", "")
-          : 0,
-        description: selectedProduct.description || "",
-        batch: "",
-        batch_id: ""
-      }));
-
-      console.log('✅ Product ID set:', selectedProduct.id);
-
-      try {
-        const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
-        const batchData = await res.json();
-        console.log('📦 Batches fetched:', batchData);
-        setBatches(batchData);
+  {/* Searchable Product Dropdown */}
+  <div className="position-relative">
+    <input
+      type="text"
+      className="form-control border-primary"
+      placeholder="Search product..."
+      value={
+        itemForm.product
+          ? itemForm.product
+          : productSearchTerm
+      }
+      onChange={(e) => {
+        setProductSearchTerm(e.target.value);
+        setIsProductDropdownOpen(true);
+        if (!e.target.value) {
+          setItemForm(prev => ({
+            ...prev,
+            product: "",
+            product_id: "",
+            description: "",
+            price: 0,
+            gst: 0,
+            discount: prev.discount || 0,
+            batch: "",
+            batch_id: ""
+          }));
+          setBatches([]);
+          setSelectedBatch("");
+          setSelectedBatchDetails(null);
+        }
+      }}
+      onClick={() => {
+        setIsProductDropdownOpen(true);
+        setProductSearchTerm("");
+        setItemForm(prev => ({
+          ...prev,
+          product: "",
+          product_id: "",
+          description: "",
+          price: 0,
+          gst: 0,
+          batch: "",
+          batch_id: ""
+        }));
+        setBatches([]);
         setSelectedBatch("");
         setSelectedBatchDetails(null);
-
-        const totalQty = batchData.reduce(
-          (sum, batch) => sum + Number(batch.quantity || 0),
-          0
-        );
-        setProductStock(prev => ({
-          ...prev,
-          [selectedProduct.id]: totalQty
-        }));
-      } catch (err) {
-        console.error("Failed to fetch batches:", err);
-        setBatches([]);
+      }}
+      readOnly={!!itemForm.product}
+      style={{ cursor: itemForm.product ? "pointer" : "text" }}
+      title={
+        itemForm.product_id ? (() => {
+          const selectedProduct = products.find(p => p.id === itemForm.product_id);
+          const availableQty = productStock[itemForm.product_id] || 0;
+          if (selectedProduct) {
+            return `${selectedProduct.goods_name} - Qty: ${availableQty}`;
+          }
+          return "";
+        })() : "Select a product"
       }
-    } else {
-      setItemForm(prev => ({
-        ...prev,
-        product: "",
-        product_id: "",
-        description: "",
-        price: 0,
-        gst: 0,
-        batch: "",
-        batch_id: ""
-      }));
-      setBatches([]);
-      setSelectedBatch("");
-      setSelectedBatchDetails(null);
-    }
-  }}
-  className="border-primary"
->
-  <option value="">Select Product</option>
-  {products
-    .filter((p) => p.group_by === "Purchaseditems")
-    .map((p) => {
-      const availableQty = productStock[p.id] || 0;
-      return (
-        <option
-          key={p.id}
-          value={p.goods_name}
-          title={`${p.goods_name} - Qty: ${availableQty}`}
-        >
-          {p.goods_name} (Qty: {availableQty})
+    />
+
+    {/* Clear/Change button when product is selected */}
+    {itemForm.product && (
+      <button
+        type="button"
+        style={{
+          position: "absolute",
+          right: "8px",
+          top: "50%",
+          transform: "translateY(-50%)",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          color: "#6c757d",
+          fontSize: "16px",
+          lineHeight: 1,
+          padding: "0"
+        }}
+        onClick={() => {
+          setProductSearchTerm("");
+          setItemForm(prev => ({
+            ...prev,
+            product: "",
+            product_id: "",
+            description: "",
+            price: 0,
+            gst: 0,
+            batch: "",
+            batch_id: ""
+          }));
+          setBatches([]);
+          setSelectedBatch("");
+          setSelectedBatchDetails(null);
+          setIsProductDropdownOpen(true);
+        }}
+      >
+        ✕
+      </button>
+    )}
+
+    {/* Product Dropdown */}
+    {isProductDropdownOpen && !itemForm.product && (
+      <div
+        className="position-absolute w-100"
+        style={{
+          top: '100%',
+          left: 0,
+          zIndex: 9999,
+          backgroundColor: '#fff',
+          border: '1px solid #dee2e6',
+          borderRadius: '6px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          maxHeight: '300px',
+          overflowY: 'auto',
+          minWidth: '100%'
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '8px 16px',
+          borderBottom: '1px solid #dee2e6',
+          color: '#0d6efd',
+          fontWeight: 600,
+          position: 'sticky',
+          top: 0,
+          backgroundColor: '#fff',
+          zIndex: 1
+        }}>
+          Select Product
+        </div>
+
+        {/* Product List */}
+        <div>
+          {products
+            .filter((p) => {
+              const groupMatch = p.group_by === "Purchaseditems" || p.can_be_sold === true;
+              const typeMatch = p.product_type === "PAKKA";
+              const searchMatch = p.goods_name.toLowerCase().includes(productSearchTerm.toLowerCase());
+              return groupMatch && typeMatch && searchMatch;
+            })
+            .map((p) => {
+              const availableQty = productStock[p.id] || 0;
+              
+              return (
+                <div
+                  key={p.id}
+                  onClick={async () => {
+                    setItemForm((prev) => ({
+                      ...prev,
+                      product: p.goods_name,
+                      product_id: p.id,
+                      price: p.net_price || 0,
+                      gst: parseFloat(p.gst_rate?.replace("%", "") || 0),
+                      description: p.description || "",
+                      discount: prev.discount || 0,
+                      batch: "",
+                      batch_id: ""
+                    }));
+
+                    try {
+                      const res = await fetch(`${baseurl}/products/${p.id}/batches`);
+                      const batchData = await res.json();
+                      setBatches(batchData);
+                      setSelectedBatch("");
+                      setSelectedBatchDetails(null);
+
+                      const totalQty = batchData.reduce(
+                        (sum, batch) => sum + Number(batch.quantity || 0),
+                        0
+                      );
+                      setProductStock(prev => ({
+                        ...prev,
+                        [p.id]: totalQty
+                      }));
+                    } catch (err) {
+                      console.error("Failed to fetch batches:", err);
+                      setBatches([]);
+                    }
+                    
+                    setIsProductDropdownOpen(false);
+                    setProductSearchTerm("");
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    borderLeft: '3px solid transparent',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.backgroundColor = '#f8f9fa';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                  title={`${p.goods_name} - Qty: ${availableQty}`}
+                >
+                  <div style={{ fontWeight: 400, fontSize: '13px' }}>{p.goods_name}</div>
+                  <div style={{ fontSize: '12px', color: '#6c757d' }}>
+                    Qty: {availableQty}
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '8px 16px',
+          borderTop: '1px solid #dee2e6',
+          position: 'sticky',
+          bottom: 0,
+          backgroundColor: '#fff'
+        }}>
+          <button
+            className="btn btn-sm btn-outline-secondary w-100"
+            onClick={() => {
+              setIsProductDropdownOpen(false);
+              setProductSearchTerm("");
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+
+  {/* Batch Dropdown */}
+  {batches.length > 0 && (
+    <Form.Select
+      className="mt-2 border-primary"
+      name="batch"
+      value={selectedBatch}
+      onChange={(e) => {
+        const batchNumber = e.target.value;
+        setSelectedBatch(batchNumber);
+        const batch = batches.find(b => b.batch_number === batchNumber);
+        setSelectedBatchDetails(batch || null);
+
+        if (batch) {
+          setItemForm(prev => ({
+            ...prev,
+            batch: batchNumber,
+            batch_id: batch.batch_number,
+            price: batch.selling_price
+          }));
+        } else {
+          setItemForm(prev => ({
+            ...prev,
+            batch: "",
+            batch_id: ""
+          }));
+        }
+      }}
+    >
+      <option value="">Select Batch</option>
+      {batches.map((batch) => (
+        <option key={batch.id} value={batch.batch_number}>
+          {batch.batch_number} (Qty: {batch.quantity})
         </option>
-      );
-    })}
-</Form.Select>
-
-<Form.Select
-  className="mt-2 border-primary"
-  name="batch"
-  value={selectedBatch}
-  onChange={(e) => {
-    const batchNumber = e.target.value;
-    setSelectedBatch(batchNumber);
-    const batch = batches.find(b => b.batch_number === batchNumber);
-    setSelectedBatchDetails(batch || null);
-
-    console.log('🔍 Selected Batch:', batch); // Debug log
-
-    if (batch) {
-      setItemForm(prev => ({
-        ...prev,
-        batch: batchNumber,
-        batch_id: batch.batch_number, // Make sure this is set
-        price: batch.selling_price
-      }));
-      console.log('✅ Batch ID set:', batch.batch_number); // Debug log
-    } else {
-      // Reset batch info if no batch selected
-      setItemForm(prev => ({
-        ...prev,
-        batch: "",
-        batch_id: ""
-      }));
-    }
-  }}
->
-  <option value="">Select Batch</option>
-  {batches.map((batch) => (
-    <option key={batch.id} value={batch.batch_number}>
-      {batch.batch_number} (Qty: {batch.quantity} )
-    </option>
-  ))}
-</Form.Select>
-  </Col>
+      ))}
+    </Form.Select>
+  )}
+</Col>
 
   <Col md={1}>
     <Form.Label className="fw-bold">Qty</Form.Label>

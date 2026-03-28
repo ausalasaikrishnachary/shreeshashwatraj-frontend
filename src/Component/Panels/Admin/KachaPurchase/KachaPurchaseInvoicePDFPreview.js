@@ -625,7 +625,7 @@ const PaymentStatus = () => {
       const reactPdf = await import('@react-pdf/renderer');
       pdf = reactPdf.pdf;
       
-      const pdfModule = await import('./SalesPdfDocument');
+      const pdfModule = await import('../SalesInvoicePage/SalesPdfDocument');
       SalesPdfDocument = pdfModule.default;
     } catch (importError) {
       console.error('Error importing PDF modules:', importError);
