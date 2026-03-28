@@ -642,48 +642,32 @@ const [createBoth, setCreateBoth] = useState(false);
 
     const isSupplier = formData.group === "SUPPLIERS";
 
-   try {
+try {
 
-  if (createBoth && !isEditing) {
-    // ✅ CREATE BOTH (ONLY FOR ADD MODE)
+  // ✅ Add flag instead of creating 2 rows
+  const finalDataToSend = {
+    ...finalData,
+    is_dual_account: createBoth ? 1 : 0
+  };
 
-    // 👉 Supplier Data
-    let supplierData = { ...finalData, group: "SUPPLIERS" };
-    delete supplierData.assigned_staff;
-    delete supplierData.staffid;
-    delete supplierData.entity_type;
-    delete supplierData.role;
+  if (isEditing) {
 
-    // 👉 Retailer Data
-    let retailerData = { ...finalData, group: "Retailer" };
+    await axios.put(`${baseurl}/accounts/${id}`, finalDataToSend);
 
-    // 👉 API Calls
-    await axios.post(`${baseurl}/accounts`, supplierData);
-    await axios.post(`${baseurl}/accounts`, retailerData);
-
-    alert("Retailer & Supplier added successfully!");
+    if (isSupplier) {
+      alert("Supplier updated successfully!");
+    } else {
+      alert("Retailer updated successfully!");
+    }
 
   } else {
 
-    // ✅ NORMAL FLOW (ADD / UPDATE SINGLE)
+    await axios.post(`${baseurl}/accounts`, finalDataToSend);
 
-    if (isEditing) {
-      await axios.put(`${baseurl}/accounts/${id}`, finalData);
-
-      if (isSupplier) {
-        alert("Supplier updated successfully!");
-      } else {
-        alert("Retailer updated successfully!");
-      }
-
+    if (isSupplier) {
+      alert("Supplier added successfully!");
     } else {
-      await axios.post(`${baseurl}/accounts`, finalData);
-
-      if (isSupplier) {
-        alert("Supplier added successfully!");
-      } else {
-        alert("Retailer added successfully!");
-      }
+      alert("Retailer added successfully!");
     }
   }
 
@@ -1192,8 +1176,8 @@ if (
 />
     <label className="form-check-label" htmlFor="createBoth">
       {formData.group === "SUPPLIERS"
-        ? "Also create as Retailer"
-        : "Also create as Supplier"}
+        ? "enable retailer for this supplier"
+        : "enable supplier for this retailer"}
     </label>
   </div>
 </div>

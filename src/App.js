@@ -1,51 +1,3 @@
-// // src/App.js
-// import React from 'react';
-// import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-// import AdminDashboard from './Component/Panels/Admin';
-// import StaffDashboard from './Component/Panels/Staff/StaffDashboard/StaffDashboard';
-// import RetailerDashboard from './Component/Panels/Retailer/RetailerDashboard/RetailerDashboard';
-
-// function App() {
-//   return (
-//     <Router>
-//       <div>
-//         <Routes>
-//           <Route path="/" element={<AdminDashboard />} />
-//           <Route path="/staffdashboard" element={<StaffDashboard />} />
-//           <Route path="/retailerdashboard" element={<RetailerDashboard />} />
-//         </Routes>
-//       </div>
-//     </Router>
-//   );
-// }
-
-// export default App;
-
-
-// import React from "react";
-// import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-// import AdminDashboard from "./Component/Panels/Admin";
-// import StaffDashboard from "./Component/Panels/Staff/StaffDashboard/StaffDashboard";
-// import RetailerDashboard from "./Component/Panels/Retailer/RetailerDashboard/RetailerDashboard";
-// import Login from "./Component/Panels/Auth/Login";
-
-// function App() {
-//   return (
-//     <Router>
-//       <Routes>
-//         <Route path="/" element={<Login />} />
-//         <Route path="" element={<AdminDashboard />} />
-//         <Route path="/staffdashboard" element={<StaffDashboard />} />
-//         <Route path="/retailerdashboard" element={<RetailerDashboard />} />
-//       </Routes>
-//     </Router>
-//   );
-// }
-
-// export default App;
-
-
-
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -141,9 +93,6 @@ import CreateNote from "./Component/Panels/Admin/CreditNote/CreateNote";
 // Add this import
 import InvoicePDFDownload from './Component/Panels/Admin/SalesInvoicePage/InvoicePDFDocument';
 
-// import Category from "./Component/Panels/Admin/Category/CategoryTable"
-// import Company from "./Component/Panels/Admin/Company/CompanyTable"
-// import Units from "./Component/Panels/Admin/Units/UnitsTable"
 import Profile from "./Component/Panels/Retailer/RetailerProfile/Profile";
 import RetailerOrders from "./Component/Panels/Retailer/RetailerOrders/RetailerOrders";
 import DeleteProfile from "./Component/Panels/Retailer/RetailerProfile/DeleteProfile";
@@ -196,230 +145,197 @@ import KachaPurchaseDebitView from "./Component/Panels/Admin/KachaPurchaseDebit/
 import KachaPurchaseInvoiceEdit from "./Component/Panels/Admin/KachaPurchase/KachaPurchaseInvoiceEdit";
 import DispatchReportPDF from "./Component/Panels/Admin/Period/DispatchReportPDF";
 import HsnReport from "./Component/Panels/Admin/AdminReports/HsnReport";
-
+import PrivateRoute from "./Component/Layouts/PrivateRoute";
 
 
 
 function App() {
   return (
-     <GoogleOAuthProvider clientId="77643630750-2f13qfdip7lv5npp634cfu70h0ig7vle.apps.googleusercontent.com">
-    <Router>
-      <Routes>
-        {/* Public */}
-        <Route path="/" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+    <GoogleOAuthProvider clientId="77643630750-2f13qfdip7lv5npp634cfu70h0ig7vle.apps.googleusercontent.com">
+      <Router>
+        <Routes>
 
-        {/* Dashboards */}
-        <Route path="/dashboard" element={<DashboardCard />} />
-        <Route path="/admindashboard" element={<AdminDashboard />} />
-        <Route path="/staffdashboard" element={<StaffDashboard />} />
+          {/* Public */}
+          <Route path="/" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
+          {/* Dashboards */}
+          <Route path="/admindashboard" element={<PrivateRoute allowedRoles={["admin"]}><AdminDashboard /></PrivateRoute>} />
+          <Route path="/staffdashboard" element={<PrivateRoute allowedRoles={["staff"]}><StaffDashboard /></PrivateRoute>} />
 
-        {/* Retailers */}
-        <Route path="/retailer-home" element={<RetailerHome />} />
-        <Route path="/retailer-history" element={<RetailerHistory />} />
-        <Route path="/retailer-offers" element={<RetailerOffers />} />
-        <Route path="/retailer-profile" element={<RetailerProfile />} />
-        <Route path="/profile/:id" element={<Profile />} />
-        <Route path="/retailer-orders" element={<RetailerOrders />} />
-        {/* <Route path="/retailer-profile/:id?" element={<RetailerProfile />} /> */}
+          {/* Retailers */}
+          <Route path="/retailer-home" element={<PrivateRoute allowedRoles={["retailer"]}><RetailerHome /></PrivateRoute>} />
+          <Route path="/retailer-history" element={<PrivateRoute allowedRoles={["retailer"]}><RetailerHistory /></PrivateRoute>} />
+          <Route path="/retailer-offers" element={<PrivateRoute allowedRoles={["retailer"]}><RetailerOffers /></PrivateRoute>} />
+          <Route path="/retailer-profile" element={<PrivateRoute allowedRoles={["retailer"]}><RetailerProfile /></PrivateRoute>} />
+          <Route path="/profile/:id" element={<PrivateRoute allowedRoles={["retailer", "admin"]}><Profile /></PrivateRoute>} />
+          <Route path="/retailer-orders" element={<PrivateRoute allowedRoles={["retailer"]}><RetailerOrders /></PrivateRoute>} />
+          {/* <Route path="/retailer-profile/:id?" element={<RetailerProfile />} /> */}
 
-        <Route path="/reports/retailer-report-page" element={<RetailerReportPage />} />
+          <Route path="/reports/retailer-report-page" element={<PrivateRoute allowedRoles={["admin"]}><RetailerReportPage /></PrivateRoute>} />
 
+          {/* Staff Mobile Pages */}
+          <Route path="/staff/retailers" element={<PrivateRoute allowedRoles={["staff"]}><MyRetailers /></PrivateRoute>} />
+          <Route path="/staff/add-retailer" element={<PrivateRoute allowedRoles={["staff"]}><AddRetailer /></PrivateRoute>} />
+          <Route path="/staff/sales-visits" element={<PrivateRoute allowedRoles={["staff"]}><SalesVisits /></PrivateRoute>} />
+          <Route path="/staff/log-visit" element={<PrivateRoute allowedRoles={["staff"]}><LogVisit /></PrivateRoute>} />
+          <Route path="/staff/expences" element={<PrivateRoute allowedRoles={["staff"]}><StaffExpenses /></PrivateRoute>} />
+          <Route path="/staff/add-expense" element={<PrivateRoute allowedRoles={["staff"]}><AddExpense /></PrivateRoute>} />
 
+          {/* Admin Pages */}
+          <Route path="/staff/offers" element={<PrivateRoute allowedRoles={["staff"]}><StaffOffers /></PrivateRoute>} />
+          <Route path="/retailers/place-order" element={<PrivateRoute allowedRoles={["admin"]}><PlaceSalesOrder /></PrivateRoute>} />
+          <Route path="/retailers/cart" element={<PrivateRoute allowedRoles={["admin"]}><CartPage /></PrivateRoute>} />
+          <Route path="/retailers/checkout" element={<PrivateRoute allowedRoles={["admin"]}><Checkout /></PrivateRoute>} />
+          <Route path="/staff" element={<PrivateRoute allowedRoles={["admin"]}><AdminStaff /></PrivateRoute>} />
+          <Route path="/staff/add" element={<PrivateRoute allowedRoles={["admin"]}><AddStaff /></PrivateRoute>} />
+          <Route path="/sale" element={<PrivateRoute allowedRoles={["admin"]}><AdminSales /></PrivateRoute>} />
+          <Route path="/sales/invoices" element={<PrivateRoute allowedRoles={["admin"]}><SalesInvoiceTable /></PrivateRoute>} />
+          <Route path="/sales/createinvoice" element={<PrivateRoute allowedRoles={["admin"]}><SalesInvoiceForm /></PrivateRoute>} />
+          <Route path="/sales/createinvoice/:id" element={<PrivateRoute allowedRoles={["admin"]}><SalesInvoiceForm /></PrivateRoute>} />
+          <Route path="/sales/invoice-preview/:id" element={<PrivateRoute allowedRoles={["admin"]}><InvoicePDFPreview /></PrivateRoute>} />
+          <Route path="/purchase/invoice-preview/:id" element={<PrivateRoute allowedRoles={["admin"]}><PurchasePDFPreview /></PrivateRoute>} />
+          <Route path="/sales/invoice-preview" element={<PrivateRoute allowedRoles={["admin"]}><InvoicePDFPreview /></PrivateRoute>} />
+          {/* <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} /> */}
+          <Route path="/Purchase/editinvoice/:id" element={<PrivateRoute allowedRoles={["admin"]}><PurchaseInvoiceEdit /></PrivateRoute>} />
+          <Route path="/sales/receipts" element={<PrivateRoute allowedRoles={["admin"]}><AdminReceiptsTable /></PrivateRoute>} />
+          {/* <Route path="/createreceipt" element={<CreateReceiptForm />} /> */}
+          <Route path="/sales/quotations" element={<PrivateRoute allowedRoles={["admin"]}><QuotationsTable /></PrivateRoute>} />
+          <Route path="/sales/bill_of_supply" element={<PrivateRoute allowedRoles={["admin"]}><BillOfSupplyTable /></PrivateRoute>} />
+          <Route path="/sales/credit_note" element={<PrivateRoute allowedRoles={["admin"]}><CreditNoteTable /></PrivateRoute>} />
+          <Route path="/sales/delivery_challan" element={<PrivateRoute allowedRoles={["admin"]}><DeliveryChallanTable /></PrivateRoute>} />
+          <Route path="/sales/receivables" element={<PrivateRoute allowedRoles={["admin"]}><ReceivablesTable /></PrivateRoute>} />
+          <Route path="/sales/add" element={<PrivateRoute allowedRoles={["admin"]}><AddSales /></PrivateRoute>} />
+          <Route path="/staff/edit/:id" element={<PrivateRoute allowedRoles={["admin"]}><AddStaff /></PrivateRoute>} />
+          <Route path="/product" element={<PrivateRoute allowedRoles={["admin"]}><AdminProducts /></PrivateRoute>} />
+          <Route path="/purchase/purchase-invoice" element={<PrivateRoute allowedRoles={["admin"]}><PurchaseInvoiceTable /></PrivateRoute>} />
+          <Route path="/purchase/create-purchase-invoice" element={<PrivateRoute allowedRoles={["admin"]}><CreatePurchaseInvoiceForm /></PrivateRoute>} />
+          <Route path="/purchase/purchase-order" element={<PrivateRoute allowedRoles={["admin"]}><PurchaseOrderTable /></PrivateRoute>} />
+          <Route path="/purchase/voucher" element={<PrivateRoute allowedRoles={["admin"]}><VoucherTable /></PrivateRoute>} />
+          <Route path="/purchase/debit-note" element={<PrivateRoute allowedRoles={["admin"]}><DebitNoteTable /></PrivateRoute>} />
+          <Route path="/purchase/debit_note" element={<PrivateRoute allowedRoles={["admin"]}><CreateDebitNote /></PrivateRoute>} />
+          <Route path="/purchase/debit-note/edit/:id" element={<PrivateRoute allowedRoles={["admin"]}><EditDebitNote /></PrivateRoute>} />
+          <Route path="/purchase/payables" element={<PrivateRoute allowedRoles={["admin"]}><PayablesTable /></PrivateRoute>} />
+          <Route path="/voucher_view/:id" element={<PrivateRoute allowedRoles={["admin"]}><VoucherView /></PrivateRoute>} />
+          <Route path="/add-product" element={<PrivateRoute allowedRoles={["admin"]}><AddProduct /></PrivateRoute>} />
+          <Route path="/marketing" element={<PrivateRoute allowedRoles={["admin"]}><AdminMarketing /></PrivateRoute>} />
+          <Route path="/add-marketing" element={<PrivateRoute allowedRoles={["admin"]}><AddMarketing /></PrivateRoute>} />
+          {/* <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} /> */}
+          {/* <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} /> */}
+          {/* <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />| */}
+          <Route path="/admin/marketing/offers-postings" element={<PrivateRoute allowedRoles={["admin"]}><OffersPostings /></PrivateRoute>} />
+          {/* <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} />
+          <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} />
+          <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />|
+          <Route path="/admin/marketing/offers-postings" element={<OffersPostings />} /> */}
 
-        {/* Staff Mobile Pages */}
-        <Route path="/staff/retailers" element={<MyRetailers />} />
-        <Route path="/staff/add-retailer" element={<AddRetailer />} />
-        <Route path="/staff/sales-visits" element={<SalesVisits />} />
-        <Route path="/staff/log-visit" element={<LogVisit />} />
-        <Route path="/staff/expences" element={<StaffExpenses />} />
-        <Route path="/staff/add-expense" element={<AddExpense />} />
+          <Route path="/profile" element={<PrivateRoute allowedRoles={["retailer", "admin"]}><Profile /></PrivateRoute>} />
+          <Route path="/profile/edit" element={<PrivateRoute allowedRoles={["retailer", "admin"]}><EditProfile /></PrivateRoute>} />
+          <Route path="/profile/delete" element={<PrivateRoute allowedRoles={["retailer", "admin"]}><DeleteProfile /></PrivateRoute>} />
 
+          <Route path="/retailers" element={<PrivateRoute allowedRoles={["admin"]}><AdminRetailers /></PrivateRoute>} />
+          <Route path="/retailers/add" element={<PrivateRoute allowedRoles={["admin"]}><AddRetailerForm mode="add" /></PrivateRoute>} />
+          <Route path="/retailers/edit/:id" element={<PrivateRoute allowedRoles={["admin"]}><AddRetailerForm mode="edit" /></PrivateRoute>} />
+          <Route path="/retailers/view/:id" element={<PrivateRoute allowedRoles={["admin"]}><AddRetailerForm mode="view" /></PrivateRoute>} />
 
+          <Route path="/expenses" element={<PrivateRoute allowedRoles={["admin"]}><AdminExpenses /></PrivateRoute>} />
+          <Route path="/expenses/add" element={<PrivateRoute allowedRoles={["admin"]}><AddExpenses /></PrivateRoute>} />
+          <Route path="/reports/expense-report-page" element={<PrivateRoute allowedRoles={["admin"]}><ExpenseReportPage /></PrivateRoute>} />
+          <Route path="/reports" element={<PrivateRoute allowedRoles={["admin"]}><AdminReports /></PrivateRoute>} />
+          <Route path="/roleaccess" element={<PrivateRoute allowedRoles={["admin"]}><AdminRoleAccess /></PrivateRoute>} />
+          <Route path="/sales_visit" element={<PrivateRoute allowedRoles={["admin"]}><SalesVisit /></PrivateRoute>} />
+          <Route path="/sales_visit/edit/:id" element={<PrivateRoute allowedRoles={["admin"]}><SalesVisit mode="edit" /></PrivateRoute>} />
+          <Route path="/sales_visit/view/:id" element={<PrivateRoute allowedRoles={["admin"]}><SalesVisit mode="view" /></PrivateRoute>} />
 
-        {/* Admin  Pages */}
-        <Route path="/staff/offers" element={<StaffOffers />} />
-        <Route path="/retailers/place-order" element={<PlaceSalesOrder />} />
-        <Route path="/retailers/cart" element={<CartPage />} />
-        <Route path="/retailers/checkout" element={<Checkout />} />
-        <Route path="/staff" element={<AdminStaff />} />
-        <Route path="/staff/add" element={<AddStaff />} />
-        <Route path="/sale" element={<AdminSales />} />
-        <Route path="/sales/invoices" element={<SalesInvoiceTable />} />
-        <Route path="/sales/createinvoice" element={<SalesInvoiceForm />} />
+          <Route path="/purchased_items" element={<PrivateRoute allowedRoles={["admin"]}><PurchasedItems /></PrivateRoute>} />
+          <Route path="/sale_items" element={<PrivateRoute allowedRoles={["admin"]}><SalesItems /></PrivateRoute>} />
+          <Route path='/AddProductPage' element={<PrivateRoute allowedRoles={["admin"]}><AddProductPage /></PrivateRoute>} />
+          <Route path="/AddProductPage/:productId" element={<PrivateRoute allowedRoles={["admin"]}><AddProductPage /></PrivateRoute>} />
+          <Route path='/salesitemspage/:productId' element={<PrivateRoute allowedRoles={["admin"]}><SalesItemsPage /></PrivateRoute>} />
+          <Route path='/salesitemspage' element={<PrivateRoute allowedRoles={["admin"]}><SalesItemsPage /></PrivateRoute>} />
+          <Route path="/addcompanymodal " element={<PrivateRoute allowedRoles={["admin"]}><AddCompanyModal /></PrivateRoute>} />
+          <Route path="/addcategorymodal" element={<PrivateRoute allowedRoles={["admin"]}><AddCategoryModal /></PrivateRoute>} />
+          <Route path="/stockdetailsmodule" element={<PrivateRoute allowedRoles={["admin"]}><StockDetailsModal /></PrivateRoute>} />
+          <Route path="/deductstockmodal" element={<PrivateRoute allowedRoles={["admin"]}><DeductStockModal /></PrivateRoute>} />
+          <Route path="/addstockmodal" element={<PrivateRoute allowedRoles={["admin"]}><AddStockModal /></PrivateRoute>} />
+          <Route path="/addservicemodal" element={<PrivateRoute allowedRoles={["admin"]}><AddServiceModal /></PrivateRoute>} />
 
-        <Route path="/sales/createinvoice/:id" element={<SalesInvoiceForm />} />
-  
-        <Route path="/sales/invoice-preview/:id" element={<InvoicePDFPreview />} />
-        <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
-        <Route path="/sales/invoice-preview" element={<InvoicePDFPreview />} />
-        {/* <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} /> */}
-        <Route path="/Purchase/editinvoice/:id" element={<PurchaseInvoiceEdit />} />
+          <Route path="/staff_expensive" element={<PrivateRoute allowedRoles={["staff"]}><Staff_expensive /></PrivateRoute>} />
+          <Route path="/staff_add_expensive" element={<PrivateRoute allowedRoles={["staff"]}><Staff_Add_expensive /></PrivateRoute>} />
+          <Route path="/admin_expensive" element={<PrivateRoute allowedRoles={["admin"]}><AdminExpensiveRequest /></PrivateRoute>} />
+          <Route path="/admin_expensive/view/:id" element={<PrivateRoute allowedRoles={["admin"]}><AdminExpensiveRequest mode="view" /></PrivateRoute>} />
+          <Route path="/admin_expensive/edit/:id" element={<PrivateRoute allowedRoles={["admin"]}><AdminExpensiveRequest mode="edit" /></PrivateRoute>} />
+          <Route path="/salesitems_productdetails/:id" element={<PrivateRoute allowedRoles={["admin"]}><Salesitems_productsdetails /></PrivateRoute>} />
+          <Route path="/receipts_view/:id" element={<PrivateRoute allowedRoles={["admin"]}><ReceiptView /></PrivateRoute>} />
+          <Route path="/addunitsmodal" element={<PrivateRoute allowedRoles={["admin"]}><AddUnitModal /></PrivateRoute>} />
 
+          <Route path="/category" element={<PrivateRoute allowedRoles={["admin"]}><Category /></PrivateRoute>} />
+          <Route path="/category/:id" element={<PrivateRoute allowedRoles={["admin"]}><Category /></PrivateRoute>} />
+          <Route path="/company" element={<PrivateRoute allowedRoles={["admin"]}><Company /></PrivateRoute>} />
+          <Route path="/company/:id" element={<PrivateRoute allowedRoles={["admin"]}><Company /></PrivateRoute>} />
+          <Route path="/units" element={<PrivateRoute allowedRoles={["admin"]}><Units /></PrivateRoute>} />
+          <Route path="/ledger" element={<PrivateRoute allowedRoles={["admin"]}><Ledger /></PrivateRoute>} />
 
-        <Route path="/sales/receipts" element={<AdminReceiptsTable />} />
-        {/* <Route path="/createreceipt" element={<CreateReceiptForm />} /> */}
+          <Route path="/sales/credit-note/edit/:id" element={<PrivateRoute allowedRoles={["admin"]}><EditCreditNote /></PrivateRoute>} />
+          <Route path="/sales/create_note" element={<PrivateRoute allowedRoles={["admin"]}><CreateNote /></PrivateRoute>} />
+          <Route path="/units/:id" element={<PrivateRoute allowedRoles={["admin"]}><Units /></PrivateRoute>} />
 
-        <Route path="/sales/quotations" element={<QuotationsTable />} />
+          <Route path="/reports/sales-report-page" element={<PrivateRoute allowedRoles={["admin"]}><SalesReportPage /></PrivateRoute>} />
+          <Route path="/creditview/:id" element={<PrivateRoute allowedRoles={["admin"]}><Creditsview /></PrivateRoute>} />
 
-        <Route path="/sales/bill_of_supply" element={<BillOfSupplyTable />} />
+          <Route path="/credit-period" element={<PrivateRoute allowedRoles={["admin"]}><CreditPeriodTable /></PrivateRoute>} />
+          <Route path="/credit-period-fix/add" element={<PrivateRoute allowedRoles={["admin"]}><AddCreditPeriodFix /></PrivateRoute>} />
+          <Route path="/credit-period-fix/edit/:id" element={<PrivateRoute allowedRoles={["admin"]}><AddCreditPeriodFix /></PrivateRoute>} />
 
-        <Route path="/sales/credit_note" element={<CreditNoteTable />} />
+          {/* Kacha Sales */}
+          <Route path="/kachinvoicetable" element={<PrivateRoute allowedRoles={["admin"]}><KachaInvoiceTable /></PrivateRoute>} />
+          <Route path="/kacha_sales" element={<PrivateRoute allowedRoles={["admin"]}><KachaSalesInvoiceForm /></PrivateRoute>} />
+          <Route path="/kacha_sales/:id" element={<PrivateRoute allowedRoles={["admin"]}><KachaSalesInvoiceForm /></PrivateRoute>} />
+          <Route path="/kachainvoicepdf/:id" element={<PrivateRoute allowedRoles={["admin"]}><KachaInvoicePDFPreview /></PrivateRoute>} />
+          <Route path="/period" element={<PrivateRoute allowedRoles={["admin"]}><Period /></PrivateRoute>} />
+          <Route path="/periodinvoicepreviewpdf" element={<PrivateRoute allowedRoles={["admin"]}><Period_InvoicePDFPreview /></PrivateRoute>} />
+          <Route path="/periodinvoicepreviewpdf/:id" element={<PrivateRoute allowedRoles={["admin"]}><Period_InvoicePDFPreview /></PrivateRoute>} />
+          <Route path="/invoicepreview_preivew" element={<PrivateRoute allowedRoles={["admin"]}><InvoicePreview_preview /></PrivateRoute>} />
+          <Route path="/receiptmodal_preview" element={<PrivateRoute allowedRoles={["admin"]}><ReceiptModal_preview /></PrivateRoute>} />
+          <Route path="/QRCodeGenerator" element={<PrivateRoute allowedRoles={["admin"]}><QRCodeGenerator /></PrivateRoute>} />
+          <Route path="/debitnote_view/:id" element={<PrivateRoute allowedRoles={["admin"]}><DebitView /></PrivateRoute>} />
+          <Route path="/retailersscore" element={<PrivateRoute allowedRoles={["admin"]}><RetailersScore /></PrivateRoute>} />
+          <Route path="/kachareceipts" element={<PrivateRoute allowedRoles={["admin"]}><KachaReceiptsTable /></PrivateRoute>} />
+          <Route path="/salesmanscore" element={<PrivateRoute allowedRoles={["admin"]}><SalesPersonScore /></PrivateRoute>} />
+          <Route path="/import-sales" element={<PrivateRoute allowedRoles={["admin"]}><ImportSalesPage /></PrivateRoute>} />
+          <Route path="/retailers/import" element={<PrivateRoute allowedRoles={["admin"]}><ImportRetailersPage /></PrivateRoute>} />
+          <Route path="/export-sales" element={<PrivateRoute allowedRoles={["admin"]}><ExportSalesPage /></PrivateRoute>} />
+          <Route path="/salespdfdocument" element={<PrivateRoute allowedRoles={["admin"]}><SalesPdfDocument /></PrivateRoute>} />
+          <Route path="/kachareceipts_view/:id" element={<PrivateRoute allowedRoles={["admin"]}><Kachareceiptview /></PrivateRoute>} />
+          <Route path="/import_purchase" element={<PrivateRoute allowedRoles={["admin"]}><Import_purchase_page /></PrivateRoute>} />
+          <Route path="/kachapurchaseinvoice" element={<PrivateRoute allowedRoles={["admin"]}><KachaPurchaseInvoiceForm /></PrivateRoute>} />
+          <Route path="/kachapurchasepdf/:id" element={<PrivateRoute allowedRoles={["admin"]}><KachaPurchaseInvoicePDFPreview /></PrivateRoute>} />
+          <Route path="/kachapurchasepdf" element={<PrivateRoute allowedRoles={["admin"]}><KachaPurchaseInvoicePDFPreview /></PrivateRoute>} />
+          <Route path="/kachapurchaseinvoicetable" element={<PrivateRoute allowedRoles={["admin"]}><KachaPurchaseInvoiceTable /></PrivateRoute>} />
+          <Route path="/kachaPurchasevoucher" element={<PrivateRoute allowedRoles={["admin"]}><KachaPurchaseVochurTable /></PrivateRoute>} />
+          <Route path="/kachaPurchasevoucherview" element={<PrivateRoute allowedRoles={["admin"]}><KachaPurchaseVoucherView /></PrivateRoute>} />
+          <Route path="/kachaPurchasevoucherview/:id" element={<PrivateRoute allowedRoles={["admin"]}><KachaPurchaseVoucherView /></PrivateRoute>} />
+          <Route path="/kachacreditenotetable" element={<PrivateRoute allowedRoles={["admin"]}><Kacha_CreditNoteTable /></PrivateRoute>} />
+          <Route path="/kachacreditenotetable/:id" element={<PrivateRoute allowedRoles={["admin"]}><Kacha_CreditNoteTable /></PrivateRoute>} />
+          <Route path="/kachacreditenote" element={<PrivateRoute allowedRoles={["admin"]}><KachaCreateNote /></PrivateRoute>} />
+          <Route path='/kachaeditcreditnote' element={<PrivateRoute allowedRoles={["admin"]}><Kacha_EditCreditNote /></PrivateRoute>} />
+          <Route path='/kachaeditcreditnote/:id' element={<PrivateRoute allowedRoles={["admin"]}><Kacha_EditCreditNote /></PrivateRoute>} />
+          <Route path='/kachadebitnotetable' element={<PrivateRoute allowedRoles={["admin"]}><KachaDebitTableNote /></PrivateRoute>} />
+          <Route path="/kachadebitnote/:id" element={<PrivateRoute allowedRoles={["admin"]}><KachaCreateDebitNote /></PrivateRoute>} />
+          <Route path="/kachadebitnote" element={<PrivateRoute allowedRoles={["admin"]}><KachaCreateDebitNote /></PrivateRoute>} />
+          <Route path="/kachaeditdebitenote" element={<PrivateRoute allowedRoles={["admin"]}><KachaEditDebitNote /></PrivateRoute>} />
+          <Route path="/kachaeditdebitenote/:id" element={<PrivateRoute allowedRoles={["admin"]}><KachaEditDebitNote /></PrivateRoute>} />
+          <Route path="/kachacreditview/:id" element={<PrivateRoute allowedRoles={["admin"]}><KachaCreditview /></PrivateRoute>} />
+          <Route path="/kachadebitenoteview/:id" element={<PrivateRoute allowedRoles={["admin"]}><KachaPurchaseDebitView /></PrivateRoute>} />
+          <Route path="/kachapurchaseedit/:id" element={<PrivateRoute allowedRoles={["admin"]}><KachaPurchaseInvoiceEdit /></PrivateRoute>} />
+          <Route path="/dispatch-report" element={<PrivateRoute allowedRoles={["admin"]}><DispatchReportPDF /></PrivateRoute>} />
+          <Route path="/hsn-report" element={<PrivateRoute allowedRoles={["admin"]}><HsnReport /></PrivateRoute>} />
 
-        <Route path="/sales/delivery_challan" element={<DeliveryChallanTable />} />
-
-        <Route path="/sales/receivables" element={<ReceivablesTable />} />
-
-
-        <Route path="/sales/add" element={<AddSales />} />
-        <Route path="/staff/edit/:id" element={<AddStaff />} />
-        <Route path="/product" element={<AdminProducts />} />
-
-        <Route path="/purchase/purchase-invoice" element={<PurchaseInvoiceTable />} />
-        <Route path="/purchase/create-purchase-invoice" element={<CreatePurchaseInvoiceForm />} />
-        <Route path="/purchase/invoice-preview/:id" element={<PurchasePDFPreview />} />
-
-        <Route path="/purchase/purchase-order" element={<PurchaseOrderTable />} />
-        <Route path="/purchase/voucher" element={<VoucherTable />} />
-        <Route path="/purchase/debit-note" element={<DebitNoteTable />} />
-        <Route path="/purchase/debit_note" element={<CreateDebitNote />} />
-        <Route path="/purchase/debit-note/edit/:id" element={<EditDebitNote />} />
-        <Route path="/purchase/payables" element={<PayablesTable />} />
-        <Route path="/voucher_view/:id" element={<VoucherView />} />
-
-        <Route path="/add-product" element={<AddProduct />} />
-        <Route path="/marketing" element={<AdminMarketing />} />
-        <Route path="/add-marketing" element={<AddMarketing />} />
-        {/* <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} /> */}
-        {/* <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} /> */}
-        {/* <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />| */}
-        <Route path="/admin/marketing/offers-postings" element={<OffersPostings />} />
-        {/* <Route path="/admin/marketing/global-offers" element={<GlobalOffers />} />
-        <Route path="/admin/marketing/category-offers" element={<CategorySpecificOffers />} />
-        <Route path="/admin/marketing/flash-sales" element={<FlashSales />} />|
-        <Route path="/admin/marketing/offers-postings" element={<OffersPostings />} /> */}
-        
-
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/profile/edit" element={<EditProfile />} />
-        <Route path="/profile/delete" element={<DeleteProfile />} />
-
-        <Route path="/retailers" element={<AdminRetailers />} />
-        <Route path="/retailers/add" element={<AddRetailerForm mode="add" />} />
-        <Route path="/retailers/edit/:id" element={<AddRetailerForm mode="edit" />} />
-        <Route path="/retailers/view/:id" element={<AddRetailerForm mode="view" />} />
-
-        <Route path="/expenses" element={<AdminExpenses />} />
-        <Route path="/expenses/add" element={<AddExpenses />} />
-        <Route path="/reports/expense-report-page" element={<ExpenseReportPage />} />
-        <Route path="/reports" element={<AdminReports />} />
-        <Route path="/roleaccess" element={<AdminRoleAccess />} />
-        <Route path="/sales_visit" element={<SalesVisit />} />
-        <Route path="/sales_visit/edit/:id" element={<SalesVisit mode="edit" />} />
-        <Route path="/sales_visit/view/:id" element={<SalesVisit mode="view" />} />
-
-        <Route path="/purchased_items" element={<PurchasedItems />} />
-        <Route path="/sale_items" element={<SalesItems />} />
-        <Route path='/AddProductPage' element={<AddProductPage />} />
-        <Route path="/AddProductPage/:productId" element={<AddProductPage />} />
-        <Route path='/salesitemspage/:productId' element={<SalesItemsPage />} />
-        <Route path='/salesitemspage' element={<SalesItemsPage />} />
-        <Route path="/addcompanymodal " element={<AddCompanyModal />} />
-        <Route path="/addcategorymodal" element={<AddCategoryModal />} />
-        <Route path="/stockdetailsmodule" element={< StockDetailsModal />} />
-        <Route path="/deductstockmodal" element={< DeductStockModal />} />
-        <Route path="/addstockmodal" element={< AddStockModal />} />
-        <Route path="/addservicemodal" element={<AddServiceModal />} />
-
-        <Route path="/staff_expensive" element={<Staff_expensive />} />
-        <Route path="/staff_add_expensive" element={<Staff_Add_expensive />} />
-        <Route path="/admin_expensive" element={<AdminExpensiveRequest />} />
-        <Route path="/admin_expensive/view/:id" element={<AdminExpensiveRequest mode="view" />} />
-        <Route path="/admin_expensive/edit/:id" element={<AdminExpensiveRequest mode="edit" />} />
-        <Route path="/salesitems_productdetails/:id" element={<Salesitems_productsdetails />} />
-        <Route path="/receipts_view/:id" element={<ReceiptView />} />
-        <Route path="/addunitsmodal" element={<AddUnitModal />} />
-
-        <Route path="/category" element={<Category />} />
-        <Route path="/category/:id" element={<Category />} />
-        <Route path="/company" element={<Company />} />
-        <Route path="/company/:id" element={<Company />} />
-        <Route path="/units" element={<Units />} />
-        <Route path="/ledger" element={<Ledger />} />
-
-        <Route path="/sales/credit-note/edit/:id" element={<EditCreditNote />} />
-
-
-        <Route path="/sales/create_note" element={<CreateNote />} />
-
-        <Route path="/units/:id" element={<Units />} />
-
-
-        <Route path="/reports/sales-report-page" element={<SalesReportPage />} />
-        <Route path="/creditview/:id" element={<Creditsview />} />
-
-        <Route path="/credit-period" element={<CreditPeriodTable />} />
-        <Route path="/credit-period-fix/add" element={<AddCreditPeriodFix />} />
-        <Route path="/credit-period-fix/edit/:id" element={<AddCreditPeriodFix />} />
-
-
-
-        ||Kacha Sales||
-        <Route path="/kachinvoicetable" element={<KachaInvoiceTable />} />
-        <Route path="/kacha_sales" element={<KachaSalesInvoiceForm />} />
-        <Route path="/kacha_sales/:id" element={<KachaSalesInvoiceForm />} />
-
-        <Route path="/kachainvoicepdf/:id" element={<KachaInvoicePDFPreview />} />
-        <Route path="/period" element={<Period />} />
-        <Route path="/periodinvoicepreviewpdf" element={<Period_InvoicePDFPreview />} />
-        <Route path="/periodinvoicepreviewpdf/:id" element={<Period_InvoicePDFPreview />} />
-        <Route path="/invoicepreview_preivew" element={<InvoicePreview_preview />} />
-        <Route path="/receiptmodal_preview" element={<ReceiptModal_preview />} />
-        <Route path="/QRCodeGenerator" element={<QRCodeGenerator />} />
-        <Route path="/debitnote_view/:id" element={<DebitView />} />
-        <Route path="/retailersscore" element={<RetailersScore />} />
-        <Route path="/kachareceipts" element={<KachaReceiptsTable />} />
-        <Route path="/salesmanscore" element={<SalesPersonScore />} />
-        <Route path="/import-sales" element={<ImportSalesPage />} />
-        <Route path="/retailers/import" element={<ImportRetailersPage />} />
-        <Route path="/export-sales" element={<ExportSalesPage />} />
-        <Route path="/salespdfdocument" element={<SalesPdfDocument />} />
-        <Route path="/kachareceipts_view/:id" element={<Kachareceiptview />} />
-        <Route path="/import_purchase" element={<Import_purchase_page />} />
-        <Route path="/kachapurchaseinvoice" element={<KachaPurchaseInvoiceForm />} />
-        <Route path="/kachapurchasepdf/:id" element={<KachaPurchaseInvoicePDFPreview />} />
-                <Route path="/kachapurchasepdf" element={<KachaPurchaseInvoicePDFPreview />} />
-
-        <Route path="/kachapurchaseinvoicetable" element={<KachaPurchaseInvoiceTable />} />
-<Route path="/kachaPurchasevoucher" element={<KachaPurchaseVochurTable />} />
-<Route path="/kachaPurchasevoucherview" element={<KachaPurchaseVoucherView />} />
-<Route path="/kachaPurchasevoucherview/:id" element={<KachaPurchaseVoucherView />} />
-<Route path="/kachacreditenotetable"element={<Kacha_CreditNoteTable />} />
-<Route path="/kachacreditenotetable/:id"element={<Kacha_CreditNoteTable />} />
-<Route path="/kachacreditenote" element={<KachaCreateNote />} />
-<Route path='/kachaeditcreditnote' element={<Kacha_EditCreditNote />} />
-<Route path='/kachaeditcreditnote/:id' element={<Kacha_EditCreditNote />} />
-<Route path='/kachadebitnotetable' element={<KachaDebitTableNote />} />
-<Route path="/kachadebitnote/:id" element={<KachaCreateDebitNote />} />
-<Route path="/kachadebitnote" element={<KachaCreateDebitNote />} />
-<Route path="/kachaeditdebitenote" element={<KachaEditDebitNote />} />
-<Route path="/kachaeditdebitenote/:id" element={<KachaEditDebitNote />} />
-<Route path="/kachacreditview/:id" element={<KachaCreditview />} />
-<Route path="/kachadebitenoteview/:id" element={<KachaPurchaseDebitView />} />
-
-<Route path="/kachapurchaseedit/:id" element={<KachaPurchaseInvoiceEdit />} />
-
-<Route path="/dispatch-report" element={<DispatchReportPDF />} />
-<Route path="/hsn-report" element={<HsnReport />} />
-
-      </Routes>
-    </Router>
-
-     </GoogleOAuthProvider>
+        </Routes>
+      </Router>
+    </GoogleOAuthProvider>
   );
 }
 
 export default App;
-

@@ -17,79 +17,76 @@ function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const ADMIN_CREDENTIALS = {
-    email: "admin@gmail.com",
-    password: "1234"
-  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
 
-    try {
-      // ✅ Check for static admin credentials
-      if (
-        username.trim() === ADMIN_CREDENTIALS.email &&
-        password === ADMIN_CREDENTIALS.password
-      ) {
-        const adminUser = {
-          id: 1,
-          username: "admin",
-          email: ADMIN_CREDENTIALS.email,
-          role: "admin",
-          name: "Administrator"
-        };
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError("");
 
-        // Save admin info
-        localStorage.setItem("user", JSON.stringify(adminUser));
-        localStorage.setItem("isAdmin", "true");
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("loginTime", new Date().toISOString());
+  try {
+    // ✅ Fetch admin credentials from API and check
+    const adminRes = await fetch(`${baseurl}/admin`);
+    const adminData = await adminRes.json();
 
-        navigate("/admindashboard");
-        return;
-      }
+    if (
+      adminData.success &&
+      username.trim() === adminData.admin.email &&
+      password === adminData.admin.password
+    ) {
+      const adminUser = {
+        id: 1,
+        username: "admin",
+        email: adminData.admin.email,
+        role: "admin",
+        name: "Administrator"
+      };
 
-      // ✅ Normal user login via API
-      const response = await fetch(`${baseurl}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: username.trim(),
-          password: password
-        })
-      });
+      localStorage.setItem("user", JSON.stringify(adminUser));
+      localStorage.setItem("isAdmin", "true");
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("loginTime", new Date().toISOString());
 
-      const data = await response.json();
-
-      if (data.success) {
-        // Store user data
-        localStorage.setItem("user", JSON.stringify(data.user));
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("loginTime", new Date().toISOString());
-
-        // Role-based flags
-        if (data.user.role.toLowerCase() === "admin") {
-          localStorage.setItem("isAdmin", "true");
-        } else if (data.user.role.toLowerCase() === "staff") {
-          localStorage.setItem("isStaff", "true");
-        } else if (data.user.role.toLowerCase() === "retailer") {
-          localStorage.setItem("isRetailer", "true");
-        }
-
-        navigate(data.route);
-      } else {
-        setError(data.error || "Login failed");
-      }
-    } catch (err) {
-      console.error("Login error:", err);
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
+      navigate("/admindashboard");
+      return;
     }
-  };
 
+    // ✅ Normal user login via API
+    const response = await fetch(`${baseurl}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: username.trim(),
+        password: password
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("loginTime", new Date().toISOString());
+
+      if (data.user.role.toLowerCase() === "admin") {
+        localStorage.setItem("isAdmin", "true");
+      } else if (data.user.role.toLowerCase() === "staff") {
+        localStorage.setItem("isStaff", "true");
+      } else if (data.user.role.toLowerCase() === "retailer") {
+        localStorage.setItem("isRetailer", "true");
+      }
+
+      navigate(data.route);
+    } else {
+      setError(data.error || "Login failed");
+    }
+  } catch (err) {
+    console.error("Login error:", err);
+    setError("Network error. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
   const handleGoogleSuccess = async (credentialResponse) => {
     setLoading(true);
     setError("");

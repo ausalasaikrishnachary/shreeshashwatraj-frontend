@@ -362,22 +362,21 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
         
         {/* Address Section */}
         <View style={styles.addressSection}>
-          {/* Billing Address */}
-          <View style={styles.addressBox}>
-            <Text style={styles.sectionTitle}>Bill To:</Text>
-            <Text style={[styles.addressText, styles.tableCellBold, styles.tableCellLeft]}>
-              {getSafeData(supplierInfo, 'name', 'Customer')}
-            </Text>
-            <Text style={[styles.addressText, styles.tableCellLeft]}>
-              {getSafeData(supplierInfo, 'businessName', '')}
-            </Text>
-            <Text style={[styles.addressText, styles.tableCellLeft]}>
-              GSTIN: {getSafeData(supplierInfo, 'gstin', 'N/A')}
-            </Text>
-            <Text style={[styles.addressText, styles.tableCellLeft]}>
-              State: {getSafeData(supplierInfo, 'state', 'N/A')}
-            </Text>
-          </View>
+<View style={styles.addressBox}>
+  <Text style={styles.sectionTitle}>Bill To:</Text>
+  <Text style={[styles.addressText, styles.tableCellBold, styles.tableCellLeft]}>
+    {getSafeData(supplierInfo, 'name', 'Customer')}
+  </Text>
+  <Text style={[styles.addressText, styles.tableCellLeft]}>
+    {getSafeData(supplierInfo, 'business_name',)}
+  </Text>
+  <Text style={[styles.addressText, styles.tableCellLeft]}>
+    GSTIN: {getSafeData(supplierInfo, 'gstin', 'N/A')}
+  </Text>
+  <Text style={[styles.addressText, styles.tableCellLeft]}>
+    State: {getSafeData(supplierInfo, 'state', 'N/A')}
+  </Text>
+</View>
           
           {/* Shipping Address */}
           <View style={styles.addressBox}>

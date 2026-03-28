@@ -34,8 +34,11 @@ const Period = () => {
   const [itemApprovalStatus, setItemApprovalStatus] = useState({}); 
 const [activeTab, setActiveTab] = useState("pending");
 const [selectedOrdersForDispatch, setSelectedOrdersForDispatch] = useState([]);
-
-
+const [customSearch, setCustomSearch] = useState("");
+const [tempStartDate, setTempStartDate] = useState("");
+const [tempEndDate, setTempEndDate] = useState("");
+const [appliedStartDate, setAppliedStartDate] = useState("");
+const [appliedEndDate, setAppliedEndDate] = useState("");
 
   useEffect(() => {
     fetchOrders();
@@ -1243,18 +1246,56 @@ const displayedOrders = activeTab === "pending" ? pendingOrders : completedOrder
 
 
 
-
 const filteredOrders = orders.filter(order => {
-  const customerMatch = order.customer_name.toLowerCase().includes(search.toLowerCase());
+  // Date filter - use applied dates, not temporary dates
   let dateMatch = true;
-  if (startDate) dateMatch = dateMatch && new Date(order.created_at) >= new Date(startDate);
-  if (endDate)   dateMatch = dateMatch && new Date(order.created_at) <= new Date(endDate);
-
-  if (activeTab === "pending") {
-    return customerMatch && dateMatch && order.items.some(item => item.invoice_status !== 1);
-  } else {
-    return customerMatch && dateMatch && order.items.some(item => item.invoice_status === 1);
+  if (appliedStartDate) {
+    dateMatch = dateMatch && new Date(order.created_at) >= new Date(appliedStartDate);
   }
+  if (appliedEndDate) {
+    dateMatch = dateMatch && new Date(order.created_at) <= new Date(appliedEndDate);
+  }
+
+  // Tab filter (pending/completed)
+  let tabMatch = true;
+  if (activeTab === "pending") {
+    tabMatch = order.items.some(item => item.invoice_status !== 1);
+  } else {
+    tabMatch = order.items.some(item => item.invoice_status === 1);
+  }
+
+  if (!dateMatch || !tabMatch) return false;
+
+  // Custom search filter - search across all fields
+  if (customSearch.trim() === "") return true;
+
+  const searchLower = customSearch.toLowerCase().trim();
+  
+  // Get address values
+  const address1 = (order.billing_address_line1 || 
+                    order.account_details?.billing_address_line1 || 
+                    order.billing_address || 
+                    "").toLowerCase();
+  
+  const address2 = (order.billing_address_line2 || 
+                    order.account_details?.billing_address_line2 || 
+                    "").toLowerCase();
+  
+  // Format date for searching
+  const formattedDate = new Date(order.created_at).toLocaleDateString('en-GB');
+  
+  // Search across ALL fields
+  return (
+    order.order_number?.toLowerCase().includes(searchLower) ||
+    order.customer_name?.toLowerCase().includes(searchLower) ||
+    address1.includes(searchLower) ||
+    address2.includes(searchLower) ||
+    (order.order_total ?? 0).toString().includes(searchLower) ||
+    (order.discount_amount ?? 0).toString().includes(searchLower) ||
+    (order.assigned_staff || "N/A").toLowerCase().includes(searchLower) ||
+    (order.order_status || "N/A").toLowerCase().includes(searchLower) ||
+    formattedDate.includes(searchLower)
+  );
 });
 
   if (loading) return <div className="p-admin-layout">Loading orders...</div>;
@@ -1268,55 +1309,116 @@ const filteredOrders = orders.filter(order => {
         <div className="p-period-page">
 <div className="p-filters-section">
   <div className="p-filter-row">
-    <div className="p-filter-group">
+    <div className="p-filter-group" style={{ flex: 1, minWidth: '250px', maxWidth: '350px', position: 'relative' }}>
       <input
         type="text"
         className="p-form-control"
-        placeholder="Search Customer Name..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search Order, Customer, Address, Staff, Status..."
+        value={customSearch}
+        onChange={(e) => setCustomSearch(e.target.value)}
+        style={{ paddingRight: '35px' }}
+      />
+      {customSearch && (
+        <button
+          onClick={() => setCustomSearch("")}
+          style={{
+            position: 'absolute',
+            right: '8px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '16px',
+            color: '#999',
+            padding: '0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          title="Clear search"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+    <div className="p-filter-group">
+      <input
+        type="date"
+        className="p-form-control"
+        placeholder="Start Date"
+        value={tempStartDate}
+        onChange={(e) => setTempStartDate(e.target.value)}
       />
     </div>
     <div className="p-filter-group">
       <input
         type="date"
         className="p-form-control"
-        value={startDate}
-        onChange={(e) => setStartDate(e.target.value)}
+        placeholder="End Date"
+        value={tempEndDate}
+        onChange={(e) => setTempEndDate(e.target.value)}
       />
     </div>
+    
     <div className="p-filter-group">
-      <input
-        type="date"
-        className="p-form-control"
-        value={endDate}
-        onChange={(e) => setEndDate(e.target.value)}
-      />
+      {(customSearch || appliedStartDate || appliedEndDate) ? (
+        <button 
+          className="p-btn p-btn-clear-filters" 
+          onClick={() => {
+            setCustomSearch("");
+            setTempStartDate("");
+            setTempEndDate("");
+            setAppliedStartDate("");
+            setAppliedEndDate("");
+          }}
+          style={{ 
+            backgroundColor: '#f44336', 
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2px'
+          }}
+        >
+          Clear 
+        </button>
+      ) : (
+        <button 
+          className="p-btn p-btn-primary" 
+          onClick={() => {
+            // Apply the date filters
+            setAppliedStartDate(tempStartDate);
+            setAppliedEndDate(tempEndDate);
+          }}
+          style={{ backgroundColor: '#007bff', color: 'white' }}
+        >
+          Add 
+        </button>
+      )}
     </div>
+    
+    {/* DISPATCH BUTTON */}
     <div className="p-filter-group">
-      <button className="p-btn p-btn-primary" onClick={() => { }}>Search</button>
+      <button 
+        className="p-btn p-btn-dispatch"
+        onClick={handleGenerateDispatchReport}
+        disabled={selectedOrdersForDispatch.length === 0}
+      >
+        {selectedOrdersForDispatch.length > 0 
+          ? `Dispatch Report (${selectedOrdersForDispatch.length})` 
+          : 'Select orders for dispatch'}
+      </button> 
     </div>
-    {/* DISPATCH BUTTON - Always visible when orders are selected */}
-    <div className="p-filter-group">
- <button 
-  className="p-btn p-btn-dispatch"
-  onClick={handleGenerateDispatchReport}
-  disabled={selectedOrdersForDispatch.length === 0}
->
-  {selectedOrdersForDispatch.length > 0 
-    ? `Dispatch Report (${selectedOrdersForDispatch.length})` 
-    : 'Select orders for dispatch'}
-</button> 
-    </div>
-    {/* CLEAR BUTTON */}
+    
+    {/* CLEAR SELECTED BUTTON - Only shows when orders are selected */}
     {selectedOrdersForDispatch.length > 0 && (
       <div className="p-filter-group">
         <button
-          className="p-btn p-btn-clear"
+          className="p-btn p-btn-clear-selected"
           onClick={() => setSelectedOrdersForDispatch([])}
-          style={{ backgroundColor: '#f44336', color: 'white' }}
+          style={{ backgroundColor: '#bc3737', color: 'white' }}
         >
-          Clear Selected ({selectedOrdersForDispatch.length})
+          Clear ({selectedOrdersForDispatch.length})
         </button>
       </div>
     )}
@@ -1389,16 +1491,17 @@ const filteredOrders = orders.filter(order => {
         disabled={filteredOrders.length === 0}
       />
     </th>
-    <th></th> {/* Toggle column */}
+    <th></th> 
     <th>Order Number</th>
     <th>Customer Name</th>
+      <th>Address  1</th> 
+        <th>Address  2</th>
     <th>Order Total</th>
-    <th>Discount Amount</th>
+    <th>Discount</th>
     <th>Assigned Staff</th>
-    <th>Order Status</th>
+    <th>Status</th>
     <th>Created At</th>
     <th>Action</th>
-    {/* ONLY SHOW DOWNLOAD INVOICE COLUMN IN COMPLETED TAB */}
     {activeTab === "completed" && <th>Download Invoice</th>}
   </tr>
 </thead>
@@ -1410,6 +1513,20 @@ const filteredOrders = orders.filter(order => {
       orderSelectedItems.length === order.items.length;
     const isSelectedForDispatch = selectedOrdersForDispatch.includes(order.id);
 
+
+      const getAddressLine1 = () => {
+          return order.billing_address_line1 || 
+                 order.account_details?.billing_address_line1 || 
+                 order.billing_address || 
+                 '-';
+        };
+
+        // Get address line 2
+        const getAddressLine2 = () => {
+          return order.billing_address_line2 || 
+                 order.account_details?.billing_address_line2 || 
+                 '-';
+        };
     return (
       <React.Fragment key={order.id}>
         <tr className="p-customer-row">
@@ -1431,6 +1548,20 @@ const filteredOrders = orders.filter(order => {
               </td>
               <td>{order.order_number}</td>
               <td>{order.customer_name}</td>
+                <td className="p-address-line1-cell">
+                <span title={getAddressLine1()}>
+                  {getAddressLine1().length > 40 ? 
+                    `${getAddressLine1().substring(0, 40)}...` : 
+                    getAddressLine1()}
+                </span>
+              </td>
+              <td className="p-address-line2-cell">
+                <span title={getAddressLine2()}>
+                  {getAddressLine2().length > 40 ? 
+                    `${getAddressLine2().substring(0, 40)}...` : 
+                    getAddressLine2()}
+                </span>
+              </td>
               <td>₹{(order.order_total ?? 0).toLocaleString()}</td>
               <td>₹{(order.discount_amount ?? 0).toLocaleString()}</td>
               <td>{order.assigned_staff || "N/A"}</td>
@@ -1827,7 +1958,7 @@ const filteredOrders = orders.filter(order => {
         </div>
       </div>
 
-      {/* Order Details Modal */}
+ {/* Order Details Modal */}
 {showOrderModal && modalData && (
   <div className="p-modal-overlay" onClick={closeModals}>
     <div className="p-modal-content p-wide-modal" onClick={(e) => e.stopPropagation()}>
@@ -1837,7 +1968,7 @@ const filteredOrders = orders.filter(order => {
       </div>
       <div className="p-modal-body">
         <div className="p-three-column-grid">
-          {/* Row 1 – Core Order Identity (MOST IMPORTANT) */}
+          {/* Row 1 – Core Order Identity */}
           <div className="p-column">
             <div className="p-detail-row">
               <span className="p-detail-label">Order Number:</span>
@@ -1895,7 +2026,7 @@ const filteredOrders = orders.filter(order => {
           <div className="p-column">
             <div className="p-detail-row">
               <span className="p-detail-label">Invoice Number:</span>
-              <span className="p-detail-value">{modalData.invoice_number}</span>
+              <span className="p-detail-value">{modalData.invoice_number || "N/A"}</span>
             </div>
           </div>
 
@@ -1903,7 +2034,7 @@ const filteredOrders = orders.filter(order => {
           <div className="p-column">
             <div className="p-detail-row">
               <span className="p-detail-label">Credit Period:</span>
-              <span className="p-detail-value">{modalData.credit_period} days</span>
+              <span className="p-detail-value">{modalData.credit_period || 0} days</span>
             </div>
           </div>
           <div className="p-column">
@@ -1945,7 +2076,7 @@ const filteredOrders = orders.filter(order => {
             </div>
           </div>
 
-          {/* Row 6 – Internal / Meta (LEAST IMPORTANT) */}
+          {/* Row 6 – Internal / Meta */}
           <div className="p-column">
             <div className="p-detail-row">
               <span className="p-detail-label">Staff ID:</span>
@@ -1965,6 +2096,31 @@ const filteredOrders = orders.filter(order => {
               <span className="p-detail-label">Last Updated:</span>
               <span className="p-detail-value">
                 {modalData.updated_at ? new Date(modalData.updated_at).toLocaleDateString('en-GB') : 'N/A'}
+              </span>
+            </div>
+          </div>
+
+          {/* Address 1 */}
+          <div className="p-column">
+            <div className="p-detail-row">
+              <span className="p-detail-label">Address 1:</span>
+              <span className="p-detail-value">
+                {modalData.billing_address_line1 || 
+                 modalData.account_details?.billing_address_line1 || 
+                 modalData.billing_address || 
+                 "N/A"}
+              </span>
+            </div>
+          </div>
+
+          {/* Address 2 */}
+          <div className="p-column">
+            <div className="p-detail-row">
+              <span className="p-detail-label">Address 2:</span>
+              <span className="p-detail-value">
+                {modalData.billing_address_line2 || 
+                 modalData.account_details?.billing_address_line2 || 
+                 "N/A"}
               </span>
             </div>
           </div>

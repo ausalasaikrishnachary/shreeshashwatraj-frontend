@@ -17,13 +17,18 @@ const CreateProductInvoice = ({ user }) => {
   const [selectedBatchDetails, setSelectedBatchDetails] = useState(null);
   const [products, setProducts] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+const [productSearchTerm, setProductSearchTerm] = useState("");
+const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const [nextInvoiceNumber, setNextInvoiceNumber] = useState("PINV001");
   const [editingIndex, setEditingIndex] = useState(null); 
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const [hasFetchedInvoiceNumber, setHasFetchedInvoiceNumber] = useState(false);
   const navigate = useNavigate();
   const [productStock, setProductStock] = useState({});
-  
+  const [selectedStaffId, setSelectedStaffId] = useState("");
+const [staffMembers, setStaffMembers] = useState([]);
 const [isEditMode, setIsEditMode] = useState(false);
   const [invoiceData, setInvoiceData] = useState(() => {
     const savedData = localStorage.getItem('draftPurchaseInvoice');
@@ -551,6 +556,7 @@ const addItem = () => {
 
     setSelected(false);
     setSelectedSupplierId(null);
+    setSelectedStaffId(""); // ← ADD THIS LINE
     setIsPreviewReady(false);
    window.alert("✅ Draft cleared successfully!");
   };
@@ -566,7 +572,19 @@ useEffect(() => {
 }, [isEditMode]);
 
 
-
+useEffect(() => {
+  const fetchStaffMembers = async () => {
+    try {
+      const response = await fetch(`${baseurl}/accounts`);
+      const data = await response.json();
+      const staffs = data.filter(acc => acc.role === "staff" || acc.staffid);
+      setStaffMembers(staffs);
+    } catch (err) {
+      console.error("Failed to fetch staff members:", err);
+    }
+  };
+  fetchStaffMembers();
+}, []);
 
 
 
@@ -940,142 +958,78 @@ const editItem = async (index) => {
               {/* Supplier Info Section */}
               <div className="bg-white rounded border">
                 <Row className="mb-0">
-                  <Col md={4} className="border-end p-3">
-                    {!selected ? (
-                      <>
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <strong className="text-primary">Supplier Info</strong>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => navigate("/retailers/add")}
-                          >
-                            New
-                          </Button>
-                        </div>
-                        <Form.Select
-                          className="mb-2 border-primary"
-                          value={inputName}
-                          onChange={(e) => {
-                            const selectedName = e.target.value;
-                            setInputName(selectedName);
-                            const supplier = accounts.find(acc => acc.business_name === selectedName);
-                            if (supplier) {
-                              setSelectedSupplierId(supplier.id);
-                              setSelected(true);
-
-                                 const accountDiscount = parseFloat(supplier.discount) || 0;
-                              setInvoiceData(prev => ({
-                                ...prev,
-                                supplierInfo: {
-                                name: supplier.gstin ? supplier.display_name : supplier.name,
-                                  businessName: supplier.business_name,
-                                   account_name: supplier.account_name,
-                                  state: supplier.billing_state,
-                                  gstin: supplier.gstin,
-
-                                },
-                                billingAddress: {
-                                  addressLine1: supplier.billing_address_line1,
-                                  addressLine2: supplier.billing_address_line2 || "",
-                                  city: supplier.billing_city,
-                                  pincode: supplier.billing_pin_code,
-                                  state: supplier.billing_state
-                                },
-                                shippingAddress: {
-                                  addressLine1: supplier.shipping_address_line1,
-                                  addressLine2: supplier.shipping_address_line2 || "",
-                                  city: supplier.shipping_city,
-                                  pincode: supplier.shipping_pin_code,
-                                  state: supplier.shipping_state
-                                }
-                              }));
-                                setItemForm(prev => ({
-        ...prev,
-        discount: accountDiscount
-      }));
-                            }
-                          }}
-                        >
-                          <option value="">Select Supplier</option> 
-                          {accounts
-                            .filter(acc => acc.role === "supplier") 
-                            .map(acc => (
-                            <option key={acc.id} value={acc.business_name}>
-  {acc.gstin?.trim()
-    ? acc.display_name || acc.business_name
-    : acc.name || acc.business_name}
-</option>
-
-                            ))}
-                        </Form.Select>
-                      </>
-                ) : (
-  <>
-    <div className="d-flex justify-content-between align-items-center mb-2">
-      <strong className="text-primary">Supplier Info</strong>
-
-      {/* ✅ Split Button */}
-      <div className="btn-group position-relative">
-
-        {/* Left: Edit navigates to edit page */}
+             <Col md={4} className="border-end p-3">
+  {!selected ? (
+    <>
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <strong className="text-primary">Supplier Info</strong>
         <Button
-          variant="info"
+          variant="primary"
           size="sm"
-          onClick={() => {
-            if (selectedSupplierId) {
-              navigate(`/retailers/edit/${selectedSupplierId}`);
-            }
-          }}
+          onClick={() => navigate("/retailers/add")}
         >
-          <FaEdit /> Edit
+          New
         </Button>
+      </div>
+      
+      {/* Searchable Dropdown */}
+      <div className="position-relative">
+        <div className="mb-2">
+          <input
+            type="text"
+            className="form-control border-primary"
+            placeholder="Search supplier..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onClick={() => setIsDropdownOpen(true)}
+          />
+        </div>
+        
+        {isDropdownOpen && (
+          <div
+            className="position-absolute w-100"
+            style={{
+              top: '100%',
+              left: 0,
+              zIndex: 9999,
+              backgroundColor: '#fff',
+              border: '1px solid #dee2e6',
+              borderRadius: '6px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              maxHeight: '300px',
+              overflowY: 'auto'
+            }}
+          >
+            {/* Header */}
+            <div style={{ 
+              padding: '8px 16px', 
+              borderBottom: '1px solid #dee2e6', 
+              color: '#0d6efd', 
+              fontWeight: 600,
+              position: 'sticky',
+              top: 0,
+              backgroundColor: '#fff',
+              zIndex: 1
+            }}>
+              Select Supplier
+            </div>
 
-        {/* Right: Dropdown toggle */}
-        <Button
-          variant="info"
-          size="sm"
-          className="border-start border-white"
-          onClick={(e) => {
-            e.stopPropagation();
-            const menu = e.currentTarget.nextElementSibling;
-            const isOpen = menu.style.display === 'block';
-            document.querySelectorAll('.pi-dropdown-menu').forEach(m => m.style.display = 'none');
-            menu.style.display = isOpen ? 'none' : 'block';
-          }}
-        >
-          ▼
-        </Button>
-
-        {/* Dropdown Menu */}
-        <div
-          className="pi-dropdown-menu"
-          style={{
-            display: 'none',
-            position: 'absolute',
-            right: 0,
-            top: '100%',
-            zIndex: 9999,
-            backgroundColor: '#fff',
-            border: '1px solid #dee2e6',
-            borderRadius: '6px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            minWidth: '280px',
-            padding: '8px 0'
-          }}
-        >
-          {/* Header */}
-          <div style={{ padding: '8px 16px', borderBottom: '1px solid #dee2e6', color: '#0d6efd', fontWeight: 600 }}>
-            Select Supplier
-          </div>
-
-          {/* Scrollable supplier list */}
-          <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
-            {accounts
-              .filter(acc => acc.role === "supplier")
-              .map(acc => {
-                const isCurrentlySelected = acc.id === selectedSupplierId;
-                return (
+            {/* Scrollable supplier list */}
+            <div>
+              {accounts
+                .filter(acc => {
+                  const searchLower = searchTerm.toLowerCase();
+                  const name = (acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name)?.toLowerCase() || "";
+                  const businessName = acc.business_name?.toLowerCase() || "";
+                  const displayName = acc.display_name?.toLowerCase() || "";
+                  
+                  return (acc.role === "supplier" || 
+                    (acc.role === "retailer" && acc.is_dual_account == 1)) &&
+                    (name.includes(searchLower) || 
+                     businessName.includes(searchLower) || 
+                     displayName.includes(searchLower));
+                })
+                .map(acc => (
                   <div
                     key={acc.id}
                     onClick={() => {
@@ -1084,15 +1038,17 @@ const editItem = async (index) => {
                       setSelected(true);
 
                       const accountDiscount = parseFloat(acc.discount) || 0;
-
+                      
                       setInvoiceData(prev => ({
                         ...prev,
                         supplierInfo: {
-                          name: acc.gstin ? acc.display_name : acc.name,
+                          name: acc.gstin ? acc.display_name || acc.business_name : acc.name || acc.business_name,
                           businessName: acc.business_name,
                           account_name: acc.account_name,
                           state: acc.billing_state,
-                          gstin: acc.gstin,
+                          gstin: acc.gstin || "",
+                          discount: accountDiscount,
+                          accountId: acc.id
                         },
                         billingAddress: {
                           addressLine1: acc.billing_address_line1,
@@ -1109,64 +1065,109 @@ const editItem = async (index) => {
                           state: acc.shipping_state
                         }
                       }));
-
-                      setItemForm(prev => ({ ...prev, discount: accountDiscount }));
-
-                      document.querySelectorAll('.pi-dropdown-menu').forEach(m => m.style.display = 'none');
+                      
+                      setItemForm(prev => ({
+                        ...prev,
+                        discount: accountDiscount
+                      }));
+                      
+                      setIsDropdownOpen(false);
+                      setSearchTerm("");
                     }}
                     style={{
                       padding: '8px 16px',
                       cursor: 'pointer',
-                      backgroundColor: isCurrentlySelected ? '#e8f4fd' : 'transparent',
-                      borderLeft: isCurrentlySelected ? '3px solid #0d6efd' : '3px solid transparent',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
+                      borderLeft: '3px solid transparent',
+                      transition: 'background-color 0.2s'
                     }}
-                    onMouseEnter={e => { if (!isCurrentlySelected) e.currentTarget.style.backgroundColor = '#f8f9fa'; }}
-                    onMouseLeave={e => { if (!isCurrentlySelected) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.backgroundColor = '#f8f9fa';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
                   >
                     <div>
-                      <div style={{ fontWeight: isCurrentlySelected ? 600 : 400, fontSize: '13px' }}>
-                        {acc.gstin?.trim() ? acc.display_name || acc.business_name : acc.name || acc.business_name}
+                      <div style={{ fontWeight: 400, fontSize: '13px' }}>
+                        {acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name}
                       </div>
                       <div style={{ fontSize: '11px', color: '#6c757d' }}>
                         {acc.business_name}
                       </div>
                     </div>
-                    {isCurrentlySelected && (
-                      <span style={{ color: '#0d6efd', fontSize: '16px' }}>✓</span>
-                    )}
                   </div>
-                );
-              })}
-          </div>
+                ))}
+            </div>
 
-          {/* Footer */}
-          <div style={{ padding: '8px 16px', borderTop: '1px solid #dee2e6' }}>
-            <button
-              className="btn btn-sm btn-outline-secondary w-100"
-              onClick={() => {
-                document.querySelectorAll('.pi-dropdown-menu').forEach(m => m.style.display = 'none');
-              }}
-            >
-              Close
-            </button>
+            {/* Footer: close button */}
+            <div style={{ 
+              padding: '8px 16px', 
+              borderTop: '1px solid #dee2e6',
+              position: 'sticky',
+              bottom: 0,
+              backgroundColor: '#fff'
+            }}>
+              <button
+                className="btn btn-sm btn-outline-secondary w-100"
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  setSearchTerm("");
+                }}
+              >
+                Close
+              </button>
+            </div>
           </div>
+        )}
+      </div>
+    </>
+  ) : (
+    <>
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <strong className="text-primary">Supplier Info</strong>
+        
+        {/* Both Buttons */}
+        <div className="btn-group">
+          {/* Edit Button */}
+          <Button
+            variant="info"
+            size="sm"
+            onClick={() => {
+              if (selectedSupplierId) {
+                navigate(`/retailers/edit/${selectedSupplierId}`);
+              }
+            }}
+          >
+            <FaEdit /> Edit
+          </Button>
+
+          {/* Change Supplier Button */}
+          <Button
+            variant="warning"
+            size="sm"
+            onClick={() => {
+              setSelected(false);
+              setSelectedSupplierId(null);
+              setInputName("");
+              setSearchTerm("");
+              setIsDropdownOpen(true);
+            }}
+          >
+            Change Supplier
+          </Button>
         </div>
       </div>
-    </div>
 
-    {/* Supplier Info Display */}
-    <div className="bg-light p-2 rounded">
-      <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
-      <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
-      <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
-      <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
-    </div>
-  </>
-)}
-                  </Col>
+      {/* Supplier Info Display */}
+      <div className="bg-light p-2 rounded">
+        <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
+        <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
+        <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
+        <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
+      </div>
+    </>
+  )}
+</Col>
 
                   <Col md={4} className="border-end p-3">
                     <strong className="text-primary">Billing Address</strong>
@@ -1194,171 +1195,311 @@ const editItem = async (index) => {
               <div className="item-section mb-3 mt-3 bg-white p-3 rounded">
                 <h6 className="text-primary mb-3">Add Items</h6>
                 <Row className="align-items-end">
-                  <Col md={2}>
-                    <div className="d-flex justify-content-between align-items-center mb-1">
-                      <Form.Label className="mb-0 fw-bold">Item</Form.Label>
-                      <button
-                        type="button"
-                        className="btn btn-link p-0 text-primary"
-                        style={{ textDecoration: "none", fontSize: "14px" }}
-                        onClick={() => navigate("/AddProductPage")}
-                      >
-                        + New Item
-                      </button>
-                    </div>
-<Form.Select
-  name="product"
-  value={itemForm.product}
-  title={(() => {
-    const selectedProduct = products.find(
-      (p) => p.goods_name === itemForm.product && p.product_type === "PAKKA"
-    );
-    if (!selectedProduct) return "Select a product";
-    const availableQty = productStock[selectedProduct.id] || 0;
-    return `${selectedProduct.goods_name} - Qty: ${availableQty}`;
-  })()}
-  onChange={async (e) => {
-    const selectedName = e.target.value;
-    const selectedProduct = products.find(
-      (p) => p.goods_name === selectedName && p.product_type === "PAKKA"
-    );
+              <Col md={2}>
+  <div className="d-flex justify-content-between align-items-center mb-1">
+    <Form.Label className="mb-0 fw-bold">Item</Form.Label>
+    <button
+      type="button"
+      className="btn btn-link p-0 text-primary"
+      style={{ textDecoration: "none", fontSize: "14px" }}
+      onClick={() => navigate("/AddProductPage")}
+    >
+      + New Item
+    </button>
+  </div>
 
-    if (selectedProduct) {
-      const supplierAccount = accounts.find(acc => acc.id === selectedSupplierId);
-      const supplierDiscount = parseFloat(supplierAccount?.discount) || 0;
-
-      setItemForm((prev) => ({
-        ...prev,
-        product: selectedProduct.goods_name,
-        product_id: selectedProduct.id,
-        price: selectedProduct.net_price || 0,
-        gst: parseFloat(selectedProduct.gst_rate?.replace("%", "") || 0),
-        description: selectedProduct.description || "",
-        discount: supplierDiscount,
-        batch: "",
-        batch_id: "",
-         hsn_code: selectedProduct.hsn_code || ""  
-      }));
-
-      try {
-        const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
-        const batchData = await res.json();
-        setBatches(batchData);
-
-        const totalQty = batchData.reduce(
-          (sum, batch) => sum + Number(batch.quantity || 0),
-          0
-        );
-        setProductStock(prev => ({
-          ...prev,
-          [selectedProduct.id]: totalQty
-        }));
-
-        if (selectedProduct.maintain_batch === 0 && batchData.length > 0) {
-          const defaultBatch = batchData[0];
-          setSelectedBatch(defaultBatch.batch_number);
-          setSelectedBatchDetails(defaultBatch);
+  {/* Searchable Product Dropdown */}
+  <div className="position-relative">
+    <input
+      type="text"
+      className="form-control border-primary"
+      placeholder="Search product..."
+      value={
+        itemForm.product
+          ? itemForm.product
+          : productSearchTerm
+      }
+      onChange={(e) => {
+        setProductSearchTerm(e.target.value);
+        setIsProductDropdownOpen(true);
+        if (!e.target.value) {
           setItemForm(prev => ({
             ...prev,
-            batch: defaultBatch.batch_number,
-            batch_id: defaultBatch.batch_number,
-            price: defaultBatch.selling_price,
-            discount: supplierDiscount
+            product: "",
+            product_id: "",
+            description: "",
+            price: 0,
+            gst: 0,
+            discount: prev.discount || 0,
+            batch: "",
+            batch_id: "",
+            hsn_code: ""
           }));
-        } else {
+          setBatches([]);
           setSelectedBatch("");
           setSelectedBatchDetails(null);
         }
-
-      } catch (err) {
-        console.error("Failed to fetch batches:", err);
-        setBatches([]);
-        setSelectedBatch("");
-        setSelectedBatchDetails(null);
-      }
-    } else {
-      setItemForm(prev => ({
-        ...prev,
-        product: "",
-        product_id: "",
-        description: "",
-        price: 0,
-        gst: 0,
-        discount: 0,
-        batch: "",
-        batch_id: ""
-      }));
-      setBatches([]);
-      setSelectedBatch("");
-      setSelectedBatchDetails(null);
-    }
-  }}
-  className="border-primary"
->
-  <option value="">Select Product</option>
-  {products
-    .filter((p) => {
-      const groupMatch = p.group_by === "Purchaseditems" || p.can_be_sold === true;
-      const typeMatch = p.product_type === "PAKKA";
-      return groupMatch && typeMatch;
-    })
-    .map((p) => {
-      const availableQty = productStock[p.id] || 0;
-      return (
-        <option
-          key={p.id}
-          value={p.goods_name}
-          title={`${p.goods_name} - Qty: ${availableQty}`}
-        >
-          {p.goods_name} (Qty: {availableQty})
-        </option>
-      );
-    })}
-</Form.Select>
-
-{/* Batch Dropdown */}
-{batches.length > 0 && itemForm.maintain_batch !== 0 && (
-  <Form.Select
-    className="mt-2 border-primary"
-    name="batch"
-    value={selectedBatch}
-    onChange={(e) => {
-      const batchNumber = e.target.value;
-      setSelectedBatch(batchNumber);
-      const batch = batches.find(b => b.batch_number === batchNumber);
-      setSelectedBatchDetails(batch || null);
-      
-      // Get supplier discount again to preserve it
-      const supplierAccount = accounts.find(acc => acc.id === selectedSupplierId);
-      const supplierDiscount = parseFloat(supplierAccount?.discount) || 0;
-
-      if (batch) {
+      }}
+      onClick={() => {
+        setIsProductDropdownOpen(true);
+        setProductSearchTerm("");
         setItemForm(prev => ({
           ...prev,
-          batch: batchNumber,
-          batch_id: batch.batch_number,
-          price: batch.selling_price,
-          discount: supplierDiscount // Keep supplier discount
-        }));
-      } else {
-        setItemForm(prev => ({
-          ...prev,
+          product: "",
+          product_id: "",
+          description: "",
+          price: 0,
+          gst: 0,
           batch: "",
           batch_id: ""
         }));
+        setBatches([]);
+        setSelectedBatch("");
+        setSelectedBatchDetails(null);
+      }}
+      readOnly={!!itemForm.product}
+      style={{ cursor: itemForm.product ? "pointer" : "text" }}
+      title={
+        itemForm.product_id ? (() => {
+          const selectedProduct = products.find(p => p.id === itemForm.product_id);
+          const availableQty = productStock[itemForm.product_id] || 0;
+          if (selectedProduct) {
+            return `${selectedProduct.goods_name} - Qty: ${availableQty}`;
+          }
+          return "";
+        })() : "Select a product"
       }
-    }}
-  >
-    <option value="">Select Batch</option>
-    {batches.map((batch) => (
-      <option key={batch.id} value={batch.batch_number}>
-        {batch.batch_number} (Qty: {batch.quantity})
-      </option>
-    ))}
-  </Form.Select>
-)}
+    />
 
-                  </Col>
+    {/* Clear/Change button when product is selected */}
+    {itemForm.product && (
+      <button
+        type="button"
+        style={{
+          position: "absolute",
+          right: "8px",
+          top: "50%",
+          transform: "translateY(-50%)",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          color: "#6c757d",
+          fontSize: "16px",
+          lineHeight: 1,
+          padding: "0"
+        }}
+        onClick={() => {
+          setProductSearchTerm("");
+          setItemForm(prev => ({
+            ...prev,
+            product: "",
+            product_id: "",
+            description: "",
+            price: 0,
+            gst: 0,
+            batch: "",
+            batch_id: "",
+            hsn_code: ""
+          }));
+          setBatches([]);
+          setSelectedBatch("");
+          setSelectedBatchDetails(null);
+          setIsProductDropdownOpen(true);
+        }}
+      >
+        ✕
+      </button>
+    )}
+
+    {/* Product Dropdown */}
+    {isProductDropdownOpen && !itemForm.product && (
+      <div
+        className="position-absolute w-100"
+        style={{
+          top: '100%',
+          left: 0,
+          zIndex: 9999,
+          backgroundColor: '#fff',
+          border: '1px solid #dee2e6',
+          borderRadius: '6px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          maxHeight: '300px',
+          overflowY: 'auto',
+          minWidth: '100%'
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '8px 16px',
+          borderBottom: '1px solid #dee2e6',
+          color: '#0d6efd',
+          fontWeight: 600,
+          position: 'sticky',
+          top: 0,
+          backgroundColor: '#fff',
+          zIndex: 1
+        }}>
+          Select Product
+        </div>
+
+        {/* Product List */}
+        <div>
+          {products
+            .filter((p) => {
+              const groupMatch = p.group_by === "Purchaseditems" || p.can_be_sold === true;
+              const typeMatch = p.product_type === "PAKKA";
+              const searchMatch = p.goods_name.toLowerCase().includes(productSearchTerm.toLowerCase());
+              return groupMatch && typeMatch && searchMatch;
+            })
+            .map((p) => {
+              const availableQty = productStock[p.id] || 0;
+              const supplierAccount = accounts.find(acc => acc.id === selectedSupplierId);
+              const supplierDiscount = parseFloat(supplierAccount?.discount) || 0;
+              
+              return (
+                <div
+                  key={p.id}
+                  onClick={async () => {
+                    setItemForm((prev) => ({
+                      ...prev,
+                      product: p.goods_name,
+                      product_id: p.id,
+                      price: p.net_price || 0,
+                      gst: parseFloat(p.gst_rate?.replace("%", "") || 0),
+                      description: p.description || "",
+                      discount: supplierDiscount,
+                      batch: "",
+                      batch_id: "",
+                      hsn_code: p.hsn_code || ""
+                    }));
+
+                    try {
+                      const res = await fetch(`${baseurl}/products/${p.id}/batches`);
+                      const batchData = await res.json();
+                      setBatches(batchData);
+
+                      const totalQty = batchData.reduce(
+                        (sum, batch) => sum + Number(batch.quantity || 0),
+                        0
+                      );
+                      setProductStock(prev => ({
+                        ...prev,
+                        [p.id]: totalQty
+                      }));
+
+                      if (p.maintain_batch === 0 && batchData.length > 0) {
+                        const defaultBatch = batchData[0];
+                        setSelectedBatch(defaultBatch.batch_number);
+                        setSelectedBatchDetails(defaultBatch);
+                        setItemForm(prev => ({
+                          ...prev,
+                          batch: defaultBatch.batch_number,
+                          batch_id: defaultBatch.batch_number,
+                          price: defaultBatch.selling_price,
+                          discount: supplierDiscount
+                        }));
+                      } else {
+                        setSelectedBatch("");
+                        setSelectedBatchDetails(null);
+                      }
+
+                    } catch (err) {
+                      console.error("Failed to fetch batches:", err);
+                      setBatches([]);
+                      setSelectedBatch("");
+                      setSelectedBatchDetails(null);
+                    }
+                    
+                    setIsProductDropdownOpen(false);
+                    setProductSearchTerm("");
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    borderLeft: '3px solid transparent',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.backgroundColor = '#f8f9fa';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                  title={`${p.goods_name} - Qty: ${availableQty}`}
+                >
+                  <div style={{ fontWeight: 400, fontSize: '13px' }}>{p.goods_name}</div>
+                  <div style={{ fontSize: '12px', color: '#6c757d' }}>
+                    Qty: {availableQty}
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '8px 16px',
+          borderTop: '1px solid #dee2e6',
+          position: 'sticky',
+          bottom: 0,
+          backgroundColor: '#fff'
+        }}>
+          <button
+            className="btn btn-sm btn-outline-secondary w-100"
+            onClick={() => {
+              setIsProductDropdownOpen(false);
+              setProductSearchTerm("");
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+
+  {/* Batch Dropdown */}
+  {batches.length > 0 && itemForm.maintain_batch !== 0 && (
+    <Form.Select
+      className="mt-2 border-primary"
+      name="batch"
+      value={selectedBatch}
+      onChange={(e) => {
+        const batchNumber = e.target.value;
+        setSelectedBatch(batchNumber);
+        const batch = batches.find(b => b.batch_number === batchNumber);
+        setSelectedBatchDetails(batch || null);
+        
+        // Get supplier discount again to preserve it
+        const supplierAccount = accounts.find(acc => acc.id === selectedSupplierId);
+        const supplierDiscount = parseFloat(supplierAccount?.discount) || 0;
+
+        if (batch) {
+          setItemForm(prev => ({
+            ...prev,
+            batch: batchNumber,
+            batch_id: batch.batch_number,
+            price: batch.selling_price,
+            discount: supplierDiscount
+          }));
+        } else {
+          setItemForm(prev => ({
+            ...prev,
+            batch: "",
+            batch_id: ""
+          }));
+        }
+      }}
+    >
+      <option value="">Select Batch</option>
+      {batches.map((batch) => (
+        <option key={batch.id} value={batch.batch_number}>
+          {batch.batch_number} (Qty: {batch.quantity})
+        </option>
+      ))}
+    </Form.Select>
+  )}
+</Col>
 
                   <Col md={1}>
                     <Form.Label className="fw-bold">Qty</Form.Label>

@@ -104,7 +104,7 @@ function AddStaff() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
   const { id } = useParams();
-
+const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState("");
@@ -135,7 +135,8 @@ function AddStaff() {
     bloodGroup: "",
     emergencyContact: "",
     status: "Active",
-      password: "" // Add this line
+      password: "" ,
+     invoiceEnabled: 0
   });
 
   const tabs = [
@@ -179,13 +180,19 @@ const fetchStaffData = async () => {
       mobileNumber: data.mobile_number || data.mobileNumber || "",
       alternateNumber: data.alternate_number || data.alternateNumber || "",
       email: data.email || "",
-      dateOfBirth: data.date_of_birth || data.dateOfBirth || "",
-      gender: data.gender || "",
+dateOfBirth: data.date_of_birth 
+  ? data.date_of_birth.split("T")[0] 
+  : (data.dateOfBirth || ""),
+
+joiningDate: data.joining_date 
+  ? data.joining_date.split("T")[0] 
+  : (data.joiningDate || ""),
+        gender: data.gender || "",
       address: data.address || "",
       role: data.role || "staff",
       designation: data.designation || "",
       department: data.department || "",
-      joiningDate: data.joining_date || data.joiningDate || "",
+   
       incentivePercent: data.incentive_percent || data.incentivePercent || "",
       salary: data.salary || "",
       bankAccountNumber: data.bank_account_number || data.bankAccountNumber || "",
@@ -198,7 +205,8 @@ const fetchStaffData = async () => {
       bloodGroup: data.blood_group || data.bloodGroup || "",
       emergencyContact: data.emergency_contact || data.emergencyContact || "",
       status: data.status || "Active",
-        password: data.password || "" // Add this line
+        password: data.password || "" ,
+        invoiceEnabled: data.is_dual_account === 1 ? 1 : 0,
     });
   } catch (err) {
     console.error('Error fetching staff data:', err);
@@ -441,7 +449,8 @@ const handleSubmit = async (e) => {
       panNumber: formData.panNumber || null,
       bloodGroup: formData.bloodGroup || null,
       emergencyContact: formData.emergencyContact || null,
-      status: formData.status
+      status: formData.status,
+      invoiceEnabled: formData.invoiceEnabled 
     };
 
     // For edit mode, ensure email is not empty since backend requires it
@@ -496,85 +505,171 @@ const handleSubmit = async (e) => {
                 onTabClick={handleTabClick} 
               />
               
-              <FormSection
-                id="basic"
-                activeTab={activeTab}
-                title="Basic Details"
-                onBack={null}
-                onNext={handleNext}
-                nextLabel="Job Details"
-                onCancel={handleCancel}
-              >
-                <div className="form-grid">
-                  <Input 
-                    label="Full Name" 
-                    name="fullName" 
-                    value={formData.fullName} 
-                    onChange={handleInputChange} 
-                    required 
-                  />
-                  <Input 
-                    label="Mobile Number" 
-                    name="mobileNumber" 
-                    value={formData.mobileNumber} 
-                    onChange={handleInputChange} 
-                    disabled={isEditMode}
-                    required
-                  />
-                  <Input 
-                    label="Alternate Number" 
-                    name="alternateNumber" 
-                    value={formData.alternateNumber} 
-                    onChange={handleInputChange} 
-                  />
-                  <Input 
-                    label="Email" 
-                    name="email" 
-                    type="email"
-                    value={formData.email} 
-                    onChange={handleInputChange} 
-                    required 
-                  />
-
-
-
-                  
-                  <Input 
-                    type="date" 
-                    label="Date of Birth" 
-                    name="dateOfBirth" 
-                    value={formData.dateOfBirth} 
-                    onChange={handleInputChange} 
-                  />
-
-                  <Select 
-                    label="Gender" 
-                    name="gender" 
-                    value={formData.gender} 
-                    onChange={handleInputChange} 
-                    options={["Male", "Female", "Other"]} 
-                  />
- <div className="two-fields-row">
-    <FullInput 
-      label="Address" 
-      name="address" 
-      value={formData.address} 
-      onChange={handleInputChange} 
-    />
-
-    <FullInput 
-      label="Password"
+          <FormSection
+  id="basic"
+  activeTab={activeTab}
+  title="Basic Details"
+  onBack={null}
+  onNext={handleNext}
+  nextLabel="Job Details"
+  onCancel={handleCancel}
+>
+  <div className="form-grid">
+    {/* Row 1: Full Name and Mobile Number */}
+    <div className="form-field">
+      <label className="staff-form-label">Full Name *</label>
+      <input 
+        type="text"
+        name="fullName" 
+        className="staff-form-input"
+        value={formData.fullName} 
+        onChange={handleInputChange} 
+        required 
+      />
+    </div>
+    <div className="form-field">
+      <label className="staff-form-label">Mobile Number *</label>
+      <input 
+        type="text"
+        name="mobileNumber" 
+        className="staff-form-input"
+        value={formData.mobileNumber} 
+        onChange={handleInputChange} 
+        disabled={isEditMode}
+        required 
+      />
+    </div>
+    
+    {/* Row 2: Alternate Number and Email */}
+    <div className="form-field">
+      <label className="staff-form-label">Alternate Number</label>
+      <input 
+        type="text"
+        name="alternateNumber" 
+        className="staff-form-input"
+        value={formData.alternateNumber} 
+        onChange={handleInputChange} 
+      />
+    </div>
+    <div className="form-field">
+      <label className="staff-form-label">Email *</label>
+      <input 
+        type="email"
+        name="email" 
+        className="staff-form-input"
+        value={formData.email} 
+        onChange={handleInputChange} 
+        required 
+      />
+    </div>
+    
+    {/* Row 3: Date of Birth and Gender */}
+    <div className="form-field">
+      <label className="staff-form-label">Date of Birth</label>
+      <input 
+        type="date"
+        name="dateOfBirth" 
+        className="staff-form-input"
+        value={formData.dateOfBirth} 
+        onChange={handleInputChange} 
+      />
+    </div>
+    <div className="form-field">
+      <label className="staff-form-label">Gender</label>
+      <select 
+        name="gender" 
+        className="staff-form-input"
+        value={formData.gender} 
+        onChange={handleInputChange}
+      >
+        <option value="">Select</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    
+    {/* Row 4: Address and Password - SIDE BY SIDE */}
+    <div className="form-field address-field">
+      <label className="staff-form-label">Address</label>
+     <textarea 
+  name="address"
+  value={formData.address} 
+  onChange={handleInputChange}
+  rows={3}
+  placeholder="Enter full address"
+  style={{
+    width: "100%",
+    padding: "10px",
+    border: "1px solid #ccc",
+    borderRadius: "6px",
+    outline: "none",
+    boxSizing: "border-box",   
+    resize: "vertical"
+  }}
+/>
+    </div>
+    <div className="form-field password-field">
+  <label className="staff-form-label">Password</label>
+  <div style={{ position: 'relative', display: 'flex', gap: '8px' }}>
+    <input 
+      type={showPassword ? "text" : "password"}
       name="password"
-      type="password"
+      className="staff-form-input"
       value={formData.password}
-      readOnly
-      disabled
+      readOnly={isEditMode}
+      placeholder={isEditMode ? "Password cannot be edited" : "Auto-generated"}
+      style={{ flex: 1 }}
+      disabled={isEditMode}
     />
+    {formData.password && (
+      <button
+        type="button"
+        onClick={() => setShowPassword(!showPassword)}
+        style={{
+          padding: "0 12px",
+          background: "#f0f0f0",
+          border: "1px solid #ccc",
+          borderRadius: "4px",
+          cursor: "pointer"
+        }}
+      >
+        {showPassword ? "Hide" : "Show"}
+      </button>
+    )}
   </div>
+ 
+</div>
+    
+    {/* Row 5: Enable Invoice Checkbox - Full Width */}
+ <div style={{ width: "100%", marginTop: "10px" }}>
+  <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+    
+    <input
+      type="checkbox"
+      name="invoiceEnabled"
+      checked={formData.invoiceEnabled === 1}
+      onChange={(e) =>
+        setFormData((prev) => ({
+          ...prev,
+          invoiceEnabled: e.target.checked ? 1 : 0
+        }))
+      }
+      style={{
+        width: "20px",
+        height: "19px",
+        cursor: "pointer"
+      }}
+    />
 
-                  
-                </div>
-              </FormSection>
+    <span style={{ fontSize: "14px" }}>
+      Enable Invoice
+    </span>
+
+  </label>
+</div>
+  </div>
+</FormSection>
 
 
 

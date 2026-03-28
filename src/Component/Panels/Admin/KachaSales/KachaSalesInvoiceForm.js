@@ -25,6 +25,10 @@ const KachaSalesInvoiceForm = ({ user }) => {
   const [editingVoucherId, setEditingVoucherId] = useState(null);
   const [selectedStaffId, setSelectedStaffId] = useState("");
   const [staffMembers, setStaffMembers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+const [productSearchTerm, setProductSearchTerm] = useState("");
+const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const navigate = useNavigate();
   const { id } = useParams();
 const [productStock, setProductStock] = useState({});
@@ -1048,266 +1052,251 @@ useEffect(() => {
               </Row>
 
               {/* Retailer Info Section */}
-              <div className="bg-white rounded border">
-                <Row className="mb-0">
-                  <Col md={4} className="border-end p-3">
-                    {!selected ? (
-                      <>
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <strong className="text-primary">Retailer Info</strong>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => navigate("/retailers/add")}
-                          >
-                            New
-                          </Button>
-                        </div>
-<Form.Select
-  className="mb-2 border-primary"
-  value={inputName}
-  onChange={(e) => {
-    const selectedName = e.target.value;
-    setInputName(selectedName);
-    const supplier = accounts.find(acc => acc.business_name === selectedName);
-    if (supplier) {
-      setSelectedSupplierId(supplier.id);
-      setSelected(true);
-      
-      // Auto-select staff if retailer has assigned staff
-      if (supplier.staffid) {
-        setSelectedStaffId(supplier.staffid);
-      }
-
-      // Get retailer discount
-      const retailerDiscount = parseFloat(supplier.discount) || 0;
-      
-      setInvoiceData(prev => ({
-        ...prev,
-        supplierInfo: {
-          name: supplier.gstin ? supplier.display_name : supplier.name,
-          businessName: supplier.business_name, 
-          business_name: supplier.business_name, 
-          account_name: supplier.account_name,   
-          state: supplier.billing_state,
-          staffid: supplier.staffid,
-          gstin: supplier.gstin || '', 
-          accountId: supplier.id,
-          assigned_staff: supplier.assigned_staff,
-          staff_incentive: supplier.staff_incentive || 0,
-          discount: retailerDiscount // Store discount in supplierInfo
-        },
-        billingAddress: {
-          addressLine1: supplier.billing_address_line1,
-          addressLine2: supplier.billing_address_line2 || "",
-          city: supplier.billing_city,
-          pincode: supplier.billing_pin_code,
-          state: supplier.billing_state
-        },
-        shippingAddress: {
-          addressLine1: supplier.shipping_address_line1,
-          addressLine2: supplier.shipping_address_line2 || "",
-          city: supplier.shipping_city,
-          pincode: supplier.shipping_pin_code,
-          state: supplier.shipping_state
-        }
-      }));
-
-      // Set the discount in itemForm
-      setItemForm(prev => ({
-        ...prev,
-        discount: retailerDiscount
-      }));
-    }
-  }}
->
-  <option value="">Select Retailer</option>
-  {accounts
-    .filter(acc => acc.role === "retailer")
-    .map(acc => (
-      <option key={acc.id} value={acc.business_name}>
-        {acc.gstin?.trim()
-          ? acc.display_name || acc.name
-          : acc.name || acc.display_name}
-      </option>
-    ))}
-</Form.Select>
-                        
-                     
-                      </>
-) : (
-  <>
-    <div className="d-flex justify-content-between align-items-center mb-2">
-      <strong className="text-primary">Retailer Info</strong>
-
-      {/* ✅ Split Button */}
-      <div className="btn-group position-relative">
-
-        {/* Left: Edit navigates to edit page */}
-        <Button
-          variant="info"
-          size="sm"
-          onClick={() => {
-            if (selectedSupplierId) {
-              navigate(`/retailers/edit/${selectedSupplierId}`);
-            }
-          }}
-        >
-          <FaEdit /> Edit
-        </Button>
-
-        {/* Right: Dropdown toggle */}
-        <Button
-          variant="info"
-          size="sm"
-          className="border-start border-white"
-          onClick={(e) => {
-            e.stopPropagation();
-            const menu = e.currentTarget.nextElementSibling;
-            const isOpen = menu.style.display === 'block';
-            document.querySelectorAll('.ki-dropdown-menu').forEach(m => m.style.display = 'none');
-            menu.style.display = isOpen ? 'none' : 'block';
-          }}
-        >
-          ▼
-        </Button>
-
-        {/* Dropdown Menu */}
-        <div
-          className="ki-dropdown-menu"
-          style={{
-            display: 'none',
-            position: 'absolute',
-            right: 0,
-            top: '100%',
-            zIndex: 9999,
-            backgroundColor: '#fff',
-            border: '1px solid #dee2e6',
-            borderRadius: '6px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            minWidth: '280px',
-            padding: '8px 0'
-          }}
-        >
-          {/* Header */}
-          <div style={{ padding: '8px 16px', borderBottom: '1px solid #dee2e6', color: '#0d6efd', fontWeight: 600 }}>
-            Select Retailer
-          </div>
-
-          {/* Scrollable retailer list */}
-          <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
-            {accounts
-              .filter(acc => acc.role === "retailer")
-              .map(acc => {
-                const isCurrentlySelected = acc.id === selectedSupplierId;
-                return (
-                  <div
-                    key={acc.id}
-                    onClick={() => {
-                      setInputName(acc.business_name);
-                      setSelectedSupplierId(acc.id);
-                      setSelected(true);
-
-                      if (acc.staffid) setSelectedStaffId(acc.staffid);
-
-                      const retailerDiscount = parseFloat(acc.discount) || 0;
-
-                      setInvoiceData(prev => ({
-                        ...prev,
-                        supplierInfo: {
-                          name: acc.gstin ? acc.display_name : acc.name,
-                          businessName: acc.business_name,
-                          business_name: acc.business_name,
-                          account_name: acc.account_name,
-                          state: acc.billing_state,
-                          staffid: acc.staffid,
-                          gstin: acc.gstin || '',
-                          accountId: acc.id,
-                          assigned_staff: acc.assigned_staff,
-                          staff_incentive: acc.staff_incentive || 0,
-                          discount: retailerDiscount
-                        },
-                        billingAddress: {
-                          addressLine1: acc.billing_address_line1,
-                          addressLine2: acc.billing_address_line2 || "",
-                          city: acc.billing_city,
-                          pincode: acc.billing_pin_code,
-                          state: acc.billing_state
-                        },
-                        shippingAddress: {
-                          addressLine1: acc.shipping_address_line1,
-                          addressLine2: acc.shipping_address_line2 || "",
-                          city: acc.shipping_city,
-                          pincode: acc.shipping_pin_code,
-                          state: acc.shipping_state
-                        }
-                      }));
-
-                      setItemForm(prev => ({ ...prev, discount: retailerDiscount }));
-
-                      document.querySelectorAll('.ki-dropdown-menu').forEach(m => m.style.display = 'none');
-                    }}
-                    style={{
-                      padding: '8px 16px',
-                      cursor: 'pointer',
-                      backgroundColor: isCurrentlySelected ? '#e8f4fd' : 'transparent',
-                      borderLeft: isCurrentlySelected ? '3px solid #0d6efd' : '3px solid transparent',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={e => { if (!isCurrentlySelected) e.currentTarget.style.backgroundColor = '#f8f9fa'; }}
-                    onMouseLeave={e => { if (!isCurrentlySelected) e.currentTarget.style.backgroundColor = 'transparent'; }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: isCurrentlySelected ? 600 : 400, fontSize: '13px' }}>
-                        {acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name}
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#6c757d' }}>
-                        {acc.business_name}
-                      </div>
-                    </div>
-                    {isCurrentlySelected && (
-                      <span style={{ color: '#0d6efd', fontSize: '16px' }}>✓</span>
-                    )}
-                  </div>
-                );
-              })}
-          </div>
-
-          {/* Footer */}
-          <div style={{ padding: '8px 16px', borderTop: '1px solid #dee2e6' }}>
-            <button
-              className="btn btn-sm btn-outline-secondary w-100"
-              onClick={() => {
-                document.querySelectorAll('.ki-dropdown-menu').forEach(m => m.style.display = 'none');
-              }}
+           {/* Retailer Info Section */}
+<div className="bg-white rounded border">
+  <Row className="mb-0">
+    <Col md={4} className="border-end p-3">
+      {!selected ? (
+        <>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <strong className="text-primary">Retailer Info</strong>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => navigate("/retailers/add")}
             >
-              Close
-            </button>
+              New
+            </Button>
           </div>
-        </div>
-      </div>
-    </div>
+          
+          {/* Searchable Dropdown */}
+          <div className="position-relative">
+            <div className="mb-2">
+              <input
+                type="text"
+                className="form-control border-primary"
+                placeholder="Search retailer..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onClick={() => setIsDropdownOpen(true)}
+              />
+            </div>
+            
+            {isDropdownOpen && (
+              <div
+                className="position-absolute w-100"
+                style={{
+                  top: '100%',
+                  left: 0,
+                  zIndex: 9999,
+                  backgroundColor: '#fff',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  maxHeight: '300px',
+                  overflowY: 'auto'
+                }}
+              >
+                {/* Header */}
+                <div style={{ 
+                  padding: '8px 16px', 
+                  borderBottom: '1px solid #dee2e6', 
+                  color: '#0d6efd', 
+                  fontWeight: 600,
+                  position: 'sticky',
+                  top: 0,
+                  backgroundColor: '#fff',
+                  zIndex: 1
+                }}>
+                  Select Retailer
+                </div>
 
-    {/* Customer info display — unchanged */}
-    <div className="bg-light p-2 rounded">
-      <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
-      <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
-      <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin || "Not Available"}</div>
-      <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
-      {selectedStaffId && (
-        <div><strong>Assigned Staff:</strong> {
-          staffMembers.find(s => s.staffid == selectedStaffId)?.name ||
-          staffMembers.find(s => s.staffid == selectedStaffId)?.assigned_staff ||
-          invoiceData.supplierInfo.assigned_staff ||
-          "Not Assigned"
-        }</div>
+                {/* Scrollable retailer list */}
+                <div>
+                  {accounts
+                    .filter(acc => {
+                      const searchLower = searchTerm.toLowerCase();
+                      const name = (acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name)?.toLowerCase() || "";
+                      const businessName = acc.business_name?.toLowerCase() || "";
+                      const displayName = acc.display_name?.toLowerCase() || "";
+                      
+                      return (acc.role === "retailer" ||
+                        (acc.role === "supplier" && acc.is_dual_account == 1) ||
+                        (acc.role === "staff" && acc.is_dual_account == 1) ||
+                        acc.group?.trim().toLowerCase() === "sundry debtors") &&
+                        (name.includes(searchLower) || 
+                         businessName.includes(searchLower) || 
+                         displayName.includes(searchLower));
+                    })
+                    .map(acc => (
+                      <div
+                        key={acc.id}
+                        onClick={() => {
+                          const selectedId = acc.id;
+                          
+                          if (selectedId === "") {
+                            setInputName("");
+                            setSelected(false);
+                            setSelectedSupplierId(null);
+                            setSelectedStaffId("");
+                            setItemForm(prev => ({ ...prev, discount: 0 }));
+                            setIsDropdownOpen(false);
+                            setSearchTerm("");
+                            return;
+                          }
+                          
+                          const supplier = accounts.find(acc => acc.id == selectedId);
+                          
+                          if (supplier) {
+                            setSelectedSupplierId(supplier.id);
+                            setInputName(supplier.business_name);
+                            setSelected(true);
+                            
+                            const staffId = supplier.staffid || null;
+                            setSelectedStaffId(staffId);
+                            
+                            const retailerDiscount = parseFloat(supplier.discount) || 0;
+                            
+                            setInvoiceData(prev => ({
+                              ...prev,
+                              supplierInfo: {
+                                name: supplier.gstin ? supplier.display_name : supplier.name,
+                                state: supplier.billing_state,
+                                gstin: supplier.gstin || '',
+                                accountId: supplier.id,
+                                staffid: staffId,
+                                business_name: supplier.business_name,
+                                account_name: supplier.account_name,
+                                assigned_staff: supplier.assigned_staff || null,
+                                discount: retailerDiscount,
+                                staff_incentive: supplier.staff_incentive || 0
+                              },
+                              billingAddress: {
+                                addressLine1: supplier.billing_address_line1,
+                                addressLine2: supplier.billing_address_line2 || "",
+                                city: supplier.billing_city,
+                                pincode: supplier.billing_pin_code,
+                                state: supplier.billing_state
+                              },
+                              shippingAddress: {
+                                addressLine1: supplier.shipping_address_line1 || supplier.billing_address_line1,
+                                addressLine2: supplier.shipping_address_line2 || supplier.billing_address_line2 || "",
+                                city: supplier.shipping_city || supplier.billing_city,
+                                pincode: supplier.shipping_pin_code || supplier.billing_pin_code,
+                                state: supplier.shipping_state || supplier.billing_state
+                              }
+                            }));
+                            
+                            setItemForm(prev => ({
+                              ...prev,
+                              discount: retailerDiscount
+                            }));
+                          }
+                          
+                          setIsDropdownOpen(false);
+                          setSearchTerm("");
+                        }}
+                        style={{
+                          padding: '8px 16px',
+                          cursor: 'pointer',
+                          borderLeft: '3px solid transparent',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.backgroundColor = '#f8f9fa';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 400, fontSize: '13px' }}>
+                            {acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#6c757d' }}>
+                            {acc.business_name}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+
+                {/* Footer: close button */}
+                <div style={{ 
+                  padding: '8px 16px', 
+                  borderTop: '1px solid #dee2e6',
+                  position: 'sticky',
+                  bottom: 0,
+                  backgroundColor: '#fff'
+                }}>
+                  <button
+                    className="btn btn-sm btn-outline-secondary w-100"
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      setSearchTerm("");
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <strong className="text-primary">Retailer Info</strong>
+            
+            {/* Edit + Change Retailer Buttons */}
+            <div className="btn-group">
+              <Button
+                variant="info"
+                size="sm"
+                onClick={() => {
+                  if (selectedSupplierId) {
+                    navigate(`/retailers/edit/${selectedSupplierId}`);
+                  }
+                }}
+              >
+                <FaEdit /> Edit
+              </Button>
+
+              <Button
+                variant="warning"
+                size="sm"
+                onClick={() => {
+                  setSelected(false);
+                  setSelectedSupplierId(null);
+                  setSelectedStaffId("");
+                  setInputName("");
+                  setSearchTerm("");
+                  setIsDropdownOpen(true);
+                }}
+              >
+                Change Retailer
+              </Button>
+            </div>
+          </div>
+
+          {/* Customer Info Display */}
+          <div className="bg-light p-2 rounded">
+            <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
+            <div><strong>Business:</strong> {invoiceData.supplierInfo.business_name}</div>
+            <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin || "Not Available"}</div>
+            <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
+            {selectedStaffId && (
+              <div><strong>Assigned Staff:</strong> {
+                staffMembers.find(s => s.staffid == selectedStaffId)?.name ||
+                staffMembers.find(s => s.staffid == selectedStaffId)?.assigned_staff ||
+                invoiceData.supplierInfo.assigned_staff ||
+                "Not Assigned"
+              }</div>
+            )}
+          </div>
+        </>
       )}
-    </div>
-  </>
-)}
-                  </Col>
+    </Col>
 
                   <Col md={4} className="border-end p-3">
                     <strong className="text-primary">Billing Address</strong>
@@ -1337,158 +1326,283 @@ useEffect(() => {
                   {editingItemIndex !== null ? `Edit Item (${editingItemIndex + 1})` : 'Add Items'}
                 </h6>
                 <Row className="align-items-end">
-                  <Col md={3}>
-                    <div className="d-flex justify-content-between align-items-center mb-1">
-                      <Form.Label className="mb-0 fw-bold">Item</Form.Label>
-                      <button
-                        type="button"
-                        className="btn btn-link p-0 text-primary"
-                        style={{ textDecoration: "none", fontSize: "14px" }}
-                        onClick={() => navigate("/salesitemspage")}
-                      >
-                        + New Item
-                      </button>
-                    </div>
-<Form.Select
-  name="product"
-  value={itemForm.product}
-  title={(() => {
-    const selectedProduct = products.find(
-      (p) => p.goods_name === itemForm.product && p.product_type === "KACHA"
-    );
-    if (!selectedProduct) return "Select a product";
-    const availableQty = productStock[selectedProduct.id] || 0;
-    return `${selectedProduct.goods_name} - Qty: ${availableQty}`;
-  })()}
-  onChange={async (e) => {
-    const selectedName = e.target.value;
+              <Col md={3}>
+  <div className="d-flex justify-content-between align-items-center mb-1">
+    <Form.Label className="mb-0 fw-bold">Item</Form.Label>
+    <button
+      type="button"
+      className="btn btn-link p-0 text-primary"
+      style={{ textDecoration: "none", fontSize: "14px" }}
+      onClick={() => navigate("/salesitemspage")}
+    >
+      + New Item
+    </button>
+  </div>
 
-    const selectedProduct = products.find(
-      (p) => p.goods_name === selectedName && p.product_type === "KACHA"
-    );
-
-    if (selectedProduct) {
-      const retailerDiscount = parseFloat(invoiceData.supplierInfo?.discount || 0);
-
-      setItemForm((prev) => ({
-        ...prev,
-        product: selectedProduct.goods_name,
-        product_id: selectedProduct.id,
-        price: selectedProduct.net_price,
-        description: selectedProduct.description || "",
-        discount: retailerDiscount,
-        batch: "",
-        batch_id: "",
-         hsn_code: selectedProduct.hsn_code || ""  
-      }));
-
-      try {
-        const res = await fetch(`${baseurl}/products/${selectedProduct.id}/batches`);
-        const batchData = await res.json();
-        setBatches(batchData);
-
-        if (selectedProduct.maintain_batch === 0 && batchData.length > 0) {
-          const defaultBatch = batchData[0];
-          setSelectedBatch(defaultBatch.batch_number);
-          setSelectedBatchDetails(defaultBatch);
+  {/* Searchable Product Dropdown */}
+  <div className="position-relative">
+    <input
+      type="text"
+      className="form-control border-primary"
+      placeholder="Search product..."
+      value={
+        itemForm.product
+          ? itemForm.product
+          : productSearchTerm
+      }
+      onChange={(e) => {
+        setProductSearchTerm(e.target.value);
+        setIsProductDropdownOpen(true);
+        if (!e.target.value) {
           setItemForm(prev => ({
             ...prev,
-            batch: defaultBatch.batch_number,
-            batch_id: defaultBatch.batch_number,
-            price: defaultBatch.selling_price,
-            discount: retailerDiscount
+            product: "",
+            product_id: "",
+            description: "",
+            price: 0,
+            discount: prev.discount || 0,
+            batch: "",
+            batch_id: "",
+            hsn_code: ""
           }));
-        } else {
+          setBatches([]);
           setSelectedBatch("");
           setSelectedBatchDetails(null);
         }
-
-      } catch (err) {
-        console.error("Failed to fetch batches:", err);
-        setBatches([]);
-        setSelectedBatch("");
-        setSelectedBatchDetails(null);
+      }}
+      onClick={() => {
+        setIsProductDropdownOpen(true);
+        setProductSearchTerm("");
+      }}
+      readOnly={!!itemForm.product}
+      style={{ cursor: itemForm.product ? "pointer" : "text" }}
+      title={
+        itemForm.product_id ? (() => {
+          const selectedProduct = products.find(p => p.id === itemForm.product_id);
+          const availableQty = productStock[itemForm.product_id] || 0;
+          if (selectedProduct) {
+            return `${selectedProduct.goods_name} - Qty: ${availableQty}`;
+          }
+          return "";
+        })() : "Select a product"
       }
-    } else {
-      setItemForm(prev => ({
-        ...prev,
-        product: "",
-        product_id: "",
-        description: "",
-        price: 0,
-        batch: "",
-        batch_id: ""
-      }));
-      setBatches([]);
-      setSelectedBatch("");
-      setSelectedBatchDetails(null);
-    }
-  }}
-  className="border-primary"
->
-  <option value="">Select Product</option>
-  {products
-    .filter(
-      (p) =>
-        (p.group_by === "Salescatalog" ||
-          p.can_be_sold === 1 ||
-          p.can_be_sold === true) &&
-        p.product_type === "KACHA"
-    )
-    .map((p) => {
-      const availableQty = productStock[p.id] || 0;
-      return (
-        <option
-          key={p.id}
-          value={p.goods_name}
-          title={`${p.goods_name} - Qty: ${availableQty}`}
-        >
-          {p.goods_name} (Qty: {availableQty})
+    />
+
+    {/* Clear/Change button when product is selected */}
+    {itemForm.product && (
+      <button
+        type="button"
+        style={{
+          position: "absolute",
+          right: "8px",
+          top: "50%",
+          transform: "translateY(-50%)",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          color: "#6c757d",
+          fontSize: "16px",
+          lineHeight: 1,
+          padding: "0"
+        }}
+        onClick={() => {
+          setProductSearchTerm("");
+          setItemForm(prev => ({
+            ...prev,
+            product: "",
+            product_id: "",
+            description: "",
+            price: 0,
+            batch: "",
+            batch_id: "",
+            hsn_code: ""
+          }));
+          setBatches([]);
+          setSelectedBatch("");
+          setSelectedBatchDetails(null);
+          setIsProductDropdownOpen(true);
+        }}
+      >
+        ✕
+      </button>
+    )}
+
+    {/* Product Dropdown */}
+    {isProductDropdownOpen && !itemForm.product && (
+      <div
+        className="position-absolute w-100"
+        style={{
+          top: '100%',
+          left: 0,
+          zIndex: 9999,
+          backgroundColor: '#fff',
+          border: '1px solid #dee2e6',
+          borderRadius: '6px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          maxHeight: '300px',
+          overflowY: 'auto',
+          minWidth: '100%'
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '8px 16px',
+          borderBottom: '1px solid #dee2e6',
+          color: '#0d6efd',
+          fontWeight: 600,
+          position: 'sticky',
+          top: 0,
+          backgroundColor: '#fff',
+          zIndex: 1
+        }}>
+          Select Product
+        </div>
+
+        {/* Product List */}
+        <div>
+          {products
+            .filter(p =>
+              (p.group_by === "Salescatalog" || p.can_be_sold === 1 || p.can_be_sold === true) &&
+              p.product_type === "KACHA" &&
+              p.goods_name.toLowerCase().includes(productSearchTerm.toLowerCase())
+            )
+            .map(p => {
+              const availableQty = productStock[p.id] || 0;
+              const isSelected = itemForm.product_id === p.id;
+              const retailerDiscount = parseFloat(invoiceData.supplierInfo?.discount || 0);
+              
+              return (
+                <div
+                  key={p.id}
+                  onClick={async () => {
+                    setItemForm(prev => ({
+                      ...prev,
+                      product: p.goods_name,
+                      product_id: p.id,
+                      price: p.net_price || 0,
+                      description: p.description || "",
+                      discount: retailerDiscount,
+                      quantity: prev.quantity || 0,
+                      batch: "",
+                      batch_id: "",
+                      hsn_code: p.hsn_code || ""
+                    }));
+
+                    try {
+                      const res = await fetch(`${baseurl}/products/${p.id}/batches`);
+                      const batchData = await res.json();
+                      setBatches(batchData);
+
+                      if (p.maintain_batch === 0 && batchData.length > 0) {
+                        const defaultBatch = batchData[0];
+                        setSelectedBatch(defaultBatch.batch_number);
+                        setSelectedBatchDetails(defaultBatch);
+                        setItemForm(prev => ({
+                          ...prev,
+                          batch: defaultBatch.batch_number,
+                          batch_id: defaultBatch.batch_number,
+                          price: defaultBatch.selling_price,
+                          discount: retailerDiscount
+                        }));
+                      } else {
+                        setSelectedBatch("");
+                        setSelectedBatchDetails(null);
+                      }
+                    } catch (err) {
+                      console.error("Failed to fetch batches:", err);
+                      setBatches([]);
+                      setSelectedBatch("");
+                      setSelectedBatchDetails(null);
+                    }
+
+                    setIsProductDropdownOpen(false);
+                    setProductSearchTerm("");
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    borderLeft: '3px solid transparent',
+                    transition: 'background-color 0.2s',
+                    backgroundColor: isSelected ? '#e3f2fd' : 'transparent',
+                    position: 'relative'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.backgroundColor = isSelected ? '#bbdef5' : '#f8f9fa';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.backgroundColor = isSelected ? '#e3f2fd' : 'transparent';
+                  }}
+                  title={`${p.goods_name} - Qty: ${availableQty}`}
+                >
+                  <div style={{ fontWeight: 400, fontSize: '13px' }}>{p.goods_name}</div>
+                  <div style={{ fontSize: '12px', color: '#6c757d' }}>
+                    Qty: {availableQty}
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '8px 16px',
+          borderTop: '1px solid #dee2e6',
+          position: 'sticky',
+          bottom: 0,
+          backgroundColor: '#fff'
+        }}>
+          <button
+            className="btn btn-sm btn-outline-secondary w-100"
+            onClick={() => {
+              setIsProductDropdownOpen(false);
+              setProductSearchTerm("");
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+
+  {/* Batch Dropdown */}
+  {batches.length > 0 && itemForm.maintain_batch !== 0 && (
+    <Form.Select
+      className="mt-2 border-primary"
+      name="batch"
+      value={selectedBatch}
+      onChange={(e) => {
+        const batchNumber = e.target.value;
+        setSelectedBatch(batchNumber);
+        const batch = batches.find(b => b.batch_number === batchNumber);
+        setSelectedBatchDetails(batch || null);
+        const currentDiscount = itemForm.discount || 0;
+        if (batch) {
+          setItemForm(prev => ({
+            ...prev,
+            batch: batchNumber,
+            batch_id: batch.batch_number,
+            price: batch.selling_price,
+            discount: currentDiscount
+          }));
+        } else {
+          setItemForm(prev => ({
+            ...prev,
+            batch: "",
+            batch_id: ""
+          }));
+        }
+      }}
+    >
+      <option value="">Select Batch</option>
+      {batches.map((batch) => (
+        <option key={batch.id} value={batch.batch_number}>
+          {batch.batch_number} (Qty: {batch.quantity})
         </option>
-      );
-    })}
-</Form.Select>
-
-                  {batches.length > 0 && itemForm.maintain_batch !== 0 && (
-  <Form.Select
-    className="mt-2 border-primary"
-    name="batch"
-    value={selectedBatch}
-    onChange={(e) => {
-      const batchNumber = e.target.value;
-      setSelectedBatch(batchNumber);
-      const batch = batches.find(b => b.batch_number === batchNumber);
-      setSelectedBatchDetails(batch || null);
-
-      // Get the current discount from itemForm
-      const currentDiscount = itemForm.discount || 0;
-
-      if (batch) {
-        setItemForm(prev => ({
-          ...prev,
-          batch: batchNumber,
-          batch_id: batch.batch_number,
-          price: batch.selling_price,
-          discount: currentDiscount // CRITICAL: Preserve discount when selecting batch
-        }));
-      } else {
-        setItemForm(prev => ({
-          ...prev,
-          batch: "",
-          batch_id: ""
-        }));
-      }
-    }}
-  >
-    <option value="">Select Batch</option>
-    {batches.map((batch) => (
-      <option key={batch.id} value={batch.batch_number}>
-        {batch.batch_number} (Qty: {batch.quantity})
-      </option>
-    ))}
-  </Form.Select>
-)}
-                  </Col>
+      ))}
+    </Form.Select>
+  )}
+</Col>
 
                   <Col md={1}>
                     <Form.Label className="fw-bold">Qty</Form.Label>
