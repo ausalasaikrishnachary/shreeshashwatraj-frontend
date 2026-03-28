@@ -663,7 +663,7 @@ const handleSubmit = async (e) => {
     />
 
     <span style={{ fontSize: "14px" }}>
-      Enable Invoice
+      Enable  as retailer
     </span>
 
   </label>
