@@ -660,7 +660,10 @@ const fetchReceipts = async () => {
       const res = await fetch(`${baseurl}/accounts`);
       if (res.ok) {
         const data = await res.json();
-        const supplierAccounts = data.filter(acc => acc.role === "supplier");
+        const supplierAccounts = data.filter(acc => 
+          acc.role === "supplier" || 
+          (acc.role === "retailer" && Number(acc.is_dual_account) === 1)
+        );
         setSuppliers(supplierAccounts);
       } else {
         console.error('Failed to fetch suppliers:', res.statusText);
@@ -1247,16 +1250,13 @@ const handleDownloadRange = async () => {
       required
     >
       <option value="">Select Supplier</option>
-      {suppliers
-        .filter(supp => supp.role === "supplier")
-        .map((supp) => (
-     <option key={supp.id} value={supp.id}>
-  {supp.gstin?.trim()
-    ? supp.display_name || supp.name
-    : supp.name || supp.display_name}
-</option>
-
-        ))}
+    {suppliers.map((supp) => (
+  <option key={supp.id} value={supp.id}>
+    {supp.gstin?.trim()
+      ? (supp.display_name || supp.name)
+      : (supp.name || supp.display_name)}
+  </option>
+))}
     </select>
   </div>
 </div>
@@ -1318,7 +1318,7 @@ const handleDownloadRange = async () => {
                               onChange={handleInputChange}
                               placeholder={invoiceBalance > 0 ? "Auto-filled from balance" : "Enter amount"}
                               min="0"
-                              step="0.01"
+                              step="1"
                               required
                             />
                           </div>

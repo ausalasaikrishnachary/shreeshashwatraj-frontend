@@ -89,7 +89,7 @@ const [createBoth, setCreateBoth] = useState(false);
     billing_gstin: "",
       opening_balance: 0,  
        opening_balance_type: "",
-        is_dual_account : 0, // ✅ NEW FIELD
+        is_dual_account : 0, 
   });
 
   // List of mandatory fields
@@ -102,7 +102,9 @@ const [createBoth, setCreateBoth] = useState(false);
     'shipping_state',
     'shipping_country',
     'billing_state',
-    'billing_country'
+    'billing_country',
+     'opening_balance',      
+  'opening_balance_type'       
   ];
 
   
@@ -361,6 +363,8 @@ const [createBoth, setCreateBoth] = useState(false);
           'name',
           'group',
           'display_name',
+           'opening_balance',         
+  'opening_balance_type',   
           ...conditionalMandatoryFields
         ];
 
@@ -545,7 +549,8 @@ const [createBoth, setCreateBoth] = useState(false);
           'name',
           'group',
           'display_name',
-          
+          'opening_balance',        
+  'opening_balance_type',   
           ...conditionalMandatoryFields
         ];
 

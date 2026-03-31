@@ -139,98 +139,104 @@ const handleStatusToggle = async (item) => {
     });
   };
 
-  // Export to Excel functionality
-  const exportToExcel = () => {
-    if (filteredRetailersData.length === 0) {
-      alert("No data to export!");
-      return;
-    }
+// Export to Excel functionality
+const exportToExcel = () => {
+  if (filteredRetailersData.length === 0) {
+    alert("No data to export!");
+    return;
+  }
 
-    try {
-      // Prepare data for export
-      const exportData = filteredRetailersData.map(item => ({
-        "ID": item.id || "",
-        "Name": item.name || "",
-        "Business Name": item.business_name || "",
-        "Display Name": item.display_name || "",
-        "Email": item.email || "",
-        "Mobile Number": item.mobile_number || "",
-        "Phone Number": item.phone_number || "",
-        "Role": item.role || "",
-        "Group": item.group || "",
-        "Entity Type": item.entity_type || "",
-        "GSTIN": item.gstin || "",
-        "Discount (%)": item.discount || 0,
-        "Target (₹)": item.target || 0,
-        "Credit Limit": item.credit_limit || 0,
-        "Status": item.status || "Active",
-        "Shipping Address": item.shipping_address_line1 || "",
-        "Shipping City": item.shipping_city || "",
-        "Shipping State": item.shipping_state || "",
-        "Shipping Pin Code": item.shipping_pin_code || "",
-        "Shipping Country": item.shipping_country || "",
-        "Billing Address": item.billing_address_line1 || "",
-        "Billing City": item.billing_city || "",
-        "Billing State": item.billing_state || "",
-        "Billing Pin Code": item.billing_pin_code || "",
-        "Billing Country": item.billing_country || "",
-        "Created At": item.created_at || "",
-        "Updated At": item.updated_at || ""
-      }));
+  try {
+    // Prepare data for export
+    const exportData = filteredRetailersData.map(item => ({
+      "ID": item.id || "",
+      "Name": item.name || "",
+      "Business Name": item.business_name || "",
+      "Display Name": item.display_name || "",
+      "Email": item.email || "",
+      "Mobile Number": item.mobile_number || "",
+      "Phone Number": item.phone_number || "",
+      "Role": item.role || "",
+      "Group": item.group || "",
+      "Entity Type": item.entity_type || "",
+      "GSTIN": item.gstin || "",
+      "Discount (%)": item.discount || 0,
+      "Target (₹)": item.target || 0,
+      "Credit Limit": item.credit_limit || 0,
+      "Opening Balance": item.opening_balance || 0,
+      "Opening Balance Type": item.opening_balance_type || "",
+      "Dual Account": item.is_dual_account === 1 ? "Yes" : "No",
+      "Status": Number(item.status) === 1 ? "Active" : "Inactive",
+      "Shipping Address": item.shipping_address_line1 || "",
+      "Shipping City": item.shipping_city || "",
+      "Shipping State": item.shipping_state || "",
+      "Shipping Pin Code": item.shipping_pin_code || "",
+      "Shipping Country": item.shipping_country || "",
+      "Billing Address": item.billing_address_line1 || "",
+      "Billing City": item.billing_city || "",
+      "Billing State": item.billing_state || "",
+      "Billing Pin Code": item.billing_pin_code || "",
+      "Billing Country": item.billing_country || "",
+      "Created At": item.created_at || "",
+      "Updated At": item.updated_at || ""
+    }));
 
-      // Create worksheet
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
 
-      // Set column widths
-      const wscols = [
-        { wch: 10 }, // ID
-        { wch: 20 }, // Name
-        { wch: 25 }, // Business Name
-        { wch: 20 }, // Display Name
-        { wch: 30 }, // Email
-        { wch: 15 }, // Mobile Number
-        { wch: 15 }, // Phone Number
-        { wch: 15 }, // Role
-        { wch: 15 }, // Group
-        { wch: 15 }, // Entity Type
-        { wch: 20 }, // GSTIN
-        { wch: 12 }, // Discount (%)
-        { wch: 15 }, // Target (₹)
-        { wch: 15 }, // Credit Limit
-        { wch: 12 }, // Status
-        { wch: 30 }, // Shipping Address
-        { wch: 15 }, // Shipping City
-        { wch: 15 }, // Shipping State
-        { wch: 15 }, // Shipping Pin Code
-        { wch: 15 }, // Shipping Country
-        { wch: 30 }, // Billing Address
-        { wch: 15 }, // Billing City
-        { wch: 15 }, // Billing State
-        { wch: 15 }, // Billing Pin Code
-        { wch: 15 }, // Billing Country
-        { wch: 20 }, // Created At
-        { wch: 20 }  // Updated At
-      ];
-      worksheet['!cols'] = wscols;
+    // Set column widths - updated with new columns
+    const wscols = [
+      { wch: 10 }, // ID
+      { wch: 20 }, // Name
+      { wch: 25 }, // Business Name
+      { wch: 20 }, // Display Name
+      { wch: 30 }, // Email
+      { wch: 15 }, // Mobile Number
+      { wch: 15 }, // Phone Number
+      { wch: 15 }, // Role
+      { wch: 15 }, // Group
+      { wch: 15 }, // Entity Type
+      { wch: 20 }, // GSTIN
+      { wch: 12 }, // Discount (%)
+      { wch: 15 }, // Target (₹)
+      { wch: 15 }, // Credit Limit
+      { wch: 15 }, // Opening Balance
+      { wch: 18 }, // Opening Balance Type
+      { wch: 12 }, // Dual Account
+      { wch: 12 }, // Status
+      { wch: 30 }, // Shipping Address
+      { wch: 15 }, // Shipping City
+      { wch: 15 }, // Shipping State
+      { wch: 15 }, // Shipping Pin Code
+      { wch: 15 }, // Shipping Country
+      { wch: 30 }, // Billing Address
+      { wch: 15 }, // Billing City
+      { wch: 15 }, // Billing State
+      { wch: 15 }, // Billing Pin Code
+      { wch: 15 }, // Billing Country
+      { wch: 20 }, // Created At
+      { wch: 20 }  // Updated At
+    ];
+    worksheet['!cols'] = wscols;
 
-      // Create workbook
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, `${selectedRole === 'retailer' ? 'Retailers' : 'Suppliers'}`);
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, `${selectedRole === 'retailer' ? 'Retailers' : 'Suppliers'}`);
 
-      // Generate file name with timestamp
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-      const fileName = `${selectedRole === 'retailer' ? 'Retailers' : 'Suppliers'}_${timestamp}.xlsx`;
+    // Generate file name with timestamp
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    const fileName = `${selectedRole === 'retailer' ? 'Retailers' : 'Suppliers'}_${timestamp}.xlsx`;
 
-      // Download file
-      XLSX.writeFile(workbook, fileName);
+    // Download file
+    XLSX.writeFile(workbook, fileName);
 
-      alert(`${selectedRole === 'retailer' ? 'Retailers' : 'Suppliers'} data exported successfully!`);
+    alert(`${selectedRole === 'retailer' ? 'Retailers' : 'Suppliers'} data exported successfully!`);
 
-    } catch (error) {
-      console.error('Error exporting to Excel:', error);
-      alert('Failed to export data. Please try again.');
-    }
-  };
+  } catch (error) {
+    console.error('Error exporting to Excel:', error);
+    alert('Failed to export data. Please try again.');
+  }
+};
 
   // Export filtered data (current view)
   const exportFilteredData = () => {
