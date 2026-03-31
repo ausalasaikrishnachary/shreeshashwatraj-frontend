@@ -34,54 +34,69 @@ const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
 const [productStock, setProductStock] = useState({});
 
   const [invoiceData, setInvoiceData] = useState(() => {
-    const savedData = localStorage.getItem('draftInvoice');
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      return parsedData;
+  const savedData = localStorage.getItem('draftInvoice');
+  if (savedData) {
+    const parsedData = JSON.parse(savedData);
+    return parsedData;
+  }
+  
+  const getFinancialYearShort = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    if (month >= 3) {
+      return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+    } else {
+      return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
     }
-    return {
-      invoiceNumber: "INV001",
-      invoiceDate: new Date().toISOString().split('T')[0],
-      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      companyInfo: {
-  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-  email: "spmathur56@gmail.com",
-  phone: "9801049700",
-  gstin: "10AAOCS1541B1ZZ",
-  state: "Bihar",
-  stateCode: "10"
-},
-      supplierInfo: {
-        name: "",
-      business_name: "", 
-        state: "",
-      },
-      billingAddress: {
-        addressLine1: "",
-        addressLine2: "",
-        city: "",
-        pincode: "",
-        state: ""
-      },
-      shippingAddress: {
-        addressLine1: "",
-        addressLine2: "",
-        city: "",
-        pincode: "",
-        state: ""
-      },
-      items: [],
-      note: "",
-      taxableAmount: 0,
-      grandTotal: 0,
-      transportDetails: "",
-      additionalCharge: "",
-      additionalChargeAmount: 0,
-      otherDetails: "Authorized Signatory",
-      batchDetails: []
-    };
-  });
+  };
+  
+  const currentFY = getFinancialYearShort();
+  
+  return {
+    invoiceNumber: `SSA/000001/${currentFY}`, // Format: SSA/000001/25-26
+    invoiceDate: new Date().toISOString().split('T')[0],
+    validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    companyInfo: {
+      name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+      address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+      email: "spmathur56@gmail.com",
+      phone: "9801049700",
+      gstin: "10AAOCS1541B1ZZ",
+      state: "Bihar",
+      stateCode: "10"
+    },
+    supplierInfo: {
+      name: "",
+      business_name: "",
+      state: "",
+    },
+    billingAddress: {
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      pincode: "",
+      state: ""
+    },
+    shippingAddress: {
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      pincode: "",
+      state: ""
+    },
+    items: [],
+    note: "",
+    taxableAmount: 0,
+    grandTotal: 0,
+    transportDetails: "",
+    additionalCharge: "",
+    additionalChargeAmount: 0,
+    otherDetails: "Authorized Signatory",
+    batchDetails: []
+  };
+});
 
   const [itemForm, setItemForm] = useState({
     TransactionType: "stock transfer",
@@ -270,80 +285,108 @@ const [productStock, setProductStock] = useState({});
     };
   };
 
-  // FIXED: Generate INV format invoice numbers
   const fetchNextInvoiceNumber = async () => {
-    try {
-      console.log('Fetching next INV invoice number...');
+  try {
+    console.log('Fetching next invoice number...');
+    const response = await fetch(`${baseurl}/next-invoice-number`);
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Received next invoice number:', data.nextInvoiceNumber);
+      setNextInvoiceNumber(data.nextInvoiceNumber);
       
-      // First try to get the last invoice number from API
-      const response = await fetch(`${baseurl}/last-invoice`);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Received last invoice data:', data);
-        
-        let nextNumber = "INV001"; // Default starting point
-        
-        if (data.lastInvoiceNumber) {
-          const lastNumber = data.lastInvoiceNumber;
-          console.log('Last invoice number found:', lastNumber);
-          
-          // Extract number from INV format
-          const kacMatch = lastNumber.match(/INV(\d+)/i);
-          if (kacMatch) {
-            const nextNum = parseInt(kacMatch[1]) + 1;
-            nextNumber = `INV${nextNum.toString().padStart(3, '0')}`;
-          } 
-          // Extract number from INV format and convert to INV
-          else if (lastNumber.match(/INV/i)) {
-            const invMatch = lastNumber.match(/INV(\d+)/i);
-            if (invMatch) {
-              const nextNum = parseInt(invMatch[1]) + 1;
-              nextNumber = `INV${nextNum.toString().padStart(3, '0')}`;
-            }
-          }
-          // If no recognizable format, start from INV001
-          else {
-            nextNumber = "INV001";
-          }
-        }
-        
-        console.log('Setting next invoice number to:', nextNumber);
-        setNextInvoiceNumber(nextNumber);
-        
-        setInvoiceData(prev => ({
-          ...prev,
-          invoiceNumber: nextNumber
-        }));
-        
-        setHasFetchedInvoiceNumber(true);
-        
-        // Update localStorage with new invoice number
-        const currentDraft = localStorage.getItem('draftInvoice');
-        if (currentDraft) {
-          const draftData = JSON.parse(currentDraft);
-          draftData.invoiceNumber = nextNumber;
-          localStorage.setItem('draftInvoice', JSON.stringify(draftData));
-        }
-      } else {
-        console.log('API call failed, using default INV001');
-        setNextInvoiceNumber("INV001");
-        setInvoiceData(prev => ({
-          ...prev,
-          invoiceNumber: "INV001"
-        }));
-        setHasFetchedInvoiceNumber(true);
-      }
-    } catch (err) {
-      console.error('Error fetching next invoice number:', err);
-      // Fallback to INV001
-      setNextInvoiceNumber("INV001");
       setInvoiceData(prev => ({
         ...prev,
-        invoiceNumber: "INV001"
+        invoiceNumber: data.nextInvoiceNumber
       }));
+      
       setHasFetchedInvoiceNumber(true);
+      
+      const currentDraft = localStorage.getItem('draftInvoice');
+      if (currentDraft) {
+        const draftData = JSON.parse(currentDraft);
+        draftData.invoiceNumber = data.nextInvoiceNumber;
+        localStorage.setItem('draftInvoice', JSON.stringify(draftData));
+      }
+    } else {
+      console.error('Failed to fetch next invoice number');
+      generateFallbackInvoiceNumber();
     }
-  };
+  } catch (err) {
+    console.error('Error fetching next invoice number:', err);
+    generateFallbackInvoiceNumber();
+  }
+};
+
+const generateFallbackInvoiceNumber = async () => {
+  try {
+    const getFinancialYearShort = () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      
+      if (month >= 3) {
+        return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+      } else {
+        return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+      }
+    };
+    
+    const currentFY = getFinancialYearShort();
+    const prefix = `SSA/`;
+    const suffix = `/${currentFY}`;
+    
+    const response = await fetch(`${baseurl}/last-invoice`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.lastInvoiceNumber) {
+        const lastNumber = data.lastInvoiceNumber;
+        // Extract number from format SSA/XXXXXX/YY-YY
+        const numberMatch = lastNumber.match(/SSA\/(\d+)\/\d{2}-\d{2}/);
+        if (numberMatch) {
+          const nextNum = parseInt(numberMatch[1]) + 1;
+          const fallbackInvoiceNumber = `${prefix}${nextNum.toString().padStart(6, '0')}${suffix}`;
+          setNextInvoiceNumber(fallbackInvoiceNumber);
+          setInvoiceData(prev => ({
+            ...prev,
+            invoiceNumber: fallbackInvoiceNumber
+          }));
+          setHasFetchedInvoiceNumber(true);
+          return;
+        }
+      }
+    }
+    
+    // Default fallback
+    const defaultNumber = `${prefix}000001${suffix}`;
+    setNextInvoiceNumber(defaultNumber);
+    setInvoiceData(prev => ({
+      ...prev,
+      invoiceNumber: defaultNumber
+    }));
+    setHasFetchedInvoiceNumber(true);
+    
+  } catch (err) {
+    console.error('Error in fallback invoice number generation:', err);
+    const getFinancialYearShort = () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      
+      if (month >= 3) {
+        return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+      } else {
+        return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+      }
+    };
+    const defaultNumber = `SSA/000001/${getFinancialYearShort()}`;
+    setNextInvoiceNumber(defaultNumber);
+    setInvoiceData(prev => ({
+      ...prev,
+      invoiceNumber: defaultNumber
+    }));
+    setHasFetchedInvoiceNumber(true);
+  }
+};
 
   // Save to localStorage whenever invoiceData changes
   useEffect(() => {
@@ -737,27 +780,41 @@ const cancelEdit = () => {
     }));
   };
 
-  const clearDraft = () => {
+const clearDraft = () => {
   localStorage.removeItem('draftInvoice');
   
+  const getFinancialYearShort = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    if (month >= 3) {
+      return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+    } else {
+      return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+    }
+  };
+  
+  const currentFY = getFinancialYearShort();
+  
   const resetData = {
-    invoiceNumber: nextInvoiceNumber,
+    invoiceNumber: `SSA/000001/${currentFY}`, // Format: SSA/000001/25-26
     invoiceDate: new Date().toISOString().split('T')[0],
     validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     companyInfo: {
-  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-  email: "spmathur56@gmail.com",
-  phone: "9801049700",
-  gstin: "10AAOCS1541B1ZZ",
-  state: "Bihar",
-  stateCode: "10"
-},
+      name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+      address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+      email: "spmathur56@gmail.com",
+      phone: "9801049700",
+      gstin: "10AAOCS1541B1ZZ",
+      state: "Bihar",
+      stateCode: "10"
+    },
     supplierInfo: {
       name: "",
       business_name: "",
       state: "",
-      discount: 0 // Initialize discount
+      discount: 0
     },
     billingAddress: {
       addressLine1: "",

@@ -4,7 +4,7 @@ import './InvoicePDFPreview.css';
 import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, FaCalendar, FaReceipt, FaRegFileAlt, FaExclamationTriangle, FaCheckCircle, FaTrash } from "react-icons/fa";
 import { useNavigate, useParams } from "react-router-dom";
 import { baseurl } from "../../../BaseURL/BaseURL";
-
+import SalesPdfDocument from '../SalesInvoicePage/SalesPdfDocument';
 const InvoicePDFPreview = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -150,7 +150,7 @@ const InvoicePDFPreview = () => {
   };
 
 const transformPaymentData = (apiData) => {
-  // FIX: Handle both Sales AND Stock Transfer
+  // Handle both Sales AND Stock Transfer
   const salesEntry = apiData.sales || apiData.stocktransfer || {};
   const receiptEntries = apiData.receipts || [];
   const creditNoteEntries = apiData.creditnotes || [];
@@ -160,10 +160,8 @@ const transformPaymentData = (apiData) => {
     stocktransfer: apiData.stocktransfer,
     receipts: receiptEntries,
     creditnotes: creditNoteEntries,
-    allEntries: apiData.allEntries // For debugging
   });
   
-  // FIX: Check if we have valid transaction data
   if (!salesEntry || Object.keys(salesEntry).length === 0) {
     console.warn('No sales or stock transfer data found, creating empty response');
     return {
@@ -173,8 +171,8 @@ const transformPaymentData = (apiData) => {
         totalAmount: 0,
         overdueDays: 0
       },
-      receipts: [],
-      creditnotes: [],
+      receipts: [], // ✅ Always array
+      creditnotes: [], // ✅ Always array
       summary: {
         totalPaid: 0,
         totalCreditNotes: 0,
@@ -186,11 +184,15 @@ const transformPaymentData = (apiData) => {
   
   const totalAmount = parseFloat(salesEntry.TotalAmount) || 0;
   
-  const totalPaid = receiptEntries.reduce((sum, receipt) => {
+  // ✅ Ensure receipts is an array
+  const receipts = Array.isArray(receiptEntries) ? receiptEntries : [];
+  const totalPaid = receipts.reduce((sum, receipt) => {
     return sum + parseFloat(receipt.paid_amount || receipt.TotalAmount || 0);
   }, 0);
   
-  const totalCreditNotes = creditNoteEntries.reduce((sum, creditnote) => {
+  // ✅ Ensure creditnotes is an array
+  const creditnotes = Array.isArray(creditNoteEntries) ? creditNoteEntries : [];
+  const totalCreditNotes = creditnotes.reduce((sum, creditnote) => {
     return sum + parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0);
   }, 0);
   
@@ -200,8 +202,8 @@ const transformPaymentData = (apiData) => {
   const today = new Date();
   const overdueDays = Math.max(0, Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24)));
   
-  // Transform receipts
-  const receipts = receiptEntries.map(receipt => ({
+  // Transform receipts safely
+  const mappedReceipts = receipts.map(receipt => ({
     receiptNumber: receipt.VchNo || receipt.receipt_number,
     paidAmount: parseFloat(receipt.paid_amount || receipt.TotalAmount || 0),
     paidDate: receipt.Date || receipt.paid_date,
@@ -209,8 +211,8 @@ const transformPaymentData = (apiData) => {
     type: 'receipt'
   }));
   
-  // FIX: This was causing the error - ensure creditNoteEntries is always an array
-  const creditnotes = (creditNoteEntries || []).map(creditnote => ({
+  // Transform creditnotes safely
+  const mappedCreditnotes = creditnotes.map(creditnote => ({
     receiptNumber: creditnote.VchNo || 'CNOTE',
     paidAmount: parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0),
     paidDate: creditnote.Date || creditnote.paid_date,
@@ -232,8 +234,8 @@ const transformPaymentData = (apiData) => {
       totalAmount: totalAmount,
       overdueDays: overdueDays
     },
-    receipts: receipts,
-    creditnotes: creditnotes, // Now this is always an array
+    receipts: mappedReceipts, // ✅ Always array
+    creditnotes: mappedCreditnotes, // ✅ Always array
     summary: {
       totalPaid: totalPaid,
       totalCreditNotes: totalCreditNotes,
@@ -541,7 +543,8 @@ const PaymentStatus = () => {
     );
   }
 
-  const { invoice, receipts, creditnotes, summary } = paymentData;
+  // ✅ Add null checks - ensure receipts and creditnotes are arrays
+  const { invoice, receipts = [], creditnotes = [], summary } = paymentData;
   
   console.log('PaymentStatus rendering with:', {
     invoice,
@@ -549,6 +552,10 @@ const PaymentStatus = () => {
     creditnotes,
     summary
   });
+
+  // ✅ Ensure they are arrays
+  const receiptsArray = Array.isArray(receipts) ? receipts : [];
+  const creditnotesArray = Array.isArray(creditnotes) ? creditnotes : [];
 
   const formatIndianDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -562,13 +569,27 @@ const PaymentStatus = () => {
     return `${day}/${month}/${year}`;
   };
 
+  // ✅ Safely combine transactions
   const allTransactions = [
-    ...receipts.map(r => ({ ...r, type: 'receipt' })),
-    ...creditnotes.map(cn => ({ ...cn, type: 'credit_note' }))
-  ].sort((a, b) => new Date(a.paidDate) - new Date(b.paidDate));
+    ...receiptsArray.map(r => ({ ...r, type: 'receipt' })),
+    ...creditnotesArray.map(cn => ({ ...cn, type: 'credit_note' }))
+  ].sort((a, b) => {
+    const dateA = a.paidDate ? new Date(a.paidDate) : new Date(0);
+    const dateB = b.paidDate ? new Date(b.paidDate) : new Date(0);
+    return dateA - dateB;
+  });
 
-  const progressPercentage = invoice.totalAmount > 0 ? 
-    ((summary.totalPaid - summary.totalCreditNotes) / invoice.totalAmount) * 100 : 0;
+  const totalAmount = invoice?.totalAmount || 0;
+  const totalPaid = receiptsArray.reduce((sum, receipt) => {
+    return sum + (parseFloat(receipt.paidAmount) || 0);
+  }, 0);
+  const totalCreditNotes = creditnotesArray.reduce((sum, creditnote) => {
+    return sum + (parseFloat(creditnote.paidAmount) || 0);
+  }, 0);
+  const balanceDue = totalAmount - totalPaid - totalCreditNotes;
+  
+  const progressPercentage = totalAmount > 0 ? 
+    ((totalPaid - totalCreditNotes) / totalAmount) * 100 : 0;
 
   return (
     <Card className="shadow-sm mb-3">
@@ -582,10 +603,10 @@ const PaymentStatus = () => {
         <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
           <span className="fw-bold">Status:</span>
           <Badge bg={
-            summary.status === 'Paid' ? 'success' :
-            summary.status === 'Partial' ? 'warning' : 'danger'
+            summary?.status === 'Paid' ? 'success' :
+            summary?.status === 'Partial' ? 'warning' : 'danger'
           }>
-            {summary.status}
+            {summary?.status || 'Pending'}
           </Badge>
         </div>
 
@@ -596,40 +617,44 @@ const PaymentStatus = () => {
               Original Invoice:
             </span>
             <small className="text-muted ms-1">
-              (On {formatIndianDate(invoice.invoiceDate)})
+              (On {formatIndianDate(invoice?.invoiceDate)})
             </small>
             <span className="fw-bold text-primary">
-              ₹{invoice.totalAmount.toFixed(2)}
+              ₹{totalAmount.toFixed(2)}
             </span>
           </div>
 
-          {allTransactions.map((transaction, index) => (
-            <div 
-              key={`${transaction.type}-${index}`} 
-              className={`d-flex justify-content-between align-items-center mb-2 ps-3 border-start ${
-                transaction.type === 'receipt' ? 'border-success' : 'border-warning'
-              }`}
-            >
-              <span className={transaction.type === 'receipt' ? 'text-success' : 'text-warning'}>
-                {transaction.type === 'receipt' ? (
-                  <FaCheckCircle className="me-1" />
-                ) : (
-                  <FaTimes className="me-1" />
-                )}
-                {transaction.type === 'receipt' ? ' Receipt:' : 'Credit Note:'}
-              </span>
-              <small className="text-muted ms-1">
-                (On {formatIndianDate(transaction.paidDate)}) – {transaction.receiptNumber}
-              </small>
-              <span className={`fw-bold ${
-                transaction.type === 'receipt' ? 'text-success' : 'text-warning'
-              }`}>
-                {transaction.type === 'receipt' ? '' : ''}₹{transaction.paidAmount.toFixed(2)}
-              </span>
+          {allTransactions.length > 0 ? (
+            allTransactions.map((transaction, index) => (
+              <div 
+                key={`${transaction.type}-${index}`} 
+                className={`d-flex justify-content-between align-items-center mb-2 ps-3 border-start ${
+                  transaction.type === 'receipt' ? 'border-success' : 'border-warning'
+                }`}
+              >
+                <span className={transaction.type === 'receipt' ? 'text-success' : 'text-warning'}>
+                  {transaction.type === 'receipt' ? (
+                    <FaCheckCircle className="me-1" />
+                  ) : (
+                    <FaTimes className="me-1" />
+                  )}
+                  {transaction.type === 'receipt' ? ' Receipt:' : 'Credit Note:'}
+                </span>
+                <small className="text-muted ms-1">
+                  (On {formatIndianDate(transaction.paidDate)}) – {transaction.receiptNumber}
+                </small>
+                <span className={`fw-bold ${
+                  transaction.type === 'receipt' ? 'text-success' : 'text-warning'
+                }`}>
+                  {transaction.type === 'receipt' ? '' : ''}₹{(transaction.paidAmount || 0).toFixed(2)}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="text-center text-muted py-2">
+              <small>No receipts or credit notes recorded</small>
             </div>
-          ))}
-
-     
+          )}
 
           {/* Balance Due */}
           <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
@@ -638,11 +663,10 @@ const PaymentStatus = () => {
               Balance Due:
             </span>
             <span className="fw-bold text-danger">
-              ₹{summary.balanceDue.toFixed(2)}
+              ₹{balanceDue.toFixed(2)}
             </span>
           </div>
         </div>
-
       </Card.Body>
     </Card>
   );
@@ -658,14 +682,14 @@ const handlePrint = async () => {
 
     // Dynamically import PDF libraries
     let pdf;
-    let SalesPdfDocument;
+    let SalesPdfDocumentModule;
     
     try {
       const reactPdf = await import('@react-pdf/renderer');
       pdf = reactPdf.pdf;
       
-      const pdfModule = await import('./SalesPdfDocument');
-      SalesPdfDocument = pdfModule.default;
+      // Use the already imported SalesPdfDocument
+      SalesPdfDocumentModule = SalesPdfDocument;
     } catch (importError) {
       console.error('Error importing PDF modules:', importError);
       throw new Error('Failed to load PDF generation libraries');
@@ -677,7 +701,7 @@ const handlePrint = async () => {
 
     // Create PDF document
     const pdfDoc = (
-      <SalesPdfDocument 
+      <SalesPdfDocumentModule 
         invoiceData={currentData}
         invoiceNumber={currentData.invoiceNumber}
         gstBreakdown={gstBreakdown}
@@ -691,7 +715,7 @@ const handlePrint = async () => {
     // Create URL for the blob
     const pdfUrl = URL.createObjectURL(blob);
     
-    // Open in new tab - this will show only the PDF, no HTML
+    // Open in new tab
     const printWindow = window.open(pdfUrl, '_blank');
     
     if (printWindow) {

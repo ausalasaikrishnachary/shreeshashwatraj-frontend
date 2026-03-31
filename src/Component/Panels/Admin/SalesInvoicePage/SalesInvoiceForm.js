@@ -34,16 +34,29 @@ const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const navigate = useNavigate();
   const { id } = useParams(); 
 const [productStock, setProductStock] = useState({});
-  const [invoiceData, setInvoiceData] = useState(() => {
-    const savedData = localStorage.getItem('draftInvoice');
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      return parsedData;
+const [invoiceData, setInvoiceData] = useState(() => {
+  const savedData = localStorage.getItem('draftInvoice');
+  if (savedData) {
+    const parsedData = JSON.parse(savedData);
+    return parsedData;
+  }
+  
+  const getFinancialYearShort = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    if (month >= 3) {
+      return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+    } else {
+      return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
     }
+  };
+const currentFY = getFinancialYearShort();
     return {
-      invoiceNumber: "INV001",
-      invoiceDate: new Date().toISOString().split('T')[0],
-      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+       invoiceNumber: `SSA/000001/${currentFY}`,
+    invoiceDate: new Date().toISOString().split('T')[0],
+    validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     companyInfo: {
   name: "SHREE SHASHWATRAJ AGRO PVT LTD",
   address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
@@ -318,68 +331,100 @@ useEffect(() => {
       generateFallbackInvoiceNumber();
     }
   };
-
-  const generateFallbackInvoiceNumber = async () => {
-    try {
-      const response = await fetch(`${baseurl}/last-invoice`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.lastInvoiceNumber) {
-          const lastNumber = data.lastInvoiceNumber;
-          const numberMatch = lastNumber.match(/INV(\d+)/);
-          if (numberMatch) {
-            const nextNum = parseInt(numberMatch[1]) + 1;
-            const fallbackInvoiceNumber = `INV${nextNum.toString().padStart(3, '0')}`;
-            setNextInvoiceNumber(fallbackInvoiceNumber);
-            setInvoiceData(prev => ({
-              ...prev,
-              invoiceNumber: fallbackInvoiceNumber
-            }));
-            setHasFetchedInvoiceNumber(true);
-            return;
-          }
-        }
-      }
+const generateFallbackInvoiceNumber = async () => {
+  try {
+    const getFinancialYearShort = () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
       
-      const currentDraft = localStorage.getItem('draftInvoice');
-      if (currentDraft) {
-        const draftData = JSON.parse(currentDraft);
-        if (draftData.invoiceNumber && draftData.invoiceNumber !== 'INV001') {
-          setNextInvoiceNumber(draftData.invoiceNumber);
+      if (month >= 3) {
+        return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+      } else {
+        return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+      }
+    };
+    
+    const currentFY = getFinancialYearShort();
+    const prefix = `SSA/`;
+    const suffix = `/${currentFY}`;
+    
+    const response = await fetch(`${baseurl}/last-invoice`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.lastInvoiceNumber) {
+        const lastNumber = data.lastInvoiceNumber;
+        // Extract number from format SSA/XXXXXX/YY-YY
+        const numberMatch = lastNumber.match(/SSA\/(\d+)\/\d{2}-\d{2}/);
+        if (numberMatch) {
+          const nextNum = parseInt(numberMatch[1]) + 1;
+          const fallbackInvoiceNumber = `${prefix}${nextNum.toString().padStart(6, '0')}${suffix}`;
+          setNextInvoiceNumber(fallbackInvoiceNumber);
+          setInvoiceData(prev => ({
+            ...prev,
+            invoiceNumber: fallbackInvoiceNumber
+          }));
           setHasFetchedInvoiceNumber(true);
           return;
         }
       }
-      
-      setNextInvoiceNumber('INV001');
-      setInvoiceData(prev => ({
-        ...prev,
-        invoiceNumber: 'INV001'
-      }));
-      setHasFetchedInvoiceNumber(true);
-      
-    } catch (err) {
-      console.error('Error in fallback invoice number generation:', err);
-      setNextInvoiceNumber('INV001');
-      setInvoiceData(prev => ({
-        ...prev,
-        invoiceNumber: 'INV001'
-      }));
-      setHasFetchedInvoiceNumber(true);
     }
-  };
+    
+    // Default fallback
+    const defaultNumber = `${prefix}000001${suffix}`;
+    setNextInvoiceNumber(defaultNumber);
+    setInvoiceData(prev => ({
+      ...prev,
+      invoiceNumber: defaultNumber
+    }));
+    setHasFetchedInvoiceNumber(true);
+    
+  } catch (err) {
+    console.error('Error in fallback invoice number generation:', err);
+    const getFinancialYearShort = () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      
+      if (month >= 3) {
+        return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+      } else {
+        return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+      }
+    };
+    const defaultNumber = `SSA/000001/${getFinancialYearShort()}`;
+    setNextInvoiceNumber(defaultNumber);
+    setInvoiceData(prev => ({
+      ...prev,
+      invoiceNumber: defaultNumber
+    }));
+    setHasFetchedInvoiceNumber(true);
+  }
+};
 
-  // Check if states are same for GST calculation
+const getCurrentFinancialYear = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  
+  if (month >= 3) {
+    return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+  } 
+};
+
+const formatInvoiceNumber = (number) => {
+  const fy = getCurrentFinancialYear();
+  return `SSA/${number.toString().padStart(6, '0')}/${fy}`;
+};
   const isSameState = () => {
     const companyState = invoiceData.companyInfo.state;
     const billingState = invoiceData.billingAddress?.state;
     const shippingState = invoiceData.shippingAddress?.state;
     
-    // Use billing state primarily, fallback to shipping state
     const supplierState = billingState || shippingState;
     
     if (!companyState || !supplierState) {
-      return true; // Default to same state if not specified
+      return true; 
     }
     
     return companyState.toLowerCase() === supplierState.toLowerCase();
@@ -861,7 +906,7 @@ const addItem = () => {
     localStorage.removeItem('draftInvoice');
     
     const resetData = {
-      invoiceNumber: nextInvoiceNumber,
+      invoiceNumber: formatInvoiceNumber(1), // SSA/000001/26-27
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   companyInfo: {
@@ -1217,18 +1262,18 @@ window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice sub
 </Col>
                 <Col md={4}>
                   <Form.Group className="mb-2">
-                    <Form.Control 
-                      name="invoiceNumber" 
-                      value={invoiceData.invoiceNumber || nextInvoiceNumber} 
-                      onChange={handleInputChange}
-                      className="border-primary"
-                        disabled   
-                      readOnly={isEditMode}
-                    />
-                    <Form.Label className="fw-bold">Invoice No</Form.Label>
-                    {!hasFetchedInvoiceNumber && !isEditMode && (
-                      <small className="text-muted">Loading invoice number...</small>
-                    )}
+                 <Form.Control 
+  name="invoiceNumber" 
+  value={invoiceData.invoiceNumber || nextInvoiceNumber} 
+  onChange={handleInputChange}
+  className="border-primary"
+  disabled   
+  readOnly={isEditMode}
+/>
+<Form.Label className="fw-bold">Invoice No</Form.Label>
+{!hasFetchedInvoiceNumber && !isEditMode && (
+  <small className="text-muted">Loading invoice number...</small>
+)}
                   </Form.Group>
                   <Form.Group className="mb-2">
                     <Form.Control 
