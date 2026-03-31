@@ -35,6 +35,7 @@ const ReceiptsTable = () => {
   const [isDownloading, setIsDownloading] = useState(false);
 const [isRangeDownloading, setIsRangeDownloading] = useState(false);
 const pdfRef = useRef();
+  const [searchTerm, setSearchTerm] = useState("");
 
 const [invoices, setInvoices] = useState([]);
 const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
@@ -1268,14 +1269,44 @@ const handleDownloadRange = async () => {
                             required
                           >
                             <option value="">Select Retailer</option>
-                        {accounts
-  .filter(acc => acc.role === "retailer" && (acc.name || acc.display_name))
-  .map((acc) => (
-    <option key={acc.id} value={acc.id}>
-      {acc.gstin?.trim() ? acc.display_name : acc.name}
-    </option>
-  ))}
+           {accounts
+  .filter(acc => {
+    const searchLower = searchTerm.toLowerCase();
 
+    const primaryName = acc.gstin?.trim()
+      ? (acc.display_name || acc.name)
+      : (acc.name || acc.display_name);
+
+    const name = primaryName?.toLowerCase() || "";
+    const businessName = acc.business_name?.toLowerCase() || "";
+    const displayName = acc.display_name?.toLowerCase() || "";
+
+    return (
+      (
+        acc.role === "retailer" ||
+        (acc.role === "supplier" && acc.is_dual_account == 1) ||
+        (acc.role === "staff" && acc.is_dual_account == 1) ||
+        acc.group?.trim().toLowerCase() === "sundry debtors"
+      ) &&
+      (
+        name.includes(searchLower) ||
+        businessName.includes(searchLower) ||
+        displayName.includes(searchLower)
+      )
+    );
+  })
+  .map((acc) => {
+    const displayText = acc.gstin?.trim()
+      ? (acc.display_name || acc.name)
+      : (acc.name || acc.display_name);
+
+    return (
+      <option key={acc.id} value={acc.id}>
+        {displayText}
+      </option>
+    );
+  })
+}
                           </select>
                         </div>
                       </div>
@@ -1329,7 +1360,7 @@ const handleDownloadRange = async () => {
           onChange={handleInputChange}
           placeholder={isFetchingBalance ? "Fetching balance..." : (invoiceBalance > 0 ? "Auto-filled from balance" : "Enter amount")}
           min="0"
-          step="0.01"
+          step="1"
           required
           disabled={isFetchingBalance}
         />

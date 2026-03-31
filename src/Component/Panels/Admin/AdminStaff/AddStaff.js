@@ -4,15 +4,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import "./AddStaff.css";
 import { baseurl } from "../../../BaseURL/BaseURL";
 
-// Tab Navigation Component
 const TabNavigation = ({ tabs, activeTab, onTabClick }) => {
   return (
-    <div className="staff-form-tabs">
+    <div className="admin-staff-tabs">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={`staff-tab ${activeTab === tab.id ? 'active' : ''}`}
+          className={`admin-staff-tab ${activeTab === tab.id ? "active" : ""}`}
           onClick={() => onTabClick(tab.id)}
         >
           {tab.label}
@@ -22,48 +21,43 @@ const TabNavigation = ({ tabs, activeTab, onTabClick }) => {
   );
 };
 
-// Form Section Component
-const FormSection = ({ 
-  id, 
-  activeTab, 
-  title, 
-  children, 
-  onBack, 
-  onNext, 
-  onSubmit, 
+const FormSection = ({
+  id,
+  activeTab,
+  title,
+  children,
+  onBack,
+  onNext,
+  onSubmit,
   isLast = false,
-  isViewing = false,
   onCancel,
   submitLabel = "Submit",
-  nextLabel = "Next"
+  nextLabel = "Next",
 }) => {
   if (id !== activeTab) return null;
-
   return (
-    <div className={`staff-form-card ${id === activeTab ? 'active-section' : ''}`}>
-      <h3 className="staff-section-title">{title}</h3>
-      <div className="staff-form-section">
-        {children}
-      </div>
-      <div className="staff-form-actions">
-        <div className="left-actions">
-          <button type="button" className="cancel-btn" onClick={onCancel}>
+    <div className={`admin-staff-form-card ${id === activeTab ? "active-section" : ""}`}>
+      <h3 className="admin-staff-section-title">{title}</h3>
+      <div className="admin-staff-form-section">{children}</div>
+      <div className="admin-staff-form-actions">
+        <div className="admin-staff-left-actions">
+          <button type="button" className="admin-staff-cancel-btn" onClick={onCancel}>
             Cancel
           </button>
         </div>
-        <div className="right-actions">
+        <div className="admin-staff-right-actions">
           {onBack && (
-            <button type="button" className="back-btn" onClick={onBack}>
+            <button type="button" className="admin-staff-back-btn" onClick={onBack}>
               Back
             </button>
           )}
           {onNext && !isLast && (
-            <button type="button" className="next-btn" onClick={onNext}>
+            <button type="button" className="admin-staff-next-btn" onClick={onNext}>
               {nextLabel}
             </button>
           )}
           {onSubmit && isLast && (
-            <button type="submit" className="submit-btn">
+            <button type="submit" className="admin-staff-submit-btn">
               {submitLabel}
             </button>
           )}
@@ -73,78 +67,111 @@ const FormSection = ({
   );
 };
 
-// Input Components
-const Input = ({ label, ...props }) => (
-  <div className="adminform-group">
-    <label className="staff-form-label">{label}{props.required && '*'}</label>
-    <input className="form-input staff-form-input" {...props} />
-  </div>
-);
-
-const FullInput = ({ label, ...props }) => (
-  <div className="adminform-group full-width">
-    <label className="staff-form-label">{label}{props.required && '*'}</label>
-    <textarea className="form-input staff-form-input" {...props} rows="2"></textarea>
-  </div>
-);
-
-const Select = ({ label, options, ...props }) => (
-  <div className="adminform-group">
-    <label className="staff-form-label">{label}{props.required && '*'}</label>
-    <select className="form-select staff-form-input" {...props}>
-      <option value="">Select</option>
-      {options.map((op, i) => (
-        <option key={i} value={op}>{op}</option>
-      ))}
-    </select>
-  </div>
-);
-
 function AddStaff() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const navigate = useNavigate();
   const { id } = useParams();
-const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
-  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [enableAsRetailer, setEnableAsRetailer] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
 
   const [formData, setFormData] = useState({
-    fullName: "",
+    full_name: "",
     mobileNumber: "",
     alternateNumber: "",
     email: "",
     dateOfBirth: "",
     gender: "",
     address: "",
-    role: "staff",
+    role: "staff",          // ✅ always default "staff"
     designation: "",
     department: "",
     joiningDate: "",
     incentivePercent: "",
     salary: "",
-    bankAccountNumber: "",
-    ifscCode: "",
+    status: "Active",
+    password: "",
+
+    // Bank fields
+    accountNumber: "",
+    accountName: "",
     bankName: "",
+    ifscCode: "",
+    accountType: "",
     branchName: "",
     upiId: "",
-    aadhaarNumber: "",
+
+    // Tax / doc fields
     panNumber: "",
+    tanNumber: "",
+    tdsSlabRate: "",
+    currency: "INR",
+    termsOfPayment: "",
+    reverseCharge: "No",
+    exportSez: "Not Applicable",
+    aadhaarNumber: "",
     bloodGroup: "",
     emergencyContact: "",
-    status: "Active",
-      password: "" ,
-     invoiceEnabled: 0
+
+    // Retailer fields
+    is_dual_account: 0,
+    entity_type: "",
+    gstin: "",
+    business_name: "",
+    display_name: "",
+    gst_registered_name: "",
+    additional_business_name: "",
+    fax: "",
+    discount: 0,
+    Target: 100000,
+    credit_limit: "",
+    opening_balance: 0,
+    opening_balance_type: "",
+
+    // Shipping
+    shipping_address_line1: "",
+    shipping_address_line2: "",
+    shipping_city: "",
+    shipping_pin_code: "",
+    shipping_state: "",
+    shipping_country: "India",
+    shipping_branch_name: "",
+    shipping_gstin: "",
+
+    // Billing
+    billing_address_line1: "",
+    billing_address_line2: "",
+    billing_city: "",
+    billing_pin_code: "",
+    billing_state: "",
+    billing_country: "India",
+    billing_branch_name: "",
+    billing_gstin: "",
+    sameAsShipping: false,
   });
 
-  const tabs = [
-    { id: 'basic', label: 'Basic Details' },
-    { id: 'job', label: 'Job Details' },
-    { id: 'bank', label: 'Bank Details' },
-    { id: 'documents', label: 'Documents' }
-  ];
+  const getTabs = () => {
+    const baseTabs = [
+      { id: "basic", label: "Basic Details" },
+      { id: "job", label: "Job Details" },
+      { id: "bank", label: "Bank Details" },
+      { id: "documents", label: "Documents" },
+    ];
+    if (enableAsRetailer) {
+      baseTabs.push(
+        { id: "shipping", label: "Shipping Address" },
+        { id: "billing", label: "Billing Address" }
+      );
+    }
+    return baseTabs;
+  };
+
+  const tabs = getTabs();
 
   useEffect(() => {
     if (id) {
@@ -153,580 +180,358 @@ const [showPassword, setShowPassword] = useState(false);
     }
   }, [id]);
 
-const fetchStaffData = async () => {
-  try {
-    setIsFetching(true);
-    const response = await fetch(`${baseurl}/api/staff/${id}`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch staff data: ${response.status}`);
+  const fetchStaffData = async () => {
+    try {
+      setIsFetching(true);
+      const res = await fetch(`${baseurl}/api/staff/${id}`);
+      const staffData = await res.json();
+      const data = Array.isArray(staffData) ? staffData[0] : staffData;
+
+      // ✅ role is now included — this was the cause of the 400
+      setFormData({
+        full_name:               data.name || data.full_name || "",
+        mobileNumber:           data.mobile_number || "",
+        alternateNumber:        data.alternate_number || "",
+        email:                  data.email || "",
+        dateOfBirth:            data.date_of_birth ? data.date_of_birth.split("T")[0] : "",
+        joiningDate:            data.joining_date ? data.joining_date.split("T")[0] : "",
+        gender:                 data.gender || "",
+        address:                data.address || "",
+        role:                   data.role || "staff",   // ✅ FIXED
+        designation:            data.designation || "",
+        department:             data.department || "",
+        incentivePercent:       data.incentive_percent || "",
+        salary:                 data.salary || "",
+        status:                 data.status || "Active",
+        password:               data.password || "",
+
+        // Bank fields
+        accountNumber:          data.account_number || "",
+        accountName:            data.account_name || "",
+        bankName:               data.bank_name || "",
+        ifscCode:               data.ifsc_code || "",
+        accountType:            data.account_type || "",
+        branchName:             data.branch_name || "",
+        upiId:                  data.upi_id || "",
+
+        // Tax / doc fields
+        panNumber:              data.pan || "",
+        tanNumber:              data.tan || "",
+        tdsSlabRate:            data.tds_slab_rate || "",
+        currency:               data.currency || "INR",
+        termsOfPayment:         data.terms_of_payment || "",
+        reverseCharge:          data.reverse_charge || "No",
+        exportSez:              data.export_sez || "Not Applicable",
+        aadhaarNumber:          data.aadhaar_number || "",
+        bloodGroup:             data.blood_group || "",
+        emergencyContact:       data.emergency_contact || "",
+
+        // Retailer fields
+        is_dual_account:        data.is_dual_account === 1 ? 1 : 0,
+        entity_type:            data.entity_type || "",
+        gstin:                  data.gstin || "",
+        business_name:          data.business_name || "",
+        display_name:           data.display_name || "",
+        gst_registered_name:    data.gst_registered_name || "",
+        additional_business_name: data.additional_business_name || "",
+        fax:                    data.fax || "",
+        discount:               data.discount || 0,
+        Target:                 data.target || data.Target || 100000,  // ✅ handles both cases
+        credit_limit:           data.credit_limit || "",
+        opening_balance:        data.opening_balance || 0,
+        opening_balance_type:   data.opening_balance_type || "",
+
+        // Shipping
+        shipping_address_line1: data.shipping_address_line1 || "",
+        shipping_address_line2: data.shipping_address_line2 || "",
+        shipping_city:          data.shipping_city || "",
+        shipping_pin_code:      data.shipping_pin_code || "",
+        shipping_state:         data.shipping_state || "",
+        shipping_country:       data.shipping_country || "India",
+        shipping_branch_name:   data.shipping_branch_name || "",
+        shipping_gstin:         data.shipping_gstin || "",
+
+        // Billing
+        billing_address_line1:  data.billing_address_line1 || "",
+        billing_address_line2:  data.billing_address_line2 || "",
+        billing_city:           data.billing_city || "",
+        billing_pin_code:       data.billing_pin_code || "",
+        billing_state:          data.billing_state || "",
+        billing_country:        data.billing_country || "India",
+        billing_branch_name:    data.billing_branch_name || "",
+        billing_gstin:          data.billing_gstin || "",
+        sameAsShipping:         false,
+      });
+
+      setEnableAsRetailer(data.is_dual_account === 1);
+    } catch (err) {
+      setError("Failed to load staff data");
+    } finally {
+      setIsFetching(false);
     }
-    
-    const staffData = await response.json();
-    
-    // Log the data to see what's being returned
-    console.log('Staff Data Response:', staffData);
-     console.log('Password from API:', staffData.password || staffData[0]?.password); // Add this lin
-    
-    // Handle if staffData is an array or single object
-    const data = Array.isArray(staffData) ? staffData[0] : staffData;
-    
-    if (!data) {
-      throw new Error('No staff data found');
-    }
-    
-    setFormData({
-      fullName: data.name || data.fullName || data.full_name || "",
-      mobileNumber: data.mobile_number || data.mobileNumber || "",
-      alternateNumber: data.alternate_number || data.alternateNumber || "",
-      email: data.email || "",
-dateOfBirth: data.date_of_birth 
-  ? data.date_of_birth.split("T")[0] 
-  : (data.dateOfBirth || ""),
-
-joiningDate: data.joining_date 
-  ? data.joining_date.split("T")[0] 
-  : (data.joiningDate || ""),
-        gender: data.gender || "",
-      address: data.address || "",
-      role: data.role || "staff",
-      designation: data.designation || "",
-      department: data.department || "",
-   
-      incentivePercent: data.incentive_percent || data.incentivePercent || "",
-      salary: data.salary || "",
-      bankAccountNumber: data.bank_account_number || data.bankAccountNumber || "",
-      ifscCode: data.ifsc_code || data.ifscCode || "",
-      bankName: data.bank_name || data.bankName || "",
-      branchName: data.branch_name || data.branchName || "",
-      upiId: data.upi_id || data.upiId || "",
-      aadhaarNumber: data.aadhaar_number || data.aadhaarNumber || "",
-      panNumber: data.pan || data.pan_number || data.panNumber || "",
-      bloodGroup: data.blood_group || data.bloodGroup || "",
-      emergencyContact: data.emergency_contact || data.emergencyContact || "",
-      status: data.status || "Active",
-        password: data.password || "" ,
-        invoiceEnabled: data.is_dual_account === 1 ? 1 : 0,
-    });
-  } catch (err) {
-    console.error('Error fetching staff data:', err);
-    setError("Failed to load staff data: " + err.message);
-  } finally {
-    setIsFetching(false);
-  }
-};
-
-  // Validation functions
-  const validateBankAccountNumber = (value) => {
-    if (!value) return true; // Allow empty
-    const cleaned = value.replace(/\D/g, '');
-    return /^\d{9,16}$/.test(cleaned);
-  };
-
-  const validateIFSCCode = (value) => {
-    if (!value) return true; // Allow empty
-    // Accept only alphanumeric characters, exactly 11 characters
-    return /^[A-Z0-9]{11}$/.test(value.toUpperCase());
-  };
-
-  const validateAadhaarNumber = (value) => {
-    if (!value) return true; // Allow empty
-    const cleaned = value.replace(/\D/g, '');
-    return /^\d{12}$/.test(cleaned);
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
-    let processedValue = value;
-    
-    // Apply specific validation and formatting based on field type
-    switch (name) {
-      case 'bankAccountNumber':
-        // Remove non-digit characters
-        processedValue = value.replace(/\D/g, '');
-        // Limit to 16 digits
-        processedValue = processedValue.slice(0, 16);
-        break;
-        
-      case 'ifscCode':
-        // Convert to uppercase and remove special characters
-        processedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-        // Limit to 11 characters
-        processedValue = processedValue.slice(0, 11);
-        break;
-        
-      case 'aadhaarNumber':
-        // Remove non-digit characters
-        processedValue = value.replace(/\D/g, '');
-        // Limit to 12 digits
-        processedValue = processedValue.slice(0, 12);
-        break;
-        
-      case 'mobileNumber':
-      case 'alternateNumber':
-      case 'emergencyContact':
-        // Remove non-digit characters for phone numbers
-        processedValue = value.replace(/\D/g, '');
-        // Limit to 10 digits
-        processedValue = processedValue.slice(0, 10);
-        break;
-        
-      case 'panNumber':
-        // Convert to uppercase and remove special characters
-        processedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-        // Limit to 10 characters
-        processedValue = processedValue.slice(0, 10);
-        break;
-        
-      default:
-        break;
+    let processed = value;
+
+    if (["mobileNumber", "alternateNumber", "emergencyContact"].includes(name)) {
+      processed = value.replace(/\D/g, "").slice(0, 10);
     }
-    
-    setFormData((prev) => ({ ...prev, [name]: processedValue }));
-    if (error) setError("");
+    if (name === "ifscCode") {
+      processed = value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11);
+    }
+    if (name === "panNumber") {
+      processed = value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+    }
+    if (name === "tanNumber") {
+      processed = value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+    }
+    if (name === "accountNumber") {
+      processed = value.replace(/\D/g, "").slice(0, 18);
+    }
+    if (["shipping_pin_code", "billing_pin_code"].includes(name)) {
+      processed = value.replace(/\D/g, "").slice(0, 6);
+    }
+    if (name === "discount") processed = parseFloat(value) || 0;
+    if (["Target", "credit_limit", "opening_balance"].includes(name)) {
+      processed = value === "" ? 0 : parseFloat(value) || 0;
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: processed }));
   };
 
-  const validateCurrentTab = () => {
-    const newErrors = [];
-    
-    switch (activeTab) {
-      case 'basic':
-        if (!formData.fullName.trim()) newErrors.push("Full name required");
-        if (!/^\d{10}$/.test(formData.mobileNumber)) newErrors.push("Invalid mobile number (10 digits required)");
-        if (formData.email && !/^\S+@\S+\.\S+$/.test(formData.email)) newErrors.push("Invalid email format");
-        break;
-      case 'job':
-        if (!formData.designation) newErrors.push("Designation is required");
-        if (!formData.department) newErrors.push("Department is required");
-        if (!formData.joiningDate) newErrors.push("Joining date is required");
-        break;
-      case 'bank':
-        if (formData.bankAccountNumber && !validateBankAccountNumber(formData.bankAccountNumber)) {
-          newErrors.push("Invalid bank account number (9-16 digits required)");
-        }
-        if (formData.ifscCode && !validateIFSCCode(formData.ifscCode)) {
-          newErrors.push("Invalid IFSC code (11 alphanumeric characters only)");
-        }
-        break;
-      case 'documents':
-        if (formData.aadhaarNumber && !validateAadhaarNumber(formData.aadhaarNumber)) {
-          newErrors.push("Invalid Aadhaar number (12 digits required)");
-        }
-        if (formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)) {
-          newErrors.push("Invalid PAN number format (e.g., ABCDE1234F)");
-        }
-        if (formData.emergencyContact && !/^\d{10}$/.test(formData.emergencyContact)) {
-          newErrors.push("Invalid emergency contact number (10 digits required)");
-        }
-        break;
-    }
-    
-    if (newErrors.length > 0) {
-      setError(newErrors.join(", "));
-      return false;
-    }
-    
-    setError("");
-    return true;
+  const handleRetailerToggle = (e) => {
+    const checked = e.target.checked;
+    setEnableAsRetailer(checked);
+    setFormData((prev) => ({ ...prev, is_dual_account: checked ? 1 : 0 }));
   };
 
-  const handleTabClick = (tab) => {
-    if (validateCurrentTab()) {
-      setActiveTab(tab);
-    } else {
-      alert('Please fix the errors in the current tab before proceeding.');
-    }
+  const handleSameAsShipping = (e) => {
+    const checked = e.target.checked;
+    setFormData((prev) => ({
+      ...prev,
+      sameAsShipping: checked,
+      ...(checked && {
+        billing_address_line1: prev.shipping_address_line1,
+        billing_address_line2: prev.shipping_address_line2,
+        billing_city:          prev.shipping_city,
+        billing_pin_code:      prev.shipping_pin_code,
+        billing_state:         prev.shipping_state,
+        billing_country:       prev.shipping_country,
+        billing_branch_name:   prev.shipping_branch_name,
+        billing_gstin:         prev.shipping_gstin,
+      }),
+    }));
   };
+
+  const handleTabClick = (tabId) => setActiveTab(tabId);
 
   const handleNext = () => {
-    if (!validateCurrentTab()) {
-      alert('Please fill all required fields in the current tab.');
-      return;
-    }
-    
-    const currentIndex = tabs.findIndex(tab => tab.id === activeTab);
-    if (currentIndex < tabs.length - 1) {
-      setActiveTab(tabs[currentIndex + 1].id);
-    }
+    const currentIndex = tabs.findIndex((t) => t.id === activeTab);
+    if (currentIndex < tabs.length - 1) setActiveTab(tabs[currentIndex + 1].id);
   };
 
   const handleBack = () => {
-    const currentIndex = tabs.findIndex(tab => tab.id === activeTab);
-    if (currentIndex > 0) {
-      setActiveTab(tabs[currentIndex - 1].id);
+    const currentIndex = tabs.findIndex((t) => t.id === activeTab);
+    if (currentIndex > 0) setActiveTab(tabs[currentIndex - 1].id);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const url = isEditMode ? `${baseurl}/api/staff/${id}` : `${baseurl}/api/staff`;
+      const response = await fetch(url, {
+        method: isEditMode ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        alert(isEditMode ? "Staff updated successfully!" : "Staff added successfully!");
+        navigate("/staff");
+      } else {
+        // ✅ Show actual error message from backend in UI
+        const errData = await response.json();
+        setError(errData.error || "Failed to save staff.");
+      }
+    } catch (err) {
+      setError("Failed to save staff.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  // Validate all tabs before submission
-  let allTabsValid = true;
-  const validationErrors = [];
-  
-  // Validate basic tab
-  if (!formData.fullName.trim()) {
-    validationErrors.push("Full name required");
-    allTabsValid = false;
-  }
-  if (!/^\d{10}$/.test(formData.mobileNumber)) {
-    validationErrors.push("Invalid mobile number (10 digits required)");
-    allTabsValid = false;
-  }
-  
-  // Validate job tab
-  if (!formData.designation) {
-    validationErrors.push("Designation is required");
-    allTabsValid = false;
-  }
-  if (!formData.department) {
-    validationErrors.push("Department is required");
-    allTabsValid = false;
-  }
-  if (!formData.joiningDate) {
-    validationErrors.push("Joining date is required");
-    allTabsValid = false;
-  }
-  
-  // Validate bank tab if bank details are provided
-  if (formData.bankAccountNumber && !validateBankAccountNumber(formData.bankAccountNumber)) {
-    validationErrors.push("Invalid bank account number (9-16 digits required)");
-    allTabsValid = false;
-  }
-  if (formData.ifscCode && !validateIFSCCode(formData.ifscCode)) {
-    validationErrors.push("Invalid IFSC code (11 alphanumeric characters only)");
-    allTabsValid = false;
-  }
-  
-  // Validate documents tab
-  if (formData.aadhaarNumber && !validateAadhaarNumber(formData.aadhaarNumber)) {
-    validationErrors.push("Invalid Aadhaar number (12 digits required)");
-    allTabsValid = false;
-  }
-  if (formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)) {
-    validationErrors.push("Invalid PAN number format (e.g., ABCDE1234F)");
-    allTabsValid = false;
-  }
-  if (formData.emergencyContact && !/^\d{10}$/.test(formData.emergencyContact)) {
-    validationErrors.push("Invalid emergency contact number (10 digits required)");
-    allTabsValid = false;
-  }
-  
-  if (!allTabsValid) {
-    setError(validationErrors.join(", "));
-    return;
-  }
-  
-  setIsLoading(true);
-
-  try {
-    const url = isEditMode
-      ? `${baseurl}/api/staff/${id}`
-      : `${baseurl}/api/staff`;
-
-    // Prepare data for API - match backend field names
-    const apiData = {
-      fullName: formData.fullName,
-      mobileNumber: formData.mobileNumber,
-      alternateNumber: formData.alternateNumber || null,
-      email: formData.email || "",
-      dateOfBirth: formData.dateOfBirth || null,
-      gender: formData.gender || null,
-      address: formData.address || null,
-      role: formData.role,
-      designation: formData.designation || null,
-      department: formData.department || null,
-      joiningDate: formData.joiningDate || null,
-      incentivePercent: formData.incentivePercent || null,
-      salary: formData.salary || null,
-      bankAccountNumber: formData.bankAccountNumber || null,
-      ifscCode: formData.ifscCode || null,
-      bankName: formData.bankName || null,
-      branchName: formData.branchName || null,
-      upiId: formData.upiId || null,
-      aadhaarNumber: formData.aadhaarNumber || null,
-      panNumber: formData.panNumber || null,
-      bloodGroup: formData.bloodGroup || null,
-      emergencyContact: formData.emergencyContact || null,
-      status: formData.status,
-      invoiceEnabled: formData.invoiceEnabled 
-    };
-
-    // For edit mode, ensure email is not empty since backend requires it
-    if (isEditMode && !apiData.email) {
-      apiData.email = "placeholder@example.com"; // Or use existing email
-    }
-
-    const response = await fetch(url, {
-      method: isEditMode ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(apiData)
-    });
-
-    const responseData = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(responseData.error || "Operation failed");
-    }
-
-    alert(isEditMode ? "Staff updated!" : "Staff added!");
-    navigate("/staff");
-  } catch (error) {
-    setError(error.message);
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-  const handleCancel = () => {
-    navigate("/staff");
-  };
+  const handleCancel = () => navigate("/staff");
 
   return (
-    <div className="add-staff-page-wrapper">
+    <div className="admin-staff-page-wrapper">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
 
-      <div className={`add-staff-main-content ${isCollapsed ? "collapsed" : ""}`}>
-        <div className="add-staff-container">
-          <h1 className="page-title">{isEditMode ? "Edit Staff" : "Add New Staff"}</h1>
-          {error && <div className="error-message">{error}</div>}
+      <div className={`admin-staff-main-content ${isCollapsed ? "collapsed" : ""}`}>
+        <div className="admin-staff-container">
+          <h1 className="admin-staff-page-title">
+            {isEditMode ? "Edit Staff" : "Add New Staff"}
+          </h1>
+
+          {error && <div className="admin-staff-error-message">{error}</div>}
 
           {isFetching ? (
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
+            <div className="admin-staff-loading-container">
+              <div className="admin-staff-loading-spinner"></div>
               <p>Loading staff data...</p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="staff-form">
-              <TabNavigation 
-                tabs={tabs} 
-                activeTab={activeTab} 
-                onTabClick={handleTabClick} 
-              />
-              
-          <FormSection
-  id="basic"
-  activeTab={activeTab}
-  title="Basic Details"
-  onBack={null}
-  onNext={handleNext}
-  nextLabel="Job Details"
-  onCancel={handleCancel}
->
-  <div className="form-grid">
-    {/* Row 1: Full Name and Mobile Number */}
-    <div className="form-field">
-      <label className="staff-form-label">Full Name *</label>
-      <input 
-        type="text"
-        name="fullName" 
-        className="staff-form-input"
-        value={formData.fullName} 
-        onChange={handleInputChange} 
-        required 
-      />
-    </div>
-    <div className="form-field">
-      <label className="staff-form-label">Mobile Number *</label>
-      <input 
-        type="text"
-        name="mobileNumber" 
-        className="staff-form-input"
-        value={formData.mobileNumber} 
-        onChange={handleInputChange} 
-        disabled={isEditMode}
-        required 
-      />
-    </div>
-    
-    {/* Row 2: Alternate Number and Email */}
-    <div className="form-field">
-      <label className="staff-form-label">Alternate Number</label>
-      <input 
-        type="text"
-        name="alternateNumber" 
-        className="staff-form-input"
-        value={formData.alternateNumber} 
-        onChange={handleInputChange} 
-      />
-    </div>
-    <div className="form-field">
-      <label className="staff-form-label">Email *</label>
-      <input 
-        type="email"
-        name="email" 
-        className="staff-form-input"
-        value={formData.email} 
-        onChange={handleInputChange} 
-        required 
-      />
-    </div>
-    
-    {/* Row 3: Date of Birth and Gender */}
-    <div className="form-field">
-      <label className="staff-form-label">Date of Birth</label>
-      <input 
-        type="date"
-        name="dateOfBirth" 
-        className="staff-form-input"
-        value={formData.dateOfBirth} 
-        onChange={handleInputChange} 
-      />
-    </div>
-    <div className="form-field">
-      <label className="staff-form-label">Gender</label>
-      <select 
-        name="gender" 
-        className="staff-form-input"
-        value={formData.gender} 
-        onChange={handleInputChange}
-      >
-        <option value="">Select</option>
-        <option value="Male">Male</option>
-        <option value="Female">Female</option>
-        <option value="Other">Other</option>
-      </select>
-    </div>
-    
-    {/* Row 4: Address and Password - SIDE BY SIDE */}
-    <div className="form-field address-field">
-      <label className="staff-form-label">Address</label>
-     <textarea 
-  name="address"
-  value={formData.address} 
-  onChange={handleInputChange}
-  rows={3}
-  placeholder="Enter full address"
-  style={{
-    width: "100%",
-    padding: "10px",
-    border: "1px solid #ccc",
-    borderRadius: "6px",
-    outline: "none",
-    boxSizing: "border-box",   
-    resize: "vertical"
-  }}
-/>
-    </div>
-    <div className="form-field password-field">
-  <label className="staff-form-label">Password</label>
-  <div style={{ position: 'relative', display: 'flex', gap: '8px' }}>
-    <input 
-      type={showPassword ? "text" : "password"}
-      name="password"
-      className="staff-form-input"
-      value={formData.password}
-      readOnly={isEditMode}
-      placeholder={isEditMode ? "Password cannot be edited" : "Auto-generated"}
-      style={{ flex: 1 }}
-      disabled={isEditMode}
-    />
-    {formData.password && (
-      <button
-        type="button"
-        onClick={() => setShowPassword(!showPassword)}
-        style={{
-          padding: "0 12px",
-          background: "#f0f0f0",
-          border: "1px solid #ccc",
-          borderRadius: "4px",
-          cursor: "pointer"
-        }}
-      >
-        {showPassword ? "Hide" : "Show"}
-      </button>
-    )}
-  </div>
- 
-</div>
-    
-    {/* Row 5: Enable Invoice Checkbox - Full Width */}
- <div style={{ width: "100%", marginTop: "10px" }}>
-  <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-    
-    <input
-      type="checkbox"
-      name="invoiceEnabled"
-      checked={formData.invoiceEnabled === 1}
-      onChange={(e) =>
-        setFormData((prev) => ({
-          ...prev,
-          invoiceEnabled: e.target.checked ? 1 : 0
-        }))
-      }
-      style={{
-        width: "20px",
-        height: "19px",
-        cursor: "pointer"
-      }}
-    />
+            <form onSubmit={handleSubmit} className="admin-staff-form">
+              <TabNavigation tabs={tabs} activeTab={activeTab} onTabClick={handleTabClick} />
 
-    <span style={{ fontSize: "14px" }}>
-      Enable  as retailer
-    </span>
-
-  </label>
-</div>
-  </div>
-</FormSection>
-
-
-
-
+              {/* BASIC DETAILS */}
               <FormSection
-                id="job"
+                id="basic"
                 activeTab={activeTab}
-                title="Job Details"
-                onBack={handleBack}
+                title="Basic Details"
+                onBack={null}
                 onNext={handleNext}
-                nextLabel="Bank Details"
+                nextLabel="Job Details"
                 onCancel={handleCancel}
               >
-                <div className="form-grid">
-                  <Input 
-                    label="Designation" 
-                    name="designation" 
-                    value={formData.designation} 
-                    onChange={handleInputChange} 
-                    required
-                  />
-                  <Input 
-                    label="Department" 
-                    name="department" 
-                    value={formData.department} 
-                    onChange={handleInputChange} 
-                    required
-                  />
-                  <Input 
-                    type="date" 
-                    label="Joining Date" 
-                    name="joiningDate" 
-                    value={formData.joiningDate} 
-                    onChange={handleInputChange} 
-                    required
-                  />
-                  <Input 
-                    type="number" 
-                    label="Incentive %" 
-                    name="incentivePercent" 
-                    value={formData.incentivePercent} 
-                    onChange={handleInputChange} 
-                    min="0"
-                    max="100"
-                    step="0.1"
-                  />
-                  <Input 
-                    type="number" 
-                    label="Salary" 
-                    name="salary" 
-                    value={formData.salary} 
-                    onChange={handleInputChange} 
-                    min="0"
-                  />
+                <div className="admin-staff-form-grid">
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Full Name *</label>
+                    <input type="text" name="full_name" value={formData.full_name} onChange={handleInputChange} className="admin-staff-form-input" />
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Mobile Number *</label>
+                    <input type="text" name="mobileNumber" value={formData.mobileNumber} onChange={handleInputChange} className="admin-staff-form-input" />
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Alternate Number</label>
+                    <input type="text" name="alternateNumber" value={formData.alternateNumber} onChange={handleInputChange} className="admin-staff-form-input" />
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Email *</label>
+                    <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="admin-staff-form-input" />
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Date of Birth</label>
+                    <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleInputChange} className="admin-staff-form-input" />
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Gender</label>
+                    <select name="gender" value={formData.gender} onChange={handleInputChange} className="admin-staff-form-input">
+                      <option value="">Select</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Address</label>
+                    <textarea name="address" value={formData.address} onChange={handleInputChange} rows={3} className="admin-staff-form-input" />
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Password</label>
+                    <div className="admin-staff-password-wrapper">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className="admin-staff-form-input"
+                      />
+                      {formData.password && (
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="admin-staff-password-toggle">
+                          {showPassword ? "Hide" : "Show"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="admin-staff-form-field admin-staff-full-width">
+                    <label className="admin-staff-checkbox-label">
+                      <input type="checkbox" checked={enableAsRetailer} onChange={handleRetailerToggle} className="admin-staff-checkbox" />
+                      <span className="admin-staff-checkbox-text">Enable as Retailer (Create dual account)</span>
+                    </label>
+                  </div>
+
+                  {enableAsRetailer && (
+                    <>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">Entity Type</label>
+                        <select name="entity_type" value={formData.entity_type} onChange={handleInputChange} className="admin-staff-form-input">
+                          <option value="">Select</option>
+                          <option value="Individual">Individual</option>
+                          <option value="Company">Company</option>
+                          <option value="Partnership">Partnership</option>
+                        </select>
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">GSTIN</label>
+                        <input type="text" name="gstin" value={formData.gstin} onChange={handleInputChange} maxLength={15} className="admin-staff-form-input" />
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">Business Name</label>
+                        <input type="text" name="business_name" value={formData.business_name} onChange={handleInputChange} className="admin-staff-form-input" />
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">Display Name</label>
+                        <input type="text" name="display_name" value={formData.display_name} onChange={handleInputChange} className="admin-staff-form-input" />
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">GST Registered Name</label>
+                        <input type="text" name="gst_registered_name" value={formData.gst_registered_name} onChange={handleInputChange} className="admin-staff-form-input" />
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">Additional Business Name</label>
+                        <input type="text" name="additional_business_name" value={formData.additional_business_name} onChange={handleInputChange} className="admin-staff-form-input" />
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">Fax</label>
+                        <input type="text" name="fax" value={formData.fax} onChange={handleInputChange} className="admin-staff-form-input" />
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">Discount (%)</label>
+                        <input type="number" name="discount" value={formData.discount} onChange={handleInputChange} min="0" max="100" step="0.1" className="admin-staff-form-input" />
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">Target (₹)</label>
+                        <input type="number" name="Target" value={formData.Target} onChange={handleInputChange} min="0" className="admin-staff-form-input" />
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">Credit Limit (₹)</label>
+                        <input type="number" name="credit_limit" value={formData.credit_limit} onChange={handleInputChange} min="0" className="admin-staff-form-input" />
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">Opening Balance</label>
+                        <div className="admin-staff-opening-balance-group">
+                          <input type="number" name="opening_balance" value={formData.opening_balance || ""} onChange={handleInputChange} min={0} step={1000} placeholder="Amount" className="admin-staff-form-input" />
+                          <select name="opening_balance_type" value={formData.opening_balance_type || ""} onChange={handleInputChange} className="admin-staff-form-input">
+                            <option value="">Select</option>
+                            <option value="Credit">Credit</option>
+                            <option value="Debit">Debit</option>
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </FormSection>
 
+              {/* JOB DETAILS */}
+              <FormSection id="job" activeTab={activeTab} title="Job Details" onBack={handleBack} onNext={handleNext} nextLabel="Bank Details" onCancel={handleCancel}>
+                <div className="admin-staff-form-grid">
+                  <div className="admin-staff-form-field"><label className="admin-staff-form-label">Designation</label><input type="text" name="designation" value={formData.designation} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                  <div className="admin-staff-form-field"><label className="admin-staff-form-label">Department</label><input type="text" name="department" value={formData.department} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                  <div className="admin-staff-form-field"><label className="admin-staff-form-label">Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                  <div className="admin-staff-form-field"><label className="admin-staff-form-label">Incentive %</label><input type="number" name="incentivePercent" value={formData.incentivePercent} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                  <div className="admin-staff-form-field"><label className="admin-staff-form-label">Salary</label><input type="number" name="salary" value={formData.salary} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                </div>
+              </FormSection>
+
+              {/* BANK DETAILS */}
               <FormSection
                 id="bank"
                 activeTab={activeTab}
@@ -736,93 +541,180 @@ const handleSubmit = async (e) => {
                 nextLabel="Documents"
                 onCancel={handleCancel}
               >
-                <div className="form-grid">
-                  <Input 
-                    label="Bank Account Number" 
-                    name="bankAccountNumber" 
-                    value={formData.bankAccountNumber} 
-                    onChange={handleInputChange}
-                    placeholder="9-16 digits only"
-                    title="Enter 9-16 digit account number"
-                  />
-                  <Input 
-                    label="IFSC Code" 
-                    name="ifscCode" 
-                    value={formData.ifscCode} 
-                    onChange={handleInputChange}
-                    placeholder="11 characters (alphanumeric)"
-                    title="Enter 11 character IFSC code (letters and numbers only)"
-                  />
-                  <Input 
-                    label="Bank Name" 
-                    name="bankName" 
-                    value={formData.bankName} 
-                    onChange={handleInputChange} 
-                  />
-                  <Input 
-                    label="Branch Name" 
-                    name="branchName" 
-                    value={formData.branchName} 
-                    onChange={handleInputChange} 
-                  />
-                  <Input 
-                    label="UPI ID" 
-                    name="upiId" 
-                    value={formData.upiId} 
-                    onChange={handleInputChange} 
-                  />
+                <div className="admin-staff-form-grid">
+                  <div className="admin-staff-full-width">
+                    <h4 className="admin-staff-subsection-title">Account Information</h4>
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Account Number</label>
+                    <input type="text" name="accountNumber" value={formData.accountNumber || ""} onChange={handleInputChange} maxLength={18} className="admin-staff-form-input" />
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Account Name</label>
+                    <input type="text" name="accountName" value={formData.accountName || ""} onChange={handleInputChange} className="admin-staff-form-input" />
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Bank Name</label>
+                    <select name="bankName" value={formData.bankName || ""} onChange={handleInputChange} className="admin-staff-form-input">
+                      <option value="">Select Bank</option>
+                      <option value="SBI">SBI</option>
+                      <option value="HDFC">HDFC</option>
+                      <option value="ICICI">ICICI</option>
+                      <option value="Axis Bank">Axis Bank</option>
+                      <option value="Kotak Mahindra Bank">Kotak Mahindra Bank</option>
+                      <option value="Yes Bank">Yes Bank</option>
+                      <option value="Bank of Baroda">Bank of Baroda</option>
+                      <option value="Canara Bank">Canara Bank</option>
+                      <option value="Punjab National Bank">Punjab National Bank</option>
+                      <option value="Union Bank">Union Bank</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">IFSC Code</label>
+                    <input type="text" name="ifscCode" value={formData.ifscCode || ""} onChange={handleInputChange} maxLength={11} placeholder="e.g., SBIN0001234" className="admin-staff-form-input" />
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Account Type</label>
+                    <select name="accountType" value={formData.accountType || ""} onChange={handleInputChange} className="admin-staff-form-input">
+                      <option value="">Select Account Type</option>
+                      <option value="Savings Account">Savings Account</option>
+                      <option value="Current Account">Current Account</option>
+                      <option value="Salary Account">Salary Account</option>
+                      <option value="Fixed Deposit">Fixed Deposit</option>
+                    </select>
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Branch Name</label>
+                    <input type="text" name="branchName" value={formData.branchName || ""} onChange={handleInputChange} className="admin-staff-form-input" />
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">UPI ID</label>
+                    <input type="text" name="upiId" value={formData.upiId || ""} onChange={handleInputChange} placeholder="e.g., username@okhdfcbank" className="admin-staff-form-input" />
+                  </div>
+
+                  <div className="admin-staff-full-width" style={{ marginTop: "20px" }}>
+                    <h4 className="admin-staff-subsection-title">Tax Information</h4>
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">PAN Number</label>
+                    <input type="text" name="panNumber" value={formData.panNumber || ""} onChange={handleInputChange} maxLength={10} placeholder="e.g., ABCDE1234F" className="admin-staff-form-input" />
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">TAN</label>
+                    <input type="text" name="tanNumber" value={formData.tanNumber || ""} onChange={handleInputChange} maxLength={10} placeholder="e.g., ABCD12345E" className="admin-staff-form-input" />
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">TCS/TDS Slab Rate</label>
+                    <select name="tdsSlabRate" value={formData.tdsSlabRate || ""} onChange={handleInputChange} className="admin-staff-form-input">
+                      <option value="">Select TCS Slab Rate</option>
+                      <option value="Not Applicable">TCS Not Applicable</option>
+                      <option value="0.1%">0.1%</option>
+                      <option value="1%">1%</option>
+                      <option value="5%">5%</option>
+                    </select>
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Currency</label>
+                    <select name="currency" value={formData.currency || "INR"} onChange={handleInputChange} className="admin-staff-form-input">
+                      <option value="INR">INR</option>
+                      <option value="USD">US Dollar</option>
+                      <option value="EUR">Euro</option>
+                    
+                    </select>
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Terms of Payment</label>
+                    <select name="termsOfPayment" value={formData.termsOfPayment || ""} onChange={handleInputChange} className="admin-staff-form-input">
+                      <option value="">Select Terms</option>
+                      <option value="Net 15">Net 15 Days</option>
+                      <option value="Net 30">Net 30 Days</option>
+                      <option value="Net 60">Net 60 Days</option>
+                    </select>
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Apply Reverse Charge</label>
+                    <select name="reverseCharge" value={formData.reverseCharge || "No"} onChange={handleInputChange} className="admin-staff-form-input">
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
+                    </select>
+                  </div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Export or SEZ Developer</label>
+                    <select name="exportSez" value={formData.exportSez || "Not Applicable"} onChange={handleInputChange} className="admin-staff-form-input">
+                      <option value="Not Applicable">Not Applicable</option>
+                      <option value="Export">Export</option>
+                      <option value="SEZ Developer">SEZ Developer</option>
+                    </select>
+                  </div>
                 </div>
               </FormSection>
 
+              {/* DOCUMENTS */}
               <FormSection
                 id="documents"
                 activeTab={activeTab}
-                title="Documents & Status"
+                title="Documents"
                 onBack={handleBack}
-                onSubmit={handleSubmit}
-                isLast={true}
+                onNext={enableAsRetailer ? handleNext : null}
+                onSubmit={!enableAsRetailer ? handleSubmit : null}
+                isLast={!enableAsRetailer}
                 onCancel={handleCancel}
                 submitLabel={isEditMode ? "Update Staff" : "Add Staff"}
               >
-                <div className="form-grid">
-                  <Input 
-                    label="Aadhaar Number" 
-                    name="aadhaarNumber" 
-                    value={formData.aadhaarNumber} 
-                    onChange={handleInputChange}
-                    placeholder="12 digits only"
-                    title="Enter 12 digit Aadhaar number"
-                  />
-                  <Input 
-                    label="PAN Number" 
-                    name="panNumber" 
-                    value={formData.panNumber} 
-                    onChange={handleInputChange}
-                    placeholder="ABCDE1234F"
-                    title="Enter PAN in format: ABCDE1234F"
-                  />
-                  <Input 
-                    label="Blood Group" 
-                    name="bloodGroup" 
-                    value={formData.bloodGroup} 
-                    onChange={handleInputChange} 
-                  />
-                  <Input 
-                    label="Emergency Contact" 
-                    name="emergencyContact" 
-                    value={formData.emergencyContact} 
-                    onChange={handleInputChange}
-                    placeholder="10 digits only"
-                  />
-                  <Select 
-                    label="Status" 
-                    name="status" 
-                    value={formData.status}
-                    onChange={handleInputChange} 
-                    options={["Active", "Inactive"]} 
-                  />
+                <div className="admin-staff-form-grid">
+                  <div className="admin-staff-form-field"><label className="admin-staff-form-label">Aadhaar Number</label><input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                  <div className="admin-staff-form-field"><label className="admin-staff-form-label">PAN Number</label><input type="text" name="panNumber" value={formData.panNumber} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                  <div className="admin-staff-form-field"><label className="admin-staff-form-label">Blood Group</label><input type="text" name="bloodGroup" value={formData.bloodGroup} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                  <div className="admin-staff-form-field"><label className="admin-staff-form-label">Emergency Contact</label><input type="text" name="emergencyContact" value={formData.emergencyContact} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                  <div className="admin-staff-form-field">
+                    <label className="admin-staff-form-label">Status</label>
+                    <select name="status" value={formData.status} onChange={handleInputChange} className="admin-staff-form-input">
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
                 </div>
               </FormSection>
+
+              {/* SHIPPING & BILLING — only when retailer enabled */}
+              {enableAsRetailer && (
+                <>
+                  <FormSection id="shipping" activeTab={activeTab} title="Shipping Address" onBack={handleBack} onNext={handleNext} nextLabel="Billing Address" onCancel={handleCancel}>
+                    <div className="admin-staff-form-grid">
+                      <div className="admin-staff-form-field"><label className="admin-staff-form-label">Address Line 1</label><input type="text" name="shipping_address_line1" value={formData.shipping_address_line1} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                      <div className="admin-staff-form-field"><label className="admin-staff-form-label">Address Line 2</label><input type="text" name="shipping_address_line2" value={formData.shipping_address_line2} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                      <div className="admin-staff-form-field"><label className="admin-staff-form-label">City</label><input type="text" name="shipping_city" value={formData.shipping_city} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                      <div className="admin-staff-form-field"><label className="admin-staff-form-label">Pin Code</label><input type="text" name="shipping_pin_code" value={formData.shipping_pin_code} onChange={handleInputChange} maxLength={6} className="admin-staff-form-input" /></div>
+                      <div className="admin-staff-form-field"><label className="admin-staff-form-label">State</label><input type="text" name="shipping_state" value={formData.shipping_state} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                      <div className="admin-staff-form-field"><label className="admin-staff-form-label">Country</label><input type="text" name="shipping_country" value={formData.shipping_country} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                      <div className="admin-staff-form-field"><label className="admin-staff-form-label">Branch Name</label><input type="text" name="shipping_branch_name" value={formData.shipping_branch_name} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                      <div className="admin-staff-form-field"><label className="admin-staff-form-label">GSTIN</label><input type="text" name="shipping_gstin" value={formData.shipping_gstin} onChange={handleInputChange} maxLength={15} className="admin-staff-form-input" /></div>
+                    </div>
+                  </FormSection>
+
+                  <FormSection id="billing" activeTab={activeTab} title="Billing Address" onBack={handleBack} onSubmit={handleSubmit} isLast={true} onCancel={handleCancel} submitLabel={isEditMode ? "Update Staff" : "Add Staff"}>
+                    <div className="admin-staff-same-as-shipping">
+                      <label className="admin-staff-checkbox-label">
+                        <input type="checkbox" checked={formData.sameAsShipping} onChange={handleSameAsShipping} className="admin-staff-checkbox" />
+                        <span className="admin-staff-checkbox-text">Same as Shipping Address</span>
+                      </label>
+                    </div>
+                    {!formData.sameAsShipping && (
+                      <div className="admin-staff-form-grid">
+                        <div className="admin-staff-form-field"><label className="admin-staff-form-label">Address Line 1</label><input type="text" name="billing_address_line1" value={formData.billing_address_line1} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                        <div className="admin-staff-form-field"><label className="admin-staff-form-label">Address Line 2</label><input type="text" name="billing_address_line2" value={formData.billing_address_line2} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                        <div className="admin-staff-form-field"><label className="admin-staff-form-label">City</label><input type="text" name="billing_city" value={formData.billing_city} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                        <div className="admin-staff-form-field"><label className="admin-staff-form-label">Pin Code</label><input type="text" name="billing_pin_code" value={formData.billing_pin_code} onChange={handleInputChange} maxLength={6} className="admin-staff-form-input" /></div>
+                        <div className="admin-staff-form-field"><label className="admin-staff-form-label">State</label><input type="text" name="billing_state" value={formData.billing_state} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                        <div className="admin-staff-form-field"><label className="admin-staff-form-label">Country</label><input type="text" name="billing_country" value={formData.billing_country} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                        <div className="admin-staff-form-field"><label className="admin-staff-form-label">Branch Name</label><input type="text" name="billing_branch_name" value={formData.billing_branch_name} onChange={handleInputChange} className="admin-staff-form-input" /></div>
+                        <div className="admin-staff-form-field"><label className="admin-staff-form-label">GSTIN</label><input type="text" name="billing_gstin" value={formData.billing_gstin} onChange={handleInputChange} maxLength={15} className="admin-staff-form-input" /></div>
+                      </div>
+                    )}
+                  </FormSection>
+                </>
+              )}
             </form>
           )}
         </div>

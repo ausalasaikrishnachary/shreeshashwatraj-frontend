@@ -4,7 +4,7 @@ import { Card, Button, Alert, Spinner, Form } from 'react-bootstrap';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import { FaUpload, FaFileExcel, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaDownload, FaArrowLeft } from 'react-icons/fa';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import axios from 'axios';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import './ImportRetailersPage.css';
@@ -264,73 +264,7 @@ const ImportRetailersPage = ({ user }) => {
     const firstRow = data[0];
     const rowKeys = Object.keys(firstRow).map(key => key.toLowerCase());
 
-    const requiredColumns = ['name', 'business_name', 'display_name'];
-    const missingColumns = requiredColumns.filter(col => 
-      !rowKeys.includes(col.toLowerCase())
-    );
-    
-    if (missingColumns.length > 0) {
-      errors.push(`Missing required columns: ${missingColumns.join(', ')}`);
-    }
-
-    data.forEach((row, index) => {
-      const rowNum = index + 2;
-
-      if (!row.name || row.name.toString().trim() === '') {
-        errors.push(`Row ${rowNum}: Name is required`);
-      }
-
-      if (!row.business_name || row.business_name.toString().trim() === '') {
-        errors.push(`Row ${rowNum}: Business Name is required`);
-      }
-
-      if (!row.display_name || row.display_name.toString().trim() === '') {
-        errors.push(`Row ${rowNum}: Display Name is required`);
-      }
-
-      if (row.email && row.email.toString().trim() !== '') {
-        const email = row.email.toString().trim();
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          errors.push(`Row ${rowNum}: Invalid email format (got: "${email}")`);
-        }
-      }
-
-      if (row.mobile_number && row.mobile_number.toString().trim() !== '') {
-        const mobile = row.mobile_number.toString().trim();
-        if (mobile.length < 10 || isNaN(mobile)) {
-          errors.push(`Row ${rowNum}: Mobile number must be at least 10 digits (got: "${mobile}")`);
-        }
-      }
-
-      if (row.discount && row.discount.toString().trim() !== '') {
-        const discount = parseFloat(row.discount);
-        if (isNaN(discount) || discount < 0 || discount > 100) {
-          errors.push(`Row ${rowNum}: Discount must be a number between 0 and 100 (got: "${row.discount}")`);
-        }
-      }
-
-      if (row.target && row.target.toString().trim() !== '') {
-        const target = parseFloat(row.target);
-        if (isNaN(target) || target < 0) {
-          errors.push(`Row ${rowNum}: Target must be a positive number (got: "${row.target}")`);
-        }
-      }
-
-      if (row.credit_limit && row.credit_limit.toString().trim() !== '') {
-        const creditLimit = parseFloat(row.credit_limit);
-        if (isNaN(creditLimit) || creditLimit < 0) {
-          errors.push(`Row ${rowNum}: Credit Limit must be a positive number (got: "${row.credit_limit}")`);
-        }
-      }
-
-      if (row.shipping_pin_code && row.shipping_pin_code.toString().trim() !== '') {
-        const pinCode = row.shipping_pin_code.toString().trim();
-        if (pinCode.length < 6 || isNaN(pinCode)) {
-          errors.push(`Row ${rowNum}: Shipping Pin Code must be 6 digits (got: "${pinCode}")`);
-        }
-      }
-    });
+  
 
     return errors;
   };
@@ -359,52 +293,92 @@ const ImportRetailersPage = ({ user }) => {
     });
   };
 
-  // Download template
-  const downloadTemplate = () => {
-    const templateHeaders = selectedRole === "retailer" 
-      ? [
-          "name", "business_name", "display_name", "email", "mobile_number", 
-          "phone_number", "entity_type", "gstin", "discount", "target",
-          "credit_limit", "shipping_address_line1", "shipping_city", 
-          "shipping_state", "shipping_pin_code", "shipping_country",
-          "billing_address_line1", "billing_city", "billing_state", 
-          "billing_pin_code", "billing_country"
-        ]
-      : [
-          "name", "business_name", "display_name", "email", "mobile_number", 
-          "phone_number", "gstin", "discount", "target", 
-          "shipping_address_line1", "shipping_city", "shipping_state", 
-          "shipping_pin_code", "shipping_country", "billing_address_line1", 
-          "billing_city", "billing_state", "billing_pin_code", "billing_country"
-        ];
+const downloadTemplate = () => {
+  const templateHeaders = selectedRole === "retailer"
+    ? [
+        "name", "business_name", "display_name", "email", "mobile_number",
+        "phone_number", "entity_type", "gstin", "discount", "target",
+        "credit_limit", "opening_balance", "opening_balance_type",
+        "shipping_address_line1", "shipping_city", "shipping_state",
+        "shipping_pin_code", "shipping_country",
+        "billing_address_line1", "billing_city", "billing_state",
+        "billing_pin_code", "billing_country"
+      ]
+    : [
+        "name", "business_name", "display_name", "email", "mobile_number",
+        "phone_number", "gstin", "discount", "target",
+        "opening_balance", "opening_balance_type",
+        "shipping_address_line1", "shipping_city", "shipping_state",
+        "shipping_pin_code", "shipping_country", "billing_address_line1",
+        "billing_city", "billing_state", "billing_pin_code", "billing_country"
+      ];
 
-    const sampleData = selectedRole === "retailer"
-      ? ["John Doe", "ABC Traders", "John's Store", "john@example.com", "9876543210", 
-         "0441234567", "Individual", "27ABCDE1234F1Z5", "10", "100000", 
-         "50000", "123 Main Street", "Chennai", "Tamil Nadu", "600001", 
-         "India", "123 Main Street", "Chennai", "Tamil Nadu", "600001", "India"]
-      : ["Supplier Corp", "Supplier Corp", "Supplier Corp Display", "supplier@example.com", 
-         "9876543210", "0441234567", "27ABCDE1234F1Z5", "5", "500000", 
-         "456 Supplier Street", "Mumbai", "Maharashtra", "400001", 
-         "India", "456 Supplier Street", "Mumbai", "Maharashtra", "400001", "India"];
+  const sampleData = selectedRole === "retailer"
+    ? [
+        "John Doe", "ABC Traders", "John's Store", "john@example.com", "9876543210",
+        "0441234567", "Individual", "27ABCDE1234F1Z5", "10", "100000",
+        "50000", "10000", "Credit",
+        "123 Main Street", "Chennai", "Tamil Nadu", "600001",
+        "India", "123 Main Street", "Chennai", "Tamil Nadu", "600001", "India"
+      ]
+    : [
+        "Supplier Corp", "Supplier Corp", "Supplier Corp Display", "supplier@example.com",
+        "9876543210", "0441234567", "27ABCDE1234F1Z5", "5", "500000",
+        "10000", "Credit",
+        "456 Supplier Street", "Mumbai", "Maharashtra", "400001",
+        "India", "456 Supplier Street", "Mumbai", "Maharashtra", "400001", "India"
+      ];
+  const ws = {};
+ const mandatoryColumns = [
+  "name",
+  "display_name",
+  "entity_type",
+  "shipping_state",
+  "shipping_country",
+  "billing_state",
+  "billing_country",
+  "opening_balance",
+  "opening_balance_type",
 
-    const ws = XLSX.utils.aoa_to_sheet([templateHeaders, sampleData]);
-    
-    const wscols = [
-      { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 15 },
-      { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 15 },
-      { wch: 12 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 12 },
-      { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 12 },
-      { wch: 15 }
-    ];
-    ws['!cols'] = wscols;
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    
-    const fileName = `${selectedRole}_bulk_upload_template.xlsx`;
-    XLSX.writeFile(wb, fileName);
+];
+
+const redStyle = {
+  font: { bold: true, color: { rgb: "FF0000" } },
+  alignment: { horizontal: "center" }
+};
+
+const normalStyle = {
+  font: { bold: true, color: { rgb: "000000" } },
+  alignment: { horizontal: "center" }
+};
+
+templateHeaders.forEach((header, colIndex) => {
+  const cellRef = XLSX.utils.encode_cell({ r: 0, c: colIndex });
+  ws[cellRef] = {
+    v: header,
+    t: "s",
+    s: mandatoryColumns.includes(header) ? redStyle : normalStyle
   };
+});
+
+  sampleData.forEach((value, colIndex) => {
+    const cellRef = XLSX.utils.encode_cell({ r: 1, c: colIndex });
+    ws[cellRef] = { v: value, t: "s" };
+  });
+
+  ws["!ref"] = XLSX.utils.encode_range({
+    s: { r: 0, c: 0 },
+    e: { r: 1, c: templateHeaders.length - 1 }
+  });
+
+  ws["!cols"] = templateHeaders.map(() => ({ wch: 20 }));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Template");
+
+  XLSX.writeFile(wb, `${selectedRole}_bulk_upload_template.xlsx`);
+};
 
   // Import data to backend
   const handleImport = async () => {
