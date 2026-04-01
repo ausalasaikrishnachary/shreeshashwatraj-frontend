@@ -167,8 +167,8 @@ const transformPaymentData = (apiData) => {
         totalAmount: 0,
         overdueDays: 0
       },
-      receipts: [],
-      creditnotes: [],
+      receipts: [], // ✅ Ensure this is an array
+      creditnotes: [], // ✅ Ensure this is an array
       summary: {
         totalPaid: 0,
         totalCreditNotes: 0,
@@ -180,11 +180,15 @@ const transformPaymentData = (apiData) => {
   
   const totalAmount = parseFloat(salesEntry.TotalAmount) || 0;
   
-  const totalPaid = receiptEntries.reduce((sum, receipt) => {
+  // ✅ Ensure receipts is an array
+  const receipts = Array.isArray(receiptEntries) ? receiptEntries : [];
+  const totalPaid = receipts.reduce((sum, receipt) => {
     return sum + parseFloat(receipt.paid_amount || receipt.TotalAmount || 0);
   }, 0);
   
-  const totalCreditNotes = creditNoteEntries.reduce((sum, creditnote) => {
+  // ✅ Ensure creditnotes is an array
+  const creditnotes = Array.isArray(creditNoteEntries) ? creditNoteEntries : [];
+  const totalCreditNotes = creditnotes.reduce((sum, creditnote) => {
     return sum + parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0);
   }, 0);
   
@@ -194,7 +198,8 @@ const transformPaymentData = (apiData) => {
   const today = new Date();
   const overdueDays = Math.max(0, Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24)));
   
-  const receipts = receiptEntries.map(receipt => ({
+  // ✅ Map receipts safely
+  const mappedReceipts = receipts.map(receipt => ({
     receiptNumber: receipt.VchNo || receipt.receipt_number,
     paidAmount: parseFloat(receipt.paid_amount || receipt.TotalAmount || 0),
     paidDate: receipt.Date || receipt.paid_date,
@@ -202,7 +207,8 @@ const transformPaymentData = (apiData) => {
     type: 'receipt'
   }));
   
-  const creditnotes = (creditNoteEntries || []).map(creditnote => ({
+  // ✅ Map creditnotes safely
+  const mappedCreditnotes = creditnotes.map(creditnote => ({
     receiptNumber: creditnote.VchNo || 'CNOTE',
     paidAmount: parseFloat(creditnote.paid_amount || creditnote.TotalAmount || 0),
     paidDate: creditnote.Date || creditnote.paid_date,
@@ -224,8 +230,8 @@ const transformPaymentData = (apiData) => {
       totalAmount: totalAmount,
       overdueDays: overdueDays
     },
-    receipts: receipts,
-    creditnotes: creditnotes, 
+    receipts: mappedReceipts, // ✅ Always an array
+    creditnotes: mappedCreditnotes, // ✅ Always an array
     summary: {
       totalPaid: totalPaid,
       totalCreditNotes: totalCreditNotes,
@@ -540,7 +546,8 @@ const PaymentStatus = () => {
     );
   }
 
-  const { invoice, receipts, creditnotes, summary } = paymentData;
+  // ✅ Add null checks for receipts and creditnotes
+  const { invoice, receipts = [], creditnotes = [], summary } = paymentData;
   
   console.log('PaymentStatus rendering with:', {
     invoice,
@@ -548,6 +555,10 @@ const PaymentStatus = () => {
     creditnotes,
     summary
   });
+
+  // ✅ Ensure receipts and creditnotes are arrays
+  const receiptsArray = Array.isArray(receipts) ? receipts : [];
+  const creditnotesArray = Array.isArray(creditnotes) ? creditnotes : [];
 
   const formatIndianDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -561,13 +572,27 @@ const PaymentStatus = () => {
     return `${day}/${month}/${year}`;
   };
 
+  // ✅ Safely combine transactions with null checks
   const allTransactions = [
-    ...receipts.map(r => ({ ...r, type: 'receipt' })),
-    ...creditnotes.map(cn => ({ ...cn, type: 'credit_note' }))
-  ].sort((a, b) => new Date(a.paidDate) - new Date(b.paidDate));
+    ...receiptsArray.map(r => ({ ...r, type: 'receipt' })),
+    ...creditnotesArray.map(cn => ({ ...cn, type: 'credit_note' }))
+  ].sort((a, b) => {
+    const dateA = a.paidDate ? new Date(a.paidDate) : new Date(0);
+    const dateB = b.paidDate ? new Date(b.paidDate) : new Date(0);
+    return dateA - dateB;
+  });
 
-  const progressPercentage = invoice.totalAmount > 0 ? 
-    ((summary.totalPaid - summary.totalCreditNotes) / invoice.totalAmount) * 100 : 0;
+  const totalAmount = invoice?.totalAmount || 0;
+  const totalPaid = receiptsArray.reduce((sum, receipt) => {
+    return sum + (parseFloat(receipt.paidAmount) || 0);
+  }, 0);
+  const totalCreditNotes = creditnotesArray.reduce((sum, creditnote) => {
+    return sum + (parseFloat(creditnote.paidAmount) || 0);
+  }, 0);
+  const balanceDue = totalAmount - totalPaid - totalCreditNotes;
+  
+  const progressPercentage = totalAmount > 0 ? 
+    ((totalPaid - totalCreditNotes) / totalAmount) * 100 : 0;
 
   return (
     <Card className="shadow-sm mb-3">
@@ -581,10 +606,10 @@ const PaymentStatus = () => {
         <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
           <span className="fw-bold">Status:</span>
           <Badge bg={
-            summary.status === 'Paid' ? 'success' :
-            summary.status === 'Partial' ? 'warning' : 'danger'
+            summary?.status === 'Paid' ? 'success' :
+            summary?.status === 'Partial' ? 'warning' : 'danger'
           }>
-            {summary.status}
+            {summary?.status || 'Pending'}
           </Badge>
         </div>
 
@@ -595,40 +620,44 @@ const PaymentStatus = () => {
               Original Invoice:
             </span>
             <small className="text-muted ms-1">
-              (On {formatIndianDate(invoice.invoiceDate)})
+              (On {formatIndianDate(invoice?.invoiceDate)})
             </small>
             <span className="fw-bold text-primary">
-              ₹{invoice.totalAmount.toFixed(2)}
+              ₹{totalAmount.toFixed(2)}
             </span>
           </div>
 
-          {allTransactions.map((transaction, index) => (
-            <div 
-              key={`${transaction.type}-${index}`} 
-              className={`d-flex justify-content-between align-items-center mb-2 ps-3 border-start ${
-                transaction.type === 'receipt' ? 'border-success' : 'border-warning'
-              }`}
-            >
-              <span className={transaction.type === 'receipt' ? 'text-success' : 'text-warning'}>
-                {transaction.type === 'receipt' ? (
-                  <FaCheckCircle className="me-1" />
-                ) : (
-                  <FaTimes className="me-1" />
-                )}
-                {transaction.type === 'receipt' ? ' Receipt:' : 'Credit Note:'}
-              </span>
-              <small className="text-muted ms-1">
-                (On {formatIndianDate(transaction.paidDate)}) – {transaction.receiptNumber}
-              </small>
-              <span className={`fw-bold ${
-                transaction.type === 'receipt' ? 'text-success' : 'text-warning'
-              }`}>
-                {transaction.type === 'receipt' ? '' : ''}₹{transaction.paidAmount.toFixed(2)}
-              </span>
+          {allTransactions.length > 0 ? (
+            allTransactions.map((transaction, index) => (
+              <div 
+                key={`${transaction.type}-${index}`} 
+                className={`d-flex justify-content-between align-items-center mb-2 ps-3 border-start ${
+                  transaction.type === 'receipt' ? 'border-success' : 'border-warning'
+                }`}
+              >
+                <span className={transaction.type === 'receipt' ? 'text-success' : 'text-warning'}>
+                  {transaction.type === 'receipt' ? (
+                    <FaCheckCircle className="me-1" />
+                  ) : (
+                    <FaTimes className="me-1" />
+                  )}
+                  {transaction.type === 'receipt' ? ' Receipt:' : 'Credit Note:'}
+                </span>
+                <small className="text-muted ms-1">
+                  (On {formatIndianDate(transaction.paidDate)}) – {transaction.receiptNumber}
+                </small>
+                <span className={`fw-bold ${
+                  transaction.type === 'receipt' ? 'text-success' : 'text-warning'
+                }`}>
+                  {transaction.type === 'receipt' ? '' : ''}₹{(transaction.paidAmount || 0).toFixed(2)}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="text-center text-muted py-2">
+              <small>No receipts or credit notes recorded</small>
             </div>
-          ))}
-
-     
+          )}
 
           {/* Balance Due */}
           <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
@@ -637,11 +666,10 @@ const PaymentStatus = () => {
               Balance Due:
             </span>
             <span className="fw-bold text-danger">
-              ₹{summary.balanceDue.toFixed(2)}
+              ₹{balanceDue.toFixed(2)}
             </span>
           </div>
         </div>
-
       </Card.Body>
     </Card>
   );
