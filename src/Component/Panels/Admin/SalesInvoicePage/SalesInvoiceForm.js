@@ -223,7 +223,7 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
         batch_id: batch.batch_id || '',
         batchDetails: batch.batchDetails || null,
         assigned_staff: batch.assigned_staff || apiData.assigned_staff || apiData.AssignedStaff || 'N/A',
-         hsn_code: batch.hsn_code || ''  // ✅ ADD
+         hsn_code: batch.hsn_code || ''  
       };
     }) || [];
 

@@ -88,7 +88,7 @@ function AddStaff() {
     dateOfBirth: "",
     gender: "",
     address: "",
-    role: "staff",          // ✅ always default "staff"
+    role: "staff",
     designation: "",
     department: "",
     joiningDate: "",
@@ -187,83 +187,74 @@ function AddStaff() {
       const staffData = await res.json();
       const data = Array.isArray(staffData) ? staffData[0] : staffData;
 
-      // ✅ role is now included — this was the cause of the 400
       setFormData({
-        full_name:               data.name || data.full_name || "",
-        mobileNumber:           data.mobile_number || "",
-        alternateNumber:        data.alternate_number || "",
-        email:                  data.email || "",
-        dateOfBirth:            data.date_of_birth ? data.date_of_birth.split("T")[0] : "",
-        joiningDate:            data.joining_date ? data.joining_date.split("T")[0] : "",
-        gender:                 data.gender || "",
-        address:                data.address || "",
-        role:                   data.role || "staff",   // ✅ FIXED
-        designation:            data.designation || "",
-        department:             data.department || "",
-        incentivePercent:       data.incentive_percent || "",
-        salary:                 data.salary || "",
-        status:                 data.status || "Active",
-        password:               data.password || "",
-
-        // Bank fields
-        accountNumber:          data.account_number || "",
-        accountName:            data.account_name || "",
-        bankName:               data.bank_name || "",
-        ifscCode:               data.ifsc_code || "",
-        accountType:            data.account_type || "",
-        branchName:             data.branch_name || "",
-        upiId:                  data.upi_id || "",
-
-        // Tax / doc fields
-        panNumber:              data.pan || "",
-        tanNumber:              data.tan || "",
-        tdsSlabRate:            data.tds_slab_rate || "",
-        currency:               data.currency || "INR",
-        termsOfPayment:         data.terms_of_payment || "",
-        reverseCharge:          data.reverse_charge || "No",
-        exportSez:              data.export_sez || "Not Applicable",
-        aadhaarNumber:          data.aadhaar_number || "",
-        bloodGroup:             data.blood_group || "",
-        emergencyContact:       data.emergency_contact || "",
-
-        // Retailer fields
-        is_dual_account:        data.is_dual_account === 1 ? 1 : 0,
-        entity_type:            data.entity_type || "",
-        gstin:                  data.gstin || "",
-        business_name:          data.business_name || "",
-        display_name:           data.display_name || "",
-        gst_registered_name:    data.gst_registered_name || "",
+        full_name:                data.name || data.full_name || "",
+        mobileNumber:             data.mobile_number || "",
+        alternateNumber:          data.alternate_number || "",
+        email:                    data.email || "",
+        dateOfBirth:              data.date_of_birth ? data.date_of_birth.split("T")[0] : "",
+        joiningDate:              data.joining_date ? data.joining_date.split("T")[0] : "",
+        gender:                   data.gender || "",
+        address:                  data.address || "",
+        role:                     data.role || "staff",
+        designation:              data.designation || "",
+        department:               data.department || "",
+        incentivePercent:         data.incentive_percent || "",
+        salary:                   data.salary || "",
+        status:                   data.status || "Active",
+        password:                 data.password || "",
+        accountNumber:            data.account_number || "",
+        accountName:              data.account_name || "",
+        bankName:                 data.bank_name || "",
+        ifscCode:                 data.ifsc_code || "",
+        accountType:              data.account_type || "",
+        branchName:               data.branch_name || "",
+        upiId:                    data.upi_id || "",
+        panNumber:                data.pan || "",
+        tanNumber:                data.tan || "",
+        tdsSlabRate:              data.tds_slab_rate || "",
+        currency:                 data.currency || "INR",
+        termsOfPayment:           data.terms_of_payment || "",
+        reverseCharge:            data.reverse_charge || "No",
+        exportSez:                data.export_sez || "Not Applicable",
+        aadhaarNumber:            data.aadhaar_number || "",
+        bloodGroup:               data.blood_group || "",
+        emergencyContact:         data.emergency_contact || "",
+        is_dual_account:          data.is_dual_account === 1 ? 1 : 0,
+        entity_type:              data.entity_type || "",
+        gstin:                    data.gstin || "",
+        business_name:            data.business_name || "",
+        display_name:             data.display_name || "",
+        gst_registered_name:      data.gst_registered_name || "",
         additional_business_name: data.additional_business_name || "",
-        fax:                    data.fax || "",
-        discount:               data.discount || 0,
-        Target:                 data.target || data.Target || 100000,  // ✅ handles both cases
-        credit_limit:           data.credit_limit || "",
-        opening_balance:        data.opening_balance || 0,
-        opening_balance_type:   data.opening_balance_type || "",
-
-        // Shipping
-        shipping_address_line1: data.shipping_address_line1 || "",
-        shipping_address_line2: data.shipping_address_line2 || "",
-        shipping_city:          data.shipping_city || "",
-        shipping_pin_code:      data.shipping_pin_code || "",
-        shipping_state:         data.shipping_state || "",
-        shipping_country:       data.shipping_country || "India",
-        shipping_branch_name:   data.shipping_branch_name || "",
-        shipping_gstin:         data.shipping_gstin || "",
-
-        // Billing
-        billing_address_line1:  data.billing_address_line1 || "",
-        billing_address_line2:  data.billing_address_line2 || "",
-        billing_city:           data.billing_city || "",
-        billing_pin_code:       data.billing_pin_code || "",
-        billing_state:          data.billing_state || "",
-        billing_country:        data.billing_country || "India",
-        billing_branch_name:    data.billing_branch_name || "",
-        billing_gstin:          data.billing_gstin || "",
-        sameAsShipping:         false,
+        fax:                      data.fax || "",
+        discount:                 data.discount || 0,
+        Target:                   data.target || data.Target || 100000,
+        credit_limit:             data.credit_limit || "",
+        opening_balance:          data.opening_balance || 0,
+        opening_balance_type:     data.opening_balance_type || "",
+        shipping_address_line1:   data.shipping_address_line1 || "",
+        shipping_address_line2:   data.shipping_address_line2 || "",
+        shipping_city:            data.shipping_city || "",
+        shipping_pin_code:        data.shipping_pin_code || "",
+        shipping_state:           data.shipping_state || "",
+        shipping_country:         data.shipping_country || "India",
+        shipping_branch_name:     data.shipping_branch_name || "",
+        shipping_gstin:           data.shipping_gstin || "",
+        billing_address_line1:    data.billing_address_line1 || "",
+        billing_address_line2:    data.billing_address_line2 || "",
+        billing_city:             data.billing_city || "",
+        billing_pin_code:         data.billing_pin_code || "",
+        billing_state:            data.billing_state || "",
+        billing_country:          data.billing_country || "India",
+        billing_branch_name:      data.billing_branch_name || "",
+        billing_gstin:            data.billing_gstin || "",
+        sameAsShipping:           false,
       });
 
       setEnableAsRetailer(data.is_dual_account === 1);
+
+
     } catch (err) {
       setError("Failed to load staff data");
     } finally {
@@ -354,7 +345,6 @@ function AddStaff() {
         alert(isEditMode ? "Staff updated successfully!" : "Staff added successfully!");
         navigate("/staff");
       } else {
-        // ✅ Show actual error message from backend in UI
         const errData = await response.json();
         setError(errData.error || "Failed to save staff.");
       }
@@ -441,6 +431,9 @@ function AddStaff() {
                         value={formData.password}
                         onChange={handleInputChange}
                         className="admin-staff-form-input"
+                        autoComplete="new-password"
+                        placeholder="Automatically Generated"
+                        readOnly   
                       />
                       {formData.password && (
                         <button type="button" onClick={() => setShowPassword(!showPassword)} className="admin-staff-password-toggle">
@@ -450,6 +443,7 @@ function AddStaff() {
                     </div>
                   </div>
 
+                  {/* Retailer Toggle */}
                   <div className="admin-staff-form-field admin-staff-full-width">
                     <label className="admin-staff-checkbox-label">
                       <input type="checkbox" checked={enableAsRetailer} onChange={handleRetailerToggle} className="admin-staff-checkbox" />
@@ -542,6 +536,8 @@ function AddStaff() {
                 onCancel={handleCancel}
               >
                 <div className="admin-staff-form-grid">
+
+                  {/* Account Information — always visible */}
                   <div className="admin-staff-full-width">
                     <h4 className="admin-staff-subsection-title">Account Information</h4>
                   </div>
@@ -593,60 +589,65 @@ function AddStaff() {
                     <input type="text" name="upiId" value={formData.upiId || ""} onChange={handleInputChange} placeholder="e.g., username@okhdfcbank" className="admin-staff-form-input" />
                   </div>
 
-                  <div className="admin-staff-full-width" style={{ marginTop: "20px" }}>
-                    <h4 className="admin-staff-subsection-title">Tax Information</h4>
-                  </div>
-                  <div className="admin-staff-form-field">
-                    <label className="admin-staff-form-label">PAN Number</label>
-                    <input type="text" name="panNumber" value={formData.panNumber || ""} onChange={handleInputChange} maxLength={10} placeholder="e.g., ABCDE1234F" className="admin-staff-form-input" />
-                  </div>
-                  <div className="admin-staff-form-field">
-                    <label className="admin-staff-form-label">TAN</label>
-                    <input type="text" name="tanNumber" value={formData.tanNumber || ""} onChange={handleInputChange} maxLength={10} placeholder="e.g., ABCD12345E" className="admin-staff-form-input" />
-                  </div>
-                  <div className="admin-staff-form-field">
-                    <label className="admin-staff-form-label">TCS/TDS Slab Rate</label>
-                    <select name="tdsSlabRate" value={formData.tdsSlabRate || ""} onChange={handleInputChange} className="admin-staff-form-input">
-                      <option value="">Select TCS Slab Rate</option>
-                      <option value="Not Applicable">TCS Not Applicable</option>
-                      <option value="0.1%">0.1%</option>
-                      <option value="1%">1%</option>
-                      <option value="5%">5%</option>
-                    </select>
-                  </div>
-                  <div className="admin-staff-form-field">
-                    <label className="admin-staff-form-label">Currency</label>
-                    <select name="currency" value={formData.currency || "INR"} onChange={handleInputChange} className="admin-staff-form-input">
-                      <option value="INR">INR</option>
-                      <option value="USD">US Dollar</option>
-                      <option value="EUR">Euro</option>
-                    
-                    </select>
-                  </div>
-                  <div className="admin-staff-form-field">
-                    <label className="admin-staff-form-label">Terms of Payment</label>
-                    <select name="termsOfPayment" value={formData.termsOfPayment || ""} onChange={handleInputChange} className="admin-staff-form-input">
-                      <option value="">Select Terms</option>
-                      <option value="Net 15">Net 15 Days</option>
-                      <option value="Net 30">Net 30 Days</option>
-                      <option value="Net 60">Net 60 Days</option>
-                    </select>
-                  </div>
-                  <div className="admin-staff-form-field">
-                    <label className="admin-staff-form-label">Apply Reverse Charge</label>
-                    <select name="reverseCharge" value={formData.reverseCharge || "No"} onChange={handleInputChange} className="admin-staff-form-input">
-                      <option value="Yes">Yes</option>
-                      <option value="No">No</option>
-                    </select>
-                  </div>
-                  <div className="admin-staff-form-field">
-                    <label className="admin-staff-form-label">Export or SEZ Developer</label>
-                    <select name="exportSez" value={formData.exportSez || "Not Applicable"} onChange={handleInputChange} className="admin-staff-form-input">
-                      <option value="Not Applicable">Not Applicable</option>
-                      <option value="Export">Export</option>
-                      <option value="SEZ Developer">SEZ Developer</option>
-                    </select>
-                  </div>
+               
+                  {/* ✅ Tax Information Fields — only shown when checkbox is checked */}
+{enableAsRetailer && (
+                    <>
+                      <div className="admin-staff-full-width">
+                        <h4 className="admin-staff-subsection-title">Tax Information</h4>
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">PAN Number</label>
+                        <input type="text" name="panNumber" value={formData.panNumber || ""} onChange={handleInputChange} maxLength={10} placeholder="e.g., ABCDE1234F" className="admin-staff-form-input" />
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">TAN</label>
+                        <input type="text" name="tanNumber" value={formData.tanNumber || ""} onChange={handleInputChange} maxLength={10} placeholder="e.g., ABCD12345E" className="admin-staff-form-input" />
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">TCS/TDS Slab Rate</label>
+                        <select name="tdsSlabRate" value={formData.tdsSlabRate || ""} onChange={handleInputChange} className="admin-staff-form-input">
+                          <option value="">Select TCS Slab Rate</option>
+                          <option value="Not Applicable">TCS Not Applicable</option>
+                          <option value="0.1%">0.1%</option>
+                          <option value="1%">1%</option>
+                          <option value="5%">5%</option>
+                        </select>
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">Currency</label>
+                        <select name="currency" value={formData.currency || "INR"} onChange={handleInputChange} className="admin-staff-form-input">
+                          <option value="INR">INR</option>
+                          <option value="USD">US Dollar</option>
+                          <option value="EUR">Euro</option>
+                        </select>
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">Terms of Payment</label>
+                        <select name="termsOfPayment" value={formData.termsOfPayment || ""} onChange={handleInputChange} className="admin-staff-form-input">
+                          <option value="">Select Terms</option>
+                          <option value="Net 15">Net 15 Days</option>
+                          <option value="Net 30">Net 30 Days</option>
+                          <option value="Net 60">Net 60 Days</option>
+                        </select>
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">Apply Reverse Charge</label>
+                        <select name="reverseCharge" value={formData.reverseCharge || "No"} onChange={handleInputChange} className="admin-staff-form-input">
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                        </select>
+                      </div>
+                      <div className="admin-staff-form-field">
+                        <label className="admin-staff-form-label">Export or SEZ Developer</label>
+                        <select name="exportSez" value={formData.exportSez || "Not Applicable"} onChange={handleInputChange} className="admin-staff-form-input">
+                          <option value="Not Applicable">Not Applicable</option>
+                          <option value="Export">Export</option>
+                          <option value="SEZ Developer">SEZ Developer</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
                 </div>
               </FormSection>
 
@@ -677,7 +678,7 @@ function AddStaff() {
                 </div>
               </FormSection>
 
-              {/* SHIPPING & BILLING — only when retailer enabled */}
+              {/* SHIPPING & BILLING */}
               {enableAsRetailer && (
                 <>
                   <FormSection id="shipping" activeTab={activeTab} title="Shipping Address" onBack={handleBack} onNext={handleNext} nextLabel="Billing Address" onCancel={handleCancel}>
