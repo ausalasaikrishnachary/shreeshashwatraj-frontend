@@ -486,13 +486,15 @@ const addItem = () => {
 
   const editItem = (index) => {
   const itemToEdit = invoiceData.items[index];
-  
+    const selectedProduct = products.find(p => p.id === itemToEdit.product_id);
+  const productNetPrice = selectedProduct ? parseFloat(selectedProduct.net_price) || 0 : itemToEdit.price;
+
   setItemForm({
     product: itemToEdit.product,
     product_id: itemToEdit.product_id,
     description: itemToEdit.description,
     quantity: itemToEdit.quantity,
-    price: itemToEdit.price,
+     price: productNetPrice,  
     discount: itemToEdit.discount, // Preserve the item's discount
     total: itemToEdit.total,
     batch: itemToEdit.batch,

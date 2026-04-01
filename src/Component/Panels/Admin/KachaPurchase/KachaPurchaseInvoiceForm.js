@@ -1170,7 +1170,7 @@ const addItem = () => {
             .map((p) => {
               const availableQty = productStock[p.id] || 0;
               const supplierDiscount = parseFloat(invoiceData.supplierInfo?.discount) || 0;
-              
+               const productNetPrice = parseFloat(p.net_price) || 0;
               return (
                 <div
                   key={p.id}
@@ -1179,7 +1179,7 @@ const addItem = () => {
                       ...prev,
                       product: p.goods_name,
                       product_id: p.id,
-                      price: p.net_price || 0,
+                      price: productNetPrice,  
                       description: p.description || "",
                       discount: supplierDiscount,
                       batch: "",
@@ -1200,7 +1200,7 @@ const addItem = () => {
                           ...prev,
                           batch: defaultBatch.batch_number,
                           batch_id: defaultBatch.batch_number,
-                          price: defaultBatch.selling_price,
+                            price: productNetPrice, 
                           discount: supplierDiscount
                         }));
                       } else {
@@ -1276,13 +1276,15 @@ const addItem = () => {
         setSelectedBatchDetails(batch || null);
         
         const supplierDiscount = parseFloat(invoiceData.supplierInfo?.discount) || 0;
+ const selectedProduct = products.find(p => p.id === itemForm.product_id);
+      const productNetPrice = selectedProduct ? parseFloat(selectedProduct.net_price) || 0 : 0;
 
         if (batch) {
           setItemForm(prev => ({
             ...prev,
             batch: batchNumber,
             batch_id: batch.batch_number,
-            price: batch.selling_price,
+            price: productNetPrice, 
             discount: supplierDiscount
           }));
         } else {
