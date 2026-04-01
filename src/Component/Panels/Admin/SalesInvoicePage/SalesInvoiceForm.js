@@ -751,13 +751,15 @@ const addItem = () => {
   const editItem = (index) => {
     const itemToEdit = invoiceData.items[index];
     
-    // Set the form fields with the item data
-    setItemForm({
+  const selectedProduct = products.find(p => p.id === itemToEdit.product_id);
+  const productNetPrice = selectedProduct ? parseFloat(selectedProduct.net_price) || 0 : itemToEdit.price;
+  
+  setItemForm({
       product: itemToEdit.product,
       product_id: itemToEdit.product_id,
       description: itemToEdit.description,
       quantity: itemToEdit.quantity,
-      price: itemToEdit.price,
+      price: productNetPrice,
       discount: itemToEdit.discount,
       gst: itemToEdit.gst,
       cgst: itemToEdit.cgst,
@@ -1725,54 +1727,57 @@ window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice sub
                   return (
                     <div
                       key={p.id}
-                      onClick={async () => {
-                        const retailerDiscount = parseFloat(
-                          accounts.find(acc => acc.id === selectedSupplierId)?.discount || 0
-                        ) || 0;
+onClick={async () => {
+  const retailerDiscount = parseFloat(
+    accounts.find(acc => acc.id === selectedSupplierId)?.discount || 0
+  ) || 0;
 
-                        setItemForm(prev => ({
-                          ...prev,
-                          product: p.goods_name,
-                          product_id: p.id,
-                          price: p.net_price || 0,
-                          gst: parseFloat(p.gst_rate?.replace("%", "") || 0),
-                          description: p.description || "",
-                          discount: retailerDiscount,
-                          quantity: prev.quantity || 0,
-                          batch: "",
-                          batch_id: "",
-                          hsn_code: p.hsn_code || ""
-                        }));
+  // ✅ Use net_price here
+  const productNetPrice = parseFloat(p.net_price) || 0;
+  
+  setItemForm(prev => ({
+    ...prev,
+    product: p.goods_name,
+    product_id: p.id,
+    price: productNetPrice,  // ✅ Using net_price
+    gst: parseFloat(p.gst_rate?.replace("%", "") || 0),
+    description: p.description || "",
+    discount: retailerDiscount,
+    quantity: prev.quantity || 0,
+    batch: "",
+    batch_id: "",
+    hsn_code: p.hsn_code || ""
+  }));
 
-                        try {
-                          const res = await fetch(`${baseurl}/products/${p.id}/batches`);
-                          const batchData = await res.json();
-                          setBatches(batchData);
+  try {
+    const res = await fetch(`${baseurl}/products/${p.id}/batches`);
+    const batchData = await res.json();
+    setBatches(batchData);
 
-                          if (p.maintain_batch === 0 && batchData.length > 0) {
-                            const defaultBatch = batchData[0];
-                            setSelectedBatch(defaultBatch.batch_number);
-                            setSelectedBatchDetails(defaultBatch);
-                            setItemForm(prev => ({
-                              ...prev,
-                              batch: defaultBatch.batch_number,
-                              batch_id: defaultBatch.batch_number,
-                              price: defaultBatch.selling_price
-                            }));
-                          } else {
-                            setSelectedBatch("");
-                            setSelectedBatchDetails(null);
-                          }
-                        } catch (err) {
-                          console.error("Failed to fetch batches:", err);
-                          setBatches([]);
-                          setSelectedBatch("");
-                          setSelectedBatchDetails(null);
-                        }
+    if (p.maintain_batch === 0 && batchData.length > 0) {
+      const defaultBatch = batchData[0];
+      setSelectedBatch(defaultBatch.batch_number);
+      setSelectedBatchDetails(defaultBatch);
+      setItemForm(prev => ({
+        ...prev,
+        batch: defaultBatch.batch_number,
+        batch_id: defaultBatch.batch_number,
+        price: productNetPrice  // ✅ Keep using net_price, not batch price
+      }));
+    } else {
+      setSelectedBatch("");
+      setSelectedBatchDetails(null);
+    }
+  } catch (err) {
+    console.error("Failed to fetch batches:", err);
+    setBatches([]);
+    setSelectedBatch("");
+    setSelectedBatchDetails(null);
+  }
 
-                        setIsProductDropdownOpen(false);
-                        setProductSearchTerm("");
-                      }}
+  setIsProductDropdownOpen(false);
+  setProductSearchTerm("");
+}}
                       style={{
                         padding: '8px 16px',
                         cursor: 'pointer',
@@ -1826,28 +1831,34 @@ window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice sub
           className="mt-2 border-primary"
           name="batch"
           value={selectedBatch}
-          onChange={(e) => {
-            const batchNumber = e.target.value;
-            setSelectedBatch(batchNumber);
-            const batch = batches.find(b => b.batch_number === batchNumber);
-            setSelectedBatchDetails(batch || null);
-            const currentDiscount = itemForm.discount || 0;
-            if (batch) {
-              setItemForm(prev => ({
-                ...prev,
-                batch: batchNumber,
-                batch_id: batch.batch_number,
-                price: batch.selling_price,
-                discount: currentDiscount
-              }));
-            } else {
-              setItemForm(prev => ({
-                ...prev,
-                batch: "",
-                batch_id: ""
-              }));
-            }
-          }}
+      // In your batch selection onChange
+onChange={(e) => {
+  const batchNumber = e.target.value;
+  setSelectedBatch(batchNumber);
+  const batch = batches.find(b => b.batch_number === batchNumber);
+  setSelectedBatchDetails(batch || null);
+  const currentDiscount = itemForm.discount || 0;
+  
+  if (batch) {
+    // ✅ Get the product's net_price from the products array
+    const selectedProduct = products.find(p => p.id === itemForm.product_id);
+    const productNetPrice = selectedProduct ? parseFloat(selectedProduct.net_price) || 0 : 0;
+    
+    setItemForm(prev => ({
+      ...prev,
+      batch: batchNumber,
+      batch_id: batch.batch_number,
+      price: productNetPrice,  // ✅ Always use product's net_price
+      discount: currentDiscount
+    }));
+  } else {
+    setItemForm(prev => ({
+      ...prev,
+      batch: "",
+      batch_id: ""
+    }));
+  }
+}}
         >
           <option value="">Select Batch</option>
           {batches.map((batch) => (

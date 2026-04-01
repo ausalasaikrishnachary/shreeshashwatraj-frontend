@@ -668,13 +668,15 @@ const addItem = () => {
 const editItem = (index) => {
   const itemToEdit = invoiceData.items[index];
   
-  // Set the form fields with the item data
+   const selectedProduct = products.find(p => p.id === itemToEdit.product_id);
+  const productNetPrice = selectedProduct ? parseFloat(selectedProduct.net_price) || 0 : itemToEdit.price;
+  
   setItemForm({
     product: itemToEdit.product,
     product_id: itemToEdit.product_id,
     description: itemToEdit.description,
     quantity: itemToEdit.quantity,
-    price: itemToEdit.price,
+     price: productNetPrice,  
     discount: itemToEdit.discount, // Load the existing discount
     total: itemToEdit.total,
     batch: itemToEdit.batch,
@@ -1527,7 +1529,8 @@ useEffect(() => {
               const availableQty = productStock[p.id] || 0;
               const isSelected = itemForm.product_id === p.id;
               const retailerDiscount = parseFloat(invoiceData.supplierInfo?.discount || 0);
-              
+
+              const productNetPrice = parseFloat(p.net_price) || 0;
               return (
                 <div
                   key={p.id}
@@ -1536,7 +1539,8 @@ useEffect(() => {
                       ...prev,
                       product: p.goods_name,
                       product_id: p.id,
-                      price: p.net_price || 0,
+                      price: productNetPrice,  
+
                       description: p.description || "",
                       discount: retailerDiscount,
                       quantity: prev.quantity || 0,
@@ -1558,7 +1562,7 @@ useEffect(() => {
                           ...prev,
                           batch: defaultBatch.batch_number,
                           batch_id: defaultBatch.batch_number,
-                          price: defaultBatch.selling_price,
+                            price: productNetPrice,  
                           discount: retailerDiscount
                         }));
                       } else {
@@ -1634,12 +1638,15 @@ useEffect(() => {
         const batch = batches.find(b => b.batch_number === batchNumber);
         setSelectedBatchDetails(batch || null);
         const currentDiscount = itemForm.discount || 0;
+        const selectedProduct = products.find(p => p.id === itemForm.product_id);
+      const productNetPrice = selectedProduct ? parseFloat(selectedProduct.net_price) || 0 : 0;
         if (batch) {
           setItemForm(prev => ({
             ...prev,
             batch: batchNumber,
             batch_id: batch.batch_number,
-            price: batch.selling_price,
+                     price: productNetPrice,
+
             discount: currentDiscount
           }));
         } else {

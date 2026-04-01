@@ -1355,7 +1355,7 @@ const editItem = async (index) => {
               const availableQty = productStock[p.id] || 0;
               const supplierAccount = accounts.find(acc => acc.id === selectedSupplierId);
               const supplierDiscount = parseFloat(supplierAccount?.discount) || 0;
-              
+               const productNetPrice = parseFloat(p.net_price) || 0;
               return (
                 <div
                   key={p.id}
@@ -1364,7 +1364,7 @@ const editItem = async (index) => {
                       ...prev,
                       product: p.goods_name,
                       product_id: p.id,
-                      price: p.net_price || 0,
+                      price: productNetPrice, 
                       gst: parseFloat(p.gst_rate?.replace("%", "") || 0),
                       description: p.description || "",
                       discount: supplierDiscount,
@@ -1395,7 +1395,7 @@ const editItem = async (index) => {
                           ...prev,
                           batch: defaultBatch.batch_number,
                           batch_id: defaultBatch.batch_number,
-                          price: defaultBatch.selling_price,
+                         price: productNetPrice,  
                           discount: supplierDiscount
                         }));
                       } else {
@@ -1473,13 +1473,14 @@ const editItem = async (index) => {
         // Get supplier discount again to preserve it
         const supplierAccount = accounts.find(acc => acc.id === selectedSupplierId);
         const supplierDiscount = parseFloat(supplierAccount?.discount) || 0;
-
+ const selectedProduct = products.find(p => p.id === itemForm.product_id);
+      const productNetPrice = selectedProduct ? parseFloat(selectedProduct.net_price) || 0 : 0;
         if (batch) {
           setItemForm(prev => ({
             ...prev,
             batch: batchNumber,
             batch_id: batch.batch_number,
-            price: batch.selling_price,
+              price: productNetPrice, 
             discount: supplierDiscount
           }));
         } else {
