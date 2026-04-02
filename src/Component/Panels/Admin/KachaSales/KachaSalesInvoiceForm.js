@@ -254,8 +254,12 @@ const [productStock, setProductStock] = useState({});
         state: apiData.billing_state || apiData.BillingState || '',
         id: apiData.PartyID || null,
  gstin: apiData.gstin || '',   
-     assigned_staff: apiData.assigned_staff || ''
-
+     assigned_staff: apiData.assigned_staff || '',
+   mobile_number: apiData.mobile_number || 
+                     apiData.retailer_mobile || 
+                     apiData.phone_number || 
+                     apiData.retailer_phone || 
+                     ''
 
       },
       
@@ -670,7 +674,7 @@ const editItem = (index) => {
   
    const selectedProduct = products.find(p => p.id === itemToEdit.product_id);
   const productNetPrice = selectedProduct ? parseFloat(selectedProduct.net_price) || 0 : itemToEdit.price;
-  
+
   setItemForm({
     product: itemToEdit.product,
     product_id: itemToEdit.product_id,
@@ -749,26 +753,30 @@ const cancelEdit = () => {
     }));
   };
 
-  const calculateTotals = () => {
-    const taxableAmount = invoiceData.items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      return sum + (subtotal - discountAmount);
-    }, 0);
+const calculateTotals = () => {
+  const taxableAmount = invoiceData.items.reduce((sum, item) => {
+    const quantity = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.price) || 0;
+    const discount = parseFloat(item.discount) || 0;
     
-    const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
-    const grandTotal = taxableAmount + additionalChargeAmount;
-    
-    setInvoiceData(prev => ({
-      ...prev,
-      taxableAmount: taxableAmount.toFixed(2),
-      grandTotal: grandTotal.toFixed(2)
-    }));
-  };
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    return sum + (subtotal - discountAmount);
+  }, 0);
+  
+  const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
+  let grandTotal = taxableAmount + additionalChargeAmount;
+  
+  // Round grand total to nearest integer
+  // 1999.60 → 2000, 1999.49 → 1999
+  const roundedGrandTotal = Math.round(grandTotal);
+  
+  setInvoiceData(prev => ({
+    ...prev,
+    taxableAmount: taxableAmount.toFixed(2),
+    grandTotal: roundedGrandTotal // Store rounded value as integer
+  }));
+};
 
   useEffect(() => {
     calculateTotals();
@@ -915,7 +923,9 @@ useEffect(() => {
       // Find staff name from selected staff ID
       const selectedStaff = staffMembers.find(staff => staff.staffid == selectedStaffId);
       const staffName = selectedStaff?.name || selectedStaff?.assigned_staff || "";
-
+ const mobileNumber = invoiceData.supplierInfo.mobile_number || 
+                         invoiceData.supplierInfo.phone_number || 
+                         '';
       const payload = {
         ...invoiceData,
         TransactionType: "stock transfer",
@@ -935,7 +945,8 @@ useEffect(() => {
        business_name : invoiceData.supplierInfo.business_name,
        acccount_name:invoiceData.supplierInfo.account_name,
         staff_incentive: invoiceData.supplierInfo.staff_incentive || 0 ,
-         gstin: invoiceData.supplierInfo.gstin || "" // ✅ Add GSTIN to payload
+         gstin: invoiceData.supplierInfo.gstin || "" ,
+           mobile_number: mobileNumber,
       };
 
       // Remove unused fields
@@ -990,7 +1001,8 @@ useEffect(() => {
         product_id: responseData.product_id || firstItemProductId,
         batch_id: responseData.batch_id || firstItemBatchId,
         staffid: responseData.staffid || selectedStaffId,
-        assigned_staff: responseData.assigned_staff || staffName
+        assigned_staff: responseData.assigned_staff || staffName,
+         mobile_number: mobileNumber
       };
       localStorage.setItem('previewInvoice', JSON.stringify(previewData));
       
@@ -1178,14 +1190,15 @@ useEffect(() => {
                       const name = (acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name)?.toLowerCase() || "";
                       const businessName = acc.business_name?.toLowerCase() || "";
                       const displayName = acc.display_name?.toLowerCase() || "";
-                      
+                       const mobileNumber = (acc.mobile_number || acc.phone_number || "")?.toLowerCase() || "";
                       return (acc.role === "retailer" ||
                         (acc.role === "supplier" && acc.is_dual_account == 1) ||
                         (acc.role === "staff" && acc.is_dual_account == 1) ||
                         acc.group?.trim().toLowerCase() === "sundry debtors") &&
                         (name.includes(searchLower) || 
                          businessName.includes(searchLower) || 
-                         displayName.includes(searchLower));
+                          displayName.includes(searchLower) ||
+                         mobileNumber.includes(searchLower));
                     })
                     .map(acc => (
                       <div
@@ -1228,7 +1241,8 @@ useEffect(() => {
                                 account_name: supplier.account_name,
                                 assigned_staff: supplier.assigned_staff || null,
                                 discount: retailerDiscount,
-                                staff_incentive: supplier.staff_incentive || 0
+                                staff_incentive: supplier.staff_incentive || 0,
+                                mobile_number: supplier.mobile_number || supplier.phone_number || '' 
                               },
                               billingAddress: {
                                 addressLine1: supplier.billing_address_line1,
@@ -1274,6 +1288,9 @@ useEffect(() => {
                           </div>
                           <div style={{ fontSize: '11px', color: '#6c757d' }}>
                             {acc.business_name}
+                          </div>
+                             <div style={{ fontSize: '10px', color: '#0d6efd' }}>
+                            {acc.mobile_number || acc.phone_number || 'No mobile'}
                           </div>
                         </div>
                       </div>
@@ -1342,6 +1359,9 @@ useEffect(() => {
           <div className="bg-light p-2 rounded">
             <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
             <div><strong>Business:</strong> {invoiceData.supplierInfo.business_name}</div>
+            {(invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number) && (
+              <div><strong>Mobile:</strong> {invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number}</div>
+            )}
             <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin || "Not Available"}</div>
             <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
             {selectedStaffId && (

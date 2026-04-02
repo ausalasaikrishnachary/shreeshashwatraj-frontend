@@ -398,6 +398,8 @@ const transformPaymentData = (apiData) => {
         id: index + 1,
         product: batch.product || 'Product',
         description: batch.description || `Batch: ${batch.batch}`,
+               hsn_code: batch.hsn_code || apiData.hsn_code || '',
+
         quantity: quantity,
         price: price,
         discount: discount,
@@ -445,7 +447,10 @@ const transformPaymentData = (apiData) => {
 
         gstin: apiData.gstin || '',
         state: apiData.billing_state || apiData.BillingState || '',
-        id: apiData.PartyID || null
+        id: apiData.PartyID || null,
+                mobile_number: apiData.retailer_mobile || apiData.mobile_number || '',
+  phone_number: apiData.phone_number || ''
+
       },
       
       billingAddress: {
@@ -468,6 +473,7 @@ const transformPaymentData = (apiData) => {
         id: 1,
         product: 'Product',
         description: 'No batch details available',
+        hsn_code: apiData.hsn_code || '', 
         quantity: 1,
         price: grandTotal,
         discount: 0,
@@ -1033,6 +1039,7 @@ const handlePrint = async () => {
       id: editedData.items.length + 1,
       product: 'New Product',
       description: 'Product description',
+       hsn_code: '', 
       quantity: 1,
       price: 0,
       discount: 0,
@@ -1833,6 +1840,12 @@ const handleOpenReceiptModal = () => {
                             value={currentData.supplierInfo.businessName}
                             onChange={(e) => handleNestedChange('supplierInfo', 'businessName', e.target.value)}
                           />
+                            <Form.Control 
+              className="mb-2"
+              placeholder="Mobile Number"
+              value={currentData.supplierInfo.mobile_number || ''}
+              onChange={(e) => handleNestedChange('supplierInfo', 'mobile_number', e.target.value)}
+            />
                           <Form.Control 
                             className="mb-2"
                             placeholder="GSTIN"
@@ -1849,6 +1862,11 @@ const handleOpenReceiptModal = () => {
                         <>
                           <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p>
                           <p className="mb-1 text-muted">{currentData.supplierInfo.business_name}</p>
+                           {(currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number) && (
+              <p className="mb-1">
+                <small>Mobile: {currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number}</small>
+              </p>
+            )}
                           <p className="mb-1"><small>GSTIN: {currentData.supplierInfo.gstin || 'N/A'}</small></p>
                           <p className="mb-0"><small>State: {currentData.supplierInfo.state || 'N/A'}</small></p>
                         </>
@@ -1927,7 +1945,8 @@ const handleOpenReceiptModal = () => {
                       <tr>
                         <th width="5%">#</th>
                         <th width="20%">Product</th>
-                        <th width="20%">Description</th>
+                        {/* <th width="20%">Description</th> */}
+                         <th width="10%">HSN Code</th>
                         <th width="10%">Qty</th>
                         <th width="15%">Price</th>
                           <th width="8%">Discount %</th> 
@@ -1947,13 +1966,21 @@ const handleOpenReceiptModal = () => {
                               onChange={(e) => handleItemChange(index, 'product', e.target.value)}
                             />
                           </td>
-                          <td>
+                          {/* <td>
                             <Form.Control 
                               size="sm"
                               value={item.description}
                               onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                             />
-                          </td>
+                          </td> */}
+                                     <td>
+                                       <Form.Control 
+                                         size="sm"
+                                         value={item.hsn_code || ''}
+                                         onChange={(e) => handleItemChange(index, 'hsn_code', e.target.value)}
+                                         placeholder="HSN Code"
+                                       />
+                                     </td>
                           <td>
                             <Form.Control 
                               type="number"
@@ -2009,7 +2036,8 @@ const handleOpenReceiptModal = () => {
                       <tr>
                         <th width="5%">#</th>
                         <th width="25%">Product</th>
-                        <th width="25%">Description</th>
+                        {/* <th width="25%">Description</th> */}
+                        <th width="10%">HSN Code</th>
                         <th width="10%">Qty</th>
                         <th width="15%">Price</th>
                            <th width="8%">Discount %</th>
@@ -2021,8 +2049,9 @@ const handleOpenReceiptModal = () => {
                       {currentData.items.map((item, index) => (
                         <tr key={index}>
                           <td className="text-center">{index + 1}</td>
-                          <td>{item.product}</td>
-                          <td>{item.description}</td>
+                          <td className="text-center">{item.product}</td>
+                          {/* <td className="text-center">{item.description}</td> */}
+                          <td className="text-center">{item.hsn_code || 'N/A'}</td>
                           <td className="text-center">{item.quantity}</td>
                           <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
                            <td className="text-center">{parseFloat(item.discount || 0).toFixed(1)}%</td> 
@@ -2119,15 +2148,36 @@ const handleOpenReceiptModal = () => {
               <div className="invoice-footer border-top pt-3">
                 <Row>
                   <Col md={6}>
-                    <div className="bank-details">
-                      <h6 className="text-primary">Bank Details:</h6>
-                      <div className="bg-light p-2 rounded">
-                        <p className="mb-1">Account Name: {currentData.companyInfo.name}</p>
-                        <p className="mb-1">Account Number: XXXX XXXX XXXX</p>
-                        <p className="mb-1">IFSC Code: XXXX0123456</p>
-                        <p className="mb-0">Bank Name: Sample Bank</p>
-                      </div>
-                    </div>
+  <div className="bank-details">
+    
+    <h6 className="text-primary mb-1" style={{ fontSize: '15px' }}>
+      Bank Details:
+    </h6>
+    
+    <div className="bg-light p-2 rounded" style={{ fontSize: '11px', lineHeight: '1.2' }}>
+      
+      <p className="mb-1" style={{ fontSize: '12px', }}  >
+        Account Name: SHREE SHASHWATRAJ AGRO PVT LTD
+      </p>
+      
+      <p className="mb-1" style={{ fontSize: '12px', }}>
+        Bank Name: STATE BANK OF INDIA
+      </p>
+      
+      <p className="mb-1" style={{ fontSize: '12px', }}>
+        Branch: SME AURANGABAD
+      </p>
+      
+      <p className="mb-1" style={{ fontSize: '12px', }}>
+        Account Number: 44773710377
+      </p>
+      
+      <p className="mb-0" style={{ fontSize: '12px', }}>
+        IFSC Code: SBIN0063699
+      </p>
+      
+    </div>
+  </div>
                   </Col>
                   <Col md={6} className="text-end">
                     <div className="signature-section">

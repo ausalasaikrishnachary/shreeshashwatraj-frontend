@@ -54,7 +54,9 @@ const [isEditMode, setIsEditMode] = useState(false);
         businessName: "",
         account_name:"",
         state: "",
-        gstin: ""
+        gstin: "",
+          mobile_number: "",
+      phone_number: ""
       },
       billingAddress: {
         addressLine1: "",
@@ -435,56 +437,60 @@ const addItem = () => {
     }));
   };
 
-  const calculateTotals = () => {
-    const taxableAmount = invoiceData.items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
+const calculateTotals = () => {
+  const taxableAmount = invoiceData.items.reduce((sum, item) => {
+    const quantity = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.price) || 0;
+    const discount = parseFloat(item.discount) || 0;
 
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      return sum + (subtotal - discountAmount);
-    }, 0);
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    return sum + (subtotal - discountAmount);
+  }, 0);
 
-    const totalGST = invoiceData.items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      const gst = parseFloat(item.gst) || 0;
+  const totalGST = invoiceData.items.reduce((sum, item) => {
+    const quantity = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.price) || 0;
+    const discount = parseFloat(item.discount) || 0;
+    const gst = parseFloat(item.gst) || 0;
 
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const gstAmount = amountAfterDiscount * (gst / 100);
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    const amountAfterDiscount = subtotal - discountAmount;
+    const gstAmount = amountAfterDiscount * (gst / 100);
 
-      return sum + gstAmount;
-    }, 0);
+    return sum + gstAmount;
+  }, 0);
 
-    const totalCess = invoiceData.items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      const cess = parseFloat(item.cess) || 0;
+  const totalCess = invoiceData.items.reduce((sum, item) => {
+    const quantity = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.price) || 0;
+    const discount = parseFloat(item.discount) || 0;
+    const cess = parseFloat(item.cess) || 0;
 
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const cessAmount = amountAfterDiscount * (cess / 100);
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    const amountAfterDiscount = subtotal - discountAmount;
+    const cessAmount = amountAfterDiscount * (cess / 100);
 
-      return sum + cessAmount;
-    }, 0);
+    return sum + cessAmount;
+  }, 0);
 
-    const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
-    const grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
+  const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
+  let grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
+  
+  // Round grand total to nearest integer
+  // 1999.60 → 2000, 1999.49 → 1999
+  const roundedGrandTotal = Math.round(grandTotal);
 
-    setInvoiceData(prev => ({
-      ...prev,
-      taxableAmount: taxableAmount.toFixed(2),
-      totalGST: totalGST.toFixed(2),
-      totalCess: totalCess.toFixed(2),
-      grandTotal: grandTotal.toFixed(2)
-    }));
-  };
+  setInvoiceData(prev => ({
+    ...prev,
+    taxableAmount: taxableAmount.toFixed(2),
+    totalGST: totalGST.toFixed(2),
+    totalCess: totalCess.toFixed(2),
+    grandTotal: roundedGrandTotal // Store rounded value as integer
+  }));
+};
 
   useEffect(() => {
     calculateTotals();
@@ -703,6 +709,7 @@ const handleSubmit = async (e) => {
      AccountID: selectedSupplierId,
       PartyName: invoiceData.supplierInfo.name,
       AccountName: invoiceData.supplierInfo.account_name,
+      
        businessName: invoiceData.supplierInfo.businessName ,
       shippingAddress: invoiceData.shippingAddress?.addressLine1 || '',
       shippingState: invoiceData.shippingAddress?.state || '',
@@ -1022,7 +1029,7 @@ const editItem = async (index) => {
                   const name = (acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name)?.toLowerCase() || "";
                   const businessName = acc.business_name?.toLowerCase() || "";
                   const displayName = acc.display_name?.toLowerCase() || "";
-                  
+                   const mobileNumber = (acc.mobile_number || acc.phone_number || "")?.toLowerCase() || "";
                   return (acc.role === "supplier" || 
                     (acc.role === "retailer" && acc.is_dual_account == 1)) &&
                     (name.includes(searchLower) || 
@@ -1048,7 +1055,9 @@ const editItem = async (index) => {
                           state: acc.billing_state,
                           gstin: acc.gstin || "",
                           discount: accountDiscount,
-                          accountId: acc.id
+                          accountId: acc.id,
+                            mobile_number: acc.mobile_number || acc.phone_number || "",
+                          phone_number: acc.phone_number || acc.mobile_number || ""
                         },
                         billingAddress: {
                           addressLine1: acc.billing_address_line1,
@@ -1093,6 +1102,9 @@ const editItem = async (index) => {
                       </div>
                       <div style={{ fontSize: '11px', color: '#6c757d' }}>
                         {acc.business_name}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#0d6efd' }}>
+                        {acc.mobile_number || acc.phone_number || 'No mobile'}
                       </div>
                     </div>
                   </div>
@@ -1162,6 +1174,9 @@ const editItem = async (index) => {
       <div className="bg-light p-2 rounded">
         <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
         <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
+          {(invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number) && (
+          <div><strong>Mobile:</strong> {invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number}</div>
+        )}
         <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
         <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
       </div>

@@ -330,156 +330,168 @@ const transformPaymentData = (apiData) => {
       setLoading(false);
     }
   };
-
-  const transformApiDataToInvoiceFormat = (apiData) => {
-    console.log('Transforming API data:', apiData);
-     const assignedStaff = apiData.assigned_staff ||  'N/A';
+const transformApiDataToInvoiceFormat = (apiData) => {
+  console.log('Transforming API data:', apiData);
+  const assignedStaff = apiData.assigned_staff || 'N/A';
   const staffId = apiData.staffid || apiData.staff_id || null;
 
-    let batchDetails = [];
-    try {
-      if (apiData.batch_details && typeof apiData.batch_details === 'string') {
-        batchDetails = JSON.parse(apiData.batch_details);
-      } else if (Array.isArray(apiData.batch_details)) {
-        batchDetails = apiData.batch_details;
-      } else if (apiData.BatchDetails && typeof apiData.BatchDetails === 'string') {
-        batchDetails = JSON.parse(apiData.BatchDetails);
-      }
-    } catch (error) {
-      console.error('Error parsing batch details:', error);
+  let batchDetails = [];
+  try {
+    if (apiData.batch_details && typeof apiData.batch_details === 'string') {
+      batchDetails = JSON.parse(apiData.batch_details);
+    } else if (Array.isArray(apiData.batch_details)) {
+      batchDetails = apiData.batch_details;
+    } else if (apiData.BatchDetails && typeof apiData.BatchDetails === 'string') {
+      batchDetails = JSON.parse(apiData.BatchDetails);
+    }
+  } catch (error) {
+    console.error('Error parsing batch details:', error);
+  }
+
+  const items = batchDetails.map((batch, index) => {
+    const quantity = parseFloat(batch.quantity) || 0;
+    const price = parseFloat(batch.price) || 0;
+    const discount = parseFloat(batch.discount) || 0;
+    const gst = parseFloat(batch.gst) || 0;
+    const cess = parseFloat(batch.cess) || 0;
+    
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    const amountAfterDiscount = subtotal - discountAmount;
+    const gstAmount = amountAfterDiscount * (gst / 100);
+    const cessAmount = amountAfterDiscount * (cess / 100);
+    const total = amountAfterDiscount + gstAmount + cessAmount;
+    const isSameState = parseFloat(apiData.IGSTAmount) === 0;
+    let cgst, sgst, igst;
+    
+    if (isSameState) {
+      cgst = gst / 2;
+      sgst = gst / 2;
+      igst = 0;
+    } else {
+      cgst = 0;
+      sgst = 0;
+      igst = gst;
     }
 
-    const items = batchDetails.map((batch, index) => {
-      const quantity = parseFloat(batch.quantity) || 0;
-      const price = parseFloat(batch.price) || 0;
-      const discount = parseFloat(batch.discount) || 0;
-      const gst = parseFloat(batch.gst) || 0;
-      const cess = parseFloat(batch.cess) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const gstAmount = amountAfterDiscount * (gst / 100);
-      const cessAmount = amountAfterDiscount * (cess / 100);
-      const total = amountAfterDiscount + gstAmount + cessAmount;
-      const isSameState = parseFloat(apiData.IGSTAmount) === 0;
-      let cgst, sgst, igst;
-      
-      if (isSameState) {
-        cgst = gst / 2;
-        sgst = gst / 2;
-        igst = 0;
-      } else {
-        cgst = 0;
-        sgst = 0;
-        igst = gst;
-      }
-
-      return {
-        id: index + 1,
-        product: batch.product || 'Product',
-        description: batch.description || `Batch: ${batch.batch}`,
-        quantity: quantity,
-        price: price,
-        discount: discount,
-        gst: gst,
-        cgst: cgst,
-        sgst: sgst,
-        igst: igst,
-        cess: cess,
-        total: total.toFixed(2),
-        batch: batch.batch || '',
-        batch_id: batch.batch_id || '',
-        product_id: batch.product_id || ''
-      };
-    }) || [];
-
-    const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
-    const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
-    const grandTotal = parseFloat(apiData.TotalAmount) || 0;
-
     return {
-      voucherId: apiData.VoucherID,
-      invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
-      invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      
-        companyInfo: {
-  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-  email: "spmathur56@gmail.com",
-  phone: "9801049700",
-  gstin: "10AAOCS1541B1ZZ",
-  state: "Bihar",
-  stateCode: "10"
-},
-      
-      supplierInfo: {
-        name: apiData.PartyName || 'Customer',
-        businessName: apiData.business_name || 'Business', 
-        gstin: apiData.gstin || '',
-          account_name: apiData.account_name || apiData.AccountName || '',
-      business_name: apiData.business_name || apiData.businessName || '',
-        state: apiData.billing_state || apiData.BillingState || '',
-        id: apiData.PartyID || null,
-
-              staffid: staffId,
-      assigned_staff: assignedStaff 
-
-      },
-      
-      billingAddress: {
-        addressLine1: apiData.billing_address_line1 || apiData.BillingAddress || '',
-        addressLine2: apiData.billing_address_line2 || '',
-        city: apiData.billing_city || apiData.BillingCity || '',
-        pincode: apiData.billing_pin_code || apiData.BillingPincode || '',
-        state: apiData.billing_state || apiData.BillingState || ''
-      },
-      
-      shippingAddress: {
-        addressLine1: apiData.shipping_address_line1 || apiData.ShippingAddress || apiData.billing_address_line1 || apiData.BillingAddress || '',
-        addressLine2: apiData.shipping_address_line2 || apiData.billing_address_line2 || '',
-        city: apiData.shipping_city || apiData.ShippingCity || apiData.billing_city || apiData.BillingCity || '',
-        pincode: apiData.shipping_pin_code || apiData.ShippingPincode || apiData.billing_pin_code || apiData.BillingPincode || '',
-        state: apiData.shipping_state || apiData.ShippingState || apiData.billing_state || apiData.BillingState || ''
-      },
-      
-      items: items.length > 0 ? items : [{
-        id: 1,
-        product: 'Product',
-        description: 'No batch details available',
-        quantity: 1,
-        price: grandTotal,
-        discount: 0,
-        gst: parseFloat(apiData.IGSTPercentage) || 0,
-        cgst: parseFloat(apiData.CGSTPercentage) || 0,
-        sgst: parseFloat(apiData.SGSTPercentage) || 0,
-        igst: parseFloat(apiData.IGSTPercentage) || 0,
-        cess: 0,
-        total: grandTotal.toFixed(2),
-        batch: '',
-        batch_id: '',
-        product_id: ''
-      }],
-      
-      taxableAmount: taxableAmount.toFixed(2),
-      totalGST: totalGST.toFixed(2),
-      grandTotal: grandTotal.toFixed(2),
-      totalCess: "0.00",
-      
-      note: apiData.Notes || "Thank you for your business!",
-      transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
-      additionalCharge: "",
-      additionalChargeAmount: "0.00",
-      
-      totalCGST: parseFloat(apiData.CGSTAmount) || 0,
-      totalSGST: parseFloat(apiData.SGSTAmount) || 0,
-      totalIGST: parseFloat(apiData.IGSTAmount) || 0,
-      taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST",
-      assigned_staff: assignedStaff,
-    staffid: staffId
+      id: index + 1,
+      product: batch.product || 'Product',
+      description: batch.description || `Batch: ${batch.batch}`,
+      hsn_code: batch.hsn_code || apiData.hsn_code || '',
+      quantity: quantity,
+      price: price,
+      discount: discount,
+      gst: gst,
+      cgst: cgst,
+      sgst: sgst,
+      igst: igst,
+      cess: cess,
+      total: total.toFixed(2),
+      batch: batch.batch || '',
+      batch_id: batch.batch_id || '',
+      product_id: batch.product_id || ''
     };
+  }) || [];
+
+  const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
+  const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
+  const grandTotal = parseFloat(apiData.TotalAmount) || 0;
+
+  // Get mobile number from multiple possible sources
+  const mobileNumber = apiData.mobile_number || 
+                       apiData.retailer_mobile || 
+                       apiData.phone_number || 
+                       apiData.supplier_mobile || 
+                       apiData.supplierInfo?.mobile_number ||
+                       '';
+
+  console.log('Mobile number found:', mobileNumber);
+
+  return {
+    voucherId: apiData.VoucherID,
+    invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
+    invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    
+    companyInfo: {
+      name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+      address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+      email: "spmathur56@gmail.com",
+      phone: "9801049700",
+      gstin: "10AAOCS1541B1ZZ",
+      state: "Bihar",
+      stateCode: "10"
+    },
+    
+    supplierInfo: {
+      name: apiData.PartyName || 'Customer',
+      businessName: apiData.business_name || 'Business', 
+      business_name: apiData.business_name || apiData.businessName || '',
+      account_name: apiData.account_name || apiData.AccountName || '',
+      gstin: apiData.gstin || '',
+      state: apiData.billing_state || apiData.BillingState || '',
+      id: apiData.PartyID || null,
+      staffid: staffId,
+      assigned_staff: assignedStaff,
+      // ✅ Add mobile number with fallbacks
+      mobile_number: mobileNumber,
+      phone_number: apiData.phone_number || mobileNumber
+    },
+    
+    billingAddress: {
+      addressLine1: apiData.billing_address_line1 || apiData.BillingAddress || '',
+      addressLine2: apiData.billing_address_line2 || '',
+      city: apiData.billing_city || apiData.BillingCity || '',
+      pincode: apiData.billing_pin_code || apiData.BillingPincode || '',
+      state: apiData.billing_state || apiData.BillingState || ''
+    },
+    
+    shippingAddress: {
+      addressLine1: apiData.shipping_address_line1 || apiData.ShippingAddress || apiData.billing_address_line1 || apiData.BillingAddress || '',
+      addressLine2: apiData.shipping_address_line2 || apiData.billing_address_line2 || '',
+      city: apiData.shipping_city || apiData.ShippingCity || apiData.billing_city || apiData.BillingCity || '',
+      pincode: apiData.shipping_pin_code || apiData.ShippingPincode || apiData.billing_pin_code || apiData.BillingPincode || '',
+      state: apiData.shipping_state || apiData.ShippingState || apiData.billing_state || apiData.BillingState || ''
+    },
+    
+    items: items.length > 0 ? items : [{
+      id: 1,
+      product: 'Product',
+      description: 'No batch details available',
+      quantity: 1,
+      price: grandTotal,
+      discount: 0,
+      gst: parseFloat(apiData.IGSTPercentage) || 0,
+      cgst: parseFloat(apiData.CGSTPercentage) || 0,
+      sgst: parseFloat(apiData.SGSTPercentage) || 0,
+      igst: parseFloat(apiData.IGSTPercentage) || 0,
+      cess: 0,
+      total: grandTotal.toFixed(2),
+      batch: '',
+      batch_id: '',
+      product_id: ''
+    }],
+    
+    taxableAmount: taxableAmount.toFixed(2),
+    totalGST: totalGST.toFixed(2),
+    grandTotal: grandTotal.toFixed(2),
+    totalCess: "0.00",
+    
+    note: apiData.Notes || "Thank you for your business!",
+    transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
+    additionalCharge: "",
+    additionalChargeAmount: "0.00",
+    
+    totalCGST: parseFloat(apiData.CGSTAmount) || 0,
+    totalSGST: parseFloat(apiData.SGSTAmount) || 0,
+    totalIGST: parseFloat(apiData.IGSTAmount) || 0,
+    taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST",
+    assigned_staff: assignedStaff,
+    staffid: staffId,
+    mobile_number: mobileNumber
   };
+};
   const isInvoiceEditable = (paymentData) => {
   const hasVouchers = paymentData?.purchasevoucher?.length > 0;
   const hasDebitNotes = paymentData?.debitNotes?.length > 0;
@@ -838,6 +850,7 @@ const PaymentStatus = () => {
         invoiceDate: editedData.invoiceDate,
         supplierInfo: editedData.supplierInfo,
         taxableAmount: editedData.taxableAmount,
+         mobile_number: editedData.supplierInfo.mobile_number || '',
         totalGST: editedData.totalGST,
         grandTotal: editedData.grandTotal,
         batchDetails: editedData.items.map(item => ({
@@ -976,6 +989,8 @@ const PaymentStatus = () => {
       id: editedData.items.length + 1,
       product: 'New Product',
       description: 'Product description',
+            hsn_code: '', 
+
       quantity: 1,
       price: 0,
       discount: 0,
@@ -1766,6 +1781,12 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                             value={currentData.supplierInfo.businessName}
                             onChange={(e) => handleNestedChange('supplierInfo', 'businessName', e.target.value)}
                           />
+                            <Form.Control 
+              className="mb-2"
+              placeholder="Mobile Number"
+              value={currentData.supplierInfo.mobile_number || ''}
+              onChange={(e) => handleNestedChange('supplierInfo', 'mobile_number', e.target.value)}
+            />
                           <Form.Control 
                             className="mb-2"
                             placeholder="GSTIN"
@@ -1782,6 +1803,11 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                         <>
                           <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p>
                           <p className="mb-1 text-muted">{currentData.supplierInfo.businessName}</p>
+                           {(currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number) && (
+              <p className="mb-1">
+                <small>Mobile: {currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number}</small>
+              </p>
+            )}
                           <p className="mb-1"><small>GSTIN: {currentData.supplierInfo.gstin || 'N/A'}</small></p>
                           <p className="mb-0"><small>State: {currentData.supplierInfo.state || 'N/A'}</small></p>
                         </>
@@ -1860,8 +1886,9 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                       <tr>
                         <th width="5%">#</th>
                         <th width="20%">Product</th>
-                        <th width="20%">Description</th>
-                        <th width="10%">Qty</th>
+                        {/* <th width="20%">Description</th> */}
+                          <th width="20%">HSN Code</th>
+                        <th width="10%">Units</th>
                         <th width="15%">Price</th>
                         <th width="10%">GST %</th>
                         <th width="15%"> Amount (₹)</th>
@@ -1879,13 +1906,21 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                               onChange={(e) => handleItemChange(index, 'product', e.target.value)}
                             />
                           </td>
-                          <td>
+                          {/* <td>
                             <Form.Control 
                               size="sm"
                               value={item.description}
                               onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                             />
-                          </td>
+                          </td> */}
+                                       <td>
+                                          <Form.Control 
+                                            size="sm"
+                                            value={item.hsn_code || ''}
+                                            onChange={(e) => handleItemChange(index, 'hsn_code', e.target.value)}
+                                            placeholder="HSN Code"
+                                          />
+                                        </td>
                           <td>
                             <Form.Control 
                               type="number"
@@ -1930,8 +1965,9 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                       <tr>
                         <th width="5%">#</th>
                         <th width="25%">Product</th>
-                        <th width="25%">Description</th>
-                        <th width="10%">Qty</th>
+                        {/* <th width="25%">Description</th> */}
+                        <th width="20%">HSN Code</th>
+                        <th width="10%">Units</th>
                         <th width="15%">Price</th>
                         <th width="10%">GST %</th>
                                                 <th width="8%">Discount %</th>
@@ -1943,8 +1979,9 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                       {currentData.items.map((item, index) => (
                         <tr key={index}>
                           <td className="text-center">{index + 1}</td>
-                          <td>{item.product}</td>
-                          <td>{item.description}</td>
+                          <td className="text-center">{item.product}</td>
+                          {/* <td>{item.description}</td> */}
+                          <td className="text-center">{item.hsn_code || 'N/A'}</td>
                           <td className="text-center">{item.quantity}</td>
                           <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
                           <td className="text-center">{item.gst}%</td>
@@ -2044,15 +2081,36 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
               <div className="invoice-footer border-top pt-3">
                 <Row>
                   <Col md={6}>
-                    <div className="bank-details">
-                      <h6 className="text-primary">Bank Details:</h6>
-                      <div className="bg-light p-2 rounded">
-                        <p className="mb-1">Account Name: {currentData.companyInfo.name}</p>
-                        <p className="mb-1">Account Number: XXXX XXXX XXXX</p>
-                        <p className="mb-1">IFSC Code: XXXX0123456</p>
-                        <p className="mb-0">Bank Name: Sample Bank</p>
-                      </div>
-                    </div>
+  <div className="bank-details">
+    
+    <h6 className="text-primary mb-1" style={{ fontSize: '15px' }}>
+      Bank Details:
+    </h6>
+    
+    <div className="bg-light p-2 rounded" style={{ fontSize: '11px', lineHeight: '1.2' }}>
+      
+      <p className="mb-1" style={{ fontSize: '12px', }}  >
+        Account Name: SHREE SHASHWATRAJ AGRO PVT LTD
+      </p>
+      
+      <p className="mb-1" style={{ fontSize: '12px', }}>
+        Bank Name: STATE BANK OF INDIA
+      </p>
+      
+      <p className="mb-1" style={{ fontSize: '12px', }}>
+        Branch: SME AURANGABAD
+      </p>
+      
+      <p className="mb-1" style={{ fontSize: '12px', }}>
+        Account Number: 44773710377
+      </p>
+      
+      <p className="mb-0" style={{ fontSize: '12px', }}>
+        IFSC Code: SBIN0063699
+      </p>
+      
+    </div>
+  </div>
                   </Col>
                   <Col md={6} className="text-end">
                     <div className="signature-section">
