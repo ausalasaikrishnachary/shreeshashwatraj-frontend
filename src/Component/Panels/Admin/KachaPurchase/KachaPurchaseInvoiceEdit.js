@@ -55,7 +55,9 @@ const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
         businessName: "",
         state: "",
         discount: 0,
-         gstin: "" // Add this line
+         gstin: "" ,
+            mobile_number: "",
+      phone_number: ""
       },
       billingAddress: {
         addressLine1: "",
@@ -186,6 +188,12 @@ const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
       };
     }) || [];
 
+      const mobileNumber = apiData.mobile_number || 
+                       apiData.retailer_mobile || 
+                       apiData.phone_number || 
+                       apiData.supplier_mobile || 
+                       '';
+
     return {
       voucherId: apiData.VoucherID,
       invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
@@ -207,7 +215,9 @@ const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
         businessName: apiData.AccountName || 'Business',
         state: apiData.billing_state || apiData.BillingState || '',
         discount: parseFloat(apiData.supplierDiscount) || 0,
-        id: apiData.PartyID || null
+        id: apiData.PartyID || null,
+          mobile_number: mobileNumber,
+      phone_number: apiData.phone_number || mobileNumber
       },
       
       billingAddress: {
@@ -568,26 +578,30 @@ const cancelEdit = () => {
     }));
   };
 
-  const calculateTotals = () => {
-    const taxableAmount = invoiceData.items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      return sum + (subtotal - discountAmount);
-    }, 0);
+const calculateTotals = () => {
+  const taxableAmount = invoiceData.items.reduce((sum, item) => {
+    const quantity = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.price) || 0;
+    const discount = parseFloat(item.discount) || 0;
     
-    const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
-    const grandTotal = taxableAmount + additionalChargeAmount;
-    
-    setInvoiceData(prev => ({
-      ...prev,
-      taxableAmount: taxableAmount.toFixed(2),
-      grandTotal: grandTotal.toFixed(2)
-    }));
-  };
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    return sum + (subtotal - discountAmount);
+  }, 0);
+  
+  const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
+  let grandTotal = taxableAmount + additionalChargeAmount;
+  
+  // Round grand total to nearest integer
+  // 1999.60 → 2000, 1999.49 → 1999
+  const roundedGrandTotal = Math.round(grandTotal);
+  
+  setInvoiceData(prev => ({
+    ...prev,
+    taxableAmount: taxableAmount.toFixed(2),
+    grandTotal: roundedGrandTotal // Store rounded value as integer
+  }));
+};
 
   useEffect(() => {
     calculateTotals();
@@ -679,6 +693,9 @@ const cancelEdit = () => {
       const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
       console.log('Submitting invoice with number:', finalInvoiceNumber);
 
+         const mobileNumber = invoiceData.supplierInfo.mobile_number || 
+                         invoiceData.supplierInfo.phone_number || 
+                         '';
       console.log('🔍 Debugging Items Array Before Processing:');
       invoiceData.items.forEach((item, index) => {
         console.log(`Item ${index + 1}:`, {
@@ -744,7 +761,8 @@ const cancelEdit = () => {
         batch_id: "bth0001",
         primaryProductId: firstItemProductId,
         primaryBatchId: firstItemBatchId,
-        supplierDiscount: invoiceData.supplierInfo.discount || 0
+        supplierDiscount: invoiceData.supplierInfo.discount || 0,
+           mobile_number: mobileNumber,
       };
 
       delete payload.companyState;
@@ -996,12 +1014,14 @@ const cancelEdit = () => {
                   const name = (acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name)?.toLowerCase() || "";
                   const businessName = acc.business_name?.toLowerCase() || "";
                   const displayName = acc.display_name?.toLowerCase() || "";
+                    const mobileNumber = (acc.mobile_number || acc.phone_number || "")?.toLowerCase() || "";
                   
                   return (acc.role === "supplier" || 
                     (acc.role === "retailer" && acc.is_dual_account == 1)) &&
                     (name.includes(searchLower) || 
                      businessName.includes(searchLower) || 
-                     displayName.includes(searchLower));
+                    displayName.includes(searchLower) ||
+                     mobileNumber.includes(searchLower));
                 })
                 .map(acc => (
                   <div
@@ -1022,7 +1042,9 @@ const cancelEdit = () => {
                           discount: supplierDiscount,
                           gstin: acc.gstin || "",
                           accountId: acc.id,
-                          account_name: acc.account_name
+                          account_name: acc.account_name,
+                            mobile_number: acc.mobile_number || acc.phone_number || "",
+                          phone_number: acc.phone_number || acc.mobile_number || ""
                         },
                         billingAddress: {
                           addressLine1: acc.billing_address_line1,
@@ -1067,6 +1089,9 @@ const cancelEdit = () => {
                       </div>
                       <div style={{ fontSize: '11px', color: '#6c757d' }}>
                         {acc.business_name}
+                      </div>
+                        <div style={{ fontSize: '10px', color: '#0d6efd' }}>
+                        {acc.mobile_number || acc.phone_number || 'No mobile'}
                       </div>
                     </div>
                   </div>
@@ -1136,6 +1161,9 @@ const cancelEdit = () => {
       <div className="bg-light p-2 rounded">
         <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
         <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
+         {(invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number) && (
+          <div><strong>Mobile:</strong> {invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number}</div>
+        )}
         <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin || "Not Available"}</div>
         <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
       </div>

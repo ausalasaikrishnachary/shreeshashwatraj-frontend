@@ -53,7 +53,9 @@ const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
         account_name: "",
         state: "",
         gstin: "", // Keep GSTIN field
-        discount: 0 // Add discount field
+        discount: 0 ,
+          mobile_number: "",
+      phone_number: ""
       },
       billingAddress: {
         addressLine1: "",
@@ -423,7 +425,9 @@ const addItem = () => {
         state: "",
         gstin: "",
         discount: 0,
-        accountId: ""
+        accountId: "",
+           mobile_number: "",
+      phone_number: ""
       },
       billingAddress: {
         addressLine1: "",
@@ -499,6 +503,10 @@ const addItem = () => {
       const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
       console.log('Submitting purchase invoice with number:', finalInvoiceNumber);
 
+      
+ const mobileNumber = invoiceData.supplierInfo.mobile_number || 
+                         invoiceData.supplierInfo.phone_number || 
+                         '';
       // Extract batch details from items with ALL data including discount
       const batchDetails = invoiceData.items.map(item => ({
         product: item.product,
@@ -548,6 +556,8 @@ const addItem = () => {
         primaryBatchId: firstItemBatchId,
         PartyID: selectedSupplierId,
         AccountID: selectedSupplierId,
+         mobile_number: mobileNumber,
+      supplier_mobile: mobileNumber,
         PartyName: invoiceData.supplierInfo.name,
         AccountName: invoiceData.supplierInfo.account_name,
         businessName: invoiceData.supplierInfo.businessName,
@@ -842,7 +852,7 @@ const addItem = () => {
                   const name = (acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name)?.toLowerCase() || "";
                   const businessName = acc.business_name?.toLowerCase() || "";
                   const displayName = acc.display_name?.toLowerCase() || "";
-                  
+                   const mobileNumber = (acc.mobile_number || acc.phone_number || "")?.toLowerCase() || "";
                   return (acc.role === "supplier" || 
                     (acc.role === "retailer" && acc.is_dual_account == 1)) &&
                     (name.includes(searchLower) || 
@@ -868,7 +878,9 @@ const addItem = () => {
                           state: acc.billing_state,
                           gstin: acc.gstin || "",
                           discount: accountDiscount,
-                          accountId: acc.id
+                          accountId: acc.id,
+                          mobile_number: acc.mobile_number || acc.phone_number || "",
+                          phone_number: acc.phone_number || acc.mobile_number || ""
                         },
                         billingAddress: {
                           addressLine1: acc.billing_address_line1,
@@ -913,6 +925,9 @@ const addItem = () => {
                       </div>
                       <div style={{ fontSize: '11px', color: '#6c757d' }}>
                         {acc.business_name}
+                      </div>
+                       <div style={{ fontSize: '10px', color: '#0d6efd' }}>
+                        {acc.mobile_number || acc.phone_number || 'No mobile'}
                       </div>
                     </div>
                   </div>
@@ -982,6 +997,9 @@ const addItem = () => {
       <div className="bg-light p-2 rounded">
         <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
         <div><strong>Business:</strong> {invoiceData.supplierInfo.businessName}</div>
+        {(invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number) && (
+          <div><strong>Mobile:</strong> {invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number}</div>
+        )}
         <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
         <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
       </div>

@@ -210,6 +210,7 @@ const handleDownloadSpecificPDF = async (orderNumber, pdfData) => {
         net_price: item.net_price || item.edited_sale_price || item.sale_price,
         discount_amount: item.discount_amount || 0,
         credit_charge: item.credit_charge || 0,
+        hsn_code: item.hsn_code || "N/A",
         taxable_amount: item.taxable_amount || 0,
         gst: item.tax_percentage || 0,
         tax_amount: item.tax_amount || 0,
@@ -1704,14 +1705,14 @@ const filteredOrders = orders.filter(order => {
                               if (hasFlashOfferInOrder) {
                                 return (
                                   <>
-                                    <th>Qty</th>
+                                    <th>Units</th>
                                     <th>Get Free</th>
                                   </>
                                 );
                               } else {
                                 return (
                                   <>
-                                    <th>Qty</th>
+                                    <th>Units</th>
                                     <th>Dst Amnt</th>
                                     <th>Weight</th>
                                   </>
@@ -2087,7 +2088,7 @@ const filteredOrders = orders.filter(order => {
             <div className="p-detail-row">
               <span className="p-detail-label">Staff Incentive:</span>
               <span className="p-detail-value incentive-highlight">
-                ₹{parseFloat(modalData.staff_incentive) || 0}
+                {parseFloat(modalData.staff_incentive) || 0}
               </span>
             </div>
           </div>
@@ -2160,7 +2161,7 @@ const filteredOrders = orders.filter(order => {
           {/* 🔴 MOST IMPORTANT - Row 2 */}
           <div className="p-column">
             <div className="p-detail-row">
-              <span className="p-detail-label">Quantity:</span>
+              <span className="p-detail-label">Units:</span>
               <span className="p-detail-value">{modalData.quantity}</span>
             </div>
           </div>

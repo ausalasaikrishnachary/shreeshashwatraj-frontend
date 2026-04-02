@@ -401,6 +401,7 @@ const getNetPricePerUnit = (item) => {
               
               <p className="mb-1"><strong>{invoiceData.supplierInfo.name}</strong></p>
               <p className="mb-1 text-muted">{invoiceData.supplierInfo.businessName}</p>
+               <p className="mb-0"><small>Mobile: {invoiceData.supplierInfo.phone || 'N/A'}</small></p>
               <p className="mb-1"><small>GSTIN: {invoiceData.supplierInfo.gstin || 'N/A'}</small></p>
               <p className="mb-1"><small>State: {invoiceData.supplierInfo.state || 'N/A'}</small></p>
               <p className="mb-1"><small>Email: {invoiceData.supplierInfo.email || 'N/A'}</small></p>
@@ -474,8 +475,8 @@ const getNetPricePerUnit = (item) => {
                 <th className="text-center" style={{ width: '3%' }}>#</th>
                 <th style={{ width: '12%' }}>Product</th>
                 <th style={{ width: '15%' }}>Description</th>
-                <th className="text-center" style={{ width: '4%' }}>Qty</th>
-                <th className="text-center" style={{ width: '4%' }}>Free Qty</th>
+                <th className="text-center" style={{ width: '4%' }}>Units</th>
+                <th className="text-center" style={{ width: '4%' }}>Free Units</th>
                 <th className="text-end" style={{ width: '7%' }}> Price</th>
                 <th className="text-end" style={{ width: '7%' }}>Discount Amt</th>
                 <th className="text-end" style={{ width: '7%' }}>Credit Charge</th>
@@ -718,15 +719,36 @@ const getNetPricePerUnit = (item) => {
       <div className="invoice-footer border-top pt-3">
         <Row>
           <Col md={6}>
-            <div className="bank-details">
-              <h6 className="text-primary">Bank Details:</h6>
-              <div className="bg-light p-2 rounded">
-                <p className="mb-1">Account Name: {invoiceData.companyInfo.name}</p>
-                <p className="mb-1">Account Number: XXXX XXXX XXXX</p>
-                <p className="mb-1">IFSC Code: XXXX0123456</p>
-                <p className="mb-0">Bank Name: Sample Bank</p>
-              </div>
-            </div>
+<div className="bank-details">
+    
+    <h6 className="text-primary mb-1" style={{ fontSize: '15px' }}>
+      Bank Details:
+    </h6>
+    
+    <div className="bg-light p-2 rounded" style={{ fontSize: '11px', lineHeight: '1.2' }}>
+      
+      <p className="mb-1" style={{ fontSize: '12px', }}  >
+        Account Name: SHREE SHASHWATRAJ AGRO PVT LTD
+      </p>
+      
+      <p className="mb-1" style={{ fontSize: '12px', }}>
+        Bank Name: STATE BANK OF INDIA
+      </p>
+      
+      <p className="mb-1" style={{ fontSize: '12px', }}>
+        Branch: SME AURANGABAD
+      </p>
+      
+      <p className="mb-1" style={{ fontSize: '12px', }}>
+        Account Number: 44773710377
+      </p>
+      
+      <p className="mb-0" style={{ fontSize: '12px', }}>
+        IFSC Code: SBIN0063699
+      </p>
+      
+    </div>
+  </div>
           </Col>
           <Col md={6} className="text-end">
             <div className="signature-section">

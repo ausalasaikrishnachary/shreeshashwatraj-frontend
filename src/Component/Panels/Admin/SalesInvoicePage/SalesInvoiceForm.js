@@ -255,7 +255,13 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
         id: apiData.PartyID || null,
         staffid: apiData.staffid || apiData.staff_id || null,
         assigned_staff: apiData.assigned_staff || apiData.AssignedStaff || account?.assigned_staff || 'N/A',
-        
+          mobile_number: apiData.retailer_mobile || 
+                 apiData.mobile_number || 
+               
+             
+                 account?.phone_number || 
+                 '',
+  phone_number: apiData.phone_number || account?.phone_number || ''
       },
       
       billingAddress: {
@@ -841,56 +847,60 @@ const addItem = () => {
     }));
   };
 
-  const calculateTotals = () => {
-    const taxableAmount = invoiceData.items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      return sum + (subtotal - discountAmount);
-    }, 0);
+const calculateTotals = () => {
+  const taxableAmount = invoiceData.items.reduce((sum, item) => {
+    const quantity = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.price) || 0;
+    const discount = parseFloat(item.discount) || 0;
     
-    const totalGST = invoiceData.items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      const gst = parseFloat(item.gst) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const gstAmount = amountAfterDiscount * (gst / 100);
-      
-      return sum + gstAmount;
-    }, 0);
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    return sum + (subtotal - discountAmount);
+  }, 0);
+  
+  const totalGST = invoiceData.items.reduce((sum, item) => {
+    const quantity = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.price) || 0;
+    const discount = parseFloat(item.discount) || 0;
+    const gst = parseFloat(item.gst) || 0;
     
-    const totalCess = invoiceData.items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      const cess = parseFloat(item.cess) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const cessAmount = amountAfterDiscount * (cess / 100);
-      
-      return sum + cessAmount;
-    }, 0);
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    const amountAfterDiscount = subtotal - discountAmount;
+    const gstAmount = amountAfterDiscount * (gst / 100);
     
-    const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
-    const grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
+    return sum + gstAmount;
+  }, 0);
+  
+  const totalCess = invoiceData.items.reduce((sum, item) => {
+    const quantity = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.price) || 0;
+    const discount = parseFloat(item.discount) || 0;
+    const cess = parseFloat(item.cess) || 0;
     
-    setInvoiceData(prev => ({
-      ...prev,
-      taxableAmount: taxableAmount.toFixed(2),
-      totalGST: totalGST.toFixed(2),
-      totalCess: totalCess.toFixed(2),
-      grandTotal: grandTotal.toFixed(2)
-    }));
-  };
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    const amountAfterDiscount = subtotal - discountAmount;
+    const cessAmount = amountAfterDiscount * (cess / 100);
+    
+    return sum + cessAmount;
+  }, 0);
+  
+  const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
+  let grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
+  
+  // Round grand total to nearest integer
+  // 1999.60 → 2000, 1999.49 → 1999
+  const roundedGrandTotal = Math.round(grandTotal);
+  
+  setInvoiceData(prev => ({
+    ...prev,
+    taxableAmount: taxableAmount.toFixed(2),
+    totalGST: totalGST.toFixed(2),
+    totalCess: totalCess.toFixed(2),
+    grandTotal: roundedGrandTotal // Store rounded value
+  }));
+};
 
   useEffect(() => {
     calculateTotals();
@@ -1062,7 +1072,7 @@ const addItem = () => {
       // Get product_id and batch_id for logging
       const firstItemProductId = invoiceData.items[0]?.product_id || null;
       const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
-      
+      const mobileNumber = invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number || '';
       const payload = {
         ...invoiceData,
         invoiceNumber: finalInvoiceNumber,
@@ -1094,7 +1104,8 @@ const addItem = () => {
                 invoiceData.supplierInfo.name,
   business_name: invoiceData.supplierInfo.business_name || 
                  accounts.find(acc => acc.id === selectedSupplierId)?.business_name || 
-                 invoiceData.supplierInfo.name
+                 invoiceData.supplierInfo.name, 
+mobile_number: mobileNumber
 };     
 
     
@@ -1147,6 +1158,7 @@ window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice sub
         staffid: responseData.staffid || selectedStaffId,
         assigned_staff: responseData.assigned_staff || staffName,
         staffName: responseData.staffName || staffName,
+         mobile_number: invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number,
         supplierInfo: {
           ...invoiceData.supplierInfo,
           staffid: responseData.staffid || selectedStaffId,
@@ -1405,7 +1417,9 @@ window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice sub
                                 business_name: supplier.business_name,
                                 account_name: supplier.account_name,
                                 assigned_staff: supplier.assigned_staff || null,
-                                discount: retailerDiscount
+                                discount: retailerDiscount,
+                                mobile_number: supplier.mobile_number || '',
+                                phone_number: supplier.phone_number || '',
                               },
                               billingAddress: {
                                 addressLine1: supplier.billing_address_line1,
@@ -1452,6 +1466,9 @@ window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice sub
                           <div style={{ fontSize: '11px', color: '#6c757d' }}>
                             {acc.business_name}
                           </div>
+                           <div style={{ fontSize: '10px', color: '#0d6efd' }}>
+                         {acc.mobile_number || acc.phone_number || 'No mobile'}
+                      </div>
                         </div>
                       </div>
                     ))
@@ -1520,6 +1537,10 @@ window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice sub
           <div className="bg-light p-2 rounded">
             <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
             <div><strong>Business:</strong> {invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName}</div>
+              {(invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number) && (
+          <div><strong>Mobile:</strong> {invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number}</div>
+        )}
+        
             <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
             <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
             {invoiceData.supplierInfo.staffid && invoiceData.supplierInfo.staffid !== null && (
