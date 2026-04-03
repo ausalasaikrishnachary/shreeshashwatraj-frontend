@@ -331,12 +331,18 @@ const fetchOrders = async () => {
               let min_sale_price = 0;
               let stock_quantity = 0;
               let stock_insufficient = false;
-              let hsn_code = ""; // ✅ ADD
+               let hsn_code = "";
+              let gst_rate = 0;
+              let product_net_price = 0;
+              let product_price = 0;
 
               try {
                 const productRes = await axios.get(`${baseurl}/products/${item.product_id}`);
                 min_sale_price = productRes.data.min_sale_price || 0;
                 hsn_code = productRes.data.hsn_code || "";
+                gst_rate = parseFloat(productRes.data.gst_rate) || 0;
+                product_net_price = parseFloat(productRes.data.net_price) || 0;
+                product_price = parseFloat(productRes.data.price) || 0;
 
                 try {
                   const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
@@ -362,7 +368,10 @@ const fetchOrders = async () => {
               } catch (productErr) {
                 console.warn(`Could not fetch product details for product ID ${item.product_id}:`, productErr.message);
                 min_sale_price = 0;
-                  hsn_code = ""; // ✅ ADD
+                  hsn_code = ""; 
+                    gst_rate = 0;
+                product_net_price = 0;
+                product_price = 0;
               }
 
               const salePrice = parseFloat(item.sale_price) || 0;
@@ -419,7 +428,9 @@ const fetchOrders = async () => {
                 stock_quantity: stock_quantity,
                 stock_insufficient: stock_insufficient,
                 can_edit: salePrice < parseFloat(min_sale_price),
-                
+                  product_gst_rate: gst_rate,
+                product_net_price: product_net_price,
+                product_price: product_price,
                 // FLASH OFFER DETAILS
                 flash_offer: flashOffer, // 0 or 1
                 buy_quantity: buyQuantity, // e.g., 2
@@ -1095,28 +1106,25 @@ const handleGenerateDispatchReport = async () => {
     }
 
     const allDispatchItems = [];
-    let totalWeightAllOrders = 0; // This will store sum of (weight per unit * quantity)
+    let totalWeightAllOrders = 0; 
     let totalAmountAllOrders = 0;
 
     ordersWithDateMatch.forEach(order => {
       order.items.forEach(item => {
         const salePrice = parseFloat(item.sale_price) || 0;
-        // Get quantity (handle flash offers)
         const quantity = item.flash_offer === 1 ? 
           (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
           (parseInt(item.quantity) || 1);
         
-        // Calculate amount = salePrice * quantity
         const amount = salePrice * quantity;
         
-        // FIXED: Calculate weight = weight per unit * quantity
         const weightPerUnit = parseFloat(item.weight) || 0;
-        const itemWeight = weightPerUnit * quantity; // Multiply weight by quantity!
+        const itemWeight = weightPerUnit * quantity; 
         
         allDispatchItems.push({
           item_name: item.item_name,
-          weight: itemWeight, // Store the total weight (weight per unit * quantity)
-          weight_per_unit: weightPerUnit, // Store per unit weight for reference
+          weight: itemWeight, 
+          weight_per_unit: weightPerUnit, 
           quantity: item.flash_offer === 1 ? 
             `${item.buy_quantity || item.quantity}` : 
             item.quantity,
@@ -1131,10 +1139,14 @@ const handleGenerateDispatchReport = async () => {
           invoice_number: item.invoice_number || order.invoice_number,
           invoice_status: item.invoice_status || 0,
           created_at: order.created_at,
-          has_invoice: item.invoice_status === 1
+          has_invoice: item.invoice_status === 1,
+          hsn_code: item.hsn_code || "N/A",
+          product_gst_rate: item.product_gst_rate || item.tax_percentage || 0,
+          product_net_price: item.product_net_price || item.net_price || 0,
+          product_price: item.product_price || item.price || item.sale_price || 0
         });
         
-        totalWeightAllOrders += itemWeight; // This will now be correct!
+        totalWeightAllOrders += itemWeight; 
         totalAmountAllOrders += amount;
       });
     });
@@ -1144,10 +1156,7 @@ const handleGenerateDispatchReport = async () => {
       return;
     }
 
-    console.log("Total Weight All Orders:", totalWeightAllOrders); // Should now be 300.00 for your example
-    console.log("All Dispatch Items:", allDispatchItems);
-
-    // Prepare dispatch data
+    // Prepare dispatch data - UPDATED to include all fields
     const dispatchData = {
       orders: ordersWithDateMatch.map(order => ({
         orderNumber: order.order_number,
@@ -1163,14 +1172,13 @@ const handleGenerateDispatchReport = async () => {
             (parseInt(item.quantity) || 1);
           const amount = salePrice * quantity;
           
-          // FIXED: Calculate weight = weight per unit * quantity
           const weightPerUnit = parseFloat(item.weight) || 0;
           const itemWeight = weightPerUnit * quantity;
           
           return {
             item_name: item.item_name,
-            weight: itemWeight, // Store total weight
-            weight_per_unit: weightPerUnit, // Store per unit weight
+            weight: itemWeight,
+            weight_per_unit: weightPerUnit,
             quantity: item.flash_offer === 1 ? 
               `${item.buy_quantity || item.quantity}` : 
               item.quantity,
@@ -1180,27 +1188,31 @@ const handleGenerateDispatchReport = async () => {
             get_quantity: item.get_quantity || 0,
             flash_offer: item.flash_offer,
             invoice_status: item.invoice_status || 0,
-            has_invoice: item.invoice_status === 1
+            has_invoice: item.invoice_status === 1,
+            // ADD THESE NEW FIELDS:
+            hsn_code: item.hsn_code || "N/A",
+            product_gst_rate: item.product_gst_rate || item.tax_percentage || 0,
+            product_net_price: item.product_net_price || item.net_price || 0,
+            product_price: item.product_price || item.price || item.sale_price || 0
           };
         })
       })),
       
       allItems: allDispatchItems,
-      totalWeight: totalWeightAllOrders.toFixed(2), // This will now be the sum of (weight per unit * quantity)
+      totalWeight: totalWeightAllOrders.toFixed(2), 
       totalAmount: totalAmountAllOrders,
       totalItemsWithInvoice: allDispatchItems.filter(item => item.has_invoice).length,
       totalItemsWithoutInvoice: allDispatchItems.filter(item => !item.has_invoice).length,
       
-          companyInfo: {
-  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-  email: "spmathur56@gmail.com",
-  phone: "9801049700",
-  gstin: "10AAOCS1541B1ZZ",
-  state: "Bihar",
-  stateCode: "10"
-},
-     
+      companyInfo: {
+        name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+        address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+        email: "spmathur56@gmail.com",
+        phone: "9801049700",
+        gstin: "10AAOCS1541B1ZZ",
+        state: "Bihar",
+        stateCode: "10"
+      },
       
       transportDetails: {
         vehicleNo: "To be filled"
@@ -1221,7 +1233,7 @@ const handleGenerateDispatchReport = async () => {
       reportDate: new Date().toISOString().split('T')[0]
     };
 
-    // Generate PDF as before...
+    // Generate PDF
     const { pdf } = await import('@react-pdf/renderer');
     const pdfDoc = <DispatchReportPDF invoiceData={dispatchData} />;
     const blob = await pdf(pdfDoc).toBlob();

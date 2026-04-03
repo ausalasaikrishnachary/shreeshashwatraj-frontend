@@ -5,7 +5,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 20,
     fontFamily: 'Helvetica',
-    fontSize: 10,
+    fontSize: 8,
   },
   header: {
     marginBottom: 15,
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#000',
     borderBottomStyle: 'solid',
-    minHeight: 25,
+    minHeight: 20,
   },
   tableTotalRow: {
     flexDirection: 'row',
@@ -110,47 +110,154 @@ const styles = StyleSheet.create({
     borderColor: '#000',
     borderStyle: 'solid',
   },
-  tableColHeader: {
-    width: '20%',
+  // Header column styles
+  tableColHeaderSNo: {
+    width: '5%',
     borderRightWidth: 1,
     borderRightColor: '#000',
     borderRightStyle: 'solid',
-    padding: 5,
+    padding: 4,
   },
-  tableCol: {
-    width: '20%',
+  tableColHeaderParticulars: {
+    width: '18%',
     borderRightWidth: 1,
     borderRightColor: '#000',
     borderRightStyle: 'solid',
-    padding: 5,
+    padding: 4,
   },
-  tableColHeaderLast: {
-    width: '20%',
-    padding: 5,
+  tableColHeaderHSN: {
+    width: '8%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
   },
-  tableColLast: {
-    width: '20%',
-    padding: 5,
+  tableColHeaderGST: {
+    width: '6%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
+  },
+  tableColHeaderRateIncl: {
+    width: '10%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
+  },
+  tableColHeaderRateExcl: {
+    width: '10%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
+  },
+  tableColHeaderWeight: {
+    width: '8%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
+  },
+  tableColHeaderQty: {
+    width: '10%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
+  },
+  tableColHeaderAmount: {
+    width: '15%',
+    padding: 4,
+  },
+  // Body column styles (must match header widths exactly)
+  tableColSNo: {
+    width: '5%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
+  },
+  tableColParticulars: {
+    width: '18%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
+  },
+  tableColHSN: {
+    width: '8%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
+  },
+  tableColGST: {
+    width: '6%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
+  },
+  tableColRateIncl: {
+    width: '10%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
+  },
+  tableColRateExcl: {
+    width: '10%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
+  },
+  tableColWeight: {
+    width: '8%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
+  },
+  tableColQty: {
+    width: '10%',
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    padding: 4,
+  },
+  tableColAmount: {
+    width: '15%',
+    padding: 4,
   },
   tableCellHeader: {
-    fontSize: 10,
+    fontSize: 7,
     fontFamily: 'Helvetica-Bold',
     textAlign: 'center',
   },
   tableCell: {
-    fontSize: 9,
+    fontSize: 7,
     fontFamily: 'Helvetica',
     textAlign: 'center',
   },
   tableCellTotal: {
-    fontSize: 10,
+    fontSize: 7,
     fontFamily: 'Helvetica-Bold',
     textAlign: 'center',
   },
   tableCellGrandTotal: {
-    fontSize: 11,
+    fontSize: 8,
     fontFamily: 'Helvetica-Bold',
     textAlign: 'center',
+    paddingVertical: 6,
+  },
+  grandTotalLabel: {
+    fontSize: 8,
+    fontFamily: 'Helvetica-Bold',
+    textAlign: 'right',
+    paddingRight: 8,
     paddingVertical: 6,
   },
   pageNumber: {
@@ -171,7 +278,6 @@ const DispatchReportPDF = ({ invoiceData }) => {
     allItems = [],
     totalWeight,
     totalAmount,
-    companyInfo,
     transportDetails,
     reportDate
   } = invoiceData || {};
@@ -191,6 +297,14 @@ const DispatchReportPDF = ({ invoiceData }) => {
       maximumFractionDigits: 2
     }).format(amount);
   };
+
+  // Calculate grand total quantity
+  const grandTotalQty = allItems.reduce((sum, item) => {
+    const quantity = item.flash_offer === 1 ? 
+      (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
+      (parseInt(item.quantity) || 1);
+    return sum + quantity;
+  }, 0);
 
   return (
     <Document>
@@ -226,15 +340,12 @@ const DispatchReportPDF = ({ invoiceData }) => {
           let orderTotalQty = 0;
           let orderTotalAmount = 0;
 
-          // Process items - USE THE PRE-CALCULATED VALUES
           const processedItems = order.items.map(item => {
-            // Get quantity
             const quantity = item.flash_offer === 1 ? 
               (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
               (parseInt(item.quantity) || 1);
             
             const totalItemWeight = parseFloat(item.weight) || 0;
-            
             const totalItemAmount = parseFloat(item.amount) || 
               ((parseFloat(item.sale_price) || 0) * quantity);
             
@@ -249,7 +360,11 @@ const DispatchReportPDF = ({ invoiceData }) => {
               totalAmount: totalItemAmount,
               displayQty: item.flash_offer === 1 && item.get_quantity > 0
                 ? `${item.quantity} + ${item.get_quantity} FREE`
-                : item.quantity
+                : item.quantity,
+              hsn_code: item.hsn_code || 'N/A',
+              product_gst_rate: item.product_gst_rate || item.gst_rate || 0,
+              product_net_price: item.product_net_price || item.net_price || 0,
+              product_price: item.product_price || item.price || 0
             };
           });
 
@@ -279,70 +394,96 @@ const DispatchReportPDF = ({ invoiceData }) => {
               <View style={styles.table}>
                 {/* Table Header */}
                 <View style={styles.tableHeader}>
-                  <View style={styles.tableColHeader}>
+                  <View style={styles.tableColHeaderSNo}>
                     <Text style={styles.tableCellHeader}>S No</Text>
                   </View>
-                  <View style={styles.tableColHeader}>
+                  <View style={styles.tableColHeaderParticulars}>
                     <Text style={styles.tableCellHeader}>Particulars</Text>
                   </View>
-                  <View style={styles.tableColHeader}>
+                  <View style={styles.tableColHeaderHSN}>
+                    <Text style={styles.tableCellHeader}>HSN Code</Text>
+                  </View>
+                  <View style={styles.tableColHeaderGST}>
+                    <Text style={styles.tableCellHeader}>GST%</Text>
+                  </View>
+                  <View style={styles.tableColHeaderRateIncl}>
+                    <Text style={styles.tableCellHeader}>Rate (Incl of Tax)</Text>
+                  </View>
+                  <View style={styles.tableColHeaderRateExcl}>
+                    <Text style={styles.tableCellHeader}>Rate (Excl of Tax)</Text>
+                  </View>
+                  <View style={styles.tableColHeaderWeight}>
                     <Text style={styles.tableCellHeader}>Weight</Text>
                   </View>
-                  <View style={styles.tableColHeader}>
+                  <View style={styles.tableColHeaderQty}>
                     <Text style={styles.tableCellHeader}>Qty</Text>
                   </View>
-                  <View style={styles.tableColHeaderLast}>
+                  <View style={styles.tableColHeaderAmount}>
                     <Text style={styles.tableCellHeader}>Amount</Text>
                   </View>
                 </View>
 
-                {/* Table Rows - USE PRE-CALCULATED VALUES */}
+                {/* Table Rows */}
                 {processedItems.map((item, itemIndex) => (
                   <View style={styles.tableRow} key={itemIndex}>
-                    <View style={styles.tableCol}>
+                    <View style={styles.tableColSNo}>
                       <Text style={styles.tableCell}>{itemIndex + 1}</Text>
                     </View>
-                    <View style={styles.tableCol}>
+                    <View style={styles.tableColParticulars}>
                       <Text style={styles.tableCell}>{item.item_name}</Text>
                     </View>
-                    <View style={styles.tableCol}>
-                      <Text style={styles.tableCell}>
-                        {item.totalWeight.toFixed(2)} {/* Use pre-calculated total weight */}
-                      </Text>
+                    <View style={styles.tableColHSN}>
+                      <Text style={styles.tableCell}>{item.hsn_code}</Text>
                     </View>
-                    <View style={styles.tableCol}>
+                    <View style={styles.tableColGST}>
+                      <Text style={styles.tableCell}>{item.product_gst_rate}%</Text>
+                    </View>
+                    <View style={styles.tableColRateIncl}>
+                      <Text style={styles.tableCell}>{formatCurrency(item.product_net_price)}</Text>
+                    </View>
+                    <View style={styles.tableColRateExcl}>
+                      <Text style={styles.tableCell}>{formatCurrency(item.product_price)}</Text>
+                    </View>
+                    <View style={styles.tableColWeight}>
+                      <Text style={styles.tableCell}>{item.totalWeight.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.tableColQty}>
                       <Text style={styles.tableCell}>{item.displayQty}</Text>
                     </View>
-                    <View style={styles.tableColLast}>
-                      <Text style={styles.tableCell}>
-                        {formatCurrency(item.totalAmount)} {/* Use pre-calculated total amount */}
-                      </Text>
+                    <View style={styles.tableColAmount}>
+                      <Text style={styles.tableCell}>{formatCurrency(item.totalAmount)}</Text>
                     </View>
                   </View>
                 ))}
 
                 {/* Total Row */}
                 <View style={styles.tableTotalRow}>
-                  <View style={styles.tableCol}>
+                  <View style={styles.tableColSNo}>
                     <Text style={styles.tableCellTotal}></Text>
                   </View>
-                  <View style={styles.tableCol}>
+                  <View style={styles.tableColParticulars}>
                     <Text style={styles.tableCellTotal}>Total:</Text>
                   </View>
-                  <View style={styles.tableCol}>
-                    <Text style={styles.tableCellTotal}>
-                      {orderTotalWeight.toFixed(2)} {/* Use accumulated order total */}
-                    </Text>
+                  <View style={styles.tableColHSN}>
+                    <Text style={styles.tableCellTotal}></Text>
                   </View>
-                  <View style={styles.tableCol}>
-                    <Text style={styles.tableCellTotal}>
-                      {orderTotalQty}
-                    </Text>
+                  <View style={styles.tableColGST}>
+                    <Text style={styles.tableCellTotal}></Text>
                   </View>
-                  <View style={styles.tableColLast}>
-                    <Text style={styles.tableCellTotal}>
-                      {formatCurrency(orderTotalAmount)}
-                    </Text>
+                  <View style={styles.tableColRateIncl}>
+                    <Text style={styles.tableCellTotal}></Text>
+                  </View>
+                  <View style={styles.tableColRateExcl}>
+                    <Text style={styles.tableCellTotal}></Text>
+                  </View>
+                  <View style={styles.tableColWeight}>
+                    <Text style={styles.tableCellTotal}>{orderTotalWeight.toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.tableColQty}>
+                    <Text style={styles.tableCellTotal}>{orderTotalQty}</Text>
+                  </View>
+                  <View style={styles.tableColAmount}>
+                    <Text style={styles.tableCellTotal}>{formatCurrency(orderTotalAmount)}</Text>
                   </View>
                 </View>
               </View>
@@ -350,33 +491,37 @@ const DispatchReportPDF = ({ invoiceData }) => {
           );
         })}
 
-        {/* Grand Total */}
-        {orders.length > 1 && (
+        {/* Grand Total - FIXED VERSION */}
+        {orders.length >= 1 && (
           <View style={styles.tableGrandTotalContainer}>
             <View style={styles.table}>
               <View style={styles.tableGrandTotalRow}>
-                <View style={styles.tableCol}>
-                  <Text style={styles.tableCellGrandTotal}>GRAND TOTAL:</Text>
+                <View style={styles.tableColSNo}>
+                  <Text style={styles.tableCellGrandTotal}></Text>
                 </View>
-                <View style={styles.tableCol}>
-                  <Text style={styles.tableCellGrandTotal}>
-                    {totalWeight || '0.00'}
-                  </Text>
+                <View style={styles.tableColParticulars}>
+                  <Text style={styles.grandTotalLabel}>GRAND TOTAL:</Text>
                 </View>
-                <View style={styles.tableCol}>
-                  <Text style={styles.tableCellGrandTotal}>
-                    {allItems.reduce((sum, item) => {
-                      const quantity = item.flash_offer === 1 ? 
-                        (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
-                        (parseInt(item.quantity) || 1);
-                      return sum + quantity;
-                    }, 0)}
-                  </Text>
+                <View style={styles.tableColHSN}>
+                  <Text style={styles.tableCellGrandTotal}></Text>
                 </View>
-                <View style={styles.tableColLast}>
-                  <Text style={styles.tableCellGrandTotal}>
-                    {formatCurrency(totalAmount || 0)}
-                  </Text>
+                <View style={styles.tableColGST}>
+                  <Text style={styles.tableCellGrandTotal}></Text>
+                </View>
+                <View style={styles.tableColRateIncl}>
+                  <Text style={styles.tableCellGrandTotal}></Text>
+                </View>
+                <View style={styles.tableColRateExcl}>
+                  <Text style={styles.tableCellGrandTotal}></Text>
+                </View>
+                <View style={styles.tableColWeight}>
+                  <Text style={styles.tableCellGrandTotal}>{totalWeight || '0.00'}</Text>
+                </View>
+                <View style={styles.tableColQty}>
+                  <Text style={styles.tableCellGrandTotal}>{grandTotalQty}</Text>
+                </View>
+                <View style={styles.tableColAmount}>
+                  <Text style={styles.tableCellGrandTotal}>{formatCurrency(totalAmount || 0)}</Text>
                 </View>
               </View>
             </View>
@@ -392,4 +537,4 @@ const DispatchReportPDF = ({ invoiceData }) => {
   );
 };
 
-export default DispatchReportPDF; 
+export default DispatchReportPDF;
