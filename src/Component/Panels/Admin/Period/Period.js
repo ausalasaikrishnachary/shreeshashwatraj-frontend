@@ -783,7 +783,7 @@ const fetchOrders = async () => {
     setModalData(null);
   };
 
- const handleGenerateInvoice = (order) => {
+ const handleGenerateInvoice = async  (order) => {
   try {
     setGeneratingInvoice(true);
 
@@ -820,9 +820,23 @@ const fetchOrders = async () => {
       return;
     }
 
-    let invoiceNumber = nextInvoiceNumber;
-    if (!invoiceNumber) {
-      invoiceNumber = `INV${order.order_number.replace('ORD', '')}`;
+    let invoiceNumber = null;
+    try {
+      console.log('📞 Fetching next invoice number from API...');
+      const invoiceNumberResponse = await fetch(`${baseurl}/next-invoice-number`);
+      
+      if (invoiceNumberResponse.ok) {
+        const invoiceNumberData = await invoiceNumberResponse.json();
+        invoiceNumber = invoiceNumberData.nextInvoiceNumber;
+        console.log('✅ Received next invoice number:', invoiceNumber);
+        setNextInvoiceNumber(invoiceNumber);
+      } else {
+        console.error('Failed to fetch next invoice number, using fallback');
+        invoiceNumber = nextInvoiceNumber || `INV${order.order_number.replace('ORD', '')}`;
+      }
+    } catch (err) {
+      console.error('Error fetching next invoice number:', err);
+      invoiceNumber = nextInvoiceNumber || `INV${order.order_number.replace('ORD', '')}`;
     }
 
     const accountDetails = order.account_details;

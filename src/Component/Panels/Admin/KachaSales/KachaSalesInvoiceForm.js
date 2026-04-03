@@ -899,7 +899,25 @@ useEffect(() => {
     }
 
     try {
-      const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
+   let finalInvoiceNumber = invoiceData.invoiceNumber;
+
+if (!isEditMode) {
+  console.log('📞 Fetching next invoice number from API...');
+  const invoiceNumberResponse = await fetch(`${baseurl}/next-invoice-number`);
+  
+  if (invoiceNumberResponse.ok) {
+    const invoiceNumberData = await invoiceNumberResponse.json();
+    finalInvoiceNumber = invoiceNumberData.nextInvoiceNumber;
+    console.log('✅ Received next invoice number:', finalInvoiceNumber);
+    
+    setInvoiceData(prev => ({
+      ...prev,
+      invoiceNumber: finalInvoiceNumber
+    }));
+  } else {
+    console.error('Failed to fetch next invoice number, using existing:', finalInvoiceNumber);
+  }
+}
       console.log('Submitting invoice with number:', finalInvoiceNumber);
 
       // Extract batch details from items

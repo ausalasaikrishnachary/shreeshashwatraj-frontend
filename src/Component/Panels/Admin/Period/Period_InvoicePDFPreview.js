@@ -826,6 +826,26 @@ const handleOrderModeChange = (switchData) => {
       setErrorMessage('');
       setSuccessMessage('');
       
+
+        let invoiceNumber = null;
+    try {
+      console.log('📞 Fetching next invoice number from API...');
+      const invoiceNumberResponse = await fetch(`${baseurl}/next-invoice-number`);
+      
+      if (invoiceNumberResponse.ok) {
+        const invoiceNumberData = await invoiceNumberResponse.json();
+        invoiceNumber = invoiceNumberData.nextInvoiceNumber;
+        console.log('✅ Received next invoice number:', invoiceNumber);
+      } else {
+        console.error('Failed to fetch next invoice number');
+        // Fallback: generate from order number or timestamp
+        invoiceNumber = `INV${Date.now().toString().slice(-6)}`;
+      }
+    } catch (err) {
+      console.error('Error fetching next invoice number:', err);
+      // Fallback: generate from order number or timestamp
+      invoiceNumber = `INV${Date.now().toString().slice(-6)}`;
+    }
       // DEBUG: Add logging to see what's coming
       console.log('🔍 DEBUG - periodInvoiceData structure:', {
         periodInvoiceData,
@@ -1384,7 +1404,9 @@ const price = netPrice;
         
         const finalPayload = {
           ...periodDataWithoutTransactionType,
-          ...payload  
+          ...payload  ,
+          invoiceNumber: invoiceNumber,
+  VchNo: invoiceNumber
         };
         
         console.log("📦 FINAL INVOICE PAYLOAD:", finalPayload);
