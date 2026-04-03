@@ -1040,17 +1040,17 @@ const handleSubmit = async (e) => {
                 </div>
 
                 <div className="row mb-3">
-                  <div className="col">
-                    <Form.Label>GST Type</Form.Label>
-                    <Form.Select
-                      name="inclusive_gst"
-                      value={formData.inclusive_gst}
-                      onChange={handleChange}
-                    >
-                      <option value="Inclusive">Inclusive of GST</option>
-                      <option value="Exclusive">Exclusive of GST</option>
-                    </Form.Select>
-                  </div>
+                    <div className="col">
+                      <Form.Label>GST Type</Form.Label>
+                      <Form.Select
+                        name="inclusive_gst"
+                        value={formData.inclusive_gst}
+                        onChange={handleChange}
+                      >
+                        <option value="Inclusive">Inclusive of GST</option>
+                        <option value="Exclusive">Exclusive of GST</option>
+                      </Form.Select>
+                    </div>
                   <div className="col">
                     <Form.Label>GST Rate</Form.Label>
                     <Form.Select

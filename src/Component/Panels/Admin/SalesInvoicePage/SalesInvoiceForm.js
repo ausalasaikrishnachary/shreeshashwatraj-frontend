@@ -1,3 +1,8 @@
+
+
+
+
+
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Table, Alert } from 'react-bootstrap';
 import './Invoices.css';
@@ -117,7 +122,8 @@ const currentFY = getFinancialYearShort();
     batch: "",
     batch_id: "",
     batchDetails: null,
-     hsn_code: ""  
+     hsn_code: "" ,
+     inclusive_gst: "Exclusive"  // Add this line 
   });
 
   const [loading, setLoading] = useState(false);
@@ -513,47 +519,58 @@ const formatInvoiceNumber = (number) => {
     fetchAccounts();
   }, []);
 
-  const calculateItemTotal = () => {
-    const quantity = parseFloat(itemForm.quantity) || 0;
-    const price = parseFloat(itemForm.price) || 0;
-    const discount = parseFloat(itemForm.discount) || 0;
-    const gst = parseFloat(itemForm.gst) || 0;
-    const cess = parseFloat(itemForm.cess) || 0;
-    
-    const subtotal = quantity * price;
-    const discountAmount = subtotal * (discount / 100);
-    const amountAfterDiscount = subtotal - discountAmount;
+const calculateItemTotal = () => {
+  const quantity = parseFloat(itemForm.quantity) || 0;
+  const price = parseFloat(itemForm.price) || 0;
+  const discount = parseFloat(itemForm.discount) || 0;
+  const gst = parseFloat(itemForm.gst) || 0;
+  const cess = parseFloat(itemForm.cess) || 0;
+  const gstType = itemForm.inclusive_gst;
+  
+  const subtotal = quantity * price;
+  const discountAmount = subtotal * (discount / 100);
+  const amountAfterDiscount = subtotal - discountAmount;
+  
+  let total;
+  
+  if (!gstType) {
+    // No GST type selected, don't add GST
+    total = amountAfterDiscount;
+  } else if (gstType === "Exclusive") {
+    // Exclusive: GST is ADDED to price
     const gstAmount = amountAfterDiscount * (gst / 100);
     const cessAmount = amountAfterDiscount * (cess / 100);
-    const total = amountAfterDiscount + gstAmount + cessAmount;
-    
-    const sameState = isSameState();
-    let cgst, sgst, igst;
-    
-    if (sameState) {
- 
-      cgst = gst / 2;   
-      sgst = gst / 2; 
-      igst = 0;       
-    } else {
-    
-      cgst = 0;         
-      sgst = 0;      
-      igst = gst;      
-    }
-
-    
-    return {
-      ...itemForm,
-      total: total.toFixed(2),
-      cgst: cgst.toFixed(2),  
-      sgst: sgst.toFixed(2),  
-      igst: igst.toFixed(2), 
-      cess: cess,
-      batchDetails: selectedBatchDetails,
-      hsn_code: itemForm.hsn_code || ""  
-    };
+    total = amountAfterDiscount + gstAmount + cessAmount;
+  } else {
+    // Inclusive: GST is INCLUDED in price
+    const cessAmount = amountAfterDiscount * (cess / 100);
+    total = amountAfterDiscount + cessAmount;
+  }
+  
+  const sameState = isSameState();
+  let cgst, sgst, igst;
+  
+  if (sameState) {
+    cgst = gst / 2;
+    sgst = gst / 2;
+    igst = 0;
+  } else {
+    cgst = 0;
+    sgst = 0;
+    igst = gst;
+  }
+  
+  return {
+    ...itemForm,
+    total: total.toFixed(2),
+    cgst: cgst.toFixed(2),
+    sgst: sgst.toFixed(2),
+    igst: igst.toFixed(2),
+    cess: cess,
+    batchDetails: selectedBatchDetails,
+    hsn_code: itemForm.hsn_code || ""
   };
+};
 
   const recalculateAllItems = () => {
     const sameState = isSameState();
@@ -689,7 +706,8 @@ const addItem = () => {
       batch: selectedBatch,
       batch_id: itemForm.batch_id,
       product_id: itemForm.product_id,
-      batchDetails: selectedBatchDetails
+      batchDetails: selectedBatchDetails,
+      inclusive_gst: itemForm.inclusive_gst  // Add this field
     };
 
     setInvoiceData(prev => ({
@@ -714,7 +732,8 @@ const addItem = () => {
       batch: selectedBatch,
       batch_id: itemForm.batch_id,
       product_id: itemForm.product_id,
-      batchDetails: selectedBatchDetails
+      batchDetails: selectedBatchDetails,
+       inclusive_gst: itemForm.inclusive_gst  // Add this field
     };
 
     setInvoiceData(prev => ({
@@ -747,7 +766,8 @@ const addItem = () => {
     batch: "",
     batch_id: "",
     batchDetails: null,
-     hsn_code: ""  
+     hsn_code: ""  ,
+     inclusive_gst: "Exclusive"  // Reset to default
   });
   setBatches([]);
   setSelectedBatch("");
@@ -973,214 +993,221 @@ const calculateTotals = () => {
   window.alert("✅ Draft cleared successfully!");
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError(null);
+  setSuccess(false);
+  
+  if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
+    window.alert("⚠️ Please select a supplier/customer");
+    setLoading(false);
+    return;
+  }
+
+  if (invoiceData.items.length === 0) {
+    window.alert("⚠️ Please add at least one item to the invoice");
+    setLoading(false);
+    return;
+  }
+
+  try {
+    // ✅ FIRST: Get the next invoice number from API
+    let finalInvoiceNumber = invoiceData.invoiceNumber;
     
-    if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-       window.alert("⚠️ Please select a supplier/customer");
-      setLoading(false);
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    if (invoiceData.items.length === 0) {
-         window.alert("⚠️ Please add at least one item to the invoice");
-      setLoading(false);
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    try {
-      const finalInvoiceNumber = invoiceData.invoiceNumber || nextInvoiceNumber;
-      console.log('Submitting invoice with number:', finalInvoiceNumber);
-
-      // Get staff information
-      const staffAccount = accounts.find(acc => acc.staffid == selectedStaffId);
-      const staffName = staffAccount?.assigned_staff || 
-                       invoiceData.supplierInfo.assigned_staff || 
-                       accounts.find(acc => acc.id == selectedSupplierId)?.assigned_staff ||
-                       'N/A';
-
-      // Calculate GST AMOUNTS for voucher table
-      const sameState = isSameState();
-      let totalCGSTAmount = 0;
-      let totalSGSTAmount = 0;
-      let totalIGSTAmount = 0;
+    if (!isEditMode) {
+      console.log('📞 Fetching next invoice number from API...');
+      const invoiceNumberResponse = await fetch(`${baseurl}/next-invoice-number`);
       
-      // Calculate percentages for voucher table
-      let totalCGSTPercentage = 0;
-      let totalSGSTPercentage = 0;
-      let totalIGSTPercentage = 0;
-
-      // Calculate GST amounts item by item
-      invoiceData.items.forEach((item, index) => {
-        const quantity = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.price) || 0;
-        const discount = parseFloat(item.discount) || 0;
-        const gst = parseFloat(item.gst) || 0;
+      if (invoiceNumberResponse.ok) {
+        const invoiceNumberData = await invoiceNumberResponse.json();
+        finalInvoiceNumber = invoiceNumberData.nextInvoiceNumber;
+        console.log('✅ Received next invoice number:', finalInvoiceNumber);
         
-        const subtotal = quantity * price;
-        const discountAmount = subtotal * (discount / 100);
-        const amountAfterDiscount = subtotal - discountAmount;
-        const gstAmount = amountAfterDiscount * (gst / 100);
-        
-        if (sameState) {
-          // Same state: GST amount divided equally
-          totalCGSTAmount += gstAmount / 2;
-          totalSGSTAmount += gstAmount / 2;
-          totalCGSTPercentage = gst / 2; 
-          totalSGSTPercentage = gst / 2; 
-          totalIGSTPercentage = 0;      
-        } else {
-          // Different state: Full GST as IGST
-          totalIGSTAmount += gstAmount;
-          totalIGSTPercentage = gst;      // Percentage: 5 for 5% GST
-        }
-      });
-
-
-      // Extract batch details from items with PERCENTAGES for items table
-      const batchDetails = invoiceData.items.map(item => {
-        const quantity = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.price) || 0;
-        const discount = parseFloat(item.discount) || 0;
-        
-        return {
-          product: item.product,
-          product_id: item.product_id,
-          description: item.description,
-          batch: item.batch,
-          batch_id: item.batch_id,
-          quantity: quantity,
-          price: price,
-          discount: discount,
-          gst: parseFloat(item.gst) || 0,          
-          cgst: parseFloat(item.cgst) || 0,        
-          sgst: parseFloat(item.sgst) || 0,       
-          igst: parseFloat(item.igst) || 0,       
-          cess: parseFloat(item.cess) || 0,
-          total: parseFloat(item.total) || 0,
-          batchDetails: item.batchDetails,
-          assigned_staff: staffName,
-           hsn_code: item.hsn_code || ""  
-        };
-      });
-
-      // Get product_id and batch_id for logging
-      const firstItemProductId = invoiceData.items[0]?.product_id || null;
-      const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
-      const mobileNumber = invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number || '';
-      const payload = {
-        ...invoiceData,
-        invoiceNumber: finalInvoiceNumber,
-        selectedSupplierId: selectedSupplierId,
-        staffid: selectedStaffId,
-        assigned_staff: staffName,
-        staffName: staffName,
-        type: 'sales',
-         TransactionType: "Sales", 
-        CGSTAmount: totalCGSTAmount.toFixed(2),   
-        SGSTAmount: totalSGSTAmount.toFixed(2),    
-        IGSTAmount: totalIGSTAmount.toFixed(2),   
-        
-        CGSTPercentage: totalCGSTPercentage.toFixed(2),
-        SGSTPercentage: totalSGSTPercentage.toFixed(2), 
-        IGSTPercentage: totalIGSTPercentage.toFixed(2), 
-        
-        taxType: sameState ? "CGST/SGST" : "IGST",
-        batchDetails: batchDetails,  
-        product_id: 123,
-        batch_id: "bth0001",
-        primaryProductId: firstItemProductId,
-        primaryBatchId: firstItemBatchId,
-        PartyID: selectedSupplierId,
-        AccountID: invoiceData.supplierInfo.accountId,
-        PartyName: invoiceData.supplierInfo.name,
-  account_name: invoiceData.supplierInfo.account_name || 
-                accounts.find(acc => acc.id === selectedSupplierId)?.account_name || 
-                invoiceData.supplierInfo.name,
-  business_name: invoiceData.supplierInfo.business_name || 
-                 accounts.find(acc => acc.id === selectedSupplierId)?.business_name || 
-                 invoiceData.supplierInfo.name, 
-mobile_number: mobileNumber
-};     
-
-    
-
-      // Remove unused fields
-      delete payload.companyState;
-      delete payload.supplierState;
-      delete payload.items;
-      
-      let response;
-      if (isEditMode && editingVoucherId) {
-        console.log('🔄 Updating existing invoice with ID:', editingVoucherId);
-        response = await fetch(`${baseurl}/transactions/${editingVoucherId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload)
-        });
+        // Update the invoiceData with the new invoice number
+        setInvoiceData(prev => ({
+          ...prev,
+          invoiceNumber: finalInvoiceNumber
+        }));
       } else {
-        console.log('🆕 Creating new invoice with staffid:', selectedStaffId);
-        response = await fetch(`${baseurl}/transaction`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload)
-        });
+        console.error('Failed to fetch next invoice number, using existing:', finalInvoiceNumber);
       }
-      
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(responseData.error || 'Failed to submit invoice');
-      }
-      
-      console.log('✅ Server Response:', responseData);
-      
-      localStorage.removeItem('draftInvoice');
-window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice submitted successfully!');
-      setIsPreviewReady(true);
-
-      // Store preview data
-      const previewData = {
-        ...invoiceData,
-        invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
-        voucherId: responseData.voucherId || editingVoucherId,
-        product_id: responseData.product_id || firstItemProductId,
-        batch_id: responseData.batch_id || firstItemBatchId,
-        staffid: responseData.staffid || selectedStaffId,
-        assigned_staff: responseData.assigned_staff || staffName,
-        staffName: responseData.staffName || staffName,
-         mobile_number: invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number,
-        supplierInfo: {
-          ...invoiceData.supplierInfo,
-          staffid: responseData.staffid || selectedStaffId,
-          assigned_staff: responseData.assigned_staff || staffName
-        }
-      };
-      
-      localStorage.setItem('previewInvoice', JSON.stringify(previewData));
-      
-      // Navigate to preview page with voucher ID
-      setTimeout(() => {
-        navigate(`/sales/invoice-preview/${responseData.voucherId || editingVoucherId}`);
-      }, 2000);
-      
-    } catch (err) {
-      console.error('❌ Error in handleSubmit:', err);
-      setError(err.message);
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    console.log('Submitting invoice with number:', finalInvoiceNumber);
+
+    // Get staff information
+    const staffAccount = accounts.find(acc => acc.staffid == selectedStaffId);
+    const staffName = staffAccount?.assigned_staff || 
+                     invoiceData.supplierInfo.assigned_staff || 
+                     accounts.find(acc => acc.id == selectedSupplierId)?.assigned_staff ||
+                     'N/A';
+
+    // Calculate GST AMOUNTS for voucher table
+    const sameState = isSameState();
+    let totalCGSTAmount = 0;
+    let totalSGSTAmount = 0;
+    let totalIGSTAmount = 0;
+    let totalCGSTPercentage = 0;
+    let totalSGSTPercentage = 0;
+    let totalIGSTPercentage = 0;
+
+    // Calculate GST amounts item by item
+    invoiceData.items.forEach((item) => {
+      const quantity = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.price) || 0;
+      const discount = parseFloat(item.discount) || 0;
+      const gst = parseFloat(item.gst) || 0;
+      
+      const subtotal = quantity * price;
+      const discountAmount = subtotal * (discount / 100);
+      const amountAfterDiscount = subtotal - discountAmount;
+      const gstAmount = amountAfterDiscount * (gst / 100);
+      
+      if (sameState) {
+        totalCGSTAmount += gstAmount / 2;
+        totalSGSTAmount += gstAmount / 2;
+        totalCGSTPercentage = gst / 2;
+        totalSGSTPercentage = gst / 2;
+      } else {
+        totalIGSTAmount += gstAmount;
+        totalIGSTPercentage = gst;
+      }
+    });
+
+    // Extract batch details from items
+    const batchDetails = invoiceData.items.map(item => {
+      const quantity = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.price) || 0;
+      const discount = parseFloat(item.discount) || 0;
+      
+      return {
+        product: item.product,
+        product_id: item.product_id,
+        description: item.description,
+        batch: item.batch,
+        batch_id: item.batch_id,
+        quantity: quantity,
+        price: price,
+        discount: discount,
+        gst: parseFloat(item.gst) || 0,
+        cgst: parseFloat(item.cgst) || 0,
+        sgst: parseFloat(item.sgst) || 0,
+        igst: parseFloat(item.igst) || 0,
+        cess: parseFloat(item.cess) || 0,
+        total: parseFloat(item.total) || 0,
+        batchDetails: item.batchDetails,
+        assigned_staff: staffName,
+        hsn_code: item.hsn_code || ""
+      };
+    });
+
+    const firstItemProductId = invoiceData.items[0]?.product_id || null;
+    const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
+    const mobileNumber = invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number || '';
+    
+    const payload = {
+      ...invoiceData,
+      invoiceNumber: finalInvoiceNumber, // ✅ Using the freshly fetched invoice number
+      selectedSupplierId: selectedSupplierId,
+      staffid: selectedStaffId,
+      assigned_staff: staffName,
+      staffName: staffName,
+      type: 'sales',
+      TransactionType: "Sales",
+      CGSTAmount: totalCGSTAmount.toFixed(2),
+      SGSTAmount: totalSGSTAmount.toFixed(2),
+      IGSTAmount: totalIGSTAmount.toFixed(2),
+      CGSTPercentage: totalCGSTPercentage.toFixed(2),
+      SGSTPercentage: totalSGSTPercentage.toFixed(2),
+      IGSTPercentage: totalIGSTPercentage.toFixed(2),
+      taxType: sameState ? "CGST/SGST" : "IGST",
+      batchDetails: batchDetails,
+      product_id: 123,
+      batch_id: "bth0001",
+      primaryProductId: firstItemProductId,
+      primaryBatchId: firstItemBatchId,
+      PartyID: selectedSupplierId,
+      AccountID: invoiceData.supplierInfo.accountId,
+      PartyName: invoiceData.supplierInfo.name,
+      account_name: invoiceData.supplierInfo.account_name || 
+                    accounts.find(acc => acc.id === selectedSupplierId)?.account_name || 
+                    invoiceData.supplierInfo.name,
+      business_name: invoiceData.supplierInfo.business_name || 
+                     accounts.find(acc => acc.id === selectedSupplierId)?.business_name || 
+                     invoiceData.supplierInfo.name,
+      mobile_number: mobileNumber
+    };
+
+    delete payload.companyState;
+    delete payload.supplierState;
+    delete payload.items;
+    
+    let response;
+    if (isEditMode && editingVoucherId) {
+      console.log('🔄 Updating existing invoice with ID:', editingVoucherId);
+      response = await fetch(`${baseurl}/transactions/${editingVoucherId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      console.log('🆕 Creating new invoice with number:', finalInvoiceNumber);
+      response = await fetch(`${baseurl}/transaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+    }
+    
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(responseData.error || 'Failed to submit invoice');
+    }
+    
+    console.log('✅ Server Response:', responseData);
+    
+    localStorage.removeItem('draftInvoice');
+    window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice submitted successfully!');
+    setIsPreviewReady(true);
+
+    // Store preview data
+    const previewData = {
+      ...invoiceData,
+      invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
+      voucherId: responseData.voucherId || editingVoucherId,
+      product_id: responseData.product_id || firstItemProductId,
+      batch_id: responseData.batch_id || firstItemBatchId,
+      staffid: responseData.staffid || selectedStaffId,
+      assigned_staff: responseData.assigned_staff || staffName,
+      staffName: responseData.staffName || staffName,
+      mobile_number: invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number,
+      supplierInfo: {
+        ...invoiceData.supplierInfo,
+        staffid: responseData.staffid || selectedStaffId,
+        assigned_staff: responseData.assigned_staff || staffName
+      }
+    };
+    
+    localStorage.setItem('previewInvoice', JSON.stringify(previewData));
+    
+    setTimeout(() => {
+      navigate(`/sales/invoice-preview/${responseData.voucherId || editingVoucherId}`);
+    }, 2000);
+    
+  } catch (err) {
+    console.error('❌ Error in handleSubmit:', err);
+    setError(err.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setLoading(false);
+  }
+};
 
 
   const filteredAccounts = accounts.filter(acc => {
@@ -1197,16 +1224,35 @@ window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice sub
      businessName.includes(searchLower) || 
      displayName.includes(searchLower));
 });
-  const calculateTotalPrice = () => {
-    const price = parseFloat(itemForm.price) || 0;
-    const gst = parseFloat(itemForm.gst) || 0;
-    const discount = parseFloat(itemForm.discount) || 0;
-    const quantity = parseInt(itemForm.quantity) || 0;
+const calculateTotalPrice = () => {
+  const price = parseFloat(itemForm.price) || 0;
+  const gst = parseFloat(itemForm.gst) || 0;
+  const discount = parseFloat(itemForm.discount) || 0;
+  const quantity = parseInt(itemForm.quantity) || 0;
+  const gstType = itemForm.inclusive_gst; // Can be "", "Exclusive", or "Inclusive"
 
-    const priceAfterDiscount = price - (price * discount) / 100;
-    const priceWithGst = priceAfterDiscount + (priceAfterDiscount * gst) / 100;
-    return (priceWithGst * quantity).toFixed(2);
-  };
+  if (quantity === 0) return "0.00";
+  
+  const subtotal = price * quantity;
+  const discountAmount = subtotal * (discount / 100);
+  const amountAfterDiscount = subtotal - discountAmount;
+
+  // If no GST type selected, just return amount after discount
+  if (!gstType) {
+    return amountAfterDiscount.toFixed(2);
+  }
+
+  if (gstType === "Exclusive") {
+    // Exclusive: GST is ADDED to price
+    const gstAmount = amountAfterDiscount * (gst / 100);
+    return (amountAfterDiscount + gstAmount).toFixed(2);
+  } else if (gstType === "Inclusive") {
+    // Inclusive: GST is INCLUDED in price
+    return amountAfterDiscount.toFixed(2);
+  }
+
+  return amountAfterDiscount.toFixed(2);
+};
 
   return (
     <div className="admin-layout">
@@ -1944,7 +1990,51 @@ onChange={(e) => {
         className="border-primary bg-light"
       />
     </Col>
-
+<Col md={2}>
+  <Form.Label className="fw-bold">GST Type</Form.Label>
+  <Form.Select
+    name="inclusive_gst"
+    value={itemForm.inclusive_gst || ""}
+    onChange={(e) => {
+      const newType = e.target.value;
+      const currentPrice = parseFloat(itemForm.price) || 0;
+      const currentGst = parseFloat(itemForm.gst) || 0;
+      const oldType = itemForm.inclusive_gst;
+      
+      if (currentPrice > 0 && currentGst > 0 && oldType && newType && oldType !== newType) {
+        if (newType === "Exclusive" && oldType === "Inclusive") {
+          const newPrice = currentPrice / (1 + (currentGst / 100));
+          setItemForm(prev => ({
+            ...prev,
+            inclusive_gst: newType,
+            price: parseFloat(newPrice.toFixed(2))
+          }));
+        } else if (newType === "Inclusive" && oldType === "Exclusive") {
+          const newPrice = currentPrice * (1 + (currentGst / 100));
+          setItemForm(prev => ({
+            ...prev,
+            inclusive_gst: newType,
+            price: parseFloat(newPrice.toFixed(2))
+          }));
+        } else {
+          setItemForm(prev => ({
+            ...prev,
+            inclusive_gst: newType
+          }));
+        }
+      } else {
+        setItemForm(prev => ({
+          ...prev,
+          inclusive_gst: newType
+        }));
+      }
+    }}
+    className="border-primary"
+  >
+<option value="">-- Select GST Type --</option>
+<option value="Inclusive">Exclusive </option>
+<option value="Exclusive">Inclusive </option>  </Form.Select>
+</Col>
     <Col md={2}>
       <Form.Label className="fw-bold">Total Price (₹)</Form.Label>
       <Form.Control
