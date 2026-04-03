@@ -34,27 +34,34 @@ const AddProductPage = ({ groupType = 'Purchaseditems', user }) => {
   // Add state for sales catalog checkbox
   const [createSalesCatalogCopy, setCreateSalesCatalogCopy] = useState(false);
 
-  const calculateTaxAndNetPrice = (price, gstRate, inclusiveGst) => {
-  if (!price) return { netPrice: price || '', taxAmount: 0 };
+const calculateTaxAndNetPrice = (price, gstRate, gstType) => {
+  if (!price) return { netPrice: '', taxAmount: 0 };
 
   const numericPrice = parseFloat(price);
+  const numericGstRate = parseFloat(gstRate) / 100;
 
-  if (inclusiveGst === 'Inclusive' && gstRate) {
-    // GST is included in price
-    const numericGstRate = parseFloat(gstRate) / 100;
+  if (gstType === 'Inclusive' && gstRate) {
+    // ✅ Remove GST
     const taxAmount = (numericPrice * numericGstRate) / (1 + numericGstRate);
     const netPrice = numericPrice - taxAmount;
+
     return {
       netPrice: netPrice.toFixed(2),
       taxAmount: taxAmount.toFixed(2)
     };
-  } else {
-    // Exclusive or no GST rate: price is net price (NO CALCULATION)
+
+  } else if (gstType === 'Exclusive') {
+    // ✅ Do NOTHING (as per your requirement)
     return {
       netPrice: numericPrice.toFixed(2),
       taxAmount: 0
     };
   }
+
+  return {
+    netPrice: numericPrice.toFixed(2),
+    taxAmount: 0
+  };
 };
 
   // Calculate total stock from batches
@@ -642,22 +649,21 @@ const calculateAndUpdateMainWeight = (updatedBatches) => {
       [name]: type === 'checkbox' ? checked : value
     };
 
-if (name === 'purchase_price' || name === 'price' || name === 'gst_rate' || name === 'inclusive_gst' || name === 'can_be_sold') {
-  
+if (name === 'purchase_price' || name === 'price' || name === 'gst_rate' || name === 'exclusive_gst' || name === 'can_be_sold') {
+
   const priceToUse = updatedFormData.can_be_sold && updatedFormData.price
     ? updatedFormData.price
     : updatedFormData.purchase_price;
 
-  if (priceToUse) {
-    if (updatedFormData.inclusive_gst === 'Inclusive' && updatedFormData.gst_rate) {
-      const numericPrice = parseFloat(priceToUse);
-      const numericGstRate = parseFloat(updatedFormData.gst_rate) / 100;
-      const taxAmount = (numericPrice * numericGstRate) / (1 + numericGstRate);
-      const netPrice = numericPrice - taxAmount;
-      updatedFormData.net_price = netPrice.toFixed(2);
-    } else {
-      updatedFormData.net_price = parseFloat(priceToUse || 0).toFixed(2);
-    }
+  if (priceToUse && updatedFormData.gst_rate) {
+
+    const { netPrice } = calculateTaxAndNetPrice(
+      priceToUse,
+      updatedFormData.gst_rate,
+      updatedFormData.exclusive_gst
+    );
+
+    updatedFormData.net_price = netPrice;
   }
 }
 
@@ -706,7 +712,7 @@ if (name === 'purchase_price' || name === 'price' || name === 'gst_rate' || name
         const { netPrice } = calculateTaxAndNetPrice(
           updatedFormData.price,
           updatedFormData.gst_rate,
-          updatedFormData.inclusive_gst
+          updatedFormData.exclusive_gst
         );
         updatedFormData.net_price = netPrice;
       }
@@ -717,22 +723,21 @@ if (name === 'purchase_price' || name === 'price' || name === 'gst_rate' || name
 
 const handleGstRateChange = (e) => {
   const { value } = e.target;
+
   const updatedFormData = { ...formData, gst_rate: value };
 
   const priceToUse = formData.can_be_sold && formData.price
     ? formData.price
     : formData.purchase_price;
 
-  if (priceToUse) {
-    if (formData.inclusive_gst === 'Inclusive' && value) {
-      const numericPrice = parseFloat(priceToUse);
-      const numericGstRate = parseFloat(value) / 100;
-      const taxAmount = (numericPrice * numericGstRate) / (1 + numericGstRate);
-      const netPrice = numericPrice - taxAmount;
-      updatedFormData.net_price = netPrice.toFixed(2);
-    } else {
-      updatedFormData.net_price = parseFloat(priceToUse).toFixed(2);
-    }
+  if (priceToUse && value) {
+    const { netPrice } = calculateTaxAndNetPrice(
+      priceToUse,
+      value,
+      formData.exclusive_gst
+    );
+
+    updatedFormData.net_price = netPrice;
   }
 
   setFormData(updatedFormData);
@@ -740,22 +745,21 @@ const handleGstRateChange = (e) => {
 
 const handleGstTypeChange = (e) => {
   const { value } = e.target;
-  const updatedFormData = { ...formData, inclusive_gst: value };
+
+  const updatedFormData = { ...formData, exclusive_gst: value };
 
   const priceToUse = formData.can_be_sold && formData.price
     ? formData.price
     : formData.purchase_price;
 
-  if (priceToUse) {
-    if (value === 'Inclusive' && formData.gst_rate) {
-      const numericPrice = parseFloat(priceToUse);
-      const numericGstRate = parseFloat(formData.gst_rate) / 100;
-      const taxAmount = (numericPrice * numericGstRate) / (1 + numericGstRate);
-      const netPrice = numericPrice - taxAmount;
-      updatedFormData.net_price = netPrice.toFixed(2);
-    } else {
-      updatedFormData.net_price = parseFloat(priceToUse).toFixed(2);
-    }
+  if (priceToUse && formData.gst_rate) {
+    const { netPrice } = calculateTaxAndNetPrice(
+      priceToUse,
+      formData.gst_rate,
+      value
+    );
+
+    updatedFormData.net_price = netPrice;
   }
 
   setFormData(updatedFormData);
@@ -1377,10 +1381,9 @@ const handleSubmit = async (e) => {
                   <div className="col">
                     <Form.Label>GST Type</Form.Label>
                     <Form.Select
-                      name="inclusive_gst"
-                      value={formData.inclusive_gst}
-                      onChange={handleGstTypeChange}
-                    >
+                      name="exclusive_gst"
+                      value={formData.exclusive_gst}
+                      onChange={handleGstTypeChange}                    >
                       <option value="Inclusive">Inclusive of GST</option>
                       <option value="Exclusive">Exclusive of GST</option>
                     </Form.Select>

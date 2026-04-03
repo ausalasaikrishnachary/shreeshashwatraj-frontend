@@ -548,7 +548,7 @@ const handleChange = async (e) => {
   };
 
   if (name === 'price' || name === 'gst_rate' || name === 'inclusive_gst') {
-    if (updatedFormData.inclusive_gst === 'Inclusive' && 
+    if (updatedFormData.inclusive_gst === 'Exclusive' && 
         updatedFormData.price && 
         updatedFormData.gst_rate) {
       const numericPrice = parseFloat(updatedFormData.price);
@@ -556,7 +556,7 @@ const handleChange = async (e) => {
       const taxAmount = (numericPrice * numericGstRate) / (1 + numericGstRate);
       const netPrice = numericPrice - taxAmount;
       updatedFormData.net_price = netPrice.toFixed(2);
-    } else if (updatedFormData.inclusive_gst === 'Exclusive' && updatedFormData.price) {
+    } else if (updatedFormData.inclusive_gst === 'Inclusive' && updatedFormData.price) {
       updatedFormData.net_price = parseFloat(updatedFormData.price).toFixed(2);
     } else {
       updatedFormData.net_price = updatedFormData.price || '';
@@ -1050,7 +1050,7 @@ const handleSubmit = async (e) => {
                         <option value="Inclusive">Inclusive of GST</option>
                         <option value="Exclusive">Exclusive of GST</option>
                       </Form.Select>
-                    </div>
+                                          </div>
                   <div className="col">
                     <Form.Label>GST Rate</Form.Label>
                     <Form.Select

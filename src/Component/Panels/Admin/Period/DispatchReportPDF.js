@@ -407,10 +407,10 @@ const DispatchReportPDF = ({ invoiceData }) => {
                     <Text style={styles.tableCellHeader}>GST%</Text>
                   </View>
                   <View style={styles.tableColHeaderRateIncl}>
-                    <Text style={styles.tableCellHeader}>Rate (Incl of Tax)</Text>
+                    <Text style={styles.tableCellHeader}>Rate (Excl of Tax)</Text>
                   </View>
                   <View style={styles.tableColHeaderRateExcl}>
-                    <Text style={styles.tableCellHeader}>Rate (Excl of Tax)</Text>
+                    <Text style={styles.tableCellHeader}>Rate (Incl of Tax)</Text>
                   </View>
                   <View style={styles.tableColHeaderWeight}>
                     <Text style={styles.tableCellHeader}>Weight</Text>
