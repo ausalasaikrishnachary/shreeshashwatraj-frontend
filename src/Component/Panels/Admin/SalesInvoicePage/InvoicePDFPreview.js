@@ -1550,14 +1550,14 @@ const InvoicePDFPreview = () => {
         <Modal.Body>
           <div className="row mb-4">
             <div className="col-md-6">
-              <div className="company-info-recepits-table text-center">
-                <label className="form-label-recepits-table">Navkar Exports</label>
-                <p>NO.63/603 AND 64/604, NEAR JAIN TEMPLE</p>
-                <p>1ST MAIN ROAD, T DASARAHALLI</p>
-                <p>GST : 29AAAMPC7994B1ZE</p>
-                <p>Email: akshay555.ak@gmail.com</p>
-                <p>Phone: 09880990431</p>
-              </div>
+           <div className="company-info-recepits-table text-center">
+  <label className="form-label-recepits-table">SHREE SHASHWATRAJ AGRO PVT LTD</label>
+  <p>Growth Center, Jasoiya, Aurangabad</p>
+  <p>Bihar, 824101</p>
+  <p>GST : 10AAOCS1541B1ZZ</p>
+  <p>Email: spmathur56@gmail.com</p>
+  <p>Phone: 9801049700</p>
+</div>
             </div>
             <div className="col-md-6">
               <div className="mb-3">

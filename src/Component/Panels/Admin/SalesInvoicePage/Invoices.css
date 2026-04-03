@@ -13,6 +13,77 @@
   padding: 0;
 }
 
+/* GST Type Toggle Switch - Same style as retailers status toggle */
+.gst-type-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gst-type-toggle .switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 28px;
+}
+
+.gst-type-toggle .switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.gst-type-toggle .slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+}
+
+.gst-type-toggle .slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+}
+
+.gst-type-toggle input:checked + .slider {
+  background-color: #28a745;
+}
+
+.gst-type-toggle input:checked + .slider:before {
+  transform: translateX(32px);
+}
+
+.gst-type-toggle .slider.round {
+  border-radius: 34px;
+}
+
+.gst-type-toggle .slider.round:before {
+  border-radius: 50%;
+}
+
+.gst-type-toggle .status-text {
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.gst-type-toggle .status-text.active {
+  color: #28a745;
+}
+
+.gst-type-toggle .status-text.inactive {
+  color: #6c757d;
+}
 .admin-main-content.collapsed {
   margin-left: 80px;
 }

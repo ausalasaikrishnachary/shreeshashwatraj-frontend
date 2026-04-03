@@ -8,7 +8,7 @@
   import { QRCodeCanvas } from "qrcode.react";
   import axios from "axios";
 
-
+import QRCodeGenerator from './QRCodeGenerator';
   const Period_InvoicePDFPreview = () => {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -1626,127 +1626,113 @@ const price = netPrice;
       }
     }, [id, location]);
 
-  const QRCodeGenerator = () => {
-    const grandTotal = calculateGrandTotalForQR();
+// const QRCodeGenerator = () => {
+//   const grandTotal = calculateGrandTotalForQR();
+//   const navigate = useNavigate();
+  
+//   useEffect(() => {
+//     if (invoiceData && invoiceData.items && invoiceData.items.length > 0) {
+//       console.log("🔄 Regenerating QR with updated total:", grandTotal);
+//       generateQRCodeData();
+//     }
+//   }, [invoiceData, editableOrderMode, grandTotal]);
+  
+//   if (!invoiceData) return null;
+  
+//   const orderMode = (editableOrderMode || invoiceData.order_mode || "PAKKA").toUpperCase();
+  
+//   const getCorrectGrandTotal = () => {
+//     if (!invoiceData || !invoiceData.items) return 0;
     
-    useEffect(() => {
-      if (invoiceData && invoiceData.items && invoiceData.items.length > 0) {
-        console.log("🔄 Regenerating QR with updated total:", grandTotal);
-        generateQRCodeData();
-      }
-    }, [invoiceData, editableOrderMode, grandTotal]);
+//     let total = 0;
     
-    if (!invoiceData) return null;
+//     invoiceData.items.forEach(item => {
+//       const quantity = parseFloat(item.quantity) || 1;
+//       const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
+//       const taxPerUnit = parseFloat(item.tax_amount) || 0;
+      
+//       const itemTaxable = taxablePerUnit * quantity;
+//       const itemTax = orderMode === "KACHA" ? 0 : taxPerUnit * quantity;
+//       const itemTotal = itemTaxable + itemTax;
+      
+//       total += itemTotal;
+//     });
     
-    const orderMode = (editableOrderMode || invoiceData.order_mode || "PAKKA").toUpperCase();
+//     return total;
+//   };
+  
+//   const correctGrandTotal = getCorrectGrandTotal();
+  
+//   const handleViewFullQR = () => {
+//     // Save QR data to localStorage for the new page
+//     localStorage.setItem('qrCodeData', qrData);
+//     localStorage.setItem('invoiceDataForQR', JSON.stringify(invoiceData));
     
-    const getCorrectGrandTotal = () => {
-      if (!invoiceData || !invoiceData.items) return 0;
-      
-      // Use the same calculation logic as the child component
-      let total = 0;
-      
-      invoiceData.items.forEach(item => {
-        const quantity = parseFloat(item.quantity) || 1;
-        const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
-        const taxPerUnit = parseFloat(item.tax_amount) || 0;
-        
-        const itemTaxable = taxablePerUnit * quantity;
-        const itemTax = orderMode === "KACHA" ? 0 : taxPerUnit * quantity;
-        const itemTotal = itemTaxable + itemTax;
-        
-        total += itemTotal;
-      });
-      
-      console.log("✅ QR Correct Grand Total Calculation:", {
-        calculated: total,
-        invoiceDataGrandTotal: invoiceData.grandTotal,
-        itemsCount: invoiceData.items.length
-      });
-      
-      return total;
-    };
-    
-    const correctGrandTotal = getCorrectGrandTotal();
-    
-    // Breakdown of the total - FIXED VERSION
-    const calculateBreakdown = () => {
-      if (!invoiceData.items) return null;
-      
-      let totalTaxable = 0;
-      let totalGST = 0;
-      
-      invoiceData.items.forEach(item => {
-        const quantity = parseFloat(item.quantity) || 1;
-        const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
-        const gstPerUnit = parseFloat(item.tax_amount) || 0;
-        
-        totalTaxable += taxablePerUnit * quantity;
-        totalGST += (orderMode === "KACHA" ? 0 : gstPerUnit * quantity);
-      });
-      
-      const grandTotalAmount = totalTaxable + totalGST;
-      
-      console.log("📊 QR Breakdown Calculation:", {
-        totalTaxable,
-        totalGST,
-        grandTotalAmount,
-        orderMode
-      });
-      
-      return {
-        totalTaxable: totalTaxable.toFixed(2),
-        totalGST: totalGST.toFixed(2),
-        grandTotal: grandTotalAmount.toFixed(2)
-      };
-    };
-    
-    const breakdown = calculateBreakdown();
-
- 
-
-    
-    return (
-      <Card className="shadow-sm border-0 mb-3">
-        <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
-          <h6 className="mb-0"><FaQrcode className="me-2" /> Scan to Pay</h6>
-      
-        </Card.Header>
-        <Card.Body>
-          <div className="text-center mb-3">
-            <div className="qr-code-box d-inline-block">
-              {qrData ? (
-                <QRCodeCanvas 
-                  value={qrData}
-                  size={180}
-                  level="H"
-                  includeMargin={true}
-                />
-              ) : (
-                <div className="p-3">
-                  <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Generating QR...</span>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            {/* Amount Display - Use correctGrandTotal */}
-            <div className="mt-3">
-              <h4 className="text-success fw-bold">₹{correctGrandTotal.toFixed(2)}</h4>
-                <span className={`badge ${orderMode === "KACHA" ? "bg-warning" : "bg-success"}`}>
-            {orderMode} ORDER
-          </span>
-              
-            </div>
-          </div>
+//     // Navigate to QR code page with state
+//     navigate('/qr-code', {
+//       state: {
+//         qrData: qrData,
+//         invoiceData: invoiceData,
+//         grandTotal: correctGrandTotal,
+//         orderMode: orderMode
+//       }
+//     });
+//   };
+  
+//   return (
+//     <Card className="shadow-sm border-0 mb-3">
+//       <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
+//         <h6 className="mb-0"><FaQrcode className="me-2" /> Scan to Pay</h6>
+//         <Button 
+//           variant="light" 
+//           size="sm" 
+//           onClick={handleViewFullQR}
+//           className="no-print"
+//         >
+//           View Full Page
+//         </Button>
+//       </Card.Header>
+//       <Card.Body>
+//         <div className="text-center mb-3">
+//           <div className="qr-code-box d-inline-block">
+//             {qrData ? (
+//               <QRCodeCanvas 
+//                 value={qrData}
+//                 size={150}
+//                 level="H"
+//                 includeMargin={true}
+//               />
+//             ) : (
+//               <div className="p-3">
+//                 <div className="spinner-border text-primary" role="status">
+//                   <span className="visually-hidden">Generating QR...</span>
+//                 </div>
+//               </div>
+//             )}
+//           </div>
           
-
-        
-        </Card.Body>
-      </Card>
-    );
-  };
+//           {/* Amount Display */}
+//           <div className="mt-3">
+//             <h5 className="text-success fw-bold mb-1">₹{correctGrandTotal.toFixed(2)}</h5>
+//             <span className={`badge ${orderMode === "KACHA" ? "bg-warning" : "bg-success"}`}>
+//               {orderMode} ORDER
+//             </span>
+//           </div>
+          
+//           {/* Button to view full page */}
+//           <Button 
+//             variant="outline-primary" 
+//             size="sm" 
+//             onClick={handleViewFullQR}
+//             className="mt-3 w-100 no-print"
+//           >
+//             Open QR Code in Full Page
+//           </Button>
+//         </div>
+//       </Card.Body>
+//     </Card>
+//   );
+// };
 
     if (loading) {
       return (
@@ -1967,11 +1953,13 @@ const price = netPrice;
             </Col>
             
             <Col lg={4}>
-              <div className="sticky-top" style={{ top: '80px' }}>  
-                <QRCodeGenerator />
-                
-              
-              </div>
+         <div className="sticky-top" style={{ top: '80px' }}>  
+        <QRCodeGenerator 
+          invoiceData={invoiceData}
+          editableOrderMode={editableOrderMode}
+          onQrDataGenerated={(qrUrl) => setQrData(qrUrl)}
+        />
+      </div>
             </Col>
           </Row>
         </Container>
