@@ -463,14 +463,14 @@ const addItem = () => {
  window.alert("Draft cleared successfully!");
   };
 
-  const incrementInvoiceNumber = (currentNumber) => {
-    const numberMatch = currentNumber.match(/PINV(\d+)/);
-    if (numberMatch) {
-      const nextNum = parseInt(numberMatch[1]) + 1;
-      return `PINV${nextNum.toString().padStart(3, '0')}`;
-    }
-    return 'PINV001'; // fallback
-  };
+  // const incrementInvoiceNumber = (currentNumber) => {
+  //   const numberMatch = currentNumber.match(/PINV(\d+)/);
+  //   if (numberMatch) {
+  //     const nextNum = parseInt(numberMatch[1]) + 1;
+  //     return `PINV${nextNum.toString().padStart(3, '0')}`;
+  //   }
+  //   return 'PINV001'; // fallback
+  // };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
