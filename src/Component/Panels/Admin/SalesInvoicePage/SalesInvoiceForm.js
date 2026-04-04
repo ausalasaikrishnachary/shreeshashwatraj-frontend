@@ -1,8 +1,3 @@
-
-
-
-
-
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Table, Alert } from 'react-bootstrap';
 import './Invoices.css';
@@ -112,6 +107,7 @@ const currentFY = getFinancialYearShort();
     description: "",
     quantity: 0,
     price: 0,
+     original_price: 0,  // ← ADD THIS LINE
     discount: 0,
     gst: 0,
     cgst: 0,
@@ -122,8 +118,8 @@ const currentFY = getFinancialYearShort();
     batch: "",
     batch_id: "",
     batchDetails: null,
-     hsn_code: "" ,
-     inclusive_gst: "Exclusive"  // Add this line 
+     hsn_code: ""  ,
+      inclusive_gst: ""  // ← ADD THIS LINE
   });
 
   const [loading, setLoading] = useState(false);
@@ -519,58 +515,47 @@ const formatInvoiceNumber = (number) => {
     fetchAccounts();
   }, []);
 
-const calculateItemTotal = () => {
-  const quantity = parseFloat(itemForm.quantity) || 0;
-  const price = parseFloat(itemForm.price) || 0;
-  const discount = parseFloat(itemForm.discount) || 0;
-  const gst = parseFloat(itemForm.gst) || 0;
-  const cess = parseFloat(itemForm.cess) || 0;
-  const gstType = itemForm.inclusive_gst;
-  
-  const subtotal = quantity * price;
-  const discountAmount = subtotal * (discount / 100);
-  const amountAfterDiscount = subtotal - discountAmount;
-  
-  let total;
-  
-  if (!gstType) {
-    // No GST type selected, don't add GST
-    total = amountAfterDiscount;
-  } else if (gstType === "Exclusive") {
-    // Exclusive: GST is ADDED to price
+  const calculateItemTotal = () => {
+    const quantity = parseFloat(itemForm.quantity) || 0;
+    const price = parseFloat(itemForm.price) || 0;
+    const discount = parseFloat(itemForm.discount) || 0;
+    const gst = parseFloat(itemForm.gst) || 0;
+    const cess = parseFloat(itemForm.cess) || 0;
+    
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    const amountAfterDiscount = subtotal - discountAmount;
     const gstAmount = amountAfterDiscount * (gst / 100);
     const cessAmount = amountAfterDiscount * (cess / 100);
-    total = amountAfterDiscount + gstAmount + cessAmount;
-  } else {
-    // Inclusive: GST is INCLUDED in price
-    const cessAmount = amountAfterDiscount * (cess / 100);
-    total = amountAfterDiscount + cessAmount;
-  }
-  
-  const sameState = isSameState();
-  let cgst, sgst, igst;
-  
-  if (sameState) {
-    cgst = gst / 2;
-    sgst = gst / 2;
-    igst = 0;
-  } else {
-    cgst = 0;
-    sgst = 0;
-    igst = gst;
-  }
-  
-  return {
-    ...itemForm,
-    total: total.toFixed(2),
-    cgst: cgst.toFixed(2),
-    sgst: sgst.toFixed(2),
-    igst: igst.toFixed(2),
-    cess: cess,
-    batchDetails: selectedBatchDetails,
-    hsn_code: itemForm.hsn_code || ""
+    const total = amountAfterDiscount + gstAmount + cessAmount;
+    
+    const sameState = isSameState();
+    let cgst, sgst, igst;
+    
+    if (sameState) {
+ 
+      cgst = gst / 2;   
+      sgst = gst / 2; 
+      igst = 0;       
+    } else {
+    
+      cgst = 0;         
+      sgst = 0;      
+      igst = gst;      
+    }
+
+    
+    return {
+      ...itemForm,
+      total: total.toFixed(2),
+      cgst: cgst.toFixed(2),  
+      sgst: sgst.toFixed(2),  
+      igst: igst.toFixed(2), 
+      cess: cess,
+      batchDetails: selectedBatchDetails,
+      hsn_code: itemForm.hsn_code || ""  
+    };
   };
-};
 
   const recalculateAllItems = () => {
     const sameState = isSameState();
@@ -707,7 +692,7 @@ const addItem = () => {
       batch_id: itemForm.batch_id,
       product_id: itemForm.product_id,
       batchDetails: selectedBatchDetails,
-      inclusive_gst: itemForm.inclusive_gst  // Add this field
+        original_price: itemForm.original_price  // ← ADD THIS
     };
 
     setInvoiceData(prev => ({
@@ -732,8 +717,7 @@ const addItem = () => {
       batch: selectedBatch,
       batch_id: itemForm.batch_id,
       product_id: itemForm.product_id,
-      batchDetails: selectedBatchDetails,
-       inclusive_gst: itemForm.inclusive_gst  // Add this field
+      batchDetails: selectedBatchDetails
     };
 
     setInvoiceData(prev => ({
@@ -766,8 +750,7 @@ const addItem = () => {
     batch: "",
     batch_id: "",
     batchDetails: null,
-     hsn_code: ""  ,
-     inclusive_gst: "Exclusive"  // Reset to default
+     hsn_code: ""  
   });
   setBatches([]);
   setSelectedBatch("");
@@ -993,26 +976,28 @@ const calculateTotals = () => {
   window.alert("✅ Draft cleared successfully!");
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError(null);
-  setSuccess(false);
-  
-  if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-    window.alert("⚠️ Please select a supplier/customer");
-    setLoading(false);
-    return;
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+    
+    if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
+       window.alert("⚠️ Please select a supplier/customer");
+      setLoading(false);
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
 
-  if (invoiceData.items.length === 0) {
-    window.alert("⚠️ Please add at least one item to the invoice");
-    setLoading(false);
-    return;
-  }
+    if (invoiceData.items.length === 0) {
+         window.alert("⚠️ Please add at least one item to the invoice");
+      setLoading(false);
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
 
-  try {
-    // ✅ FIRST: Get the next invoice number from API
+    try {
+         // ✅ FIRST: Get the next invoice number from API
     let finalInvoiceNumber = invoiceData.invoiceNumber;
     
     if (!isEditMode) {
@@ -1033,181 +1018,192 @@ const handleSubmit = async (e) => {
         console.error('Failed to fetch next invoice number, using existing:', finalInvoiceNumber);
       }
     }
+      console.log('Submitting invoice with number:', finalInvoiceNumber);
 
-    console.log('Submitting invoice with number:', finalInvoiceNumber);
+      // Get staff information
+      const staffAccount = accounts.find(acc => acc.staffid == selectedStaffId);
+      const staffName = staffAccount?.assigned_staff || 
+                       invoiceData.supplierInfo.assigned_staff || 
+                       accounts.find(acc => acc.id == selectedSupplierId)?.assigned_staff ||
+                       'N/A';
 
-    // Get staff information
-    const staffAccount = accounts.find(acc => acc.staffid == selectedStaffId);
-    const staffName = staffAccount?.assigned_staff || 
-                     invoiceData.supplierInfo.assigned_staff || 
-                     accounts.find(acc => acc.id == selectedSupplierId)?.assigned_staff ||
-                     'N/A';
-
-    // Calculate GST AMOUNTS for voucher table
-    const sameState = isSameState();
-    let totalCGSTAmount = 0;
-    let totalSGSTAmount = 0;
-    let totalIGSTAmount = 0;
-    let totalCGSTPercentage = 0;
-    let totalSGSTPercentage = 0;
-    let totalIGSTPercentage = 0;
-
-    // Calculate GST amounts item by item
-    invoiceData.items.forEach((item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      const gst = parseFloat(item.gst) || 0;
+      // Calculate GST AMOUNTS for voucher table
+      const sameState = isSameState();
+      let totalCGSTAmount = 0;
+      let totalSGSTAmount = 0;
+      let totalIGSTAmount = 0;
       
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const gstAmount = amountAfterDiscount * (gst / 100);
-      
-      if (sameState) {
-        totalCGSTAmount += gstAmount / 2;
-        totalSGSTAmount += gstAmount / 2;
-        totalCGSTPercentage = gst / 2;
-        totalSGSTPercentage = gst / 2;
-      } else {
-        totalIGSTAmount += gstAmount;
-        totalIGSTPercentage = gst;
-      }
-    });
+      // Calculate percentages for voucher table
+      let totalCGSTPercentage = 0;
+      let totalSGSTPercentage = 0;
+      let totalIGSTPercentage = 0;
 
-    // Extract batch details from items
-    const batchDetails = invoiceData.items.map(item => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      
-      return {
-        product: item.product,
-        product_id: item.product_id,
-        description: item.description,
-        batch: item.batch,
-        batch_id: item.batch_id,
-        quantity: quantity,
-        price: price,
-        discount: discount,
-        gst: parseFloat(item.gst) || 0,
-        cgst: parseFloat(item.cgst) || 0,
-        sgst: parseFloat(item.sgst) || 0,
-        igst: parseFloat(item.igst) || 0,
-        cess: parseFloat(item.cess) || 0,
-        total: parseFloat(item.total) || 0,
-        batchDetails: item.batchDetails,
+      // Calculate GST amounts item by item
+      invoiceData.items.forEach((item, index) => {
+        const quantity = parseFloat(item.quantity) || 0;
+        const price = parseFloat(item.price) || 0;
+        const discount = parseFloat(item.discount) || 0;
+        const gst = parseFloat(item.gst) || 0;
+        
+        const subtotal = quantity * price;
+        const discountAmount = subtotal * (discount / 100);
+        const amountAfterDiscount = subtotal - discountAmount;
+        const gstAmount = amountAfterDiscount * (gst / 100);
+        
+        if (sameState) {
+          // Same state: GST amount divided equally
+          totalCGSTAmount += gstAmount / 2;
+          totalSGSTAmount += gstAmount / 2;
+          totalCGSTPercentage = gst / 2; 
+          totalSGSTPercentage = gst / 2; 
+          totalIGSTPercentage = 0;      
+        } else {
+          // Different state: Full GST as IGST
+          totalIGSTAmount += gstAmount;
+          totalIGSTPercentage = gst;      // Percentage: 5 for 5% GST
+        }
+      });
+
+
+      // Extract batch details from items with PERCENTAGES for items table
+      const batchDetails = invoiceData.items.map(item => {
+        const quantity = parseFloat(item.quantity) || 0;
+        const price = parseFloat(item.price) || 0;
+        const discount = parseFloat(item.discount) || 0;
+        
+        return {
+          product: item.product,
+          product_id: item.product_id,
+          description: item.description,
+          batch: item.batch,
+          batch_id: item.batch_id,
+          quantity: quantity,
+          price: price,
+          discount: discount,
+          gst: parseFloat(item.gst) || 0,          
+          cgst: parseFloat(item.cgst) || 0,        
+          sgst: parseFloat(item.sgst) || 0,       
+          igst: parseFloat(item.igst) || 0,       
+          cess: parseFloat(item.cess) || 0,
+          total: parseFloat(item.total) || 0,
+          batchDetails: item.batchDetails,
+          assigned_staff: staffName,
+           hsn_code: item.hsn_code || ""  
+        };
+      });
+
+      // Get product_id and batch_id for logging
+      const firstItemProductId = invoiceData.items[0]?.product_id || null;
+      const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
+      const mobileNumber = invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number || '';
+      const payload = {
+        ...invoiceData,
+        invoiceNumber: finalInvoiceNumber,
+        selectedSupplierId: selectedSupplierId,
+        staffid: selectedStaffId,
         assigned_staff: staffName,
-        hsn_code: item.hsn_code || ""
-      };
-    });
+        staffName: staffName,
+        type: 'sales',
+         TransactionType: "Sales", 
+        CGSTAmount: totalCGSTAmount.toFixed(2),   
+        SGSTAmount: totalSGSTAmount.toFixed(2),    
+        IGSTAmount: totalIGSTAmount.toFixed(2),   
+        
+        CGSTPercentage: totalCGSTPercentage.toFixed(2),
+        SGSTPercentage: totalSGSTPercentage.toFixed(2), 
+        IGSTPercentage: totalIGSTPercentage.toFixed(2), 
+        
+        taxType: sameState ? "CGST/SGST" : "IGST",
+        batchDetails: batchDetails,  
+        product_id: 123,
+        batch_id: "bth0001",
+        primaryProductId: firstItemProductId,
+        primaryBatchId: firstItemBatchId,
+        PartyID: selectedSupplierId,
+        AccountID: invoiceData.supplierInfo.accountId,
+        PartyName: invoiceData.supplierInfo.name,
+  account_name: invoiceData.supplierInfo.account_name || 
+                accounts.find(acc => acc.id === selectedSupplierId)?.account_name || 
+                invoiceData.supplierInfo.name,
+  business_name: invoiceData.supplierInfo.business_name || 
+                 accounts.find(acc => acc.id === selectedSupplierId)?.business_name || 
+                 invoiceData.supplierInfo.name, 
+mobile_number: mobileNumber
+};     
 
-    const firstItemProductId = invoiceData.items[0]?.product_id || null;
-    const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
-    const mobileNumber = invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number || '';
     
-    const payload = {
-      ...invoiceData,
-      invoiceNumber: finalInvoiceNumber, // ✅ Using the freshly fetched invoice number
-      selectedSupplierId: selectedSupplierId,
-      staffid: selectedStaffId,
-      assigned_staff: staffName,
-      staffName: staffName,
-      type: 'sales',
-      TransactionType: "Sales",
-      CGSTAmount: totalCGSTAmount.toFixed(2),
-      SGSTAmount: totalSGSTAmount.toFixed(2),
-      IGSTAmount: totalIGSTAmount.toFixed(2),
-      CGSTPercentage: totalCGSTPercentage.toFixed(2),
-      SGSTPercentage: totalSGSTPercentage.toFixed(2),
-      IGSTPercentage: totalIGSTPercentage.toFixed(2),
-      taxType: sameState ? "CGST/SGST" : "IGST",
-      batchDetails: batchDetails,
-      product_id: 123,
-      batch_id: "bth0001",
-      primaryProductId: firstItemProductId,
-      primaryBatchId: firstItemBatchId,
-      PartyID: selectedSupplierId,
-      AccountID: invoiceData.supplierInfo.accountId,
-      PartyName: invoiceData.supplierInfo.name,
-      account_name: invoiceData.supplierInfo.account_name || 
-                    accounts.find(acc => acc.id === selectedSupplierId)?.account_name || 
-                    invoiceData.supplierInfo.name,
-      business_name: invoiceData.supplierInfo.business_name || 
-                     accounts.find(acc => acc.id === selectedSupplierId)?.business_name || 
-                     invoiceData.supplierInfo.name,
-      mobile_number: mobileNumber
-    };
 
-    delete payload.companyState;
-    delete payload.supplierState;
-    delete payload.items;
-    
-    let response;
-    if (isEditMode && editingVoucherId) {
-      console.log('🔄 Updating existing invoice with ID:', editingVoucherId);
-      response = await fetch(`${baseurl}/transactions/${editingVoucherId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
-    } else {
-      console.log('🆕 Creating new invoice with number:', finalInvoiceNumber);
-      response = await fetch(`${baseurl}/transaction`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
-    }
-    
-    const responseData = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(responseData.error || 'Failed to submit invoice');
-    }
-    
-    console.log('✅ Server Response:', responseData);
-    
-    localStorage.removeItem('draftInvoice');
-    window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice submitted successfully!');
-    setIsPreviewReady(true);
-
-    // Store preview data
-    const previewData = {
-      ...invoiceData,
-      invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
-      voucherId: responseData.voucherId || editingVoucherId,
-      product_id: responseData.product_id || firstItemProductId,
-      batch_id: responseData.batch_id || firstItemBatchId,
-      staffid: responseData.staffid || selectedStaffId,
-      assigned_staff: responseData.assigned_staff || staffName,
-      staffName: responseData.staffName || staffName,
-      mobile_number: invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number,
-      supplierInfo: {
-        ...invoiceData.supplierInfo,
-        staffid: responseData.staffid || selectedStaffId,
-        assigned_staff: responseData.assigned_staff || staffName
+      // Remove unused fields
+      delete payload.companyState;
+      delete payload.supplierState;
+      delete payload.items;
+      
+      let response;
+      if (isEditMode && editingVoucherId) {
+        console.log('🔄 Updating existing invoice with ID:', editingVoucherId);
+        response = await fetch(`${baseurl}/transactions/${editingVoucherId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        console.log('🆕 Creating new invoice with staffid:', selectedStaffId);
+        response = await fetch(`${baseurl}/transaction`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload)
+        });
       }
-    };
-    
-    localStorage.setItem('previewInvoice', JSON.stringify(previewData));
-    
-    setTimeout(() => {
-      navigate(`/sales/invoice-preview/${responseData.voucherId || editingVoucherId}`);
-    }, 2000);
-    
-  } catch (err) {
-    console.error('❌ Error in handleSubmit:', err);
-    setError(err.message);
-    setTimeout(() => setError(null), 5000);
-  } finally {
-    setLoading(false);
-  }
-};
+      
+      const responseData = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(responseData.error || 'Failed to submit invoice');
+      }
+      
+      console.log('✅ Server Response:', responseData);
+      
+      localStorage.removeItem('draftInvoice');
+window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice submitted successfully!');
+      setIsPreviewReady(true);
+
+      // Store preview data
+      const previewData = {
+        ...invoiceData,
+        invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
+        voucherId: responseData.voucherId || editingVoucherId,
+        product_id: responseData.product_id || firstItemProductId,
+        batch_id: responseData.batch_id || firstItemBatchId,
+        staffid: responseData.staffid || selectedStaffId,
+        assigned_staff: responseData.assigned_staff || staffName,
+        staffName: responseData.staffName || staffName,
+         mobile_number: invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number,
+        supplierInfo: {
+          ...invoiceData.supplierInfo,
+          staffid: responseData.staffid || selectedStaffId,
+          assigned_staff: responseData.assigned_staff || staffName
+        }
+      };
+      
+      localStorage.setItem('previewInvoice', JSON.stringify(previewData));
+      
+      // Navigate to preview page with voucher ID
+      setTimeout(() => {
+        navigate(`/sales/invoice-preview/${responseData.voucherId || editingVoucherId}`);
+      }, 2000);
+      
+    } catch (err) {
+      console.error('❌ Error in handleSubmit:', err);
+      setError(err.message);
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   const filteredAccounts = accounts.filter(acc => {
@@ -1224,36 +1220,38 @@ const handleSubmit = async (e) => {
      businessName.includes(searchLower) || 
      displayName.includes(searchLower));
 });
-const calculateTotalPrice = () => {
-  const price = parseFloat(itemForm.price) || 0;
+  const calculateTotalPrice = () => {
+    const price = parseFloat(itemForm.price) || 0;
+    const gst = parseFloat(itemForm.gst) || 0;
+    const discount = parseFloat(itemForm.discount) || 0;
+    const quantity = parseInt(itemForm.quantity) || 0;
+
+    const priceAfterDiscount = price - (price * discount) / 100;
+    const priceWithGst = priceAfterDiscount + (priceAfterDiscount * gst) / 100;
+    return (priceWithGst * quantity).toFixed(2);
+  };
+
+  const handleInclPriceChange = (e) => {
+  const inclPrice = parseFloat(e.target.value) || 0;
   const gst = parseFloat(itemForm.gst) || 0;
-  const discount = parseFloat(itemForm.discount) || 0;
-  const quantity = parseInt(itemForm.quantity) || 0;
-  const gstType = itemForm.inclusive_gst; // Can be "", "Exclusive", or "Inclusive"
-
-  if (quantity === 0) return "0.00";
-  
-  const subtotal = price * quantity;
-  const discountAmount = subtotal * (discount / 100);
-  const amountAfterDiscount = subtotal - discountAmount;
-
-  // If no GST type selected, just return amount after discount
-  if (!gstType) {
-    return amountAfterDiscount.toFixed(2);
-  }
-
-  if (gstType === "Exclusive") {
-    // Exclusive: GST is ADDED to price
-    const gstAmount = amountAfterDiscount * (gst / 100);
-    return (amountAfterDiscount + gstAmount).toFixed(2);
-  } else if (gstType === "Inclusive") {
-    // Inclusive: GST is INCLUDED in price
-    return amountAfterDiscount.toFixed(2);
-  }
-
-  return amountAfterDiscount.toFixed(2);
+  const exclPrice = gst > 0 ? inclPrice / (1 + gst / 100) : inclPrice;
+  setItemForm(prev => ({
+    ...prev,
+    original_price: inclPrice,
+    price: parseFloat(exclPrice.toFixed(2))
+  }));
 };
 
+const handleExclPriceChange = (e) => {
+  const exclPrice = parseFloat(e.target.value) || 0;
+  const gst = parseFloat(itemForm.gst) || 0;
+  const inclPrice = exclPrice * (1 + gst / 100);
+  setItemForm(prev => ({
+    ...prev,
+    price: exclPrice,
+    original_price: parseFloat(inclPrice.toFixed(2))
+  }));
+};
   return (
     <div className="admin-layout">
       <AdminSidebar 
@@ -1630,6 +1628,7 @@ const calculateTotalPrice = () => {
     {editingItemIndex !== null ? `Edit Item (${editingItemIndex + 1})` : 'Add Items'}
   </h6>
   <Row className="align-items-end">
+    {/* Column 1: Item (Product) */}
     <Col md={2}>
       <div className="d-flex justify-content-between align-items-center mb-1">
         <Form.Label className="mb-0 fw-bold">Item</Form.Label>
@@ -1643,17 +1642,13 @@ const calculateTotalPrice = () => {
         </button>
       </div>
 
-      {/* ✅ Searchable Product Dropdown */}
+      {/* Searchable Product Dropdown */}
       <div className="position-relative">
         <input
           type="text"
           className="form-control border-primary"
           placeholder="Search product..."
-          value={
-            itemForm.product
-              ? itemForm.product
-              : productSearchTerm
-          }
+          value={itemForm.product ? itemForm.product : productSearchTerm}
           onChange={(e) => {
             setProductSearchTerm(e.target.value);
             setIsProductDropdownOpen(true);
@@ -1667,7 +1662,8 @@ const calculateTotalPrice = () => {
                 gst: 0,
                 batch: "",
                 batch_id: "",
-                hsn_code: ""
+                hsn_code: "",
+                inclusive_gst: ""
               }));
               setBatches([]);
               setSelectedBatch("");
@@ -1686,7 +1682,8 @@ const calculateTotalPrice = () => {
               gst: 0,
               batch: "",
               batch_id: "",
-              hsn_code: ""
+              hsn_code: "",
+              inclusive_gst: ""
             }));
             setBatches([]);
             setSelectedBatch("");
@@ -1694,7 +1691,6 @@ const calculateTotalPrice = () => {
           }}
           readOnly={!!itemForm.product}
           style={{ cursor: itemForm.product ? "pointer" : "text" }}
-          // ✅ Tooltip for selected product - only product name and quantity
           title={
             itemForm.product_id ? (() => {
               const selectedProduct = products.find(p => p.id === itemForm.product_id);
@@ -1707,7 +1703,7 @@ const calculateTotalPrice = () => {
           }
         />
 
-        {/* ✅ Clear/Change button when product is selected */}
+        {/* Clear/Change button when product is selected */}
         {itemForm.product && (
           <button
             type="button"
@@ -1735,7 +1731,8 @@ const calculateTotalPrice = () => {
                 gst: 0,
                 batch: "",
                 batch_id: "",
-                hsn_code: ""
+                hsn_code: "",
+                inclusive_gst: ""
               }));
               setBatches([]);
               setSelectedBatch("");
@@ -1747,7 +1744,7 @@ const calculateTotalPrice = () => {
           </button>
         )}
 
-        {/* ✅ Product Dropdown */}
+        {/* Product Dropdown */}
         {isProductDropdownOpen && !itemForm.product && (
           <div
             className="position-absolute w-100"
@@ -1764,7 +1761,6 @@ const calculateTotalPrice = () => {
               minWidth: '100%'
             }}
           >
-            {/* Header */}
             <div style={{
               padding: '8px 16px',
               borderBottom: '1px solid #dee2e6',
@@ -1778,7 +1774,6 @@ const calculateTotalPrice = () => {
               Select Product
             </div>
 
-            {/* Product List */}
             <div>
               {products
                 .filter(p =>
@@ -1789,62 +1784,62 @@ const calculateTotalPrice = () => {
                 .map(p => {
                   const availableQty = productStock[p.id] || 0;
                   const isSelected = itemForm.product_id === p.id;
-                  const productPrice = p.net_price || 0;
-                  
+                  const productNetPrice = parseFloat(p.net_price) || 0;
+                  const inclusiveGst = p.inclusive_gst || "";
+                  const productOriginalPrice = parseFloat(p.price) || 0;  // ← GET ORIGINAL PRICE
+
                   return (
                     <div
                       key={p.id}
-onClick={async () => {
-  const retailerDiscount = parseFloat(
-    accounts.find(acc => acc.id === selectedSupplierId)?.discount || 0
-  ) || 0;
+                      onClick={async () => {
+                        const retailerDiscount = parseFloat(
+                          accounts.find(acc => acc.id === selectedSupplierId)?.discount || 0
+                        ) || 0;
+                        setItemForm(prev => ({
+                          ...prev,
+                          product: p.goods_name,
+                          product_id: p.id,
+                          price: productNetPrice,
+                          original_price: productOriginalPrice,  // ← SET ORIGINAL PRICE
+                          gst: parseFloat(p.gst_rate?.replace("%", "") || 0),
+                          description: p.description || "",
+                          discount: retailerDiscount,
+                          quantity: prev.quantity || 0,
+                          batch: "",
+                          batch_id: "",
+                          hsn_code: p.hsn_code || "",
+                          inclusive_gst: inclusiveGst  // ← Set from API
+                        }));
 
-  // ✅ Use net_price here
-  const productNetPrice = parseFloat(p.net_price) || 0;
-  
-  setItemForm(prev => ({
-    ...prev,
-    product: p.goods_name,
-    product_id: p.id,
-    price: productNetPrice,  // ✅ Using net_price
-    gst: parseFloat(p.gst_rate?.replace("%", "") || 0),
-    description: p.description || "",
-    discount: retailerDiscount,
-    quantity: prev.quantity || 0,
-    batch: "",
-    batch_id: "",
-    hsn_code: p.hsn_code || ""
-  }));
+                        try {
+                          const res = await fetch(`${baseurl}/products/${p.id}/batches`);
+                          const batchData = await res.json();
+                          setBatches(batchData);
 
-  try {
-    const res = await fetch(`${baseurl}/products/${p.id}/batches`);
-    const batchData = await res.json();
-    setBatches(batchData);
+                          if (p.maintain_batch === 0 && batchData.length > 0) {
+                            const defaultBatch = batchData[0];
+                            setSelectedBatch(defaultBatch.batch_number);
+                            setSelectedBatchDetails(defaultBatch);
+                            setItemForm(prev => ({
+                              ...prev,
+                              batch: defaultBatch.batch_number,
+                              batch_id: defaultBatch.batch_number,
+                              price: productNetPrice
+                            }));
+                          } else {
+                            setSelectedBatch("");
+                            setSelectedBatchDetails(null);
+                          }
+                        } catch (err) {
+                          console.error("Failed to fetch batches:", err);
+                          setBatches([]);
+                          setSelectedBatch("");
+                          setSelectedBatchDetails(null);
+                        }
 
-    if (p.maintain_batch === 0 && batchData.length > 0) {
-      const defaultBatch = batchData[0];
-      setSelectedBatch(defaultBatch.batch_number);
-      setSelectedBatchDetails(defaultBatch);
-      setItemForm(prev => ({
-        ...prev,
-        batch: defaultBatch.batch_number,
-        batch_id: defaultBatch.batch_number,
-        price: productNetPrice  // ✅ Keep using net_price, not batch price
-      }));
-    } else {
-      setSelectedBatch("");
-      setSelectedBatchDetails(null);
-    }
-  } catch (err) {
-    console.error("Failed to fetch batches:", err);
-    setBatches([]);
-    setSelectedBatch("");
-    setSelectedBatchDetails(null);
-  }
-
-  setIsProductDropdownOpen(false);
-  setProductSearchTerm("");
-}}
+                        setIsProductDropdownOpen(false);
+                        setProductSearchTerm("");
+                      }}
                       style={{
                         padding: '8px 16px',
                         cursor: 'pointer',
@@ -1863,14 +1858,13 @@ onClick={async () => {
                     >
                       <div style={{ fontWeight: 400, fontSize: '13px' }}>{p.goods_name}</div>
                       <div style={{ fontSize: '12px', color: '#6c757d' }}>
-                        Qty: {availableQty} 
+                        Qty: {availableQty} | {inclusiveGst}
                       </div>
                     </div>
                   );
                 })}
             </div>
 
-            {/* Footer */}
             <div style={{
               padding: '8px 16px',
               borderTop: '1px solid #dee2e6',
@@ -1892,40 +1886,38 @@ onClick={async () => {
         )}
       </div>
 
-      {/* ✅ Batch Dropdown */}
+      {/* Batch Dropdown */}
       {batches.length > 0 && itemForm.maintain_batch !== 0 && (
         <Form.Select
           className="mt-2 border-primary"
           name="batch"
           value={selectedBatch}
-      // In your batch selection onChange
-onChange={(e) => {
-  const batchNumber = e.target.value;
-  setSelectedBatch(batchNumber);
-  const batch = batches.find(b => b.batch_number === batchNumber);
-  setSelectedBatchDetails(batch || null);
-  const currentDiscount = itemForm.discount || 0;
-  
-  if (batch) {
-    // ✅ Get the product's net_price from the products array
-    const selectedProduct = products.find(p => p.id === itemForm.product_id);
-    const productNetPrice = selectedProduct ? parseFloat(selectedProduct.net_price) || 0 : 0;
-    
-    setItemForm(prev => ({
-      ...prev,
-      batch: batchNumber,
-      batch_id: batch.batch_number,
-      price: productNetPrice,  // ✅ Always use product's net_price
-      discount: currentDiscount
-    }));
-  } else {
-    setItemForm(prev => ({
-      ...prev,
-      batch: "",
-      batch_id: ""
-    }));
-  }
-}}
+          onChange={(e) => {
+            const batchNumber = e.target.value;
+            setSelectedBatch(batchNumber);
+            const batch = batches.find(b => b.batch_number === batchNumber);
+            setSelectedBatchDetails(batch || null);
+            const currentDiscount = itemForm.discount || 0;
+            
+            if (batch) {
+              const selectedProduct = products.find(p => p.id === itemForm.product_id);
+              const productNetPrice = selectedProduct ? parseFloat(selectedProduct.net_price) || 0 : 0;
+              
+              setItemForm(prev => ({
+                ...prev,
+                batch: batchNumber,
+                batch_id: batch.batch_number,
+                price: productNetPrice,
+                discount: currentDiscount
+              }));
+            } else {
+              setItemForm(prev => ({
+                ...prev,
+                batch: "",
+                batch_id: ""
+              }));
+            }
+          }}
         >
           <option value="">Select Batch</option>
           {batches.map((batch) => (
@@ -1937,6 +1929,7 @@ onChange={(e) => {
       )}
     </Col>
 
+    {/* Column 2: QTY */}
     <Col md={1}>
       <Form.Label className="fw-bold">Qty</Form.Label>
       <Form.Control
@@ -1948,26 +1941,54 @@ onChange={(e) => {
       />
     </Col>
 
-    <Col md={2}>
-      <Form.Label className="fw-bold text-primary">
-        Price (₹)
-      </Form.Label>
-      <Form.Control
-        name="price"
-        type="number"
-        step="1"
-        min="0"
-        value={itemForm.price || ""}
-        onChange={handleItemChange}
-        placeholder="Enter price manually"
-        className="border-primary shadow-sm"
-        style={{ 
-          height: "42px"
-        }}
-      />
-    </Col>
+<Col md={2}>
+  <Form.Label className="fw-bold text-primary">Price Type</Form.Label>
+  <Form.Control
+    type="text"
+    value={
+      !itemForm.inclusive_gst
+        ? ""
+        : itemForm.inclusive_gst === "Inclusive"
+        ? "Inclusive"
+        : itemForm.inclusive_gst === "Exclusive"
+        ? "Exclusive"
+        : ""
+    }
+    readOnly
+    className="border-primary bg-light"
+    placeholder=" product type"
+  />
+</Col>
+{/* Product Price Inclusive */}
+<Col md={2}>
+  <Form.Label className="fw-bold text-primary">Product Price (Incl)</Form.Label>
+  <Form.Control
+    type="number"
+    step="0.01"
+    value={itemForm.original_price || ""}
+    onChange={handleInclPriceChange}
+    className="border-primary"
+    placeholder="Enter incl. price"
+  />
+</Col>
 
-    <Col md={2}>
+{/* Price Exclusive */}
+<Col md={2}>
+  <Form.Label className="fw-bold text-primary">Price (Excl) (₹)</Form.Label>
+  <Form.Control
+    name="price"
+    type="number"
+    step="0.01"
+    value={itemForm.price || ""}
+    onChange={handleExclPriceChange}
+    placeholder="Enter excl. price"
+    className="border-primary shadow-sm"
+  />
+</Col>
+
+
+    {/* Column 5: DISCOUNT (%) */}
+    <Col md={1}>
       <Form.Label className="fw-bold">Discount (%)</Form.Label>
       <Form.Control
         name="discount"
@@ -1980,7 +2001,8 @@ onChange={(e) => {
       />
     </Col>
 
-    <Col md={2}>
+    {/* Column 6: GST (%) */}
+    <Col md={1}>
       <Form.Label className="fw-bold">GST (%)</Form.Label>
       <Form.Control
         name="gst"
@@ -1990,51 +2012,8 @@ onChange={(e) => {
         className="border-primary bg-light"
       />
     </Col>
-<Col md={2}>
-  <Form.Label className="fw-bold">GST Type</Form.Label>
-  <Form.Select
-    name="inclusive_gst"
-    value={itemForm.inclusive_gst || ""}
-    onChange={(e) => {
-      const newType = e.target.value;
-      const currentPrice = parseFloat(itemForm.price) || 0;
-      const currentGst = parseFloat(itemForm.gst) || 0;
-      const oldType = itemForm.inclusive_gst;
-      
-      if (currentPrice > 0 && currentGst > 0 && oldType && newType && oldType !== newType) {
-        if (newType === "Exclusive" && oldType === "Inclusive") {
-          const newPrice = currentPrice / (1 + (currentGst / 100));
-          setItemForm(prev => ({
-            ...prev,
-            inclusive_gst: newType,
-            price: parseFloat(newPrice.toFixed(2))
-          }));
-        } else if (newType === "Inclusive" && oldType === "Exclusive") {
-          const newPrice = currentPrice * (1 + (currentGst / 100));
-          setItemForm(prev => ({
-            ...prev,
-            inclusive_gst: newType,
-            price: parseFloat(newPrice.toFixed(2))
-          }));
-        } else {
-          setItemForm(prev => ({
-            ...prev,
-            inclusive_gst: newType
-          }));
-        }
-      } else {
-        setItemForm(prev => ({
-          ...prev,
-          inclusive_gst: newType
-        }));
-      }
-    }}
-    className="border-primary"
-  >
-<option value="">-- Select GST Type --</option>
-<option value="Inclusive">Exclusive </option>
-<option value="Exclusive">Inclusive </option>  </Form.Select>
-</Col>
+
+    {/* Column 7: TOTAL PRICE */}
     <Col md={2}>
       <Form.Label className="fw-bold">Total Price (₹)</Form.Label>
       <Form.Control
@@ -2045,6 +2024,7 @@ onChange={(e) => {
       />
     </Col>
 
+    {/* Column 8: ACTION BUTTONS */}
     <Col md={1} className="sales-invoice-add px-0">
       <div className="d-flex flex-column h-100 justify-content-end">
         <Button 
