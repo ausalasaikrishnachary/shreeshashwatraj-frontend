@@ -258,7 +258,7 @@ function Login() {
           {/* Submit Button */}
           <button type="submit" disabled={loading} className="login-button">
             {loading ? (
-              <span className="button-loading">
+              <span >
                 <span className="spinner"></span>
                 Logging in...
               </span>
