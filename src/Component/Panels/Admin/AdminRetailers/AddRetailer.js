@@ -13,7 +13,7 @@ const getStateName = (stateCode) => {
     '32': 'Kerala',
     '29': 'Karnataka',
     'TGC022': 'Telangana',
-    
+
   };
   return stateMap[stateCode] || stateCode || '';
 };
@@ -33,13 +33,13 @@ const RetailerForm = ({ user, mode = 'add' }) => {
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [loading, setLoading] = useState(mode !== 'add');
   const [staffList, setStaffList] = useState([]);
-const [createBoth, setCreateBoth] = useState(false);
+  const [createBoth, setCreateBoth] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     entity_type: "",
     name: "",
     role: "retailer",
-    status: "Active",
+    status: 1,
     group: "",
     mobile_number: "",
     email: "",
@@ -87,9 +87,9 @@ const [createBoth, setCreateBoth] = useState(false);
     billing_country: "",
     billing_branch_name: "",
     billing_gstin: "",
-      opening_balance: 0,  
-       opening_balance_type: "",
-        is_dual_account : 0, 
+    opening_balance: 0,
+    opening_balance_type: "Debit",
+    is_dual_account: 0,
   });
 
   // List of mandatory fields
@@ -103,11 +103,11 @@ const [createBoth, setCreateBoth] = useState(false);
     'shipping_country',
     'billing_state',
     'billing_country',
-     'opening_balance',      
-  'opening_balance_type'       
+    'opening_balance',
+    'opening_balance_type'
   ];
 
-  
+
 
   // Master list of states with codes
   const STATES = [
@@ -363,8 +363,8 @@ const [createBoth, setCreateBoth] = useState(false);
           'name',
           'group',
           'display_name',
-           'opening_balance',         
-  'opening_balance_type',   
+          'opening_balance',
+          'opening_balance_type',
           ...conditionalMandatoryFields
         ];
 
@@ -549,8 +549,8 @@ const [createBoth, setCreateBoth] = useState(false);
           'name',
           'group',
           'display_name',
-          'opening_balance',        
-  'opening_balance_type',   
+          'opening_balance',
+          'opening_balance_type',
           ...conditionalMandatoryFields
         ];
 
@@ -647,41 +647,41 @@ const [createBoth, setCreateBoth] = useState(false);
 
     const isSupplier = formData.group === "SUPPLIERS";
 
-try {
+    try {
 
-  // ✅ Add flag instead of creating 2 rows
-  const finalDataToSend = {
-    ...finalData,
-    is_dual_account: createBoth ? 1 : 0
-  };
+      // ✅ Add flag instead of creating 2 rows
+      const finalDataToSend = {
+        ...finalData,
+        is_dual_account: createBoth ? 1 : 0
+      };
 
-  if (isEditing) {
+      if (isEditing) {
 
-    await axios.put(`${baseurl}/accounts/${id}`, finalDataToSend);
+        await axios.put(`${baseurl}/accounts/${id}`, finalDataToSend);
 
-    if (isSupplier) {
-      alert("Supplier updated successfully!");
-    } else {
-      alert("Retailer updated successfully!");
+        if (isSupplier) {
+          alert("Supplier updated successfully!");
+        } else {
+          alert("Retailer updated successfully!");
+        }
+
+      } else {
+
+        await axios.post(`${baseurl}/accounts`, finalDataToSend);
+
+        if (isSupplier) {
+          alert("Supplier added successfully!");
+        } else {
+          alert("Retailer added successfully!");
+        }
+      }
+
+      navigate('/retailers');
+
+    } catch (err) {
+      console.error(err);
+      alert(`Failed to ${isEditing ? 'update' : 'add'} ${isSupplier ? 'supplier' : 'retailer'}`);
     }
-
-  } else {
-
-    await axios.post(`${baseurl}/accounts`, finalDataToSend);
-
-    if (isSupplier) {
-      alert("Supplier added successfully!");
-    } else {
-      alert("Retailer added successfully!");
-    }
-  }
-
-  navigate('/retailers');
-
-} catch (err) {
-  console.error(err);
-  alert(`Failed to ${isEditing ? 'update' : 'add'} ${isSupplier ? 'supplier' : 'retailer'}`);
-}
 
   };
 
@@ -746,12 +746,12 @@ try {
     }
 
     // Hide role, assigned_staff, staffid for SUPPLIERS
-if (
-  (formData.group === 'SUPPLIERS' && ['role', 'assigned_staff', 'staffid', 'entity_type'].includes(name)) &&
-  !createBoth // ✅ show when checkbox enabled
-) {
-  return null;
-}
+    if (
+      (formData.group === 'SUPPLIERS' && ['role', 'assigned_staff', 'staffid', 'entity_type'].includes(name)) &&
+      !createBoth // ✅ show when checkbox enabled
+    ) {
+      return null;
+    }
     if (type === 'select') {
       return (
         <div className="mb-3">
@@ -800,390 +800,391 @@ if (
 
     switch (activeTab) {
       case 'information':
-   return (
-  <FormSection
-    id="information"
-    activeTab={activeTab}
-    title="Information"
-    onBack={null}
-    onNext={handleNext}
-    nextLabel="Banking & Taxes"
-    isViewing={isViewing}
-    onCancel={handleCancel}
-  >
-    {/* Debug section - remove in production */}
-    {/* <div style={{ background: '#f0f0f0', padding: '10px', margin: '10px 0', border: '1px solid #ccc' }}>
+        return (
+          <FormSection
+            id="information"
+            activeTab={activeTab}
+            title="Information"
+            onBack={null}
+            onNext={handleNext}
+            nextLabel="Banking & Taxes"
+            isViewing={isViewing}
+            onCancel={handleCancel}
+          >
+            {/* Debug section - remove in production */}
+            {/* <div style={{ background: '#f0f0f0', padding: '10px', margin: '10px 0', border: '1px solid #ccc' }}>
       <h6>Debug Info:</h6>
       <p>Business Name: <strong>{formData.business_name || 'Empty'}</strong></p>
       <p>GST Registered Name: <strong>{formData.gst_registered_name || 'Empty'}</strong></p>
       <p>Display Name: <strong>{formData.display_name || 'Empty'}</strong></p>
     </div> */}
 
-    <div className="row">
-      <div className="col-md-6">
-        <div className="row">
-          <div className="col-md-4">
-            {renderField({
-              type: 'select',
-              name: 'title',
-              label: 'Title',
-              options: [
-                { value: 'Mr.', label: 'Mr.' },
-                { value: 'Mrs.', label: 'Mrs.' },
-                { value: 'Ms.', label: 'Ms.' },
-                { value: 'Dr.', label: 'Dr.' }
-              ]
-            })}
-          </div>
-          <div className="col-md-8">
-            {renderField({
-              name: 'name',
-              label: 'Name',
-              required: true
-            })}
-          </div>
-        </div>
-      </div>
-      <div className="col-md-6">
-        {(formData.group !== 'SUPPLIERS' || createBoth) && renderField({
-          type: 'select',
-          name: 'entity_type',
-          label: 'Entity Type',
-          required: true,
-          options: [
-            { value: 'Individual', label: 'Individual' },
-            { value: 'Company', label: 'Company' },
-            { value: 'Partnership', label: 'Partnership' }
-          ]
-        })}
-      </div>
-    </div>
+            <div className="row">
+              <div className="col-md-6">
+                <div className="row">
+                  <div className="col-md-4">
+                    {renderField({
+                      type: 'select',
+                      name: 'title',
+                      label: 'Title',
+                      options: [
+                        { value: 'Mr.', label: 'Mr.' },
+                        { value: 'Mrs.', label: 'Mrs.' },
+                        { value: 'Ms.', label: 'Ms.' },
+                        { value: 'Dr.', label: 'Dr.' }
+                      ]
+                    })}
+                  </div>
+                  <div className="col-md-8">
+                    {renderField({
+                      name: 'name',
+                      label: 'Name',
+                      required: true
+                    })}
+                  </div>
+                </div>
+              </div>
+              <div className="col-md-6">
+                {(formData.group !== 'SUPPLIERS' || createBoth) && renderField({
+                  type: 'select',
+                  name: 'entity_type',
+                  label: 'Entity Type',
+                  required: true,
+                  options: [
+                    { value: 'Individual', label: 'Individual' },
+                    { value: 'Company', label: 'Company' },
+                    { value: 'Partnership', label: 'Partnership' }
+                  ]
+                })}
+              </div>
+            </div>
 
-    <div className="row">
-      <div className="col-md-6">
-        {renderField({
-          type: 'select',
-          name: 'group',
-          label: 'Group Type',
-          required: true,
-          options: accountGroups.map(group => ({
-            value: group.AccountsGroupName,
-            label: group.AccountsGroupName
-          }))
-        })}
-      </div>
-      <div className="col-md-6">
-        <div className="mb-3">
-          <label className="customer-form-label">Customer GSTIN</label>
-          <input
-            type="text"
-            name="gstin"
-            value={formData.gstin || ''}
-            className={getInputClass('gstin')}
-            onChange={handleGstinChange}
-            maxLength={15}
-            pattern="^[0-9A-Z]{15}$"
-            title="GSTIN must be exactly 15 characters (A-Z, 0-9 only)"
-            required={formData.group === 'SUPPLIERS' ? false : true}
-          />
-          {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
-          {gstinError && <div className="text-danger small">{gstinError}</div>}
-          {renderError('gstin')}
-        </div>
-      </div>
-    </div>
+            <div className="row">
+              <div className="col-md-6">
+                {renderField({
+                  type: 'select',
+                  name: 'group',
+                  label: 'Group Type',
+                  required: true,
+                  options: accountGroups.map(group => ({
+                    value: group.AccountsGroupName,
+                    label: group.AccountsGroupName
+                  }))
+                })}
+              </div>
+              <div className="col-md-6">
+                <div className="mb-3">
+                  <label className="customer-form-label">Customer GSTIN</label>
+                  <input
+                    type="text"
+                    name="gstin"
+                    value={formData.gstin || ''}
+                    className={getInputClass('gstin')}
+                    onChange={handleGstinChange}
+                    maxLength={15}
+                    pattern="^[0-9A-Z]{15}$"
+                    title="GSTIN must be exactly 15 characters (A-Z, 0-9 only)"
+                    required={formData.group === 'SUPPLIERS' ? false : true}
+                  />
+                  {isLoadingGstin && <div className="text-muted small">Fetching GSTIN details...</div>}
+                  {gstinError && <div className="text-danger small">{gstinError}</div>}
+                  {renderError('gstin')}
+                </div>
+              </div>
+            </div>
 
-    <div className="row">
-      <div className="col-md-6">
-        {renderField({
-          type: 'email',
-          name: 'email',
-          label: 'Email',
-          required: true
-        })}
-      </div>
+            <div className="row">
+              <div className="col-md-6">
+                {renderField({
+                  type: 'email',
+                  name: 'email',
+                  label: 'Email',
+                  required: true
+                })}
+              </div>
 
-      {formData.group !== 'SUPPLIERS' ? (
-        <div className="col-md-6">
-          {renderField({
-            type: 'select',
-            name: 'staffid',
-            label: 'Assign staff',
-            required: true,
-            options: staffList
-          })}
-        </div>
-      ) : (
-        <div className="col-md-6">
-          {renderField({
-            name: 'business_name',
-            label: 'Business Name'
-          })}
-        </div>
-      )}
-    </div>
+              {formData.group !== 'SUPPLIERS' ? (
+                <div className="col-md-6">
+                  {renderField({
+                    type: 'select',
+                    name: 'staffid',
+                    label: 'Assign staff',
+                    required: true,
+                    options: staffList
+                  })}
+                </div>
+              ) : (
+                <div className="col-md-6">
+                  {renderField({
+                    name: 'business_name',
+                    label: 'Business Name'
+                  })}
+                </div>
+              )}
+            </div>
 
-    <div className="row">
-      {formData.group !== 'SUPPLIERS' ? (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              name: 'business_name',
-              label: 'Business Name'
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              name: 'display_name',
-              label: 'Display Name',
-              required: true
-            })}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              name: 'display_name',
-              label: 'Display Name',
-              required: true
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              name: 'gst_registered_name',
-              label: 'Customer GST Registered Name'
-            })}
-          </div>
-        </>
-      )}
-    </div>
+            <div className="row">
+              {formData.group !== 'SUPPLIERS' ? (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'business_name',
+                      label: 'Business Name'
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'display_name',
+                      label: 'Display Name',
+                      required: true
+                    })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'display_name',
+                      label: 'Display Name',
+                      required: true
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'gst_registered_name',
+                      label: 'Customer GST Registered Name'
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
 
-    <div className="row">
-      {formData.group !== 'SUPPLIERS' ? (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              name: 'gst_registered_name',
-              label: 'Customer GST Registered Name'
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              name: 'additional_business_name',
-              label: 'Additional Business Name'
-            })}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              name: 'additional_business_name',
-              label: 'Additional Business Name'
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              type: 'tel',
-              name: 'mobile_number',
-              label: 'Mobile Number',
-              required: true
-            })}
-          </div>
-        </>
-      )}
-    </div>
+            <div className="row">
+              {formData.group !== 'SUPPLIERS' ? (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'gst_registered_name',
+                      label: 'Customer GST Registered Name'
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'additional_business_name',
+                      label: 'Additional Business Name'
+                    })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'additional_business_name',
+                      label: 'Additional Business Name'
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'tel',
+                      name: 'mobile_number',
+                      label: 'Mobile Number',
+                      required: true
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
 
-    {/* UPDATED SECTION - All groups show Mobile Number */}
-    <div className="row">
-      {formData.group !== 'SUPPLIERS' ? (
-        // For all non-SUPPLIERS (Retailer, Distributor, Wholesaler, etc.) - show Mobile Number
-        <>
-          <div className="col-md-6">
-            {renderField({
-              type: 'tel',
-              name: 'mobile_number',
-              label: 'Mobile Number',
-              required: true
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              name: 'fax',
-              label: 'Fax'
-            })}
-          </div>
-        </>
-      ) : (
-        // For SUPPLIERS - show Fax and Mobile Number
-        <>
-          <div className="col-md-6">
-            {renderField({
-              name: 'fax',
-              label: 'Fax'
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              type: 'tel',
-              name: 'mobile_number',
-              label: 'Mobile Number',
-              required: true
-            })}
-          </div>
-        </>
-      )}
-    </div>
+            {/* UPDATED SECTION - All groups show Mobile Number */}
+            <div className="row">
+              {formData.group !== 'SUPPLIERS' ? (
+                // For all non-SUPPLIERS (Retailer, Distributor, Wholesaler, etc.) - show Mobile Number
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'tel',
+                      name: 'mobile_number',
+                      label: 'Mobile Number',
+                      required: true
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'fax',
+                      label: 'Fax'
+                    })}
+                  </div>
+                </>
+              ) : (
+                // For SUPPLIERS - show Fax and Mobile Number
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      name: 'fax',
+                      label: 'Fax'
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'tel',
+                      name: 'mobile_number',
+                      label: 'Mobile Number',
+                      required: true
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
 
-    <div className="row">
-      {formData.group !== 'SUPPLIERS' ? (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              type: 'number',
-              name: 'discount',
-              label: 'Discount (%)',
-              min: 0,
-              max: 100,
-              step: 0.1
-            })}
-          </div>
-          <div className="col-md-6">
-            {renderField({
-              type: 'number',
-              name: 'Target',
-              label: 'Target (₹)',
-              min: 0,
-              step: 1000
-            })}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="col-md-6">
-            {renderField({
-              type: 'number',
-              name: 'Target',
-              label: 'Target (₹)',
-              min: 0,
-              step: 1000
-            })}
-          </div>
-          <div className="col-md-6">
-            <label className="customer-form-label">Opening Balance</label>
-            <div style={{ display: 'flex', width: '100%' }}>
-              <div style={{ width: '60%' }}>
+            <div className="row">
+              {formData.group !== 'SUPPLIERS' ? (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'number',
+                      name: 'discount',
+                      label: 'Discount (%)',
+                      min: 0,
+                      max: 100,
+                      step: 0.1
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'number',
+                      name: 'Target',
+                      label: 'Target (₹)',
+                      min: 0,
+                      step: 1000
+                    })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="col-md-6">
+                    {renderField({
+                      type: 'number',
+                      name: 'Target',
+                      label: 'Target (₹)',
+                      min: 0,
+                      step: 1000
+                    })}
+                  </div>
+                  <div className="col-md-6">
+                    <label className="customer-form-label">Opening Balance</label>
+                    <div style={{ display: 'flex', width: '100%' }}>
+                      <div style={{ width: '60%' }}>
+                        <input
+                          type="number"
+                          name="opening_balance"
+                          value={formData.opening_balance || ''}
+                          className="form-control customer-form-input"
+                          onChange={handleChange}
+                          min={0}
+                          step={1000}
+                          placeholder="Amount"
+                          style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                        />
+                      </div>
+                      <div style={{ width: '40%' }}>
+                        <select
+                          name="opening_balance_type"
+                          value={formData.opening_balance_type || ''}
+                          className="form-select customer-form-input"
+                          onChange={handleChange}
+                          style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+                        >
+                          <option value="">Select</option>
+                          <option value="Credit">Credit</option>
+                          <option value="Debit">Debit</option>
+                        </select>
+                      </div>
+                    </div>
+                    {renderError('opening_balance')}
+                    {renderError('opening_balance_type')}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {formData.group === 'Retailer' ? (
+              <div className="row">
+                <div className="col-md-6">
+                  {renderField({
+                    type: 'number',
+                    name: 'credit_limit',
+                    label: 'Credit Limit (₹)',
+                    min: 0,
+                    step: 1000
+                  })}
+                </div>
+                <div className="col-md-6">
+                  <label className="customer-form-label">Opening Balance</label>
+                  <div style={{ display: 'flex', width: '100%' }}>
+                    <div style={{ width: '60%' }}>
+                      <input
+                        type="number"
+                        name="opening_balance"
+                        value={formData.opening_balance || 0}
+                        className="form-control customer-form-input"
+                        onChange={handleChange}
+                        min={0}
+                        step={1000}
+                        placeholder="Amount"
+                        style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                        
+                      />
+                    </div>
+                    <div style={{ width: '40%' }}>
+                      <select
+                        name="opening_balance_type"
+                        value={formData.opening_balance_type || ''}
+                        className="form-select customer-form-input"
+                        onChange={handleChange}
+                        style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+                      >
+                        <option value="">Select</option>
+                        <option value="Credit">Credit</option>
+                        <option value="Debit">Debit</option>
+                      </select>
+                    </div>
+                  </div>
+                  {renderError('opening_balance')}
+                  {renderError('opening_balance_type')}
+                </div>
+              </div>
+            ) : (
+              <div className="row">
+                {/* Empty row for non-Retailer groups */}
+              </div>
+            )}
+
+            {/* ✅ NEW CHECKBOX */}
+            <div className="mb-3">
+              <div className="form-check">
                 <input
-                  type="number"
-                  name="opening_balance"
-                  value={formData.opening_balance || ''}
-                  className="form-control customer-form-input"
-                  onChange={handleChange}
-                  min={0}
-                  step={1000}
-                  placeholder="Amount"
-                  style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                  type="checkbox"
+                  className="form-check-input"
+                  id="createBoth"
+                  checked={formData.is_dual_account === 1}
+                  onChange={(e) => {
+                    const value = e.target.checked ? 1 : 0;
+                    setCreateBoth(e.target.checked); // for UI logic
+                    setFormData(prev => ({
+                      ...prev,
+                      is_dual_account: value // ✅ send 1 or 0
+                    }));
+                  }}
                 />
-              </div>
-              <div style={{ width: '40%' }}>
-                <select
-                  name="opening_balance_type"
-                  value={formData.opening_balance_type || ''}
-                  className="form-select customer-form-input"
-                  onChange={handleChange}
-                  style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
-                >
-                  <option value="">Select</option>
-                  <option value="Credit">Credit</option>
-                  <option value="Debit">Debit</option>
-                </select>
+                <label className="form-check-label" htmlFor="createBoth">
+                  {formData.group === "SUPPLIERS"
+                    ? "enable retailer for this supplier"
+                    : "enable supplier for this retailer"}
+                </label>
               </div>
             </div>
-            {renderError('opening_balance')}
-            {renderError('opening_balance_type')}
-          </div>
-        </>
-      )}
-    </div>
-
-    {formData.group === 'Retailer' ? (
-      <div className="row">
-        <div className="col-md-6">
-          {renderField({
-            type: 'number',
-            name: 'credit_limit',
-            label: 'Credit Limit (₹)',
-            min: 0,
-            step: 1000
-          })}
-        </div>
-        <div className="col-md-6">
-          <label className="customer-form-label">Opening Balance</label>
-          <div style={{ display: 'flex', width: '100%' }}>
-            <div style={{ width: '60%' }}>
-              <input
-                type="number"
-                name="opening_balance"
-                value={formData.opening_balance || ''}
-                className="form-control customer-form-input"
-                onChange={handleChange}
-                min={0}
-                step={1000}
-                placeholder="Amount"
-                style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-              />
-            </div>
-            <div style={{ width: '40%' }}>
-              <select
-                name="opening_balance_type"
-                value={formData.opening_balance_type || ''}
-                className="form-select customer-form-input"
-                onChange={handleChange}
-                style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
-              >
-                <option value="">Select</option>
-                <option value="Credit">Credit</option>
-                <option value="Debit">Debit</option>
-              </select>
-            </div>
-          </div>
-          {renderError('opening_balance')}
-          {renderError('opening_balance_type')}
-        </div>
-      </div>
-    ) : (
-      <div className="row">
-        {/* Empty row for non-Retailer groups */}
-      </div>
-    )}
-
-    {/* ✅ NEW CHECKBOX */}
-    <div className="mb-3">
-      <div className="form-check">
-        <input
-          type="checkbox"
-          className="form-check-input"
-          id="createBoth"
-          checked={formData.is_dual_account === 1}
-          onChange={(e) => {
-            const value = e.target.checked ? 1 : 0;
-            setCreateBoth(e.target.checked); // for UI logic
-            setFormData(prev => ({
-              ...prev,
-              is_dual_account: value // ✅ send 1 or 0
-            }));
-          }}
-        />
-        <label className="form-check-label" htmlFor="createBoth">
-          {formData.group === "SUPPLIERS"
-            ? "enable retailer for this supplier"
-            : "enable supplier for this retailer"}
-        </label>
-      </div>
-    </div>
-  </FormSection>
-);
+          </FormSection>
+        );
 
       case 'banking':
         return (
