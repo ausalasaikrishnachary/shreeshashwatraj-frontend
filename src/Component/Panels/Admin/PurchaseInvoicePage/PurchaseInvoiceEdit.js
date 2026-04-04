@@ -83,7 +83,12 @@ const [isEditMode, setIsEditMode] = useState(false);
       totalGST: 0,
       totalCess: 0,
       grandTotal: 0,
-      transportDetails: "",
+      transportDetails: {
+  transport: "",
+  grNumber: "",
+  vehicleNo: "",
+  station: ""
+},
       additionalCharge: "",
       additionalChargeAmount: 0,
       otherDetails: "Authorized Signatory",
@@ -233,6 +238,16 @@ const transformApiDataToFormFormat = (apiData) => {
     };
   }) || [];
 
+
+
+     let transportDetails = {
+      transport: apiData.transport_name || "",
+      grNumber: apiData.gr_rr_number || "",
+      vehicleNo: apiData.vehicle_number || "",
+      station: apiData.station_name || ""
+    };
+    
+
   return {
     voucherId: apiData.VoucherID,
     invoiceNumber: apiData.InvoiceNumber || `PINV${apiData.VoucherID}`,
@@ -288,7 +303,8 @@ const transformApiDataToFormFormat = (apiData) => {
     totalGST: parseFloat(apiData.TaxAmount) || 0,
     grandTotal: parseFloat(apiData.TotalAmount) || 0,
     totalCess: "0.00",
-    transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
+          transportDetails: transportDetails,
+
     additionalCharge: "",
     additionalChargeAmount: "0.00",
     taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST"
@@ -806,8 +822,12 @@ const calculateTotals = () => {
       totalGST: 0,
       totalCess: 0,
       grandTotal: 0,
-      transportDetails: "",
-      additionalCharge: "",
+      transportDetails: {
+  transport: "",
+  grNumber: "",
+  vehicleNo: "",
+  station: ""
+},      additionalCharge: "",
       additionalChargeAmount: 0,
       otherDetails: "Authorized Signatory",
       taxType: "CGST/SGST",
@@ -1925,29 +1945,116 @@ const calculateTotals = () => {
                 </Col>
               </Row>
 
-              {/* Footer Section */}
-              <Row className="mb-3 bg-white p-3 rounded">
-                <Col md={6}>
-                  <h6 className="text-primary">Transportation Details</h6>
-                  <Form.Control 
-                    as="textarea" 
-                    placeholder="Enter transportation details..." 
-                    rows={2} 
-                    name="transportDetails"
-                    value={invoiceData.transportDetails}
-                    onChange={handleInputChange}
-                    className="border-primary"
-                  />
-                </Col>
-                <Col md={6}>
-                  <h6 className="text-primary">Other Details</h6>
-                  <div className="bg-light p-2 rounded">
-                    <p className="mb-1">For</p>
-                    <p className="mb-1 fw-bold">{invoiceData.companyInfo.name}</p>
-                    <p className="mb-0 text-muted">{invoiceData.otherDetails}</p>
-                  </div>
-                </Col>
-              </Row>
+{/* Footer Section - Transportation Details LEFT, Other Details RIGHT */}
+<Row className="mb-3 bg-white p-3 rounded">
+  {/* LEFT SIDE - Transportation Details with 4 fields */}
+  <Col md={6}>
+    <h6 className="text-primary mb-3">Transportation Details</h6>
+    <Row>
+      <Col md={6} className="mb-2">
+        <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>Transport</Form.Label>
+        <Form.Control
+          type="text"
+          name="transport"
+          placeholder="Enter transport name"
+          size="sm"
+          value={invoiceData.transportDetails?.transport || ""}
+          onChange={(e) => {
+            const newTransport = {
+              ...invoiceData.transportDetails,
+              transport: e.target.value
+            };
+            setInvoiceData(prev => ({
+              ...prev,
+              transportDetails: newTransport
+            }));
+          }}
+          className="border-primary"
+          style={{ fontSize: '13px', height: '32px' }}
+        />
+      </Col>
+      
+      <Col md={6} className="mb-2">
+        <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>GR/RR No.</Form.Label>
+        <Form.Control
+          type="text"
+          name="grNumber"
+          placeholder="Enter GR/RR number"
+          size="sm"
+          value={invoiceData.transportDetails?.grNumber || ""}
+          onChange={(e) => {
+            const newTransport = {
+              ...invoiceData.transportDetails,
+              grNumber: e.target.value
+            };
+            setInvoiceData(prev => ({
+              ...prev,
+              transportDetails: newTransport
+            }));
+          }}
+          className="border-primary"
+          style={{ fontSize: '13px', height: '32px' }}
+        />
+      </Col>
+      
+      <Col md={6} className="mb-2">
+        <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>Vehicle No.</Form.Label>
+        <Form.Control
+          type="text"
+          name="vehicleNo"
+          placeholder="Enter vehicle number"
+          size="sm"
+          value={invoiceData.transportDetails?.vehicleNo || ""}
+          onChange={(e) => {
+            const newTransport = {
+              ...invoiceData.transportDetails,
+              vehicleNo: e.target.value
+            };
+            setInvoiceData(prev => ({
+              ...prev,
+              transportDetails: newTransport
+            }));
+          }}
+          className="border-primary"
+          style={{ fontSize: '13px', height: '32px' }}
+        />
+      </Col>
+      
+      <Col md={6} className="mb-2">
+        <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>Station</Form.Label>
+        <Form.Control
+          type="text"
+          name="station"
+          placeholder="Enter station name"
+          size="sm"
+          value={invoiceData.transportDetails?.station || ""}
+          onChange={(e) => {
+            const newTransport = {
+              ...invoiceData.transportDetails,
+              station: e.target.value
+            };
+            setInvoiceData(prev => ({
+              ...prev,
+              transportDetails: newTransport
+            }));
+          }}
+          className="border-primary"
+          style={{ fontSize: '13px', height: '32px' }}
+        />
+      </Col>
+    </Row>
+  </Col>
+  
+  {/* RIGHT SIDE - Other Details (Original - DO NOT CHANGE) */}
+  <Col md={6} >
+    <h6 className="text-primary">Other Details</h6>
+    <div className="bg-light p-2 rounded">
+      <p className="mb-1">For</p>
+      <p className="mb-1 fw-bold">{invoiceData.companyInfo.name}</p>
+      <p className="mb-0 text-muted">{invoiceData.otherDetails}</p>
+    </div>
+  </Col>
+</Row>
 
               {/* Action Buttons */}
               <div className="text-center bg-white p-3 rounded">

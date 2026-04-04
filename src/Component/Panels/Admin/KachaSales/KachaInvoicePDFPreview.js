@@ -420,6 +420,12 @@ const transformPaymentData = (apiData) => {
     const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
     const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
     const grandTotal = parseFloat(apiData.TotalAmount) || 0;
+     const transportDetails = {
+    transport: apiData.transport_name || apiData.transport || '',
+    grNumber: apiData.gr_rr_number || apiData.grNumber || '',
+    vehicleNo: apiData.vehicle_number || apiData.vehicleNo ||  '',
+    station: apiData.station_name || apiData.station || ''
+  };
       const assignedStaff = apiData.assigned_staff || apiData.AssignedStaff || apiData.staff_name || 'N/A';
 
 
@@ -495,7 +501,8 @@ const transformPaymentData = (apiData) => {
       totalCess: "0.00",
       
       note: apiData.Notes || "Thank you for your business!",
-      transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
+            transportDetails: transportDetails,
+
       additionalCharge: "",
       additionalChargeAmount: "0.00",
       
@@ -1625,6 +1632,7 @@ const handleOpenReceiptModal = () => {
               </div>
             </div>
           </div>
+          
           <div className="row">
             <div className="col-md-6">
               <div className="mb-3">
@@ -2065,85 +2073,113 @@ const handleOpenReceiptModal = () => {
                 )}
               </div>
 
-              {/* Totals Section */}
-              <div className="totals-section mb-4">
-                <Row>
-                  <Col md={7}>
-                    <div className="notes-section">
-                      <h6 className="text-primary">Notes:</h6>
-                      {isEditMode ? (
-                        <Form.Control 
-                          as="textarea"
-                          rows={3}
-                          value={currentData.note || ''}
-                          onChange={(e) => handleInputChange('note', e.target.value)}
-                          className="edit-control"
-                        />
-                      ) : (
-                        <p className="bg-light p-2 rounded min-h-100">
-                          {currentData.note}
-                        </p>
-                      )}
-                      
-                      {/* <h6 className="text-primary mt-3">Transportation Details:</h6>
-                      {isEditMode ? (
-                        <Form.Control 
-                          as="textarea"
-                          rows={2}
-                          value={currentData.transportDetails || ''}
-                          onChange={(e) => handleInputChange('transportDetails', e.target.value)}
-                          className="edit-control"
-                        />
-                      ) : (
-                        <p className="bg-light p-2 rounded">
-                          {currentData.transportDetails}
-                        </p>
-                      )} */}
-                    </div>
-                  </Col>
-                  <Col md={5}>
-                    <div className="amount-breakdown bg-light p-3 rounded">
-                      <h6 className="text-primary mb-3">Amount Summary</h6>
-                      <table className="amount-table w-100">
-                        <tbody>
-                          <tr>
-                            <td className="pb-2">  Amount:</td>
-                            <td className="text-end pb-2">₹{currentData.taxableAmount}</td>
-                          </tr>
-                          
-                          {isSameState ? (
-                            <>
-                              <tr>
-                                <td className="pb-2">CGST:</td>
-                                <td className="text-end pb-2">₹{gstBreakdown.totalCGST}</td>
-                              </tr>
-                              <tr>
-                                <td className="pb-2">SGST:</td>
-                                <td className="text-end pb-2">₹{gstBreakdown.totalSGST}</td>
-                              </tr>
-                            </>
-                          ) : (
-                            <tr>
-                              <td className="pb-2">IGST:</td>
-                              <td className="text-end pb-2">₹{gstBreakdown.totalIGST}</td>
-                            </tr>
-                          )}
-                          
-                          <tr>
-                            <td className="pb-2">Total GST:</td>
-                            <td className="text-end pb-2">₹{currentData.totalGST}</td>
-                          </tr>
-                          
-                          <tr className="grand-total border-top pt-2">
-                            <td><strong>Grand Total:</strong></td>
-                            <td className="text-end"><strong className="text-success">₹{currentData.grandTotal}</strong></td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </Col>
-                </Row>
+          {/* Totals Section */}
+<div className="totals-section mb-4">
+  <Row>
+    <Col md={7}>
+      <div className="notes-section">
+        <h6 className="text-primary">Notes:</h6>
+        {isEditMode ? (
+          <Form.Control 
+            as="textarea"
+            rows={3}
+            value={currentData.note || ''}
+            onChange={(e) => handleInputChange('note', e.target.value)}
+            className="edit-control"
+          />
+        ) : (
+          <p className="bg-light p-2 rounded min-h-100">
+            {currentData.note}
+          </p>
+        )}
+      </div>
+      
+      {/* ✅ TRANSPORT DETAILS - MOVE THIS HERE */}
+      <div className="transport-details-section mt-3">
+        <h6 className="text-primary">Transportation Details:</h6>
+        <div className="bg-light p-3 rounded">
+          <Row className="mb-2">
+            <Col md={6}>
+              <div className="transport-field">
+                <strong>Transport:</strong>
+                <p className="mb-0 text-muted">
+                  {currentData.transportDetails?.transport || '-'}
+                </p>
               </div>
+            </Col>
+            <Col md={6}>
+              <div className="transport-field">
+                <strong>GR/RR No.:</strong>
+                <p className="mb-0 text-muted">
+                  {currentData.transportDetails?.grNumber || '-'}
+                </p>
+              </div>
+            </Col>
+          </Row>
+          <Row>
+            <Col md={6}>
+              <div className="transport-field">
+                <strong>Vehicle No.:</strong>
+                <p className="mb-0 text-muted">
+                  {currentData.transportDetails?.vehicleNo || '-'}
+                </p>
+              </div>
+            </Col>
+            <Col md={6}>
+              <div className="transport-field">
+                <strong>Station:</strong>
+                <p className="mb-0 text-muted">
+                  {currentData.transportDetails?.station || '-'}
+                </p>
+              </div>
+            </Col>
+          </Row>
+        </div>
+      </div>
+    </Col>
+    <Col md={5}>
+      <div className="amount-breakdown bg-light p-3 rounded">
+        <h6 className="text-primary mb-3">Amount Summary</h6>
+        <table className="amount-table w-100">
+          <tbody>
+            <tr>
+              <td className="pb-2">Amount:</td>
+              <td className="text-end pb-2">₹{currentData.taxableAmount}</td>
+            </tr>
+            
+            {isSameState ? (
+              <>
+                <tr>
+                  <td className="pb-2">CGST:</td>
+                  <td className="text-end pb-2">₹{gstBreakdown.totalCGST}</td>
+                </tr>
+                <tr>
+                  <td className="pb-2">SGST:</td>
+                  <td className="text-end pb-2">₹{gstBreakdown.totalSGST}</td>
+                </tr>
+              </>
+            ) : (
+              <tr>
+                <td className="pb-2">IGST:</td>
+                <td className="text-end pb-2">₹{gstBreakdown.totalIGST}</td>
+              </tr>
+            )}
+            
+            <tr>
+              <td className="pb-2">Total GST:</td>
+              <td className="text-end pb-2">₹{currentData.totalGST}</td>
+            </tr>
+            
+            <tr className="grand-total border-top pt-2">
+              <td><strong>Grand Total:</strong></td>
+              <td className="text-end"><strong className="text-success">₹{currentData.grandTotal}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </Col>
+  </Row>
+</div>
 
               {/* Footer */}
               <div className="invoice-footer border-top pt-3">

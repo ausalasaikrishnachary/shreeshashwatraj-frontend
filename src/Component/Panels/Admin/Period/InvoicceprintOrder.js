@@ -7,7 +7,7 @@ import {
   StyleSheet 
 } from '@react-pdf/renderer';
 
-// Create styles
+// Create styles - ADD TRANSPORT STYLES
 const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
@@ -147,11 +147,10 @@ const styles = StyleSheet.create({
     minHeight: 25,
   },
   
-  // Updated Column widths - Description removed, HSN Code added
+  // Updated Column widths
   colSNo: { width: '3%', padding: 2 },
-  colProduct: { width: '15%', padding: 2 },      // Increased width
-  colHsn: { width: '8%', padding: 2 },           // New HSN Code column
-  // colDesc: { width: '12%', padding: 2 },      // Commented out Description column
+  colProduct: { width: '15%', padding: 2 },
+  colHsn: { width: '8%', padding: 2 },
   colQty: { width: '4%', padding: 2 },
   colFreeQty: { width: '4%', padding: 2 },
   colPrice: { width: '7%', padding: 2 },
@@ -182,6 +181,9 @@ const styles = StyleSheet.create({
   },
   tableCellRight: {
     textAlign: 'right',
+  },
+  tableCellCenter: {
+    textAlign: 'center',
   },
   tableCellBold: {
     fontWeight: 'bold',
@@ -234,6 +236,43 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontWeight: 'bold',
     fontSize: 10,
+  },
+  
+  // NEW: Transportation Section Styles
+  transportSection: {
+    marginTop: 15,
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 4,
+    border: '1pt solid #dee2e6',
+  },
+  transportTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#007bff',
+    borderBottom: '1pt solid #007bff',
+    paddingBottom: 3,
+  },
+  transportRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  transportField: {
+    width: '23%',
+    marginBottom: 5,
+  },
+  transportLabel: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#555',
+    marginBottom: 2,
+  },
+  transportValue: {
+    fontSize: 8,
+    color: '#333',
   },
   
   // Footer
@@ -291,12 +330,10 @@ const getSafeData = (data, path, defaultValue = '') => {
 
 // Helper function to get customer mobile number from multiple possible fields
 const getCustomerMobile = (supplierInfo) => {
-  // Check all possible fields for mobile/phone number
   const mobileNumber = getSafeData(supplierInfo, 'mobile_number', '');
   const phone = getSafeData(supplierInfo, 'phone', '');
   const phoneNumber = getSafeData(supplierInfo, 'phone_number', '');
   
-  // Return the first non-empty value
   if (mobileNumber && mobileNumber !== 'N/A') return mobileNumber;
   if (phone && phone !== 'N/A') return phone;
   if (phoneNumber && phoneNumber !== 'N/A') return phoneNumber;
@@ -312,7 +349,16 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
   const items = getSafeData(currentData, 'items', []);
   const orderMode = getSafeData(currentData, 'order_mode', 'PAKKA').toUpperCase();
   
+  // FIX 2: Get invoice number correctly - prioritize invoiceNumber prop first
   const displayInvoiceNumber = invoiceNumber || getSafeData(currentData, 'invoiceNumber', 'INV001');
+  
+  // Debug log to see what's happening
+  console.log('📄 PDF Invoice Number:', {
+    propInvoiceNumber: invoiceNumber,
+    dataInvoiceNumber: getSafeData(currentData, 'invoiceNumber'),
+    finalInvoiceNumber: displayInvoiceNumber
+  });
+  
   const invoiceDate = getSafeData(currentData, 'invoiceDate') 
     ? new Date(getSafeData(currentData, 'invoiceDate')).toLocaleDateString('en-IN') 
     : new Date().toLocaleDateString('en-IN');
@@ -320,6 +366,37 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
   const dueDate = getSafeData(currentData, 'validityDate') 
     ? new Date(getSafeData(currentData, 'validityDate')).toLocaleDateString('en-IN') 
     : 'N/A';
+  
+  // FIX 1: Get transportation details from invoiceData
+  const transportDetails = getSafeData(currentData, 'transportDetails', {});
+  const transportName = getSafeData(transportDetails, 'transport', '');
+  const grNumber = getSafeData(transportDetails, 'grNumber', '');
+  const vehicleNo = getSafeData(transportDetails, 'vehicleNo', '');
+  const stationName = getSafeData(transportDetails, 'station', '');
+  
+  // Also check for direct fields (as fallback)
+  const directTransportName = getSafeData(currentData, 'transport_name', '');
+  const directGrNumber = getSafeData(currentData, 'gr_rr_number', '');
+  const directVehicleNo = getSafeData(currentData, 'vehicle_number', '');
+  const directStationName = getSafeData(currentData, 'station_name', '');
+  
+  // Use transportDetails first, then direct fields as fallback
+  const finalTransportName = transportName || directTransportName;
+  const finalGrNumber = grNumber || directGrNumber;
+  const finalVehicleNo = vehicleNo || directVehicleNo;
+  const finalStationName = stationName || directStationName;
+  
+  // Check if any transport field has a value
+  const hasTransportDetails = finalTransportName || finalGrNumber || finalVehicleNo || finalStationName;
+  
+  console.log('🚚 PDF Transport Details:', {
+    transportDetails,
+    transportName: finalTransportName,
+    grNumber: finalGrNumber,
+    vehicleNo: finalVehicleNo,
+    stationName: finalStationName,
+    hasTransportDetails
+  });
   
   // Calculate totals from items with proper calculations matching preview
   const calculateTotals = () => {
@@ -423,7 +500,6 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             <Text style={[styles.addressText, styles.tableCellLeft]}>
               {getSafeData(supplierInfo, 'businessName', '')}
             </Text>
-            {/* ADDED MOBILE NUMBER HERE - Checks all possible fields */}
             <Text style={[styles.addressText, styles.tableCellLeft]}>
               Mobile: {getCustomerMobile(supplierInfo)}
             </Text>
@@ -461,16 +537,40 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
           </View>
         </View>
         
+        {/* FIX 1: Transportation Details Section - Added */}
+        {hasTransportDetails && (
+          <View style={styles.transportSection}>
+            <Text style={styles.transportTitle}>Transportation Details</Text>
+            <View style={styles.transportRow}>
+              <View style={styles.transportField}>
+                <Text style={styles.transportLabel}>Transport:</Text>
+                <Text style={styles.transportValue}>{finalTransportName || 'N/A'}</Text>
+              </View>
+              <View style={styles.transportField}>
+                <Text style={styles.transportLabel}>GR/RR No.:</Text>
+                <Text style={styles.transportValue}>{finalGrNumber || 'N/A'}</Text>
+              </View>
+              <View style={styles.transportField}>
+                <Text style={styles.transportLabel}>Vehicle No.:</Text>
+                <Text style={styles.transportValue}>{finalVehicleNo || 'N/A'}</Text>
+              </View>
+              <View style={styles.transportField}>
+                <Text style={styles.transportLabel}>Station:</Text>
+                <Text style={styles.transportValue}>{finalStationName || 'N/A'}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+        
         {/* Items Table */}
         <View style={styles.itemsSection}>
           <Text style={styles.itemsTitle}>Items Details</Text>
           
-          {/* Table Header - Updated with HSN Code, Description removed */}
+          {/* Table Header */}
           <View style={[styles.tableRow, styles.tableHeader]}>
             <View style={styles.colSNo}><Text style={styles.tableCellHeader}>#</Text></View>
             <View style={styles.colProduct}><Text style={styles.tableCellHeader}>Product</Text></View>
             <View style={styles.colHsn}><Text style={styles.tableCellHeader}>HSN Code</Text></View>
-            {/* <View style={styles.colDesc}><Text style={styles.tableCellHeader}>Description</Text></View> */}
             <View style={styles.colQty}><Text style={styles.tableCellHeader}>Units</Text></View>
             <View style={styles.colFreeQty}><Text style={styles.tableCellHeader}>Free Units</Text></View>
             <View style={styles.colPrice}><Text style={styles.tableCellHeader}>Price</Text></View>
@@ -491,16 +591,13 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             const buyQuantity = parseInt(getSafeData(item, 'buy_quantity', 0));
             const getQuantity = parseInt(getSafeData(item, 'get_quantity', 0));
             
-            // Use net_price first, fallback to price
             const price = parseFloat(getSafeData(item, 'net_price', getSafeData(item, 'price', 0)));
             const discountAmount = parseFloat(getSafeData(item, 'discount_amount', 0)) * quantity;
             const creditCharge = parseFloat(getSafeData(item, 'credit_charge', 0)) * quantity;
             
-            // Taxable amount
             const taxablePerUnit = parseFloat(getSafeData(item, 'taxable_amount', 0));
             const taxableAmount = taxablePerUnit * quantity;
             
-            // GST calculations
             const gst = orderMode === 'KACHA' ? 0 : parseFloat(getSafeData(item, 'gst', 0));
             const gstAmount = orderMode === 'KACHA' ? 0 : parseFloat(getSafeData(item, 'tax_amount', 0)) * quantity;
             const cgstAmount = orderMode === 'KACHA' ? 0 : parseFloat(getSafeData(item, 'cgst_amount', 0)) * quantity;
@@ -508,102 +605,67 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             
             const itemTotal = orderMode === 'KACHA' ? taxableAmount : taxableAmount + gstAmount;
             
-            // Get HSN Code
             const hsnCode = getSafeData(item, 'hsn_code', '-');
             
             return (
               <View style={styles.tableRow} key={index}>
-                {/* S.No */}
                 <View style={styles.colSNo}>
                   <Text style={styles.tableCell}>{index + 1}</Text>
                 </View>
-                
-                {/* Product */}
                 <View style={styles.colProduct}>
                   <Text style={[styles.tableCell, styles.tableCellLeft, styles.tableCellBold]}>
                     {getSafeData(item, 'product', `Item ${index + 1}`)}
                   </Text>
                 </View>
-                
-                {/* HSN Code - New Column */}
                 <View style={styles.colHsn}>
                   <Text style={[styles.tableCell, styles.tableCellCenter]}>
                     {hsnCode}
                   </Text>
                 </View>
-                
-                {/* Description - Commented out */}
-                {/* <View style={styles.colDesc}>
-                  <Text style={[styles.tableCell, styles.tableCellLeft]}>
-                    {getSafeData(item, 'description', 'No description')}
-                  </Text>
-                </View> */}
-                
-                {/* Quantity */}
                 <View style={styles.colQty}>
                   <Text style={styles.tableCell}>
                     {flashOffer === 1 ? buyQuantity : quantity}
                   </Text>
                 </View>
-                
-                {/* Free Quantity */}
                 <View style={styles.colFreeQty}>
                   <Text style={styles.tableCell}>
                     {flashOffer === 1 ? getQuantity : '-'}
                   </Text>
                 </View>
-                
-                {/* Price */}
                 <View style={styles.colPrice}>
                   <Text style={[styles.tableCell, styles.tableCellRight]}>₹{price.toFixed(2)}</Text>
                 </View>
-                
-                {/* Discount Amount */}
                 <View style={styles.colDiscount}>
                   <Text style={[styles.tableCell, styles.tableCellRight]}>₹{discountAmount.toFixed(2)}</Text>
                 </View>
-                
-                {/* Credit Charge */}
                 <View style={styles.colCreditCharge}>
                   <Text style={[styles.tableCell, styles.tableCellRight]}>₹{creditCharge.toFixed(2)}</Text>
                 </View>
-                
-                {/* Taxable Amount */}
                 <View style={styles.colTaxable}>
                   <Text style={[styles.tableCell, styles.tableCellRight, styles.tableCellBold]}>
                     ₹{taxableAmount.toFixed(2)}
                   </Text>
                 </View>
-                
-                {/* GST Percentage */}
                 <View style={styles.colGSTPercent}>
                   <Text style={styles.tableCell}>
                     {orderMode === 'KACHA' ? '0%' : `${gst}%`}
                   </Text>
                 </View>
-                
-                {/* GST Amount */}
                 <View style={styles.colGSTAmt}>
                   <Text style={[styles.tableCell, styles.tableCellRight]}>
                     ₹{orderMode === 'KACHA' ? '0.00' : gstAmount.toFixed(2)}
                   </Text>
                 </View>
-                
-                {/* CGST Amount */}
                 <View style={styles.colCGST}>
                   <Text style={[styles.tableCell, styles.tableCellRight]}>
                     ₹{orderMode === 'KACHA' ? '0.00' : cgstAmount.toFixed(2)}
                   </Text>
                 </View>
-                
-                {/* SGST Amount */}
                 <View style={styles.colSGST}>
                   <Text style={[styles.tableCell, styles.tableCellRight]}>
                     ₹{orderMode === 'KACHA' ? '0.00' : sgstAmount.toFixed(2)}
                   </Text>
                 </View>
-                
-                {/* Item Total */}
                 <View style={styles.colTotal}>
                   <Text style={[styles.tableCell, styles.tableCellRight, styles.tableCellBold, { color: '#28a745' }]}>
                     ₹{itemTotal.toFixed(2)}
@@ -616,7 +678,6 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
         
         {/* Totals Section */}
         <View style={styles.totalsSection}>
-          {/* Notes Section */}
           <View style={styles.notesSection}>
             <Text style={styles.sectionTitle}>Notes:</Text>
             <View style={styles.notesBox}>
@@ -626,17 +687,14 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             </View>
           </View>
           
-          {/* Amount Summary */}
           <View style={styles.amountSection}>
             <Text style={styles.amountTitle}>Amount Summary</Text>
             
-            {/* Taxable Amount */}
             <View style={styles.amountRow}>
               <Text style={[styles.tableCell, styles.tableCellBold]}>Taxable Amount:</Text>
               <Text style={[styles.tableCell, styles.tableCellBold]}>₹{totals.totalTaxableAmount}</Text>
             </View>
             
-            {/* GST Breakdown */}
             {orderMode === 'PAKKA' && (
               <>
                 <View style={styles.amountRow}>
@@ -650,7 +708,6 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
               </>
             )}
             
-            {/* Total GST */}
             <View style={styles.amountRow}>
               <Text style={[styles.tableCell, styles.tableCellBold]}>Total GST:</Text>
               <Text style={[styles.tableCell, styles.tableCellBold, { color: '#28a745' }]}>
@@ -658,7 +715,6 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
               </Text>
             </View>
             
-            {/* Grand Total */}
             <View style={styles.grandTotal}>
               <Text style={[styles.tableCell, styles.tableCellBold, { fontSize: 10 }]}>Grand Total:</Text>
               <Text style={[styles.tableCell, styles.tableCellBold, { color: '#28a745', fontSize: 10 }]}>
@@ -672,29 +728,22 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
         <View style={styles.footer}>
           <View style={styles.bankDetails}>
             <Text style={styles.bankTitle}>Bank Details:</Text>
-
             <View style={{ backgroundColor: '#f8f9fa', padding: 6, borderRadius: 3 }}>
-              
               <Text style={styles.bankText}>
                 Company Name: SHREE SHASHWATRAJ AGRO PVT LTD
               </Text>
-
               <Text style={styles.bankText}>
                 Bank Name: STATE BANK OF INDIA
               </Text>
-
               <Text style={styles.bankText}>
                 Branch: SME AURANGABAD
               </Text>
-
               <Text style={styles.bankText}>
                 Account Number: 44773710377
               </Text>
-
               <Text style={styles.bankText}>
                 IFSC Code: SBIN0063699
               </Text>
-
             </View>
           </View>
           <View style={styles.signature}>

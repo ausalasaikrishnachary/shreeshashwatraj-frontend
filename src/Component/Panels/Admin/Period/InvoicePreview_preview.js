@@ -12,6 +12,8 @@ const InvoicePreview_preview = ({
   onDescriptionChange,
   gstBreakdown,
   isSameState,
+   onTransportChange,  
+  transportDetails,   
   onOrderModeChange,
   periodInvoiceData // Add this prop to get original order items
 }) => {
@@ -650,6 +652,62 @@ const getNetPricePerUnit = (item) => {
             
               
             </div>
+            {/* Transportation Details */}
+<div className="transport-details-section mt-4">
+  <h6 className="text-primary mb-3">Transportation Details</h6>
+  <div className="bg-light p-3 rounded">
+    <Row>
+      <Col md={6} className="mb-2">
+        <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>Transport</Form.Label>
+        <Form.Control
+          type="text"
+          placeholder="Enter transport name"
+          size="sm"
+          value={transportDetails?.transport || ""}
+          onChange={(e) => onTransportChange && onTransportChange({ ...transportDetails, transport: e.target.value })}
+          className="border-primary"
+          style={{ fontSize: '13px', height: '32px' }}
+        />
+      </Col>
+      <Col md={6} className="mb-2">
+        <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>GR/RR No.</Form.Label>
+        <Form.Control
+          type="text"
+          placeholder="Enter GR/RR number"
+          size="sm"
+          value={transportDetails?.grNumber || ""}
+          onChange={(e) => onTransportChange && onTransportChange({ ...transportDetails, grNumber: e.target.value })}
+          className="border-primary"
+          style={{ fontSize: '13px', height: '32px' }}
+        />
+      </Col>
+      <Col md={6} className="mb-2">
+        <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>Vehicle No.</Form.Label>
+        <Form.Control
+          type="text"
+          placeholder="Enter vehicle number"
+          size="sm"
+          value={transportDetails?.vehicleNo || ""}
+          onChange={(e) => onTransportChange && onTransportChange({ ...transportDetails, vehicleNo: e.target.value })}
+          className="border-primary"
+          style={{ fontSize: '13px', height: '32px' }}
+        />
+      </Col>
+      <Col md={6} className="mb-2">
+        <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>Station</Form.Label>
+        <Form.Control
+          type="text"
+          placeholder="Enter station name"
+          size="sm"
+          value={transportDetails?.station || ""}
+          onChange={(e) => onTransportChange && onTransportChange({ ...transportDetails, station: e.target.value })}
+          className="border-primary"
+          style={{ fontSize: '13px', height: '32px' }}
+        />
+      </Col>
+    </Row>
+  </div>
+</div>
           </Col>
           
           <Col md={5}>

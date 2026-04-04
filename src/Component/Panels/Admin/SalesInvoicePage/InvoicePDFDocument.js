@@ -202,6 +202,30 @@ const styles = StyleSheet.create({
     border: '1pt solid #dee2e6',
     minHeight: 80,
   },
+  
+  // ✅ ADD TRANSPORT STYLES
+  transportBox: {
+    backgroundColor: '#f8f9fa',
+    padding: 8,
+    borderRadius: 4,
+    border: '1pt solid #dee2e6',
+    marginTop: 8,
+  },
+  transportRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 5,
+  },
+  transportLabel: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#007bff',
+  },
+  transportValue: {
+    fontSize: 8,
+    color: '#333333',
+  },
+  
   amountSection: {
     flex: 1,
     backgroundColor: '#f8f9fa',
@@ -295,6 +319,7 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
   const shippingAddress = getSafeData(currentData, 'shippingAddress', {});
   const items = getSafeData(currentData, 'items', []);
   const orderMode = getSafeData(currentData, 'order_mode', 'PAKKA').toUpperCase();
+  const transportDetails = getSafeData(currentData, 'transportDetails', {});
   
   const displayInvoiceNumber = invoiceNumber || getSafeData(currentData, 'invoiceNumber', 'INV001');
   const invoiceDate = getSafeData(currentData, 'invoiceDate') 
@@ -363,6 +388,12 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
   // Get assigned staff
   const assignedStaff = getSafeData(currentData, 'assigned_staff', 'N/A');
   
+  // Get transport values
+  const transport = getSafeData(transportDetails, 'transport', '-');
+  const grNumber = getSafeData(transportDetails, 'grNumber', '-');
+  const vehicleNo = getSafeData(transportDetails, 'vehicleNo', '-');
+  const station = getSafeData(transportDetails, 'station', '-');
+  
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -397,6 +428,9 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             </Text>
             <Text style={[styles.addressText, styles.tableCellLeft]}>
               {getSafeData(supplierInfo, 'businessName', '')}
+            </Text>
+            <Text style={[styles.addressText, styles.tableCellLeft]}>
+              Mobile: {getSafeData(supplierInfo, 'phone', getSafeData(supplierInfo, 'mobile_number', 'N/A'))}
             </Text>
             <Text style={[styles.addressText, styles.tableCellLeft]}>
               GSTIN: {getSafeData(supplierInfo, 'gstin', 'N/A')}
@@ -496,90 +530,63 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             
             return (
               <View style={styles.tableRow} key={index}>
-                {/* S.No */}
                 <View style={styles.colSNo}>
                   <Text style={styles.tableCell}>{index + 1}</Text>
                 </View>
-                
-                {/* Product */}
                 <View style={styles.colProduct}>
                   <Text style={[styles.tableCell, styles.tableCellLeft, styles.tableCellBold]}>
                     {getSafeData(item, 'product', `Item ${index + 1}`)}
                   </Text>
                 </View>
-                
-                {/* Description */}
                 <View style={styles.colDesc}>
                   <Text style={[styles.tableCell, styles.tableCellLeft]}>
                     {getSafeData(item, 'description', 'No description')}
                   </Text>
                 </View>
-                
-                {/* Quantity */}
                 <View style={styles.colQty}>
                   <Text style={styles.tableCell}>
                     {flashOffer === 1 ? buyQuantity : quantity}
                   </Text>
                 </View>
-                
-                {/* Free Quantity */}
                 <View style={styles.colFreeQty}>
                   <Text style={styles.tableCell}>
                     {flashOffer === 1 ? getQuantity : '-'}
                   </Text>
                 </View>
-                
-                {/* Price */}
                 <View style={styles.colPrice}>
                   <Text style={[styles.tableCell, styles.tableCellRight]}>₹{price.toFixed(2)}</Text>
                 </View>
-                
-                {/* Discount Amount */}
                 <View style={styles.colDiscount}>
                   <Text style={[styles.tableCell, styles.tableCellRight]}>₹{discountAmount.toFixed(2)}</Text>
                 </View>
-                
-                {/* Credit Charge */}
                 <View style={styles.colCreditCharge}>
                   <Text style={[styles.tableCell, styles.tableCellRight]}>₹{creditCharge.toFixed(2)}</Text>
                 </View>
-                
-                {/* Taxable Amount */}
                 <View style={styles.colTaxable}>
                   <Text style={[styles.tableCell, styles.tableCellRight, styles.tableCellBold]}>
                     ₹{taxableAmount.toFixed(2)}
                   </Text>
                 </View>
-                
-                {/* GST Percentage */}
                 <View style={styles.colGSTPercent}>
                   <Text style={styles.tableCell}>
                     {orderMode === 'KACHA' ? '0%' : `${gst}%`}
                   </Text>
                 </View>
-                
-                {/* GST Amount */}
                 <View style={styles.colGSTAmt}>
                   <Text style={[styles.tableCell, styles.tableCellRight]}>
                     ₹{orderMode === 'KACHA' ? '0.00' : gstAmount.toFixed(2)}
                   </Text>
                 </View>
-                
-                {/* CGST Amount */}
                 <View style={styles.colCGST}>
                   <Text style={[styles.tableCell, styles.tableCellRight]}>
                     ₹{orderMode === 'KACHA' ? '0.00' : cgstAmount.toFixed(2)}
                   </Text>
                 </View>
-                
-                {/* SGST Amount */}
                 <View style={styles.colSGST}>
                   <Text style={[styles.tableCell, styles.tableCellRight]}>
                     ₹{orderMode === 'KACHA' ? '0.00' : sgstAmount.toFixed(2)}
                   </Text>
                 </View>
-                
-                {/* Item Total */}
                 <View style={styles.colTotal}>
                   <Text style={[styles.tableCell, styles.tableCellRight, styles.tableCellBold, { color: '#28a745' }]}>
                     ₹{itemTotal.toFixed(2)}
@@ -590,15 +597,40 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
           })}
         </View>
         
-        {/* Totals Section */}
+        {/* Totals Section with Transportation Details */}
         <View style={styles.totalsSection}>
-          {/* Notes Section */}
+          {/* Notes and Transportation Section */}
           <View style={styles.notesSection}>
             <Text style={styles.sectionTitle}>Notes:</Text>
             <View style={styles.notesBox}>
               <Text style={[styles.tableCell, styles.tableCellLeft]}>
                 {getSafeData(currentData, 'note', 'Thank you for your business!')}
               </Text>
+            </View>
+            
+            {/* ✅ TRANSPORTATION DETAILS SECTION */}
+            <View style={styles.transportBox}>
+              <Text style={[styles.sectionTitle, { marginBottom: 5 }]}>Transportation Details:</Text>
+              
+              <View style={styles.transportRow}>
+                <Text style={styles.transportLabel}>Transport:</Text>
+                <Text style={styles.transportValue}>{transport || '-'}</Text>
+              </View>
+              
+              <View style={styles.transportRow}>
+                <Text style={styles.transportLabel}>GR/RR No.:</Text>
+                <Text style={styles.transportValue}>{grNumber || '-'}</Text>
+              </View>
+              
+              <View style={styles.transportRow}>
+                <Text style={styles.transportLabel}>Vehicle No.:</Text>
+                <Text style={styles.transportValue}>{vehicleNo || '-'}</Text>
+              </View>
+              
+              <View style={styles.transportRow}>
+                <Text style={styles.transportLabel}>Station:</Text>
+                <Text style={styles.transportValue}>{station || '-'}</Text>
+              </View>
             </View>
           </View>
           
@@ -649,9 +681,9 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
           <View style={styles.bankDetails}>
             <Text style={styles.bankTitle}>Bank Details:</Text>
             <Text style={styles.bankText}>Account Name: {getSafeData(companyInfo, 'name', 'Company Name')}</Text>
-            <Text style={styles.bankText}>Account Number: XXXX XXXX XXXX</Text>
-            <Text style={styles.bankText}>IFSC Code: XXXX0123456</Text>
-            <Text style={styles.bankText}>Bank Name: Sample Bank</Text>
+            <Text style={styles.bankText}>Account Number: 44773710377</Text>
+            <Text style={styles.bankText}>IFSC Code: SBIN0063699</Text>
+            <Text style={styles.bankText}>Bank Name: STATE BANK OF INDIA</Text>
           </View>
           
           <View style={styles.signature}>

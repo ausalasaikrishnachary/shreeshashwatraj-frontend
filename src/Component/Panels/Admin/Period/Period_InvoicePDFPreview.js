@@ -306,6 +306,18 @@ const handleOrderModeChange = (switchData) => {
   }
 };
 
+// 1. Add state near other useState declarations
+const [transportDetails, setTransportDetails] = useState({
+  transport: "",
+  grNumber: "",
+  vehicleNo: "",
+  station: ""
+});
+
+// 2. Handler for transport changes
+const handleTransportChange = (newTransport) => {
+  setTransportDetails(newTransport);
+};
   const transformApiDataToInvoiceFormat = (apiData) => {
     console.log('Transforming API data:', apiData);
     
@@ -449,8 +461,12 @@ const handleOrderModeChange = (switchData) => {
       totalCess: "0.00",
       
       note: apiData.Notes || "",
-      transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
-      additionalCharge: "",
+transportDetails: {
+  transport: apiData.transport_name || "",
+  grNumber: apiData.gr_rr_number || "",
+  vehicleNo: apiData.vehicle_number || "",
+  station: apiData.station_name || ""
+},      additionalCharge: "",
       additionalChargeAmount: "0.00",
       
       totalCGST: parseFloat(apiData.CGSTAmount) || 0,
@@ -1406,7 +1422,13 @@ const price = netPrice;
           ...periodDataWithoutTransactionType,
           ...payload  ,
           invoiceNumber: invoiceNumber,
-  VchNo: invoiceNumber
+  VchNo: invoiceNumber,
+   transportDetails: transportDetails,
+  transport_name: transportDetails.transport,
+  gr_rr_number: transportDetails.grNumber,
+  vehicle_number: transportDetails.vehicleNo,
+  station_name: transportDetails.station,
+   transportDetails: transportDetails,  // Add this line
         };
         
         console.log("📦 FINAL INVOICE PAYLOAD:", finalPayload);
@@ -1971,6 +1993,8 @@ const price = netPrice;
                 gstBreakdown={gstBreakdown}
                 isSameState={isSameState}
                 onOrderModeChange={handleOrderModeChange} 
+                onTransportChange={handleTransportChange}   // ← ADD
+  transportDetails={transportDetails}         // ← ADD
               />
             </Col>
             

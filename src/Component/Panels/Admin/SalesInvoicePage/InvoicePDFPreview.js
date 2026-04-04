@@ -414,7 +414,12 @@ const InvoicePDFPreview = () => {
     const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
     const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
     const grandTotal = parseFloat(apiData.TotalAmount) || 0;
-
+ const transportDetails = {
+    transport: apiData.transport_name || apiData.transport || '',
+    grNumber: apiData.gr_rr_number || apiData.grNumber || '',
+    vehicleNo: apiData.vehicle_number || apiData.vehicleNo ||  '',
+    station: apiData.station_name || apiData.station || ''
+  };
     // ✅ Get staff information from API response
     const assignedStaff = apiData.assigned_staff || apiData.AssignedStaff || apiData.staff_name || 'N/A';
     const staffId = apiData.staffid || apiData.staff_id || null;
@@ -489,7 +494,7 @@ const InvoicePDFPreview = () => {
       totalCess: "0.00",
 
       note: apiData.Notes || "Thank you for your business!",
-      transportDetails: apiData.Freight && apiData.Freight !== "0.00" ? `Freight: ₹${apiData.Freight}` : "Standard delivery",
+      transportDetails: transportDetails,
       additionalCharge: "",
       additionalChargeAmount: "0.00",
 
@@ -2129,20 +2134,43 @@ const InvoicePDFPreview = () => {
                         </p>
                       )}
 
-                      {/* <h6 className="text-primary mt-3">Transportation Details:</h6>
-                        {isEditMode ? (
-                          <Form.Control 
-                            as="textarea"
-                            rows={2}
-                            value={currentData.transportDetails || ''}
-                            onChange={(e) => handleInputChange('transportDetails', e.target.value)}
-                            className="edit-control"
-                          />
-                        ) : (
-                          <p className="bg-light p-2 rounded">
-                            {currentData.transportDetails}
-                          </p>
-                        )} */}
+<Row className="mb-2">
+  <Col md={6}>
+    <div className="transport-field">
+      <strong>Transport:</strong>
+      <p className="mb-0 text-muted">
+        {currentData?.transportDetails?.transport || '-'}
+      </p>
+    </div>
+  </Col>
+  <Col md={6}>
+    <div className="transport-field">
+      <strong>GR/RR No.:</strong>
+      <p className="mb-0 text-muted">
+        {currentData?.transportDetails?.grNumber || '-'}
+      </p>
+    </div>
+  </Col>
+</Row>
+<Row>
+  <Col md={6}>
+    <div className="transport-field">
+      <strong>Vehicle No.:</strong>
+      <p className="mb-0 text-muted">
+        {currentData?.transportDetails?.vehicleNo || '-'}
+      </p>
+    </div>
+  </Col>
+  <Col md={6}>
+    <div className="transport-field">
+      <strong>Station:</strong>
+      <p className="mb-0 text-muted">
+        {currentData?.transportDetails?.station || '-'}
+      </p>
+    </div>
+  </Col>
+</Row>
+
                     </div>
                   </Col>
                   <Col md={5}>

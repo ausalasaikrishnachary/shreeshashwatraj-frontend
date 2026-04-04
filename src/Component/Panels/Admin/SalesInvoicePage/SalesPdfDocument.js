@@ -442,64 +442,95 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
           </View>
         </View>
         
-        {/* Totals and Notes Section */}
-        <View style={styles.totalsSection}>
-          {/* Notes Section */}
-          <View style={styles.notesSection}>
-            <Text style={styles.sectionTitle}>Notes:</Text>
-            <View style={styles.notesBox}>
-              <Text style={styles.addressText}>
-                {getSafeData(currentData, 'note', 'Thank you for your business!')}
-              </Text>
-            </View>
-          </View>
-          
-          {/* Amount Summary */}
-          <View style={styles.amountSection}>
-            <Text style={styles.amountTitle}>Amount Summary</Text>
-            
-            {/* Taxable Amount */}
-            <View style={styles.amountRow}>
-              <Text style={styles.amountLabel}>Amount:</Text>
-              <Text style={styles.amountValue}>₹{getSafeData(currentData, 'taxableAmount', '0.00')}</Text>
-            </View>
-            
-            {/* GST Breakdown */}
-            {isSameState ? (
-              <>
-                <View style={styles.amountRow}>
-                  <Text>CGST:</Text>
-                  <Text>₹{gstBreakdown?.totalCGST || '0.00'}</Text>
-                </View>
-                <View style={styles.amountRow}>
-                  <Text>SGST:</Text>
-                  <Text>₹{gstBreakdown?.totalSGST || '0.00'}</Text>
-                </View>
-              </>
-            ) : (
-              <View style={styles.amountRow}>
-                <Text>IGST:</Text>
-                <Text>₹{gstBreakdown?.totalIGST || '0.00'}</Text>
-              </View>
-            )}
-            
-            {/* Total GST */}
-            <View style={styles.amountRow}>
-              <Text style={styles.amountLabel}>Total GST:</Text>
-              <Text style={[styles.amountValue, { color: '#28a745' }]}>
-                ₹{getSafeData(currentData, 'totalGST', '0.00')}
-              </Text>
-            </View>
-            
-            {/* Grand Total */}
-            <View style={styles.grandTotal}>
-              <Text style={styles.amountLabel}>Grand Total:</Text>
-              <Text style={[styles.amountValue, { color: '#28a745', fontSize: 10 }]}>
-                ₹{getSafeData(currentData, 'grandTotal', '0.00')}
-              </Text>
-            </View>
-          </View>
+   {/* Totals and Notes Section */}
+<View style={styles.totalsSection}>
+  {/* Notes Section */}
+  <View style={styles.notesSection}>
+    <Text style={styles.sectionTitle}>Notes:</Text>
+    <View style={styles.notesBox}>
+      <Text style={styles.addressText}>
+        {getSafeData(currentData, 'note', 'Thank you for your business!')}
+      </Text>
+    </View>
+    
+    {/* Transportation Details */}
+    <View style={{ marginTop: 12 }}>
+      <Text style={styles.sectionTitle}>Transportation Details:</Text>
+      <View style={[styles.notesBox, { marginTop: 5 }]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+          <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Transport:</Text>
+          <Text style={styles.addressText}>
+            {getSafeData(currentData, 'transportDetails.transport') || '-'}
+          </Text>
         </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+          <Text style={[styles.addressText, { fontWeight: 'bold' }]}>GR/RR No.:</Text>
+          <Text style={styles.addressText}>
+            {getSafeData(currentData, 'transportDetails.grNumber') || '-'}
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+          <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Vehicle No.:</Text>
+          <Text style={styles.addressText}>
+            {getSafeData(currentData, 'transportDetails.vehicleNo') || '-'}
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+          <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Station:</Text>
+          <Text style={styles.addressText}>
+            {getSafeData(currentData, 'transportDetails.station') || '-'}
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+  
+  {/* Amount Summary */}
+  <View style={styles.amountSection}>
+    <Text style={styles.amountTitle}>Amount Summary</Text>
+    
+    {/* Taxable Amount */}
+    <View style={styles.amountRow}>
+      <Text style={styles.amountLabel}>Amount:</Text>
+      <Text style={styles.amountValue}>₹{getSafeData(currentData, 'taxableAmount', '0.00')}</Text>
+    </View>
+    
+    {/* GST Breakdown */}
+    {isSameState ? (
+      <>
+        <View style={styles.amountRow}>
+          <Text>CGST:</Text>
+          <Text>₹{gstBreakdown?.totalCGST || '0.00'}</Text>
+        </View>
+        <View style={styles.amountRow}>
+          <Text>SGST:</Text>
+          <Text>₹{gstBreakdown?.totalSGST || '0.00'}</Text>
+        </View>
+      </>
+    ) : (
+      <View style={styles.amountRow}>
+        <Text>IGST:</Text>
+        <Text>₹{gstBreakdown?.totalIGST || '0.00'}</Text>
+      </View>
+    )}
+    
+    {/* Total GST */}
+    <View style={styles.amountRow}>
+      <Text style={styles.amountLabel}>Total GST:</Text>
+      <Text style={[styles.amountValue, { color: '#28a745' }]}>
+        ₹{getSafeData(currentData, 'totalGST', '0.00')}
+      </Text>
+    </View>
+    
+    {/* Grand Total */}
+    <View style={styles.grandTotal}>
+      <Text style={styles.amountLabel}>Grand Total:</Text>
+      <Text style={[styles.amountValue, { color: '#28a745', fontSize: 10 }]}>
+        ₹{getSafeData(currentData, 'grandTotal', '0.00')}
+      </Text>
+    </View>
+  </View>
+</View>
         
         {/* Footer */}
         <View style={styles.footer}>
