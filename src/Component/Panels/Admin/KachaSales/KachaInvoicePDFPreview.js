@@ -103,51 +103,54 @@ const InvoicePDFPreview = () => {
     }
   }, [invoiceData]);
 
-  const fetchPaymentData = async (invoiceNumber) => {
-    try {
-      setPaymentLoading(true);
-      setPaymentError(null);
-      
-      console.log('Fetching payment data for invoice:', invoiceNumber);
-      const response = await fetch(`${baseurl}/invoices/${invoiceNumber}`);
-      debugger
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      console.log("Payment API result:", result);
-      
-      if (result.success && result.data) {
-        const transformedData = transformPaymentData(result.data);
-        setPaymentData(transformedData);
-      } else {
-        throw new Error(result.message || 'No payment data received');
-      }
-    } catch (error) {
-      console.error('Error fetching payment data:', error);
-      setPaymentError(error.message);
-      if (invoiceData) {
-        const fallbackPaymentData = {
-          invoice: {
-            invoiceNumber: invoiceData.invoiceNumber,
-            invoiceDate: invoiceData.invoiceDate,
-            totalAmount: parseFloat(invoiceData.grandTotal) || 0,
-            overdueDays: 0
-          },
-          receipts: [],
-          summary: {
-            totalPaid: 0,
-            balanceDue: parseFloat(invoiceData.grandTotal) || 0,
-            status: 'Pending'
-          }
-        };
-        setPaymentData(fallbackPaymentData);
-      }
-    } finally {
-      setPaymentLoading(false);
+const fetchPaymentData = async (invoiceNumber) => {
+  try {
+    setPaymentLoading(true);
+    setPaymentError(null);
+
+    console.log('Fetching payment data for invoice:', invoiceNumber);
+    
+    // ✅ Encode the invoice number to handle special characters like '/'
+    const encodedInvoiceNumber = encodeURIComponent(invoiceNumber);
+    const response = await fetch(`${baseurl}/invoices/${encodedInvoiceNumber}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  };
+
+    const result = await response.json();
+    console.log("Payment API result:", result);
+
+    if (result.success && result.data) {
+      const transformedData = transformPaymentData(result.data);
+      setPaymentData(transformedData);
+    } else {
+      throw new Error(result.message || 'No payment data received');
+    }
+  } catch (error) {
+    console.error('Error fetching payment data:', error);
+    setPaymentError(error.message);
+    if (invoiceData) {
+      const fallbackPaymentData = {
+        invoice: {
+          invoiceNumber: invoiceData.invoiceNumber,
+          invoiceDate: invoiceData.invoiceDate,
+          totalAmount: parseFloat(invoiceData.grandTotal) || 0,
+          overdueDays: 0
+        },
+        receipts: [],
+        summary: {
+          totalPaid: 0,
+          balanceDue: parseFloat(invoiceData.grandTotal) || 0,
+          status: 'Pending'
+        }
+      };
+      setPaymentData(fallbackPaymentData);
+    }
+  } finally {
+    setPaymentLoading(false);
+  }
+};
 
 const transformPaymentData = (apiData) => {
   // Handle both Sales AND Stock Transfer

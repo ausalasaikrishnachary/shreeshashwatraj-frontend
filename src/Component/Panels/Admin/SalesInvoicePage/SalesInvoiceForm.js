@@ -204,6 +204,7 @@ const transformApiDataToFormFormat = (apiData) => {
       const discount = parseFloat(batch.discount) || 0;
       const gst = parseFloat(batch.gst) || 0;
       const cess = parseFloat(batch.cess) || 0;
+        const original_price = parseFloat(batch.original_price) || 0;
       
       // Calculate item total
       const subtotal = quantity * price;
@@ -219,6 +220,7 @@ const transformApiDataToFormFormat = (apiData) => {
         description: batch.description || '',
         quantity: quantity,
         price: price,
+         original_price: original_price,
         discount: discount,
         gst: gst,
         cgst: parseFloat(batch.cgst) || 0,
@@ -230,7 +232,8 @@ const transformApiDataToFormFormat = (apiData) => {
         batch_id: batch.batch_id || '',
         batchDetails: batch.batchDetails || null,
         assigned_staff: batch.assigned_staff || apiData.assigned_staff || apiData.AssignedStaff || 'N/A',
-         hsn_code: batch.hsn_code || ''  
+         hsn_code: batch.hsn_code || ''  ,
+          inclusive_gst: batch.inclusive_gst || "" 
       };
     }) || [];
 
@@ -705,7 +708,8 @@ const addItem = () => {
       batch_id: itemForm.batch_id,
       product_id: itemForm.product_id,
       batchDetails: selectedBatchDetails,
-        original_price: itemForm.original_price  // ← ADD THIS
+        original_price: itemForm.original_price ,
+        inclusive_gst: itemForm.inclusive_gst  // ✅ ADD THIS LINE
     };
 
     setInvoiceData(prev => ({
@@ -730,7 +734,9 @@ const addItem = () => {
       batch: selectedBatch,
       batch_id: itemForm.batch_id,
       product_id: itemForm.product_id,
-      batchDetails: selectedBatchDetails
+      batchDetails: selectedBatchDetails,
+       inclusive_gst: itemForm.inclusive_gst  ,
+        original_price: itemForm.original_price 
     };
 
     setInvoiceData(prev => ({
@@ -752,6 +758,7 @@ const addItem = () => {
     product_id: "",
     description: "",
     quantity: 0,
+      original_price: 0,  
     price: 0,
     discount: 0,
     gst: 0,
@@ -763,7 +770,8 @@ const addItem = () => {
     batch: "",
     batch_id: "",
     batchDetails: null,
-     hsn_code: ""  
+     hsn_code: ""  ,
+     inclusive_gst: "" 
   });
   setBatches([]);
   setSelectedBatch("");
@@ -792,7 +800,9 @@ const addItem = () => {
       batch: itemToEdit.batch,
       batch_id: itemToEdit.batch_id,
       batchDetails: itemToEdit.batchDetails,
-      hsn_code: itemToEdit.hsn_code || "" 
+      hsn_code: itemToEdit.hsn_code || "" ,
+        inclusive_gst: itemToEdit.inclusive_gst || ""  ,
+           original_price: itemToEdit.original_price || "",
     });
     
     setSelectedBatch(itemToEdit.batch);
@@ -1097,6 +1107,7 @@ const calculateTotals = () => {
           batch_id: item.batch_id,
           quantity: quantity,
           price: price,
+           original_price: parseFloat(item.original_price) || 0,  // ← JUST THIS
           discount: discount,
           gst: parseFloat(item.gst) || 0,          
           cgst: parseFloat(item.cgst) || 0,        
@@ -1106,7 +1117,8 @@ const calculateTotals = () => {
           total: parseFloat(item.total) || 0,
           batchDetails: item.batchDetails,
           assigned_staff: staffName,
-           hsn_code: item.hsn_code || ""  
+           hsn_code: item.hsn_code || ""  ,
+            inclusive_gst: item.inclusive_gst || ""  // ✅ ADD THIS LINE
         };
       });
 
@@ -1980,7 +1992,7 @@ const handleExclPriceChange = (e) => {
 </Col>
 {/* Product Price Inclusive */}
 <Col md={2}>
-  <Form.Label className="fw-bold text-primary">Product Price (Incl)</Form.Label>
+  <Form.Label className="fw-bold text-primary"> Price (Incl)</Form.Label>
   <Form.Control
     type="number"
     step="0.01"
@@ -1993,7 +2005,7 @@ const handleExclPriceChange = (e) => {
 
 {/* Price Exclusive */}
 <Col md={2}>
-  <Form.Label className="fw-bold text-primary">Price (Excl) (₹)</Form.Label>
+  <Form.Label className="fw-bold text-primary">Price (Excl)</Form.Label>
   <Form.Control
     name="price"
     type="number"
@@ -2092,7 +2104,11 @@ const handleExclPriceChange = (e) => {
                       <th>PRODUCT</th>
                       <th>DESCRIPTION</th>
                       <th>QTY</th>
-                      <th>PRICE</th>
+                       <th>PRICE TYPE</th> 
+                       <th>PRICE (Incl)</th>  
+                      <th>PRICE (Excl)</th>
+        
+       
                       <th>DISCOUNT</th>
                       <th>GST</th>
                       <th>CGST</th>
@@ -2101,7 +2117,7 @@ const handleExclPriceChange = (e) => {
                       <th>CESS</th>
                       <th>TOTAL</th>
                       <th>BATCH</th>
-                      <th>BATCH DETAILS</th>
+                      {/* <th>BATCH DETAILS</th> */}
                       <th>ACTION</th>
                     </tr>
                   </thead>
@@ -2118,6 +2134,9 @@ const handleExclPriceChange = (e) => {
                           <td>{item.product}</td>
                           <td>{item.description}</td>
                           <td className="text-center">{item.quantity}</td>
+                            <td className="text-center">{item.inclusive_gst || '-'}</td> 
+                    <td className="text-end">₹{parseFloat(item.original_price).toFixed(2)}</td>  
+          
                           <td className="text-end">₹{item.price}</td>
                           <td className="text-center">{item.discount}%</td>
                           <td className="text-center">{item.gst}%</td>
@@ -2127,7 +2146,7 @@ const handleExclPriceChange = (e) => {
                           <td className="text-center">{item.cess}</td>
                           <td className="text-end fw-bold">₹{item.total}</td>
                           <td>{item.batch}</td>
-                          <td>
+                          {/* <td>
                             {item.batchDetails && (
                              <small>
   MFG: {item.batchDetails.mfg_date 
@@ -2144,7 +2163,7 @@ const handleExclPriceChange = (e) => {
 </small>
 
                             )}
-                          </td>
+                          </td> */}
 <td className="salesinvoice-edit">
   <div className="d-flex flex-column gap-1 align-items-center">
     <Button 

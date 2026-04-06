@@ -12,6 +12,7 @@ Font.register({
   family: 'NotoSans',
   src: 'https://fonts.gstatic.com/s/notosans/v36/o-0IIpQlx3QUlC5A4PNb4g.ttf'
 });
+
 // Create styles
 const styles = StyleSheet.create({
   page: {
@@ -19,7 +20,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     padding: 30,
     fontSize: 9,
-fontFamily: 'NotoSans'
+    fontFamily: 'NotoSans'
   },
   
   // Header Section
@@ -109,7 +110,7 @@ fontFamily: 'NotoSans'
     color: '#007bff',
   },
   
-  // Items Table
+  // Items Section
   itemsSection: {
     marginBottom: 20,
   },
@@ -122,7 +123,7 @@ fontFamily: 'NotoSans'
     borderBottom: '1pt solid #007bff',
   },
   
-  // Table styles - Fixed alignment
+  // Table styles
   table: {
     display: 'table',
     width: '100%',
@@ -143,14 +144,15 @@ fontFamily: 'NotoSans'
     borderBottomColor: '#212529',
   },
   
-  // Column widths - Properly aligned
-  colSNo: { width: '8%', padding: 5 },
-  colProduct: { width: '32%', padding: 5 },
-  colHsn: { width: '15%', padding: 5 },
-  colQty: { width: '10%', padding: 5 },
-  colPrice: { width: '15%', padding: 5 },
-  colGST: { width: '10%', padding: 5 },
-  colTotal: { width: '10%', padding: 5 },
+  // Column widths - UPDATED with Original Price column
+  colSNo: { width: '6%', padding: 5 },
+  colProduct: { width: '25%', padding: 5 },
+  colHsn: { width: '10%', padding: 5 },
+  colQty: { width: '8%', padding: 5 },
+  colPrice: { width: '12%', padding: 5 },
+  colOriginalPrice: { width: '12%', padding: 5 },  // ✅ NEW COLUMN
+  colGST: { width: '8%', padding: 5 },
+  colTotal: { width: '12%', padding: 5 },
   
   // Table cell styles
   tableCell: {
@@ -159,7 +161,7 @@ fontFamily: 'NotoSans'
     color: '#2c3e50',
   },
   tableCellHeader: {
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: 'bold',
     color: '#ffffff',
   },
@@ -337,9 +339,8 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
             <Text style={styles.addressText}>
               {getSafeData(supplierInfo, 'business_name', '')}
             </Text>
-            {/* ADDED MOBILE NUMBER HERE */}
             <Text style={styles.addressText}>
-             {getSafeData(supplierInfo, 'mobile_number') || getSafeData(supplierInfo, 'phone_number', 'N/A')}
+              {getSafeData(supplierInfo, 'mobile_number') || getSafeData(supplierInfo, 'phone_number', 'N/A')}
             </Text>
             <Text style={styles.addressText}>
               GSTIN: {getSafeData(supplierInfo, 'gstin', 'N/A')}
@@ -382,13 +383,14 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
           
           {/* Table */}
           <View style={styles.table}>
-            {/* Table Header */}
+            {/* Table Header - UPDATED with Original Price column */}
             <View style={[styles.tableRow, styles.tableHeader]}>
               <View style={styles.colSNo}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>S.No</Text></View>
               <View style={styles.colProduct}><Text style={[styles.tableCellHeader, styles.tableCellLeft]}>Product</Text></View>
               <View style={styles.colHsn}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>HSN Code</Text></View>
               <View style={styles.colQty}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>Units</Text></View>
-              <View style={styles.colPrice}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Price (₹)</Text></View>
+              <View style={styles.colPrice}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Rate (Excl of Tax)</Text></View>
+              <View style={styles.colOriginalPrice}><Text style={[styles.tableCellHeader, styles.tableCellRight]}> Rate (Incl of Tax)</Text></View>
               <View style={styles.colGST}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>GST %</Text></View>
               <View style={styles.colTotal}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Amount (₹)</Text></View>
             </View>
@@ -397,6 +399,7 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
             {items.map((item, index) => {
               const quantity = parseFloat(getSafeData(item, 'quantity', 1));
               const price = parseFloat(getSafeData(item, 'price', 0));
+              const originalPrice = parseFloat(getSafeData(item, 'original_price', price));  // ✅ GET ORIGINAL PRICE
               const gst = parseFloat(getSafeData(item, 'gst', 0));
               const discount = parseFloat(getSafeData(item, 'discount', 0));
               const hsnCode = getSafeData(item, 'hsn_code', '');
@@ -428,6 +431,12 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
                   <View style={styles.colPrice}>
                     <Text style={[styles.tableCell, styles.tableCellRight]}>₹{price.toFixed(2)}</Text>
                   </View>
+                  {/* ✅ ORIGINAL PRICE COLUMN */}
+                  <View style={styles.colOriginalPrice}>
+                    <Text style={[styles.tableCell, styles.tableCellRight]}>
+                      ₹{originalPrice.toFixed(2)}
+                    </Text>
+                  </View>
                   <View style={styles.colGST}>
                     <Text style={[styles.tableCell, styles.tableCellCenter]}>{gst}%</Text>
                   </View>
@@ -442,95 +451,95 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
           </View>
         </View>
         
-   {/* Totals and Notes Section */}
-<View style={styles.totalsSection}>
-  {/* Notes Section */}
-  <View style={styles.notesSection}>
-    <Text style={styles.sectionTitle}>Notes:</Text>
-    <View style={styles.notesBox}>
-      <Text style={styles.addressText}>
-        {getSafeData(currentData, 'note', 'Thank you for your business!')}
-      </Text>
-    </View>
-    
-    {/* Transportation Details */}
-    <View style={{ marginTop: 12 }}>
-      <Text style={styles.sectionTitle}>Transportation Details:</Text>
-      <View style={[styles.notesBox, { marginTop: 5 }]}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-          <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Transport:</Text>
-          <Text style={styles.addressText}>
-            {getSafeData(currentData, 'transportDetails.transport') || '-'}
-          </Text>
+        {/* Totals and Notes Section */}
+        <View style={styles.totalsSection}>
+          {/* Notes Section */}
+          <View style={styles.notesSection}>
+            <Text style={styles.sectionTitle}>Notes:</Text>
+            <View style={styles.notesBox}>
+              <Text style={styles.addressText}>
+                {getSafeData(currentData, 'note', 'Thank you for your business!')}
+              </Text>
+            </View>
+            
+            {/* Transportation Details */}
+            <View style={{ marginTop: 12 }}>
+              <Text style={styles.sectionTitle}>Transportation Details:</Text>
+              <View style={[styles.notesBox, { marginTop: 5 }]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Transport:</Text>
+                  <Text style={styles.addressText}>
+                    {getSafeData(currentData, 'transportDetails.transport') || '-'}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <Text style={[styles.addressText, { fontWeight: 'bold' }]}>GR/RR No.:</Text>
+                  <Text style={styles.addressText}>
+                    {getSafeData(currentData, 'transportDetails.grNumber') || '-'}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Vehicle No.:</Text>
+                  <Text style={styles.addressText}>
+                    {getSafeData(currentData, 'transportDetails.vehicleNo') || '-'}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Station:</Text>
+                  <Text style={styles.addressText}>
+                    {getSafeData(currentData, 'transportDetails.station') || '-'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+          
+          {/* Amount Summary */}
+          <View style={styles.amountSection}>
+            <Text style={styles.amountTitle}>Amount Summary</Text>
+            
+            {/* Taxable Amount */}
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>Amount:</Text>
+              <Text style={styles.amountValue}>₹{getSafeData(currentData, 'taxableAmount', '0.00')}</Text>
+            </View>
+            
+            {/* GST Breakdown */}
+            {isSameState ? (
+              <>
+                <View style={styles.amountRow}>
+                  <Text>CGST:</Text>
+                  <Text>₹{gstBreakdown?.totalCGST || '0.00'}</Text>
+                </View>
+                <View style={styles.amountRow}>
+                  <Text>SGST:</Text>
+                  <Text>₹{gstBreakdown?.totalSGST || '0.00'}</Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.amountRow}>
+                <Text>IGST:</Text>
+                <Text>₹{gstBreakdown?.totalIGST || '0.00'}</Text>
+              </View>
+            )}
+            
+            {/* Total GST */}
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>Total GST:</Text>
+              <Text style={[styles.amountValue, { color: '#28a745' }]}>
+                ₹{getSafeData(currentData, 'totalGST', '0.00')}
+              </Text>
+            </View>
+            
+            {/* Grand Total */}
+            <View style={styles.grandTotal}>
+              <Text style={styles.amountLabel}>Grand Total:</Text>
+              <Text style={[styles.amountValue, { color: '#28a745', fontSize: 10 }]}>
+                ₹{getSafeData(currentData, 'grandTotal', '0.00')}
+              </Text>
+            </View>
+          </View>
         </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-          <Text style={[styles.addressText, { fontWeight: 'bold' }]}>GR/RR No.:</Text>
-          <Text style={styles.addressText}>
-            {getSafeData(currentData, 'transportDetails.grNumber') || '-'}
-          </Text>
-        </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-          <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Vehicle No.:</Text>
-          <Text style={styles.addressText}>
-            {getSafeData(currentData, 'transportDetails.vehicleNo') || '-'}
-          </Text>
-        </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-          <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Station:</Text>
-          <Text style={styles.addressText}>
-            {getSafeData(currentData, 'transportDetails.station') || '-'}
-          </Text>
-        </View>
-      </View>
-    </View>
-  </View>
-  
-  {/* Amount Summary */}
-  <View style={styles.amountSection}>
-    <Text style={styles.amountTitle}>Amount Summary</Text>
-    
-    {/* Taxable Amount */}
-    <View style={styles.amountRow}>
-      <Text style={styles.amountLabel}>Amount:</Text>
-      <Text style={styles.amountValue}>₹{getSafeData(currentData, 'taxableAmount', '0.00')}</Text>
-    </View>
-    
-    {/* GST Breakdown */}
-    {isSameState ? (
-      <>
-        <View style={styles.amountRow}>
-          <Text>CGST:</Text>
-          <Text>₹{gstBreakdown?.totalCGST || '0.00'}</Text>
-        </View>
-        <View style={styles.amountRow}>
-          <Text>SGST:</Text>
-          <Text>₹{gstBreakdown?.totalSGST || '0.00'}</Text>
-        </View>
-      </>
-    ) : (
-      <View style={styles.amountRow}>
-        <Text>IGST:</Text>
-        <Text>₹{gstBreakdown?.totalIGST || '0.00'}</Text>
-      </View>
-    )}
-    
-    {/* Total GST */}
-    <View style={styles.amountRow}>
-      <Text style={styles.amountLabel}>Total GST:</Text>
-      <Text style={[styles.amountValue, { color: '#28a745' }]}>
-        ₹{getSafeData(currentData, 'totalGST', '0.00')}
-      </Text>
-    </View>
-    
-    {/* Grand Total */}
-    <View style={styles.grandTotal}>
-      <Text style={styles.amountLabel}>Grand Total:</Text>
-      <Text style={[styles.amountValue, { color: '#28a745', fontSize: 10 }]}>
-        ₹{getSafeData(currentData, 'grandTotal', '0.00')}
-      </Text>
-    </View>
-  </View>
-</View>
         
         {/* Footer */}
         <View style={styles.footer}>

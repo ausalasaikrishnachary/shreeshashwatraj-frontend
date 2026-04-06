@@ -1159,6 +1159,22 @@ const RetailerForm = ({ user, mode = 'add' }) => {
               </div>
             )}
 
+<div className="row">
+  <div className="col-md-6">
+    {renderField({
+      type: 'text',
+      name: 'password',
+      label: 'Password',
+      readOnly: true,
+      disabled: false, 
+      placeholder: 'Auto-generated from name'
+    })}
+  </div>
+  <div className="col-md-6">
+    
+  </div>
+</div>
+
             {/* ✅ NEW CHECKBOX */}
             <div className="mb-3">
               <div className="form-check">

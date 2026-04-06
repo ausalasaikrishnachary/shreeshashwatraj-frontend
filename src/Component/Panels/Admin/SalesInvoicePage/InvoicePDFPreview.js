@@ -98,53 +98,54 @@ const InvoicePDFPreview = () => {
     }
   }, [invoiceData]);
 
-  const fetchPaymentData = async (invoiceNumber) => {
-    try {
+const fetchPaymentData = async (invoiceNumber) => {
+  try {
+    setPaymentLoading(true);
+    setPaymentError(null);
 
-      setPaymentLoading(true);
-      setPaymentError(null);
+    console.log('Fetching payment data for invoice:', invoiceNumber);
+    
+    // ✅ Encode the invoice number to handle special characters like '/'
+    const encodedInvoiceNumber = encodeURIComponent(invoiceNumber);
+    const response = await fetch(`${baseurl}/invoices/${encodedInvoiceNumber}`);
 
-      console.log('Fetching payment data for invoice:', invoiceNumber);
-      const response = await fetch(`${baseurl}/invoices/${invoiceNumber}`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log("Payment API result:", result);
-
-      if (result.success && result.data) {
-        const transformedData = transformPaymentData(result.data);
-        setPaymentData(transformedData);
-      } else {
-        throw new Error(result.message || 'No payment data received');
-      }
-    } catch (error) {
-      console.error('Error fetching payment data:', error);
-      setPaymentError(error.message);
-      if (invoiceData) {
-        const fallbackPaymentData = {
-          invoice: {
-            invoiceNumber: invoiceData.invoiceNumber,
-            invoiceDate: invoiceData.invoiceDate,
-            totalAmount: parseFloat(invoiceData.grandTotal) || 0,
-            overdueDays: 0
-          },
-          receipts: [],
-          summary: {
-            totalPaid: 0,
-            balanceDue: parseFloat(invoiceData.grandTotal) || 0,
-            status: 'Pending'
-          }
-        };
-        setPaymentData(fallbackPaymentData);
-      }
-    } finally {
-      setPaymentLoading(false);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  };
 
+    const result = await response.json();
+    console.log("Payment API result:", result);
+
+    if (result.success && result.data) {
+      const transformedData = transformPaymentData(result.data);
+      setPaymentData(transformedData);
+    } else {
+      throw new Error(result.message || 'No payment data received');
+    }
+  } catch (error) {
+    console.error('Error fetching payment data:', error);
+    setPaymentError(error.message);
+    if (invoiceData) {
+      const fallbackPaymentData = {
+        invoice: {
+          invoiceNumber: invoiceData.invoiceNumber,
+          invoiceDate: invoiceData.invoiceDate,
+          totalAmount: parseFloat(invoiceData.grandTotal) || 0,
+          overdueDays: 0
+        },
+        receipts: [],
+        summary: {
+          totalPaid: 0,
+          balanceDue: parseFloat(invoiceData.grandTotal) || 0,
+          status: 'Pending'
+        }
+      };
+      setPaymentData(fallbackPaymentData);
+    }
+  } finally {
+    setPaymentLoading(false);
+  }
+};
   const transformPaymentData = (apiData) => {
     const salesEntry = apiData.sales || apiData.stocktransfer || {};
     const receiptEntries = apiData.receipts || [];
@@ -369,7 +370,7 @@ const InvoicePDFPreview = () => {
       const discount = parseFloat(batch.discount) || 0;
       const gst = parseFloat(batch.gst) || 0;
       const cess = parseFloat(batch.cess) || 0;
-
+  const original_price = parseFloat(batch.original_price) || 0;
       const subtotal = quantity * price;
       const discountAmount = subtotal * (discount / 100);
       const amountAfterDiscount = subtotal - discountAmount;
@@ -394,11 +395,13 @@ const InvoicePDFPreview = () => {
         id: index + 1,
         product: batch.product || 'Product',
         description: batch.description || `Batch: ${batch.batch}`,
-        hsn_code: batch.hsn_code || apiData.hsn_code || '',
+         hsn_code: batch.hsn_code || '',
         quantity: quantity,
         price: price,
         discount: discount,
         gst: gst,
+        
+ original_price: original_price, 
         cgst: cgst,
         sgst: sgst,
         igst: igst,
@@ -420,7 +423,6 @@ const InvoicePDFPreview = () => {
     vehicleNo: apiData.vehicle_number || apiData.vehicleNo ||  '',
     station: apiData.station_name || apiData.station || ''
   };
-    // ✅ Get staff information from API response
     const assignedStaff = apiData.assigned_staff || apiData.AssignedStaff || apiData.staff_name || 'N/A';
     const staffId = apiData.staffid || apiData.staff_id || null;
 
@@ -918,6 +920,7 @@ const InvoicePDFPreview = () => {
           batch_id: item.batch_id,
           quantity: parseFloat(item.quantity) || 0,
           price: parseFloat(item.price) || 0,
+             original_price: parseFloat(item.original_price) || 0, // ← ADD THIS
           discount: parseFloat(item.discount) || 0,
           gst: parseFloat(item.gst) || 0,
           cgst: parseFloat(item.cgst) || 0,
@@ -1012,34 +1015,34 @@ const InvoicePDFPreview = () => {
     }));
   };
 
-  const handleItemChange = (index, field, value) => {
-    const newItems = [...editedData.items];
-    newItems[index] = {
-      ...newItems[index],
-      [field]: value
-    };
-
-    const item = newItems[index];
-    const quantity = parseFloat(item.quantity) || 0;
-    const price = parseFloat(item.price) || 0;
-    const discount = parseFloat(item.discount) || 0;
-    const gst = parseFloat(item.gst) || 0;
-
-    const subtotal = quantity * price;
-    const discountAmount = subtotal * (discount / 100);
-    const amountAfterDiscount = subtotal - discountAmount;
-    const gstAmount = amountAfterDiscount * (gst / 100);
-    const total = amountAfterDiscount + gstAmount;
-
-    newItems[index].total = total.toFixed(2);
-
-    setEditedData(prev => ({
-      ...prev,
-      items: newItems
-    }));
-
-    recalculateTotals(newItems);
+const handleItemChange = (index, field, value) => {
+  const newItems = [...editedData.items];
+  newItems[index] = {
+    ...newItems[index],
+    [field]: value
   };
+
+  const item = newItems[index];
+  const quantity = parseFloat(item.quantity) || 0;
+  const price = parseFloat(item.price) || 0;
+  const discount = parseFloat(item.discount) || 0;
+  const gst = parseFloat(item.gst) || 0;
+
+  const subtotal = quantity * price;
+  const discountAmount = subtotal * (discount / 100);
+  const amountAfterDiscount = subtotal - discountAmount;
+  const gstAmount = amountAfterDiscount * (gst / 100);
+  const total = amountAfterDiscount + gstAmount;
+
+  newItems[index].total = total.toFixed(2);
+
+  setEditedData(prev => ({
+    ...prev,
+    items: newItems
+  }));
+
+  recalculateTotals(newItems);
+};
 
   const addNewItem = () => {
     const newItem = {
@@ -1050,6 +1053,7 @@ const InvoicePDFPreview = () => {
       hsn_code: '',
       quantity: 1,
       price: 0,
+      original_price: 0, // ← ADD THIS
       discount: 0,
       gst: 0,
       cgst: 0,
@@ -1999,118 +2003,71 @@ const InvoicePDFPreview = () => {
                     </Button>
                   )}
                 </div>
-                {isEditMode ? (
-                  <Table bordered responsive size="sm" className="edit-control">
-                    <thead className="table-dark">
-                      <tr>
-                        <th width="5%">#</th>
-                        <th width="20%">Product</th>
-                        {/* <th width="20%">Description</th> */}
-                        <th width="10%">HSN Code</th>
-                        <th width="10%">Units</th>
-                        <th width="15%">Price</th>
-                        <th width="10%">GST %</th>
-                        <th width="15%"> Amount (₹)</th>
-                        <th width="5%">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentData.items.map((item, index) => (
-                        <tr key={index}>
-                          <td className="text-center">{index + 1}</td>
-                          <td>
-                            <Form.Control
-                              size="sm"
-                              value={item.product}
-                              onChange={(e) => handleItemChange(index, 'product', e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            {/* <Form.Control 
-                                size="sm"
-                                value={item.description}
-                                onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                              /> */}
-                          </td>
-                          <td>
-                            <Form.Control
-                              size="sm"
-                              value={item.hsn_code || ''}
-                              onChange={(e) => handleItemChange(index, 'hsn_code', e.target.value)}
-                              placeholder="HSN Code"
-                            />
-                          </td>
-                          <td>
-                            <Form.Control
-                              type="number"
-                              size="sm"
-                              value={item.quantity}
-                              onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <Form.Control
-                              type="number"
-                              size="sm"
-                              value={item.price}
-                              onChange={(e) => handleItemChange(index, 'price', e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <Form.Control
-                              type="number"
-                              size="sm"
-                              value={item.gst}
-                              onChange={(e) => handleItemChange(index, 'gst', e.target.value)}
-                            />
-                          </td>
-                          <td className="text-end">₹{parseFloat(item.total).toFixed(2)}</td>
-                          <td className="text-center">
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              onClick={() => removeItem(index)}
-                            >
-                              <FaTrash />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                ) : (
-                  <table className="items-table table table-bordered table-sm">
-                    <thead className="table-dark">
-                      <tr>
-                        <th width="5%">#</th>
-                        <th width="25%">Product</th>
-                        {/* <th width="25%">Description</th> */}
-                        <th width="10%">HSN Code</th>
-                        <th width="10%">Units</th>
-                        <th width="15%">Price</th>
-                        <th width="10%">GST %</th>
-                        <th width="8%">Discount %</th>
-                        <th width="10%"> Taxable Amount (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentData.items.map((item, index) => (
-                        <tr key={index}>
-                          <td className="text-center">{index + 1}</td>
-                          <td className="text-center">{item.product}</td>
-                          {/* <td>{item.description}</td> */}
-                          <td>{item.hsn_code || '-'}</td>
-                          <td className="text-center">{item.quantity}</td>
-                          <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
-                          <td className="text-center">{item.gst}%</td>
-                          <td className="text-center">
-                            {parseFloat(item.discount || 0).toFixed(1)}%
-                          </td>
-                          <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+           {!isEditMode ? (
+  <table className="items-table table table-bordered table-sm">
+    <thead className="table-dark">
+      <tr>
+        <th width="5%">#</th>
+        <th width="20%">Product</th>
+        <th width="10%">HSN Code</th>
+        <th width="8%">Units</th>
+        <th width="15%">Rate (Excl of Tax)</th>
+        <th width="15%">Rate (Incl of Tax)</th>
+        <th width="8%">GST %</th>
+        <th width="8%">Disc %</th>
+        <th width="12%">Amount (₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {currentData.items.map((item, index) => (
+        <tr key={index}>
+          <td className="text-center">{index + 1}</td>
+          <td>{item.product}</td>
+          <td className="text-center">{item.hsn_code || '-'}</td>
+          <td className="text-center">{item.quantity}</td>
+          <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
+          <td className="text-end">₹{parseFloat(item.original_price).toFixed(2)}</td>
+          <td className="text-center">{item.gst}%</td>
+          <td className="text-center">{parseFloat(item.discount || 0).toFixed(1)}%</td>
+          <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+) : (
+
+                 <table className="items-table table table-bordered table-sm">
+  <thead className="table-dark">
+    <tr>
+      <th width="5%">#</th>
+      <th width="25%">Product</th>
+      <th width="10%">HSN Code</th>
+      <th width="10%">Units</th>
+      <th width="15%">Price</th>
+      <th width="12%">Original Price</th>
+      <th width="10%">GST %</th>
+      <th width="8%">Discount %</th>
+      <th width="10%">Taxable Amount (₹)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {currentData.items.map((item, index) => (
+      <tr key={index}>
+        <td className="text-center">{index + 1}</td>
+        <td className="text-center">{item.product}</td>
+        <td className="text-center">{item.hsn_code || '-'}</td>
+        <td className="text-center">{item.quantity}</td>
+        <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
+        <td className="text-end">₹{parseFloat(item.original_price).toFixed(2)}</td>
+        <td className="text-center">{item.gst}%</td>
+        <td className="text-center">
+          {parseFloat(item.discount || 0).toFixed(1)}%
+        </td>
+        <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
                 )}
               </div>
 
@@ -2134,42 +2091,49 @@ const InvoicePDFPreview = () => {
                         </p>
                       )}
 
-<Row className="mb-2">
-  <Col md={6}>
-    <div className="transport-field">
-      <strong>Transport:</strong>
-      <p className="mb-0 text-muted">
-        {currentData?.transportDetails?.transport || '-'}
-      </p>
-    </div>
-  </Col>
-  <Col md={6}>
-    <div className="transport-field">
-      <strong>GR/RR No.:</strong>
-      <p className="mb-0 text-muted">
-        {currentData?.transportDetails?.grNumber || '-'}
-      </p>
-    </div>
-  </Col>
-</Row>
-<Row>
-  <Col md={6}>
-    <div className="transport-field">
-      <strong>Vehicle No.:</strong>
-      <p className="mb-0 text-muted">
-        {currentData?.transportDetails?.vehicleNo || '-'}
-      </p>
-    </div>
-  </Col>
-  <Col md={6}>
-    <div className="transport-field">
-      <strong>Station:</strong>
-      <p className="mb-0 text-muted">
-        {currentData?.transportDetails?.station || '-'}
-      </p>
-    </div>
-  </Col>
-</Row>
+    {/* ✅ ADD TRANSPORT DETAILS HERE */}
+      <div className="transport-details-section mt-3">
+        <h6 className="text-primary">Transportation Details:</h6>
+        <div className="bg-light p-3 rounded">
+          <Row className="mb-2">
+            <Col md={6}>
+              <div className="transport-field">
+                <strong>Transport:</strong>
+                <p className="mb-0 text-muted">
+                  {currentData.transportDetails?.transport || '-'}
+                </p>
+              </div>
+            </Col>
+            <Col md={6}>
+              <div className="transport-field">
+                <strong>GR/RR No.:</strong>
+                <p className="mb-0 text-muted">
+                  {currentData.transportDetails?.grNumber || '-'}
+                </p>
+              </div>
+            </Col>
+          </Row>
+          <Row>
+            <Col md={6}>
+              <div className="transport-field">
+                <strong>Vehicle No.:</strong>
+                <p className="mb-0 text-muted">
+                  {currentData.transportDetails?.vehicleNo || '-'}
+                </p>
+              </div>
+            </Col>
+            <Col md={6}>
+              <div className="transport-field">
+                <strong>Station:</strong>
+                <p className="mb-0 text-muted">
+                  {currentData.transportDetails?.station || '-'}
+                </p>
+              </div>
+            </Col>
+          </Row>
+        </div>
+      </div>
+
 
                     </div>
                   </Col>

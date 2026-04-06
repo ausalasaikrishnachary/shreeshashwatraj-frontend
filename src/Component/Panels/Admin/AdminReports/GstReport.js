@@ -61,7 +61,6 @@ const GstReport = () => {
         const transactionType = getTransactionType(voucher);
         const specificTransactionType = getSpecificTransactionType(voucher);
 
-        // ✅ Fetch hsn_code from voucher or its items
         const hsnCode =
           voucher.hsn_code ||
          
@@ -73,7 +72,7 @@ const GstReport = () => {
           date: formattedDate,
           party: voucher.PartyName || voucher.business_name || 'N/A',
           gstNo: voucher.gstin || 'N/A',
-          hsnCode: hsnCode, // ✅ added
+          hsnCode: hsnCode, 
           billAmt: totalAmount,
           taxableAmt: subtotal,
           sgstAmt: sgstAmount,
@@ -137,7 +136,6 @@ const GstReport = () => {
   };
 
   const filteredData = gstData.filter((item) => {
-    // ✅ hsn_code added to search
     const matchesSearch = !searchTerm.trim() ||
       item.billNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.party?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -201,7 +199,7 @@ const GstReport = () => {
         [`GST REGISTER REPORT FROM ${displayFromDate} To ${displayToDate}`],
         [],
         [
-          "Bill No.", "Date", "Party", "GST No.", "HSN Code", // ✅ added HSN Code
+          "Bill No.", "Date", "Party", "GST No.", "HSN Code", 
           "Bill Amt", "Taxable Amt", "SGST Amt", "CGST Amt", "IGST Amt", "Transaction Type"
         ],
         ...filteredData.map((item) => [
@@ -228,7 +226,7 @@ const GstReport = () => {
       ];
 
       ws["!merges"] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } }, // ✅ extended merge to col 10
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } }, 
         { s: { r: 1, c: 0 }, e: { r: 1, c: 10 } },
       ];
 
@@ -273,7 +271,7 @@ const GstReport = () => {
     { key: "date", title: "Date", style: { textAlign: "center", width: "100px" } },
     { key: "party", title: "Party", style: { textAlign: "left" } },
     { key: "gstNo", title: "GST No.", style: { textAlign: "left", width: "150px" } },
-    { key: "hsnCode", title: "HSN Code", style: { textAlign: "left", width: "110px" } }, // ✅ new
+    { key: "hsnCode", title: "HSN Code", style: { textAlign: "left", width: "110px" } }, 
     { key: "billAmt", title: "Bill Amt", style: { textAlign: "right", width: "120px" } },
     { key: "taxableAmt", title: "Taxable Amt", style: { textAlign: "right", width: "120px" } },
     { key: "sgstAmt", title: "SGST Amt", style: { textAlign: "right", width: "100px" } },

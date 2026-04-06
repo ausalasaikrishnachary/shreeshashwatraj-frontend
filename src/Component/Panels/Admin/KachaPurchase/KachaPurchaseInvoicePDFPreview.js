@@ -861,7 +861,9 @@ const PaymentStatus = () => {
           product: item.product,
           product_id: item.product_id,
           description: item.description,
+            hsn_code: item.hsn_code || '',
           batch: item.batch,
+          
           batch_id: item.batch_id,
           quantity: parseFloat(item.quantity) || 0,
           price: parseFloat(item.price) || 0,
