@@ -11,6 +11,8 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import InvoicesPDF from '../SalesInvoicePage/TablePdf/InvoicesPDF'; // Adjust path as needed
 import { saveAs } from 'file-saver';
+import QRCodeGenerator_normal from '../SalesInvoicePage/QRCodeGenerator_normal'; 
+
 
   const InvoicesTable = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -23,6 +25,10 @@ import { saveAs } from 'file-saver';
 const [isDownloading, setIsDownloading] = useState(false);
 const [isRangeDownloading, setIsRangeDownloading] = useState(false);
 const pdfRef = useRef();
+  const [invoiceData, setInvoiceData] = useState(null);
+
+const [qrDataUrl, setQrDataUrl] = useState(null);
+const [qrAmount, setQrAmount] = useState(null);
     const [month, setMonth] = useState('July');
     const [year, setYear] = useState('2026');
     const [startDate, setStartDate] = useState('2025-06-08');
@@ -243,11 +249,24 @@ const generatePDF = async (filteredData, type = 'month') => {
   }
 };
 
-
-// Add this function after your existing functions
+const handleQrDataGenerated = (qrUrl, amount) => {
+  console.log('QR Data generated:', qrUrl, amount);
+  
+  if (qrUrl) {
+    setQrDataUrl(qrUrl);
+    setQrAmount(amount);
+  }
+};
 const handlePrintInvoice = async (invoice) => {
+  // Prevent multiple print requests
+  if (downloading[invoice.id]) {
+    console.log('Print already in progress');
+    return;
+  }
+
   try {
-    // Show loading state if needed
+    setDownloading(prev => ({ ...prev, [invoice.id]: true }));
+    
     const voucherId = invoice.originalData?.VoucherID || invoice.id;
     
     if (!voucherId) {
@@ -264,19 +283,136 @@ const handlePrintInvoice = async (invoice) => {
     const result = await response.json();
     const apiData = result.data || result;
     
-    // Transform data similar to how InvoicePDFPreview does it
+    // Transform data
     const transformedData = transformApiDataToInvoiceFormat(apiData);
     
-    // Generate PDF using the same method as InvoicePDFPreview
-    await generateAndPrintPDF(transformedData, invoice.number);
+    // Use QR data from state or generate new one
+    let finalQrDataUrl = qrDataUrl;
+    let finalQrAmount = qrAmount || parseFloat(transformedData.grandTotal);
+    
+    // If no QR data exists, you can generate it here
+    if (!finalQrDataUrl) {
+      // You can generate QR dynamically or wait for the component to generate it
+      console.log('Waiting for QR generation...');
+    }
+    
+    // Generate PDF with QR
+    await generateAndPrintPDFWithQR(transformedData, invoice.number, finalQrDataUrl, finalQrAmount);
     
   } catch (error) {
     console.error('Error printing invoice:', error);
     alert('Failed to generate PDF: ' + error.message);
+  } finally {
+    setDownloading(prev => ({ ...prev, [invoice.id]: false }));
   }
 };
+const generateAndPrintPDFWithQR = async (invoiceData, invoiceNumber, qrDataUrl, qrAmount) => {
+  try {
+    const reactPdf = await import('@react-pdf/renderer');
+    const pdf = reactPdf.pdf;
+    
+    const SalesPdfDocument = (await import('../SalesInvoicePage/SalesPdfDocument')).default;
+    
+    const calculateGSTBreakdown = () => {
+      if (!invoiceData || !invoiceData.items) return { totalCGST: 0, totalSGST: 0, totalIGST: 0 };
 
-// Add the transformation function (copy from your InvoicePDFPreview component)
+      const totalCGST = invoiceData.items.reduce((sum, item) => {
+        const quantity = parseFloat(item.quantity) || 0;
+        const price = parseFloat(item.price) || 0;
+        const discount = parseFloat(item.discount) || 0;
+        const cgstRate = parseFloat(item.cgst) || 0;
+
+        const subtotal = quantity * price;
+        const discountAmount = subtotal * (discount / 100);
+        const amountAfterDiscount = subtotal - discountAmount;
+        const cgstAmount = amountAfterDiscount * (cgstRate / 100);
+
+        return sum + cgstAmount;
+      }, 0);
+
+      const totalSGST = invoiceData.items.reduce((sum, item) => {
+        const quantity = parseFloat(item.quantity) || 0;
+        const price = parseFloat(item.price) || 0;
+        const discount = parseFloat(item.discount) || 0;
+        const sgstRate = parseFloat(item.sgst) || 0;
+
+        const subtotal = quantity * price;
+        const discountAmount = subtotal * (discount / 100);
+        const amountAfterDiscount = subtotal - discountAmount;
+        const sgstAmount = amountAfterDiscount * (sgstRate / 100);
+
+        return sum + sgstAmount;
+      }, 0);
+
+      const totalIGST = invoiceData.items.reduce((sum, item) => {
+        const quantity = parseFloat(item.quantity) || 0;
+        const price = parseFloat(item.price) || 0;
+        const discount = parseFloat(item.discount) || 0;
+        const igstRate = parseFloat(item.igst) || 0;
+
+        const subtotal = quantity * price;
+        const discountAmount = subtotal * (discount / 100);
+        const amountAfterDiscount = subtotal - discountAmount;
+        const igstAmount = amountAfterDiscount * (igstRate / 100);
+
+        return sum + igstAmount;
+      }, 0);
+
+      return {
+        totalCGST: totalCGST.toFixed(2),
+        totalSGST: totalSGST.toFixed(2),
+        totalIGST: totalIGST.toFixed(2)
+      };
+    };
+
+    const gstBreakdown = calculateGSTBreakdown();
+    const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+
+    // Close existing print window if open
+    if (window.currentPrintWindow && !window.currentPrintWindow.closed) {
+      window.currentPrintWindow.close();
+    }
+
+    // Create PDF document with QR data
+    const pdfDoc = (
+      <SalesPdfDocument
+        invoiceData={invoiceData}
+        invoiceNumber={invoiceData.invoiceNumber}
+        gstBreakdown={gstBreakdown}
+        isSameState={isSameState}
+        qrDataUrl={qrDataUrl}  
+        qrAmount={qrAmount || parseFloat(invoiceData.grandTotal)} 
+      />
+    );
+
+    const blob = await pdf(pdfDoc).toBlob();
+    const pdfUrl = URL.createObjectURL(blob);
+
+    const printWindow = window.open(pdfUrl, '_blank');
+    window.currentPrintWindow = printWindow;
+
+    if (printWindow) {
+   
+      
+    } else {
+      // Fallback if popup blocked
+      alert('Popup blocked. Please allow popups or use download option.');
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Invoice_${invoiceData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+      URL.revokeObjectURL(pdfUrl);
+    }
+
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    throw new Error('Failed to generate PDF: ' + error.message);
+  }
+};
 const transformApiDataToInvoiceFormat = (apiData) => {
   console.log('Transforming API data for print:', apiData);
 
@@ -432,17 +568,13 @@ const transformApiDataToInvoiceFormat = (apiData) => {
   };
 };
 
-// Add the PDF generation and print function
 const generateAndPrintPDF = async (invoiceData, invoiceNumber) => {
   try {
-    // Dynamically import PDF libraries
     const reactPdf = await import('@react-pdf/renderer');
     const pdf = reactPdf.pdf;
     
-    // Import the SalesPdfDocument component (you may need to adjust the path)
     const SalesPdfDocument = (await import('../SalesInvoicePage/SalesPdfDocument')).default;
     
-    // Calculate GST breakdown
     const calculateGSTBreakdown = () => {
       if (!invoiceData || !invoiceData.items) return { totalCGST: 0, totalSGST: 0, totalIGST: 0 };
 
@@ -582,7 +714,6 @@ const generateAndPrintPDF = async (invoiceData, invoiceNumber) => {
         
         console.log('Fetching details for VoucherID:', voucherId);
         
-        // Fetch complete invoice data including batch details
         const response = await fetch(`${baseurl}/transactions/${voucherId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch invoice details');
@@ -591,7 +722,6 @@ const generateAndPrintPDF = async (invoiceData, invoiceNumber) => {
         const invoiceDetails = await response.json();
         console.log('Complete invoice details:', invoiceDetails);
 
-        // Parse batch details if they exist
         let items = [];
         let batchDetails = [];
         
@@ -671,25 +801,20 @@ const generateAndPrintPDF = async (invoiceData, invoiceNumber) => {
           otherDetails: "Authorized Signatory",
           taxType: totalIGST > 0 ? "IGST" : "CGST/SGST",
           batchDetails: batchDetails,
-          // GST Breakdown
           totalCGST: totalCGST,
           totalSGST: totalSGST,
           totalIGST: totalIGST,
-          // Store the VoucherID for the preview page
           voucherId: voucherId
         };
 
         console.log('Preview data prepared:', previewData);
 
-        // Save to localStorage for the preview component
         localStorage.setItem('previewInvoice', JSON.stringify(previewData));
         
-        // Navigate to preview page WITH the ID
         navigate(`/sales/invoice-preview/${voucherId}`);
         
       } catch (error) {
         console.error('Error fetching invoice details:', error);
-        // Fallback: Create basic preview data with available information
         const fallbackPreviewData = {
           invoiceNumber: invoice.number,
           invoiceDate: invoice.created,
@@ -1070,7 +1195,18 @@ const columns = [
         </button>
       </div>
     </div>
+  <div className="quotation-container p-4">
+    <h5 className="mb-3 fw-bold">View Invoice Details</h5>
 
+    {invoiceData && (
+      <div className="mb-4">
+        <QRCodeGenerator_normal 
+          invoiceData={invoiceData}
+          onQrDataGenerated={handleQrDataGenerated}
+        />
+      </div>
+    )}
+    </div>
     {/* Table */}
     <ReusableTable
       title="Sales Invoices"

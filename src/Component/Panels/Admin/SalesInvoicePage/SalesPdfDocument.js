@@ -181,15 +181,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   
-  // Totals Section
-  totalsSection: {
+  // Row layout
+  row: {
     flexDirection: 'row',
-    marginTop: 8,
+    marginBottom: 10,
     gap: 10,
   },
-  notesSection: {
-    flex: 2,
+  col: {
+    flex: 1,
   },
+  
+  // Notes Section
   notesBox: {
     backgroundColor: '#f8f9fa',
     padding: 6,
@@ -197,8 +199,9 @@ const styles = StyleSheet.create({
     border: '0.5pt solid #dee2e6',
     minHeight: 60,
   },
+  
+  // Amount Section
   amountSection: {
-    flex: 1.2,
     backgroundColor: '#f8f9fa',
     padding: 8,
     borderRadius: 3,
@@ -236,6 +239,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   
+  // Transport Section
+  transportBox: {
+    backgroundColor: '#f8f9fa',
+    padding: 6,
+    borderRadius: 3,
+    border: '0.5pt solid #dee2e6',
+  },
+  transportRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  
   // QR Code Section
   qrSection: {
     backgroundColor: '#f0f8ff',
@@ -243,8 +259,6 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     border: '0.5pt solid #007bff',
     alignItems: 'center',
-    width: 'auto',
-    minWidth: 80,
   },
   qrTitle: {
     fontSize: 7,
@@ -294,11 +308,6 @@ const styles = StyleSheet.create({
     fontSize: 6.5,
     lineHeight: 1.2,
     marginBottom: 1.5,
-  },
-  qrWrapper: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   signature: {
     flex: 0.8,
@@ -426,7 +435,6 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
         <View style={styles.itemsSection}>
           <Text style={styles.itemsTitle}>Items Details</Text>
           
-          {/* Table */}
           <View style={styles.table}>
             {/* Table Header */}
             <View style={[styles.tableRow, styles.tableHeader]}>
@@ -495,87 +503,112 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
           </View>
         </View>
         
-        {/* Totals and Notes Section */}
-        <View style={styles.totalsSection}>
-          {/* Notes Section */}
-          <View style={styles.notesSection}>
+        {/* ROW 1: Notes + Amount Summary */}
+        <View style={styles.row}>
+          {/* Notes Column */}
+          <View style={styles.col}>
             <Text style={styles.sectionTitle}>Notes:</Text>
             <View style={styles.notesBox}>
               <Text style={styles.addressText}>
                 {getSafeData(currentData, 'note', 'Thank you for your business!')}
               </Text>
             </View>
-            
-            {/* Transportation Details */}
-            <View style={{ marginTop: 8 }}>
-              <Text style={styles.sectionTitle}>Transport Details:</Text>
-              <View style={[styles.notesBox, { marginTop: 3, minHeight: 40 }]}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Transport:</Text>
-                  <Text style={styles.addressText}>
-                    {getSafeData(currentData, 'transportDetails.transport') || '-'}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <Text style={[styles.addressText, { fontWeight: 'bold' }]}>GR/RR No.:</Text>
-                  <Text style={styles.addressText}>
-                    {getSafeData(currentData, 'transportDetails.grNumber') || '-'}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Vehicle No.:</Text>
-                  <Text style={styles.addressText}>
-                    {getSafeData(currentData, 'transportDetails.vehicleNo') || '-'}
-                  </Text>
-                </View>
-              </View>
-            </View>
           </View>
           
-          {/* Amount Summary */}
-          <View style={styles.amountSection}>
-            <Text style={styles.amountTitle}>Amount Summary</Text>
-            
-            <View style={styles.amountRow}>
-              <Text style={styles.amountLabel}>Amount:</Text>
-              <Text style={styles.amountValue}>₹{getSafeData(currentData, 'taxableAmount', '0.00')}</Text>
-            </View>
-            
-            {isSameState ? (
-              <>
-                <View style={styles.amountRow}>
-                  <Text style={styles.addressText}>CGST:</Text>
-                  <Text style={styles.addressText}>₹{gstBreakdown?.totalCGST || '0.00'}</Text>
-                </View>
-                <View style={styles.amountRow}>
-                  <Text style={styles.addressText}>SGST:</Text>
-                  <Text style={styles.addressText}>₹{gstBreakdown?.totalSGST || '0.00'}</Text>
-                </View>
-              </>
-            ) : (
+          {/* Amount Summary Column */}
+          <View style={styles.col}>
+            <View style={styles.amountSection}>
+              <Text style={styles.amountTitle}>Amount Summary</Text>
+              
               <View style={styles.amountRow}>
-                <Text style={styles.addressText}>IGST:</Text>
-                <Text style={styles.addressText}>₹{gstBreakdown?.totalIGST || '0.00'}</Text>
+                <Text style={styles.amountLabel}>Amount:</Text>
+                <Text style={styles.amountValue}>₹{getSafeData(currentData, 'taxableAmount', '0.00')}</Text>
               </View>
-            )}
-            
-            <View style={styles.amountRow}>
-              <Text style={styles.amountLabel}>Total GST:</Text>
-              <Text style={[styles.amountValue, { color: '#28a745' }]}>
-                ₹{getSafeData(currentData, 'totalGST', '0.00')}
-              </Text>
-            </View>
-            
-            <View style={styles.grandTotal}>
-              <Text style={styles.amountLabel}>Grand Total:</Text>
-              <Text style={[styles.amountValue, { color: '#28a745', fontSize: 9 }]}>
-                ₹{getSafeData(currentData, 'grandTotal', '0.00')}
-              </Text>
+              
+              {isSameState ? (
+                <>
+                  <View style={styles.amountRow}>
+                    <Text style={styles.addressText}>CGST:</Text>
+                    <Text style={styles.addressText}>₹{gstBreakdown?.totalCGST || '0.00'}</Text>
+                  </View>
+                  <View style={styles.amountRow}>
+                    <Text style={styles.addressText}>SGST:</Text>
+                    <Text style={styles.addressText}>₹{gstBreakdown?.totalSGST || '0.00'}</Text>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.amountRow}>
+                  <Text style={styles.addressText}>IGST:</Text>
+                  <Text style={styles.addressText}>₹{gstBreakdown?.totalIGST || '0.00'}</Text>
+                </View>
+              )}
+              
+              <View style={styles.amountRow}>
+                <Text style={styles.amountLabel}>Total GST:</Text>
+                <Text style={[styles.amountValue, { color: '#28a745' }]}>
+                  ₹{getSafeData(currentData, 'totalGST', '0.00')}
+                </Text>
+              </View>
+              
+              <View style={styles.grandTotal}>
+                <Text style={styles.amountLabel}>Grand Total:</Text>
+                <Text style={[styles.amountValue, { color: '#28a745', fontSize: 9 }]}>
+                  ₹{getSafeData(currentData, 'grandTotal', '0.00')}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
         
-        {/* Footer with QR Code */}
+        {/* ROW 2: Transport Details + QR Code Scanner */}
+        <View style={styles.row}>
+          {/* Transport Details Column */}
+          <View style={styles.col}>
+            <Text style={styles.sectionTitle}>Transport Details:</Text>
+            <View style={styles.transportBox}>
+              <View style={styles.transportRow}>
+                <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Transport:</Text>
+                <Text style={styles.addressText}>
+                  {getSafeData(currentData, 'transportDetails.transport') || '-'}
+                </Text>
+              </View>
+              <View style={styles.transportRow}>
+                <Text style={[styles.addressText, { fontWeight: 'bold' }]}>GR/RR No.:</Text>
+                <Text style={styles.addressText}>
+                  {getSafeData(currentData, 'transportDetails.grNumber') || '-'}
+                </Text>
+              </View>
+              <View style={styles.transportRow}>
+                <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Vehicle No.:</Text>
+                <Text style={styles.addressText}>
+                  {getSafeData(currentData, 'transportDetails.vehicleNo') || '-'}
+                </Text>
+              </View>
+              <View style={styles.transportRow}>
+                <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Station:</Text>
+                <Text style={styles.addressText}>
+                  {getSafeData(currentData, 'transportDetails.station') || '-'}
+                </Text>
+              </View>
+            </View>
+          </View>
+          
+          {/* QR Code Scanner Column */}
+          <View style={styles.col}>
+            {qrDataUrl && (
+              <View style={styles.qrSection}>
+                <Text style={styles.qrTitle}>Scan to Pay</Text>
+                <Image src={qrDataUrl} style={styles.qrImage} />
+                <Text style={styles.qrAmount}>
+                  ₹{(qrAmount || parseFloat(getSafeData(currentData, 'grandTotal', 0))).toFixed(2)}
+                </Text>
+                
+              </View>
+            )}
+          </View>
+        </View>
+        
+        {/* Footer */}
         <View style={styles.footer}>
           <View style={styles.bankDetails}>
             <Text style={styles.bankTitle}>Bank Details:</Text>
@@ -584,18 +617,6 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
             <Text style={styles.bankText}>A/C: 44773710377</Text>
             <Text style={styles.bankText}>IFSC: SBIN0063699</Text>
           </View>
-          
-          {/* QR Code Section - Centered */}
-          {qrDataUrl && (
-            <View style={styles.qrWrapper}>
-              <View style={styles.qrSection}>
-                <Text style={styles.qrTitle}>Scan to Pay</Text>
-                <Image src={qrDataUrl} style={styles.qrImage} />
-                <Text style={styles.qrAmount}>₹{(qrAmount || parseFloat(getSafeData(currentData, 'grandTotal', 0))).toFixed(2)}</Text>
-                <Text style={styles.qrSubtext}>UPI Payment</Text>
-              </View>
-            </View>
-          )}
           
           <View style={styles.signature}>
             <View style={styles.signatureBox}>

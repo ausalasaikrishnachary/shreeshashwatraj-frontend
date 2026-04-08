@@ -60,19 +60,16 @@ const transformPeriodDataToInvoiceFormat = (periodData) => {
     const itemTotal = parseFloat(item.item_total) || 0;
     const quantity = parseFloat(item.quantity) || 1;
     
-    // CRITICAL FIX: Get net_price from the item and prioritize it
     const netPrice = parseFloat(item.net_price) || 0;
     const editedSalePrice = parseFloat(item.edited_sale_price) || 0;
     const salePrice = parseFloat(item.sale_price) || 0;
     
-    // Use net_price as the primary price, fallback to edited_sale_price, then sale_price
 const price = netPrice;
     
     const discount = parseFloat(item.discount_percentage) || 0;
     const discountAmount = parseFloat(item.discount_amount) || 0;
     const creditCharge = parseFloat(item.credit_charge) || 0;
     
-    // Use ACTUAL values from database
     const actualCGSTPercentage = parseFloat(item.cgst_percentage) || 0;
     const actualSGSTPercentage = parseFloat(item.sgst_percentage) || 0;
     const actualCGSTAmount = parseFloat(item.cgst_amount) || 0;
@@ -91,7 +88,7 @@ const price = netPrice;
       product: item.item_name || `Item ${index + 1}`,
       product_id: item.product_id || '',
       quantity: quantity,
-      price: price, // This will now use net_price first
+      price: price, 
       discount: discount,
       discount_amount: discountAmount,
       discount_amount_per_unit: parseFloat(item.discount_amount) || 0,
@@ -118,7 +115,6 @@ const price = netPrice;
       tax_amount: itemTaxAmount,
       credit_charge: creditCharge, 
       
-      // CRITICAL FIX: Include net_price in the transformed item
       net_price: netPrice,
       
       original_sgst_percentage: item.sgst_percentage,
@@ -136,7 +132,6 @@ const price = netPrice;
   const grandTotal = parseFloat(periodData.selectedItemsTotal?.grandTotal) || totalGrandTotal;
   
   return {
-    // Dynamic transaction type based on order mode
     TransactionType: TransactionType,
     
     invoiceNumber: periodData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`,
@@ -222,7 +217,6 @@ const price = netPrice;
     additionalCharge: "",
     additionalChargeAmount: "0.00",
     
-    // Use actual SGST/CGST totals from database
     totalCGST: totalCGST.toFixed(2),
     totalSGST: totalSGST.toFixed(2),
     totalIGST: "0.00",
@@ -244,45 +238,39 @@ const price = netPrice;
         : "PAKKA";
       setEditableOrderMode(normalizedMode);
       
-      // Generate QR code data when invoice data is available
       if (invoiceData.grandTotal) {
         generateQRCodeData();
       }
     }
   }, [invoiceData]);
 
-// In Period_InvoicePDFPreview component - modify handleOrderModeChange:
 const handleOrderModeChange = (switchData) => {
   const { orderMode, updatedItems } = switchData;
   const normalizedValue = orderMode.toUpperCase();
   
   setEditableOrderMode(normalizedValue);
   
-  // Update invoiceData with new items (including updated product_ids)
   if (updatedItems && updatedItems.length > 0 && invoiceData) {
     console.log("🔄 Received updated items with new product_ids:", updatedItems);
     
-    // Update invoiceData items
     setInvoiceData(prev => ({
       ...prev,
       order_mode: normalizedValue,
       items: updatedItems
     }));
     
-    // Also update periodInvoiceData if it exists
     if (periodInvoiceData && periodInvoiceData.selectedItems) {
       const updatedSelectedItems = periodInvoiceData.selectedItems.map((item, index) => {
-        // Find matching item from updatedItems
         const updatedItem = updatedItems.find(ui => 
           ui.product === item.item_name || 
-          ui.product_id !== item.product_id // If product_id changed
+          ui.product_id !== item.product_id
         );
         
         if (updatedItem && updatedItem.product_id !== item.product_id) {
           console.log(`🔄 Updating product_id for ${item.item_name}: ${item.product_id} → ${updatedItem.product_id}`);
           return {
             ...item,
-            product_id: updatedItem.product_id, // Update with new product_id
+            product_id: updatedItem.product_id, 
             product_type: normalizedValue
           };
         }
@@ -582,7 +570,6 @@ transportDetails: {
     };
 
 
-
 const handlePrint = async () => {
   try {
     setDownloading(true);
@@ -592,7 +579,6 @@ const handlePrint = async () => {
       throw new Error('No invoice data available');
     }
 
-    // Dynamically import PDF libraries
     let pdf;
     let InvoicceprintOrder;
     let generateQRDataUrl;
@@ -603,17 +589,15 @@ const handlePrint = async () => {
       
       const pdfModule = await import('./InvoicceprintOrder');
       InvoicceprintOrder = pdfModule.default;
-      generateQRDataUrl = pdfModule.generateQRDataUrl; // ← import QR helper
+      generateQRDataUrl = pdfModule.generateQRDataUrl;
     } catch (importError) {
       console.error('Error importing PDF modules:', importError);
       throw new Error('Failed to load PDF generation libraries');
     }
 
-    // Calculate GST breakdown
     const gstBreakdown = calculateGSTBreakdown();
     const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
 
-    // ── NEW: Pre-generate QR code as data URL ──────────────────
     const orderMode = (editableOrderMode || invoiceData.order_mode || 'PAKKA').toUpperCase();
     let qrDataUrl = null;
     let qrAmount = 0;
@@ -626,29 +610,34 @@ const handlePrint = async () => {
     } catch (qrError) {
       console.warn('⚠️ QR generation failed, PDF will render without QR:', qrError.message);
     }
-    // ──────────────────────────────────────────────────────────
 
-    // Create PDF document — pass qrDataUrl and qrAmount as props
+    // FIX: Create a copy of invoiceData with transport details
+    const invoiceDataWithTransport = {
+      ...invoiceData,
+      transportDetails: transportDetails,
+      transport_name: transportDetails.transport,
+      gr_rr_number: transportDetails.grNumber,
+      vehicle_number: transportDetails.vehicleNo,
+      station_name: transportDetails.station
+    };
+
     const pdfDoc = (
       <InvoicceprintOrder 
-        invoiceData={invoiceData}
+        invoiceData={invoiceDataWithTransport}  // Use enhanced data
         invoiceNumber={invoiceData.invoiceNumber}
         gstBreakdown={gstBreakdown}
         isSameState={isSameState}
-        qrDataUrl={qrDataUrl}       // ← new prop
-        qrAmount={qrAmount}         // ← new prop
+        qrDataUrl={qrDataUrl}
+        qrAmount={qrAmount}
       />
     );
 
-    // Generate PDF blob
     const blob = await pdf(pdfDoc).toBlob();
     
-    // Open in new tab for printing
     const pdfUrl = URL.createObjectURL(blob);
     const printWindow = window.open(pdfUrl, '_blank');
     
     if (!printWindow) {
-      // Fallback download if popup blocked
       alert('Popup blocked. Downloading instead.');
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -669,8 +658,6 @@ const handlePrint = async () => {
   }
 };
 
-
-
 const generateAndStorePDF = async (voucherId) => {
   try {
     if (!invoiceData) throw new Error('No invoice data available');
@@ -683,7 +670,6 @@ const generateAndStorePDF = async (voucherId) => {
       const reactPdf = await import('@react-pdf/renderer');
       pdf = reactPdf.pdf;
       
-      // Use InvoicceprintOrder (same component) for consistency
       const pdfModule = await import('./InvoicceprintOrder');
       InvoicePDFDocument = pdfModule.default;
       generateQRDataUrl = pdfModule.generateQRDataUrl;
@@ -706,9 +692,19 @@ const generateAndStorePDF = async (voucherId) => {
       console.warn('QR generation failed for stored PDF:', qrError.message);
     }
 
+    // FIX: Create a copy of invoiceData with transport details
+    const invoiceDataWithTransport = {
+      ...invoiceData,
+      transportDetails: transportDetails,  // Add current transport details
+      transport_name: transportDetails.transport,
+      gr_rr_number: transportDetails.grNumber,
+      vehicle_number: transportDetails.vehicleNo,
+      station_name: transportDetails.station
+    };
+
     const pdfDoc = (
       <InvoicePDFDocument
-        invoiceData={invoiceData}
+        invoiceData={invoiceDataWithTransport}  // Use the enhanced data
         invoiceNumber={invoiceData.invoiceNumber}
         gstBreakdown={gstBreakdown}
         isSameState={isSameState}

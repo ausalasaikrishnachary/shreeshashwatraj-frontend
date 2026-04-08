@@ -146,6 +146,7 @@ import KachaPurchaseInvoiceEdit from "./Component/Panels/Admin/KachaPurchase/Kac
 import DispatchReportPDF from "./Component/Panels/Admin/Period/DispatchReportPDF";
 import HsnReport from "./Component/Panels/Admin/AdminReports/HsnReport";
 import PrivateRoute from "./Component/Layouts/PrivateRoute";
+import QRCodeGenerator_normal from "./Component/Panels/Admin/SalesInvoicePage/QRCodeGenerator_normal";
 
 
 
@@ -331,6 +332,7 @@ function App() {
           <Route path="/kachapurchaseedit/:id" element={<PrivateRoute allowedRoles={["admin"]}><KachaPurchaseInvoiceEdit /></PrivateRoute>} />
           <Route path="/dispatch-report" element={<PrivateRoute allowedRoles={["admin"]}><DispatchReportPDF /></PrivateRoute>} />
           <Route path="/hsn-report" element={<PrivateRoute allowedRoles={["admin"]}><HsnReport /></PrivateRoute>} />
+          <Route path="/qrcodenormal" element={<PrivateRoute allowedRoles={["admin"]}><QRCodeGenerator_normal /></PrivateRoute>} />
 
         </Routes>
       </Router>
