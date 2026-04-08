@@ -6,8 +6,9 @@ import {
   View, 
   StyleSheet,
   Image,
-  Font
+  
 } from '@react-pdf/renderer';
+import { Font } from '@react-pdf/renderer';
 import QRCode from 'qrcode';
 Font.register({
   family: 'NotoSans',
