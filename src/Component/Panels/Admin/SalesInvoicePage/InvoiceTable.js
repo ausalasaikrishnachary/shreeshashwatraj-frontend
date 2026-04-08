@@ -243,6 +243,303 @@ const generatePDF = async (filteredData, type = 'month') => {
   }
 };
 
+
+// Add this function after your existing functions
+const handlePrintInvoice = async (invoice) => {
+  try {
+    // Show loading state if needed
+    const voucherId = invoice.originalData?.VoucherID || invoice.id;
+    
+    if (!voucherId) {
+      throw new Error('Voucher ID not found');
+    }
+
+    // Fetch complete invoice data
+    const response = await fetch(`${baseurl}/transactions/${voucherId}`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch invoice data');
+    }
+    
+    const result = await response.json();
+    const apiData = result.data || result;
+    
+    // Transform data similar to how InvoicePDFPreview does it
+    const transformedData = transformApiDataToInvoiceFormat(apiData);
+    
+    // Generate PDF using the same method as InvoicePDFPreview
+    await generateAndPrintPDF(transformedData, invoice.number);
+    
+  } catch (error) {
+    console.error('Error printing invoice:', error);
+    alert('Failed to generate PDF: ' + error.message);
+  }
+};
+
+// Add the transformation function (copy from your InvoicePDFPreview component)
+const transformApiDataToInvoiceFormat = (apiData) => {
+  console.log('Transforming API data for print:', apiData);
+
+  let batchDetails = [];
+  try {
+    if (apiData.batch_details && typeof apiData.batch_details === 'string') {
+      batchDetails = JSON.parse(apiData.batch_details);
+    } else if (Array.isArray(apiData.batch_details)) {
+      batchDetails = apiData.batch_details;
+    } else if (apiData.BatchDetails && typeof apiData.BatchDetails === 'string') {
+      batchDetails = JSON.parse(apiData.BatchDetails);
+    }
+  } catch (error) {
+    console.error('Error parsing batch details:', error);
+  }
+
+  const items = batchDetails.map((batch, index) => {
+    const quantity = parseFloat(batch.quantity) || 0;
+    const price = parseFloat(batch.price) || 0;
+    const discount = parseFloat(batch.discount) || 0;
+    const gst = parseFloat(batch.gst) || 0;
+    const cess = parseFloat(batch.cess) || 0;
+    const original_price = parseFloat(batch.original_price) || 0;
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    const amountAfterDiscount = subtotal - discountAmount;
+    const gstAmount = amountAfterDiscount * (gst / 100);
+    const cessAmount = amountAfterDiscount * (cess / 100);
+    const total = amountAfterDiscount + gstAmount + cessAmount;
+
+    const isSameState = parseFloat(apiData.IGSTAmount) === 0;
+    let cgst, sgst, igst;
+
+    if (isSameState) {
+      cgst = gst / 2;
+      sgst = gst / 2;
+      igst = 0;
+    } else {
+      cgst = 0;
+      sgst = 0;
+      igst = gst;
+    }
+
+    return {
+      id: index + 1,
+      product: batch.product || 'Product',
+      description: batch.description || `Batch: ${batch.batch}`,
+      hsn_code: batch.hsn_code || '',
+      quantity: quantity,
+      price: price,
+      discount: discount,
+      gst: gst,
+      original_price: original_price,
+      cgst: cgst,
+      sgst: sgst,
+      igst: igst,
+      cess: cess,
+      total: total.toFixed(2),
+      batch: batch.batch || '',
+      batch_id: batch.batch_id || '',
+      product_id: batch.product_id || '',
+      assigned_staff: batch.assigned_staff || apiData.assigned_staff || 'N/A'
+    };
+  }) || [];
+
+  const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
+  const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
+  const grandTotal = parseFloat(apiData.TotalAmount) || 0;
+  
+  const transportDetails = {
+    transport: apiData.transport_name || apiData.transport || '',
+    grNumber: apiData.gr_rr_number || apiData.grNumber || '',
+    vehicleNo: apiData.vehicle_number || apiData.vehicleNo || '',
+    station: apiData.station_name || apiData.station || ''
+  };
+  
+  const assignedStaff = apiData.assigned_staff || apiData.AssignedStaff || apiData.staff_name || 'N/A';
+  const staffId = apiData.staffid || apiData.staff_id || null;
+
+  return {
+    voucherId: apiData.VoucherID,
+    invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
+    invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    companyInfo: {
+      name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+      address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+      email: "spmathur56@gmail.com",
+      phone: "9801049700",
+      gstin: "10AAOCS1541B1ZZ",
+      state: "Bihar",
+      stateCode: "10"
+    },
+    supplierInfo: {
+      name: apiData.PartyName || 'Customer',
+      business_name: apiData.business_name || '',
+      account_name: apiData.account_name || apiData.AccountName || 'Business',
+      gstin: apiData.gstin || '',
+      state: apiData.billing_state || apiData.BillingState || '',
+      id: apiData.PartyID || null,
+      staffid: staffId,
+      assigned_staff: assignedStaff,
+      mobile_number: apiData.retailer_mobile || apiData.mobile_number || apiData.customer_mobile || '',
+      phone_number: apiData.phone_number || ''
+    },
+    billingAddress: {
+      addressLine1: apiData.billing_address_line1 || apiData.BillingAddress || '',
+      addressLine2: apiData.billing_address_line2 || '',
+      city: apiData.billing_city || apiData.BillingCity || '',
+      pincode: apiData.billing_pin_code || apiData.BillingPincode || '',
+      state: apiData.billing_state || apiData.BillingState || ''
+    },
+    shippingAddress: {
+      addressLine1: apiData.shipping_address_line1 || apiData.ShippingAddress || apiData.billing_address_line1 || apiData.BillingAddress || '',
+      addressLine2: apiData.shipping_address_line2 || apiData.billing_address_line2 || '',
+      city: apiData.shipping_city || apiData.ShippingCity || apiData.billing_city || apiData.BillingCity || '',
+      pincode: apiData.shipping_pin_code || apiData.ShippingPincode || apiData.billing_pin_code || apiData.BillingPincode || '',
+      state: apiData.shipping_state || apiData.ShippingState || apiData.billing_state || apiData.BillingState || ''
+    },
+    items: items.length > 0 ? items : [{
+      id: 1,
+      product: 'Product',
+      description: 'No batch details available',
+      hsn_code: apiData.hsn_code || '',
+      quantity: 1,
+      price: grandTotal,
+      discount: 0,
+      gst: parseFloat(apiData.IGSTPercentage) || 0,
+      cgst: parseFloat(apiData.CGSTPercentage) || 0,
+      sgst: parseFloat(apiData.SGSTPercentage) || 0,
+      igst: parseFloat(apiData.IGSTPercentage) || 0,
+      cess: 0,
+      total: grandTotal.toFixed(2),
+      batch: '',
+      batch_id: '',
+      product_id: '',
+      assigned_staff: assignedStaff
+    }],
+    taxableAmount: taxableAmount.toFixed(2),
+    totalGST: totalGST.toFixed(2),
+    grandTotal: grandTotal.toFixed(2),
+    totalCess: "0.00",
+    note: apiData.Notes || "Thank you for your business!",
+    transportDetails: transportDetails,
+    additionalCharge: "",
+    additionalChargeAmount: "0.00",
+    totalCGST: parseFloat(apiData.CGSTAmount) || 0,
+    totalSGST: parseFloat(apiData.SGSTAmount) || 0,
+    totalIGST: parseFloat(apiData.IGSTAmount) || 0,
+    taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST",
+    staffid: staffId,
+    assigned_staff: assignedStaff
+  };
+};
+
+// Add the PDF generation and print function
+const generateAndPrintPDF = async (invoiceData, invoiceNumber) => {
+  try {
+    // Dynamically import PDF libraries
+    const reactPdf = await import('@react-pdf/renderer');
+    const pdf = reactPdf.pdf;
+    
+    // Import the SalesPdfDocument component (you may need to adjust the path)
+    const SalesPdfDocument = (await import('../SalesInvoicePage/SalesPdfDocument')).default;
+    
+    // Calculate GST breakdown
+    const calculateGSTBreakdown = () => {
+      if (!invoiceData || !invoiceData.items) return { totalCGST: 0, totalSGST: 0, totalIGST: 0 };
+
+      const totalCGST = invoiceData.items.reduce((sum, item) => {
+        const quantity = parseFloat(item.quantity) || 0;
+        const price = parseFloat(item.price) || 0;
+        const discount = parseFloat(item.discount) || 0;
+        const cgstRate = parseFloat(item.cgst) || 0;
+
+        const subtotal = quantity * price;
+        const discountAmount = subtotal * (discount / 100);
+        const amountAfterDiscount = subtotal - discountAmount;
+        const cgstAmount = amountAfterDiscount * (cgstRate / 100);
+
+        return sum + cgstAmount;
+      }, 0);
+
+      const totalSGST = invoiceData.items.reduce((sum, item) => {
+        const quantity = parseFloat(item.quantity) || 0;
+        const price = parseFloat(item.price) || 0;
+        const discount = parseFloat(item.discount) || 0;
+        const sgstRate = parseFloat(item.sgst) || 0;
+
+        const subtotal = quantity * price;
+        const discountAmount = subtotal * (discount / 100);
+        const amountAfterDiscount = subtotal - discountAmount;
+        const sgstAmount = amountAfterDiscount * (sgstRate / 100);
+
+        return sum + sgstAmount;
+      }, 0);
+
+      const totalIGST = invoiceData.items.reduce((sum, item) => {
+        const quantity = parseFloat(item.quantity) || 0;
+        const price = parseFloat(item.price) || 0;
+        const discount = parseFloat(item.discount) || 0;
+        const igstRate = parseFloat(item.igst) || 0;
+
+        const subtotal = quantity * price;
+        const discountAmount = subtotal * (discount / 100);
+        const amountAfterDiscount = subtotal - discountAmount;
+        const igstAmount = amountAfterDiscount * (igstRate / 100);
+
+        return sum + igstAmount;
+      }, 0);
+
+      return {
+        totalCGST: totalCGST.toFixed(2),
+        totalSGST: totalSGST.toFixed(2),
+        totalIGST: totalIGST.toFixed(2)
+      };
+    };
+
+    const gstBreakdown = calculateGSTBreakdown();
+    const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+
+    // Create PDF document
+    const pdfDoc = (
+      <SalesPdfDocument
+        invoiceData={invoiceData}
+        invoiceNumber={invoiceData.invoiceNumber}
+        gstBreakdown={gstBreakdown}
+        isSameState={isSameState}
+      />
+    );
+
+    // Generate PDF blob
+    const blob = await pdf(pdfDoc).toBlob();
+
+    // Create URL for the blob
+    const pdfUrl = URL.createObjectURL(blob);
+
+    // Open in new tab - this will show only the PDF
+    const printWindow = window.open(pdfUrl, '_blank');
+
+    if (!printWindow) {
+      // Fallback if popup blocked
+      alert('Popup blocked. Please allow popups or use download option.');
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Invoice_${invoiceData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+    }
+
+    // Clean up URL after delay
+    setTimeout(() => {
+      URL.revokeObjectURL(pdfUrl);
+    }, 1000);
+
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    throw new Error('Failed to generate PDF: ' + error.message);
+  }
+};
   const handleDeleteInvoice = async (invoice) => {
     const hasReceipts = invoice.originalData?.receipts?.length > 0;
     const hasCreditNotes = invoice.originalData?.creditnotes?.length > 0;
@@ -465,53 +762,43 @@ const generatePDF = async (filteredData, type = 'month') => {
       }
     };
 
-  const columns = [
-    { key: 'customerName', title: 'RETAILER NAME', style: { textAlign: 'left' } },
-    { 
-      key: 'number', 
-      title: 'INVOICE NUMBER', 
-      style: { textAlign: 'center' },
-      render: (value, row) => (
-        <button 
-          className="btn btn-link p-0 text-primary text-decoration-none"
-          onClick={() => handleInvoiceNumberClick(row)}
-          title="Click to view invoice preview"
-        >
-          {value}
-        </button>
-      )
-    },
-    { key: 'totalAmount', title: 'TOTAL AMOUNT', style: { textAlign: 'right' } },
-    {
-      key: 'status',
-      title: 'PAYMENT STATUS',
-      style: { textAlign: 'center' },
-  render: (value) => value || 'Pending'
-    },
-    {
-      key: 'created',
-      title: 'CREATED DATE',
-      style: { textAlign: 'center' },
-      render: (value, row) => {
-        if (!row?.created) return "-";
-        const date = new Date(row.created);
-        return date.toLocaleDateString("en-GB", { 
-          day: "2-digit", 
-          month: "2-digit", 
-          year: "numeric" 
-        });
-      }
-    },
-    // {
-    //   key: 'pdfStatus',
-    //   title: 'PDF STATUS',
-    //   style: { textAlign: 'center' },
-    //   render: (value, row) => (
-    //     <span className={`badge ${row.hasPDF ? 'bg-success' : 'bg-warning'}`}>
-    //       {row.hasPDF ? 'Available' : 'Not Generated'}
-    //     </span>
-    //   )
-    // },
+const columns = [
+  { key: 'customerName', title: 'RETAILER NAME', style: { textAlign: 'left' } },
+  { 
+    key: 'number', 
+    title: 'INVOICE NUMBER', 
+    style: { textAlign: 'center' },
+    render: (value, row) => (
+      <button 
+        className="btn btn-link p-0 text-primary text-decoration-none"
+        onClick={() => handleInvoiceNumberClick(row)}
+        title="Click to view invoice preview"
+      >
+        {value}
+      </button>
+    )
+  },
+  { key: 'totalAmount', title: 'TOTAL AMOUNT', style: { textAlign: 'right' } },
+  {
+    key: 'status',
+    title: 'PAYMENT STATUS',
+    style: { textAlign: 'center' },
+    render: (value) => value || 'Pending'
+  },
+  {
+    key: 'created',
+    title: 'CREATED DATE',
+    style: { textAlign: 'center' },
+    render: (value, row) => {
+      if (!row?.created) return "-";
+      const date = new Date(row.created);
+      return date.toLocaleDateString("en-GB", { 
+        day: "2-digit", 
+        month: "2-digit", 
+        year: "numeric" 
+      });
+    }
+  },
   {
     key: 'actions',
     title: 'ACTION',
@@ -521,7 +808,15 @@ const generatePDF = async (filteredData, type = 'month') => {
       
       return (
         <div className="d-flex justify-content-center gap-2">
-          {/* Delete Button - Disabled if has receipts/credit notes */}
+      <button
+  className="btn btn-sm btn-success"
+  onClick={() => handlePrintInvoice(row)}
+  title="Print Invoice"
+>
+  <FaFilePdf className="me-1" /> 
+</button>
+          
+        
           <button
             className={`btn btn-sm ${canDelete ? 'btn-outline-danger' : 'btn-secondary'}`}
             onClick={() => {
@@ -544,7 +839,7 @@ const generatePDF = async (filteredData, type = 'month') => {
       );
     }
   }
-  ];
+];
 
     const handleCreateClick = () => navigate("/sales/createinvoice");
 

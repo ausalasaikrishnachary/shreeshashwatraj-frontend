@@ -582,7 +582,8 @@ transportDetails: {
     };
 
 
-       const handlePrint = async () => {
+
+const handlePrint = async () => {
   try {
     setDownloading(true);
     setError(null);
@@ -594,6 +595,7 @@ transportDetails: {
     // Dynamically import PDF libraries
     let pdf;
     let InvoicceprintOrder;
+    let generateQRDataUrl;
     
     try {
       const reactPdf = await import('@react-pdf/renderer');
@@ -601,6 +603,7 @@ transportDetails: {
       
       const pdfModule = await import('./InvoicceprintOrder');
       InvoicceprintOrder = pdfModule.default;
+      generateQRDataUrl = pdfModule.generateQRDataUrl; // ← import QR helper
     } catch (importError) {
       console.error('Error importing PDF modules:', importError);
       throw new Error('Failed to load PDF generation libraries');
@@ -610,44 +613,52 @@ transportDetails: {
     const gstBreakdown = calculateGSTBreakdown();
     const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
 
-    // Create PDF document
+    // ── NEW: Pre-generate QR code as data URL ──────────────────
+    const orderMode = (editableOrderMode || invoiceData.order_mode || 'PAKKA').toUpperCase();
+    let qrDataUrl = null;
+    let qrAmount = 0;
+    
+    try {
+      const qrResult = await generateQRDataUrl(invoiceData, orderMode);
+      qrDataUrl = qrResult.dataUrl;
+      qrAmount = qrResult.amount;
+      console.log('✅ QR code generated for PDF, amount:', qrAmount);
+    } catch (qrError) {
+      console.warn('⚠️ QR generation failed, PDF will render without QR:', qrError.message);
+    }
+    // ──────────────────────────────────────────────────────────
+
+    // Create PDF document — pass qrDataUrl and qrAmount as props
     const pdfDoc = (
       <InvoicceprintOrder 
         invoiceData={invoiceData}
         invoiceNumber={invoiceData.invoiceNumber}
         gstBreakdown={gstBreakdown}
         isSameState={isSameState}
+        qrDataUrl={qrDataUrl}       // ← new prop
+        qrAmount={qrAmount}         // ← new prop
       />
     );
 
     // Generate PDF blob
     const blob = await pdf(pdfDoc).toBlob();
     
-    // Create URL for the blob
+    // Open in new tab for printing
     const pdfUrl = URL.createObjectURL(blob);
-    
-    // Open in new tab - this will show only the PDF, no HTML
     const printWindow = window.open(pdfUrl, '_blank');
     
-    if (printWindow) {
-      console.log('PDF opened in new tab for printing');
-    } else {
-      // Fallback if popup blocked
-      alert('Popup blocked. Please allow popups or use download option.');
-      const downloadUrl = URL.createObjectURL(blob);
+    if (!printWindow) {
+      // Fallback download if popup blocked
+      alert('Popup blocked. Downloading instead.');
       const a = document.createElement('a');
-      a.href = downloadUrl;
+      a.href = URL.createObjectURL(blob);
       a.download = `Invoice_${invoiceData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
     }
 
-    // Clean up URL after delay
-    setTimeout(() => {
-      URL.revokeObjectURL(pdfUrl);
-    }, 1000);
+    setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
 
   } catch (error) {
     console.error('Error generating PDF for print:', error);
@@ -655,6 +666,95 @@ transportDetails: {
     setTimeout(() => setError(null), 5000);
   } finally {
     setDownloading(false);
+  }
+};
+
+
+
+const generateAndStorePDF = async (voucherId) => {
+  try {
+    if (!invoiceData) throw new Error('No invoice data available');
+
+    let pdf;
+    let InvoicePDFDocument;
+    let generateQRDataUrl;
+    
+    try {
+      const reactPdf = await import('@react-pdf/renderer');
+      pdf = reactPdf.pdf;
+      
+      // Use InvoicceprintOrder (same component) for consistency
+      const pdfModule = await import('./InvoicceprintOrder');
+      InvoicePDFDocument = pdfModule.default;
+      generateQRDataUrl = pdfModule.generateQRDataUrl;
+    } catch (importError) {
+      throw new Error('Failed to load PDF generation libraries');
+    }
+
+    const gstBreakdown = calculateGSTBreakdown();
+    const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+
+    // Pre-generate QR
+    const orderMode = (editableOrderMode || invoiceData.order_mode || 'PAKKA').toUpperCase();
+    let qrDataUrl = null;
+    let qrAmount = 0;
+    try {
+      const qrResult = await generateQRDataUrl(invoiceData, orderMode);
+      qrDataUrl = qrResult.dataUrl;
+      qrAmount = qrResult.amount;
+    } catch (qrError) {
+      console.warn('QR generation failed for stored PDF:', qrError.message);
+    }
+
+    const pdfDoc = (
+      <InvoicePDFDocument
+        invoiceData={invoiceData}
+        invoiceNumber={invoiceData.invoiceNumber}
+        gstBreakdown={gstBreakdown}
+        isSameState={isSameState}
+        qrDataUrl={qrDataUrl}
+        qrAmount={qrAmount}
+      />
+    );
+
+    const blob = await pdf(pdfDoc).toBlob();
+    const filename = `Invoice_${invoiceData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+    const base64data = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    const storeResponse = await fetch(`${baseurl}/transactions/${voucherId}/pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pdfData: base64data, fileName: filename }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!storeResponse.ok) {
+      const errorText = await storeResponse.text();
+      throw new Error(`Server error: ${storeResponse.status} - ${errorText}`);
+    }
+
+    const storeResult = await storeResponse.json();
+    if (storeResult.success) {
+      console.log('✅ PDF with QR stored successfully for voucher:', voucherId);
+      return storeResult;
+    } else {
+      throw new Error(storeResult.message || 'Failed to store PDF');
+    }
+
+  } catch (error) {
+    console.error('Error in PDF generation and storage:', error);
+    throw error;
   }
 };
     const handleEdit = () => {
@@ -736,106 +836,7 @@ transportDetails: {
 
 
     // Add this function to handle PDF generation and storage
-  const generateAndStorePDF = async (voucherId) => {
-    try {
-      if (!invoiceData) {
-        throw new Error('No invoice data available');
-      }
 
-      let pdf;
-      let InvoicePDFDocument;
-      
-      try {
-        const reactPdf = await import('@react-pdf/renderer');
-        pdf = reactPdf.pdf;
-        
-        const pdfModule = await import('../SalesInvoicePage/InvoicePDFDocument');
-        InvoicePDFDocument = pdfModule.default;
-      } catch (importError) {
-        console.error('Error importing PDF modules:', importError);
-        throw new Error('Failed to load PDF generation libraries');
-      }
-
-      const gstBreakdown = calculateGSTBreakdown();
-      const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
-
-      // Generate PDF document
-      let pdfDoc;
-      try {
-        pdfDoc = (
-          <InvoicePDFDocument 
-            invoiceData={invoiceData}
-            invoiceNumber={invoiceData.invoiceNumber}
-            gstBreakdown={gstBreakdown}
-            isSameState={isSameState}
-          />
-        );
-      } catch (componentError) {
-        console.error('Error creating PDF component:', componentError);
-        throw new Error('Failed to create PDF document structure');
-      }
-
-      // Convert to blob
-      let blob;
-      try {
-        blob = await pdf(pdfDoc).toBlob();
-      } catch (pdfError) {
-        console.error('Error generating PDF blob:', pdfError);
-        throw new Error('Failed to generate PDF file');
-      }
-      
-      const filename = `Invoice_${invoiceData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
-
-      // Convert blob to base64
-      const base64data = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-
-      // Store PDF in database
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-        const storeResponse = await fetch(`${baseurl}/transactions/${voucherId}/pdf`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            pdfData: base64data,
-            fileName: filename
-          }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!storeResponse.ok) {
-          const errorText = await storeResponse.text();
-          throw new Error(`Server error: ${storeResponse.status} - ${errorText}`);
-        }
-
-        const storeResult = await storeResponse.json();
-        
-        if (storeResult.success) {
-          console.log('✅ PDF stored successfully in database for voucher:', voucherId);
-          return storeResult;
-        } else {
-          throw new Error(storeResult.message || 'Failed to store PDF');
-        }
-      } catch (storeError) {
-        console.error('Error storing PDF:', storeError);
-        throw new Error('Failed to store PDF in database');
-      }
-
-    } catch (error) {
-      console.error('Error in PDF generation and storage:', error);
-      throw error;
-    }
-  };
   const handleGenerateInvoice = async () => {
     try {
       setGenerating(true);

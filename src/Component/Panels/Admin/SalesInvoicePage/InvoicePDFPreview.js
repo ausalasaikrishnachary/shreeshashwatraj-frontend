@@ -505,7 +505,6 @@ const fetchPaymentData = async (invoiceNumber) => {
       totalIGST: parseFloat(apiData.IGSTAmount) || 0,
       taxType: parseFloat(apiData.IGSTAmount) > 0 ? "IGST" : "CGST/SGST",
 
-      // ✅ Add staff fields at the top level
       staffid: staffId,
       assigned_staff: assignedStaff
     };
@@ -683,84 +682,86 @@ const fetchPaymentData = async (invoiceNumber) => {
       </Card>
     );
   };
-  const handlePrint = async () => {
-    try {
-      setDownloading(true);
-      setError(null);
+const handlePrint = async () => {
+  try {
+    setDownloading(true);
+    setError(null);
 
-      if (!currentData) {
-        throw new Error('No invoice data available');
-      }
-
-      // Dynamically import PDF libraries
-      let pdf;
-      let SalesPdfDocument;
-
-      try {
-        const reactPdf = await import('@react-pdf/renderer');
-        pdf = reactPdf.pdf;
-
-        const pdfModule = await import('./SalesPdfDocument');
-        SalesPdfDocument = pdfModule.default;
-      } catch (importError) {
-        console.error('Error importing PDF modules:', importError);
-        throw new Error('Failed to load PDF generation libraries');
-      }
-
-      // Calculate GST breakdown
-      const gstBreakdown = calculateGSTBreakdown();
-      const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
-
-      // Create PDF document
-      const pdfDoc = (
-        <SalesPdfDocument
-          invoiceData={currentData}
-          invoiceNumber={currentData.invoiceNumber}
-          gstBreakdown={gstBreakdown}
-          isSameState={isSameState}
-        />
-      );
-
-      // Generate PDF blob
-      const blob = await pdf(pdfDoc).toBlob();
-
-      // Create URL for the blob
-      const pdfUrl = URL.createObjectURL(blob);
-
-      // Open in new tab - this will show only the PDF, no HTML
-      const printWindow = window.open(pdfUrl, '_blank');
-
-      if (printWindow) {
-        // Don't auto-trigger print, let user click print button in PDF viewer
-        // This prevents the double print issue
-        console.log('PDF opened in new tab for printing');
-      } else {
-        // Fallback if popup blocked
-        alert('Popup blocked. Please allow popups or use download option.');
-        const downloadUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = `Invoice_${currentData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(downloadUrl);
-      }
-
-      // Clean up URL after delay
-      setTimeout(() => {
-        URL.revokeObjectURL(pdfUrl);
-      }, 1000);
-
-    } catch (error) {
-      console.error('Error generating PDF for print:', error);
-      setError('Failed to generate PDF for printing: ' + error.message);
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setDownloading(false);
+    if (!currentData) {
+      throw new Error('No invoice data available');
     }
-  };
 
+    // Dynamically import PDF libraries
+    let pdf;
+    let SalesPdfDocument;
+
+    try {
+      const reactPdf = await import('@react-pdf/renderer');
+      pdf = reactPdf.pdf;
+
+      const pdfModule = await import('./SalesPdfDocument');
+      SalesPdfDocument = pdfModule.default;
+    } catch (importError) {
+      console.error('Error importing PDF modules:', importError);
+      throw new Error('Failed to load PDF generation libraries');
+    }
+
+    // Calculate GST breakdown
+    const gstBreakdown = calculateGSTBreakdown();
+    const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+
+    // Create PDF document
+    const pdfDoc = (
+      <SalesPdfDocument
+        invoiceData={currentData}
+        invoiceNumber={currentData.invoiceNumber}
+        gstBreakdown={gstBreakdown}
+        isSameState={isSameState}
+      />
+    );
+
+    // Generate PDF blob
+    const blob = await pdf(pdfDoc).toBlob();
+
+    // Create URL for the blob
+    const pdfUrl = URL.createObjectURL(blob);
+
+    // Open in new tab and trigger print
+    const printWindow = window.open(pdfUrl, '_blank');
+
+    if (printWindow) {
+      // Wait for the PDF to load then trigger print
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 500); // Small delay to ensure PDF is fully loaded
+      };
+    } else {
+      // Fallback if popup blocked
+      alert('Popup blocked. Please allow popups or use download option.');
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Invoice_${currentData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+    }
+
+    // Clean up URL after delay
+    setTimeout(() => {
+      URL.revokeObjectURL(pdfUrl);
+    }, 5000);
+
+  } catch (error) {
+    console.error('Error generating PDF for print:', error);
+    setError('Failed to generate PDF for printing: ' + error.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setDownloading(false);
+  }
+};
   const handleDownloadPDF = async () => {
     try {
       setDownloading(true);
@@ -1839,7 +1840,7 @@ const handleItemChange = (index, field, value) => {
                             <Form.Control
                               type="date"
                               size="sm"
-                              value={currentData.invoiceDate}
+                              value={currentData.invoiceDate} 
                               onChange={(e) => handleInputChange('invoiceDate', e.target.value)}
                             />
                           </div>

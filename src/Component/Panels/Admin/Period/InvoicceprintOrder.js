@@ -4,10 +4,16 @@ import {
   Page, 
   Text, 
   View, 
-  StyleSheet 
+  StyleSheet,
+  Image,
+  Font
 } from '@react-pdf/renderer';
-
-// Create styles - ADD TRANSPORT STYLES
+import QRCode from 'qrcode';
+Font.register({
+  family: 'NotoSans',
+  src: 'https://fonts.gstatic.com/s/notosans/v36/o-0IIpQlx3QUlC5A4PNb4g.ttf'
+});
+// Create styles
 const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
@@ -36,8 +42,8 @@ const styles = StyleSheet.create({
     border: '1pt solid #dee2e6',
   },
   companyName: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontFamily: 'Helvetica-Bold',
     marginBottom: 5,
     color: '#2c3e50',
   },
@@ -48,8 +54,8 @@ const styles = StyleSheet.create({
     lineHeight: 1.3,
   },
   invoiceTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 13,
+    fontFamily: 'Helvetica-Bold',
     marginBottom: 8,
     color: '#dc3545',
     textAlign: 'center',
@@ -71,7 +77,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 10,
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
     marginBottom: 8,
     color: '#007bff',
     borderBottom: '1pt solid #007bff',
@@ -83,32 +89,41 @@ const styles = StyleSheet.create({
     lineHeight: 1.3,
   },
   
-  // Sales Person Section
-  salesPersonSection: {
+  // Transport Section
+  transportSection: {
     marginTop: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    marginBottom: 15,
+    padding: 10,
     backgroundColor: '#f8f9fa',
-    padding: 8,
     borderRadius: 4,
     border: '1pt solid #dee2e6',
   },
-  
-  // Order Mode Section
-  orderModeSection: {
-    marginTop: 5,
-    marginBottom: 5,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    backgroundColor: '#f0f8ff',
-    padding: 5,
-    borderRadius: 4,
-    border: '1pt solid #007bff',
-  },
-  orderModeText: {
-    fontSize: 9,
-    fontWeight: 'bold',
+  transportTitle: {
+    fontSize: 10,
+    fontFamily: 'Helvetica-Bold',
+    marginBottom: 8,
     color: '#007bff',
+    borderBottom: '1pt solid #007bff',
+    paddingBottom: 3,
+  },
+  transportRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  transportField: {
+    width: '23%',
+    marginBottom: 5,
+  },
+  transportLabel: {
+    fontSize: 8,
+    fontFamily: 'Helvetica-Bold',
+    color: '#555',
+    marginBottom: 2,
+  },
+  transportValue: {
+    fontSize: 8,
+    color: '#333',
   },
   
   // Items Table
@@ -117,14 +132,12 @@ const styles = StyleSheet.create({
   },
   itemsTitle: {
     fontSize: 11,
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
     marginBottom: 8,
     color: '#007bff',
     paddingBottom: 4,
     borderBottom: '1pt solid #007bff',
   },
-  
-  // Table Styles
   table: {
     display: 'table',
     width: 'auto',
@@ -147,7 +160,6 @@ const styles = StyleSheet.create({
     minHeight: 25,
   },
   
-  // Updated Column widths
   colSNo: { width: '3%', padding: 2 },
   colProduct: { width: '15%', padding: 2 },
   colHsn: { width: '8%', padding: 2 },
@@ -163,7 +175,6 @@ const styles = StyleSheet.create({
   colSGST: { width: '7%', padding: 2 },
   colTotal: { width: '8%', padding: 2 },
   
-  // Table cell styles
   tableCell: {
     fontSize: 7,
     lineHeight: 1.3,
@@ -172,24 +183,16 @@ const styles = StyleSheet.create({
   },
   tableCellHeader: {
     fontSize: 7,
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
     color: '#ffffff',
     textAlign: 'center',
   },
-  tableCellLeft: {
-    textAlign: 'left',
-  },
-  tableCellRight: {
-    textAlign: 'right',
-  },
-  tableCellCenter: {
-    textAlign: 'center',
-  },
-  tableCellBold: {
-    fontWeight: 'bold',
-  },
+  tableCellLeft: { textAlign: 'left' },
+  tableCellRight: { textAlign: 'right' },
+  tableCellCenter: { textAlign: 'center' },
+  tableCellBold: { fontFamily: 'Helvetica-Bold' },
   
-  // Totals Section
+  // Totals + QR Section
   totalsSection: {
     flexDirection: 'row',
     marginBottom: 20,
@@ -205,8 +208,12 @@ const styles = StyleSheet.create({
     border: '1pt solid #dee2e6',
     minHeight: 80,
   },
+  amountAndQrSection: {
+    flex: 1.5,
+    flexDirection: 'column',
+    gap: 8,
+  },
   amountSection: {
-    flex: 1,
     backgroundColor: '#f8f9fa',
     padding: 10,
     borderRadius: 4,
@@ -214,7 +221,7 @@ const styles = StyleSheet.create({
   },
   amountTitle: {
     fontSize: 10,
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
     marginBottom: 10,
     color: '#007bff',
     textAlign: 'center',
@@ -234,45 +241,49 @@ const styles = StyleSheet.create({
     borderTop: '2pt solid #007bff',
     paddingTop: 8,
     marginTop: 8,
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
     fontSize: 10,
   },
-  
-  // NEW: Transportation Section Styles
-  transportSection: {
-    marginTop: 15,
-    marginBottom: 15,
+
+  // QR Code Section in PDF
+  qrSection: {
+    backgroundColor: '#f0f8ff',
     padding: 10,
-    backgroundColor: '#f8f9fa',
     borderRadius: 4,
-    border: '1pt solid #dee2e6',
+    border: '1pt solid #007bff',
+    alignItems: 'center',
   },
-  transportTitle: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginBottom: 8,
+  qrTitle: {
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
     color: '#007bff',
-    borderBottom: '1pt solid #007bff',
-    paddingBottom: 3,
+    marginBottom: 6,
+    textAlign: 'center',
   },
-  transportRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+  qrImage: {
+    width: 90,
+    height: 90,
   },
-  transportField: {
-    width: '23%',
-    marginBottom: 5,
+  qrAmount: {
+    fontSize: 11,
+    fontFamily: 'Helvetica-Bold',
+    color: '#28a745',
+    marginTop: 6,
+    textAlign: 'center',
   },
-  transportLabel: {
+  qrSubtext: {
+    fontSize: 7,
+    color: '#666',
+    marginTop: 3,
+    textAlign: 'center',
+  },
+  qrOrderBadge: {
     fontSize: 8,
-    fontWeight: 'bold',
-    color: '#555',
-    marginBottom: 2,
-  },
-  transportValue: {
-    fontSize: 8,
-    color: '#333',
+    fontFamily: 'Helvetica-Bold',
+    marginTop: 4,
+    textAlign: 'center',
+    padding: 3,
+    borderRadius: 3,
   },
   
   // Footer
@@ -288,7 +299,7 @@ const styles = StyleSheet.create({
   },
   bankTitle: {
     fontSize: 10,
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
     marginBottom: 6,
     color: '#007bff',
   },
@@ -328,7 +339,6 @@ const getSafeData = (data, path, defaultValue = '') => {
   }
 };
 
-// Helper function to get customer mobile number from multiple possible fields
 const getCustomerMobile = (supplierInfo) => {
   const mobileNumber = getSafeData(supplierInfo, 'mobile_number', '');
   const phone = getSafeData(supplierInfo, 'phone', '');
@@ -341,7 +351,64 @@ const getCustomerMobile = (supplierInfo) => {
   return 'N/A';
 };
 
-const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameState }) => {
+// Generate UPI QR data URL using qrcode library
+const generateQRDataUrl = async (invoiceData, orderMode) => {
+  try {
+    const items = getSafeData(invoiceData, 'items', []);
+    
+    let grandTotal = 0;
+    items.forEach(item => {
+      const quantity = parseFloat(getSafeData(item, 'quantity', 1));
+      const taxablePerUnit = parseFloat(getSafeData(item, 'taxable_amount', 0));
+      const taxPerUnit = parseFloat(getSafeData(item, 'tax_amount', 0));
+      
+      const itemTaxable = taxablePerUnit * quantity;
+      const itemTax = orderMode === 'KACHA' ? 0 : taxPerUnit * quantity;
+      grandTotal += itemTaxable + itemTax;
+    });
+
+    // Fallback to invoiceData.grandTotal if calculation is 0
+    const invoiceGrandTotal = parseFloat(getSafeData(invoiceData, 'grandTotal', 0));
+    const finalAmount = Math.max(grandTotal, invoiceGrandTotal);
+
+    const formattedAmount = finalAmount.toFixed(2);
+    const upiId = 'bharathsiripuram98@okicici';
+    const merchantName = (getSafeData(invoiceData, 'companyInfo.name', 'Business'))
+      .replace(/[^a-zA-Z0-9 ]/g, '');
+    const invoiceNumber = getSafeData(invoiceData, 'invoiceNumber', `INV${Date.now().toString().slice(-6)}`);
+    const transactionNote = `Payment for Invoice ${invoiceNumber} (${orderMode} Order)`;
+
+    const upiParams = new URLSearchParams({
+      pa: upiId,
+      pn: merchantName,
+      am: formattedAmount,
+      tn: transactionNote,
+      cu: 'INR'
+    });
+
+    const upiUrl = `upi://pay?${upiParams.toString()}`;
+
+    // Generate QR as data URL (PNG)
+    const dataUrl = await QRCode.toDataURL(upiUrl, {
+      width: 200,
+      margin: 1,
+      errorCorrectionLevel: 'H',
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
+
+    return { dataUrl, amount: finalAmount };
+  } catch (error) {
+    console.error('Error generating QR data URL:', error);
+    return { dataUrl: null, amount: 0 };
+  }
+};
+
+// Async wrapper component using React hooks won't work in @react-pdf/renderer
+// So we use a synchronous pre-generated approach via a HOC pattern
+const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameState, qrDataUrl, qrAmount }) => {
   const currentData = invoiceData || {};
   const companyInfo = getSafeData(currentData, 'companyInfo', {});
   const supplierInfo = getSafeData(currentData, 'supplierInfo', {});
@@ -349,15 +416,7 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
   const items = getSafeData(currentData, 'items', []);
   const orderMode = getSafeData(currentData, 'order_mode', 'PAKKA').toUpperCase();
   
-  // FIX 2: Get invoice number correctly - prioritize invoiceNumber prop first
   const displayInvoiceNumber = invoiceNumber || getSafeData(currentData, 'invoiceNumber', 'INV001');
-  
-  // Debug log to see what's happening
-  console.log('📄 PDF Invoice Number:', {
-    propInvoiceNumber: invoiceNumber,
-    dataInvoiceNumber: getSafeData(currentData, 'invoiceNumber'),
-    finalInvoiceNumber: displayInvoiceNumber
-  });
   
   const invoiceDate = getSafeData(currentData, 'invoiceDate') 
     ? new Date(getSafeData(currentData, 'invoiceDate')).toLocaleDateString('en-IN') 
@@ -367,76 +426,33 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
     ? new Date(getSafeData(currentData, 'validityDate')).toLocaleDateString('en-IN') 
     : 'N/A';
   
-  // FIX 1: Get transportation details from invoiceData
   const transportDetails = getSafeData(currentData, 'transportDetails', {});
-  const transportName = getSafeData(transportDetails, 'transport', '');
-  const grNumber = getSafeData(transportDetails, 'grNumber', '');
-  const vehicleNo = getSafeData(transportDetails, 'vehicleNo', '');
-  const stationName = getSafeData(transportDetails, 'station', '');
-  
-  // Also check for direct fields (as fallback)
-  const directTransportName = getSafeData(currentData, 'transport_name', '');
-  const directGrNumber = getSafeData(currentData, 'gr_rr_number', '');
-  const directVehicleNo = getSafeData(currentData, 'vehicle_number', '');
-  const directStationName = getSafeData(currentData, 'station_name', '');
-  
-  // Use transportDetails first, then direct fields as fallback
-  const finalTransportName = transportName || directTransportName;
-  const finalGrNumber = grNumber || directGrNumber;
-  const finalVehicleNo = vehicleNo || directVehicleNo;
-  const finalStationName = stationName || directStationName;
-  
-  // Check if any transport field has a value
+  const finalTransportName = getSafeData(transportDetails, 'transport', '') || getSafeData(currentData, 'transport_name', '');
+  const finalGrNumber = getSafeData(transportDetails, 'grNumber', '') || getSafeData(currentData, 'gr_rr_number', '');
+  const finalVehicleNo = getSafeData(transportDetails, 'vehicleNo', '') || getSafeData(currentData, 'vehicle_number', '');
+  const finalStationName = getSafeData(transportDetails, 'station', '') || getSafeData(currentData, 'station_name', '');
   const hasTransportDetails = finalTransportName || finalGrNumber || finalVehicleNo || finalStationName;
   
-  console.log('🚚 PDF Transport Details:', {
-    transportDetails,
-    transportName: finalTransportName,
-    grNumber: finalGrNumber,
-    vehicleNo: finalVehicleNo,
-    stationName: finalStationName,
-    hasTransportDetails
-  });
-  
-  // Calculate totals from items with proper calculations matching preview
   const calculateTotals = () => {
     let totalTaxableAmount = 0;
     let totalGSTAmount = 0;
     let totalCGSTAmount = 0;
     let totalSGSTAmount = 0;
-    let totalDiscountAmount = 0;
-    let totalCreditCharge = 0;
     let grandTotal = 0;
     
     items.forEach(item => {
       const quantity = parseFloat(getSafeData(item, 'quantity', 1));
-      const flashOffer = parseInt(getSafeData(item, 'flash_offer', 0));
-      const buyQuantity = parseInt(getSafeData(item, 'buy_quantity', 0));
-      const getQuantity = parseInt(getSafeData(item, 'get_quantity', 0));
-      
-      // Use net_price first, fallback to price
-      const price = parseFloat(getSafeData(item, 'net_price', getSafeData(item, 'price', 0)));
-      const discountAmount = parseFloat(getSafeData(item, 'discount_amount', 0)) * quantity;
-      const creditCharge = parseFloat(getSafeData(item, 'credit_charge', 0)) * quantity;
-      
-      // Get taxable amount - use taxable_amount from item if available
       const taxablePerUnit = parseFloat(getSafeData(item, 'taxable_amount', 0));
       const taxableAmount = taxablePerUnit * quantity;
-      
-      // GST calculations
-      const gst = orderMode === 'KACHA' ? 0 : parseFloat(getSafeData(item, 'gst', 0));
       const gstAmount = orderMode === 'KACHA' ? 0 : parseFloat(getSafeData(item, 'tax_amount', 0)) * quantity;
       const cgstAmount = orderMode === 'KACHA' ? 0 : parseFloat(getSafeData(item, 'cgst_amount', 0)) * quantity;
       const sgstAmount = orderMode === 'KACHA' ? 0 : parseFloat(getSafeData(item, 'sgst_amount', 0)) * quantity;
-      
       const itemTotal = orderMode === 'KACHA' ? taxableAmount : taxableAmount + gstAmount;
       
       totalTaxableAmount += taxableAmount;
       totalGSTAmount += gstAmount;
       totalCGSTAmount += cgstAmount;
       totalSGSTAmount += sgstAmount;
-      totalDiscountAmount += discountAmount;
-      totalCreditCharge += creditCharge;
       grandTotal += itemTotal;
     });
     
@@ -445,16 +461,11 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
       totalGSTAmount: totalGSTAmount.toFixed(2),
       totalCGSTAmount: totalCGSTAmount.toFixed(2),
       totalSGSTAmount: totalSGSTAmount.toFixed(2),
-      totalDiscountAmount: totalDiscountAmount.toFixed(2),
-      totalCreditCharge: totalCreditCharge.toFixed(2),
       grandTotal: grandTotal.toFixed(2)
     };
   };
   
   const totals = calculateTotals();
-  
-  // Get assigned staff
-  const assignedStaff = getSafeData(currentData, 'assigned_staff', 'N/A');
   
   return (
     <Document>
@@ -491,7 +502,6 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
         
         {/* Address Section */}
         <View style={styles.addressSection}>
-          {/* Billing Address */}
           <View style={styles.addressBox}>
             <Text style={styles.sectionTitle}>Bill To:</Text>
             <Text style={[styles.addressText, styles.tableCellBold, styles.tableCellLeft]}>
@@ -514,7 +524,6 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             </Text>
           </View>
           
-          {/* Shipping Address */}
           <View style={styles.addressBox}>
             <Text style={styles.sectionTitle}>Ship To:</Text>
             <Text style={[styles.addressText, styles.tableCellLeft]}>
@@ -529,15 +538,10 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             <Text style={[styles.addressText, styles.tableCellLeft]}>
               {getSafeData(shippingAddress, 'state', '')}, {getSafeData(shippingAddress, 'country', 'India')}
             </Text>
-            {getSafeData(shippingAddress, 'gstin') && (
-              <Text style={[styles.addressText, styles.tableCellLeft]}>
-                Shipping GSTIN: {getSafeData(shippingAddress, 'gstin')}
-              </Text>
-            )}
           </View>
         </View>
         
-        {/* FIX 1: Transportation Details Section - Added */}
+        {/* Transportation Details */}
         {hasTransportDetails && (
           <View style={styles.transportSection}>
             <Text style={styles.transportTitle}>Transportation Details</Text>
@@ -566,105 +570,66 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
         <View style={styles.itemsSection}>
           <Text style={styles.itemsTitle}>Items Details</Text>
           
-          {/* Table Header */}
           <View style={[styles.tableRow, styles.tableHeader]}>
             <View style={styles.colSNo}><Text style={styles.tableCellHeader}>#</Text></View>
             <View style={styles.colProduct}><Text style={styles.tableCellHeader}>Product</Text></View>
             <View style={styles.colHsn}><Text style={styles.tableCellHeader}>HSN Code</Text></View>
             <View style={styles.colQty}><Text style={styles.tableCellHeader}>Units</Text></View>
-            <View style={styles.colFreeQty}><Text style={styles.tableCellHeader}>Free Units</Text></View>
+            <View style={styles.colFreeQty}><Text style={styles.tableCellHeader}>Free</Text></View>
             <View style={styles.colPrice}><Text style={styles.tableCellHeader}>Price</Text></View>
-            <View style={styles.colDiscount}><Text style={styles.tableCellHeader}>Discount Amt</Text></View>
-            <View style={styles.colCreditCharge}><Text style={styles.tableCellHeader}>Credit Charge</Text></View>
-            <View style={styles.colTaxable}><Text style={styles.tableCellHeader}>Taxable Amt</Text></View>
-            <View style={styles.colGSTPercent}><Text style={styles.tableCellHeader}>GST %</Text></View>
+            <View style={styles.colDiscount}><Text style={styles.tableCellHeader}>Disc Amt</Text></View>
+            <View style={styles.colCreditCharge}><Text style={styles.tableCellHeader}>Cr Charge</Text></View>
+            <View style={styles.colTaxable}><Text style={styles.tableCellHeader}>Taxable</Text></View>
+            <View style={styles.colGSTPercent}><Text style={styles.tableCellHeader}>GST%</Text></View>
             <View style={styles.colGSTAmt}><Text style={styles.tableCellHeader}>GST Amt</Text></View>
-            <View style={styles.colCGST}><Text style={styles.tableCellHeader}>CGST Amt</Text></View>
-            <View style={styles.colSGST}><Text style={styles.tableCellHeader}>SGST Amt</Text></View>
-            <View style={styles.colTotal}><Text style={styles.tableCellHeader}>Item Total</Text></View>
+            <View style={styles.colCGST}><Text style={styles.tableCellHeader}>CGST</Text></View>
+            <View style={styles.colSGST}><Text style={styles.tableCellHeader}>SGST</Text></View>
+            <View style={styles.colTotal}><Text style={styles.tableCellHeader}>Total</Text></View>
           </View>
           
-          {/* Table Rows */}
           {items.map((item, index) => {
             const quantity = parseFloat(getSafeData(item, 'quantity', 1));
             const flashOffer = parseInt(getSafeData(item, 'flash_offer', 0));
             const buyQuantity = parseInt(getSafeData(item, 'buy_quantity', 0));
             const getQuantity = parseInt(getSafeData(item, 'get_quantity', 0));
-            
             const price = parseFloat(getSafeData(item, 'net_price', getSafeData(item, 'price', 0)));
             const discountAmount = parseFloat(getSafeData(item, 'discount_amount', 0)) * quantity;
             const creditCharge = parseFloat(getSafeData(item, 'credit_charge', 0)) * quantity;
-            
             const taxablePerUnit = parseFloat(getSafeData(item, 'taxable_amount', 0));
             const taxableAmount = taxablePerUnit * quantity;
-            
             const gst = orderMode === 'KACHA' ? 0 : parseFloat(getSafeData(item, 'gst', 0));
             const gstAmount = orderMode === 'KACHA' ? 0 : parseFloat(getSafeData(item, 'tax_amount', 0)) * quantity;
             const cgstAmount = orderMode === 'KACHA' ? 0 : parseFloat(getSafeData(item, 'cgst_amount', 0)) * quantity;
             const sgstAmount = orderMode === 'KACHA' ? 0 : parseFloat(getSafeData(item, 'sgst_amount', 0)) * quantity;
-            
             const itemTotal = orderMode === 'KACHA' ? taxableAmount : taxableAmount + gstAmount;
-            
             const hsnCode = getSafeData(item, 'hsn_code', '-');
             
             return (
               <View style={styles.tableRow} key={index}>
-                <View style={styles.colSNo}>
-                  <Text style={styles.tableCell}>{index + 1}</Text>
-                </View>
+                <View style={styles.colSNo}><Text style={styles.tableCell}>{index + 1}</Text></View>
                 <View style={styles.colProduct}>
                   <Text style={[styles.tableCell, styles.tableCellLeft, styles.tableCellBold]}>
                     {getSafeData(item, 'product', `Item ${index + 1}`)}
                   </Text>
                 </View>
-                <View style={styles.colHsn}>
-                  <Text style={[styles.tableCell, styles.tableCellCenter]}>
-                    {hsnCode}
-                  </Text>
-                </View>
-                <View style={styles.colQty}>
-                  <Text style={styles.tableCell}>
-                    {flashOffer === 1 ? buyQuantity : quantity}
-                  </Text>
-                </View>
-                <View style={styles.colFreeQty}>
-                  <Text style={styles.tableCell}>
-                    {flashOffer === 1 ? getQuantity : '-'}
-                  </Text>
-                </View>
-                <View style={styles.colPrice}>
-                  <Text style={[styles.tableCell, styles.tableCellRight]}>₹{price.toFixed(2)}</Text>
-                </View>
-                <View style={styles.colDiscount}>
-                  <Text style={[styles.tableCell, styles.tableCellRight]}>₹{discountAmount.toFixed(2)}</Text>
-                </View>
-                <View style={styles.colCreditCharge}>
-                  <Text style={[styles.tableCell, styles.tableCellRight]}>₹{creditCharge.toFixed(2)}</Text>
-                </View>
+                <View style={styles.colHsn}><Text style={[styles.tableCell, styles.tableCellCenter]}>{hsnCode}</Text></View>
+                <View style={styles.colQty}><Text style={styles.tableCell}>{flashOffer === 1 ? buyQuantity : quantity}</Text></View>
+                <View style={styles.colFreeQty}><Text style={styles.tableCell}>{flashOffer === 1 ? getQuantity : '-'}</Text></View>
+                <View style={styles.colPrice}><Text style={[styles.tableCell, styles.tableCellRight]}>₹{price.toFixed(2)}</Text></View>
+                <View style={styles.colDiscount}><Text style={[styles.tableCell, styles.tableCellRight]}>₹{discountAmount.toFixed(2)}</Text></View>
+                <View style={styles.colCreditCharge}><Text style={[styles.tableCell, styles.tableCellRight]}>₹{creditCharge.toFixed(2)}</Text></View>
                 <View style={styles.colTaxable}>
-                  <Text style={[styles.tableCell, styles.tableCellRight, styles.tableCellBold]}>
-                    ₹{taxableAmount.toFixed(2)}
-                  </Text>
+                  <Text style={[styles.tableCell, styles.tableCellRight, styles.tableCellBold]}>₹{taxableAmount.toFixed(2)}</Text>
                 </View>
-                <View style={styles.colGSTPercent}>
-                  <Text style={styles.tableCell}>
-                    {orderMode === 'KACHA' ? '0%' : `${gst}%`}
-                  </Text>
-                </View>
+                <View style={styles.colGSTPercent}><Text style={styles.tableCell}>{orderMode === 'KACHA' ? '0%' : `${gst}%`}</Text></View>
                 <View style={styles.colGSTAmt}>
-                  <Text style={[styles.tableCell, styles.tableCellRight]}>
-                    ₹{orderMode === 'KACHA' ? '0.00' : gstAmount.toFixed(2)}
-                  </Text>
+                  <Text style={[styles.tableCell, styles.tableCellRight]}>₹{orderMode === 'KACHA' ? '0.00' : gstAmount.toFixed(2)}</Text>
                 </View>
                 <View style={styles.colCGST}>
-                  <Text style={[styles.tableCell, styles.tableCellRight]}>
-                    ₹{orderMode === 'KACHA' ? '0.00' : cgstAmount.toFixed(2)}
-                  </Text>
+                  <Text style={[styles.tableCell, styles.tableCellRight]}>₹{orderMode === 'KACHA' ? '0.00' : cgstAmount.toFixed(2)}</Text>
                 </View>
                 <View style={styles.colSGST}>
-                  <Text style={[styles.tableCell, styles.tableCellRight]}>
-                    ₹{orderMode === 'KACHA' ? '0.00' : sgstAmount.toFixed(2)}
-                  </Text>
+                  <Text style={[styles.tableCell, styles.tableCellRight]}>₹{orderMode === 'KACHA' ? '0.00' : sgstAmount.toFixed(2)}</Text>
                 </View>
                 <View style={styles.colTotal}>
                   <Text style={[styles.tableCell, styles.tableCellRight, styles.tableCellBold, { color: '#28a745' }]}>
@@ -676,8 +641,9 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
           })}
         </View>
         
-        {/* Totals Section */}
+        {/* Totals + Notes + QR Section */}
         <View style={styles.totalsSection}>
+          {/* Notes on the left */}
           <View style={styles.notesSection}>
             <Text style={styles.sectionTitle}>Notes:</Text>
             <View style={styles.notesBox}>
@@ -687,76 +653,95 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             </View>
           </View>
           
-          <View style={styles.amountSection}>
-            <Text style={styles.amountTitle}>Amount Summary</Text>
-            
-            <View style={styles.amountRow}>
-              <Text style={[styles.tableCell, styles.tableCellBold]}>Taxable Amount:</Text>
-              <Text style={[styles.tableCell, styles.tableCellBold]}>₹{totals.totalTaxableAmount}</Text>
+          {/* Amount summary + QR on the right */}
+          <View style={styles.amountAndQrSection}>
+            {/* Amount Summary */}
+            <View style={styles.amountSection}>
+              <Text style={styles.amountTitle}>Amount Summary</Text>
+              
+              <View style={styles.amountRow}>
+                <Text style={[styles.tableCell, styles.tableCellBold]}>Taxable Amount:</Text>
+                <Text style={[styles.tableCell, styles.tableCellBold]}>₹{totals.totalTaxableAmount}</Text>
+              </View>
+              
+              {orderMode === 'PAKKA' && (
+                <>
+                  <View style={styles.amountRow}>
+                    <Text style={styles.tableCell}>CGST:</Text>
+                    <Text style={styles.tableCell}>₹{totals.totalCGSTAmount}</Text>
+                  </View>
+                  <View style={styles.amountRow}>
+                    <Text style={styles.tableCell}>SGST:</Text>
+                    <Text style={styles.tableCell}>₹{totals.totalSGSTAmount}</Text>
+                  </View>
+                </>
+              )}
+              
+              <View style={styles.amountRow}>
+                <Text style={[styles.tableCell, styles.tableCellBold]}>Total GST:</Text>
+                <Text style={[styles.tableCell, styles.tableCellBold, { color: '#28a745' }]}>
+                  ₹{orderMode === 'KACHA' ? '0.00' : totals.totalGSTAmount}
+                </Text>
+              </View>
+              
+              <View style={styles.grandTotal}>
+                <Text style={[styles.tableCell, styles.tableCellBold, { fontSize: 10 }]}>Grand Total:</Text>
+                <Text style={[styles.tableCell, styles.tableCellBold, { color: '#28a745', fontSize: 10 }]}>
+                  ₹{totals.grandTotal}
+                </Text>
+              </View>
             </View>
-            
-            {orderMode === 'PAKKA' && (
-              <>
-                <View style={styles.amountRow}>
-                  <Text style={styles.tableCell}>CGST:</Text>
-                  <Text style={styles.tableCell}>₹{totals.totalCGSTAmount}</Text>
-                </View>
-                <View style={styles.amountRow}>
-                  <Text style={styles.tableCell}>SGST:</Text>
-                  <Text style={styles.tableCell}>₹{totals.totalSGSTAmount}</Text>
-                </View>
-              </>
-            )}
-            
-            <View style={styles.amountRow}>
-              <Text style={[styles.tableCell, styles.tableCellBold]}>Total GST:</Text>
-              <Text style={[styles.tableCell, styles.tableCellBold, { color: '#28a745' }]}>
-                ₹{orderMode === 'KACHA' ? '0.00' : totals.totalGSTAmount}
-              </Text>
-            </View>
-            
-            <View style={styles.grandTotal}>
-              <Text style={[styles.tableCell, styles.tableCellBold, { fontSize: 10 }]}>Grand Total:</Text>
-              <Text style={[styles.tableCell, styles.tableCellBold, { color: '#28a745', fontSize: 10 }]}>
-                ₹{totals.grandTotal}
-              </Text>
-            </View>
+
+        
           </View>
         </View>
         
-        {/* Footer */}
-        <View style={styles.footer}>
-          <View style={styles.bankDetails}>
-            <Text style={styles.bankTitle}>Bank Details:</Text>
-            <View style={{ backgroundColor: '#f8f9fa', padding: 6, borderRadius: 3 }}>
-              <Text style={styles.bankText}>
-                Company Name: SHREE SHASHWATRAJ AGRO PVT LTD
-              </Text>
-              <Text style={styles.bankText}>
-                Bank Name: STATE BANK OF INDIA
-              </Text>
-              <Text style={styles.bankText}>
-                Branch: SME AURANGABAD
-              </Text>
-              <Text style={styles.bankText}>
-                Account Number: 44773710377
-              </Text>
-              <Text style={styles.bankText}>
-                IFSC Code: SBIN0063699
-              </Text>
-            </View>
-          </View>
-          <View style={styles.signature}>
-            <View style={styles.signatureBox}>
-              <Text style={styles.bankText}>For {getSafeData(companyInfo, 'name', 'Company Name')}</Text>
-              <View style={styles.signatureLine} />
-              <Text style={[styles.bankText, { marginTop: 5 }]}>Authorized Signatory</Text>
-            </View>
-          </View>
-        </View>
+     {/* Footer */}
+<View style={styles.footer}>
+  <View style={styles.bankDetails}>
+    <Text style={styles.bankTitle}>Bank Details:</Text>
+    <View style={{ backgroundColor: '#f8f9fa', padding: 6, borderRadius: 3 }}>
+      <Text style={styles.bankText}>Company Name: SHREE SHASHWATRAJ AGRO PVT LTD</Text>
+      <Text style={styles.bankText}>Bank Name: STATE BANK OF INDIA</Text>
+      <Text style={styles.bankText}>Branch: SME AURANGABAD</Text>
+      <Text style={styles.bankText}>Account Number: 44773710377</Text>
+      <Text style={styles.bankText}>IFSC Code: SBIN0063699</Text>
+    </View>
+  </View>
+
+  {/* QR Code Section - Centered */}
+  {qrDataUrl && (
+    <View style={styles.qrSectionWrapper}>
+      <View style={styles.qrSection}>
+        <Text style={styles.qrTitle}>Scan to Pay via UPI</Text>
+        <Image
+          src={qrDataUrl}
+          style={styles.qrImage}
+        />
+        <Text style={styles.qrAmount}>₹{(qrAmount || parseFloat(totals.grandTotal)).toFixed(2)}</Text>
+        {/* <Text style={[styles.qrOrderBadge, { 
+          color: orderMode === 'KACHA' ? '#856404' : '#155724',
+          backgroundColor: orderMode === 'KACHA' ? '#fff3cd' : '#d4edda',
+        }]}>
+          {orderMode} ORDER
+        </Text> */}
+      </View>
+    </View>
+  )}
+  
+  <View style={styles.signature}>
+    <View style={styles.signatureBox}>
+      <Text style={styles.bankText}>For {getSafeData(companyInfo, 'name', 'Company Name')}</Text>
+      <View style={styles.signatureLine} />
+      <Text style={[styles.bankText, { marginTop: 5 }]}>Authorized Signatory</Text>
+    </View>
+  </View>
+</View>
       </Page>
     </Document>
   );
 };
 
+// Export the async helper so handlePrint can pre-generate the QR
+export { generateQRDataUrl };
 export default InvoicceprintOrder;

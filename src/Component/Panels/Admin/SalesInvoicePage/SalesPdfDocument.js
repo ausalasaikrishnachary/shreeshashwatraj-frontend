@@ -4,7 +4,8 @@ import {
   Page, 
   Text, 
   View, 
-  StyleSheet 
+  StyleSheet,
+  Image
 } from '@react-pdf/renderer';
 import { Font } from '@react-pdf/renderer';
 
@@ -13,22 +14,24 @@ Font.register({
   src: 'https://fonts.gstatic.com/s/notosans/v36/o-0IIpQlx3QUlC5A4PNb4g.ttf'
 });
 
-// Create styles
+// Create styles for A5 page
 const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
     backgroundColor: '#FFFFFF',
-    padding: 30,
-    fontSize: 9,
-    fontFamily: 'NotoSans'
+    padding: 20,
+    fontSize: 8,
+    fontFamily: 'NotoSans',
+    width: '100%',
+    minHeight: '100%',
   },
   
   // Header Section
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
-    paddingBottom: 15,
+    marginBottom: 12,
+    paddingBottom: 10,
     borderBottom: '1pt solid #e0e0e0',
   },
   companyInfo: {
@@ -37,26 +40,26 @@ const styles = StyleSheet.create({
   invoiceMeta: {
     flex: 1,
     backgroundColor: '#f8f9fa',
-    padding: 10,
-    borderRadius: 4,
+    padding: 6,
+    borderRadius: 3,
     border: '1pt solid #dee2e6',
   },
   companyName: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 3,
     color: '#2c3e50',
   },
   companyAddress: {
-    fontSize: 8,
+    fontSize: 7,
     color: '#666666',
-    marginBottom: 3,
-    lineHeight: 1.3,
+    marginBottom: 2,
+    lineHeight: 1.2,
   },
   invoiceTitle: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 5,
     color: '#dc3545',
     textAlign: 'center',
   },
@@ -64,62 +67,62 @@ const styles = StyleSheet.create({
   // Address Section
   addressSection: {
     flexDirection: 'row',
-    marginBottom: 15,
-    gap: 10,
+    marginBottom: 10,
+    gap: 8,
   },
   addressBox: {
     flex: 1,
     backgroundColor: '#f8f9fa',
-    padding: 10,
-    borderRadius: 4,
+    padding: 6,
+    borderRadius: 3,
     border: '1pt solid #dee2e6',
   },
   sectionTitle: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 5,
     color: '#007bff',
     borderBottom: '1pt solid #007bff',
-    paddingBottom: 3,
+    paddingBottom: 2,
   },
   addressText: {
-    fontSize: 8,
-    marginBottom: 3,
-    lineHeight: 1.3,
+    fontSize: 7,
+    marginBottom: 2,
+    lineHeight: 1.2,
   },
   
   // Sales Person Section
   salesPersonSection: {
-    marginBottom: 15,
+    marginBottom: 10,
     flexDirection: 'row',
     justifyContent: 'flex-start',
     backgroundColor: '#f8f9fa',
-    padding: 8,
-    borderRadius: 4,
+    padding: 5,
+    borderRadius: 3,
     border: '1pt solid #dee2e6',
-    gap: 10,
+    gap: 8,
   },
   salesPersonLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'bold',
     color: '#666666',
   },
   salesPersonName: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'bold',
     color: '#007bff',
   },
   
   // Items Section
   itemsSection: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   itemsTitle: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 6,
     color: '#007bff',
-    paddingBottom: 4,
+    paddingBottom: 3,
     borderBottom: '1pt solid #007bff',
   },
   
@@ -128,40 +131,40 @@ const styles = StyleSheet.create({
     display: 'table',
     width: '100%',
     borderStyle: 'solid',
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: '#dee2e6',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   tableRow: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: '#dee2e6',
-    minHeight: 28,
+    minHeight: 22,
   },
   tableHeader: {
     backgroundColor: '#343a40',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: '#212529',
   },
   
-  // Column widths - UPDATED with Original Price column
-  colSNo: { width: '6%', padding: 5 },
-  colProduct: { width: '25%', padding: 5 },
-  colHsn: { width: '10%', padding: 5 },
-  colQty: { width: '8%', padding: 5 },
-  colPrice: { width: '12%', padding: 5 },
-  colOriginalPrice: { width: '12%', padding: 5 },  // ✅ NEW COLUMN
-  colGST: { width: '8%', padding: 5 },
-  colTotal: { width: '12%', padding: 5 },
+  // Column widths (adjusted for A5)
+  colSNo: { width: '6%', padding: 3 },
+  colProduct: { width: '24%', padding: 3 },
+  colHsn: { width: '9%', padding: 3 },
+  colQty: { width: '7%', padding: 3 },
+  colPrice: { width: '11%', padding: 3 },
+  colOriginalPrice: { width: '11%', padding: 3 },
+  colGST: { width: '7%', padding: 3 },
+  colTotal: { width: '12%', padding: 3 },
   
   // Table cell styles
   tableCell: {
-    fontSize: 8,
-    lineHeight: 1.4,
+    fontSize: 7,
+    lineHeight: 1.2,
     color: '#2c3e50',
   },
   tableCellHeader: {
-    fontSize: 7,
+    fontSize: 6.5,
     fontWeight: 'bold',
     color: '#ffffff',
   },
@@ -181,93 +184,135 @@ const styles = StyleSheet.create({
   // Totals Section
   totalsSection: {
     flexDirection: 'row',
-    marginTop: 10,
-    gap: 15,
+    marginTop: 8,
+    gap: 10,
   },
   notesSection: {
     flex: 2,
   },
   notesBox: {
     backgroundColor: '#f8f9fa',
-    padding: 10,
-    borderRadius: 4,
-    border: '1pt solid #dee2e6',
-    minHeight: 80,
+    padding: 6,
+    borderRadius: 3,
+    border: '0.5pt solid #dee2e6',
+    minHeight: 60,
   },
   amountSection: {
     flex: 1.2,
     backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 4,
-    border: '1pt solid #dee2e6',
+    padding: 8,
+    borderRadius: 3,
+    border: '0.5pt solid #dee2e6',
   },
   amountTitle: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: 'bold',
-    marginBottom: 12,
+    marginBottom: 8,
     color: '#007bff',
     textAlign: 'center',
-    borderBottom: '1pt solid #dee2e6',
-    paddingBottom: 5,
+    borderBottom: '0.5pt solid #dee2e6',
+    paddingBottom: 3,
   },
   amountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
-    paddingBottom: 4,
+    marginBottom: 4,
+    paddingBottom: 2,
     borderBottom: '0.5pt dotted #e9ecef',
   },
   grandTotal: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    borderTop: '2pt solid #007bff',
-    paddingTop: 8,
-    marginTop: 8,
+    borderTop: '1.5pt solid #007bff',
+    paddingTop: 5,
+    marginTop: 5,
   },
   amountLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'bold',
   },
   amountValue: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'bold',
+  },
+  
+  // QR Code Section
+  qrSection: {
+    backgroundColor: '#f0f8ff',
+    padding: 5,
+    borderRadius: 3,
+    border: '0.5pt solid #007bff',
+    alignItems: 'center',
+    width: 'auto',
+    minWidth: 80,
+  },
+  qrTitle: {
+    fontSize: 7,
+    fontWeight: 'bold',
+    color: '#007bff',
+    marginBottom: 3,
+    textAlign: 'center',
+  },
+  qrImage: {
+    width: 50,
+    height: 50,
+  },
+  qrAmount: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#28a745',
+    marginTop: 3,
+    textAlign: 'center',
+  },
+  qrSubtext: {
+    fontSize: 5.5,
+    color: '#666',
+    marginTop: 2,
+    textAlign: 'center',
   },
   
   // Footer
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 25,
-    paddingTop: 15,
-    borderTop: '1pt solid #e0e0e0',
+    alignItems: 'flex-start',
+    marginTop: 15,
+    paddingTop: 10,
+    borderTop: '0.5pt solid #e0e0e0',
+    gap: 8,
   },
   bankDetails: {
-    flex: 1,
+    flex: 1.2,
   },
   bankTitle: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'bold',
-    marginBottom: 6,
+    marginBottom: 4,
     color: '#007bff',
   },
   bankText: {
-    fontSize: 7,
-    lineHeight: 1.3,
-    marginBottom: 2,
+    fontSize: 6.5,
+    lineHeight: 1.2,
+    marginBottom: 1.5,
+  },
+  qrWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   signature: {
+    flex: 0.8,
     alignItems: 'flex-end',
-    flex: 1,
   },
   signatureBox: {
     alignItems: 'center',
-    width: 200,
+    width: 100,
   },
   signatureLine: {
-    width: 180,
-    marginBottom: 5,
-    marginTop: 20,
-    borderBottom: '1pt solid #000',
+    width: 90,
+    marginBottom: 3,
+    marginTop: 12,
+    borderBottom: '0.5pt solid #000',
   },
 });
 
@@ -286,7 +331,7 @@ const getSafeData = (data, path, defaultValue = '') => {
   }
 };
 
-const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameState }) => {
+const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameState, qrDataUrl, qrAmount }) => {
   const currentData = invoiceData || {};
   const companyInfo = getSafeData(currentData, 'companyInfo', {});
   const supplierInfo = getSafeData(currentData, 'supplierInfo', {});
@@ -304,7 +349,7 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
   
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size="A5" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.companyInfo}>
@@ -323,9 +368,9 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
           </View>
           <View style={styles.invoiceMeta}>
             <Text style={styles.invoiceTitle}>TAX INVOICE</Text>
-            <Text><Text style={styles.tableCellBold}>Invoice No:</Text> {displayInvoiceNumber}</Text>
-            <Text><Text style={styles.tableCellBold}>Invoice Date:</Text> {invoiceDate}</Text>
-            <Text><Text style={styles.tableCellBold}>Due Date:</Text> {dueDate}</Text>
+            <Text style={styles.addressText}><Text style={styles.tableCellBold}>Invoice No:</Text> {displayInvoiceNumber}</Text>
+            <Text style={styles.addressText}><Text style={styles.tableCellBold}>Invoice Date:</Text> {invoiceDate}</Text>
+            <Text style={styles.addressText}><Text style={styles.tableCellBold}>Due Date:</Text> {dueDate}</Text>
           </View>
         </View>
         
@@ -383,23 +428,23 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
           
           {/* Table */}
           <View style={styles.table}>
-            {/* Table Header - UPDATED with Original Price column */}
+            {/* Table Header */}
             <View style={[styles.tableRow, styles.tableHeader]}>
-              <View style={styles.colSNo}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>S.No</Text></View>
+              <View style={styles.colSNo}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>#</Text></View>
               <View style={styles.colProduct}><Text style={[styles.tableCellHeader, styles.tableCellLeft]}>Product</Text></View>
-              <View style={styles.colHsn}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>HSN Code</Text></View>
-              <View style={styles.colQty}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>Units</Text></View>
-              <View style={styles.colPrice}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Rate (Excl of Tax)</Text></View>
-              <View style={styles.colOriginalPrice}><Text style={[styles.tableCellHeader, styles.tableCellRight]}> Rate (Incl of Tax)</Text></View>
-              <View style={styles.colGST}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>GST %</Text></View>
-              <View style={styles.colTotal}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Amount (₹)</Text></View>
+              <View style={styles.colHsn}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>HSN</Text></View>
+              <View style={styles.colQty}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>Qty</Text></View>
+              <View style={styles.colPrice}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Rate</Text></View>
+              <View style={styles.colOriginalPrice}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>MRP</Text></View>
+              <View style={styles.colGST}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>GST</Text></View>
+              <View style={styles.colTotal}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Amount</Text></View>
             </View>
             
             {/* Table Rows */}
             {items.map((item, index) => {
               const quantity = parseFloat(getSafeData(item, 'quantity', 1));
               const price = parseFloat(getSafeData(item, 'price', 0));
-              const originalPrice = parseFloat(getSafeData(item, 'original_price', price));  // ✅ GET ORIGINAL PRICE
+              const originalPrice = parseFloat(getSafeData(item, 'original_price', price));
               const gst = parseFloat(getSafeData(item, 'gst', 0));
               const discount = parseFloat(getSafeData(item, 'discount', 0));
               const hsnCode = getSafeData(item, 'hsn_code', '');
@@ -417,7 +462,7 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
                   </View>
                   <View style={styles.colProduct}>
                     <Text style={[styles.tableCell, styles.tableCellLeft, styles.tableCellBold]}>
-                      {getSafeData(item, 'product', `Item ${index + 1}`)}
+                      {getSafeData(item, 'product', `Item ${index + 1}`).substring(0, 20)}
                     </Text>
                   </View>
                   <View style={styles.colHsn}>
@@ -431,7 +476,6 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
                   <View style={styles.colPrice}>
                     <Text style={[styles.tableCell, styles.tableCellRight]}>₹{price.toFixed(2)}</Text>
                   </View>
-                  {/* ✅ ORIGINAL PRICE COLUMN */}
                   <View style={styles.colOriginalPrice}>
                     <Text style={[styles.tableCell, styles.tableCellRight]}>
                       ₹{originalPrice.toFixed(2)}
@@ -463,31 +507,25 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
             </View>
             
             {/* Transportation Details */}
-            <View style={{ marginTop: 12 }}>
-              <Text style={styles.sectionTitle}>Transportation Details:</Text>
-              <View style={[styles.notesBox, { marginTop: 5 }]}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+            <View style={{ marginTop: 8 }}>
+              <Text style={styles.sectionTitle}>Transport Details:</Text>
+              <View style={[styles.notesBox, { marginTop: 3, minHeight: 40 }]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
                   <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Transport:</Text>
                   <Text style={styles.addressText}>
                     {getSafeData(currentData, 'transportDetails.transport') || '-'}
                   </Text>
                 </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
                   <Text style={[styles.addressText, { fontWeight: 'bold' }]}>GR/RR No.:</Text>
                   <Text style={styles.addressText}>
                     {getSafeData(currentData, 'transportDetails.grNumber') || '-'}
                   </Text>
                 </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
                   <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Vehicle No.:</Text>
                   <Text style={styles.addressText}>
                     {getSafeData(currentData, 'transportDetails.vehicleNo') || '-'}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Station:</Text>
-                  <Text style={styles.addressText}>
-                    {getSafeData(currentData, 'transportDetails.station') || '-'}
                   </Text>
                 </View>
               </View>
@@ -498,32 +536,29 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
           <View style={styles.amountSection}>
             <Text style={styles.amountTitle}>Amount Summary</Text>
             
-            {/* Taxable Amount */}
             <View style={styles.amountRow}>
               <Text style={styles.amountLabel}>Amount:</Text>
               <Text style={styles.amountValue}>₹{getSafeData(currentData, 'taxableAmount', '0.00')}</Text>
             </View>
             
-            {/* GST Breakdown */}
             {isSameState ? (
               <>
                 <View style={styles.amountRow}>
-                  <Text>CGST:</Text>
-                  <Text>₹{gstBreakdown?.totalCGST || '0.00'}</Text>
+                  <Text style={styles.addressText}>CGST:</Text>
+                  <Text style={styles.addressText}>₹{gstBreakdown?.totalCGST || '0.00'}</Text>
                 </View>
                 <View style={styles.amountRow}>
-                  <Text>SGST:</Text>
-                  <Text>₹{gstBreakdown?.totalSGST || '0.00'}</Text>
+                  <Text style={styles.addressText}>SGST:</Text>
+                  <Text style={styles.addressText}>₹{gstBreakdown?.totalSGST || '0.00'}</Text>
                 </View>
               </>
             ) : (
               <View style={styles.amountRow}>
-                <Text>IGST:</Text>
-                <Text>₹{gstBreakdown?.totalIGST || '0.00'}</Text>
+                <Text style={styles.addressText}>IGST:</Text>
+                <Text style={styles.addressText}>₹{gstBreakdown?.totalIGST || '0.00'}</Text>
               </View>
             )}
             
-            {/* Total GST */}
             <View style={styles.amountRow}>
               <Text style={styles.amountLabel}>Total GST:</Text>
               <Text style={[styles.amountValue, { color: '#28a745' }]}>
@@ -531,47 +566,42 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
               </Text>
             </View>
             
-            {/* Grand Total */}
             <View style={styles.grandTotal}>
               <Text style={styles.amountLabel}>Grand Total:</Text>
-              <Text style={[styles.amountValue, { color: '#28a745', fontSize: 10 }]}>
+              <Text style={[styles.amountValue, { color: '#28a745', fontSize: 9 }]}>
                 ₹{getSafeData(currentData, 'grandTotal', '0.00')}
               </Text>
             </View>
           </View>
         </View>
         
-        {/* Footer */}
+        {/* Footer with QR Code */}
         <View style={styles.footer}>
           <View style={styles.bankDetails}>
             <Text style={styles.bankTitle}>Bank Details:</Text>
-            
-            <Text style={styles.bankText}>
-              Company Name: SHREE SHASHWATRAJ AGRO PVT LTD
-            </Text>
-            
-            <Text style={styles.bankText}>
-              Bank Name: STATE BANK OF INDIA
-            </Text>
-            
-            <Text style={styles.bankText}>
-              Branch: SME AURANGABAD
-            </Text>
-            
-            <Text style={styles.bankText}>
-              Account Number: 44773710377
-            </Text>
-            
-            <Text style={styles.bankText}>
-              IFSC Code: SBIN0063699
-            </Text>
+            <Text style={styles.bankText}>SHREE SHASHWATRAJ AGRO PVT LTD</Text>
+            <Text style={styles.bankText}>SBI - SME AURANGABAD</Text>
+            <Text style={styles.bankText}>A/C: 44773710377</Text>
+            <Text style={styles.bankText}>IFSC: SBIN0063699</Text>
           </View>
+          
+          {/* QR Code Section - Centered */}
+          {qrDataUrl && (
+            <View style={styles.qrWrapper}>
+              <View style={styles.qrSection}>
+                <Text style={styles.qrTitle}>Scan to Pay</Text>
+                <Image src={qrDataUrl} style={styles.qrImage} />
+                <Text style={styles.qrAmount}>₹{(qrAmount || parseFloat(getSafeData(currentData, 'grandTotal', 0))).toFixed(2)}</Text>
+                <Text style={styles.qrSubtext}>UPI Payment</Text>
+              </View>
+            </View>
+          )}
           
           <View style={styles.signature}>
             <View style={styles.signatureBox}>
               <Text style={styles.bankText}>For {getSafeData(companyInfo, 'name', 'Company Name')}</Text>
               <View style={styles.signatureLine} />
-              <Text style={[styles.bankText, { marginTop: 5 }]}>Authorized Signatory</Text>
+              <Text style={[styles.bankText, { marginTop: 3 }]}>Authorized Signatory</Text>
             </View>
           </View>
         </View>
