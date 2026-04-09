@@ -9,10 +9,8 @@
   import Select from "react-select";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import InvoicesPDF from '../SalesInvoicePage/TablePdf/InvoicesPDF'; // Adjust path as needed
+import InvoicesPDF from '../SalesInvoicePage/TablePdf/InvoicesPDF'; 
 import { saveAs } from 'file-saver';
-import QRCodeGenerator_normal from '../SalesInvoicePage/QRCodeGenerator_normal'; 
-
 
   const InvoicesTable = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -25,10 +23,6 @@ import QRCodeGenerator_normal from '../SalesInvoicePage/QRCodeGenerator_normal';
 const [isDownloading, setIsDownloading] = useState(false);
 const [isRangeDownloading, setIsRangeDownloading] = useState(false);
 const pdfRef = useRef();
-  const [invoiceData, setInvoiceData] = useState(null);
-
-const [qrDataUrl, setQrDataUrl] = useState(null);
-const [qrAmount, setQrAmount] = useState(null);
     const [month, setMonth] = useState('July');
     const [year, setYear] = useState('2026');
     const [startDate, setStartDate] = useState('2025-06-08');
@@ -164,7 +158,6 @@ const filterInvoicesByMonthYear = (invoices, month, year) => {
   });
 };
 
-// Generate PDF from the InvoicesPDF component
 const generatePDF = async (filteredData, type = 'month') => {
   if (!filteredData || filteredData.length === 0) {
     alert('No invoices found for the selected period');
@@ -172,7 +165,6 @@ const generatePDF = async (filteredData, type = 'month') => {
   }
 
   try {
-    // Create a temporary div to render the PDF component
     const element = document.createElement('div');
     element.style.position = 'absolute';
     element.style.left = '-9999px';
@@ -249,31 +241,15 @@ const generatePDF = async (filteredData, type = 'month') => {
   }
 };
 
-const handleQrDataGenerated = (qrUrl, amount) => {
-  console.log('QR Data generated:', qrUrl, amount);
-  
-  if (qrUrl) {
-    setQrDataUrl(qrUrl);
-    setQrAmount(amount);
-  }
-};
-const handlePrintInvoice = async (invoice) => {
-  // Prevent multiple print requests
-  if (downloading[invoice.id]) {
-    console.log('Print already in progress');
-    return;
-  }
 
+const handlePrintInvoice = async (invoice) => {
   try {
-    setDownloading(prev => ({ ...prev, [invoice.id]: true }));
-    
     const voucherId = invoice.originalData?.VoucherID || invoice.id;
     
     if (!voucherId) {
       throw new Error('Voucher ID not found');
     }
 
-    // Fetch complete invoice data
     const response = await fetch(`${baseurl}/transactions/${voucherId}`);
     
     if (!response.ok) {
@@ -283,136 +259,16 @@ const handlePrintInvoice = async (invoice) => {
     const result = await response.json();
     const apiData = result.data || result;
     
-    // Transform data
     const transformedData = transformApiDataToInvoiceFormat(apiData);
     
-    // Use QR data from state or generate new one
-    let finalQrDataUrl = qrDataUrl;
-    let finalQrAmount = qrAmount || parseFloat(transformedData.grandTotal);
-    
-    // If no QR data exists, you can generate it here
-    if (!finalQrDataUrl) {
-      // You can generate QR dynamically or wait for the component to generate it
-      console.log('Waiting for QR generation...');
-    }
-    
-    // Generate PDF with QR
-    await generateAndPrintPDFWithQR(transformedData, invoice.number, finalQrDataUrl, finalQrAmount);
+    await generateAndPrintPDF(transformedData, invoice.number);
     
   } catch (error) {
     console.error('Error printing invoice:', error);
     alert('Failed to generate PDF: ' + error.message);
-  } finally {
-    setDownloading(prev => ({ ...prev, [invoice.id]: false }));
   }
 };
-const generateAndPrintPDFWithQR = async (invoiceData, invoiceNumber, qrDataUrl, qrAmount) => {
-  try {
-    const reactPdf = await import('@react-pdf/renderer');
-    const pdf = reactPdf.pdf;
-    
-    const SalesPdfDocument = (await import('../SalesInvoicePage/SalesPdfDocument')).default;
-    
-    const calculateGSTBreakdown = () => {
-      if (!invoiceData || !invoiceData.items) return { totalCGST: 0, totalSGST: 0, totalIGST: 0 };
 
-      const totalCGST = invoiceData.items.reduce((sum, item) => {
-        const quantity = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.price) || 0;
-        const discount = parseFloat(item.discount) || 0;
-        const cgstRate = parseFloat(item.cgst) || 0;
-
-        const subtotal = quantity * price;
-        const discountAmount = subtotal * (discount / 100);
-        const amountAfterDiscount = subtotal - discountAmount;
-        const cgstAmount = amountAfterDiscount * (cgstRate / 100);
-
-        return sum + cgstAmount;
-      }, 0);
-
-      const totalSGST = invoiceData.items.reduce((sum, item) => {
-        const quantity = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.price) || 0;
-        const discount = parseFloat(item.discount) || 0;
-        const sgstRate = parseFloat(item.sgst) || 0;
-
-        const subtotal = quantity * price;
-        const discountAmount = subtotal * (discount / 100);
-        const amountAfterDiscount = subtotal - discountAmount;
-        const sgstAmount = amountAfterDiscount * (sgstRate / 100);
-
-        return sum + sgstAmount;
-      }, 0);
-
-      const totalIGST = invoiceData.items.reduce((sum, item) => {
-        const quantity = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.price) || 0;
-        const discount = parseFloat(item.discount) || 0;
-        const igstRate = parseFloat(item.igst) || 0;
-
-        const subtotal = quantity * price;
-        const discountAmount = subtotal * (discount / 100);
-        const amountAfterDiscount = subtotal - discountAmount;
-        const igstAmount = amountAfterDiscount * (igstRate / 100);
-
-        return sum + igstAmount;
-      }, 0);
-
-      return {
-        totalCGST: totalCGST.toFixed(2),
-        totalSGST: totalSGST.toFixed(2),
-        totalIGST: totalIGST.toFixed(2)
-      };
-    };
-
-    const gstBreakdown = calculateGSTBreakdown();
-    const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
-
-    // Close existing print window if open
-    if (window.currentPrintWindow && !window.currentPrintWindow.closed) {
-      window.currentPrintWindow.close();
-    }
-
-    // Create PDF document with QR data
-    const pdfDoc = (
-      <SalesPdfDocument
-        invoiceData={invoiceData}
-        invoiceNumber={invoiceData.invoiceNumber}
-        gstBreakdown={gstBreakdown}
-        isSameState={isSameState}
-        qrDataUrl={qrDataUrl}  
-        qrAmount={qrAmount || parseFloat(invoiceData.grandTotal)} 
-      />
-    );
-
-    const blob = await pdf(pdfDoc).toBlob();
-    const pdfUrl = URL.createObjectURL(blob);
-
-    const printWindow = window.open(pdfUrl, '_blank');
-    window.currentPrintWindow = printWindow;
-
-    if (printWindow) {
-   
-      
-    } else {
-      // Fallback if popup blocked
-      alert('Popup blocked. Please allow popups or use download option.');
-      const downloadUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `Invoice_${invoiceData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
-      URL.revokeObjectURL(pdfUrl);
-    }
-
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    throw new Error('Failed to generate PDF: ' + error.message);
-  }
-};
 const transformApiDataToInvoiceFormat = (apiData) => {
   console.log('Transforming API data for print:', apiData);
 
@@ -575,6 +431,7 @@ const generateAndPrintPDF = async (invoiceData, invoiceNumber) => {
     
     const SalesPdfDocument = (await import('../SalesInvoicePage/SalesPdfDocument')).default;
     
+    // Calculate GST breakdown
     const calculateGSTBreakdown = () => {
       if (!invoiceData || !invoiceData.items) return { totalCGST: 0, totalSGST: 0, totalIGST: 0 };
 
@@ -630,7 +487,6 @@ const generateAndPrintPDF = async (invoiceData, invoiceNumber) => {
     const gstBreakdown = calculateGSTBreakdown();
     const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
 
-    // Create PDF document
     const pdfDoc = (
       <SalesPdfDocument
         invoiceData={invoiceData}
@@ -640,18 +496,14 @@ const generateAndPrintPDF = async (invoiceData, invoiceNumber) => {
       />
     );
 
-    // Generate PDF blob
     const blob = await pdf(pdfDoc).toBlob();
 
-    // Create URL for the blob
     const pdfUrl = URL.createObjectURL(blob);
 
-    // Open in new tab - this will show only the PDF
     const printWindow = window.open(pdfUrl, '_blank');
 
     if (!printWindow) {
-      // Fallback if popup blocked
-      alert('Popup blocked. Please allow popups or use download option.');
+        alert('Popup blocked. Please allow popups or use download option.');
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
@@ -714,6 +566,7 @@ const generateAndPrintPDF = async (invoiceData, invoiceNumber) => {
         
         console.log('Fetching details for VoucherID:', voucherId);
         
+        // Fetch complete invoice data including batch details
         const response = await fetch(`${baseurl}/transactions/${voucherId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch invoice details');
@@ -722,6 +575,7 @@ const generateAndPrintPDF = async (invoiceData, invoiceNumber) => {
         const invoiceDetails = await response.json();
         console.log('Complete invoice details:', invoiceDetails);
 
+        // Parse batch details if they exist
         let items = [];
         let batchDetails = [];
         
@@ -1195,18 +1049,7 @@ const columns = [
         </button>
       </div>
     </div>
-  <div className="quotation-container p-4">
-    <h5 className="mb-3 fw-bold">View Invoice Details</h5>
 
-    {invoiceData && (
-      <div className="mb-4">
-        <QRCodeGenerator_normal 
-          invoiceData={invoiceData}
-          onQrDataGenerated={handleQrDataGenerated}
-        />
-      </div>
-    )}
-    </div>
     {/* Table */}
     <ReusableTable
       title="Sales Invoices"

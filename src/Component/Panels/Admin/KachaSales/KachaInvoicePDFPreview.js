@@ -5,6 +5,9 @@ import { FaPrint, FaFilePdf, FaEdit, FaSave, FaTimes, FaArrowLeft, FaRupeeSign, 
 import { useNavigate, useParams } from "react-router-dom";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import SalesPdfDocument from '../SalesInvoicePage/SalesPdfDocument';
+import QRCodeGenerator_normal from '../SalesInvoicePage/QRCodeGenerator_normal';
+
+
 const InvoicePDFPreview = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -20,6 +23,9 @@ const InvoicePDFPreview = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState(null);
+const [qrAmount, setQrAmount] = useState(null);
+const [showAllTransactions, setShowAllTransactions] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -519,6 +525,8 @@ const transformPaymentData = (apiData) => {
   };
 
 const PaymentStatus = () => {
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
+
   if (paymentLoading) {
     return (
       <Card className="shadow-sm mb-3">
@@ -559,17 +567,7 @@ const PaymentStatus = () => {
     );
   }
 
-  // ✅ Add null checks - ensure receipts and creditnotes are arrays
   const { invoice, receipts = [], creditnotes = [], summary } = paymentData;
-  
-  console.log('PaymentStatus rendering with:', {
-    invoice,
-    receipts,
-    creditnotes,
-    summary
-  });
-
-  // ✅ Ensure they are arrays
   const receiptsArray = Array.isArray(receipts) ? receipts : [];
   const creditnotesArray = Array.isArray(creditnotes) ? creditnotes : [];
 
@@ -577,35 +575,18 @@ const PaymentStatus = () => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Invalid Date';
-    
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    
-    return `${day}/${month}/${year}`;
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
   };
 
-  // ✅ Safely combine transactions
   const allTransactions = [
     ...receiptsArray.map(r => ({ ...r, type: 'receipt' })),
     ...creditnotesArray.map(cn => ({ ...cn, type: 'credit_note' }))
-  ].sort((a, b) => {
-    const dateA = a.paidDate ? new Date(a.paidDate) : new Date(0);
-    const dateB = b.paidDate ? new Date(b.paidDate) : new Date(0);
-    return dateA - dateB;
-  });
+  ].sort((a, b) => new Date(b.paidDate) - new Date(a.paidDate));
 
   const totalAmount = invoice?.totalAmount || 0;
-  const totalPaid = receiptsArray.reduce((sum, receipt) => {
-    return sum + (parseFloat(receipt.paidAmount) || 0);
-  }, 0);
-  const totalCreditNotes = creditnotesArray.reduce((sum, creditnote) => {
-    return sum + (parseFloat(creditnote.paidAmount) || 0);
-  }, 0);
+  const totalPaid = receiptsArray.reduce((sum, r) => sum + (parseFloat(r.paidAmount) || 0), 0);
+  const totalCreditNotes = creditnotesArray.reduce((sum, cn) => sum + (parseFloat(cn.paidAmount) || 0), 0);
   const balanceDue = totalAmount - totalPaid - totalCreditNotes;
-  
-  const progressPercentage = totalAmount > 0 ? 
-    ((totalPaid - totalCreditNotes) / totalAmount) * 100 : 0;
 
   return (
     <Card className="shadow-sm mb-3">
@@ -616,12 +597,9 @@ const PaymentStatus = () => {
         </h5>
       </Card.Header>
       <Card.Body>
-        <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+        <div className="d-flex justify-content-between align-items-center mb-1 p-2 bg-light rounded">
           <span className="fw-bold">Status:</span>
-          <Badge bg={
-            summary?.status === 'Paid' ? 'success' :
-            summary?.status === 'Partial' ? 'warning' : 'danger'
-          }>
+          <Badge bg={summary?.status === 'Paid' ? 'success' : summary?.status === 'Partial' ? 'warning' : 'danger'}>
             {summary?.status || 'Pending'}
           </Badge>
         </div>
@@ -630,57 +608,54 @@ const PaymentStatus = () => {
           <div className="d-flex justify-content-between align-items-center mb-2">
             <span className="text-muted">
               <FaRupeeSign className="me-1" />
-              Original Invoice:
+              Invoice:
             </span>
-            <small className="text-muted ms-1">
-              (On {formatIndianDate(invoice?.invoiceDate)})
-            </small>
-            <span className="fw-bold text-primary">
-              ₹{totalAmount.toFixed(2)}
-            </span>
+            <small className="text-muted ms-1">(On {formatIndianDate(invoice?.invoiceDate)})</small>
+            <span className="fw-bold text-primary">₹{totalAmount.toFixed(2)}</span>
           </div>
 
-          {allTransactions.length > 0 ? (
-            allTransactions.map((transaction, index) => (
-              <div 
-                key={`${transaction.type}-${index}`} 
-                className={`d-flex justify-content-between align-items-center mb-2 ps-3 border-start ${
-                  transaction.type === 'receipt' ? 'border-success' : 'border-warning'
-                }`}
-              >
-                <span className={transaction.type === 'receipt' ? 'text-success' : 'text-warning'}>
-                  {transaction.type === 'receipt' ? (
-                    <FaCheckCircle className="me-1" />
-                  ) : (
-                    <FaTimes className="me-1" />
-                  )}
-                  {transaction.type === 'receipt' ? ' Receipt:' : 'Credit Note:'}
-                </span>
-                <small className="text-muted ms-1">
-                  (On {formatIndianDate(transaction.paidDate)}) – {transaction.receiptNumber}
-                </small>
-                <span className={`fw-bold ${
-                  transaction.type === 'receipt' ? 'text-success' : 'text-warning'
-                }`}>
-                  {transaction.type === 'receipt' ? '' : ''}₹{(transaction.paidAmount || 0).toFixed(2)}
-                </span>
+          {/* Header with counter */}
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <small className="text-muted">
+              <FaReceipt className="me-1" />
+              Recent (Last {Math.min(3, allTransactions.length)} of {allTransactions.length})
+            </small>
+            {allTransactions.length > 3 && (
+              <small className="text-primary fw-bold" style={{ cursor: 'pointer' }} onClick={() => setShowAllTransactions(!showAllTransactions)}>
+                {showAllTransactions ? 'Show Less' : 'View All'}
+              </small>
+            )}
+          </div>
+
+          {/* Scrollable Transactions Section */}
+          <div className="transactions-scrollable" style={{ maxHeight: '200px', overflowY: 'auto', paddingRight: '5px' }}>
+            {allTransactions.length > 0 ? (
+              (showAllTransactions ? allTransactions : allTransactions.slice(0, 3)).map((transaction, index) => (
+                <div key={`${transaction.type}-${index}`} className={`d-flex justify-content-between align-items-center mb-2 ps-3 border-start ${transaction.type === 'receipt' ? 'border-success' : 'border-warning'}`}>
+                  <span className={transaction.type === 'receipt' ? 'text-success' : 'text-warning'}>
+                    {transaction.type === 'receipt' ? <FaCheckCircle className="me-1" /> : <FaTimes className="me-1" />}
+                    {transaction.type === 'receipt' ? ' Receipt:' : ' Credit Note:'}
+                  </span>
+                  <small className="text-muted ms-1">(On {formatIndianDate(transaction.paidDate)}) – {transaction.receiptNumber}</small>
+                  <span className={`fw-bold ${transaction.type === 'receipt' ? 'text-success' : 'text-warning'}`}>
+                    ₹{(transaction.paidAmount || 0).toFixed(2)}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-muted py-2">
+                <small>No receipts or credit notes recorded</small>
               </div>
-            ))
-          ) : (
-            <div className="text-center text-muted py-2">
-              <small>No receipts or credit notes recorded</small>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Balance Due */}
-          <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top">
+          <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top mt-2">
             <span className="text-danger">
               <FaExclamationTriangle className="me-1" />
               Balance Due:
             </span>
-            <span className="fw-bold text-danger">
-              ₹{balanceDue.toFixed(2)}
-            </span>
+            <span className="fw-bold text-danger">₹{balanceDue.toFixed(2)}</span>
           </div>
         </div>
       </Card.Body>
@@ -696,48 +671,41 @@ const handlePrint = async () => {
       throw new Error('No invoice data available');
     }
 
-    // Dynamically import PDF libraries
     let pdf;
     let SalesPdfDocumentModule;
     
     try {
       const reactPdf = await import('@react-pdf/renderer');
       pdf = reactPdf.pdf;
-      
-      // Use the already imported SalesPdfDocument
       SalesPdfDocumentModule = SalesPdfDocument;
     } catch (importError) {
       console.error('Error importing PDF modules:', importError);
       throw new Error('Failed to load PDF generation libraries');
     }
 
-    // Calculate GST breakdown
     const gstBreakdown = calculateGSTBreakdown();
     const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
 
-    // Create PDF document
+    // Use QR data if available
+    const finalQrDataUrl = qrDataUrl;
+    const finalQrAmount = qrAmount || parseFloat(currentData.grandTotal);
+
     const pdfDoc = (
       <SalesPdfDocumentModule 
         invoiceData={currentData}
         invoiceNumber={currentData.invoiceNumber}
         gstBreakdown={gstBreakdown}
         isSameState={isSameState}
+        qrDataUrl={finalQrDataUrl}
+        qrAmount={finalQrAmount}
       />
     );
 
-    // Generate PDF blob
     const blob = await pdf(pdfDoc).toBlob();
-    
-    // Create URL for the blob
     const pdfUrl = URL.createObjectURL(blob);
-    
-    // Open in new tab
     const printWindow = window.open(pdfUrl, '_blank');
     
-    if (printWindow) {
-      console.log('PDF opened in new tab for printing');
-    } else {
-      // Fallback if popup blocked
+    if (!printWindow) {
       alert('Popup blocked. Please allow popups or use download option.');
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -749,10 +717,7 @@ const handlePrint = async () => {
       URL.revokeObjectURL(downloadUrl);
     }
 
-    // Clean up URL after delay
-    setTimeout(() => {
-      URL.revokeObjectURL(pdfUrl);
-    }, 1000);
+    setTimeout(() => URL.revokeObjectURL(pdfUrl), 5000);
 
   } catch (error) {
     console.error('Error generating PDF for print:', error);
@@ -762,132 +727,70 @@ const handlePrint = async () => {
     setDownloading(false);
   }
 };
-  const handleDownloadPDF = async () => {
-    try {
-      setDownloading(true);
-      setError(null);
-      
-      if (!currentData) {
-        throw new Error('No invoice data available');
-      }
-
-      let pdf;
-      let SalesPdfDocument;
-      
-      try {
-        const reactPdf = await import('@react-pdf/renderer');
-        pdf = reactPdf.pdf;
-        
-        const pdfModule = await import('../SalesInvoicePage/SalesPdfDocument');
-        SalesPdfDocument = pdfModule.default;
-      } catch (importError) {
-        console.error('Error importing PDF modules:', importError);
-        throw new Error('Failed to load PDF generation libraries');
-      }
-
-      const gstBreakdown = calculateGSTBreakdown();
-      const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
-
-      console.log('Generating PDF for invoice:', currentData.invoiceNumber);
-
-      let pdfDoc;
-      try {
-        pdfDoc = (
-          <SalesPdfDocument 
-            invoiceData={currentData}
-            invoiceNumber={currentData.invoiceNumber}
-            gstBreakdown={gstBreakdown}
-            isSameState={isSameState}
-          />
-        );
-      } catch (componentError) {
-        console.error('Error creating PDF component:', componentError);
-        throw new Error('Failed to create PDF document structure');
-      }
-
-      let blob;
-      try {
-        blob = await pdf(pdfDoc).toBlob();
-      } catch (pdfError) {
-        console.error('Error generating PDF blob:', pdfError);
-        throw new Error('Failed to generate PDF file');
-      }
-      
-      const filename = `Invoice_${currentData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
-
-      const base64data = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-        const storeResponse = await fetch(`${baseurl}/transactions/${id}/pdf`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            pdfData: base64data,
-            fileName: filename
-          }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!storeResponse.ok) {
-          const errorText = await storeResponse.text();
-          throw new Error(`Server error: ${storeResponse.status} - ${errorText}`);
-        }
-
-        const storeResult = await storeResponse.json();
-        
-        if (storeResult.success) {
-          console.log('PDF stored successfully in database');
-          
-          const downloadUrl = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = downloadUrl;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(downloadUrl);
-          
-          setSuccess('PDF downloaded and stored successfully!');
-          setTimeout(() => setSuccess(false), 3000);
-        } else {
-          throw new Error(storeResult.message || 'Failed to store PDF');
-        }
-      } catch (storeError) {
-        console.error('Error storing PDF:', storeError);
-        
-        const downloadUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(downloadUrl);
-        
-        setSuccess('PDF downloaded successfully! (Not stored in database due to size limitations)');
-        setTimeout(() => setSuccess(false), 3000);
-      }
-
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      setError('Failed to generate PDF: ' + error.message);
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setDownloading(false);
+const handleDownloadPDF = async () => {
+  try {
+    setDownloading(true);
+    setError(null);
+    
+    if (!currentData) {
+      throw new Error('No invoice data available');
     }
-  };
+
+    let pdf;
+    let SalesPdfDocumentModule;
+    
+    try {
+      const reactPdf = await import('@react-pdf/renderer');
+      pdf = reactPdf.pdf;
+      
+      const pdfModule = await import('../SalesInvoicePage/SalesPdfDocument');
+      SalesPdfDocumentModule = pdfModule.default;
+    } catch (importError) {
+      console.error('Error importing PDF modules:', importError);
+      throw new Error('Failed to load PDF generation libraries');
+    }
+
+    const gstBreakdown = calculateGSTBreakdown();
+    const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+
+    // Use QR data if available
+    const finalQrDataUrl = qrDataUrl;
+    const finalQrAmount = qrAmount || parseFloat(currentData.grandTotal);
+
+    const pdfDoc = (
+      <SalesPdfDocumentModule 
+        invoiceData={currentData}
+        invoiceNumber={currentData.invoiceNumber}
+        gstBreakdown={gstBreakdown}
+        isSameState={isSameState}
+        qrDataUrl={finalQrDataUrl}
+        qrAmount={finalQrAmount}
+      />
+    );
+
+    const blob = await pdf(pdfDoc).toBlob();
+    const filename = `Invoice_${currentData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+    
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(downloadUrl);
+    
+    setSuccess('PDF downloaded successfully!');
+    setTimeout(() => setSuccess(false), 3000);
+
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    setError('Failed to generate PDF: ' + error.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setDownloading(false);
+  }
+};
 
   const handleEditToggle = () => {
     handleEditInvoice(); 
@@ -1166,6 +1069,26 @@ const handlePrint = async () => {
     };
   };
 
+
+
+  const handleQrDataGenerated = (qrUrl) => {
+  console.log('QR Data generated:', qrUrl);
+  
+  if (qrUrl) {
+    const QRCode = require('qrcode');
+    QRCode.toDataURL(qrUrl, { errorCorrectionLevel: 'H', margin: 1, width: 150 }, (err, url) => {
+      if (!err) {
+        setQrDataUrl(url);
+        const amountMatch = qrUrl.match(/am=([^&]+)/);
+        if (amountMatch) {
+          setQrAmount(parseFloat(amountMatch[1]));
+        }
+      } else {
+        console.error('QR generation error:', err);
+      }
+    });
+  }
+};
 const handleOpenReceiptModal = () => {
   console.log("🟦 handleOpenReceiptModal TRIGGERED");
 
@@ -2230,11 +2153,18 @@ const handleOpenReceiptModal = () => {
               </div>
             </div>
           </Col>
-
-          {/* Payment Sidebar */}
-          <Col lg={4} className="d-print-none no-print">
-            <PaymentStatus />
-          </Col>
+{/* Payment Sidebar with QR Code */}
+<Col lg={4} className="d-print-none no-print">
+  <PaymentStatus />
+  {invoiceData && (
+    <div className="mt-3">
+      <QRCodeGenerator_normal 
+        invoiceData={invoiceData}
+        onQrDataGenerated={handleQrDataGenerated}
+      />
+    </div>
+  )}
+</Col>
         </Row>
       </Container>
     </div>

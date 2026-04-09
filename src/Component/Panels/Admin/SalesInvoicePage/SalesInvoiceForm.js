@@ -233,7 +233,9 @@ const transformApiDataToFormFormat = (apiData) => {
         batchDetails: batch.batchDetails || null,
         assigned_staff: batch.assigned_staff || apiData.assigned_staff || apiData.AssignedStaff || 'N/A',
          hsn_code: batch.hsn_code || ''  ,
-          inclusive_gst: batch.inclusive_gst || "" 
+          inclusive_gst: batch.inclusive_gst || "" ,
+           unit_id: batch.unit_id || "", 
+    unit_name: batch.unit_name || ""  
       };
     }) || [];
 
@@ -656,7 +658,6 @@ const addItem = () => {
       if (!confirmAdd) {
         return; // User clicked Cancel - don't add item
       }
-      // User clicked OK - proceed with adding item
     }
   }
 
@@ -709,7 +710,9 @@ const addItem = () => {
       product_id: itemForm.product_id,
       batchDetails: selectedBatchDetails,
         original_price: itemForm.original_price ,
-        inclusive_gst: itemForm.inclusive_gst  // ✅ ADD THIS LINE
+        inclusive_gst: itemForm.inclusive_gst  ,
+         unit_id: itemForm.unit_id,     
+      unit_name: itemForm.unit_name    
     };
 
     setInvoiceData(prev => ({
@@ -736,7 +739,9 @@ const addItem = () => {
       product_id: itemForm.product_id,
       batchDetails: selectedBatchDetails,
        inclusive_gst: itemForm.inclusive_gst  ,
-        original_price: itemForm.original_price 
+        original_price: itemForm.original_price ,
+          unit_id: itemForm.unit_id,      
+      unit_name: itemForm.unit_name  
     };
 
     setInvoiceData(prev => ({
@@ -778,6 +783,20 @@ const addItem = () => {
   setSelectedBatchDetails(null);
 };
 
+const fetchUnitName = async (unitId) => {
+  if (!unitId) return "";
+  try {
+    const response = await fetch(`${baseurl}/units/${unitId}`);
+    if (response.ok) {
+      const unitData = await response.json();
+      return unitData.name || "";
+    }
+  } catch (err) {
+    console.error("Failed to fetch unit:", err);
+  }
+  return "";
+};
+
   const editItem = (index) => {
     const itemToEdit = invoiceData.items[index];
     
@@ -803,6 +822,8 @@ const addItem = () => {
       hsn_code: itemToEdit.hsn_code || "" ,
         inclusive_gst: itemToEdit.inclusive_gst || ""  ,
            original_price: itemToEdit.original_price || "",
+            unit_id: itemToEdit.unit_id || "",
+    unit_name: itemToEdit.unit_name || "" 
     });
     
     setSelectedBatch(itemToEdit.batch);
@@ -1106,8 +1127,9 @@ const calculateTotals = () => {
           batch: item.batch,
           batch_id: item.batch_id,
           quantity: quantity,
+           unit_id: item.unit_id, 
           price: price,
-           original_price: parseFloat(item.original_price) || 0,  // ← JUST THIS
+           original_price: parseFloat(item.original_price) || 0,  
           discount: discount,
           gst: parseFloat(item.gst) || 0,          
           cgst: parseFloat(item.cgst) || 0,        
@@ -1826,6 +1848,12 @@ const handleExclPriceChange = (e) => {
                         const retailerDiscount = parseFloat(
                           accounts.find(acc => acc.id === selectedSupplierId)?.discount || 0
                         ) || 0;
+
+
+                          let unitName = "";
+  if (p.unit) {
+    unitName = await fetchUnitName(p.unit); 
+  }
                         setItemForm(prev => ({
                           ...prev,
                           product: p.goods_name,
@@ -1839,7 +1867,9 @@ const handleExclPriceChange = (e) => {
                           batch: "",
                           batch_id: "",
                           hsn_code: p.hsn_code || "",
-                          inclusive_gst: inclusiveGst  // ← Set from API
+                          inclusive_gst: inclusiveGst  ,
+                           unit_id: p.unit || null,      
+    unit_name: unitName   
                         }));
 
                         try {
@@ -2133,7 +2163,11 @@ const handleExclPriceChange = (e) => {
                         <tr key={index}>
                           <td>{item.product}</td>
                           <td>{item.description}</td>
-                          <td className="text-center">{item.quantity}</td>
+     <td className="text-center">
+  {item.unit_name 
+    ? `${item.quantity} ${item.unit_name}`
+    : item.quantity}
+</td>
                             <td className="text-center">{item.inclusive_gst || '-'}</td> 
                     <td className="text-end">₹{parseFloat(item.original_price).toFixed(2)}</td>  
           

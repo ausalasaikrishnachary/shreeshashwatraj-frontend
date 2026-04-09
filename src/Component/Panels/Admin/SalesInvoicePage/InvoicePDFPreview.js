@@ -6,10 +6,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import QRCodeGenerator_normal from './QRCodeGenerator_normal';
 
-
-
-
-
 const InvoicePDFPreview = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -28,6 +24,8 @@ const InvoicePDFPreview = () => {
   const [deleting, setDeleting] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [success, setSuccess] = useState(false);
+const [unitData, setUnitData] = useState({}); // This is correct
+const [loadingUnits, setLoadingUnits] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const [showAllReceipts, setShowAllReceipts] = useState(false);
 const [qrAmount, setQrAmount] = useState(null);
@@ -151,6 +149,20 @@ const fetchPaymentData = async (invoiceNumber) => {
     }
   } finally {
     setPaymentLoading(false);
+  }
+};
+
+const fetchUnitName = async (unitId) => {
+  if (!unitId || unitId === 'null' || unitId === null) return;
+  if (unitData[unitId]) return;
+  
+  try {
+    const res = await fetch(`${baseurl}/units/${unitId}`);
+    const data = await res.json();
+    // data.name = "Pieces" from your API
+    setUnitData(prev => ({ ...prev, [unitId]: data.name }));
+  } catch (err) {
+    console.error(err);
   }
 };
   const transformPaymentData = (apiData) => {
@@ -355,6 +367,16 @@ const fetchPaymentData = async (invoiceNumber) => {
     }
   };
 
+  
+useEffect(() => {
+  if (invoiceData?.items && invoiceData.items.length > 0) {
+    invoiceData.items.forEach(item => {
+      if (item.unit_id && item.unit_id !== 'null' && item.unit_id !== null) {
+        fetchUnitName(item.unit_id);
+      }
+    });
+  }
+}, [invoiceData]);
   const transformApiDataToInvoiceFormat = (apiData) => {
     console.log('Transforming API data:', apiData);
 
@@ -407,8 +429,10 @@ const fetchPaymentData = async (invoiceNumber) => {
         price: price,
         discount: discount,
         gst: gst,
-        
+          unit_id: batch.unit_id || null,
  original_price: original_price, 
+  unit_id: batch.unit_id || null, 
+    unit_name: batch.unit_name || '', 
         cgst: cgst,
         sgst: sgst,
         igst: igst,
@@ -1919,7 +1943,7 @@ const handleItemChange = (index, field, value) => {
     )}
   </div>
 </Col>
-                  <Col md={6}>
+                  {/* <Col md={6}>
                     <div className="shipping-address bg-light p-3 rounded">
                       <h5 className="text-primary mb-2">Ship To:</h5>
                       {isEditMode ? (
@@ -1971,14 +1995,32 @@ const handleItemChange = (index, field, value) => {
                         </div>
                       </div>
                     )}
-                  </Col>
-                </Row>
+                  </Col> */}
+
+
+        
+         
+            <Col md={6}>
+                    <h6 className="text-primary">Transportation Details:</h6>
+
+            <div className="bg-light p-3 rounded">
+              <div className="transport-field">
+                <strong>Vehicle No.:</strong>
+                <p className="mb-0 text-muted">
+                  {currentData.transportDetails?.vehicleNo || '-'}
+                </p>
+              </div>
+              </div>
+            </Col>
+            
+          </Row>
+               
               </div>
 
               {/* Items Table */}
-              <div className="items-section mb-4">
+              <div className="items-section mb-1">
                 <div className="d-flex justify-content-between align-items-center mb-2">
-                  <h6 className="text-primary mb-0">Items Details</h6>
+                  {/* <h6 className="text-primary mb-0">Items Details</h6> */}
                   {isEditMode && (
                     <Button variant="primary" size="sm" onClick={addNewItem}>
                       + Add Item
@@ -1993,10 +2035,12 @@ const handleItemChange = (index, field, value) => {
         <th width="20%">Product</th>
         <th width="10%">HSN Code</th>
         <th width="8%">Units</th>
-        <th width="15%">Rate (Excl of Tax)</th>
         <th width="15%">Rate (Incl of Tax)</th>
-        <th width="8%">GST %</th>
+                <th width="15%">Rate (Excl of Tax)</th>
+
+      
         <th width="8%">Disc %</th>
+          <th width="8%">GST %</th>
         <th width="12%">Amount (₹)</th>
       </tr>
     </thead>
@@ -2006,11 +2050,15 @@ const handleItemChange = (index, field, value) => {
           <td className="text-center">{index + 1}</td>
           <td>{item.product}</td>
           <td className="text-center">{item.hsn_code || '-'}</td>
-          <td className="text-center">{item.quantity}</td>
-          <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
+       <td className="text-center">
+  {item.quantity} {unitData[item.unit_id] || ''}
+</td>
           <td className="text-end">₹{parseFloat(item.original_price).toFixed(2)}</td>
-          <td className="text-center">{item.gst}%</td>
+                    <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
+
           <td className="text-center">{parseFloat(item.discount || 0).toFixed(1)}%</td>
+                    <td className="text-center">{item.gst}%</td>
+
           <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
         </tr>
       ))}
@@ -2038,7 +2086,9 @@ const handleItemChange = (index, field, value) => {
         <td className="text-center">{index + 1}</td>
         <td className="text-center">{item.product}</td>
         <td className="text-center">{item.hsn_code || '-'}</td>
-        <td className="text-center">{item.quantity}</td>
+             <td className="text-center">
+            {item.quantity} {item.unit_name || ''}  {/* ✅ Show unit name */}
+          </td>
         <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
         <td className="text-end">₹{parseFloat(item.original_price).toFixed(2)}</td>
         <td className="text-center">{item.gst}%</td>
@@ -2056,9 +2106,38 @@ const handleItemChange = (index, field, value) => {
               {/* Totals Section */}
               <div className="totals-section mb-4">
                 <Row>
-                  <Col md={7}>
-                    <div className="notes-section">
-                      <h6 className="text-primary">Notes:</h6>
+   <Col md={7}>
+                    <div className="bank-details">
+
+                      <h6 className="text-primary mb-1" style={{ fontSize: '15px' }}>
+                        Bank Details:
+                      </h6>
+
+                      <div className="bg-light p-2 rounded" style={{ fontSize: '11px', lineHeight: '1.2' }}>
+
+                        <p className="mb-1" style={{ fontSize: '12px', }}  >
+                          Account Name: SHREE SHASHWATRAJ AGRO PVT LTD
+                        </p>
+
+                        <p className="mb-1" style={{ fontSize: '12px', }}>
+                          Bank Name: STATE BANK OF INDIA
+                        </p>
+
+                        <p className="mb-1" style={{ fontSize: '12px', }}>
+                          Branch: SME AURANGABAD
+                        </p>
+
+                        <p className="mb-1" style={{ fontSize: '12px', }}>
+                          Account Number: 44773710377
+                        </p>
+
+                        <p className="mb-0" style={{ fontSize: '12px', }}>
+                          IFSC Code: SBIN0063699
+                        </p>
+
+                      </div>
+                    </div>
+                      {/* <h6 className="text-primary">Notes:</h6>
                       {isEditMode ? (
                         <Form.Control
                           as="textarea"
@@ -2071,10 +2150,9 @@ const handleItemChange = (index, field, value) => {
                         <p className="bg-light p-2 rounded min-h-100">
                           {currentData.note}
                         </p>
-                      )}
+                      )} */}
 
-    {/* ✅ ADD TRANSPORT DETAILS HERE */}
-      <div className="transport-details-section mt-3">
+      {/* <div className="transport-details-section mt-3">
         <h6 className="text-primary">Transportation Details:</h6>
         <div className="bg-light p-3 rounded">
           <Row className="mb-2">
@@ -2114,10 +2192,9 @@ const handleItemChange = (index, field, value) => {
             </Col>
           </Row>
         </div>
-      </div>
+      </div> */}
 
 
-                    </div>
                   </Col>
                   <Col md={5}>
                     <div className="amount-breakdown bg-light p-3 rounded">
@@ -2166,7 +2243,7 @@ const handleItemChange = (index, field, value) => {
               {/* Footer */}
               <div className="invoice-footer border-top pt-3">
                 <Row>
-                  <Col md={6}>
+                  {/* <Col md={6}>
                     <div className="bank-details">
 
                       <h6 className="text-primary mb-1" style={{ fontSize: '15px' }}>
@@ -2197,8 +2274,8 @@ const handleItemChange = (index, field, value) => {
 
                       </div>
                     </div>
-                  </Col>
-                  <Col md={6} className="text-end">
+                  </Col> */}
+                  <Col md={12} className="text-end">
                     <div className="signature-section">
                       <p className="mb-2">For {currentData.companyInfo.name}</p>
                       <div className="signature-space border-bottom mx-auto" style={{ width: '200px', height: '40px' }}></div>
