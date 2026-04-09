@@ -774,6 +774,7 @@ const handlePrint = async () => {
         isSameState={isSameState}
         qrDataUrl={qrDataUrl}  // ← PASS QR DATA URL
         qrAmount={qrAmount || parseFloat(currentData.grandTotal)}  // ← PASS QR AMOUNT
+          unitData={unitData} 
       />
     );
 

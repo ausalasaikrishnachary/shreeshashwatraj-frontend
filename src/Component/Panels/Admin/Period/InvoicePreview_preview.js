@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Button, Form } from 'react-bootstrap';
 import { baseurl } from "../../../BaseURL/BaseURL";
 import axios from "axios";
-
 const InvoicePreview_preview = ({
   invoiceData,
   isEditing,
@@ -12,15 +11,20 @@ const InvoicePreview_preview = ({
   onDescriptionChange,
   gstBreakdown,
   isSameState,
-   onTransportChange,  
-  transportDetails,   
+  onTransportChange,
+  transportDetails,
   onOrderModeChange,
-  periodInvoiceData // Add this prop to get original order items
+  periodInvoiceData
 }) => {
   const [localOrderMode, setLocalOrderMode] = useState("PAKKA");
   const [allProducts, setAllProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [updatedItems, setUpdatedItems] = useState([]);
+  const [unitData, setUnitData] = useState({});
+  const [loadingUnits, setLoadingUnits] = useState(false);
+  
+  // ✅ DEFINE displayItems HERE - at the top, before any useEffect that uses it
+  const displayItems = updatedItems.length > 0 ? updatedItems : (invoiceData?.items || []);
 
   // Fetch all products on component mount
   useEffect(() => {
@@ -53,6 +57,42 @@ const InvoicePreview_preview = ({
     }
   }, [invoiceData]);
 
+  // Function to fetch unit name by ID
+  const fetchUnitName = async (unitId) => {
+    if (!unitId || unitId === 'null' || unitId === null) return;
+    if (unitData[unitId]) return; // Already fetched
+    
+    try {
+      const res = await axios.get(`${baseurl}/units/${unitId}`);
+      const unitName = res.data.name || '';
+      setUnitData(prev => ({ ...prev, [unitId]: unitName }));
+      return unitName;
+    } catch (err) {
+      console.error("Failed to fetch unit:", err);
+      return '';
+    }
+  };
+
+  // ✅ This useEffect uses displayItems - now displayItems is defined above
+  useEffect(() => {
+    const fetchAllUnitNames = async () => {
+      if (!displayItems || displayItems.length === 0) return;
+      
+      const uniqueUnitIds = [...new Set(
+        displayItems
+          .map(item => item.unit_id)
+          .filter(id => id && id !== 'null' && id !== null && !unitData[id])
+      )];
+      
+      for (const unitId of uniqueUnitIds) {
+        await fetchUnitName(unitId);
+      }
+    };
+    
+    fetchAllUnitNames();
+  }, [displayItems]);
+
+  // ✅ ADD THESE MISSING FUNCTIONS
   // Function to find matching product variant
   const findProductVariant = (currentProductName, targetProductType) => {
     if (!allProducts || allProducts.length === 0) return null;
@@ -96,43 +136,42 @@ const InvoicePreview_preview = ({
     return item;
   };
 
-// In InvoicePreview_preview component - modify handleOrderModeChange:
-const handleOrderModeChange = async (value) => {
-  const normalizedValue = value.toUpperCase();
-  
-  if (normalizedValue !== localOrderMode) {
-    console.log(`🔄 Switching order mode from ${localOrderMode} to ${normalizedValue}`);
+  // In InvoicePreview_preview component - modify handleOrderModeChange:
+  const handleOrderModeChange = async (value) => {
+    const normalizedValue = value.toUpperCase();
     
-    if (updatedItems.length > 0 && allProducts.length > 0) {
-      // Switch product variants for all items
-      const newItems = updatedItems.map(item => 
-        switchItemVariant(item, normalizedValue)
-      );
+    if (normalizedValue !== localOrderMode) {
+      console.log(`🔄 Switching order mode from ${localOrderMode} to ${normalizedValue}`);
       
-      setUpdatedItems(newItems);
+      if (updatedItems.length > 0 && allProducts.length > 0) {
+        // Switch product variants for all items
+        const newItems = updatedItems.map(item => 
+          switchItemVariant(item, normalizedValue)
+        );
+        
+        setUpdatedItems(newItems);
+        
+        // Notify parent with updated items containing new product_ids
+        if (onOrderModeChange) {
+          onOrderModeChange({
+            orderMode: normalizedValue,
+            updatedItems: newItems // Pass items with updated product_ids
+          });
+        }
+      } else {
+        // Just pass the order mode
+        if (onOrderModeChange) {
+          onOrderModeChange({
+            orderMode: normalizedValue,
+            updatedItems: []
+          });
+        }
+      }
       
-      // Notify parent with updated items containing new product_ids
-      if (onOrderModeChange) {
-        onOrderModeChange({
-          orderMode: normalizedValue,
-          updatedItems: newItems // Pass items with updated product_ids
-        });
-      }
-    } else {
-      // Just pass the order mode
-      if (onOrderModeChange) {
-        onOrderModeChange({
-          orderMode: normalizedValue,
-          updatedItems: []
-        });
-      }
+      setLocalOrderMode(normalizedValue);
     }
-    
-    setLocalOrderMode(normalizedValue);
-  }
-};
+  };
 
-  // Get taxable amount PER UNIT from database
   const getTaxableAmountPerUnit = (item) => {
     if (item.taxable_amount !== undefined && item.taxable_amount !== null) {
       return parseFloat(item.taxable_amount) || 0;
@@ -359,9 +398,6 @@ const getNetPricePerUnit = (item) => {
 
   if (!invoiceData) return null;
 
-  // Use updatedItems or fallback to invoiceData.items
-  const displayItems = updatedItems.length > 0 ? updatedItems : invoiceData.items;
-
   return (
     <div className="invoice-pdf-preview bg-white p-4 shadow-sm" id="invoice-pdf-content">
       {/* Header */}
@@ -537,23 +573,25 @@ const getNetPricePerUnit = (item) => {
                       )}
                     </td>
                     
-                    <td className="text-center align-middle">
-                      {flashOffer === 1 ? (
-                        <div className="fw-bold text-primary">{buyQuantity}</div>
-                      ) : (
-                        <div className="fw-medium text-muted">{quantity}</div>
-                      )}
-                    </td>
-                    
-                    <td className="text-center align-middle">
-                      {flashOffer === 1 ? (
-                        <div className="fw-bold text-success">
-                          {getQuantity}
-                        </div>
-                      ) : (
-                        <div className="text-muted">-</div>
-                      )}
-                    </td>
+                <td className="text-center align-middle">
+  {flashOffer === 1 ? (
+    <div className="fw-bold text-primary">
+      {buyQuantity} {unitData[item.unit_id] || item.unit_name || ''}
+    </div>
+  ) : (
+    <div className="fw-medium text-muted">
+      {quantity} {unitData[item.unit_id] || item.unit_name || ''}
+    </div>
+  )}
+</td><td className="text-center align-middle">
+  {flashOffer === 1 ? (
+    <div className="fw-bold text-success">
+      {getQuantity} {unitData[item.unit_id] || item.unit_name || ''}
+    </div>
+  ) : (
+    <div className="text-muted">-</div>
+  )}
+</td>
                     
                     <td className="text-end align-middle">
                       <div className="fw-medium">₹{netPrice.toFixed(2)}</div>

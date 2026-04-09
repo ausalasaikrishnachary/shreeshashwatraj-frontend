@@ -100,7 +100,9 @@ const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
     total: 0,
     batch: "",
     batch_id: "",
-    batchDetails: null
+    batchDetails: null,
+     unit_id: "",     
+  unit_name: ""     
   });
 
   const [loading, setLoading] = useState(false);
@@ -190,7 +192,9 @@ const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
         total: total.toFixed(2),
         batch: batch.batch || '',
         batch_id: batch.batch_id || '',
-        batchDetails: batch.batchDetails || null
+        batchDetails: batch.batchDetails || null,
+         unit_id: batch.unit_id || "",     
+    unit_name: batch.unit_name || ""   
       };
     }) || [];
 
@@ -472,7 +476,9 @@ const addItem = () => {
     batch_id: itemForm.batch_id,
     product_id: itemForm.product_id,
     batchDetails: selectedBatchDetails,
-    discount: itemForm.discount // Make sure discount is included
+    discount: itemForm.discount ,
+     unit_id: itemForm.unit_id,    
+    unit_name: itemForm.unit_name   
   };
 
   if (editingItemIndex !== null) {
@@ -504,7 +510,9 @@ const addItem = () => {
     total: 0,
     batch: "",
     batch_id: "",
-    batchDetails: null
+    batchDetails: null,
+     unit_id: "",     
+    unit_name: ""     
   });
   setBatches([]);
   setSelectedBatch("");
@@ -527,7 +535,9 @@ const addItem = () => {
     total: itemToEdit.total,
     batch: itemToEdit.batch,
     batch_id: itemToEdit.batch_id,
-    batchDetails: itemToEdit.batchDetails
+    batchDetails: itemToEdit.batchDetails,
+     unit_id: itemToEdit.unit_id || "",     
+    unit_name: itemToEdit.unit_name || ""  
   });
   
   setSelectedBatch(itemToEdit.batch);
@@ -583,7 +593,9 @@ const cancelEdit = () => {
     total: 0,
     batch: "",
     batch_id: "",
-    batchDetails: null
+    batchDetails: null,
+     unit_id: "",     
+    unit_name: ""     
   });
   setBatches([]);
   setSelectedBatch("");
@@ -744,7 +756,9 @@ const calculateTotals = () => {
         price: parseFloat(item.price) || 0,
         discount: parseFloat(item.discount) || 0,
         total: parseFloat(item.total) || 0,
-        batchDetails: item.batchDetails
+        batchDetails: item.batchDetails,
+          unit_id: item.unit_id || "",      
+  unit_name: item.unit_name || ""  
       }));
 
       console.log('📦 Processed Batch Details:');
@@ -1384,42 +1398,58 @@ const calculateTotals = () => {
               return (
                 <div
                   key={p.id}
-                  onClick={async () => {
-                    setItemForm((prev) => ({
-                      ...prev,
-                      product: p.goods_name,
-                      product_id: p.id,
-                      price: p.net_price || 0,
-                      description: p.description || "",
-                       hsn_code: p.hsn_code || '',
-                      discount: supplierDiscount,
-                      batch: "",
-                      batch_id: ""
-                    }));
+               onClick={async () => {
+  // Fetch unit name if unit ID exists
+  let unitName = "";
+  if (p.unit) {
+    try {
+      const unitResponse = await fetch(`${baseurl}/units/${p.unit}`);
+      if (unitResponse.ok) {
+        const unitData = await unitResponse.json();
+        unitName = unitData.name || "";
+      }
+    } catch (err) {
+      console.error("Failed to fetch unit:", err);
+    }
+  }
 
-                    try {
-                      const res = await fetch(`${baseurl}/products/${p.id}/batches`);
-                      const batchData = await res.json();
-                      setBatches(batchData);
-                      setSelectedBatch("");
-                      setSelectedBatchDetails(null);
+  setItemForm((prev) => ({
+    ...prev,
+    product: p.goods_name,
+    product_id: p.id,
+    price: p.net_price || 0,
+    description: p.description || "",
+    hsn_code: p.hsn_code || '',
+    discount: supplierDiscount,
+    batch: "",
+    batch_id: "",
+    unit_id: p.unit || null,    // ← ADD THIS
+    unit_name: unitName          // ← ADD THIS
+  }));
 
-                      const totalQty = batchData.reduce(
-                        (sum, batch) => sum + Number(batch.quantity || 0),
-                        0
-                      );
-                      setProductStock(prev => ({
-                        ...prev,
-                        [p.id]: totalQty
-                      }));
-                    } catch (err) {
-                      console.error("Failed to fetch batches:", err);
-                      setBatches([]);
-                    }
-                    
-                    setIsProductDropdownOpen(false);
-                    setProductSearchTerm("");
-                  }}
+  try {
+    const res = await fetch(`${baseurl}/products/${p.id}/batches`);
+    const batchData = await res.json();
+    setBatches(batchData);
+    setSelectedBatch("");
+    setSelectedBatchDetails(null);
+
+    const totalQty = batchData.reduce(
+      (sum, batch) => sum + Number(batch.quantity || 0),
+      0
+    );
+    setProductStock(prev => ({
+      ...prev,
+      [p.id]: totalQty
+    }));
+  } catch (err) {
+    console.error("Failed to fetch batches:", err);
+    setBatches([]);
+  }
+  
+  setIsProductDropdownOpen(false);
+  setProductSearchTerm("");
+}}
                   style={{
                     padding: '8px 16px',
                     cursor: 'pointer',
@@ -1615,7 +1645,7 @@ const calculateTotals = () => {
                     <tr>
                       <th>PRODUCT</th>
                       <th>DESCRIPTION</th>
-                      <th>QTY</th>
+                      <th>Units</th>
                       <th>PRICE</th>
                       <th>DISCOUNT</th>
                       <th>TOTAL</th>
@@ -1636,7 +1666,11 @@ const calculateTotals = () => {
                         <tr key={index}>
                           <td>{item.product}</td>
                           <td>{item.description}</td>
-                          <td className="text-center">{item.quantity}</td>
+                          <td className="text-center">
+  {item.unit_name 
+    ? `${item.quantity} ${item.unit_name}`
+    : item.quantity}
+</td>
                           <td className="text-end">₹{item.price}</td>
                           <td className="text-center">{item.discount}%</td>
                           <td className="text-end fw-bold">₹{item.total}</td>

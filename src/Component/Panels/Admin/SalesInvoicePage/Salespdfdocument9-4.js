@@ -62,27 +62,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
-addressSection: {
-  flexDirection: 'row',
-  marginBottom: 10,
-},
-
-addressBox: {
-  width: '48%',          // 👈 reduced width
-  marginRight: '4%',     // 👈 creates gap
-  backgroundColor: '#f8f9fa',
-  padding: 6,
-  borderRadius: 3,
-  border: '1pt solid #dee2e6',
-},
-
-transportBox: {
-  width: '48%',          // 👈 same width
-  backgroundColor: '#f8f9fa',
-  padding: 6,
-  borderRadius: 3,
-  border: '1pt solid #dee2e6',
-},
+  addressSection: {
+    flexDirection: 'row',
+    marginBottom: 10,
+    gap: 8,
+  },
+  addressBox: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    padding: 6,
+    borderRadius: 3,
+    border: '1pt solid #dee2e6',
+  },
   sectionTitle: {
     fontSize: 8,
     fontWeight: 'bold',
@@ -150,15 +141,15 @@ transportBox: {
     borderBottomColor: '#212529',
   },
   
-  colSNo: { width: '5%', paddingHorizontal: 4, paddingVertical: 4 },
-  colProduct: { width: '22%', paddingHorizontal: 4, paddingVertical: 4 },
-  colHsn: { width: '10%', paddingHorizontal: 4, paddingVertical: 4 },
-  colQuantity: { width: '10%', paddingHorizontal: 4, paddingVertical: 4 },
-  colRateIncl: { width: '12%', paddingHorizontal: 4, paddingVertical: 4 },
-  colRateExcl: { width: '12%', paddingHorizontal: 4, paddingVertical: 4 },
-  colDiscount: { width: '8%', paddingHorizontal: 4, paddingVertical: 4 },
-  colGST: { width: '7%', paddingHorizontal: 4, paddingVertical: 4 },
-  colTotal: { width: '14%', paddingHorizontal: 4, paddingVertical: 4 },
+  colSNo: { width: '5%', padding: 3 },
+  colProduct: { width: '18%', padding: 3 },
+  colHsn: { width: '8%', padding: 3 },
+  colQuantity: { width: '10%', padding: 3 },
+  colRateIncl: { width: '10%', padding: 3 },
+  colRateExcl: { width: '10%', padding: 3 },
+  colDiscount: { width: '7%', padding: 3 },
+  colGST: { width: '7%', padding: 3 },
+  colTotal: { width: '12%', padding: 3 },
   
   tableCell: {
     fontSize: 7,
@@ -372,7 +363,7 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
           </View>
         </View>
         
-        {/* Address Section - 50% Bill To + 50% Transport Details */}
+        {/* Address Section */}
         <View style={styles.addressSection}>
           <View style={styles.addressBox}>
             <Text style={styles.sectionTitle}>Bill To:</Text>
@@ -392,20 +383,38 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
               State: {getSafeData(supplierInfo, 'state', 'N/A')}
             </Text>
           </View>
-
-          <View style={styles.transportBox}>
-            <Text style={styles.sectionTitle}>Transport Details:</Text>
-            <View style={styles.transportRow}>
-              <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Vehicle No.:</Text>
-              <Text style={styles.addressText}>
-                {getSafeData(currentData, 'transportDetails.vehicleNo') || '-'}
-              </Text>
-            </View>
+          
+          <View style={styles.addressBox}>
+            <Text style={styles.sectionTitle}>Ship To:</Text>
+            <Text style={styles.addressText}>
+              {getSafeData(shippingAddress, 'addressLine1', 'N/A')}
+            </Text>
+            <Text style={styles.addressText}>
+              {getSafeData(shippingAddress, 'addressLine2', '')}
+            </Text>
+            <Text style={styles.addressText}>
+              {getSafeData(shippingAddress, 'city', '')} - {getSafeData(shippingAddress, 'pincode', '')}
+            </Text>
+            <Text style={styles.addressText}>
+              {getSafeData(shippingAddress, 'state', '')}
+            </Text>
           </View>
         </View>
         
+        {/* Sales Person */}
+        {getSafeData(currentData, 'assigned_staff') && getSafeData(currentData, 'assigned_staff') !== 'N/A' && (
+          <View style={styles.salesPersonSection}>
+            <Text style={styles.salesPersonLabel}>Sales Person:</Text>
+            <Text style={styles.salesPersonName}>
+              {getSafeData(currentData, 'assigned_staff')}
+            </Text>
+          </View>
+        )}
+        
         {/* Items Table */}
         <View style={styles.itemsSection}>
+          <Text style={styles.itemsTitle}>Items Details</Text>
+          
           <View style={styles.table}>
             {/* Table Header */}
             <View style={[styles.tableRow, styles.tableHeader]}>
@@ -428,6 +437,7 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
               const gst = parseFloat(getSafeData(item, 'gst', 0));
               const discount = parseFloat(getSafeData(item, 'discount', 0));
               const hsnCode = getSafeData(item, 'hsn_code', '');
+              // ✅ Get unit_name from item or fallback to unitData mapping
               const unitName = getSafeData(item, 'unit_name') || (unitData && unitData[item.unit_id]) || '';
               
               const subtotal = quantity * price;
@@ -436,6 +446,7 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
               const gstAmount = amountAfterDiscount * (gst / 100);
               const itemTotal = amountAfterDiscount + gstAmount;
               
+              // ✅ Quantity with Unit Name combined
               const quantityDisplay = unitName && unitName !== 'null' && unitName !== ''
                 ? `${quantity} ${unitName}`
                 : quantity.toString();
@@ -485,19 +496,17 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
           </View>
         </View>
         
-        {/* Amount Summary + QR Code - 50% / 50% */}
+        {/* ROW 1: Notes + Amount Summary */}
         <View style={styles.row}>
-              <View style={styles.col}>
-            {qrDataUrl && (
-              <View style={styles.qrSection}>
-                <Text style={styles.qrTitle}>Scan to Pay</Text>
-                <Image src={qrDataUrl} style={styles.qrImage} />
-                <Text style={styles.qrAmount}>
-                  ₹{(qrAmount || parseFloat(getSafeData(currentData, 'grandTotal', 0))).toFixed(2)}
-                </Text>
-              </View>
-            )}
+          <View style={styles.col}>
+            <Text style={styles.sectionTitle}>Notes:</Text>
+            <View style={styles.notesBox}>
+              <Text style={styles.addressText}>
+                {getSafeData(currentData, 'note', 'Thank you for your business!')}
+              </Text>
+            </View>
           </View>
+          
           <View style={styles.col}>
             <View style={styles.amountSection}>
               <Text style={styles.amountTitle}>Amount Summary</Text>
@@ -540,8 +549,51 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
               </View>
             </View>
           </View>
-
-      
+        </View>
+        
+        {/* ROW 2: Transport Details + QR Code */}
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <Text style={styles.sectionTitle}>Transport Details:</Text>
+            <View style={styles.transportBox}>
+              <View style={styles.transportRow}>
+                <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Transport:</Text>
+                <Text style={styles.addressText}>
+                  {getSafeData(currentData, 'transportDetails.transport') || '-'}
+                </Text>
+              </View>
+              <View style={styles.transportRow}>
+                <Text style={[styles.addressText, { fontWeight: 'bold' }]}>GR/RR No.:</Text>
+                <Text style={styles.addressText}>
+                  {getSafeData(currentData, 'transportDetails.grNumber') || '-'}
+                </Text>
+              </View>
+              <View style={styles.transportRow}>
+                <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Vehicle No.:</Text>
+                <Text style={styles.addressText}>
+                  {getSafeData(currentData, 'transportDetails.vehicleNo') || '-'}
+                </Text>
+              </View>
+              <View style={styles.transportRow}>
+                <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Station:</Text>
+                <Text style={styles.addressText}>
+                  {getSafeData(currentData, 'transportDetails.station') || '-'}
+                </Text>
+              </View>
+            </View>
+          </View>
+          
+          <View style={styles.col}>
+            {qrDataUrl && (
+              <View style={styles.qrSection}>
+                <Text style={styles.qrTitle}>Scan to Pay</Text>
+                <Image src={qrDataUrl} style={styles.qrImage} />
+                <Text style={styles.qrAmount}>
+                  ₹{(qrAmount || parseFloat(getSafeData(currentData, 'grandTotal', 0))).toFixed(2)}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
         
         {/* Footer */}

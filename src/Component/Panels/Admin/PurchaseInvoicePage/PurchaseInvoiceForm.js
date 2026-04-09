@@ -106,7 +106,9 @@ const [isEditMode, setIsEditMode] = useState(false);
     total: 0,
     batch: "",
     batchDetails: null,
-      hsn_code: ""  
+      hsn_code: "",
+       unit_id: "",      // ← ADD THIS
+  unit_name: ""     // ← ADD THIS  
   });
 
   const [loading, setLoading] = useState(false);
@@ -248,7 +250,9 @@ const updateItem = () => {
     ...calculateItemTotal(),
     batch: selectedBatch,
     batchDetails: selectedBatchDetails,
-    product_id: itemForm.product_id
+    product_id: itemForm.product_id,
+     unit_id: itemForm.unit_id,     
+    unit_name: itemForm.unit_name    
   };
 
   setInvoiceData(prev => ({
@@ -274,7 +278,9 @@ const updateItem = () => {
     total: 0,
     batch: "",
     batchDetails: null,
-    hsn_code: ""  
+    hsn_code: ""  ,
+      unit_id: "",      
+    unit_name: ""    
   });
   setBatches([]);
   setSelectedBatch("");
@@ -299,7 +305,9 @@ const cancelEdit = () => {
     total: 0,
     batch: "",
     batchDetails: null,
-      hsn_code: ""  // ✅ ADD
+      hsn_code: ""  ,
+       unit_id: "",      
+    unit_name: ""   
   });
   setBatches([]);
   setSelectedBatch("");
@@ -399,7 +407,9 @@ const addItem = () => {
     batch: selectedBatch,
     batch_id: itemForm.batch_id,
     batchDetails: selectedBatchDetails,
-    product_id: itemForm.product_id
+    product_id: itemForm.product_id,
+     unit_id: itemForm.unit_id,     
+    unit_name: itemForm.unit_name    
   };
 
   setInvoiceData(prev => ({
@@ -424,7 +434,9 @@ const addItem = () => {
     batch: "",
     batch_id: "",
     batchDetails: null,
-    hsn_code: ""  
+    hsn_code: ""  ,
+      unit_id: "",     
+    unit_name: ""     
   });
 
   setBatches([]);
@@ -676,7 +688,10 @@ const handleSubmit = async (e) => {
       cess: parseFloat(item.cess) || 0,
       total: parseFloat(item.total) || 0,
       batchDetails: item.batchDetails,
-       hsn_code: item.hsn_code || "" 
+       hsn_code: item.hsn_code || "" ,
+       
+  unit_id: item.unit_id || "",      
+  unit_name: item.unit_name || ""   
     }));
 
     console.log('📦 Processed Batch Details:');
@@ -829,7 +844,9 @@ const editItem = async (index) => {
     product_id: itemToEdit.product_id,
     batch: itemToEdit.batch,
     batchDetails: itemToEdit.batchDetails,
-     hsn_code: itemToEdit.hsn_code || "" 
+     hsn_code: itemToEdit.hsn_code || "" ,
+       unit_id: itemToEdit.unit_id || "",    
+    unit_name: itemToEdit.unit_name || ""  
   });
   
   setSelectedBatch(itemToEdit.batch || "");
@@ -1373,19 +1390,35 @@ const editItem = async (index) => {
               return (
                 <div
                   key={p.id}
-                  onClick={async () => {
-                    setItemForm((prev) => ({
-                      ...prev,
-                      product: p.goods_name,
-                      product_id: p.id,
-                      price: productNetPrice, 
-                      gst: parseFloat(p.gst_rate?.replace("%", "") || 0),
-                      description: p.description || "",
-                      discount: supplierDiscount,
-                      batch: "",
-                      batch_id: "",
-                      hsn_code: p.hsn_code || ""
-                    }));
+            onClick={async () => {
+  // Fetch unit name if unit ID exists
+  let unitName = "";
+  if (p.unit) {
+    try {
+      const unitResponse = await fetch(`${baseurl}/units/${p.unit}`);
+      if (unitResponse.ok) {
+        const unitData = await unitResponse.json();
+        unitName = unitData.name || "";
+      }
+    } catch (err) {
+      console.error("Failed to fetch unit:", err);
+    }
+  }
+
+  setItemForm((prev) => ({
+    ...prev,
+    product: p.goods_name,
+    product_id: p.id,
+    price: productNetPrice,
+    gst: parseFloat(p.gst_rate?.replace("%", "") || 0),
+    description: p.description || "",
+    discount: supplierDiscount,
+    batch: "",
+    batch_id: "",
+    hsn_code: p.hsn_code || "",
+    unit_id: p.unit || null,    // ← ADD THIS
+    unit_name: unitName          // ← ADD THIS
+  }));
 
                     try {
                       const res = await fetch(`${baseurl}/products/${p.id}/batches`);
@@ -1668,7 +1701,7 @@ const editItem = async (index) => {
                     <tr>
                       <th>PRODUCT</th>
                       <th>DESCRIPTION</th>
-                      <th>QTY</th>
+                      <th>Units</th>
                       <th>PRICE</th>
                       <th>DISCOUNT</th>
                       <th>GST</th>
@@ -1694,7 +1727,11 @@ const editItem = async (index) => {
                         <tr key={index}>
                           <td>{item.product}</td>
                           <td>{item.description}</td>
-                          <td className="text-center">{item.quantity}</td>
+                       <td className="text-center">
+  {item.unit_name 
+    ? `${item.quantity} ${item.unit_name}`
+    : item.quantity}
+</td>
                           <td className="text-end">₹{item.price}</td>
                           <td className="text-center">{item.discount}%</td>
                           <td className="text-center">{item.gst}%</td>

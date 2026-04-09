@@ -114,7 +114,9 @@ const [productStock, setProductStock] = useState({});
     batch: "",
     batch_id: "",
     batchDetails: null,
-         hsn_code: ""  
+         hsn_code: ""  ,
+          unit_id: "",      // ← ADD THIS
+  unit_name: ""     // ← ADD THIS
 
   });
 
@@ -235,7 +237,11 @@ const [productStock, setProductStock] = useState({});
         batch: batch.batch || '',
         batch_id: batch.batch_id || '',
         batchDetails: batch.batchDetails || null,
-            hsn_code: batch.hsn_code || ''  // ✅ ADD
+            hsn_code: batch.hsn_code || '' ,
+        unit_id: batch.unit_id || "", 
+    unit_name: batch.unit_name || ""  ,
+   
+
       };
     }) || [];
 
@@ -304,10 +310,25 @@ const [productStock, setProductStock] = useState({});
     };
   };
 
-  const fetchNextInvoiceNumber = async () => {
+  const fetchUnitName = async (unitId) => {
+  if (!unitId) return "";
   try {
-    console.log('Fetching next invoice number...');
-    const response = await fetch(`${baseurl}/next-invoice-number`);
+    const response = await fetch(`${baseurl}/units/${unitId}`);
+    if (response.ok) {
+      const unitData = await response.json();
+      return unitData.name || "";
+    }
+  } catch (err) {
+    console.error("Failed to fetch unit:", err);
+  }
+  return "";
+}
+
+const fetchNextInvoiceNumber = async (transactionType = "stock transfer") => {
+  try {
+    console.log('Fetching next invoice number for:', transactionType);
+    // Add transactionType as query parameter
+    const response = await fetch(`${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}`);
     if (response.ok) {
       const data = await response.json();
       console.log('Received next invoice number:', data.nextInvoiceNumber);
@@ -315,7 +336,8 @@ const [productStock, setProductStock] = useState({});
       
       setInvoiceData(prev => ({
         ...prev,
-        invoiceNumber: data.nextInvoiceNumber
+        invoiceNumber: data.nextInvoiceNumber,
+        transactionType: transactionType
       }));
       
       setHasFetchedInvoiceNumber(true);
@@ -324,19 +346,20 @@ const [productStock, setProductStock] = useState({});
       if (currentDraft) {
         const draftData = JSON.parse(currentDraft);
         draftData.invoiceNumber = data.nextInvoiceNumber;
+        draftData.transactionType = transactionType;
         localStorage.setItem('draftInvoice', JSON.stringify(draftData));
       }
     } else {
       console.error('Failed to fetch next invoice number');
-      generateFallbackInvoiceNumber();
+      generateFallbackInvoiceNumber(transactionType);
     }
   } catch (err) {
     console.error('Error fetching next invoice number:', err);
-    generateFallbackInvoiceNumber();
+    generateFallbackInvoiceNumber(transactionType);
   }
 };
 
-const generateFallbackInvoiceNumber = async () => {
+const generateFallbackInvoiceNumber = async (transactionType = "stock transfer") => {
   try {
     const getFinancialYearShort = () => {
       const now = new Date();
@@ -354,12 +377,12 @@ const generateFallbackInvoiceNumber = async () => {
     const prefix = `SSA/`;
     const suffix = `/${currentFY}`;
     
-    const response = await fetch(`${baseurl}/last-invoice`);
+    // Pass transactionType to API
+    const response = await fetch(`${baseurl}/last-invoice?transactionType=${encodeURIComponent(transactionType)}`);
     if (response.ok) {
       const data = await response.json();
       if (data.lastInvoiceNumber) {
         const lastNumber = data.lastInvoiceNumber;
-        // Extract number from format SSA/XXXXXX/YY-YY
         const numberMatch = lastNumber.match(/SSA\/(\d+)\/\d{2}-\d{2}/);
         if (numberMatch) {
           const nextNum = parseInt(numberMatch[1]) + 1;
@@ -367,7 +390,8 @@ const generateFallbackInvoiceNumber = async () => {
           setNextInvoiceNumber(fallbackInvoiceNumber);
           setInvoiceData(prev => ({
             ...prev,
-            invoiceNumber: fallbackInvoiceNumber
+            invoiceNumber: fallbackInvoiceNumber,
+            transactionType: transactionType
           }));
           setHasFetchedInvoiceNumber(true);
           return;
@@ -380,7 +404,8 @@ const generateFallbackInvoiceNumber = async () => {
     setNextInvoiceNumber(defaultNumber);
     setInvoiceData(prev => ({
       ...prev,
-      invoiceNumber: defaultNumber
+      invoiceNumber: defaultNumber,
+      transactionType: transactionType
     }));
     setHasFetchedInvoiceNumber(true);
     
@@ -401,20 +426,29 @@ const generateFallbackInvoiceNumber = async () => {
     setNextInvoiceNumber(defaultNumber);
     setInvoiceData(prev => ({
       ...prev,
-      invoiceNumber: defaultNumber
+      invoiceNumber: defaultNumber,
+      transactionType: transactionType
     }));
     setHasFetchedInvoiceNumber(true);
   }
 };
+useEffect(() => {
+  if (id) {
+    setIsEditMode(true);
+    setEditingVoucherId(id);
+    fetchInvoiceDataForEdit(id);
+  } else {
+    // For new invoice, fetch number for "stock transfer"
+    fetchNextInvoiceNumber("stock transfer");
+  }
+}, [id]);
 
-  // Save to localStorage whenever invoiceData changes
   useEffect(() => {
     if (hasFetchedInvoiceNumber) {
       localStorage.setItem('draftInvoice', JSON.stringify(invoiceData));
     }
   }, [invoiceData, hasFetchedInvoiceNumber]);
 
-  // Open PDF preview - ONLY after form is submitted
   const handlePreview = () => {
     if (!isPreviewReady) {
   window.alert("⚠️ Please submit the invoice first to generate preview");
@@ -620,7 +654,10 @@ const addItem = () => {
       batch: selectedBatch,
       batch_id: itemForm.batch_id,
       product_id: itemForm.product_id,
-      batchDetails: selectedBatchDetails
+      batchDetails: selectedBatchDetails,
+         unit_id: itemForm.unit_id,     
+      unit_name: itemForm.unit_name    
+
     };
 
     setInvoiceData(prev => ({
@@ -647,7 +684,9 @@ const addItem = () => {
       batch: selectedBatch,
       batch_id: itemForm.batch_id,
       product_id: itemForm.product_id,
-      batchDetails: selectedBatchDetails
+      batchDetails: selectedBatchDetails,
+          unit_id: itemForm.unit_id,      // ← ADD THIS
+    unit_name: itemForm.unit_name    // ← ADD THIS
     };
 
     setInvoiceData(prev => ({
@@ -677,7 +716,9 @@ const addItem = () => {
     batch: "",
     batch_id: "",
     batchDetails: null,
-         hsn_code: ""  
+         hsn_code: ""  ,
+          unit_id: "",     
+    unit_name: ""     
 
   });
   setBatches([]);
@@ -701,7 +742,10 @@ const editItem = (index) => {
     batch: itemToEdit.batch,
     batch_id: itemToEdit.batch_id,
     batchDetails: itemToEdit.batchDetails,
-          hsn_code: itemToEdit.hsn_code || "" 
+          hsn_code: itemToEdit.hsn_code || "" ,
+   unit_id: itemToEdit.unit_id || "",      // ← ADD THIS
+    unit_name: itemToEdit.unit_name || ""   // ← ADD THIS 
+
 
   });
   
@@ -754,7 +798,9 @@ const cancelEdit = () => {
     total: 0,
     batch: "",
     batch_id: "",
-    batchDetails: null
+    batchDetails: null,
+    unit_id: "",      
+    unit_name: ""     
   });
   setBatches([]);
   setSelectedBatch("");
@@ -951,7 +997,9 @@ if (!isEditMode) {
         discount: parseFloat(item.discount) || 0,
         total: parseFloat(item.total) || 0,
         batchDetails: item.batchDetails,
-         hsn_code: item.hsn_code || ""  
+         hsn_code: item.hsn_code || "" ,
+           unit_id: item.unit_id || "",    
+  unit_name: item.unit_name || ""  
       }));
 
       const firstItemProductId = invoiceData.items[0]?.product_id || null;
@@ -1590,54 +1638,71 @@ if (!isEditMode) {
               const retailerDiscount = parseFloat(invoiceData.supplierInfo?.discount || 0);
 
               const productNetPrice = parseFloat(p.net_price) || 0;
+;
+
               return (
                 <div
                   key={p.id}
-                  onClick={async () => {
-                    setItemForm(prev => ({
-                      ...prev,
-                      product: p.goods_name,
-                      product_id: p.id,
-                      price: productNetPrice,  
+                onClick={async () => {
+  // Fetch unit name if unit ID exists
+  let unitName = "";
+  if (p.unit) {
+    try {
+      const unitResponse = await fetch(`${baseurl}/units/${p.unit}`);
+      if (unitResponse.ok) {
+        const unitData = await unitResponse.json();
+        unitName = unitData.name || "";
+      }
+    } catch (err) {
+      console.error("Failed to fetch unit:", err);
+    }
+  }
+  
+  setItemForm(prev => ({
+    ...prev,
+    product: p.goods_name,
+    product_id: p.id,
+    price: productNetPrice,  
+    description: p.description || "",
+    discount: retailerDiscount,
+    quantity: prev.quantity || 0,
+    batch: "",
+    batch_id: "",
+    hsn_code: p.hsn_code || "",
+    unit_id: p.unit || null,   
+    unit_name: unitName  // ✅ Now unitName is defined
+  }));
 
-                      description: p.description || "",
-                      discount: retailerDiscount,
-                      quantity: prev.quantity || 0,
-                      batch: "",
-                      batch_id: "",
-                      hsn_code: p.hsn_code || ""
-                    }));
+  try {
+    const res = await fetch(`${baseurl}/products/${p.id}/batches`);
+    const batchData = await res.json();
+    setBatches(batchData);
 
-                    try {
-                      const res = await fetch(`${baseurl}/products/${p.id}/batches`);
-                      const batchData = await res.json();
-                      setBatches(batchData);
+    if (p.maintain_batch === 0 && batchData.length > 0) {
+      const defaultBatch = batchData[0];
+      setSelectedBatch(defaultBatch.batch_number);
+      setSelectedBatchDetails(defaultBatch);
+      setItemForm(prev => ({
+        ...prev,
+        batch: defaultBatch.batch_number,
+        batch_id: defaultBatch.batch_number,
+        price: productNetPrice,  
+        discount: retailerDiscount
+      }));
+    } else {
+      setSelectedBatch("");
+      setSelectedBatchDetails(null);
+    }
+  } catch (err) {
+    console.error("Failed to fetch batches:", err);
+    setBatches([]);
+    setSelectedBatch("");
+    setSelectedBatchDetails(null);
+  }
 
-                      if (p.maintain_batch === 0 && batchData.length > 0) {
-                        const defaultBatch = batchData[0];
-                        setSelectedBatch(defaultBatch.batch_number);
-                        setSelectedBatchDetails(defaultBatch);
-                        setItemForm(prev => ({
-                          ...prev,
-                          batch: defaultBatch.batch_number,
-                          batch_id: defaultBatch.batch_number,
-                            price: productNetPrice,  
-                          discount: retailerDiscount
-                        }));
-                      } else {
-                        setSelectedBatch("");
-                        setSelectedBatchDetails(null);
-                      }
-                    } catch (err) {
-                      console.error("Failed to fetch batches:", err);
-                      setBatches([]);
-                      setSelectedBatch("");
-                      setSelectedBatchDetails(null);
-                    }
-
-                    setIsProductDropdownOpen(false);
-                    setProductSearchTerm("");
-                  }}
+  setIsProductDropdownOpen(false);
+  setProductSearchTerm("");
+}}
                   style={{
                     padding: '8px 16px',
                     cursor: 'pointer',
@@ -1826,7 +1891,7 @@ if (!isEditMode) {
                     <tr>
                       <th>PRODUCT</th>
                       <th>DESCRIPTION</th>
-                      <th>QTY</th>
+                      <th>Units</th>
                       <th>PRICE</th>
                       <th>DISCOUNT</th>
                       <th>TOTAL</th>
@@ -1847,8 +1912,11 @@ if (!isEditMode) {
                         <tr key={index}>
                           <td>{item.product}</td>
                           <td>{item.description}</td>
-                          <td className="text-center">{item.quantity}</td>
-                          <td className="text-end">₹{item.price}</td>
+     <td className="text-center">
+            {item.unit_name 
+              ? `${item.quantity} ${item.unit_name}`
+              : item.quantity}
+           </td>                          <td className="text-end">₹{item.price}</td>
                           <td className="text-center">{item.discount}%</td>
                           <td className="text-end fw-bold">₹{item.total}</td>
                           <td>{item.batch}</td>

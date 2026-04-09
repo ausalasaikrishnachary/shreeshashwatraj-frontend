@@ -10,12 +10,10 @@ import {
 } from '@react-pdf/renderer';
 import { Font } from '@react-pdf/renderer';
 import QRCode from 'qrcode';
-
 Font.register({
   family: 'NotoSans',
   src: 'https://fonts.gstatic.com/s/notosans/v36/o-0IIpQlx3QUlC5A4PNb4g.ttf'
 });
-
 // Create styles
 const styles = StyleSheet.create({
   page: {
@@ -64,25 +62,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
-  // Bill To & Transport Row (50% each)
-  infoRow: {
+  // Address Section
+  addressSection: {
     flexDirection: 'row',
     marginBottom: 15,
     gap: 10,
   },
-  billToBox: {
+  addressBox: {
     flex: 1,
     backgroundColor: '#f8f9fa',
     padding: 10,
     borderRadius: 4,
     border: '1pt solid #dee2e6',
-  },
-  transportBox: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-    padding: 10,
-    borderRadius: 4,
-    border: '1pt solid #dee2e6',
+    minHeight: 100,
   },
   sectionTitle: {
     fontSize: 10,
@@ -96,6 +88,33 @@ const styles = StyleSheet.create({
     fontSize: 8,
     marginBottom: 3,
     lineHeight: 1.3,
+  },
+  
+  // Transport Section
+  transportSection: {
+    marginTop: 10,
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 4,
+    border: '1pt solid #dee2e6',
+  },
+  transportTitle: {
+    fontSize: 10,
+    fontFamily: 'Helvetica-Bold',
+    marginBottom: 8,
+    color: '#007bff',
+    borderBottom: '1pt solid #007bff',
+    paddingBottom: 3,
+  },
+  transportRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  transportField: {
+    width: '23%',
+    marginBottom: 5,
   },
   transportLabel: {
     fontSize: 8,
@@ -174,14 +193,28 @@ const styles = StyleSheet.create({
   tableCellCenter: { textAlign: 'center' },
   tableCellBold: { fontFamily: 'Helvetica-Bold' },
   
-  // Amount + QR Row (50% each)
-  bottomRow: {
+  // Totals + QR Section
+  totalsSection: {
     flexDirection: 'row',
     marginBottom: 20,
     gap: 10,
   },
+  notesSection: {
+    flex: 2,
+  },
+  notesBox: {
+    backgroundColor: '#f8f9fa',
+    padding: 8,
+    borderRadius: 4,
+    border: '1pt solid #dee2e6',
+    minHeight: 80,
+  },
+  amountAndQrSection: {
+    flex: 1.5,
+    flexDirection: 'column',
+    gap: 8,
+  },
   amountSection: {
-    flex: 1,
     backgroundColor: '#f8f9fa',
     padding: 10,
     borderRadius: 4,
@@ -213,15 +246,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
 
-  // QR Code Section
+  // QR Code Section in PDF
   qrSection: {
-    flex: 1,
     backgroundColor: '#f0f8ff',
     padding: 10,
     borderRadius: 4,
     border: '1pt solid #007bff',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   qrTitle: {
     fontSize: 9,
@@ -240,6 +271,20 @@ const styles = StyleSheet.create({
     color: '#28a745',
     marginTop: 6,
     textAlign: 'center',
+  },
+  qrSubtext: {
+    fontSize: 7,
+    color: '#666',
+    marginTop: 3,
+    textAlign: 'center',
+  },
+  qrOrderBadge: {
+    fontSize: 8,
+    fontFamily: 'Helvetica-Bold',
+    marginTop: 4,
+    textAlign: 'center',
+    padding: 3,
+    borderRadius: 3,
   },
   
   // Footer
@@ -333,8 +378,10 @@ const generateQRDataUrl = async (invoiceData, orderMode) => {
         taxableOnlyTotal += taxablePerUnit * quantity;
       });
       finalAmount = Math.max(grandTotal, taxableOnlyTotal);
+      console.log('💰 KACHA QR Amount (Taxable only):', finalAmount);
     } else {
       finalAmount = Math.max(grandTotal, invoiceGrandTotal);
+      console.log('💰 PAKKA QR Amount (Including GST):', finalAmount);
     }
 
     const formattedAmount = finalAmount.toFixed(2);
@@ -354,6 +401,7 @@ const generateQRDataUrl = async (invoiceData, orderMode) => {
 
     const upiUrl = `upi://pay?${upiParams.toString()}`;
 
+    // Generate QR as data URL (PNG)
     const dataUrl = await QRCode.toDataURL(upiUrl, {
       width: 200,
       margin: 1,
@@ -364,17 +412,18 @@ const generateQRDataUrl = async (invoiceData, orderMode) => {
       }
     });
 
+    console.log(`✅ QR Code generated for ${orderMode} order, Amount: ${formattedAmount}`);
     return { dataUrl, amount: finalAmount };
   } catch (error) {
     console.error('Error generating QR data URL:', error);
     return { dataUrl: null, amount: 0 };
   }
 };
-
 const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameState, qrDataUrl, qrAmount }) => {
   const currentData = invoiceData || {};
   const companyInfo = getSafeData(currentData, 'companyInfo', {});
   const supplierInfo = getSafeData(currentData, 'supplierInfo', {});
+  const shippingAddress = getSafeData(currentData, 'shippingAddress', {});
   const items = getSafeData(currentData, 'items', []);
   const orderMode = getSafeData(currentData, 'order_mode', 'PAKKA').toUpperCase();
   
@@ -389,7 +438,11 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
     : 'N/A';
   
   const transportDetails = getSafeData(currentData, 'transportDetails', {});
+  const finalTransportName = getSafeData(transportDetails, 'transport', '') || getSafeData(currentData, 'transport_name', '');
+  const finalGrNumber = getSafeData(transportDetails, 'grNumber', '') || getSafeData(currentData, 'gr_rr_number', '');
   const finalVehicleNo = getSafeData(transportDetails, 'vehicleNo', '') || getSafeData(currentData, 'vehicle_number', '');
+  const finalStationName = getSafeData(transportDetails, 'station', '') || getSafeData(currentData, 'station_name', '');
+  const hasTransportDetails = finalTransportName || finalGrNumber || finalVehicleNo || finalStationName;
   
   const calculateTotals = () => {
     let totalTaxableAmount = 0;
@@ -458,10 +511,9 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
           </View>
         </View>
         
-        {/* Bill To (50%) + Transport Details - Vehicle No only (50%) */}
-        <View style={styles.infoRow}>
-          {/* Bill To Section */}
-          <View style={styles.billToBox}>
+        {/* Address Section */}
+        <View style={styles.addressSection}>
+          <View style={styles.addressBox}>
             <Text style={styles.sectionTitle}>Bill To:</Text>
             <Text style={[styles.addressText, styles.tableCellBold, styles.tableCellLeft]}>
               {getSafeData(supplierInfo, 'name', 'Customer')}
@@ -483,20 +535,27 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             </Text>
           </View>
           
-          {/* Transport Details - Only Vehicle No */}
-          <View style={styles.transportBox}>
-            <Text style={styles.sectionTitle}>Transport Details:</Text>
-            <View style={{ marginTop: 5 }}>
-              <Text style={styles.transportLabel}>Vehicle No.:</Text>
-              <Text style={styles.transportValue}>
-                {finalVehicleNo || '-'}
-              </Text>
-            </View>
+          <View style={styles.addressBox}>
+            <Text style={styles.sectionTitle}>Ship To:</Text>
+            <Text style={[styles.addressText, styles.tableCellLeft]}>
+              {getSafeData(shippingAddress, 'addressLine1', 'N/A')}
+            </Text>
+            <Text style={[styles.addressText, styles.tableCellLeft]}>
+              {getSafeData(shippingAddress, 'addressLine2', '')}
+            </Text>
+            <Text style={[styles.addressText, styles.tableCellLeft]}>
+              {getSafeData(shippingAddress, 'city', '')} - {getSafeData(shippingAddress, 'pincode', '')}
+            </Text>
+            <Text style={[styles.addressText, styles.tableCellLeft]}>
+              {getSafeData(shippingAddress, 'state', '')}, {getSafeData(shippingAddress, 'country', 'India')}
+            </Text>
           </View>
         </View>
+   
         
         {/* Items Table */}
         <View style={styles.itemsSection}>
+          <Text style={styles.itemsTitle}>Items Details</Text>
           
           <View style={[styles.tableRow, styles.tableHeader]}>
             <View style={styles.colSNo}><Text style={styles.tableCellHeader}>#</Text></View>
@@ -532,8 +591,14 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
             const sgstAmount = orderMode === 'KACHA' ? 0 : parseFloat(getSafeData(item, 'sgst_amount', 0)) * quantity;
             const itemTotal = orderMode === 'KACHA' ? taxableAmount : taxableAmount + gstAmount;
             const hsnCode = getSafeData(item, 'hsn_code', '-');
-            const unitName = getSafeData(item, 'unit_name', '');
-            
+              const unitName = getSafeData(item, 'unit_name', '');
+               const displayBuyQuantity = flashOffer === 1 
+    ? `${buyQuantity} ${unitName ? unitName : ''}`.trim() 
+    : `${quantity} ${unitName ? unitName : ''}`.trim();
+  
+  const displayFreeQuantity = flashOffer === 1 
+    ? `${getQuantity} ${unitName ? unitName : ''}`.trim() 
+    : '-';
             return (
               <View style={styles.tableRow} key={index}>
                 <View style={styles.colSNo}><Text style={styles.tableCell}>{index + 1}</Text></View>
@@ -543,23 +608,25 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
                   </Text>
                 </View>
                 <View style={styles.colHsn}><Text style={[styles.tableCell, styles.tableCellCenter]}>{hsnCode}</Text></View>
-                <View style={styles.colQty}>
-                  <Text style={styles.tableCell}>
-                    {flashOffer === 1 
-                      ? `${buyQuantity} ${unitName ? unitName : ''}`.trim()
-                      : `${quantity} ${unitName ? unitName : ''}`.trim()
-                    }
-                  </Text>
-                </View>
-                <View style={styles.colFreeQty}>
-                  <Text style={styles.tableCell}>
-                    {flashOffer === 1 
-                      ? `${getQuantity} ${unitName ? unitName : ''}`.trim()
-                      : '-'
-                    }
-                  </Text>
-                </View>
-                <View style={styles.colPrice}><Text style={[styles.tableCell, styles.tableCellRight]}>₹{price.toFixed(2)}</Text></View>
+    <View style={styles.colQty}>
+        <Text style={styles.tableCell}>
+          {flashOffer === 1 
+            ? `${buyQuantity} ${unitName ? unitName : ''}`.trim()
+            : `${quantity} ${unitName ? unitName : ''}`.trim()
+          }
+        </Text>
+      </View>
+      
+      {/* FREE UNITS COLUMN - Updated to show unit name */}
+      <View style={styles.colFreeQty}>
+        <Text style={styles.tableCell}>
+          {flashOffer === 1 
+            ? `${getQuantity} ${unitName ? unitName : ''}`.trim()
+            : '-'
+          }
+        </Text>
+      </View>
+                      <View style={styles.colPrice}><Text style={[styles.tableCell, styles.tableCellRight]}>₹{price.toFixed(2)}</Text></View>
                 <View style={styles.colDiscount}><Text style={[styles.tableCell, styles.tableCellRight]}>₹{discountAmount.toFixed(2)}</Text></View>
                 <View style={styles.colCreditCharge}><Text style={[styles.tableCell, styles.tableCellRight]}>₹{creditCharge.toFixed(2)}</Text></View>
                 <View style={styles.colTaxable}>
@@ -585,80 +652,125 @@ const InvoicceprintOrder = ({ invoiceData, invoiceNumber, gstBreakdown, isSameSt
           })}
         </View>
         
-        {/* Amount Summary (50%) + QR Scanner (50%) */}
-        <View style={styles.bottomRow}>
-          {/* Amount Summary */}
-          <View style={styles.amountSection}>
-            <Text style={styles.amountTitle}>Amount Summary</Text>
-            
-            <View style={styles.amountRow}>
-              <Text style={[styles.tableCell, styles.tableCellBold]}>Taxable Amount:</Text>
-              <Text style={[styles.tableCell, styles.tableCellBold]}>₹{totals.totalTaxableAmount}</Text>
-            </View>
-            
-            {orderMode === 'PAKKA' && (
-              <>
-                <View style={styles.amountRow}>
-                  <Text style={styles.tableCell}>CGST:</Text>
-                  <Text style={styles.tableCell}>₹{totals.totalCGSTAmount}</Text>
-                </View>
-                <View style={styles.amountRow}>
-                  <Text style={styles.tableCell}>SGST:</Text>
-                  <Text style={styles.tableCell}>₹{totals.totalSGSTAmount}</Text>
-                </View>
-              </>
-            )}
-            
-            <View style={styles.amountRow}>
-              <Text style={[styles.tableCell, styles.tableCellBold]}>Total GST:</Text>
-              <Text style={[styles.tableCell, styles.tableCellBold, { color: '#28a745' }]}>
-                ₹{orderMode === 'KACHA' ? '0.00' : totals.totalGSTAmount}
-              </Text>
-            </View>
-            
-            <View style={styles.grandTotal}>
-              <Text style={[styles.tableCell, styles.tableCellBold, { fontSize: 10 }]}>Grand Total:</Text>
-              <Text style={[styles.tableCell, styles.tableCellBold, { color: '#28a745', fontSize: 10 }]}>
-                ₹{totals.grandTotal}
-              </Text>
-            </View>
+<View style={styles.totalsSection}>
+  <View style={styles.notesSection}>
+    {/* Notes */}
+    <Text style={styles.sectionTitle}>Notes:</Text>
+    <View style={styles.notesBox}>
+      <Text style={[styles.tableCell, styles.tableCellLeft]}>
+        {getSafeData(currentData, 'note', 'Thank you for your business!')}
+      </Text>
+    </View>
+    
+    {/* Transport Details */}
+    <View style={{ marginTop: 12 }}>
+      <Text style={styles.sectionTitle}>Transport Details:</Text>
+      <View style={[styles.notesBox, { marginTop: 3, minHeight: 40 }]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+          <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Transport:</Text>
+          <Text style={styles.addressText}>
+            {finalTransportName || getSafeData(currentData, 'transportDetails.transport') || '-'}
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+          <Text style={[styles.addressText, { fontWeight: 'bold' }]}>GR/RR No.:</Text>
+          <Text style={styles.addressText}>
+            {finalGrNumber || getSafeData(currentData, 'transportDetails.grNumber') || '-'}
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+          <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Vehicle No.:</Text>
+          <Text style={styles.addressText}>
+            {finalVehicleNo || getSafeData(currentData, 'transportDetails.vehicleNo') || '-'}
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+          <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Station:</Text>
+          <Text style={styles.addressText}>
+            {finalStationName || getSafeData(currentData, 'transportDetails.station') || '-'}
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+  
+  {/* RIGHT SIDE: Amount Summary + QR Code */}
+  <View style={styles.amountAndQrSection}>
+    {/* Amount Summary */}
+    <View style={styles.amountSection}>
+      <Text style={styles.amountTitle}>Amount Summary</Text>
+      
+      <View style={styles.amountRow}>
+        <Text style={[styles.tableCell, styles.tableCellBold]}>Taxable Amount:</Text>
+        <Text style={[styles.tableCell, styles.tableCellBold]}>₹{totals.totalTaxableAmount}</Text>
+      </View>
+      
+      {orderMode === 'PAKKA' && (
+        <>
+          <View style={styles.amountRow}>
+            <Text style={styles.tableCell}>CGST:</Text>
+            <Text style={styles.tableCell}>₹{totals.totalCGSTAmount}</Text>
           </View>
+          <View style={styles.amountRow}>
+            <Text style={styles.tableCell}>SGST:</Text>
+            <Text style={styles.tableCell}>₹{totals.totalSGSTAmount}</Text>
+          </View>
+        </>
+      )}
+      
+      <View style={styles.amountRow}>
+        <Text style={[styles.tableCell, styles.tableCellBold]}>Total GST:</Text>
+        <Text style={[styles.tableCell, styles.tableCellBold, { color: '#28a745' }]}>
+          ₹{orderMode === 'KACHA' ? '0.00' : totals.totalGSTAmount}
+        </Text>
+      </View>
+      
+      <View style={styles.grandTotal}>
+        <Text style={[styles.tableCell, styles.tableCellBold, { fontSize: 10 }]}>Grand Total:</Text>
+        <Text style={[styles.tableCell, styles.tableCellBold, { color: '#28a745', fontSize: 10 }]}>
+          ₹{totals.grandTotal}
+        </Text>
+      </View>
+    </View>
 
-          {/* QR Code Section */}
-          <View style={styles.qrSection}>
-            {qrDataUrl ? (
-              <>
-                <Text style={styles.qrTitle}>Scan to Pay via UPI</Text>
-                <Image src={qrDataUrl} style={styles.qrImage} />
-                <Text style={styles.qrAmount}>₹{(qrAmount || parseFloat(totals.grandTotal)).toFixed(2)}</Text>
-              </>
-            ) : (
-              <Text style={styles.qrTitle}>QR Code Not Available</Text>
-            )}
-          </View>
-        </View>
+    {/* QR Code Section */}
+    {qrDataUrl && (
+      <View style={styles.qrSection}>
+        <Text style={styles.qrTitle}>Scan to Pay via UPI</Text>
+        <Image src={qrDataUrl} style={styles.qrImage} />
+        <Text style={styles.qrAmount}>₹{(qrAmount || parseFloat(totals.grandTotal)).toFixed(2)}</Text>
+        {/* <Text style={[styles.qrOrderBadge, { 
+          color: orderMode === 'KACHA' ? '#856404' : '#155724',
+          backgroundColor: orderMode === 'KACHA' ? '#fff3cd' : '#d4edda',
+        }]}>
+          {orderMode} ORDER
+        </Text> */}
+      </View>
+    )}
+  </View>
+</View>
         
-        {/* Footer */}
-        <View style={styles.footer}>
-          <View style={styles.bankDetails}>
-            <Text style={styles.bankTitle}>Bank Details:</Text>
-            <View style={{ backgroundColor: '#f8f9fa', padding: 6, borderRadius: 3 }}>
-              <Text style={styles.bankText}>Company Name: SHREE SHASHWATRAJ AGRO PVT LTD</Text>
-              <Text style={styles.bankText}>Bank Name: STATE BANK OF INDIA</Text>
-              <Text style={styles.bankText}>Branch: SME AURANGABAD</Text>
-              <Text style={styles.bankText}>Account Number: 44773710377</Text>
-              <Text style={styles.bankText}>IFSC Code: SBIN0063699</Text>
-            </View>
-          </View>
-          
-          <View style={styles.signature}>
-            <View style={styles.signatureBox}>
-              <Text style={styles.bankText}>For {getSafeData(companyInfo, 'name', 'Company Name')}</Text>
-              <View style={styles.signatureLine} />
-              <Text style={[styles.bankText, { marginTop: 5 }]}>Authorized Signatory</Text>
-            </View>
-          </View>
-        </View>
+{/* Footer */}
+<View style={styles.footer}>
+  <View style={styles.bankDetails}>
+    <Text style={styles.bankTitle}>Bank Details:</Text>
+    <View style={{ backgroundColor: '#f8f9fa', padding: 6, borderRadius: 3 }}>
+      <Text style={styles.bankText}>Company Name: SHREE SHASHWATRAJ AGRO PVT LTD</Text>
+      <Text style={styles.bankText}>Bank Name: STATE BANK OF INDIA</Text>
+      <Text style={styles.bankText}>Branch: SME AURANGABAD</Text>
+      <Text style={styles.bankText}>Account Number: 44773710377</Text>
+      <Text style={styles.bankText}>IFSC Code: SBIN0063699</Text>
+    </View>
+  </View>
+  
+  <View style={styles.signature}>
+    <View style={styles.signatureBox}>
+      <Text style={styles.bankText}>For {getSafeData(companyInfo, 'name', 'Company Name')}</Text>
+      <View style={styles.signatureLine} />
+      <Text style={[styles.bankText, { marginTop: 5 }]}>Authorized Signatory</Text>
+    </View>
+  </View>
+</View>
       </Page>
     </Document>
   );

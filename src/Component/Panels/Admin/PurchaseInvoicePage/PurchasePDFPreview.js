@@ -17,6 +17,8 @@ const PurchasePDFPreview = () => {
   const [loading, setLoading] = useState(true);
   const [paymentLoading, setPaymentLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [unitData, setUnitData] = useState({});
+const [loadingUnits, setLoadingUnits] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -231,7 +233,27 @@ const transformPaymentData = (apiData) => {
 };
 
 
-
+const fetchUnitName = async (unitId) => {
+  if (!unitId || unitId === 'null' || unitId === null) return;
+  if (unitData[unitId]) return; // Already fetched
+  
+  try {
+    const res = await fetch(`${baseurl}/units/${unitId}`);
+    const data = await res.json();
+    setUnitData(prev => ({ ...prev, [unitId]: data.name }));
+  } catch (err) {
+    console.error("Failed to fetch unit:", err);
+  }
+};
+useEffect(() => {
+  if (invoiceData?.items && invoiceData.items.length > 0) {
+    invoiceData.items.forEach(item => {
+      if (item.unit_id && item.unit_id !== 'null' && item.unit_id !== null) {
+        fetchUnitName(item.unit_id);
+      }
+    });
+  }
+}, [invoiceData]);
   const fetchNextReceiptNumber = async () => {
     try {
       const response = await fetch(`${baseurl}/api/next-receipt-number`);
@@ -394,7 +416,9 @@ const transformApiDataToInvoiceFormat = (apiData) => {
       total: total.toFixed(2),
       batch: batch.batch || '',
       batch_id: batch.batch_id || '',
-      product_id: batch.product_id || ''
+      product_id: batch.product_id || '',
+       unit_id: batch.unit_id || null,   
+    unit_name: batch.unit_name || ''    
     };
   }) || [];
 
@@ -699,6 +723,7 @@ const handlePrint = async () => {
         isSameState={isSameState}
         qrDataUrl={finalQrDataUrl}
         qrAmount={finalQrAmount || parseFloat(currentData.grandTotal)}
+            unitData={unitData}  // ← ADD THIS
       />
     );
 
@@ -766,6 +791,7 @@ const handleDownloadPDF = async () => {
         isSameState={isSameState}
         qrDataUrl={qrDataUrl}
         qrAmount={qrAmount || parseFloat(currentData.grandTotal)}
+          unitData={unitData}  // ← ADD THIS
       />
     );
 
@@ -1959,9 +1985,9 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                         <th width="20%">HSN Code</th>
                         <th width="10%">Units</th>
                         <th width="15%">Price</th>
-                        <th width="10%">GST %</th>
-                                                <th width="8%">Discount %</th>
-
+                        
+          <th width="8%">Discount %</th>
+<th width="10%">GST %</th>
                         <th width="10%"> Taxable Amount (₹)</th>
                       </tr>
                     </thead>
@@ -1972,12 +1998,14 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                           <td className="text-center">{item.product}</td>
                           {/* <td>{item.description}</td> */}
                           <td className="text-center">{item.hsn_code || 'N/A'}</td>
-                          <td className="text-center">{item.quantity}</td>
+                         <td className="text-center">
+  {item.quantity} {unitData[item.unit_id] || item.unit_name || ''}
+</td>
                           <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
-                          <td className="text-center">{item.gst}%</td>
                                                     <td className="text-center">
           {parseFloat(item.discount || 0).toFixed(1)}%
         </td>
+                          <td className="text-center">{item.gst}%</td>
 
                           <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
                         </tr>

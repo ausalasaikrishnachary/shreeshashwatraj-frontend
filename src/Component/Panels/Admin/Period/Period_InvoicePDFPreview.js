@@ -116,7 +116,8 @@ const price = netPrice;
       credit_charge: creditCharge, 
       
       net_price: netPrice,
-      
+      unit_id: item.unit_id || null,      // ← ADD THIS
+    unit_name: item.unit_name || ''  ,   // ← ADD THIS
       original_sgst_percentage: item.sgst_percentage,
       original_sgst_amount: item.sgst_amount,
       original_cgst_percentage: item.cgst_percentage,
@@ -1198,7 +1199,8 @@ const price = netPrice;
     price: price,
     edited_sale_price: editedSalePrice,
     sale_price: salePrice,
-    
+     unit_id: item.unit_id || null,
+  unit_name: item.unit_name || "",
     discount_amount: itemDiscountAmount,
     credit_charge: itemCreditCharge, 
     discount_amount_per_unit: discountAmountPerUnit,
@@ -1221,7 +1223,7 @@ const price = netPrice;
     batch_id: item.batch_id || '',
     item_total: itemTotal,
        hsn_code: item.hsn_code || "",  
-    // FLASH OFFER FIELDS
+      unit_id: item.unit_id || null,
     flash_offer: flashOffer,
     buy_quantity: buyQuantity,
     get_quantity: getQuantity,
@@ -1347,7 +1349,7 @@ const price = netPrice;
           
           note: editableNote || periodInvoiceData.note || "",
           note_preview: (editableNote || periodInvoiceData.note || "").substring(0, 200),
-          
+         
           description_preview: firstItemDescription.substring(0, 200),
           
           customerInfo: {
@@ -1406,7 +1408,6 @@ const price = netPrice;
           Subtotal: taxableAmount,
           CGSTAmount: totalCGST,
           SGSTAmount: totalSGST,
-          
           // Include credit info in the main payload too
           credit_limit: creditLimit,
           unpaid_amount: unpaidAmount,

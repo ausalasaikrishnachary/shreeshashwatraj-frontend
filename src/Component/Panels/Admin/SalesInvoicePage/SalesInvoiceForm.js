@@ -325,39 +325,44 @@ useEffect(() => {
     }
   };
 }, [isEditMode]); 
-
-  const fetchNextInvoiceNumber = async () => {
-    try {
-      console.log('Fetching next invoice number...');
-      const response = await fetch(`${baseurl}/next-invoice-number`);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Received next invoice number:', data.nextInvoiceNumber);
-        setNextInvoiceNumber(data.nextInvoiceNumber);
-        
-        setInvoiceData(prev => ({
-          ...prev,
-          invoiceNumber: data.nextInvoiceNumber
-        }));
-        
-        setHasFetchedInvoiceNumber(true);
-        
-        const currentDraft = localStorage.getItem('draftInvoice');
-        if (currentDraft) {
-          const draftData = JSON.parse(currentDraft);
-          draftData.invoiceNumber = data.nextInvoiceNumber;
-          localStorage.setItem('draftInvoice', JSON.stringify(draftData));
-        }
-      } else {
-        console.error('Failed to fetch next invoice number');
-        generateFallbackInvoiceNumber();
+// Update the fetchNextInvoiceNumber function
+const fetchNextInvoiceNumber = async (transactionType = "Sales") => {
+  try {
+    console.log('Fetching next invoice number for:', transactionType);
+    // Add transactionType as query parameter
+    const response = await fetch(`${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}`);
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Received next invoice number:', data.nextInvoiceNumber);
+      setNextInvoiceNumber(data.nextInvoiceNumber);
+      
+      setInvoiceData(prev => ({
+        ...prev,
+        invoiceNumber: data.nextInvoiceNumber,
+        transactionType: transactionType  // Store transaction type in state
+      }));
+      
+      setHasFetchedInvoiceNumber(true);
+      
+      const currentDraft = localStorage.getItem('draftInvoice');
+      if (currentDraft) {
+        const draftData = JSON.parse(currentDraft);
+        draftData.invoiceNumber = data.nextInvoiceNumber;
+        draftData.transactionType = transactionType;
+        localStorage.setItem('draftInvoice', JSON.stringify(draftData));
       }
-    } catch (err) {
-      console.error('Error fetching next invoice number:', err);
-      generateFallbackInvoiceNumber();
+    } else {
+      console.error('Failed to fetch next invoice number');
+      generateFallbackInvoiceNumber(transactionType);
     }
-  };
-const generateFallbackInvoiceNumber = async () => {
+  } catch (err) {
+    console.error('Error fetching next invoice number:', err);
+    generateFallbackInvoiceNumber(transactionType);
+  }
+};
+
+// Update generateFallbackInvoiceNumber
+const generateFallbackInvoiceNumber = async (transactionType = "Sales") => {
   try {
     const getFinancialYearShort = () => {
       const now = new Date();
@@ -375,12 +380,12 @@ const generateFallbackInvoiceNumber = async () => {
     const prefix = `SSA/`;
     const suffix = `/${currentFY}`;
     
-    const response = await fetch(`${baseurl}/last-invoice`);
+    // Pass transactionType to API
+    const response = await fetch(`${baseurl}/last-invoice?transactionType=${encodeURIComponent(transactionType)}`);
     if (response.ok) {
       const data = await response.json();
       if (data.lastInvoiceNumber) {
         const lastNumber = data.lastInvoiceNumber;
-        // Extract number from format SSA/XXXXXX/YY-YY
         const numberMatch = lastNumber.match(/SSA\/(\d+)\/\d{2}-\d{2}/);
         if (numberMatch) {
           const nextNum = parseInt(numberMatch[1]) + 1;
@@ -388,7 +393,8 @@ const generateFallbackInvoiceNumber = async () => {
           setNextInvoiceNumber(fallbackInvoiceNumber);
           setInvoiceData(prev => ({
             ...prev,
-            invoiceNumber: fallbackInvoiceNumber
+            invoiceNumber: fallbackInvoiceNumber,
+            transactionType: transactionType
           }));
           setHasFetchedInvoiceNumber(true);
           return;
@@ -401,7 +407,8 @@ const generateFallbackInvoiceNumber = async () => {
     setNextInvoiceNumber(defaultNumber);
     setInvoiceData(prev => ({
       ...prev,
-      invoiceNumber: defaultNumber
+      invoiceNumber: defaultNumber,
+      transactionType: transactionType
     }));
     setHasFetchedInvoiceNumber(true);
     
@@ -422,11 +429,23 @@ const generateFallbackInvoiceNumber = async () => {
     setNextInvoiceNumber(defaultNumber);
     setInvoiceData(prev => ({
       ...prev,
-      invoiceNumber: defaultNumber
+      invoiceNumber: defaultNumber,
+      transactionType: transactionType
     }));
     setHasFetchedInvoiceNumber(true);
   }
 };
+
+useEffect(() => {
+  if (id) {
+    setIsEditMode(true);
+    setEditingVoucherId(id);
+    fetchInvoiceDataForEdit(id);
+  } else {
+    const defaultTransactionType = "Sales"; 
+    fetchNextInvoiceNumber(defaultTransactionType);
+  }
+}, [id]);
 
 const getCurrentFinancialYear = () => {
   const now = new Date();

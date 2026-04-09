@@ -203,6 +203,7 @@ const handleDownloadSpecificPDF = async (orderNumber, pdfData) => {
         product: item.item_name,
         description: item.item_name,
         quantity: item.flash_offer === 1 ? item.buy_quantity || item.quantity : item.quantity,
+        
         flash_offer: item.flash_offer || 0,
         buy_quantity: item.buy_quantity || 0,
         get_quantity: item.get_quantity || 0,
@@ -335,6 +336,8 @@ const fetchOrders = async () => {
               let gst_rate = 0;
               let product_net_price = 0;
               let product_price = 0;
+                 let unit_id = null;      
+    let unit_name = "";     
 
               try {
                 const productRes = await axios.get(`${baseurl}/products/${item.product_id}`);
@@ -343,6 +346,17 @@ const fetchOrders = async () => {
                 gst_rate = parseFloat(productRes.data.gst_rate) || 0;
                 product_net_price = parseFloat(productRes.data.net_price) || 0;
                 product_price = parseFloat(productRes.data.price) || 0;
+                    unit_id = productRes.data.unit || null;     
+                         if (unit_id) {
+        try {
+          const unitRes = await axios.get(`${baseurl}/units/${unit_id}`);
+          unit_name = unitRes.data.name || "";
+          console.log(`Unit found for product ${item.product_id}: ${unit_name}`);
+        } catch (unitErr) {
+          console.warn(`Could not fetch unit for ID ${unit_id}:`, unitErr.message);
+          unit_name = "";
+        }
+      }
 
                 try {
                   const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
@@ -372,6 +386,8 @@ const fetchOrders = async () => {
                     gst_rate = 0;
                 product_net_price = 0;
                 product_price = 0;
+                 unit_id = null;
+      unit_name = "";
               }
 
               const salePrice = parseFloat(item.sale_price) || 0;
@@ -434,7 +450,9 @@ const fetchOrders = async () => {
                 // FLASH OFFER DETAILS
                 flash_offer: flashOffer, // 0 or 1
                 buy_quantity: buyQuantity, // e.g., 2
-                get_quantity: getQuantity  // e.g., 1
+                get_quantity: getQuantity  ,
+                 unit_id: unit_id,      
+      unit_name: unit_name 
               };
             })
           );
@@ -897,7 +915,9 @@ const fetchOrders = async () => {
       staff_id: item.staff_id,
       assigned_staff: item.assigned_staff,
       staff_incentive: item.staff_incentive,
-      price: item.price
+      price: item.price,
+       unit_id: item.unit_id || null,      // ← ADD THIS
+  unit_name: item.unit_name || ""     
     }));
 
     const parseCreditValue = (value) => {
@@ -1046,7 +1066,9 @@ const fetchOrders = async () => {
         cgst_percentage: item.cgst_percentage,
         cgst_amount: item.cgst_amount,
           hsn_code: item.hsn_code || ""  ,
-        discount_applied_scheme: item.discount_applied_scheme
+        discount_applied_scheme: item.discount_applied_scheme,
+          unit_id: item.unit_id || null,      // ← ADD THIS
+  unit_name: item.unit_name || ""     // ← ADD THIS
       }))
     };
 
@@ -1836,33 +1858,37 @@ const filteredOrders = orders.filter(order => {
                                 </td>
                                 <td>{item.item_name}</td>
                                 
-                                {hasFlashOffer ? (
-                                  <>
-                                    <td className="p-flash-column">
-                                      <div>
-                                        <span className="p-flash-buy" title="Quantity">{buyQuantity}</span>
-                                      </div>
-                                    </td>
-                                    <td className="p-flash-column">
-                                      <div className="p-flash-free" title="Get Free Quantity">
-                                        {getQuantity}
-                                        <span className="p-flash-badge"></span>
-                                      </div>
-                                    </td>
-                                  </>
-                                ) : (
-                                  <>
-                                    <td className="p-regular-column">
-                                      <span title="Ordered Quantity">{item.quantity}</span>
-                                    </td>
-                                    <td className="p-regular-column">
-                                      ₹{item.discount_amount.toLocaleString()}
-                                    </td>
-                                    <td className="p-regular-column">
-                                      <span title="Weight">{item.weight || 0}</span>
-                                    </td>
-                                  </>
-                                )}
+                              {hasFlashOffer ? (
+  <>
+    <td className="p-flash-column">
+      <div>
+        <span className="p-flash-buy" title="Quantity">
+          {buyQuantity} {item.unit_name ? item.unit_name : ''}
+        </span>
+      </div>
+    </td>
+    <td className="p-flash-column">
+      <div className="p-flash-free" title="Get Free Quantity">
+        {getQuantity} {item.unit_name ? item.unit_name : ''}
+        <span className="p-flash-badge"></span>
+      </div>
+    </td>
+  </>
+) : (
+  <>
+    <td className="p-regular-column">
+      <span title="Ordered Quantity">
+        {item.quantity} {item.unit_name ? item.unit_name : ''}
+      </span>
+    </td>
+    <td className="p-regular-column">
+      ₹{item.discount_amount.toLocaleString()}
+    </td>
+    <td className="p-regular-column">
+      <span title="Weight">{item.weight || 0}</span>
+    </td>
+  </>
+)}
                                 
                                 <td>₹{item.sale_price.toLocaleString()}</td>
                                 <td>₹{item.min_sale_price.toLocaleString()}</td>

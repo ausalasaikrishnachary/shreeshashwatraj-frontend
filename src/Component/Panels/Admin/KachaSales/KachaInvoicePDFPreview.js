@@ -25,6 +25,8 @@ const InvoicePDFPreview = () => {
   const [updating, setUpdating] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState(null);
 const [qrAmount, setQrAmount] = useState(null);
+const [unitData, setUnitData] = useState({}); 
+const [loadingUnits, setLoadingUnits] = useState(false); 
 const [showAllTransactions, setShowAllTransactions] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
@@ -306,6 +308,27 @@ const transformPaymentData = (apiData) => {
     }
   };
 
+  const fetchUnitName = async (unitId) => {
+  if (!unitId || unitId === 'null' || unitId === null) return;
+  if (unitData[unitId]) return; // Already fetched
+  
+  try {
+    const res = await fetch(`${baseurl}/units/${unitId}`);
+    const data = await res.json();
+    setUnitData(prev => ({ ...prev, [unitId]: data.name }));
+  } catch (err) {
+    console.error("Failed to fetch unit:", err);
+  }
+};
+useEffect(() => {
+  if (invoiceData?.items && invoiceData.items.length > 0) {
+    invoiceData.items.forEach(item => {
+      if (item.unit_id && item.unit_id !== 'null' && item.unit_id !== null) {
+        fetchUnitName(item.unit_id);
+      }
+    });
+  }
+}, [invoiceData]);
   const fetchTransactionData = async () => {
     try {
       setLoading(true);
@@ -422,6 +445,8 @@ const transformPaymentData = (apiData) => {
         batch_id: batch.batch_id || '',
         product_id: batch.product_id || '',
               assigned_staff: batch.assigned_staff  || 'N/A',
+                 unit_id: batch.unit_id || null,     // ← ADD THIS
+    unit_name: batch.unit_name || ''     // ← ADD THIS
 
       };
     }) || [];
@@ -698,6 +723,7 @@ const handlePrint = async () => {
         isSameState={isSameState}
         qrDataUrl={finalQrDataUrl}
         qrAmount={finalQrAmount}
+        unitData={unitData}  // ← ADD THIS LINE
       />
     );
 
@@ -765,6 +791,7 @@ const handleDownloadPDF = async () => {
         isSameState={isSameState}
         qrDataUrl={finalQrDataUrl}
         qrAmount={finalQrAmount}
+        unitData={unitData} 
       />
     );
 
@@ -830,7 +857,9 @@ const handleDownloadPDF = async () => {
           sgst: parseFloat(item.sgst) || 0,
           igst: parseFloat(item.igst) || 0,
           cess: parseFloat(item.cess) || 0,
-          total: parseFloat(item.total) || 0
+          total: parseFloat(item.total) || 0,
+            unit_id: item.unit_id || null,     
+    unit_name: item.unit_name || ''     
         }))
       };
 
@@ -1882,7 +1911,7 @@ const handleOpenReceiptModal = () => {
                         <th width="20%">Product</th>
                         {/* <th width="20%">Description</th> */}
                          <th width="10%">HSN Code</th>
-                        <th width="10%">Qty</th>
+                        <th width="10%">units</th>
                         <th width="15%">Price</th>
                           <th width="8%">Discount %</th> 
                         <th width="10%">GST %</th>
@@ -1973,7 +2002,7 @@ const handleOpenReceiptModal = () => {
                         <th width="25%">Product</th>
                         {/* <th width="25%">Description</th> */}
                         <th width="10%">HSN Code</th>
-                        <th width="10%">Qty</th>
+                        <th width="10%">Units</th>
                         <th width="15%">Price</th>
                            <th width="8%">Discount %</th>
                         <th width="10%">GST %</th>
@@ -1987,7 +2016,9 @@ const handleOpenReceiptModal = () => {
                           <td className="text-center">{item.product}</td>
                           {/* <td className="text-center">{item.description}</td> */}
                           <td className="text-center">{item.hsn_code || 'N/A'}</td>
-                          <td className="text-center">{item.quantity}</td>
+                       <td className="text-center">
+  {item.quantity} {unitData[item.unit_id] || item.unit_name || ''}
+</td>
                           <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
                            <td className="text-center">{parseFloat(item.discount || 0).toFixed(1)}%</td> 
                           <td className="text-center">{item.gst}%</td>
