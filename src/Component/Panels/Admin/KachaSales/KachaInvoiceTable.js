@@ -24,6 +24,9 @@ const [isDownloading, setIsDownloading] = useState(false);
 const [isRangeDownloading, setIsRangeDownloading] = useState(false);
 const pdfRef = useRef();
   const [month, setMonth] = useState('July');
+  const [unitData, setUnitData] = useState({});
+const [qrDataUrl, setQrDataUrl] = useState(null);
+const [qrAmount, setQrAmount] = useState(null);
   const [year, setYear] = useState('2026');
   const [startDate, setStartDate] = useState('2025-06-08');
   const [endDate, setEndDate] = useState('2025-07-08');
@@ -89,6 +92,42 @@ const fetchInvoices = async () => {
 };
 
 
+
+const fetchUnitName = async (unitId) => {
+  if (!unitId || unitId === 'null' || unitId === null) return;
+  if (unitData[unitId]) return;
+  
+  try {
+    const res = await fetch(`${baseurl}/units/${unitId}`);
+    const data = await res.json();
+    setUnitData(prev => ({ ...prev, [unitId]: data.name }));
+  } catch (err) {
+    console.error('Error fetching unit:', err);
+  }
+};
+
+const generateQRCodeDataUrl = (invoiceData) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const grandTotal = parseFloat(invoiceData.grandTotal) || 0;
+      const upiId = "shreeshashwatrajagroprivatelimited@sbi";
+      const payeeName = "SHREE SHASHWATRAJ AGRO PVT LTD";
+      
+      const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${grandTotal}&cu=INR`;
+      
+      const QRCode = require('qrcode');
+      QRCode.toDataURL(upiString, { errorCorrectionLevel: 'H', margin: 1, width: 150 }, (err, url) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ qrDataUrl: url, qrAmount: grandTotal });
+        }
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
 const handleDownloadPDF = async (invoice) => {
   const voucherId = invoice.originalData?.VoucherID || invoice.id;
   
@@ -168,11 +207,8 @@ const handleDownloadPDF = async (invoice) => {
   }
 };
 
-
-// Add this function to handle printing
 const handlePrintInvoice = async (invoice) => {
   try {
-    // Get the VoucherID from the correct location
     const voucherId = invoice.originalData?.VoucherID || invoice.id;
     
     if (!voucherId) {
@@ -181,7 +217,6 @@ const handlePrintInvoice = async (invoice) => {
 
     console.log('Fetching stock transfer invoice for print:', voucherId);
 
-    // Fetch complete invoice data
     const response = await fetch(`${baseurl}/transactions/${voucherId}`);
     
     if (!response.ok) {
@@ -191,11 +226,29 @@ const handlePrintInvoice = async (invoice) => {
     const result = await response.json();
     const apiData = result.data || result;
     
-    // Transform data to match the format expected by the PDF generator
     const transformedData = transformKachaDataToInvoiceFormat(apiData);
     
-    // Generate PDF and open in new tab
-    await generateAndPrintKachaPDF(transformedData, invoice.number);
+    // Fetch unit data for all items
+    if (transformedData.items && transformedData.items.length > 0) {
+      for (const item of transformedData.items) {
+        if (item.unit_id && item.unit_id !== 'null' && item.unit_id !== null) {
+          await fetchUnitName(item.unit_id);
+        }
+      }
+    }
+    
+    // Generate QR code
+    let qrDataUrl = null;
+    let qrAmount = null;
+    try {
+      const qrResult = await generateQRCodeDataUrl(transformedData);
+      qrDataUrl = qrResult.qrDataUrl;
+      qrAmount = qrResult.qrAmount;
+    } catch (qrError) {
+      console.error('QR generation error:', qrError);
+    }
+    
+    await generateAndPrintKachaPDF(transformedData, invoice.number, unitData, qrDataUrl, qrAmount);
     
   } catch (error) {
     console.error('Error printing stock transfer invoice:', error);
@@ -255,6 +308,8 @@ const transformKachaDataToInvoiceFormat = (apiData) => {
       quantity: quantity,
       price: price,
       discount: discount,
+       unit_id: batch.unit_id || null,  // ← ADD THIS
+    unit_name: batch.unit_name || '',  // ← ADD THIS
       gst: gst,
       cgst: cgst,
       sgst: sgst,
@@ -363,7 +418,7 @@ const transformKachaDataToInvoiceFormat = (apiData) => {
   };
 };
 
-const generateAndPrintKachaPDF = async (invoiceData, invoiceNumber) => {
+const generateAndPrintKachaPDF = async (invoiceData, invoiceNumber, unitData, qrDataUrl, qrAmount) => {
   try {
     const reactPdf = await import('@react-pdf/renderer');
     const pdf = reactPdf.pdf;
@@ -431,6 +486,9 @@ const generateAndPrintKachaPDF = async (invoiceData, invoiceNumber) => {
         invoiceNumber={invoiceData.invoiceNumber}
         gstBreakdown={gstBreakdown}
         isSameState={isSameState}
+        unitData={unitData}      // ← ADD THIS
+        qrDataUrl={qrDataUrl}    // ← ADD THIS
+        qrAmount={qrAmount}      // ← ADD THIS
       />
     );
 
@@ -824,7 +882,7 @@ const columns = [
             onClick={() => handlePrintInvoice(row)}
             title="Print Invoice"
           >
-            <FaFilePdf className="me-1" /> Print
+            <FaFilePdf className="me-1" /> 
           </button>
           
           {/* Delete Button - Disabled if has receipts/credit notes */}

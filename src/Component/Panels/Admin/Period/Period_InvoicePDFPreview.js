@@ -1560,7 +1560,7 @@ const price = netPrice;
       // Ensure amount is properly formatted with 2 decimal places
       const formattedAmount = parseFloat(amount).toFixed(2);
       
-      const upiId = 'bharathsiripuram98@okicici';
+      const upiId = 'shreeshashwatrajagroprivatelimited@sbi';
       
       const merchantName = invoiceData.companyInfo?.name?.replace(/[^a-zA-Z0-9 ]/g, '') || 'Business';
       

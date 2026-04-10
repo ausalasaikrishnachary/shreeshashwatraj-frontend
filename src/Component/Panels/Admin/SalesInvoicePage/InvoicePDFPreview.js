@@ -841,7 +841,8 @@ const handleDownloadPDF = async () => {
         gstBreakdown={gstBreakdown}
         isSameState={isSameState}
         qrDataUrl={qrDataUrl}  // ← PASS QR DATA URL
-        qrAmount={qrAmount || parseFloat(currentData.grandTotal)}  // ← PASS QR AMOUNT
+        qrAmount={qrAmount || parseFloat(currentData.grandTotal)}  
+          unitData={unitData} 
       />
     );
 

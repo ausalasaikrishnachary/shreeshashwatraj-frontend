@@ -10,6 +10,7 @@ import './PurchaseInvoice.css';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import PurchaseInvoicePDF from '../PurchaseInvoicePage/PurchaseInvoicePDF'; 
+
 const KachaPurchaseInvoiceTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('Purchase Invoice');
@@ -18,7 +19,9 @@ const KachaPurchaseInvoiceTable = () => {
   const [purchaseInvoices, setPurchaseInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+const [unitData, setUnitData] = useState({});
+const [qrDataUrl, setQrDataUrl] = useState(null);
+const [qrAmount, setQrAmount] = useState(null);
   const [month, setMonth] = useState('July');
   const [year, setYear] = useState('2026');
   const [startDate, setStartDate] = useState('2025-06-08');
@@ -285,6 +288,43 @@ const handleInvoiceNumberClick = async (invoice) => {
   }
 };
 
+
+
+const fetchUnitName = async (unitId) => {
+  if (!unitId || unitId === 'null' || unitId === null) return;
+  if (unitData[unitId]) return;
+  
+  try {
+    const res = await fetch(`${baseurl}/units/${unitId}`);
+    const data = await res.json();
+    setUnitData(prev => ({ ...prev, [unitId]: data.name }));
+  } catch (err) {
+    console.error('Error fetching unit:', err);
+  }
+};
+
+const generateQRCodeDataUrl = (invoiceData) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const grandTotal = parseFloat(invoiceData.grandTotal) || 0;
+      const upiId = "shreeshashwatrajagroprivatelimited@sbi";
+      const payeeName = "SHREE SHASHWATRAJ AGRO PVT LTD";
+      
+      const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${grandTotal}&cu=INR`;
+      
+      const QRCode = require('qrcode');
+      QRCode.toDataURL(upiString, { errorCorrectionLevel: 'H', margin: 1, width: 150 }, (err, url) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ qrDataUrl: url, qrAmount: grandTotal });
+        }
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
 const canDeleteKachaPurchaseInvoice = (invoice) => {
   const hasVouchers = invoice.originalData?.purchasevoucher?.length > 0;
   const hasDebitNotes = invoice.originalData?.debitNotes?.length > 0;
@@ -530,10 +570,8 @@ const generatePDF = async (filteredData, type = 'month') => {
     alert('Error generating PDF. Please try again.');
   }
 };
-// Add this function to handle printing
 const handlePrintInvoice = async (invoice) => {
   try {
-    // Get the VoucherID from the correct location
     const voucherId = invoice.originalData?.VoucherID || invoice.id;
     
     if (!voucherId) {
@@ -542,7 +580,6 @@ const handlePrintInvoice = async (invoice) => {
 
     console.log('Fetching stock inward invoice for print:', voucherId);
 
-    // Fetch complete invoice data
     const response = await fetch(`${baseurl}/transactions/${voucherId}`);
     
     if (!response.ok) {
@@ -552,11 +589,29 @@ const handlePrintInvoice = async (invoice) => {
     const result = await response.json();
     const apiData = result.data || result;
     
-    // Transform data to match the format expected by the PDF generator
     const transformedData = transformKachaPurchaseDataToInvoiceFormat(apiData);
     
-    // Generate PDF and open in new tab
-    await generateAndPrintKachaPurchasePDF(transformedData, invoice.pinvoice);
+    // Fetch unit data for all items
+    if (transformedData.items && transformedData.items.length > 0) {
+      for (const item of transformedData.items) {
+        if (item.unit_id && item.unit_id !== 'null' && item.unit_id !== null) {
+          await fetchUnitName(item.unit_id);
+        }
+      }
+    }
+    
+    // Generate QR code
+    let qrDataUrl = null;
+    let qrAmount = null;
+    try {
+      const qrResult = await generateQRCodeDataUrl(transformedData);
+      qrDataUrl = qrResult.qrDataUrl;
+      qrAmount = qrResult.qrAmount;
+    } catch (qrError) {
+      console.error('QR generation error:', qrError);
+    }
+    
+    await generateAndPrintKachaPurchasePDF(transformedData, invoice.pinvoice, unitData, qrDataUrl, qrAmount);
     
   } catch (error) {
     console.error('Error printing stock inward invoice:', error);
@@ -616,6 +671,8 @@ const transformKachaPurchaseDataToInvoiceFormat = (apiData) => {
       quantity: quantity,
       price: price,
       discount: discount,
+         unit_id: batch.unit_id || null, 
+    unit_name: batch.unit_name || '',  
       gst: gst,
       cgst: cgst,
       sgst: sgst,
@@ -726,7 +783,7 @@ const transformKachaPurchaseDataToInvoiceFormat = (apiData) => {
   };
 };
 
-const generateAndPrintKachaPurchasePDF = async (invoiceData, invoiceNumber) => {
+const generateAndPrintKachaPurchasePDF = async (invoiceData, invoiceNumber, unitData, qrDataUrl, qrAmount) => {
   try {
     const reactPdf = await import('@react-pdf/renderer');
     const pdf = reactPdf.pdf;
@@ -794,6 +851,9 @@ const generateAndPrintKachaPurchasePDF = async (invoiceData, invoiceNumber) => {
         invoiceNumber={invoiceData.invoiceNumber}
         gstBreakdown={gstBreakdown}
         isSameState={isSameState}
+        unitData={unitData}      // ← ADD THIS
+        qrDataUrl={qrDataUrl}    // ← ADD THIS
+        qrAmount={qrAmount}      // ← ADD THIS
       />
     );
 
@@ -948,7 +1008,7 @@ const columns = [
             onClick={() => handlePrintInvoice(row)}
             title="Print Invoice"
           >
-            <FaFilePdf className="me-1" /> Print
+            <FaFilePdf className="me-1" /> 
           </button>
           
           {/* Delete Button - Disabled if has vouchers/debit notes */}

@@ -54,7 +54,7 @@ const QRCodeGenerator_normal = ({ invoiceData, onQrDataGenerated }) => {
       console.log('📊 QR Code Amount:', formattedAmount);
       
       // UPI ID - you can change this
-      const upiId = 'bharathsiripuram98@okicici';
+      const upiId = 'shreeshashwatrajagroprivatelimited@sbi';
       
       // Merchant name from invoice
       const merchantName = invoiceData.companyInfo?.name?.replace(/[^a-zA-Z0-9 ]/g, '') || 'Business';

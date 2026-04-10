@@ -21,6 +21,11 @@ import { saveAs } from 'file-saver';
     const [downloading, setDownloading] = useState({});
     const [deleting, setDeleting] = useState({});
 const [isDownloading, setIsDownloading] = useState(false);
+const [unitData, setUnitData] = useState({});
+const [qrDataUrl, setQrDataUrl] = useState(null);
+const [qrAmount, setQrAmount] = useState(null);
+
+
 const [isRangeDownloading, setIsRangeDownloading] = useState(false);
 const pdfRef = useRef();
     const [month, setMonth] = useState('July');
@@ -242,32 +247,6 @@ const generatePDF = async (filteredData, type = 'month') => {
 };
 
 
-const handlePrintInvoice = async (invoice) => {
-  try {
-    const voucherId = invoice.originalData?.VoucherID || invoice.id;
-    
-    if (!voucherId) {
-      throw new Error('Voucher ID not found');
-    }
-
-    const response = await fetch(`${baseurl}/transactions/${voucherId}`);
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch invoice data');
-    }
-    
-    const result = await response.json();
-    const apiData = result.data || result;
-    
-    const transformedData = transformApiDataToInvoiceFormat(apiData);
-    
-    await generateAndPrintPDF(transformedData, invoice.number);
-    
-  } catch (error) {
-    console.error('Error printing invoice:', error);
-    alert('Failed to generate PDF: ' + error.message);
-  }
-};
 
 const transformApiDataToInvoiceFormat = (apiData) => {
   console.log('Transforming API data for print:', apiData);
@@ -322,6 +301,8 @@ const transformApiDataToInvoiceFormat = (apiData) => {
       discount: discount,
       gst: gst,
       original_price: original_price,
+       unit_id: batch.unit_id || null,  
+    unit_name: batch.unit_name || '',  
       cgst: cgst,
       sgst: sgst,
       igst: igst,
@@ -423,8 +404,93 @@ const transformApiDataToInvoiceFormat = (apiData) => {
     assigned_staff: assignedStaff
   };
 };
+const fetchUnitName = async (unitId) => {
+  if (!unitId || unitId === 'null' || unitId === null) return;
+  if (unitData[unitId]) return;
+  
+  try {
+    const res = await fetch(`${baseurl}/units/${unitId}`);
+    const data = await res.json();
+    setUnitData(prev => ({ ...prev, [unitId]: data.name }));
+  } catch (err) {
+    console.error(err);
+  }
+};
 
-const generateAndPrintPDF = async (invoiceData, invoiceNumber) => {
+// Add this function to generate QR code
+const generateQRCodeDataUrl = (invoiceData) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const grandTotal = parseFloat(invoiceData.grandTotal) || 0;
+      const upiId = "shreeshashwatrajagroprivatelimited@sbi";
+      const payeeName = "SHREE SHASHWATRAJ AGRO PVT LTD";
+      
+      const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${grandTotal}&cu=INR`;
+      
+      const QRCode = require('qrcode');
+      QRCode.toDataURL(upiString, { errorCorrectionLevel: 'H', margin: 1, width: 150 }, (err, url) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ qrDataUrl: url, qrAmount: grandTotal });
+        }
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+// Update the handlePrintInvoice function
+const handlePrintInvoice = async (invoice) => {
+  try {
+    const voucherId = invoice.originalData?.VoucherID || invoice.id;
+    
+    if (!voucherId) {
+      throw new Error('Voucher ID not found');
+    }
+
+    const response = await fetch(`${baseurl}/transactions/${voucherId}`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch invoice data');
+    }
+    
+    const result = await response.json();
+    const apiData = result.data || result;
+    
+    const transformedData = transformApiDataToInvoiceFormat(apiData);
+    
+    // Fetch unit data for all items
+    if (transformedData.items && transformedData.items.length > 0) {
+      for (const item of transformedData.items) {
+        if (item.unit_id && item.unit_id !== 'null' && item.unit_id !== null) {
+          await fetchUnitName(item.unit_id);
+        }
+      }
+    }
+    
+    // Generate QR code
+    let qrDataUrl = null;
+    let qrAmount = null;
+    try {
+      const qrResult = await generateQRCodeDataUrl(transformedData);
+      qrDataUrl = qrResult.qrDataUrl;
+      qrAmount = qrResult.qrAmount;
+    } catch (qrError) {
+      console.error('QR generation error:', qrError);
+    }
+    
+    await generateAndPrintPDF(transformedData, invoice.number, unitData, qrDataUrl, qrAmount);
+    
+  } catch (error) {
+    console.error('Error printing invoice:', error);
+    alert('Failed to generate PDF: ' + error.message);
+  }
+};
+
+// Update the generateAndPrintPDF function to accept unitData and QR data
+const generateAndPrintPDF = async (invoiceData, invoiceNumber, unitData, qrDataUrl, qrAmount) => {
   try {
     const reactPdf = await import('@react-pdf/renderer');
     const pdf = reactPdf.pdf;
@@ -493,6 +559,9 @@ const generateAndPrintPDF = async (invoiceData, invoiceNumber) => {
         invoiceNumber={invoiceData.invoiceNumber}
         gstBreakdown={gstBreakdown}
         isSameState={isSameState}
+        unitData={unitData}  // ← PASS UNIT DATA
+        qrDataUrl={qrDataUrl}  // ← PASS QR DATA URL
+        qrAmount={qrAmount || parseFloat(invoiceData.grandTotal)}  // ← PASS QR AMOUNT
       />
     );
 
@@ -503,7 +572,7 @@ const generateAndPrintPDF = async (invoiceData, invoiceNumber) => {
     const printWindow = window.open(pdfUrl, '_blank');
 
     if (!printWindow) {
-        alert('Popup blocked. Please allow popups or use download option.');
+      alert('Popup blocked. Please allow popups or use download option.');
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;

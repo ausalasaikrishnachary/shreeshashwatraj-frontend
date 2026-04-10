@@ -338,7 +338,7 @@ const generateQRDataUrl = async (invoiceData, orderMode) => {
     }
 
     const formattedAmount = finalAmount.toFixed(2);
-    const upiId = 'bharathsiripuram98@okicici';
+    const upiId = 'shreeshashwatrajagroprivatelimited@sbi';
     const merchantName = (getSafeData(invoiceData, 'companyInfo.name', 'Business'))
       .replace(/[^a-zA-Z0-9 ]/g, '');
     const invoiceNumber = getSafeData(invoiceData, 'invoiceNumber', `INV${Date.now().toString().slice(-6)}`);
