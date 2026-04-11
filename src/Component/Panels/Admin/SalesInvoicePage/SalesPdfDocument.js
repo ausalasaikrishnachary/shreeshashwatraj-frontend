@@ -376,9 +376,9 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
         <View style={styles.addressSection}>
           <View style={styles.addressBox}>
             <Text style={styles.sectionTitle}>Bill To:</Text>
-            <Text style={[styles.addressText, styles.tableCellBold]}>
+            {/* <Text style={[styles.addressText, styles.tableCellBold]}>
               {getSafeData(supplierInfo, 'name', 'Customer')}
-            </Text>
+            </Text> */}
             <Text style={styles.addressText}>
               {getSafeData(supplierInfo, 'business_name', '')}
             </Text>

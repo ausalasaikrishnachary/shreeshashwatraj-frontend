@@ -1192,7 +1192,7 @@ const calculateTotals = () => {
         primaryBatchId: firstItemBatchId,
         PartyID: selectedSupplierId,
         AccountID: invoiceData.supplierInfo.accountId,
-        PartyName: invoiceData.supplierInfo.name,
+        // PartyName: invoiceData.supplierInfo.name,
   account_name: invoiceData.supplierInfo.account_name || 
                 accounts.find(acc => acc.id === selectedSupplierId)?.account_name || 
                 invoiceData.supplierInfo.name,
@@ -1641,7 +1641,7 @@ const handleExclPriceChange = (e) => {
                   setSelectedStaffId("");
                   setInputName("");
                   setSearchTerm("");
-                  setIsDropdownOpen(true);   // ✅ opens dropdown immediately
+                  setIsDropdownOpen(true);   
                 }}
               >
                 Change Retailer
@@ -1651,7 +1651,7 @@ const handleExclPriceChange = (e) => {
 
           {/* Customer Info Display */}
           <div className="bg-light p-2 rounded">
-            <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
+            {/* <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div> */}
             <div><strong>Business:</strong> {invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName}</div>
               {(invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number) && (
           <div><strong>Mobile:</strong> {invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number}</div>

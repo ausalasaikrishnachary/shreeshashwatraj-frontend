@@ -1898,11 +1898,11 @@ const handleItemChange = (index, field, value) => {
     <h5 className="text-primary mb-2">Bill To:</h5>
     {isEditMode ? (
       <div className="edit-control">
-        <Form.Control 
+        {/* <Form.Control 
           className="mb-2"
           value={currentData.supplierInfo.name}
           onChange={(e) => handleNestedChange('supplierInfo', 'name', e.target.value)}
-        />
+        /> */}
         <Form.Control 
           className="mb-2"
           value={currentData.supplierInfo.business_name || ''}
@@ -1929,7 +1929,7 @@ const handleItemChange = (index, field, value) => {
       </div>
     ) : (
       <>
-        <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p>
+        {/* <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p> */}
         {currentData.supplierInfo.business_name && (
           <p className="mb-1 text-muted">{currentData.supplierInfo.business_name}</p>
         )}
@@ -2277,13 +2277,13 @@ const handleItemChange = (index, field, value) => {
                       </div>
                     </div>
                   </Col> */}
-                  <Col md={12} className="text-end">
-                    <div className="signature-section">
-                      <p className="mb-2">For {currentData.companyInfo.name}</p>
-                      <div className="signature-space border-bottom mx-auto" style={{ width: '200px', height: '40px' }}></div>
-                      <p className="mt-2">Authorized Signatory</p>
-                    </div>
-                  </Col>
+                               <Col md={12} className="text-end">
+                   <div className="signature-section">
+                     <p className="mb-2">For {currentData.companyInfo.name}</p>
+                     <div className="signature-space border-bottom" style={{width: '200px', height: '40px', marginLeft: 'auto'}}></div>
+                     <p className="mt-2">Authorized Signatory</p>
+                   </div>
+                 </Col>
                 </Row>
               </div>
             </div>

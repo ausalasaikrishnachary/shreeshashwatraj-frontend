@@ -26,6 +26,7 @@ const SalesReport = () => {
   // State for filtering
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [applyDateFilter, setApplyDateFilter] = useState(false); // New state for date filtering
   const [searchTerm, setSearchTerm] = useState("");
   const [transactionType, setTransactionType] = useState("all");
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -35,6 +36,22 @@ const SalesReport = () => {
 
   // Filtered data
   const [filteredVoucherData, setFilteredVoucherData] = useState([]);
+
+  const getCurrentDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Set current date on component mount but don't apply filter
+  useEffect(() => {
+    const currentDate = getCurrentDate();
+    setFromDate(currentDate);
+    setToDate(currentDate);
+    setApplyDateFilter(false); // Don't apply filter initially
+  }, []);
 
   // Fetch all data initially
   const fetchSalesData = async () => {
@@ -58,15 +75,15 @@ const SalesReport = () => {
     }
   };
 
-// Determine if a record is Kacha - Use sales_type from backend
-const isKachaRecord = (item) => {
-  return item.sales_type === "kacha";
-};
+  // Determine if a record is Kacha - Use sales_type from backend
+  const isKachaRecord = (item) => {
+    return item.sales_type === "kacha";
+  };
 
-// Determine if a record is Pakka - Use sales_type from backend
-const isPakkaRecord = (item) => {
-  return item.sales_type === "pakka";
-};
+  // Determine if a record is Pakka - Use sales_type from backend
+  const isPakkaRecord = (item) => {
+    return item.sales_type === "pakka";
+  };
 
   // Process data for charts and summary
   const processData = (data) => {
@@ -193,6 +210,22 @@ const isPakkaRecord = (item) => {
     return (((currentMonthSales - previousMonthSales) / previousMonthSales) * 100).toFixed(1);
   };
 
+  // Handle date change - prepare for filter but don't apply automatically
+  const handleFromDateChange = (e) => {
+    setFromDate(e.target.value);
+    setApplyDateFilter(false); // Reset filter flag when date changes
+  };
+
+  const handleToDateChange = (e) => {
+    setToDate(e.target.value);
+    setApplyDateFilter(false); // Reset filter flag when date changes
+  };
+
+  // Apply date filter
+  const applyDateFilterHandler = () => {
+    setApplyDateFilter(true);
+  };
+
   // Filter data based on selected dates, search term, and transaction type
   useEffect(() => {
     if (!voucherDetails.length) {
@@ -214,8 +247,8 @@ const isPakkaRecord = (item) => {
       });
     }
 
-    // Apply date filter if dates are selected
-    if (fromDate || toDate) {
+    // Apply date filter only if applyDateFilter is true and dates are set
+    if (applyDateFilter && (fromDate || toDate)) {
       filtered = filtered.filter((item) => {
         const itemDate = item.invoice_date;
         if (!itemDate) return false;
@@ -264,8 +297,18 @@ const isPakkaRecord = (item) => {
     // Recalculate summary for filtered data
     if (filtered.length > 0) {
       processData(filtered);
+    } else {
+      // If no data, reset summary
+      setSummary({
+        totalSales: 0,
+        monthlyGrowth: 0,
+        kachaSales: 0,
+        pakkaSales: 0
+      });
+      setSalesData([]);
+      setStaffData([]);
     }
-  }, [voucherDetails, fromDate, toDate, searchTerm, transactionType]);
+  }, [voucherDetails, fromDate, toDate, searchTerm, transactionType, applyDateFilter]);
 
   // Initial fetch
   useEffect(() => {
@@ -279,14 +322,14 @@ const isPakkaRecord = (item) => {
       const res = await axios.post(
         `${baseurl}/api/reports/sales-report/download`,
         { 
-          fromDate: fromDate || null, 
-          toDate: toDate || null, 
+          fromDate: applyDateFilter && fromDate ? fromDate : null, 
+          toDate: applyDateFilter && toDate ? toDate : null, 
           format: reportFormat 
         },
         { responseType: "blob" }
       );
 
-      const name = `Sales_Report_${fromDate || "ALL"}_${toDate || "ALL"}.${
+      const name = `Sales_Report_${(applyDateFilter && fromDate) || "ALL"}_${(applyDateFilter && toDate) || "ALL"}.${
         reportFormat === "pdf" ? "pdf" : "xlsx"
       }`;
       const blob =
@@ -315,11 +358,21 @@ const isPakkaRecord = (item) => {
 
   // Clear all filters
   const clearFilters = () => {
-    setFromDate("");
-    setToDate("");
+    const currentDate = getCurrentDate();
+    setFromDate(currentDate);
+    setToDate(currentDate);
+    setApplyDateFilter(false); // Reset date filter
     setSearchTerm("");
     setTransactionType("all");
     setShowTransactionDropdown(false);
+  };
+
+  // Clear date filters only
+  const clearDateFilters = () => {
+    const currentDate = getCurrentDate();
+    setFromDate(currentDate);
+    setToDate(currentDate);
+    setApplyDateFilter(false); // Reset date filter when clearing
   };
 
   // Close dropdown when clicking outside
@@ -396,8 +449,6 @@ const isPakkaRecord = (item) => {
     const pakkaCount = voucherDetails.filter(item => isPakkaRecord(item)).length;
     const kachaCount = voucherDetails.filter(item => isKachaRecord(item)).length;
     
-    console.log("Transaction counts:", { allCount, pakkaCount, kachaCount });
-    
     return { allCount, pakkaCount, kachaCount };
   };
 
@@ -423,7 +474,7 @@ const isPakkaRecord = (item) => {
           <h3>Total Sales</h3>
           <div className="sales-stat-value">{formatCurrency(summary.totalSales)}</div>
           <p className="sales-stat-period">
-            {fromDate && toDate ? `${fromDate} to ${toDate}` : 'All time'}
+            {applyDateFilter && fromDate && toDate ? `${fromDate} to ${toDate}` : 'All time'}
             {transactionType !== "all" && ` • ${getTransactionTypeDisplay(transactionType)}`}
           </p>
         </div>
@@ -564,7 +615,7 @@ const isPakkaRecord = (item) => {
             </div>
 
             {/* Clear All Filters Button */}
-            {(fromDate || toDate || searchTerm || transactionType !== 'all') && (
+            {(applyDateFilter || searchTerm || transactionType !== 'all') && (
               <button
                 className="sales-clear-all-btn"
                 onClick={clearFilters}
@@ -609,7 +660,7 @@ const isPakkaRecord = (item) => {
                   id="sales-from-date"
                   type="date"
                   value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
+                  onChange={handleFromDateChange}
                   className="sales-date-input"
                   max={toDate || undefined}
                 />
@@ -621,16 +672,25 @@ const isPakkaRecord = (item) => {
                   id="sales-to-date"
                   type="date"
                   value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
+                  onChange={handleToDateChange}
                   className="sales-date-input"
                   min={fromDate || undefined}
                 />
               </div>
               
-              {(fromDate || toDate) && (
+              {/* Apply Date Filter Button */}
+              <button
+                className="sales-apply-date-btn"
+                onClick={applyDateFilterHandler}
+                disabled={!fromDate || !toDate}
+              >
+                Apply Date Filter
+              </button>
+              
+              {applyDateFilter && (
                 <button
                   className="sales-clear-date-btn"
-                  onClick={() => { setFromDate(""); setToDate(""); }}
+                  onClick={clearDateFilters}
                   title="Clear date filters"
                 >
                   Clear Dates
@@ -681,7 +741,7 @@ const isPakkaRecord = (item) => {
             </button>
             <div className="sales-modal-title">Generate Sales Report</div>
             <div className="sales-modal-subtitle">
-              {fromDate && toDate ? `Period: ${fromDate} to ${toDate}` : 'All sales data'}
+              {applyDateFilter && fromDate && toDate ? `Period: ${fromDate} to ${toDate}` : 'All sales data'}
               {transactionType !== 'all' && ` • ${getTransactionTypeDisplay(transactionType)}`}
             </div>
 
@@ -756,16 +816,6 @@ const voucherDetailsColumns = [
     title: "Total Amount", 
     style: { textAlign: "center" } 
   },
-  // { 
-  //   key: "TransactionType", 
-  //   title: "Type", 
-  //   style: { textAlign: "center" },
-  //   render: (value) => {
-  //     if (value === "Kacha") return <span className="sales-kacha-badge">Kacha</span>;
-  //     if (value === "Pakka") return <span className="sales-pakka-badge">Pakka</span>;
-  //     return value || "-";
-  //   }
-  // },
   { 
     key: "retailer", 
     title: "Retailer", 

@@ -1787,11 +1787,11 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                       <h5 className="text-primary mb-2">Bill To:</h5>
                       {isEditMode ? (
                         <div className="edit-control">
-                          <Form.Control 
+                          {/* <Form.Control 
                             className="mb-2"
                             value={currentData.supplierInfo.name}
                             onChange={(e) => handleNestedChange('supplierInfo', 'name', e.target.value)}
-                          />
+                          /> */}
                           <Form.Control 
                             className="mb-2"
                             value={currentData.supplierInfo.businessName}
@@ -1817,7 +1817,7 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                         </div>
                       ) : (
                         <>
-                          <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p>
+                          {/* <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p> */}
                           <p className="mb-1 text-muted">{currentData.supplierInfo.businessName}</p>
                            {(currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number) && (
               <p className="mb-1">
@@ -1830,7 +1830,20 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                       )}
                     </div>
                   </Col>
-                  <Col md={6}>
+
+                         <Col md={6}>
+                                                        <h6 className="text-primary">Transportation Details:</h6>
+                                    
+                                                <div className="bg-light p-3 rounded">
+                                                  <div className="transport-field">
+                                                    <strong>Vehicle No.:</strong>
+                                                    <p className="mb-0 text-muted">
+                                                      {currentData.transportDetails?.vehicleNo || '-'}
+                                                    </p>
+                                                  </div>
+                                                  </div>
+                                                </Col>
+                  {/* <Col md={6}>
                     <div className="shipping-address bg-light p-3 rounded">
                       <h5 className="text-primary mb-2">Ship To:</h5>
                       {isEditMode ? (
@@ -1882,20 +1895,20 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
     </div>
   </div>
 )}
-                  </Col>
+                  </Col> */}
                 </Row>
               </div>
 
               {/* Items Table */}
               <div className="items-section mb-4">
-                <div className="d-flex justify-content-between align-items-center mb-2">
+                {/* <div className="d-flex justify-content-between align-items-center mb-2">
                   <h6 className="text-primary mb-0">Items Details</h6>
                   {isEditMode && (
                     <Button variant="primary" size="sm" onClick={addNewItem}>
                       + Add Item
                     </Button>
                   )}
-                </div>
+                </div> */}
                 {isEditMode ? (
                   <Table bordered responsive size="sm" className="edit-control">
                     <thead className="table-dark">
@@ -2018,7 +2031,7 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
 <div className="totals-section mb-4">
   <Row>
     <Col md={7}>
-      <div className="notes-section">
+      {/* <div className="notes-section">
         <h6 className="text-primary">Notes:</h6>
         {isEditMode ? (
           <Form.Control 
@@ -2033,10 +2046,10 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
             {currentData.note}
           </p>
         )}
-      </div>
+      </div> */}
       
       {/* ✅ ADD TRANSPORT DETAILS HERE */}
-      <div className="transport-details-section mt-3">
+      {/* <div className="transport-details-section mt-3">
         <h6 className="text-primary">Transportation Details:</h6>
         <div className="bg-light p-3 rounded">
           <Row className="mb-2">
@@ -2076,8 +2089,100 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
             </Col>
           </Row>
         </div>
-      </div>
+      </div> */}
+
+
     </Col>
+      <Col md={7}>
+                        <div className="bank-details">
+    
+                          <h6 className="text-primary mb-1" style={{ fontSize: '15px' }}>
+                            Bank Details:
+                          </h6>
+    
+                          <div className="bg-light p-2 rounded" style={{ fontSize: '11px', lineHeight: '1.2' }}>
+    
+                            <p className="mb-1" style={{ fontSize: '12px', }}  >
+                              Account Name: SHREE SHASHWATRAJ AGRO PVT LTD
+                            </p>
+    
+                            <p className="mb-1" style={{ fontSize: '12px', }}>
+                              Bank Name: STATE BANK OF INDIA
+                            </p>
+    
+                            <p className="mb-1" style={{ fontSize: '12px', }}>
+                              Branch: SME AURANGABAD
+                            </p>
+    
+                            <p className="mb-1" style={{ fontSize: '12px', }}>
+                              Account Number: 44773710377
+                            </p>
+    
+                            <p className="mb-0" style={{ fontSize: '12px', }}>
+                              IFSC Code: SBIN0063699
+                            </p>
+    
+                          </div>
+                        </div>
+                          {/* <h6 className="text-primary">Notes:</h6>
+                          {isEditMode ? (
+                            <Form.Control
+                              as="textarea"
+                              rows={3}
+                              value={currentData.note || ''}
+                              onChange={(e) => handleInputChange('note', e.target.value)}
+                              className="edit-control"
+                            />
+                          ) : (
+                            <p className="bg-light p-2 rounded min-h-100">
+                              {currentData.note}
+                            </p>
+                          )} */}
+    
+          {/* <div className="transport-details-section mt-3">
+            <h6 className="text-primary">Transportation Details:</h6>
+            <div className="bg-light p-3 rounded">
+              <Row className="mb-2">
+                <Col md={6}>
+                  <div className="transport-field">
+                    <strong>Transport:</strong>
+                    <p className="mb-0 text-muted">
+                      {currentData.transportDetails?.transport || '-'}
+                    </p>
+                  </div>
+                </Col>
+                <Col md={6}>
+                  <div className="transport-field">
+                    <strong>GR/RR No.:</strong>
+                    <p className="mb-0 text-muted">
+                      {currentData.transportDetails?.grNumber || '-'}
+                    </p>
+                  </div>
+                </Col>
+              </Row>
+              <Row>
+                <Col md={6}>
+                  <div className="transport-field">
+                    <strong>Vehicle No.:</strong>
+                    <p className="mb-0 text-muted">
+                      {currentData.transportDetails?.vehicleNo || '-'}
+                    </p>
+                  </div>
+                </Col>
+                <Col md={6}>
+                  <div className="transport-field">
+                    <strong>Station:</strong>
+                    <p className="mb-0 text-muted">
+                      {currentData.transportDetails?.station || '-'}
+                    </p>
+                  </div>
+                </Col>
+              </Row>
+            </div>
+          </div> */}
+    
+    
+                      </Col>
     <Col md={5}>
       <div className="amount-breakdown bg-light p-3 rounded">
         <h6 className="text-primary mb-3">Amount Summary</h6>
@@ -2125,7 +2230,7 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
               {/* Footer */}
               <div className="invoice-footer border-top pt-3">
                 <Row>
-                  <Col md={6}>
+                  {/* <Col md={6}>
   <div className="bank-details">
     
     <h6 className="text-primary mb-1" style={{ fontSize: '15px' }}>
@@ -2156,14 +2261,14 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
       
     </div>
   </div>
-                  </Col>
-                  <Col md={6} className="text-end">
-                    <div className="signature-section">
-                      <p className="mb-2">For {currentData.companyInfo.name}</p>
-                      <div className="signature-space border-bottom mx-auto" style={{width: '200px', height: '40px'}}></div>
-                      <p className="mt-2">Authorized Signatory</p>
-                    </div>
-                  </Col>
+                  </Col> */}
+              <Col md={12} className="text-end">
+  <div className="signature-section">
+    <p className="mb-2">For {currentData.companyInfo.name}</p>
+    <div className="signature-space border-bottom" style={{width: '200px', height: '40px', marginLeft: 'auto'}}></div>
+    <p className="mt-2">Authorized Signatory</p>
+  </div>
+</Col>
                 </Row>
               </div>
             </div>

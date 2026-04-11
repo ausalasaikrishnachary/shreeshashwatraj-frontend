@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaSearch, FaFilePdf } from "react-icons/fa";
+import { FaSearch, FaFilePdf, FaEye } from "react-icons/fa";
 import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
@@ -11,13 +11,21 @@ const StockReport = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [applyDateFilter, setApplyDateFilter] = useState(false); // New state to control date filtering
   const [stockData, setStockData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [exportLoading, setExportLoading] = useState(false);
   const [qtyFilter, setQtyFilter] = useState("all");
-  const [categories, setCategories] = useState([]); // ✅ NEW: Store categories
-  const [categoriesMap, setCategoriesMap] = useState({}); // ✅ NEW: Map for quick lookup
+  const [categories, setCategories] = useState([]);
+  const [categoriesMap, setCategoriesMap] = useState({});
+  
+  // State for PDF column selection only (doesn't affect table)
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
+  const [pdfSelectedColumns, setPdfSelectedColumns] = useState([
+    "itemName", "categoryName", "opQty", "currentStock", 
+    "opVal", "prchQty", "prchVal", "saleQty", "saleVal", "cloBal"
+  ]);
 
   const getCurrentDate = () => {
     const today = new Date();
@@ -27,13 +35,20 @@ const StockReport = () => {
     return `${year}-${month}-${day}`;
   };
 
-  // ✅ NEW: Fetch categories
+  // Set current date on component mount but don't apply filter
+  useEffect(() => {
+    const currentDate = getCurrentDate();
+    setFromDate(currentDate);
+    setToDate(currentDate);
+    // Don't apply date filter initially - set applyDateFilter to false
+    setApplyDateFilter(false);
+  }, []);
+
   const fetchCategories = async () => {
     try {
       const categoriesRes = await axios.get(`${baseurl}/categories`);
       setCategories(categoriesRes.data);
       
-      // Create a map for quick lookup
       const map = {};
       categoriesRes.data.forEach(category => {
         map[category.id] = category.category_name;
@@ -45,7 +60,7 @@ const StockReport = () => {
   };
 
   useEffect(() => {
-    fetchCategories(); // ✅ Fetch categories first
+    fetchCategories();
     fetchStockData();
   }, []);
 
@@ -85,7 +100,7 @@ const StockReport = () => {
                 productId: product.id,
                 batchNumber: batch.batch_number,
                 itemName: product.goods_name,
-                categoryId: product.category_id, // ✅ NEW: Store category_id
+                categoryId: product.category_id,
                 opQty,
                 opVal,
                 prchQty,
@@ -109,7 +124,7 @@ const StockReport = () => {
                 productId: product.id,
                 batchNumber: "DEFAULT",
                 itemName: product.goods_name,
-                categoryId: product.category_id, // ✅ NEW: Store category_id
+                categoryId: product.category_id,
                 opQty,
                 opVal,
                 prchQty: 0,
@@ -135,7 +150,7 @@ const StockReport = () => {
               productId: product.id,
               batchNumber: "DEFAULT",
               itemName: product.goods_name,
-              categoryId: product.category_id, // ✅ NEW: Store category_id
+              categoryId: product.category_id,
               opQty,
               opVal,
               prchQty: 0,
@@ -190,7 +205,18 @@ const StockReport = () => {
     }
   };
 
-  // ✅ Update filteredData to include category name in search
+  // Handle date change - apply filter only when user changes dates
+  const handleFromDateChange = (e) => {
+    setFromDate(e.target.value);
+    setApplyDateFilter(true); // Enable date filtering when user changes date
+  };
+
+  const handleToDateChange = (e) => {
+    setToDate(e.target.value);
+    setApplyDateFilter(true); // Enable date filtering when user changes date
+  };
+
+  // Updated filteredData with date filtering based on opening_stock_date
   const filteredData = stockData.filter((item) => {
     // Get category name for search
     const categoryName = categoriesMap[item.categoryId] || '';
@@ -199,15 +225,14 @@ const StockReport = () => {
       item.itemName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.batchNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.productType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      categoryName?.toLowerCase().includes(searchTerm.toLowerCase()); // ✅ Include category in search
+      categoryName?.toLowerCase().includes(searchTerm.toLowerCase());
 
+    // Date filtering - only apply if applyDateFilter is true AND dates are set
     let matchesDate = true;
-    if (fromDate || toDate) {
+    if (applyDateFilter && fromDate && toDate && item.date) {
       const itemDateFormatted = formatDateForComparison(item.date);
       if (itemDateFormatted) {
-        if (fromDate && toDate) matchesDate = itemDateFormatted >= fromDate && itemDateFormatted <= toDate;
-        else if (fromDate) matchesDate = itemDateFormatted >= fromDate;
-        else if (toDate) matchesDate = itemDateFormatted <= toDate;
+        matchesDate = itemDateFormatted >= fromDate && itemDateFormatted <= toDate;
       } else {
         matchesDate = false;
       }
@@ -222,10 +247,10 @@ const StockReport = () => {
     return matchesSearch && matchesDate && matchesQty;
   });
 
-  // ✅ Add category name to processed data
+  // Add category name to processed data - ALL COLUMNS for table display
   const processedData = filteredData.map((item) => ({
     ...item,
-    categoryName: categoriesMap[item.categoryId] || 'Uncategorized', // ✅ Add category name
+    categoryName: categoriesMap[item.categoryId] || 'Uncategorized',
     opQty: (parseFloat(item.opQty) || 0).toFixed(2),
     currentStock: (parseFloat(item.currentStock) || 0).toFixed(2),
     opVal: `₹${(item.opVal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -239,73 +264,11 @@ const StockReport = () => {
     }) : '-',
   }));
 
-const exportToPDF = async () => {
-  if (filteredData.length === 0) { 
-    alert("No data to export"); 
-    return; 
-  }
-  setExportLoading(true);
-  try {
-    const pdfData = filteredData.map((item) => ({
-      itemName: item.itemName,
-      categoryName: categoriesMap[item.categoryId] || 'Uncategorized', // ✅ Add category name
-      opQty: item.opQty || 0,
-      currentStock: item.currentStock || 0, 
-      opVal: item.opVal || 0,
-      prchQty: item.prchQty || 0,
-      prchVal: item.prchVal || 0,
-      saleQty: item.saleQty || 0,
-      saleVal: item.saleVal || 0,
-      cloBal: item.cloBal || 0,
-    }));
-
-    const displayFromDate = fromDate ? formatDateForDisplay(fromDate) : formatDateForDisplay(getCurrentDate());
-    const displayToDate = toDate ? formatDateForDisplay(toDate) : formatDateForDisplay(getCurrentDate());
-
-    const blob = await pdf(
-      <StockReportPDF
-        reportData={{
-          shopName: "SHREE SHASHWAT RAJ AGRO PVT.LTD",
-          fromDate: displayFromDate,
-          toDate: displayToDate,
-          items: pdfData,
-        }}
-      />
-    ).toBlob();
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `stock_report_${displayFromDate}_to_${displayToDate}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-    alert("Failed to generate PDF");
-  } finally {
-    setExportLoading(false);
-  }
-};
-
-  const clearFilters = () => {
-    setSearchTerm("");
-    setFromDate("");
-    setToDate("");
-    setQtyFilter("all");
-  };
-
-  const clearDateFilters = () => {
-    setFromDate("");
-    setToDate("");
-  };
-
-  // ✅ Updated columns to include category
-  const stockColumns = [
+  // Available columns configuration - ALL COLUMNS for table
+  const allColumns = [
     { key: "sl_no", title: "S.No", style: { textAlign: "center", width: "60px" }, render: (value, record, index) => index + 1 },
     { key: "itemName", title: "Item Name", style: { textAlign: "left" } },
-    { key: "categoryName", title: "Category", style: { textAlign: "left" } }, // ✅ NEW: Category column
+    { key: "categoryName", title: "Category", style: { textAlign: "left" } },
     { key: "opQty", title: "Op. Qty", style: { textAlign: "right" } },
     { key: "currentStock", title: "BL. Qty", style: { textAlign: "right" } },
     { key: "opVal", title: "Op. Val", style: { textAlign: "right" } },
@@ -315,6 +278,131 @@ const exportToPDF = async () => {
     { key: "saleVal", title: "Sale Val", style: { textAlign: "right" } },
     { key: "cloBal", title: "Clo. Bal", style: { textAlign: "right" } },
   ];
+
+  // Table shows ALL columns (no filtering)
+  const stockColumns = allColumns;
+
+  const handlePdfColumnToggle = (columnKey) => {
+    setPdfSelectedColumns(prev => {
+      if (prev.includes(columnKey)) {
+        // Don't allow removing if only one column is selected
+        if (prev.length === 1) return prev;
+        return prev.filter(key => key !== columnKey);
+      } else {
+        return [...prev, columnKey];
+      }
+    });
+  };
+
+  const exportToPDF = async () => {
+    // Use filtered data for PDF (which already has filters applied)
+    if (filteredData.length === 0) { 
+      alert("No data to export"); 
+      return; 
+    }
+    setExportLoading(true);
+    try {
+      // Prepare PDF data with all fields
+      const pdfData = filteredData.map((item) => ({
+        itemName: item.itemName,
+        categoryName: categoriesMap[item.categoryId] || 'Uncategorized',
+        opQty: item.opQty || 0,
+        currentStock: item.currentStock || 0, 
+        opVal: item.opVal || 0,
+        prchQty: item.prchQty || 0,
+        prchVal: item.prchVal || 0,
+        saleQty: item.saleQty || 0,
+        saleVal: item.saleVal || 0,
+        cloBal: item.cloBal || 0,
+      }));
+
+      const displayFromDate = fromDate ? formatDateForDisplay(fromDate) : formatDateForDisplay(getCurrentDate());
+      const displayToDate = toDate ? formatDateForDisplay(toDate) : formatDateForDisplay(getCurrentDate());
+
+      // Get column titles for PDF based on selected columns only
+      const pdfColumns = allColumns
+        .filter(col => col.key !== 'sl_no' && pdfSelectedColumns.includes(col.key))
+        .map(col => ({
+          key: col.key,
+          title: col.title
+        }));
+
+      const blob = await pdf(
+        <StockReportPDF
+          reportData={{
+            shopName: "SHREE SHASHWAT RAJ AGRO PVT.LTD",
+            fromDate: displayFromDate,
+            toDate: displayToDate,
+            items: pdfData,
+            columns: pdfColumns,
+            selectedColumns: pdfSelectedColumns
+          }}
+        />
+      ).toBlob();
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `stock_report_${displayFromDate}_to_${displayToDate}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF");
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const clearFilters = () => {
+    const currentDate = getCurrentDate();
+    setSearchTerm("");
+    setFromDate(currentDate);
+    setToDate(currentDate);
+    setQtyFilter("all");
+    setApplyDateFilter(false); // Reset date filter when clearing
+  };
+
+  const clearDateFilters = () => {
+    const currentDate = getCurrentDate();
+    setFromDate(currentDate);
+    setToDate(currentDate);
+    setApplyDateFilter(false); // Reset date filter when clearing dates
+  };
+
+  // Apply date filter when user clicks "Apply Date Filter" button
+  const applyDateFilterHandler = () => {
+    setApplyDateFilter(true);
+  };
+
+  // Column selector component for PDF only
+  const ColumnSelector = () => (
+    <div className="stock-summary-column-selector-overlay">
+      <div className="stock-summary-column-selector-popup">
+        <div className="stock-summary-column-selector-header">
+          <h3>Select Columns for PDF Export</h3>
+          <button onClick={() => setShowColumnSelector(false)} className="stock-summary-close-btn">×</button>
+        </div>
+        <div className="stock-summary-column-selector-body">
+          {allColumns.filter(col => col.key !== 'sl_no').map(column => (
+            <label key={column.key} className="stock-summary-column-checkbox">
+              <input
+                type="checkbox"
+                checked={pdfSelectedColumns.includes(column.key)}
+                onChange={() => handlePdfColumnToggle(column.key)}
+              />
+              <span>{column.title}</span>
+            </label>
+          ))}
+        </div>
+        <div className="stock-summary-column-selector-footer">
+          <button onClick={() => setShowColumnSelector(false)} className="stock-summary-apply-btn">Apply</button>
+        </div>
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -360,36 +448,44 @@ const exportToPDF = async () => {
             </div>
           </div>
 
-          {/* Date Filters */}
+          {/* Date Filters with current date as default - no filter until user applies */}
           <div className="stock-summary-date-filters">
             <div className="stock-summary-date-input-wrapper">
-              <label htmlFor="from-date" className="stock-summary-date-label">From Date</label>
               <input
                 id="from-date"
                 type="date"
                 value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
+                onChange={handleFromDateChange}
                 className="stock-summary-date-input"
                 max={toDate || undefined}
               />
             </div>
             <div className="stock-summary-date-input-wrapper">
-              <label htmlFor="to-date" className="stock-summary-date-label">To Date</label>
               <input
                 id="to-date"
                 type="date"
                 value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
+                onChange={handleToDateChange}
                 className="stock-summary-date-input"
                 min={fromDate || undefined}
               />
             </div>
-            {(fromDate || toDate) && (
-              <button className="stock-summary-clear-date-btn" onClick={clearDateFilters}>Clear Dates</button>
+            
+            {/* Apply Date Filter Button */}
+            <button 
+              className="stock-summary-apply-date-btn" 
+              onClick={applyDateFilterHandler}
+              disabled={!fromDate || !toDate}
+            >
+              Apply Date Filter
+            </button>
+            
+            {(applyDateFilter && (fromDate !== getCurrentDate() || toDate !== getCurrentDate())) && (
+              <button className="stock-summary-clear-date-btn" onClick={clearDateFilters}>Reset to Today</button>
             )}
           </div>
 
-          {/* QTY Dropdown Filter */}
+          {/* QTY Dropdown Filter - applies immediately */}
           <div className="stock-summary-date-input-wrapper">
             <label className="stock-summary-date-label">QTY Filter</label>
             <select
@@ -404,6 +500,15 @@ const exportToPDF = async () => {
             </select>
           </div>
 
+          {/* Column Selector Button - for PDF only */}
+          <button
+            onClick={() => setShowColumnSelector(true)}
+            className="stock-summary-column-selector-btn"
+            title="Select Columns for PDF Export"
+          >
+           PDF Columns
+          </button>
+
           {/* Export PDF */}
           <button
             onClick={exportToPDF}
@@ -417,7 +522,7 @@ const exportToPDF = async () => {
             )}
           </button>
 
-          {(searchTerm || fromDate || toDate || qtyFilter !== "all") && (
+          {(searchTerm || applyDateFilter || qtyFilter !== "all") && (
             <button className="stock-summary-clear-all-btn" onClick={clearFilters}>
               Clear All Filters
             </button>
@@ -425,6 +530,9 @@ const exportToPDF = async () => {
 
         </div>
       </div>
+
+      {/* Column Selector Modal - for PDF only */}
+      {showColumnSelector && <ColumnSelector />}
 
       <div className="stock-summary-table-section">
         <ReusableTable

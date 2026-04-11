@@ -1445,7 +1445,7 @@ if (!isEditMode) {
           {/* Customer Info Display */}
           <div className="bg-light p-2 rounded">
             <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div>
-            <div><strong>Business:</strong> {invoiceData.supplierInfo.business_name}</div>
+            {/* <div><strong>Business:</strong> {invoiceData.supplierInfo.business_name}</div> */}
             {(invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number) && (
               <div><strong>Mobile:</strong> {invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number}</div>
             )}
