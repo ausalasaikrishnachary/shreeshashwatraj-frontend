@@ -40,9 +40,12 @@ function RetailerReports({ loading, setLoading }) {
   });
   const [searchTerm, setSearchTerm] = useState("");
   
-  // Date filtering
+  // Date filtering with temp states
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [tempFromDate, setTempFromDate] = useState("");
+  const [tempToDate, setTempToDate] = useState("");
+  const [applyDateFilter, setApplyDateFilter] = useState(false); // Start with false - no filter initially
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [reportFormat, setReportFormat] = useState("pdf");
   const [generatingReport, setGeneratingReport] = useState(false);
@@ -69,14 +72,30 @@ function RetailerReports({ loading, setLoading }) {
   // Bar chart state
   const [barChartData, setBarChartData] = useState(null);
 
+  const getCurrentDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getFirstDayOfCurrentMonth = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}-01`;
+  };
+
   // Fetch retailers data with date filters
   const fetchRetailersData = async () => {
     try {
       setLoading(true);
       const url = `${baseurl}/api/reports/retailer-report`;
       const params = {};
-      if (fromDate) params.fromDate = fromDate;
-      if (toDate) params.toDate = toDate;
+      // Only send dates if applyDateFilter is true and dates are set
+      if (applyDateFilter && fromDate) params.fromDate = fromDate;
+      if (applyDateFilter && toDate) params.toDate = toDate;
       
       console.log("📌 Fetching Retailers with params:", params);
       const res = await axios.get(url, { params });
@@ -114,7 +133,7 @@ function RetailerReports({ loading, setLoading }) {
         if (previousMonthRetailers > 0) {
           growthRate = (((currentMonthRetailers - previousMonthRetailers) / previousMonthRetailers) * 100).toFixed(1);
         } else if (currentMonthRetailers > 0) {
-          growthRate = 100; // If no retailers last month, growth is 100%
+          growthRate = 100;
         }
 
         setStats({
@@ -159,15 +178,55 @@ function RetailerReports({ loading, setLoading }) {
     }
   };
 
-  // Initial fetch
+  // Set initial dates on component mount (but don't apply filter)
   useEffect(() => {
-    fetchRetailersData();
-  }, [setLoading]);
+    const firstDay = getFirstDayOfCurrentMonth();
+    const currentDate = getCurrentDate();
+    setTempFromDate(firstDay);
+    setTempToDate(currentDate);
+    // Don't set fromDate/toDate initially - they remain empty
+    // Don't apply filter on initial load
+    fetchRetailersData(); // Fetch without date filters
+  }, []);
 
-  // Fetch when date changes
+  // Fetch when date filter is applied (only when applyDateFilter changes to true)
   useEffect(() => {
-    fetchRetailersData();
-  }, [fromDate, toDate]);
+    if (applyDateFilter) {
+      fetchRetailersData();
+    }
+  }, [fromDate, toDate, applyDateFilter]);
+
+  const applyDateFilterHandler = () => {
+    setFromDate(tempFromDate);
+    setToDate(tempToDate);
+    setApplyDateFilter(true);
+  };
+
+  // Clear only dates (reset to current month in temp but don't apply)
+  const clearDatesOnly = () => {
+    const firstDay = getFirstDayOfCurrentMonth();
+    const currentDate = getCurrentDate();
+    setTempFromDate(firstDay);
+    setTempToDate(currentDate);
+    // Also clear the applied dates if they were applied
+    setFromDate("");
+    setToDate("");
+    setApplyDateFilter(false);
+    fetchRetailersData(); // Refetch without date filters
+  };
+
+  // Clear all filters (search + dates)
+  const clearAllFilters = () => {
+    const firstDay = getFirstDayOfCurrentMonth();
+    const currentDate = getCurrentDate();
+    setSearchTerm("");
+    setTempFromDate(firstDay);
+    setTempToDate(currentDate);
+    setFromDate("");
+    setToDate("");
+    setApplyDateFilter(false);
+    fetchRetailersData(); // Refetch without date filters
+  };
 
   // Prepare state distribution chart data
   const prepareStateChartData = (data) => {
@@ -197,7 +256,6 @@ function RetailerReports({ loading, setLoading }) {
           backgroundColor: labels.map((_, index) => colors[index % colors.length]),
           hoverBackgroundColor: labels.map((_, index) => {
             const baseColor = colors[index % colors.length];
-            // Darken color for hover effect
             return baseColor.replace(/^#/, '').replace(/../g, color => 
               ('0' + Math.min(255, Math.max(0, parseInt(color, 16) - 20)).toString(16)).slice(-2)
             );
@@ -284,17 +342,17 @@ function RetailerReports({ loading, setLoading }) {
     { key: "business_name", title: "Business Name", style: { textAlign: "center" } },
     { key: "gstin", title: "GSTIN", style: { textAlign: "center" } },
     { key: "assigned_staff", title: "Assigned Staff", style: { textAlign: "center" } },
-{ 
-  key: "created_at", 
-  title: "Created Date", 
-  style: { textAlign: "center" },
-  render: (value) => {
-    if (!value) return "-";
-    const date = new Date(value);
-    // Indian format: dd/mm/yyyy
-    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-  }
-},    { key: "billing_state", title: "State", style: { textAlign: "center" } },
+    { 
+      key: "created_at", 
+      title: "Created Date", 
+      style: { textAlign: "center" },
+      render: (value) => {
+        if (!value) return "-";
+        const date = new Date(value);
+        return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+      }
+    },
+    { key: "billing_state", title: "State", style: { textAlign: "center" } },
   ];
 
   // Generate report function
@@ -304,14 +362,14 @@ function RetailerReports({ loading, setLoading }) {
       const res = await axios.post(
         `${baseurl}/api/reports/retailer-report/download`,
         { 
-          fromDate: fromDate || null, 
-          toDate: toDate || null, 
+          fromDate: (applyDateFilter && fromDate) ? fromDate : null, 
+          toDate: (applyDateFilter && toDate) ? toDate : null, 
           format: reportFormat 
         },
         { responseType: "blob" }
       );
 
-      const name = `Retailer_Report_${fromDate || "ALL"}_${toDate || "ALL"}.${
+      const name = `Retailer_Report_${(applyDateFilter && fromDate) || "ALL"}_${(applyDateFilter && toDate) || "ALL"}.${
         reportFormat === "pdf" ? "pdf" : "xlsx"
       }`;
       const blob =
@@ -329,10 +387,11 @@ function RetailerReports({ loading, setLoading }) {
       a.remove();
       URL.revokeObjectURL(a.href);
 
+      alert(`✅ Successfully generated ${reportFormat.toUpperCase()} report`);
       setShowGenerateModal(false);
     } catch (e) {
       console.error("❌ Download error:", e);
-      alert("Failed to generate report");
+      alert(`❌ Failed to generate report: ${e.message}`);
     } finally {
       setGeneratingReport(false);
     }
@@ -409,12 +468,6 @@ function RetailerReports({ loading, setLoading }) {
     },
   };
 
-  // Clear date filters
-  const clearDateFilters = () => {
-    setFromDate("");
-    setToDate("");
-  };
-
   return (
     <div className="ret-rep">
       {/* Stats Cards */}
@@ -423,7 +476,7 @@ function RetailerReports({ loading, setLoading }) {
           <h4>Total Retailers</h4>
           <div className="ret-rep-stat-number">{stats.totalRetailers}</div>
           <div className="ret-rep-stat-period">
-            {fromDate && toDate ? `${fromDate} to ${toDate}` : 'All retailers'}
+            {applyDateFilter && fromDate && toDate ? `${fromDate} to ${toDate}` : 'All retailers'}
           </div>
         </div>
         <div className="ret-rep-stat-card">
@@ -445,7 +498,6 @@ function RetailerReports({ loading, setLoading }) {
             {stats.previousMonthCount} → {stats.currentMonthCount}
           </div>
         </div>
-
       </div>
 
       {/* Charts Section */}
@@ -456,7 +508,6 @@ function RetailerReports({ loading, setLoading }) {
             <div className="ret-rep-chart-header">
               <FaChartPie className="ret-rep-chart-icon" />
               <h3>Retailers by State</h3>
-           
             </div>
             <div className="ret-rep-chart-wrapper">
               {loading ? (
@@ -476,7 +527,6 @@ function RetailerReports({ loading, setLoading }) {
             <div className="ret-rep-chart-header">
               <FaChartBar className="ret-rep-chart-icon" />
               <h3>Retailers by Business Type</h3>
-          
             </div>
             <div className="ret-rep-chart-wrapper">
               {loading ? (
@@ -521,38 +571,47 @@ function RetailerReports({ loading, setLoading }) {
             </div>
           </div>
           
-          {/* Date filters on right */}
+          {/* Date filters with Apply Button on right */}
           <div className="ret-rep-date-right">
             <div className="ret-rep-date-group">
               <div className="ret-rep-date-field">
                 <label>From Date:</label>
                 <input
                   type="date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
+                  value={tempFromDate}
+                  onChange={(e) => setTempFromDate(e.target.value)}
                   className="ret-rep-date-input"
-                  max={toDate || undefined}
                 />
               </div>
               <div className="ret-rep-date-field">
                 <label>To Date:</label>
                 <input
                   type="date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
+                  value={tempToDate}
+                  onChange={(e) => setTempToDate(e.target.value)}
                   className="ret-rep-date-input"
-                  min={fromDate || undefined}
                 />
               </div>
-              {(fromDate || toDate) && (
+              
+              {/* Apply Date Filter Button */}
+              <button
+                className="ret-rep-apply-date-btn"
+                onClick={applyDateFilterHandler}
+              >
+                <FaFilter /> Add Filter
+              </button>
+              
+              {/* Clear Dates Button - ONLY SHOWS AFTER FILTER IS APPLIED */}
+              {applyDateFilter && fromDate && toDate && (
                 <button
-                  className="ret-rep-clear-filter-btn"
-                  onClick={clearDateFilters}
+                  className="ret-rep-clear-dates-btn"
+                  onClick={clearDatesOnly}
                   title="Clear date filters"
                 >
-                  <FaFilter /> Clear
+                  Clear Dates
                 </button>
               )}
+              
               <button
                 className="ret-rep-generate-btn"
                 onClick={() => setShowGenerateModal(true)}
@@ -562,6 +621,35 @@ function RetailerReports({ loading, setLoading }) {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Clear All Filters button - appears when search is active OR date filter is applied */}
+        {(searchTerm || (applyDateFilter && fromDate && toDate)) && (
+          <div className="ret-rep-clear-all-wrapper">
+            <button className="ret-rep-clear-all-btn" onClick={clearAllFilters}>
+              Clear All Filters
+            </button>
+          </div>
+        )}
+
+        {/* Show active filter badges */}
+        <div className="ret-rep-active-filters">
+          {applyDateFilter && fromDate && toDate && (
+            <span className="ret-rep-filter-badge">
+              Date Range: {fromDate} to {toDate}
+            </span>
+          )}
+          {searchTerm && (
+            <span className="ret-rep-filter-badge">
+              Search: {searchTerm}
+              <button 
+                className="ret-rep-filter-badge-remove"
+                onClick={() => setSearchTerm("")}
+              >
+                ×
+              </button>
+            </span>
+          )}
         </div>
 
         {loading ? (
@@ -598,7 +686,7 @@ function RetailerReports({ loading, setLoading }) {
             </button>
             <div className="ret-rep-modal-title">Generate Retailer Report</div>
             <div className="ret-rep-modal-subtitle">
-              {fromDate && toDate ? `Period: ${fromDate} to ${toDate}` : 'All retailer data'}
+              {applyDateFilter && fromDate && toDate ? `Period: ${fromDate} to ${toDate}` : 'All retailer data'}
             </div>
 
             <div className="ret-rep-format-options">

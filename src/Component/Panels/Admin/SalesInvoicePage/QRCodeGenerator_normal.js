@@ -22,15 +22,25 @@ const QRCodeGenerator_normal = ({ invoiceData, onQrDataGenerated }) => {
       console.log(`Item ${index + 1}: ${item.product} - Total: ${itemTotal}`);
     });
     
+    // ✅ ADD ADDITIONAL CHARGES TO TOTAL
+    const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
     const grandTotalFromInvoice = parseFloat(invoiceData.grandTotal) || 0;
     
-    let finalTotal = totalFromItems;
-    if (grandTotalFromInvoice > 0 && Math.abs(grandTotalFromInvoice - totalFromItems) < 1) {
+    console.log('💰 Additional Charge:', {
+      additionalChargeType: invoiceData.additionalCharge,
+      additionalChargeAmount: additionalChargeAmount
+    });
+    
+    let finalTotal = totalFromItems + additionalChargeAmount;
+    
+    // If grandTotal from invoice is available and matches approximately, use it
+    if (grandTotalFromInvoice > 0 && Math.abs(grandTotalFromInvoice - finalTotal) < 1) {
       finalTotal = grandTotalFromInvoice;
     }
     
     console.log('💰 Grand Total Calculation:', {
       totalFromItems,
+      additionalChargeAmount,
       grandTotalFromInvoice,
       finalTotal
     });
@@ -51,7 +61,7 @@ const QRCodeGenerator_normal = ({ invoiceData, onQrDataGenerated }) => {
       // Format amount with 2 decimal places
       const formattedAmount = amount.toFixed(2);
       
-      console.log('📊 QR Code Amount:', formattedAmount);
+      console.log('📊 QR Code Amount (including charges):', formattedAmount);
       
       // UPI ID - you can change this
       const upiId = 'shreeshashwatrajagroprivatelimited@sbi';
@@ -62,8 +72,16 @@ const QRCodeGenerator_normal = ({ invoiceData, onQrDataGenerated }) => {
       // Invoice number
       const invoiceNumber = invoiceData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`;
       
-      // Transaction note
-      const transactionNote = `Payment for Invoice ${invoiceNumber}`;
+      // Transaction note with additional charge info
+      let transactionNote = `Payment for Invoice ${invoiceNumber}`;
+      
+      // ✅ Add additional charge info to transaction note if present
+      const additionalChargeType = invoiceData.additionalCharge;
+      const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
+      
+      if (additionalChargeType && additionalChargeAmount > 0) {
+        transactionNote = `${transactionNote} (${additionalChargeType}: ₹${additionalChargeAmount.toFixed(2)})`;
+      }
       
       // Create UPI URL
       const upiParams = new URLSearchParams({
@@ -76,7 +94,7 @@ const QRCodeGenerator_normal = ({ invoiceData, onQrDataGenerated }) => {
       
       const upiUrl = `upi://pay?${upiParams.toString()}`;
       
-      console.log('✅ Generated UPI URL:', upiUrl);
+      console.log('✅ Generated UPI URL with charges:', upiUrl);
       
       // Callback to parent
       if (onQrDataGenerated) {
@@ -103,12 +121,16 @@ const QRCodeGenerator_normal = ({ invoiceData, onQrDataGenerated }) => {
       
       return () => clearTimeout(timer);
     }
-  }, [invoiceData]);
+  }, [invoiceData, invoiceData?.additionalCharge, invoiceData?.additionalChargeAmount]);
 
   if (!invoiceData) return null;
 
-  // Get the display amount
+  // Get the display amount (including charges)
   const grandTotal = displayAmount > 0 ? displayAmount : calculateGrandTotal();
+  
+  // Get additional charge info for display
+  const additionalChargeType = invoiceData.additionalCharge;
+  const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
 
   return (
     <Card className="shadow-sm border-0 mb-3 qr-code-card">
@@ -136,7 +158,15 @@ const QRCodeGenerator_normal = ({ invoiceData, onQrDataGenerated }) => {
           
           <div className="mt-3">
             <h3 className="text-success fw-bold">₹{grandTotal.toFixed(2)}</h3>
-          
+            
+            {/* ✅ Show additional charge breakdown if present */}
+            {/* {additionalChargeType && additionalChargeAmount > 0 && (
+              <div className="mt-2">
+                <small className="text-muted">
+                  Includes {additionalChargeType}: ₹{additionalChargeAmount.toFixed(2)}
+                </small>
+              </div>
+            )} */}
           </div>
         </div>
       </Card.Body>

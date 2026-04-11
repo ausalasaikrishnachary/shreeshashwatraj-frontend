@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaSearch, FaFileExcel } from "react-icons/fa";
+import { FaSearch, FaFileExcel, FaFilter } from "react-icons/fa";
 import * as XLSX from 'xlsx';
 import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
@@ -10,12 +10,15 @@ const GstReport = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [tempFromDate, setTempFromDate] = useState("");
+  const [tempToDate, setTempToDate] = useState("");
   const [transactionTypeFilter, setTransactionTypeFilter] = useState("ALL");
   const [kachaPakkaFilter, setKachaPakkaFilter] = useState("ALL");
   const [gstData, setGstData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [exportLoading, setExportLoading] = useState(false);
+  const [applyDateFilter, setApplyDateFilter] = useState(true);
 
   const getCurrentDate = () => {
     const today = new Date();
@@ -25,74 +28,98 @@ const GstReport = () => {
     return `${year}-${month}-${day}`;
   };
 
+  const getFirstDayOfCurrentMonth = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}-01`;
+  };
+
   useEffect(() => {
+    const firstDay = getFirstDayOfCurrentMonth();
+    const currentDate = getCurrentDate();
+    setFromDate(firstDay);
+    setToDate(currentDate);
+    setTempFromDate(firstDay);
+    setTempToDate(currentDate);
     fetchGstData();
   }, []);
 
-  const fetchGstData = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await axios.get(`${baseurl}/gstreport`);
-      const vouchers = response.data;
+const fetchGstData = async () => {
+  setLoading(true);
+  setError("");
+  try {
+    const response = await axios.get(`${baseurl}/gstreport`);
+    const vouchers = response.data;
 
-      const processedData = vouchers.map((voucher, index) => {
-        const formattedDate = voucher.Date ? new Date(voucher.Date).toLocaleDateString('en-IN', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        }) : '-';
+    const processedData = vouchers.map((voucher, index) => {
+      const formattedDate = voucher.Date ? new Date(voucher.Date).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }) : '-';
 
-        const subtotal = parseFloat(voucher.Subtotal) ||
-          voucher.items?.reduce((sum, item) => sum + (parseFloat(item.subtotal) || 0), 0) || 0;
+      const subtotal = parseFloat(voucher.Subtotal) ||
+        voucher.items?.reduce((sum, item) => sum + (parseFloat(item.subtotal) || 0), 0) || 0;
 
-        const sgstAmount = parseFloat(voucher.SGSTAmount) ||
-          voucher.items?.reduce((sum, item) => sum + (parseFloat(item.sgst_amount) || 0), 0) || 0;
+      const sgstAmount = parseFloat(voucher.SGSTAmount) ||
+        voucher.items?.reduce((sum, item) => sum + (parseFloat(item.sgst_amount) || 0), 0) || 0;
 
-        const cgstAmount = parseFloat(voucher.CGSTAmount) ||
-          voucher.items?.reduce((sum, item) => sum + (parseFloat(item.cgst_amount) || 0), 0) || 0;
+      const cgstAmount = parseFloat(voucher.CGSTAmount) ||
+        voucher.items?.reduce((sum, item) => sum + (parseFloat(item.cgst_amount) || 0), 0) || 0;
 
-        const igstAmount = parseFloat(voucher.IGSTAmount) ||
-          voucher.items?.reduce((sum, item) => sum + (parseFloat(item.igst_amount) || 0), 0) || 0;
+      const igstAmount = parseFloat(voucher.IGSTAmount) ||
+        voucher.items?.reduce((sum, item) => sum + (parseFloat(item.igst_amount) || 0), 0) || 0;
 
-        const totalAmount = parseFloat(voucher.TotalAmount) ||
-          subtotal + sgstAmount + cgstAmount + igstAmount;
+      const totalAmount = parseFloat(voucher.TotalAmount) ||
+        subtotal + sgstAmount + cgstAmount + igstAmount;
 
-        const transactionType = getTransactionType(voucher);
-        const specificTransactionType = getSpecificTransactionType(voucher);
+      const transactionType = getTransactionType(voucher);
+      const specificTransactionType = getSpecificTransactionType(voucher);
 
-        const hsnCode =
-          voucher.hsn_code ||
-         
-          'N/A';
+      // ✅ Get HSN Code from items array
+      let hsnCode = 'N/A';
+      if (voucher.items && voucher.items.length > 0) {
+        // Get unique HSN codes from all items
+        const hsnCodes = voucher.items
+          .map(item => item.hsn_code)
+          .filter(code => code && code !== 'N/A' && code !== null);
+        
+        if (hsnCodes.length > 0) {
+          // If multiple items have same HSN code, use that, otherwise join with comma
+          const uniqueHsnCodes = [...new Set(hsnCodes)];
+          hsnCode = uniqueHsnCodes.join(', ');
+        }
+      }
 
-        return {
-          id: voucher.VoucherID || index,
-          billNo: voucher.VchNo || `N/A`,
-          date: formattedDate,
-          party: voucher.PartyName || voucher.business_name || 'N/A',
-          gstNo: voucher.gstin || 'N/A',
-          hsnCode: hsnCode, 
-          billAmt: totalAmount,
-          taxableAmt: subtotal,
-          sgstAmt: sgstAmount,
-          cgstAmt: cgstAmount,
-          igstAmt: igstAmount,
-          transactionType: transactionType,
-          specificTransactionType: specificTransactionType,
-          voucherType: voucher.TransactionType || '',
-          originalData: voucher
-        };
-      });
+      return {
+        id: voucher.VoucherID || index,
+        billNo: voucher.VchNo || `N/A`,
+        date: formattedDate,
+        rawDate: voucher.Date,
+        party: voucher.PartyName || voucher.business_name || 'N/A',
+        gstNo: voucher.gstin || 'N/A',
+        hsnCode: hsnCode, // ✅ Now correctly getting from items
+        billAmt: totalAmount,
+        taxableAmt: subtotal,
+        sgstAmt: sgstAmount,
+        cgstAmt: cgstAmount,
+        igstAmt: igstAmount,
+        transactionType: transactionType,
+        specificTransactionType: specificTransactionType,
+        voucherType: voucher.TransactionType || '',
+        originalData: voucher
+      };
+    });
 
-      setGstData(processedData);
-    } catch (err) {
-      console.error("Error fetching GST data:", err);
-      setError("Failed to fetch GST report data");
-    } finally {
-      setLoading(false);
-    }
-  };
+    setGstData(processedData);
+  } catch (err) {
+    console.error("Error fetching GST data:", err);
+    setError("Failed to fetch GST report data");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const getTransactionType = (voucher) => {
     const trantype = (voucher.TransactionType || '').toLowerCase().trim().replace(/\s+/g, '');
@@ -125,14 +152,25 @@ const GstReport = () => {
   const formatDateForComparison = (dateString) => {
     if (!dateString) return null;
     try {
+      // If it's already in YYYY-MM-DD format
+      if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return dateString;
+      }
+      // If it's in DD/MM/YYYY format
       if (dateString.includes('/')) {
         const [day, month, year] = dateString.split('/');
         return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
       }
-      return dateString;
+      return null;
     } catch {
       return null;
     }
+  };
+
+  const applyDateFilterHandler = () => {
+    setFromDate(tempFromDate);
+    setToDate(tempToDate);
+    setApplyDateFilter(true);
   };
 
   const filteredData = gstData.filter((item) => {
@@ -142,13 +180,26 @@ const GstReport = () => {
       item.gstNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.hsnCode?.toLowerCase().includes(searchTerm.toLowerCase());
 
+    // Apply date filter only when applyDateFilter is true and dates are set
     let matchesDate = true;
-    if (fromDate || toDate) {
-      const itemDateFormatted = formatDateForComparison(item.date);
+    if (applyDateFilter && fromDate && toDate) {
+      let itemDateFormatted = null;
+      
+      // Try to get the raw date first (original Date object)
+      if (item.rawDate) {
+        const rawDate = new Date(item.rawDate);
+        if (!isNaN(rawDate.getTime())) {
+          itemDateFormatted = rawDate.toISOString().split('T')[0];
+        }
+      }
+      
+      // If raw date didn't work, try formatted date
+      if (!itemDateFormatted) {
+        itemDateFormatted = formatDateForComparison(item.date);
+      }
+      
       if (itemDateFormatted) {
-        if (fromDate && toDate) matchesDate = itemDateFormatted >= fromDate && itemDateFormatted <= toDate;
-        else if (fromDate) matchesDate = itemDateFormatted >= fromDate;
-        else if (toDate) matchesDate = itemDateFormatted <= toDate;
+        matchesDate = itemDateFormatted >= fromDate && itemDateFormatted <= toDate;
       } else {
         matchesDate = false;
       }
@@ -207,7 +258,7 @@ const GstReport = () => {
           item.date || "",
           item.party || "",
           item.gstNo || "",
-          item.hsnCode || "",  // ✅ added
+          item.hsnCode || "",
           Number(item.billAmt || 0),
           Number(item.taxableAmt || 0),
           Number(item.sgstAmt || 0),
@@ -221,7 +272,7 @@ const GstReport = () => {
       const ws = XLSX.utils.aoa_to_sheet(wsData);
 
       ws["!cols"] = [
-        { wch: 15 }, { wch: 12 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, // ✅ HSN col width
+        { wch: 15 }, { wch: 12 }, { wch: 30 }, { wch: 20 }, { wch: 15 },
         { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 15 }
       ];
 
@@ -252,19 +303,28 @@ const GstReport = () => {
   };
 
   const clearFilters = () => {
+    const firstDay = getFirstDayOfCurrentMonth();
+    const currentDate = getCurrentDate();
     setSearchTerm("");
-    setFromDate("");
-    setToDate("");
+    setTempFromDate(firstDay);
+    setTempToDate(currentDate);
+    setFromDate(firstDay);
+    setToDate(currentDate);
     setTransactionTypeFilter("ALL");
     setKachaPakkaFilter("ALL");
+    setApplyDateFilter(true);
   };
 
   const clearDateFilters = () => {
-    setFromDate("");
-    setToDate("");
+    const firstDay = getFirstDayOfCurrentMonth();
+    const currentDate = getCurrentDate();
+    setTempFromDate(firstDay);
+    setTempToDate(currentDate);
+    setFromDate(firstDay);
+    setToDate(currentDate);
+    setApplyDateFilter(true);
   };
 
-  // ✅ HSN Code column added to table
   const gstColumns = [
     { key: "sl_no", title: "S.No", style: { textAlign: "center", width: "60px" }, render: (value, record, index) => index + 1 },
     { key: "billNo", title: "Bill No.", style: { textAlign: "left", width: "100px" } },
@@ -320,7 +380,7 @@ const GstReport = () => {
       <div className="gst-report-filters-section">
         <div className="gst-report-filters-wrapper">
 
-          {/* Search - ✅ placeholder updated to include HSN Code */}
+          {/* Search */}
           <div className="gst-report-search-wrapper">
             <div className="gst-report-search-input-group">
               <FaSearch className="gst-report-search-icon" />
@@ -382,18 +442,47 @@ const GstReport = () => {
             </select>
           </div>
 
-          {/* Date Filters */}
+          {/* Date Filters - With Apply Button */}
           <div className="gst-report-date-filters">
             <div className="gst-report-date-input-wrapper">
               <label htmlFor="from-date" className="gst-report-date-label">From Date</label>
-              <input id="from-date" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="gst-report-date-input" max={toDate || undefined} />
+              <input 
+                id="from-date" 
+                type="date" 
+                value={tempFromDate} 
+                onChange={(e) => setTempFromDate(e.target.value)} 
+                className="gst-report-date-input" 
+              />
             </div>
             <div className="gst-report-date-input-wrapper">
               <label htmlFor="to-date" className="gst-report-date-label">To Date</label>
-              <input id="to-date" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="gst-report-date-input" min={fromDate || undefined} />
+              <input 
+                id="to-date" 
+                type="date" 
+                value={tempToDate} 
+                onChange={(e) => setTempToDate(e.target.value)} 
+                className="gst-report-date-input" 
+              />
             </div>
-            {(fromDate || toDate) && (
-              <button className="gst-report-clear-date-btn" onClick={clearDateFilters}>Clear Dates</button>
+            
+            {/* Apply Date Filter Button */}
+            <button 
+              className="gst-report-apply-date-btn"
+              onClick={applyDateFilterHandler}
+            >
+              
+              Add  Filter
+            </button>
+            
+            {/* Reset Dates Button */}
+            {(tempFromDate !== getFirstDayOfCurrentMonth() || tempToDate !== getCurrentDate()) && (
+              <button 
+                className="gst-report-reset-dates-btn"
+                onClick={clearDateFilters}
+                title="Reset to current month"
+              >
+                Clear Dates
+              </button>
             )}
           </div>
 
@@ -410,12 +499,14 @@ const GstReport = () => {
             )}
           </button>
 
-          {(searchTerm || fromDate || toDate || transactionTypeFilter !== "ALL" || kachaPakkaFilter !== "ALL") && (
-            <button className="gst-report-clear-all-btn" onClick={clearFilters}>Clear All Filters</button>
+          {(searchTerm || transactionTypeFilter !== "ALL" || kachaPakkaFilter !== "ALL") && (
+            <button className="gst-report-clear-all-btn" onClick={clearFilters}>Clear All </button>
           )}
 
         </div>
       </div>
+
+ 
 
       <div className="gst-report-table-section">
         <ReusableTable

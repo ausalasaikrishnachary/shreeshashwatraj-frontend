@@ -178,7 +178,76 @@
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
+/* Date filter specific styles */
+.hsn-report-date-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 
+.hsn-report-apply-date-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  height: 38px;
+  margin-bottom: 2px;
+}
+
+.hsn-report-apply-date-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.hsn-report-apply-icon {
+  font-size: 12px;
+}
+
+.hsn-report-reset-dates-btn {
+  padding: 8px 16px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  height: 38px;
+  margin-bottom: 2px;
+}
+
+.hsn-report-reset-dates-btn:hover {
+  background: #5a6268;
+}
+
+.hsn-report-active-filters {
+  margin: 12px 0 0 0;
+  padding: 8px 12px;
+  background: #e3f2fd;
+  border-radius: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hsn-report-filter-badge {
+  background: #2196f3;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
 .hsn-report-export-btn:disabled {
   background-color: #a5d6a7;
   cursor: not-allowed;

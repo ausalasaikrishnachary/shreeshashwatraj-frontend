@@ -11,7 +11,29 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import InvoicesPDF from '../SalesInvoicePage/TablePdf/InvoicesPDF'; // Reuse the same component
 
+const getCurrentDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
+const getFirstDayOfCurrentMonth = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+};
+
+const getCurrentMonthYear = () => {
+  const today = new Date();
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  const currentMonth = monthNames[today.getMonth()];
+  const currentYear = today.getFullYear().toString();
+  return { month: currentMonth, year: currentYear };
+};
   const KachaInvoiceTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
@@ -23,14 +45,14 @@ import InvoicesPDF from '../SalesInvoicePage/TablePdf/InvoicesPDF'; // Reuse the
 const [isDownloading, setIsDownloading] = useState(false);
 const [isRangeDownloading, setIsRangeDownloading] = useState(false);
 const pdfRef = useRef();
-  const [month, setMonth] = useState('July');
   const [unitData, setUnitData] = useState({});
 const [qrDataUrl, setQrDataUrl] = useState(null);
 const [qrAmount, setQrAmount] = useState(null);
-  const [year, setYear] = useState('2026');
-  const [startDate, setStartDate] = useState('2025-06-08');
-  const [endDate, setEndDate] = useState('2025-07-08');
-  const [activeTab, setActiveTab] = useState('Invoices');
+const { month: currentMonth, year: currentYear } = getCurrentMonthYear();
+const [month, setMonth] = useState(currentMonth);
+const [year, setYear] = useState(currentYear);
+const [startDate, setStartDate] = useState(getFirstDayOfCurrentMonth());
+const [endDate, setEndDate] = useState(getCurrentDate());  const [activeTab, setActiveTab] = useState('Invoices');
   const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
   const y = 2025 + i;
   return { value: y, label: y };
@@ -992,16 +1014,14 @@ const generatePDF = async (filteredData, type = 'month') => {
     alert('Error generating PDF. Please try again.');
   }
 };
-// Handle download functionality
 const handleDownload = async () => {
   try {
     setIsDownloading(true);
     
-    // Filter invoices by selected month and year
     const filteredInvoices = filterInvoicesByMonthYear(invoices, month, year);
     
     if (filteredInvoices.length === 0) {
-      alert(`No Kacha invoices found for ${month} ${year}`);
+      alert(`⚠️ No Kacha invoices found for ${month} ${year}`);
       setIsDownloading(false);
       return;
     }
@@ -1011,24 +1031,27 @@ const handleDownload = async () => {
     // Generate PDF
     await generatePDF(filteredInvoices, 'month');
     
+    // ✅ SUCCESS ALERT
+    alert(`✅ Successfully downloaded ${filteredInvoices.length} Kacha invoice(s) for ${month} ${year}`);
+    
   } catch (err) {
     console.error('Download error:', err);
-    alert('Error downloading Kacha invoices: ' + err.message);
+    // ❌ ERROR ALERT
+    alert(`❌ Error downloading Kacha invoices: ${err.message}`);
   } finally {
     setIsDownloading(false);
   }
 };
 
-// Handle date range download
 const handleDownloadRange = async () => {
   try {
     if (!startDate || !endDate) {
-      alert('Please select both start and end dates');
+      alert('⚠️ Please select both start and end dates');
       return;
     }
 
     if (new Date(startDate) > new Date(endDate)) {
-      alert('Start date cannot be after end date');
+      alert('⚠️ Start date cannot be after end date');
       return;
     }
 
@@ -1038,7 +1061,7 @@ const handleDownloadRange = async () => {
     const filteredInvoices = filterInvoicesByDateRange(invoices, startDate, endDate);
     
     if (filteredInvoices.length === 0) {
-      alert(`No Kacha invoices found from ${startDate} to ${endDate}`);
+      alert(`⚠️ No Kacha invoices found from ${startDate} to ${endDate}`);
       setIsRangeDownloading(false);
       return;
     }
@@ -1048,9 +1071,19 @@ const handleDownloadRange = async () => {
     // Generate PDF
     await generatePDF(filteredInvoices, 'range');
     
+    // Format dates for display
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+    
+    // ✅ SUCCESS ALERT
+    alert(`✅ Successfully downloaded ${filteredInvoices.length} Kacha invoice(s) from ${formatDate(startDate)} to ${formatDate(endDate)}`);
+    
   } catch (err) {
     console.error('Download range error:', err);
-    alert('Error downloading Kacha invoices: ' + err.message);
+    // ❌ ERROR ALERT
+    alert(`❌ Error downloading Kacha invoices: ${err.message}`);
   } finally {
     setIsRangeDownloading(false);
   }

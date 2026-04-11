@@ -62,27 +62,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
-addressSection: {
-  flexDirection: 'row',
-  marginBottom: 10,
-},
-
-addressBox: {
-  width: '48%',          // 👈 reduced width
-  marginRight: '4%',     // 👈 creates gap
-  backgroundColor: '#f8f9fa',
-  padding: 6,
-  borderRadius: 3,
-  border: '1pt solid #dee2e6',
-},
-
-transportBox: {
-  width: '48%',          // 👈 same width
-  backgroundColor: '#f8f9fa',
-  padding: 6,
-  borderRadius: 3,
-  border: '1pt solid #dee2e6',
-},
+  addressSection: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  addressBox: {
+    width: '48%',
+    marginRight: '4%',
+    backgroundColor: '#f8f9fa',
+    padding: 6,
+    borderRadius: 3,
+    border: '1pt solid #dee2e6',
+  },
+  transportBox: {
+    width: '48%',
+    backgroundColor: '#f8f9fa',
+    padding: 6,
+    borderRadius: 3,
+    border: '1pt solid #dee2e6',
+  },
   sectionTitle: {
     fontSize: 8,
     fontWeight: 'bold',
@@ -238,18 +236,6 @@ transportBox: {
     fontWeight: 'bold',
   },
   
-  transportBox: {
-    backgroundColor: '#f8f9fa',
-    padding: 6,
-    borderRadius: 3,
-    border: '0.5pt solid #dee2e6',
-  },
-  transportRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  
   qrSection: {
     backgroundColor: '#f0f8ff',
     padding: 5,
@@ -345,6 +331,10 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
     ? new Date(getSafeData(currentData, 'validityDate')).toLocaleDateString('en-IN') 
     : 'N/A';
   
+  // Get additional charges
+  const additionalCharge = getSafeData(currentData, 'additionalCharge', '');
+  const additionalChargeAmount = parseFloat(getSafeData(currentData, 'additionalChargeAmount', '0'));
+  
   return (
     <Document>
       <Page size="A5" style={styles.page}>
@@ -376,9 +366,6 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
         <View style={styles.addressSection}>
           <View style={styles.addressBox}>
             <Text style={styles.sectionTitle}>Bill To:</Text>
-            {/* <Text style={[styles.addressText, styles.tableCellBold]}>
-              {getSafeData(supplierInfo, 'name', 'Customer')}
-            </Text> */}
             <Text style={styles.addressText}>
               {getSafeData(supplierInfo, 'business_name', '')}
             </Text>
@@ -413,8 +400,8 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
               <View style={styles.colProduct}><Text style={[styles.tableCellHeader, styles.tableCellLeft]}>Product</Text></View>
               <View style={styles.colHsn}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>HSN</Text></View>
               <View style={styles.colQuantity}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>Units</Text></View>
-              <View style={styles.colRateIncl}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Rate (Incl of Tax)</Text></View>
-              <View style={styles.colRateExcl}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Rate (Excl of Tax)</Text></View>
+              <View style={styles.colRateIncl}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Rate (Incl)</Text></View>
+              <View style={styles.colRateExcl}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Rate (Excl)</Text></View>
               <View style={styles.colDiscount}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>Disc%</Text></View>
               <View style={styles.colGST}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>GST%</Text></View>
               <View style={styles.colTotal}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Amount</Text></View>
@@ -487,7 +474,7 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
         
         {/* Amount Summary + QR Code - 50% / 50% */}
         <View style={styles.row}>
-              <View style={styles.col}>
+          <View style={styles.col}>
             {qrDataUrl && (
               <View style={styles.qrSection}>
                 <Text style={styles.qrTitle}>Scan to Pay</Text>
@@ -532,6 +519,14 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
                 </Text>
               </View>
               
+              {/* ✅ ADD ADDITIONAL CHARGES ROW */}
+              {additionalCharge && additionalChargeAmount > 0 && (
+                <View style={styles.amountRow}>
+                  <Text style={styles.amountLabel}>{additionalCharge}:</Text>
+                  <Text style={styles.amountValue}>₹{additionalChargeAmount.toFixed(2)}</Text>
+                </View>
+              )}
+              
               <View style={styles.grandTotal}>
                 <Text style={styles.amountLabel}>Grand Total:</Text>
                 <Text style={[styles.amountValue, { color: '#28a745', fontSize: 9 }]}>
@@ -540,8 +535,6 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
               </View>
             </View>
           </View>
-
-      
         </View>
         
         {/* Footer */}

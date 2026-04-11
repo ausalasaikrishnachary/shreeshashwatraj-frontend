@@ -10,7 +10,120 @@
   gap: 25px;
   margin-bottom: 40px;
 }
+/* Clear Dates button */
+.ret-rep-clear-dates-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #ff9800;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  height: 38px;
+}
 
+.ret-rep-clear-dates-btn:hover {
+  background: #f57c00;
+}
+
+/* Clear All Filters wrapper and button */
+.ret-rep-clear-all-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin: 12px 0;
+}
+
+.ret-rep-clear-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.ret-rep-clear-all-btn:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+/* Active filters section */
+.ret-rep-active-filters {
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #e9ecef;
+}
+
+.ret-rep-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #2196f3;
+  color: white;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ret-rep-filter-badge-remove {
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.ret-rep-filter-badge-remove:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Apply Date Filter button */
+.ret-rep-apply-date-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  height: 38px;
+}
+
+.ret-rep-apply-date-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
 .ret-rep-stat-card {
   background: white;
   padding: 25px;

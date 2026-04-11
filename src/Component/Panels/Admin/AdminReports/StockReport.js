@@ -7,11 +7,28 @@ import { pdf } from '@react-pdf/renderer';
 import StockReportPDF from './StockreportPDF';
 import "./StockReport.css";
 
+// ========== HELPER FUNCTIONS ==========
+const getCurrentDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getFirstDayOfCurrentMonth = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+};
+// ========== END HELPER FUNCTIONS ==========
+
 const StockReport = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [applyDateFilter, setApplyDateFilter] = useState(false); // New state to control date filtering
+  const [fromDate, setFromDate] = useState(getFirstDayOfCurrentMonth());
+  const [toDate, setToDate] = useState(getCurrentDate());
+  const [applyDateFilter, setApplyDateFilter] = useState(true); // Apply filter initially
   const [stockData, setStockData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -27,21 +44,19 @@ const StockReport = () => {
     "opVal", "prchQty", "prchVal", "saleQty", "saleVal", "cloBal"
   ]);
 
-  const getCurrentDate = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  // Temporary date states for user selection before applying
+  const [tempFromDate, setTempFromDate] = useState(getFirstDayOfCurrentMonth());
+  const [tempToDate, setTempToDate] = useState(getCurrentDate());
 
-  // Set current date on component mount but don't apply filter
+  // Set initial dates on component mount
   useEffect(() => {
+    const firstDay = getFirstDayOfCurrentMonth();
     const currentDate = getCurrentDate();
-    setFromDate(currentDate);
+    setFromDate(firstDay);
     setToDate(currentDate);
-    // Don't apply date filter initially - set applyDateFilter to false
-    setApplyDateFilter(false);
+    setTempFromDate(firstDay);
+    setTempToDate(currentDate);
+    setApplyDateFilter(true);
   }, []);
 
   const fetchCategories = async () => {
@@ -205,20 +220,23 @@ const StockReport = () => {
     }
   };
 
-  // Handle date change - apply filter only when user changes dates
-  const handleFromDateChange = (e) => {
-    setFromDate(e.target.value);
-    setApplyDateFilter(true); // Enable date filtering when user changes date
+  // Handle temporary date changes (does NOT apply filter)
+  const handleTempFromDateChange = (e) => {
+    setTempFromDate(e.target.value);
   };
 
-  const handleToDateChange = (e) => {
-    setToDate(e.target.value);
-    setApplyDateFilter(true); // Enable date filtering when user changes date
+  const handleTempToDateChange = (e) => {
+    setTempToDate(e.target.value);
   };
 
-  // Updated filteredData with date filtering based on opening_stock_date
+  // Apply date filter - only when button is clicked
+  const applyDateFilterHandler = () => {
+    setFromDate(tempFromDate);
+    setToDate(tempToDate);
+    setApplyDateFilter(true);
+  };
+
   const filteredData = stockData.filter((item) => {
-    // Get category name for search
     const categoryName = categoriesMap[item.categoryId] || '';
     
     const matchesSearch = !searchTerm.trim() ||
@@ -297,7 +315,7 @@ const StockReport = () => {
   const exportToPDF = async () => {
     // Use filtered data for PDF (which already has filters applied)
     if (filteredData.length === 0) { 
-      alert("No data to export"); 
+      alert("⚠️ No data to export"); 
       return; 
     }
     setExportLoading(true);
@@ -316,7 +334,7 @@ const StockReport = () => {
         cloBal: item.cloBal || 0,
       }));
 
-      const displayFromDate = fromDate ? formatDateForDisplay(fromDate) : formatDateForDisplay(getCurrentDate());
+      const displayFromDate = fromDate ? formatDateForDisplay(fromDate) : formatDateForDisplay(getFirstDayOfCurrentMonth());
       const displayToDate = toDate ? formatDateForDisplay(toDate) : formatDateForDisplay(getCurrentDate());
 
       // Get column titles for PDF based on selected columns only
@@ -348,32 +366,38 @@ const StockReport = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      
+      // ✅ SUCCESS ALERT
+      alert(`✅ Successfully exported stock report with ${filteredData.length} item(s) from ${displayFromDate} to ${displayToDate}`);
+      
     } catch (error) {
       console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF");
+      // ❌ ERROR ALERT
+      alert(`❌ Failed to generate PDF: ${error.message}`);
     } finally {
       setExportLoading(false);
     }
   };
 
   const clearFilters = () => {
+    const firstDay = getFirstDayOfCurrentMonth();
     const currentDate = getCurrentDate();
     setSearchTerm("");
-    setFromDate(currentDate);
+    setTempFromDate(firstDay);
+    setTempToDate(currentDate);
+    setFromDate(firstDay);
     setToDate(currentDate);
     setQtyFilter("all");
-    setApplyDateFilter(false); // Reset date filter when clearing
+    setApplyDateFilter(true);
   };
 
   const clearDateFilters = () => {
+    const firstDay = getFirstDayOfCurrentMonth();
     const currentDate = getCurrentDate();
-    setFromDate(currentDate);
+    setTempFromDate(firstDay);
+    setTempToDate(currentDate);
+    setFromDate(firstDay);
     setToDate(currentDate);
-    setApplyDateFilter(false); // Reset date filter when clearing dates
-  };
-
-  // Apply date filter when user clicks "Apply Date Filter" button
-  const applyDateFilterHandler = () => {
     setApplyDateFilter(true);
   };
 
@@ -448,40 +472,43 @@ const StockReport = () => {
             </div>
           </div>
 
-          {/* Date Filters with current date as default - no filter until user applies */}
+          {/* Date Filters - No max/min restrictions, future dates allowed */}
           <div className="stock-summary-date-filters">
             <div className="stock-summary-date-input-wrapper">
+              <label className="stock-summary-date-label">From Date</label>
               <input
                 id="from-date"
                 type="date"
-                value={fromDate}
-                onChange={handleFromDateChange}
+                value={tempFromDate}
+                onChange={handleTempFromDateChange}
                 className="stock-summary-date-input"
-                max={toDate || undefined}
               />
             </div>
             <div className="stock-summary-date-input-wrapper">
+              <label className="stock-summary-date-label">To Date</label>
               <input
                 id="to-date"
                 type="date"
-                value={toDate}
-                onChange={handleToDateChange}
+                value={tempToDate}
+                onChange={handleTempToDateChange}
                 className="stock-summary-date-input"
-                min={fromDate || undefined}
               />
             </div>
             
-            {/* Apply Date Filter Button */}
+            {/* Apply Date Filter Button - ONLY this applies the filter */}
             <button 
               className="stock-summary-apply-date-btn" 
               onClick={applyDateFilterHandler}
-              disabled={!fromDate || !toDate}
+              disabled={!tempFromDate || !tempToDate}
             >
-              Apply Date Filter
+              Add Filter
             </button>
             
-            {(applyDateFilter && (fromDate !== getCurrentDate() || toDate !== getCurrentDate())) && (
-              <button className="stock-summary-clear-date-btn" onClick={clearDateFilters}>Reset to Today</button>
+            {/* Show reset button if dates are not default */}
+            {(tempFromDate !== getFirstDayOfCurrentMonth() || tempToDate !== getCurrentDate()) && (
+              <button className="stock-summary-clear-date-btn" onClick={clearDateFilters}>
+                Reset to Current Month
+              </button>
             )}
           </div>
 
@@ -522,16 +549,15 @@ const StockReport = () => {
             )}
           </button>
 
-          {(searchTerm || applyDateFilter || qtyFilter !== "all") && (
+          {(searchTerm || (tempFromDate !== getFirstDayOfCurrentMonth() || tempToDate !== getCurrentDate()) || qtyFilter !== "all") && (
             <button className="stock-summary-clear-all-btn" onClick={clearFilters}>
-              Clear All Filters
+              Clear All
             </button>
           )}
 
         </div>
       </div>
 
-      {/* Column Selector Modal - for PDF only */}
       {showColumnSelector && <ColumnSelector />}
 
       <div className="stock-summary-table-section">

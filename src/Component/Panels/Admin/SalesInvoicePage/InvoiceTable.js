@@ -12,6 +12,32 @@ import html2canvas from 'html2canvas';
 import InvoicesPDF from '../SalesInvoicePage/TablePdf/InvoicesPDF'; 
 import { saveAs } from 'file-saver';
 
+
+const getCurrentDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+  const getCurrentMonthYear = () => {
+  const today = new Date();
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  const currentMonth = monthNames[today.getMonth()];
+  const currentYear = today.getFullYear().toString();
+  return { month: currentMonth, year: currentYear };
+};
+
+
+
+  const getFirstDayOfCurrentMonth = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+};
   const InvoicesTable = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const navigate = useNavigate();
@@ -28,11 +54,13 @@ const [qrAmount, setQrAmount] = useState(null);
 
 const [isRangeDownloading, setIsRangeDownloading] = useState(false);
 const pdfRef = useRef();
-    const [month, setMonth] = useState('July');
-    const [year, setYear] = useState('2026');
-    const [startDate, setStartDate] = useState('2025-06-08');
-    const [endDate, setEndDate] = useState('2025-07-08');
     const [activeTab, setActiveTab] = useState('Invoices');
+    const { month: currentMonth, year: currentYear } = getCurrentMonthYear();
+const [month, setMonth] = useState(currentMonth);
+const [year, setYear] = useState(currentYear);
+const [startDate, setStartDate] = useState(getFirstDayOfCurrentMonth());
+const [endDate, setEndDate] = useState(getCurrentDate());
+
   const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
     const y = 2025 + i;
     return { value: y, label: y };
@@ -68,7 +96,7 @@ const pdfRef = useRef();
         originalData: invoice,
         hasPDF: !!invoice.pdf_data,
         orderNumber: invoice.order_number || 'No Order',
-        hasOrder: !!invoice.order_number // Boolean for easy filtering
+        hasOrder: !!invoice.order_number 
       }));
       
       setInvoices(transformedInvoices);
@@ -85,8 +113,7 @@ const pdfRef = useRef();
       setLoading(false);
     }
   };
-
-  // Add this after fetchInvoices() and before handleDownloadPDF
+  
   useEffect(() => {
     const fetchPaymentDataForInvoices = async () => {
       if (invoices.length === 0) return;
@@ -907,8 +934,7 @@ const columns = [
       setActiveTab(tab.name);
       navigate(tab.path);
     };
-
-  const handleDownload = async () => {
+const handleDownload = async () => {
   try {
     setIsDownloading(true);
     
@@ -916,7 +942,7 @@ const columns = [
     const filteredInvoices = filterInvoicesByMonthYear(invoices, month, year);
     
     if (filteredInvoices.length === 0) {
-      alert(`No invoices found for ${month} ${year}`);
+      alert(`⚠️ No invoices found for ${month} ${year}`);
       setIsDownloading(false);
       return;
     }
@@ -926,23 +952,27 @@ const columns = [
     // Generate PDF
     await generatePDF(filteredInvoices, 'month');
     
+    // Success alert
+    alert(`✅ Successfully downloaded ${filteredInvoices.length} invoice(s) for ${month} ${year}`);
+    
   } catch (err) {
     console.error('Download error:', err);
-    alert('Error downloading invoices: ' + err.message);
+    alert(`❌ Error downloading invoices: ${err.message}`);
   } finally {
     setIsDownloading(false);
   }
 };
 
-  const handleDownloadRange = async () => {
+
+const handleDownloadRange = async () => {
   try {
     if (!startDate || !endDate) {
-      alert('Please select both start and end dates');
+      alert('⚠️ Please select both start and end dates');
       return;
     }
 
     if (new Date(startDate) > new Date(endDate)) {
-      alert('Start date cannot be after end date');
+      alert('⚠️ Start date cannot be after end date');
       return;
     }
 
@@ -952,7 +982,7 @@ const columns = [
     const filteredInvoices = filterInvoicesByDateRange(invoices, startDate, endDate);
     
     if (filteredInvoices.length === 0) {
-      alert(`No invoices found from ${startDate} to ${endDate}`);
+      alert(`⚠️ No invoices found from ${startDate} to ${endDate}`);
       setIsRangeDownloading(false);
       return;
     }
@@ -962,9 +992,18 @@ const columns = [
     // Generate PDF
     await generatePDF(filteredInvoices, 'range');
     
+    // Format dates for display
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+    
+    // Success alert
+    alert(`✅ Successfully downloaded ${filteredInvoices.length} invoice(s) from ${formatDate(startDate)} to ${formatDate(endDate)}`);
+    
   } catch (err) {
     console.error('Download range error:', err);
-    alert('Error downloading invoices: ' + err.message);
+    alert(`❌ Error downloading invoices: ${err.message}`);
   } finally {
     setIsRangeDownloading(false);
   }

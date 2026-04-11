@@ -27,6 +27,8 @@ const KachaSalesInvoiceForm = ({ user }) => {
   const [staffMembers, setStaffMembers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
 const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+const [charges, setCharges] = useState([]);
+
 const [productSearchTerm, setProductSearchTerm] = useState("");
 const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const navigate = useNavigate();
@@ -150,50 +152,43 @@ const [productStock, setProductStock] = useState({});
     fetchStaffMembers();
   }, []);
 
-  // Fetch existing invoice data for editing
-  const fetchInvoiceDataForEdit = async (voucherId) => {
-    try {
-      setLoading(true);
-      console.log('Fetching invoice data for editing:', voucherId);
+const fetchInvoiceDataForEdit = async (voucherId) => {
+  try {
+    setLoading(true);
+    const response = await fetch(`${baseurl}/transactions/${voucherId}`);
+    const result = await response.json();
+    
+    if (result.success && result.data) {
+      const apiData = result.data;
+      const transformedData = transformApiDataToFormFormat(apiData);
       
-      const response = await fetch(`${baseurl}/transactions/${voucherId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch invoice data');
-      }
+      setInvoiceData(transformedData);
+      setSelectedSupplierId(apiData.PartyID);
+      setSelected(true);
       
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        const apiData = result.data;
-        const transformedData = transformApiDataToFormFormat(apiData);
-        
-        setInvoiceData(transformedData);
-        setSelectedSupplierId(apiData.PartyID);
-        setSelected(true);
-        
-        // Set the retailer name in the search input
-        const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
-        if (supplierAccount) {
-          setInputName(supplierAccount.business_name);
-        }
-        
-        // Set staff ID if available in API response
-        if (apiData.staffid) {
-          setSelectedStaffId(apiData.staffid);
-        }
-        
-        window.alert('✅ Invoice loaded for editing successfully!');
+      // Load charges
+      if (apiData.additional_charges_type && apiData.additional_charges_amount) {
+        setCharges([{
+          type: apiData.additional_charges_type,
+          amount: parseFloat(apiData.additional_charges_amount) || 0
+        }]);
       } else {
-        throw new Error('No valid data received');
+        setCharges([]); // Reset if no charges
       }
-    } catch (err) {
-      console.error('Error fetching invoice for edit:', err);
-      setError('Failed to load invoice for editing: ' + err.message);
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setLoading(false);
+      
+      const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
+      if (supplierAccount) setInputName(supplierAccount.business_name);
+      if (apiData.staffid) setSelectedStaffId(apiData.staffid);
+      
+      alert('✅ Invoice loaded for editing!');
     }
-  };
+  } catch (err) {
+    console.error('Error:', err);
+    alert('Failed to load invoice');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Transform API data to form format
   const transformApiDataToFormFormat = (apiData) => {
@@ -503,6 +498,45 @@ useEffect(() => {
     fetchAccounts();
   }, []);
 
+
+const addChargeRow = () => {
+  setCharges([...charges, { amount: '', type: "" }]);
+};
+
+const handleChargeChange = (index, field, value) => {
+  const updatedCharges = [...charges];
+  if (field === 'amount') {
+    updatedCharges[index][field] = value === '' ? '' : parseFloat(value) || 0;
+  } else {
+    updatedCharges[index][field] = value;
+  }
+  setCharges(updatedCharges);
+  
+  // Recalculate total additional charges
+  const totalAdditionalCharges = updatedCharges.reduce((sum, charge) => {
+    const amount = charge.amount === '' ? 0 : (parseFloat(charge.amount) || 0);
+    return sum + amount;
+  }, 0);
+  setInvoiceData(prev => ({
+    ...prev,
+    additionalChargeAmount: totalAdditionalCharges
+  }));
+};
+
+const removeChargeRow = (index) => {
+  const updatedCharges = charges.filter((_, i) => i !== index);
+  setCharges(updatedCharges);
+  
+  // Recalculate total additional charges
+  const totalAdditionalCharges = updatedCharges.reduce((sum, charge) => {
+    const amount = charge.amount === '' ? 0 : (parseFloat(charge.amount) || 0);
+    return sum + amount;
+  }, 0);
+  setInvoiceData(prev => ({
+    ...prev,
+    additionalChargeAmount: totalAdditionalCharges
+  }));
+};
   const calculateItemTotal = () => {
     const quantity = parseFloat(itemForm.quantity) || 0;
     const price = parseFloat(itemForm.price) || 0;
@@ -813,7 +847,6 @@ const cancelEdit = () => {
       items: prev.items.filter((_, i) => i !== index)
     }));
   };
-
 const calculateTotals = () => {
   const taxableAmount = invoiceData.items.reduce((sum, item) => {
     const quantity = parseFloat(item.quantity) || 0;
@@ -825,23 +858,28 @@ const calculateTotals = () => {
     return sum + (subtotal - discountAmount);
   }, 0);
   
-  const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
+  // ✅ Calculate from charges state, not from invoiceData
+  const additionalChargeAmount = charges.reduce((sum, charge) => {
+    const amount = charge.amount === '' ? 0 : (parseFloat(charge.amount) || 0);
+    return sum + amount;
+  }, 0);
+  
   let grandTotal = taxableAmount + additionalChargeAmount;
   
   // Round grand total to nearest integer
-  // 1999.60 → 2000, 1999.49 → 1999
   const roundedGrandTotal = Math.round(grandTotal);
   
   setInvoiceData(prev => ({
     ...prev,
     taxableAmount: taxableAmount.toFixed(2),
-    grandTotal: roundedGrandTotal // Store rounded value as integer
+    additionalChargeAmount: additionalChargeAmount,
+    grandTotal: roundedGrandTotal
   }));
 };
 
-  useEffect(() => {
-    calculateTotals();
-  }, [invoiceData.items, invoiceData.additionalChargeAmount]);
+useEffect(() => {
+  calculateTotals();
+}, [invoiceData.items, charges]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -1032,7 +1070,9 @@ if (!isEditMode) {
         staff_incentive: invoiceData.supplierInfo.staff_incentive || 0 ,
          gstin: invoiceData.supplierInfo.gstin || "" ,
            mobile_number: mobileNumber,
-            transportDetails: invoiceData.transportDetails // Make sure this is included
+            transportDetails: invoiceData.transportDetails ,
+              additional_charges_type: charges.map(c => c.type).join(','),
+  additional_charges_amount: charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0)
 
       };
 
@@ -1959,42 +1999,111 @@ if (!isEditMode) {
                   </tbody>
                 </Table>
               </div>
+{/* Totals and Notes Section */}
+<Row className="mb-3 p-3 bg-white rounded border">
+  <Col md={7}>
+    <Form.Group controlId="invoiceNote">
+      <Form.Label className="fw-bold text-primary">Notes</Form.Label>
+      <Form.Control
+        as="textarea"
+        rows={5}
+        name="note"
+        value={invoiceData.note}
+        onChange={handleInputChange}
+        placeholder="Enter your note here..."
+        className="border-primary"
+      />
+    </Form.Group>
+  </Col>
 
-              {/* Totals and Notes Section */}
-              <Row className="mb-3 p-3 bg-white rounded border">
-                <Col md={7}>
-                  <Form.Group controlId="invoiceNote">
-                    <Form.Label className="fw-bold text-primary">Notes</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={5}
-                      name="note"
-                      value={invoiceData.note}
-                      onChange={handleInputChange}
-                      placeholder="Enter your note here..."
-                      className="border-primary"
-                    />
-                  </Form.Group>
-                </Col>
+  <Col md={5}>
+    <h6 className="text-primary mb-3">Amount Summary</h6>
+    
+    {/* Additional Charges Section */}
+    <div className="mb-3">
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <label className="fw-bold">Additional Charges</label>
+        <button
+          type="button"
+          className="btn btn-sm btn-primary"
+          onClick={addChargeRow}
+        >
+          + Add Charge
+        </button>
+      </div>
+      
+      {charges.map((charge, index) => (
+        <div key={index} className="mb-2" style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ width: '60%' }}>
+            <input
+              type="number"
+              value={charge.amount === 0 ? '' : charge.amount}
+              className="form-control form-control-sm"
+              onChange={(e) => handleChargeChange(index, 'amount', e.target.value)}
+              placeholder="Amount"
+              style={{ fontSize: '13px' }}
+            />
+          </div>
+          <div style={{ width: '35%' }}>
+            <select
+              value={charge.type}
+              className="form-select form-select-sm"
+              onChange={(e) => handleChargeChange(index, 'type', e.target.value)}
+              style={{ fontSize: '13px' }}
+            >
+              <option value="">Select Type</option>
+              <option value="Insurance Charge">Insurance Charge</option>
+              <option value="Loading Charge">Loading Charge</option>
+              <option value="Packing Charge">Packing Charge</option>
+              <option value="Other Taxes">Other Taxes</option>
+              <option value="Other Charges">Other Charges</option>
+              <option value="Reimbursements">Reimbursements</option>
+              <option value="Miscellaneous">Miscellaneous</option>
+            </select>
+          </div>
+          <div style={{ width: '5%' }}>
+      <button
+  type="button"
+  className=""
+  onClick={() => removeChargeRow(index)}
+  style={{ 
+    padding: '0',
+    fontSize: '18px',
+    lineHeight: '2',
+    background: 'none',
+    border: 'none',
+    color: 'black',
+    cursor: 'pointer'
+  }}
+>
+  ✕
+</button>
+          </div>
+        </div>
+      ))}
+      {charges.length === 0 && (
+        <div className="text-muted small mb-2">No additional charges added</div>
+      )}
+    </div>
+    
+    {/* Totals */}
+    <Row>
+      <Col md={6} className="d-flex flex-column align-items-start">
+        <div className="mb-2 fw-bold">Taxable Amount</div>
+        <div className="mb-2 fw-bold">Additional Charges</div>
+        <div className="mb-2 fw-bold text-success">Grand Total</div>
+      </Col>
 
-                <Col md={5}>
-                  <h6 className="text-primary mb-3">Amount Summary</h6>
-                  <Row>
-                    <Col md={6} className="d-flex flex-column align-items-start">
-                      <div className="mb-2 fw-bold">Taxable Amount</div>
-                      <div className="mb-2 fw-bold text-success">Grand Total</div>
-                    </Col>
-
-                    <Col md={6} className="d-flex flex-column align-items-end">
-                      <div className="mb-2">₹{invoiceData.taxableAmount}</div>
-
-             
-
-                      <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
-                    </Col>
-                  </Row>
-                </Col>
-              </Row>
+      <Col md={6} className="d-flex flex-column align-items-end">
+        <div className="mb-2">₹{invoiceData.taxableAmount}</div>
+        <div className="mb-2">
+          ₹{charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0).toFixed(2)}
+        </div>
+        <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
+      </Col>
+    </Row>
+  </Col>
+</Row>
 
           {/* Footer Section - Transportation Details LEFT, Other Details RIGHT */}
           <Row className="mb-3 bg-white p-3 rounded">

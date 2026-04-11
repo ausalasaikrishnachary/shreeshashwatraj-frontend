@@ -11,6 +11,31 @@ import './PurchaseInvoice.css';
 import html2canvas from 'html2canvas';
 import PurchaseInvoicePDF from './PurchaseInvoicePDF'; // You'll create this
 
+
+const getCurrentDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getFirstDayOfCurrentMonth = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+};
+
+const getCurrentMonthYear = () => {
+  const today = new Date();
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  const currentMonth = monthNames[today.getMonth()];
+  const currentYear = today.getFullYear().toString();
+  return { month: currentMonth, year: currentYear };
+};
+// ========== END HELPER FUNCTIONS ==========
 const PurchaseInvoiceTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('Purchase Invoice');
@@ -18,18 +43,21 @@ const PurchaseInvoiceTable = () => {
   const [isDownloading, setIsDownloading] = useState(false);
 const [isRangeDownloading, setIsRangeDownloading] = useState(false);
 const pdfRef = useRef();
+    const [deleting, setDeleting] = useState({});
+
   const [purchaseInvoices, setPurchaseInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 const [unitData, setUnitData] = useState({});
 const [qrDataUrl, setQrDataUrl] = useState(null);
 const [qrAmount, setQrAmount] = useState(null);
-  const [month, setMonth] = useState('July');
-  const [year, setYear] = useState('2026');
-  const [startDate, setStartDate] = useState('2025-06-08');
-  const [endDate, setEndDate] = useState('2025-07-08');
-    const [deleting, setDeleting] = useState({});
-const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
+
+const { month: currentMonth, year: currentYear } = getCurrentMonthYear();
+const [month, setMonth] = useState(currentMonth);
+const [year, setYear] = useState(currentYear);
+const [startDate, setStartDate] = useState(getFirstDayOfCurrentMonth());
+const [endDate, setEndDate] = useState(getCurrentDate());
+  const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
   const y = 2025 + i;
   return { value: y, label: y };
 });
@@ -770,7 +798,6 @@ const generateAndPrintPurchasePDF = async (invoiceData, invoiceNumber, unitData,
   }
 };
 const handleDeleteInvoice = async (invoice) => {
-  // Check if invoice has purchase vouchers or debit notes
   const hasVouchers = invoice.originalData?.purchasevoucher?.length > 0;
   const hasDebitNotes = invoice.originalData?.debitNotes?.length > 0;
   
@@ -845,7 +872,6 @@ const filterInvoicesByMonthYear = (invoices, month, year) => {
            invoiceDate.getFullYear() === parseInt(year);
   });
 };
-// Generate PDF from the PurchaseInvoicePDF component
 const generatePDF = async (filteredData, type = 'month') => {
   if (!filteredData || filteredData.length === 0) {
     alert('No purchase invoices found for the selected period');
@@ -909,9 +935,10 @@ const generatePDF = async (filteredData, type = 'month') => {
 
     pdf.addImage(imgData, 'PNG', 0, 0, width, height);
 
-    // Generate filename
+    // Generate filename - FIX: Use the local variables correctly
     let filename = 'purchase_invoices_report';
     if (type === 'range') {
+      // Access the state values directly (they are in scope)
       filename = `purchase_invoices_${startDate}_to_${endDate}.pdf`;
     } else {
       filename = `purchase_invoices_${month}_${year}.pdf`;
@@ -1048,7 +1075,7 @@ const handleDownloadMonth = async () => {
     const filteredInvoices = filterInvoicesByMonthYear(purchaseInvoices, month, year);
     
     if (filteredInvoices.length === 0) {
-      alert(`No purchase invoices found for ${month} ${year}`);
+      alert(`⚠️ No purchase invoices found for ${month} ${year}`);
       setIsDownloading(false);
       return;
     }
@@ -1058,9 +1085,13 @@ const handleDownloadMonth = async () => {
     // Generate PDF
     await generatePDF(filteredInvoices, 'month');
     
+    // ✅ SUCCESS ALERT
+    alert(`✅ Successfully downloaded ${filteredInvoices.length} purchase invoice(s) for ${month} ${year}`);
+    
   } catch (err) {
     console.error('Download error:', err);
-    alert('Error downloading purchase invoices: ' + err.message);
+    // ❌ ERROR ALERT
+    alert(`❌ Error downloading purchase invoices: ${err.message}`);
   } finally {
     setIsDownloading(false);
   }
@@ -1069,12 +1100,12 @@ const handleDownloadMonth = async () => {
 const handleDownloadRange = async () => {
   try {
     if (!startDate || !endDate) {
-      alert('Please select both start and end dates');
+      alert('⚠️ Please select both start and end dates');
       return;
     }
 
     if (new Date(startDate) > new Date(endDate)) {
-      alert('Start date cannot be after end date');
+      alert('⚠️ Start date cannot be after end date');
       return;
     }
 
@@ -1084,7 +1115,7 @@ const handleDownloadRange = async () => {
     const filteredInvoices = filterInvoicesByDateRange(purchaseInvoices, startDate, endDate);
     
     if (filteredInvoices.length === 0) {
-      alert(`No purchase invoices found from ${startDate} to ${endDate}`);
+      alert(`⚠️ No purchase invoices found from ${startDate} to ${endDate}`);
       setIsRangeDownloading(false);
       return;
     }
@@ -1094,9 +1125,19 @@ const handleDownloadRange = async () => {
     // Generate PDF
     await generatePDF(filteredInvoices, 'range');
     
+    // Format dates for display
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+    
+    // ✅ SUCCESS ALERT
+    alert(`✅ Successfully downloaded ${filteredInvoices.length} purchase invoice(s) from ${formatDate(startDate)} to ${formatDate(endDate)}`);
+    
   } catch (err) {
     console.error('Download range error:', err);
-    alert('Error downloading purchase invoices: ' + err.message);
+    // ❌ ERROR ALERT
+    alert(`❌ Error downloading purchase invoices: ${err.message}`);
   } finally {
     setIsRangeDownloading(false);
   }

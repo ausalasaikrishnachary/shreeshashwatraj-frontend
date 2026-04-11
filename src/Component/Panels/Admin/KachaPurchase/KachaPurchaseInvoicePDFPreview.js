@@ -519,8 +519,8 @@ useEffect(() => {
     note: apiData.Notes || "Thank you for your business!",
               transportDetails: transportDetails,
 
-    additionalCharge: "",
-    additionalChargeAmount: "0.00",
+  additionalCharge: apiData.additional_charges_type || "",
+  additionalChargeAmount: apiData.additional_charges_amount || "0.00",    
     
     totalCGST: parseFloat(apiData.CGSTAmount) || 0,
     totalSGST: parseFloat(apiData.SGSTAmount) || 0,
@@ -872,6 +872,9 @@ const handleDownloadPDF = async () => {
         taxableAmount: editedData.taxableAmount,
         totalGST: editedData.totalGST,
         grandTotal: editedData.grandTotal,
+                  additional_charges_type: editedData.additionalCharge || '',
+      additional_charges_amount: parseFloat(editedData.additionalChargeAmount) || 0,
+
         batchDetails: editedData.items.map(item => ({
           product: item.product,
           product_id: item.product_id,
@@ -1065,8 +1068,10 @@ const handleDownloadPDF = async () => {
       return sum + gstAmount;
     }, 0);
     
-    const additionalChargeAmount = parseFloat(editedData.additionalChargeAmount) || 0;
-    const grandTotal = taxableAmount + totalGST + additionalChargeAmount;
+      
+  const additionalChargeAmount = parseFloat(editedData.additionalChargeAmount) || 0;
+  const grandTotal = taxableAmount + totalGST + additionalChargeAmount;    
+
     
     setEditedData(prev => ({
       ...prev,
@@ -2123,7 +2128,14 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
               <td className="pb-2">Total GST:</td>
               <td className="text-end pb-2">₹{currentData.totalGST}</td>
             </tr>
-            
+        {currentData.additionalCharge && parseFloat(currentData.additionalChargeAmount) > 0 && (
+          <tr>
+            <td className="pb-2">{currentData.additionalCharge}:</td>
+            <td className="text-end pb-2">
+              ₹{parseFloat(currentData.additionalChargeAmount).toFixed(2)}
+            </td>
+          </tr>
+        )}
             <tr className="grand-total border-top pt-2">
               <td><strong>Grand Total:</strong></td>
               <td className="text-end"><strong className="text-success">₹{currentData.grandTotal}</strong></td>

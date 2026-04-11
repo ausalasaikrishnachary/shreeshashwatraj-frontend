@@ -33,6 +33,7 @@ const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState(null);
   const navigate = useNavigate();
   const { id } = useParams(); 
+const [charges, setCharges] = useState([]);
 const [productStock, setProductStock] = useState({});
 const [invoiceData, setInvoiceData] = useState(() => {
   const savedData = localStorage.getItem('draftInvoice');
@@ -144,13 +145,7 @@ const currentFY = getFinancialYearShort();
 const fetchInvoiceDataForEdit = async (voucherId) => {
   try {
     setLoading(true);
-    console.log('Fetching invoice data for editing:', voucherId);
-    
     const response = await fetch(`${baseurl}/transactions/${voucherId}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch invoice data');
-    }
-    
     const result = await response.json();
     
     if (result.success && result.data) {
@@ -161,22 +156,23 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
       setSelectedSupplierId(apiData.PartyID);
       setSelected(true);
       
+      // Load charges
+      if (apiData.additional_charges_type && apiData.additional_charges_amount) {
+        setCharges([{
+          type: apiData.additional_charges_type,
+          amount: parseFloat(apiData.additional_charges_amount) || 0
+        }]);
+      }
+      
       const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
-      if (supplierAccount) {
-        setInputName(supplierAccount.business_name);
-      }
+      if (supplierAccount) setInputName(supplierAccount.business_name);
+      if (apiData.staffid) setSelectedStaffId(apiData.staffid);
       
-      if (apiData.staffid) {
-        setSelectedStaffId(apiData.staffid);
-      }
-      
-      window.alert('✅ Invoice loaded for editing successfully!');
-    } else {
-      throw new Error('No valid data received');
+      alert('✅ Invoice loaded for editing!');
     }
   } catch (err) {
-    console.error('Error fetching invoice for edit:', err);
-    window.alert(`❌ Failed to load invoice for editing: ${err.message}`);
+    console.error('Error:', err);
+    alert('Failed to load invoice');
   } finally {
     setLoading(false);
   }
@@ -882,6 +878,36 @@ const fetchUnitName = async (unitId) => {
     }
   };
 
+
+
+const addChargeRow = () => {
+  setCharges([...charges, { amount: 0, type: "" }]);
+};
+
+const handleChargeChange = (index, field, value) => {
+  const updatedCharges = [...charges];
+  updatedCharges[index][field] = field === 'amount' ? parseFloat(value) || 0 : value;
+  setCharges(updatedCharges);
+  
+  // Recalculate total additional charges
+  const totalAdditionalCharges = updatedCharges.reduce((sum, charge) => sum + (parseFloat(charge.amount) || 0), 0);
+  setInvoiceData(prev => ({
+    ...prev,
+    additionalChargeAmount: totalAdditionalCharges
+  }));
+};
+
+const removeChargeRow = (index) => {
+  const updatedCharges = charges.filter((_, i) => i !== index);
+  setCharges(updatedCharges);
+  
+  // Recalculate total additional charges
+  const totalAdditionalCharges = updatedCharges.reduce((sum, charge) => sum + (parseFloat(charge.amount) || 0), 0);
+  setInvoiceData(prev => ({
+    ...prev,
+    additionalChargeAmount: totalAdditionalCharges
+  }));
+};
   const cancelEdit = () => {
     setEditingItemIndex(null);
     setItemForm({
@@ -912,7 +938,6 @@ const fetchUnitName = async (unitId) => {
       items: prev.items.filter((_, i) => i !== index)
     }));
   };
-
 const calculateTotals = () => {
   const taxableAmount = invoiceData.items.reduce((sum, item) => {
     const quantity = parseFloat(item.quantity) || 0;
@@ -952,11 +977,14 @@ const calculateTotals = () => {
     return sum + cessAmount;
   }, 0);
   
-  const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
+  // Calculate additional charges total - ensure it's a number
+  const additionalChargeAmount = charges.reduce((sum, charge) => {
+    return sum + (parseFloat(charge.amount) || 0);
+  }, 0);
+  
   let grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
   
   // Round grand total to nearest integer
-  // 1999.60 → 2000, 1999.49 → 1999
   const roundedGrandTotal = Math.round(grandTotal);
   
   setInvoiceData(prev => ({
@@ -964,13 +992,14 @@ const calculateTotals = () => {
     taxableAmount: taxableAmount.toFixed(2),
     totalGST: totalGST.toFixed(2),
     totalCess: totalCess.toFixed(2),
-    grandTotal: roundedGrandTotal // Store rounded value
+    additionalChargeAmount: additionalChargeAmount, // This is now a number
+    grandTotal: roundedGrandTotal
   }));
 };
 
-  useEffect(() => {
-    calculateTotals();
-  }, [invoiceData.items, invoiceData.additionalChargeAmount]);
+useEffect(() => {
+  calculateTotals();
+}, [invoiceData.items, invoiceData.additionalChargeAmount, charges]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -1179,7 +1208,8 @@ const calculateTotals = () => {
         CGSTAmount: totalCGSTAmount.toFixed(2),   
         SGSTAmount: totalSGSTAmount.toFixed(2),    
         IGSTAmount: totalIGSTAmount.toFixed(2),   
-        
+  additional_charges_type: charges.map(c => c.type).join(','), // Comma-separated types
+  additional_charges_amount: charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0),
         CGSTPercentage: totalCGSTPercentage.toFixed(2),
         SGSTPercentage: totalSGSTPercentage.toFixed(2), 
         IGSTPercentage: totalIGSTPercentage.toFixed(2), 
@@ -2244,45 +2274,113 @@ const handleExclPriceChange = (e) => {
                 </Table>
               </div>
 
-              {/* Totals and Notes Section */}
-              <Row className="mb-3 p-3 bg-white rounded border">
-                <Col md={7}>
-                  <Form.Group controlId="invoiceNote">
-                    <Form.Label className="fw-bold text-primary">Notes</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={5}
-                      name="note"
-                      value={invoiceData.note}
-                      onChange={handleInputChange}
-                      placeholder="Enter your note here..."
-                      className="border-primary"
-                    />
-                  </Form.Group>
-                </Col>
+       {/* Totals and Notes Section */}
+<Row className="mb-3 p-3 bg-white rounded border">
+  <Col md={7}>
+    <Form.Group controlId="invoiceNote">
+      <Form.Label className="fw-bold text-primary">Notes</Form.Label>
+      <Form.Control
+        as="textarea"
+        rows={5}
+        name="note"
+        value={invoiceData.note}
+        onChange={handleInputChange}
+        placeholder="Enter your note here..."
+        className="border-primary"
+      />
+    </Form.Group>
+  </Col>
 
-                <Col md={5}>
-                  <h6 className="text-primary mb-3">Amount Summary</h6>
-                  <Row>
-                    <Col md={6} className="d-flex flex-column align-items-start">
-                      <div className="mb-2 fw-bold">Taxable Amount</div>
-                      <div className="mb-2 fw-bold">Total GST</div>
-                      <div className="mb-2 fw-bold">Total Cess</div>
-                      <div className="mb-2 fw-bold text-success">Grand Total</div>
-                    </Col>
+  <Col md={5}>
+    <h6 className="text-primary mb-3">Amount Summary</h6>
+    
+    {/* Additional Charges Section */}
+    <div className="mb-3">
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <label className="fw-bold">Additional Charges</label>
+        <button
+          type="button"
+          className="btn btn-sm btn-primary"
+          onClick={addChargeRow}
+        >
+          + Add Charge
+        </button>
+      </div>
+      
+      {charges.map((charge, index) => (
+        <div key={index} className="mb-2" style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ width: '60%' }}>
+  <input
+    type="number"
+    value={charge.amount === 0 ? '' : charge.amount}
+    className="form-control form-control-sm"
+    onChange={(e) => handleChargeChange(index, 'amount', e.target.value)}
+    placeholder="Amount"
+    style={{ fontSize: '13px' }}
+  />
+</div>
+          <div style={{ width: '35%' }}>
+            <select
+              value={charge.type}
+              className="form-select form-select-sm"
+              onChange={(e) => handleChargeChange(index, 'type', e.target.value)}
+              style={{ fontSize: '13px' }}
+            >
+              <option value="">Select Type</option>
+              <option value="Insurance Charge">Insurance Charge</option>
+              <option value="Loading Charge">Loading Charge</option>
+              <option value="Packing Charge">Packing Charge</option>
+              <option value="Other Taxes">Other Taxes</option>
+              <option value="Other Charges">Other Charges</option>
+              <option value="Reimbursements">Reimbursements</option>
+              <option value="Miscellaneous">Miscellaneous</option>
+            </select>
+          </div>
+          <div style={{ width: '1%' }}>
+<button
+  type="button"
+  className=""
+  onClick={() => removeChargeRow(index)}
+  style={{ 
+    padding: '0',
+    fontSize: '18px',
+    lineHeight: '2',
+    background: 'none',
+    border: 'none',
+    color: 'black',
+    cursor: 'pointer'
+  }}
+>
+  ✕
+</button>
+          </div>
+        </div>
+      ))}
+      {charges.length === 0 && (
+        <div className="text-muted small mb-2">No additional charges added</div>
+      )}
+    </div>
+    
+    {/* Totals */}
+    <Row>
+      <Col md={6} className="d-flex flex-column align-items-start">
+        <div className="mb-2 fw-bold">Taxable Amount</div>
+        <div className="mb-2 fw-bold">Total GST</div>
+        <div className="mb-2 fw-bold">Total Cess</div>
+        <div className="mb-2 fw-bold">Additional Charges</div>
+        <div className="mb-2 fw-bold text-success">Grand Total</div>
+      </Col>
 
-                    <Col md={6} className="d-flex flex-column align-items-end">
-                      <div className="mb-2">₹{invoiceData.taxableAmount}</div>
-                      <div className="mb-2">₹{invoiceData.totalGST}</div>
-                      <div className="mb-2">₹{invoiceData.totalCess}</div>
-                      <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
-                    </Col>
-                  </Row>
-               
-                </Col>
-              </Row>
-
-{/* Footer Section - Transportation Details LEFT, Other Details RIGHT */}
+      <Col md={6} className="d-flex flex-column align-items-end">
+        <div className="mb-2">₹{invoiceData.taxableAmount}</div>
+        <div className="mb-2">₹{invoiceData.totalGST}</div>
+        <div className="mb-2">₹{invoiceData.totalCess}</div>
+        <div className="mb-2">₹{parseFloat(invoiceData.additionalChargeAmount || 0).toFixed(2)}</div>
+        <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
+      </Col>
+    </Row>
+  </Col>
+</Row>
 <Row className="mb-3 bg-white p-3 rounded">
   {/* LEFT SIDE - Transportation Details with 4 fields */}
   <Col md={6}>

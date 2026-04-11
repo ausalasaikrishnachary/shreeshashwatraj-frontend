@@ -10,6 +10,23 @@ import { baseurl } from "../../../BaseURL/BaseURL";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import "./SalesReport.css";
 
+// ========== HELPER FUNCTIONS ==========
+const getCurrentDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getFirstDayOfCurrentMonth = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+};
+// ========== END HELPER FUNCTIONS ==========
+
 const SalesReport = () => {
   const [salesData, setSalesData] = useState([]);
   const [staffData, setStaffData] = useState([]);
@@ -24,9 +41,11 @@ const SalesReport = () => {
   const [error, setError] = useState("");
   
   // State for filtering
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [applyDateFilter, setApplyDateFilter] = useState(false); // New state for date filtering
+  const [fromDate, setFromDate] = useState(getFirstDayOfCurrentMonth());
+  const [toDate, setToDate] = useState(getCurrentDate());
+  const [tempFromDate, setTempFromDate] = useState(getFirstDayOfCurrentMonth());
+  const [tempToDate, setTempToDate] = useState(getCurrentDate());
+  const [applyDateFilter, setApplyDateFilter] = useState(true); // Apply filter initially
   const [searchTerm, setSearchTerm] = useState("");
   const [transactionType, setTransactionType] = useState("all");
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -37,20 +56,15 @@ const SalesReport = () => {
   // Filtered data
   const [filteredVoucherData, setFilteredVoucherData] = useState([]);
 
-  const getCurrentDate = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  // Set current date on component mount but don't apply filter
+  // Set initial dates on component mount
   useEffect(() => {
+    const firstDay = getFirstDayOfCurrentMonth();
     const currentDate = getCurrentDate();
-    setFromDate(currentDate);
+    setFromDate(firstDay);
     setToDate(currentDate);
-    setApplyDateFilter(false); // Don't apply filter initially
+    setTempFromDate(firstDay);
+    setTempToDate(currentDate);
+    setApplyDateFilter(true);
   }, []);
 
   // Fetch all data initially
@@ -210,19 +224,19 @@ const SalesReport = () => {
     return (((currentMonthSales - previousMonthSales) / previousMonthSales) * 100).toFixed(1);
   };
 
-  // Handle date change - prepare for filter but don't apply automatically
-  const handleFromDateChange = (e) => {
-    setFromDate(e.target.value);
-    setApplyDateFilter(false); // Reset filter flag when date changes
+  // Handle temporary date changes (does NOT apply filter)
+  const handleTempFromDateChange = (e) => {
+    setTempFromDate(e.target.value);
   };
 
-  const handleToDateChange = (e) => {
-    setToDate(e.target.value);
-    setApplyDateFilter(false); // Reset filter flag when date changes
+  const handleTempToDateChange = (e) => {
+    setTempToDate(e.target.value);
   };
 
-  // Apply date filter
+  // Apply date filter - only when button is clicked
   const applyDateFilterHandler = () => {
+    setFromDate(tempFromDate);
+    setToDate(tempToDate);
     setApplyDateFilter(true);
   };
 
@@ -247,35 +261,28 @@ const SalesReport = () => {
       });
     }
 
-    // Apply date filter only if applyDateFilter is true and dates are set
-    if (applyDateFilter && (fromDate || toDate)) {
-      filtered = filtered.filter((item) => {
-        const itemDate = item.invoice_date;
-        if (!itemDate) return false;
+if (applyDateFilter && fromDate && toDate) {
+  filtered = filtered.filter((item) => {
+    const itemDate = item.invoice_date;
+    if (!itemDate) return false;
 
-        try {
-          const dateParts = itemDate.split('/');
-          if (dateParts.length === 3) {
-            const date = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
-            const itemDateStr = date.toISOString().split('T')[0];
-
-            if (fromDate && toDate) {
-              return itemDateStr >= fromDate && itemDateStr <= toDate;
-            } else if (fromDate) {
-              return itemDateStr >= fromDate;
-            } else if (toDate) {
-              return itemDateStr <= toDate;
-            }
-          }
-        } catch (err) {
-          console.error("Error parsing date for filter:", itemDate);
-          return false;
-        }
-        return true;
-      });
+    try {
+      const dateParts = itemDate.split('/');
+      if (dateParts.length === 3) {
+        const day = dateParts[0].padStart(2, '0');
+        const month = dateParts[1].padStart(2, '0');
+        const year = dateParts[2];
+        const itemDateStr = `${year}-${month}-${day}`;
+        return itemDateStr >= fromDate && itemDateStr <= toDate;
+      }
+    } catch (err) {
+      console.error("Error parsing date for filter:", itemDate);
+      return false;
     }
+    return false; 
+  });
+}
 
-    // Apply search filter if search term exists
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter((item) => {
@@ -347,9 +354,14 @@ const SalesReport = () => {
       a.remove();
       URL.revokeObjectURL(a.href);
 
+      // ✅ SUCCESS ALERT
+      alert(`✅ Successfully generated ${reportFormat.toUpperCase()} report`);
+      
       setShowGenerateModal(false);
     } catch (e) {
       console.error("❌ Download error:", e);
+      // ❌ ERROR ALERT
+      alert(`❌ Failed to generate report: ${e.message}`);
       setError("Failed to generate report");
     } finally {
       setGeneratingReport(false);
@@ -358,10 +370,13 @@ const SalesReport = () => {
 
   // Clear all filters
   const clearFilters = () => {
+    const firstDay = getFirstDayOfCurrentMonth();
     const currentDate = getCurrentDate();
-    setFromDate(currentDate);
+    setTempFromDate(firstDay);
+    setTempToDate(currentDate);
+    setFromDate(firstDay);
     setToDate(currentDate);
-    setApplyDateFilter(false); // Reset date filter
+    setApplyDateFilter(true);
     setSearchTerm("");
     setTransactionType("all");
     setShowTransactionDropdown(false);
@@ -369,10 +384,13 @@ const SalesReport = () => {
 
   // Clear date filters only
   const clearDateFilters = () => {
+    const firstDay = getFirstDayOfCurrentMonth();
     const currentDate = getCurrentDate();
-    setFromDate(currentDate);
+    setTempFromDate(firstDay);
+    setTempToDate(currentDate);
+    setFromDate(firstDay);
     setToDate(currentDate);
-    setApplyDateFilter(false); // Reset date filter when clearing
+    setApplyDateFilter(true);
   };
 
   // Close dropdown when clicking outside
@@ -634,7 +652,7 @@ const SalesReport = () => {
                 <FaSearch className="sales-search-icon" />
                 <input
                   type="text"
-                  placeholder="Search Product, Name, staff, address..."
+                  placeholder="Search Product, staff..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="sales-search-input"
@@ -659,10 +677,9 @@ const SalesReport = () => {
                 <input
                   id="sales-from-date"
                   type="date"
-                  value={fromDate}
-                  onChange={handleFromDateChange}
+                  value={tempFromDate}
+                  onChange={handleTempFromDateChange}
                   className="sales-date-input"
-                  max={toDate || undefined}
                 />
               </div>
               
@@ -671,10 +688,9 @@ const SalesReport = () => {
                 <input
                   id="sales-to-date"
                   type="date"
-                  value={toDate}
-                  onChange={handleToDateChange}
+                  value={tempToDate}
+                  onChange={handleTempToDateChange}
                   className="sales-date-input"
-                  min={fromDate || undefined}
                 />
               </div>
               
@@ -682,16 +698,17 @@ const SalesReport = () => {
               <button
                 className="sales-apply-date-btn"
                 onClick={applyDateFilterHandler}
-                disabled={!fromDate || !toDate}
+                disabled={!tempFromDate || !tempToDate}
               >
-                Apply Date Filter
+                 Add Filter
               </button>
               
-              {applyDateFilter && (
+              {/* Show reset button if dates are not default */}
+              {(tempFromDate !== getFirstDayOfCurrentMonth() || tempToDate !== getCurrentDate()) && (
                 <button
                   className="sales-clear-date-btn"
                   onClick={clearDateFilters}
-                  title="Clear date filters"
+                  title="Reset to current month"
                 >
                   Clear Dates
                 </button>

@@ -537,9 +537,8 @@ useEffect(() => {
       note: apiData.Notes || "Thank you for your business!",
             transportDetails: transportDetails,
 
-      additionalCharge: "",
-      additionalChargeAmount: "0.00",
-      
+      additionalCharge: apiData.additional_charges_type || "",
+    additionalChargeAmount: apiData.additional_charges_amount || "0.00",
       totalCGST: parseFloat(apiData.CGSTAmount) || 0,
       totalSGST: parseFloat(apiData.SGSTAmount) || 0,
       totalIGST: parseFloat(apiData.IGSTAmount) || 0,
@@ -2169,6 +2168,13 @@ const handleOpenReceiptModal = () => {
                             <td className="pb-2">Total GST:</td>
                             <td className="text-end pb-2">₹{currentData.totalGST}</td>
                           </tr>
+                             {/* ✅ ADD THIS ROW FOR ADDITIONAL CHARGES */}
+      {currentData.additionalCharge && currentData.additionalChargeAmount > 0 && (
+        <tr>
+          <td className="pb-2">{currentData.additionalCharge}:</td>
+          <td className="text-end pb-2">₹{parseFloat(currentData.additionalChargeAmount).toFixed(2)}</td>
+        </tr>
+      )}
 
                           <tr className="grand-total border-top pt-2">
                             <td><strong>Grand Total:</strong></td>

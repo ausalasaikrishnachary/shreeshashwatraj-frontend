@@ -514,9 +514,8 @@ const transformApiDataToInvoiceFormat = (apiData) => {
     note: apiData.Notes || "Thank you for your business!",
           transportDetails: transportDetails,
 
-    additionalCharge: "",
-    additionalChargeAmount: "0.00",
-    
+  additionalCharge: apiData.additional_charges_type || "",
+  additionalChargeAmount: apiData.additional_charges_amount || "0.00",    
     totalCGST: parseFloat(apiData.CGSTAmount) || 0,
     totalSGST: parseFloat(apiData.SGSTAmount) || 0,
     totalIGST: parseFloat(apiData.IGSTAmount) || 0,
@@ -868,6 +867,8 @@ const handleQrDataGenerated = (qrUrl) => {
         taxableAmount: editedData.taxableAmount,
          mobile_number: editedData.supplierInfo.mobile_number || '',
         totalGST: editedData.totalGST,
+          additional_charges_type: editedData.additionalCharge || '',
+      additional_charges_amount: parseFloat(editedData.additionalChargeAmount) || 0,
         grandTotal: editedData.grandTotal,
         batchDetails: editedData.items.map(item => ({
           product: item.product,
@@ -1060,9 +1061,8 @@ const handleQrDataGenerated = (qrUrl) => {
       return sum + gstAmount;
     }, 0);
     
-    const additionalChargeAmount = parseFloat(editedData.additionalChargeAmount) || 0;
-    const grandTotal = taxableAmount + totalGST + additionalChargeAmount;
-    
+  const additionalChargeAmount = parseFloat(editedData.additionalChargeAmount) || 0;
+  const grandTotal = taxableAmount + totalGST + additionalChargeAmount;    
     setEditedData(prev => ({
       ...prev,
       taxableAmount: taxableAmount.toFixed(2),
@@ -2183,47 +2183,61 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
     
     
                       </Col>
-    <Col md={5}>
-      <div className="amount-breakdown bg-light p-3 rounded">
-        <h6 className="text-primary mb-3">Amount Summary</h6>
-        <table className="amount-table w-100">
-          <tbody>
+ <Col md={5}>
+  <div className="amount-breakdown bg-light p-3 rounded">
+    <h6 className="text-primary mb-3">Amount Summary</h6>
+    <table className="amount-table w-100">
+      <tbody>
+        <tr>
+          <td className="pb-2">Amount:</td>
+          <td className="text-end pb-2">₹{currentData.taxableAmount}</td>
+        </tr>
+        
+        {isSameState ? (
+          <>
             <tr>
-              <td className="pb-2">Amount:</td>
-              <td className="text-end pb-2">₹{currentData.taxableAmount}</td>
+              <td className="pb-2">CGST:</td>
+              <td className="text-end pb-2">₹{gstBreakdown.totalCGST}</td>
             </tr>
-            
-            {isSameState ? (
-              <>
-                <tr>
-                  <td className="pb-2">CGST:</td>
-                  <td className="text-end pb-2">₹{gstBreakdown.totalCGST}</td>
-                </tr>
-                <tr>
-                  <td className="pb-2">SGST:</td>
-                  <td className="text-end pb-2">₹{gstBreakdown.totalSGST}</td>
-                </tr>
-              </>
-            ) : (
-              <tr>
-                <td className="pb-2">IGST:</td>
-                <td className="text-end pb-2">₹{gstBreakdown.totalIGST}</td>
-              </tr>
-            )}
-            
             <tr>
-              <td className="pb-2">Total GST:</td>
-              <td className="text-end pb-2">₹{currentData.totalGST}</td>
+              <td className="pb-2">SGST:</td>
+              <td className="text-end pb-2">₹{gstBreakdown.totalSGST}</td>
             </tr>
-            
-            <tr className="grand-total border-top pt-2">
-              <td><strong>Grand Total:</strong></td>
-              <td className="text-end"><strong className="text-success">₹{currentData.grandTotal}</strong></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </Col>
+          </>
+        ) : (
+          <tr>
+            <td className="pb-2">IGST:</td>
+            <td className="text-end pb-2">₹{gstBreakdown.totalIGST}</td>
+          </tr>
+        )}
+        
+        <tr>
+          <td className="pb-2">Total GST:</td>
+          <td className="text-end pb-2">₹{currentData.totalGST}</td>
+        </tr>
+        
+        {/* ✅ ADD ADDITIONAL CHARGES ROW */}
+        {currentData.additionalCharge && parseFloat(currentData.additionalChargeAmount) > 0 && (
+          <tr>
+            <td className="pb-2">{currentData.additionalCharge}:</td>
+            <td className="text-end pb-2">
+              ₹{parseFloat(currentData.additionalChargeAmount).toFixed(2)}
+            </td>
+          </tr>
+        )}
+        
+        <tr className="grand-total border-top pt-2">
+          <td><strong>Grand Total:</strong></td>
+          <td className="text-end">
+            <strong className="text-success">
+              ₹{currentData.grandTotal}
+            </strong>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</Col>
   </Row>
 </div>
 
