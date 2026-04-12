@@ -1,8 +1,7 @@
-// frontend/src/components/Sales/Invoices/InvoicesPDF.js
 import React from 'react';
 
 const InvoicesPDF = React.forwardRef(({ invoices, startDate, endDate, month, year, title = 'Sales Invoices Report' }, ref) => {
-  // Format date
+  
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -12,17 +11,14 @@ const InvoicesPDF = React.forwardRef(({ invoices, startDate, endDate, month, yea
     });
   };
 
-  // Format amount
   const formatAmount = (amount) => {
     if (!amount) return '₹ 0.00';
-    // Remove ₹ symbol if present and parse
     const numericAmount = typeof amount === 'string' 
       ? parseFloat(amount.replace(/[^0-9.-]/g, '')) 
       : parseFloat(amount || 0);
     return `₹ ${numericAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  // Get date range text
   const getDateRangeText = () => {
     if (startDate && endDate) {
       return `${formatDate(startDate)} to ${formatDate(endDate)}`;
@@ -32,8 +28,16 @@ const InvoicesPDF = React.forwardRef(({ invoices, startDate, endDate, month, yea
     return 'All Time';
   };
 
+  // ✅ Sort invoices in ascending order by date (oldest first)
+  const sortedInvoices = [...invoices].sort((a, b) => {
+    const dateA = new Date(a.created || a.createdAt || a.date || 0);
+    const dateB = new Date(b.created || b.createdAt || b.date || 0);
+    return dateA - dateB;
+  });
+
   return (
     <div ref={ref} style={{ padding: '30px', fontFamily: 'Arial, sans-serif' }}>
+      
       {/* Report Header */}
       <div style={{ 
         textAlign: 'center', 
@@ -67,11 +71,11 @@ const InvoicesPDF = React.forwardRef(({ invoices, startDate, endDate, month, yea
         borderRadius: '5px'
       }}>
         <div>
-          <strong>Total Invoices:</strong> {invoices.length}
+          <strong>Total Invoices:</strong> {sortedInvoices.length}
         </div>
         <div>
           <strong>Total Amount:</strong> {
-            formatAmount(invoices.reduce((sum, inv) => {
+            formatAmount(sortedInvoices.reduce((sum, inv) => {
               const amount = typeof inv.totalAmount === 'string'
                 ? parseFloat(inv.totalAmount.replace(/[^0-9.-]/g, ''))
                 : parseFloat(inv.totalAmount || 0);
@@ -81,7 +85,7 @@ const InvoicesPDF = React.forwardRef(({ invoices, startDate, endDate, month, yea
         </div>
       </div>
 
-      {/* Invoices Table - Matching ReceiptsPDF Structure */}
+      {/* Invoices Table */}
       <table style={{ 
         width: '100%', 
         borderCollapse: 'collapse', 
@@ -101,8 +105,8 @@ const InvoicesPDF = React.forwardRef(({ invoices, startDate, endDate, month, yea
         </thead>
         
         <tbody>
-          {invoices.length > 0 ? (
-            invoices.map((invoice, index) => (
+          {sortedInvoices.length > 0 ? (
+            sortedInvoices.map((invoice, index) => (
               <tr 
                 key={invoice.id || index} 
                 style={{ backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8f9fa' }}
@@ -149,14 +153,14 @@ const InvoicesPDF = React.forwardRef(({ invoices, startDate, endDate, month, yea
         </tbody>
         
         {/* Table Footer with Totals */}
-        {invoices.length > 0 && (
+        {sortedInvoices.length > 0 && (
           <tfoot>
             <tr style={{ backgroundColor: '#e9ecef', fontWeight: 'bold' }}>
               <td colSpan="3" style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'right' }}>
                 Total:
               </td>
               <td style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'right' }}>
-                {formatAmount(invoices.reduce((sum, inv) => {
+                {formatAmount(sortedInvoices.reduce((sum, inv) => {
                   const amount = typeof inv.totalAmount === 'string'
                     ? parseFloat(inv.totalAmount.replace(/[^0-9.-]/g, ''))
                     : parseFloat(inv.totalAmount || 0);
@@ -180,6 +184,7 @@ const InvoicesPDF = React.forwardRef(({ invoices, startDate, endDate, month, yea
       }}>
         <p>© {new Date().getFullYear()} SHREE SHASHWAT RAJ AGRO PVT.LTD. All rights reserved.</p>
       </div>
+
     </div>
   );
 });
