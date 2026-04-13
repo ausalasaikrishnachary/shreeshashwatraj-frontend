@@ -45,6 +45,7 @@ const getCurrentMonthYear = () => {
 const [isDownloading, setIsDownloading] = useState(false);
 const [isRangeDownloading, setIsRangeDownloading] = useState(false);
 const pdfRef = useRef();
+const [filteredInvoices, setFilteredInvoices] = useState([]);
   const [unitData, setUnitData] = useState({});
 const [qrDataUrl, setQrDataUrl] = useState(null);
 const [qrAmount, setQrAmount] = useState(null);
@@ -63,6 +64,42 @@ const [endDate, setEndDate] = useState(getCurrentDate());  const [activeTab, set
   useEffect(() => {
     fetchInvoices();
   }, []);
+
+const applyTableDateFilter = () => {
+  if (!startDate || !endDate) {
+    alert('Please select both start and end dates');
+    return;
+  }
+  
+  if (new Date(startDate) > new Date(endDate)) {
+    alert('Start date cannot be after end date');
+    return;
+  }
+  
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+  
+  const filtered = invoices.filter(invoice => {
+    if (!invoice.created) return false;
+    const invoiceDate = new Date(invoice.created);
+    return invoiceDate >= start && invoiceDate <= end;
+  });
+  
+  setFilteredInvoices(filtered);
+  
+  if (filtered.length === 0) {
+    alert(`No Kacha invoices found from ${startDate} to ${endDate}`);
+  } else {
+    alert(`Found ${filtered.length} Kacha invoice(s) from ${startDate} to ${endDate}`);
+  }
+};
+
+const resetTableFilter = () => {
+  setFilteredInvoices(invoices);
+  alert(`Showing all ${invoices.length} Kacha invoices`);
+};
 
 const fetchInvoices = async () => {
   try {
@@ -96,6 +133,7 @@ const fetchInvoices = async () => {
     }));
     
     setInvoices(transformedInvoices);
+    setFilteredInvoices(transformedInvoices);
     setLoading(false);
     
     // Log summary for debugging
@@ -1275,10 +1313,28 @@ const handleDownloadRange = async () => {
                   </div>
                 </div>
 
+<div className="row mb-4">
+  <div className="col-12">
+    <div className="d-flex gap-2 align-items-center">
+      <button 
+        className="btn btn-outline-primary" 
+        onClick={applyTableDateFilter}
+      >
+        <i className="bi bi-funnel me-1"></i> Add Filter
+      </button>
+      <button 
+        className="btn btn-outline-secondary" 
+        onClick={resetTableFilter}
+      >
+        <i className="bi bi-arrow-repeat me-1"></i> Clear Date
+      </button>
+    </div>
+  </div>
+</div>
                 {/* ✅ Table */}
                 <ReusableTable
                   title="Sales Invoices"
-                  data={invoices}
+              data={filteredInvoices}
                   columns={columns}
                   initialEntriesPerPage={5}
                   searchPlaceholder="Search invoices by customer name or number..."

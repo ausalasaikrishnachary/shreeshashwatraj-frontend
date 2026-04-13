@@ -35,7 +35,6 @@ const getCurrentMonthYear = () => {
   const currentYear = today.getFullYear().toString();
   return { month: currentMonth, year: currentYear };
 };
-// ========== END HELPER FUNCTIONS ==========
 const PurchaseInvoiceTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('Purchase Invoice');
@@ -44,7 +43,7 @@ const PurchaseInvoiceTable = () => {
 const [isRangeDownloading, setIsRangeDownloading] = useState(false);
 const pdfRef = useRef();
     const [deleting, setDeleting] = useState({});
-
+const [filteredPurchaseInvoices, setFilteredPurchaseInvoices] = useState([]);
   const [purchaseInvoices, setPurchaseInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -68,6 +67,44 @@ const [endDate, setEndDate] = useState(getCurrentDate());
   useEffect(() => {
     fetchPurchaseInvoices();
   }, []);
+
+  // Apply table date filter to show filtered results in table
+const applyTableDateFilter = () => {
+  if (!startDate || !endDate) {
+    alert('Please select both start and end dates');
+    return;
+  }
+  
+  if (new Date(startDate) > new Date(endDate)) {
+    alert('Start date cannot be after end date');
+    return;
+  }
+  
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+  
+  const filtered = purchaseInvoices.filter(invoice => {
+    if (!invoice.created) return false;
+    const invoiceDate = new Date(invoice.created);
+    return invoiceDate >= start && invoiceDate <= end;
+  });
+  
+  setFilteredPurchaseInvoices(filtered);
+  
+  if (filtered.length === 0) {
+    alert(`No purchase invoices found from ${startDate} to ${endDate}`);
+  } else {
+    alert(`Found ${filtered.length} purchase invoice(s) from ${startDate} to ${endDate}`);
+  }
+};
+
+// Reset table filter to show all purchase invoices
+const resetTableFilter = () => {
+  setFilteredPurchaseInvoices(purchaseInvoices);
+  alert(`Showing all ${purchaseInvoices.length} purchase invoices`);
+};
 
 const fetchPurchaseInvoices = async () => {
   try {
@@ -97,6 +134,7 @@ const fetchPurchaseInvoices = async () => {
     }));
     
     setPurchaseInvoices(transformedInvoices);
+    setFilteredPurchaseInvoices(transformedInvoices); 
     setLoading(false);
   } catch (err) {
     console.error('Error fetching purchase invoices:', err);
@@ -1338,11 +1376,29 @@ const handleDownloadRange = async () => {
                     </button>
                   </div>
                 </div>
+<div className="row mb-4">
+  <div className="col-12">
+    <div className="d-flex gap-2 align-items-center">
+      <button 
+        className="btn btn-outline-primary" 
+        onClick={applyTableDateFilter}
+      >
+        <i className="bi bi-funnel me-1"></i> Add Filter
+      </button>
+      <button 
+        className="btn btn-outline-secondary" 
+        onClick={resetTableFilter}
+      >
+        <i className="bi bi-arrow-repeat me-1"></i> Clear Date
+      </button>
+    </div>
+  </div>
+</div>
 
                 {/* Table Section */}
                 <ReusableTable
                   title="Purchase Invoices"
-                  data={purchaseInvoices}
+                  data={filteredPurchaseInvoices}
                   columns={columns}
                   initialEntriesPerPage={10}
                   searchPlaceholder="Search purchase invoices by supplier or invoice number..."

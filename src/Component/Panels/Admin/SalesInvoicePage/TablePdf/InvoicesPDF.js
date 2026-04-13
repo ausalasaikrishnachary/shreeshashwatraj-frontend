@@ -28,12 +28,11 @@ const InvoicesPDF = React.forwardRef(({ invoices, startDate, endDate, month, yea
     return 'All Time';
   };
 
-  // ✅ Sort invoices in ascending order by date (oldest first)
-  const sortedInvoices = [...invoices].sort((a, b) => {
-    const dateA = new Date(a.created || a.createdAt || a.date || 0);
-    const dateB = new Date(b.created || b.createdAt || b.date || 0);
-    return dateA - dateB;
-  });
+const sortedInvoices = [...invoices].sort((a, b) => {
+  const invoiceA = a.number || a.invoice_number || a.InvoiceNo || '';
+  const invoiceB = b.number || b.invoice_number || b.InvoiceNo || '';
+  return invoiceA.localeCompare(invoiceB, undefined, { numeric: true, sensitivity: 'base' });
+});
 
   return (
     <div ref={ref} style={{ padding: '30px', fontFamily: 'Arial, sans-serif' }}>

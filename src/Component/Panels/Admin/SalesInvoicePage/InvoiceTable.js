@@ -1,4 +1,4 @@
-  import React, { useState, useEffect, useRef  } from 'react';
+import React, { useState, useEffect, useRef  } from 'react';
   import { useNavigate } from 'react-router-dom';
   import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
   import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
@@ -42,6 +42,7 @@ const getCurrentDate = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const navigate = useNavigate();
     const [invoices, setInvoices] = useState([]);
+    const [filteredInvoices, setFilteredInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [downloading, setDownloading] = useState({});
@@ -69,6 +70,44 @@ const [endDate, setEndDate] = useState(getCurrentDate());
     useEffect(() => {
       fetchInvoices();
     }, []);
+
+  // Apply table date filter when filter button is clicked
+  const applyTableDateFilter = () => {
+    if (!startDate || !endDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
+    
+    if (new Date(startDate) > new Date(endDate)) {
+      alert('Start date cannot be after end date');
+      return;
+    }
+    
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    
+    const filtered = invoices.filter(invoice => {
+      if (!invoice.created) return false;
+      const invoiceDate = new Date(invoice.created);
+      return invoiceDate >= start && invoiceDate <= end;
+    });
+    
+    setFilteredInvoices(filtered);
+    
+    if (filtered.length === 0) {
+      alert(`No invoices found from ${startDate} to ${endDate}`);
+    } else {
+      alert(`Found ${filtered.length} invoice(s) from ${startDate} to ${endDate}`);
+    }
+  };
+
+  // Reset table filter to show all invoices
+  const resetTableFilter = () => {
+    setFilteredInvoices(invoices);
+    alert(`Showing all ${invoices.length} invoices`);
+  };
 
   const fetchInvoices = async () => {
     try {
@@ -100,6 +139,7 @@ const [endDate, setEndDate] = useState(getCurrentDate());
       }));
       
       setInvoices(transformedInvoices);
+      setFilteredInvoices(transformedInvoices);
       setLoading(false);
       
       // Log summary
@@ -1158,10 +1198,31 @@ const handleDownloadRange = async () => {
       </div>
     </div>
 
+    {/* Filter and Reset Buttons using existing date pickers */}
+    <div className="row mb-4">
+      <div className="col-12">
+        <div className="d-flex gap-2 align-items-center">
+          <button 
+            className="btn btn-outline-primary" 
+            onClick={applyTableDateFilter}
+          >
+            <i className="bi bi-funnel me-1"></i> Add Filter
+          </button>
+          <button 
+            className="btn btn-outline-secondary" 
+            onClick={resetTableFilter}
+          >
+            <i className="bi bi-arrow-repeat me-1"></i> Clear Date
+          </button>
+      
+        </div>
+      </div>
+    </div>
+
     {/* Table */}
     <ReusableTable
       title="Sales Invoices"
-      data={invoices}
+      data={filteredInvoices}
       columns={columns}
       initialEntriesPerPage={5}
       searchPlaceholder="Search invoices by customer name or number..."
