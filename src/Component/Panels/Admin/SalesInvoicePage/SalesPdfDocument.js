@@ -335,6 +335,10 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
   const additionalCharge = getSafeData(currentData, 'additionalCharge', '');
   const additionalChargeAmount = parseFloat(getSafeData(currentData, 'additionalChargeAmount', '0'));
   
+  // ✅ GET DISCOUNT CHARGES
+  const discountCharges = getSafeData(currentData, 'discount_charges', '');
+  const discountChargesAmount = parseFloat(getSafeData(currentData, 'discount_charges_amount', '0'));
+  
   return (
     <Document>
       <Page size="A5" style={styles.page}>
@@ -519,11 +523,23 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
                 </Text>
               </View>
               
-              {/* ✅ ADD ADDITIONAL CHARGES ROW */}
+              {/* Additional Charges Row */}
               {additionalCharge && additionalChargeAmount > 0 && (
                 <View style={styles.amountRow}>
                   <Text style={styles.amountLabel}>{additionalCharge}:</Text>
                   <Text style={styles.amountValue}>₹{additionalChargeAmount.toFixed(2)}</Text>
+                </View>
+              )}
+              
+              {/* ✅ ADD DISCOUNT CHARGES ROW */}
+              {discountCharges && discountChargesAmount > 0 && (
+                <View style={[styles.amountRow, { borderBottomColor: '#ffcccc' }]}>
+                  <Text style={[styles.amountLabel, { color: '#dc3545' }]}>
+                    Discount ({discountCharges === 'percentage' ? '%' : '₹'}):
+                  </Text>
+                  <Text style={[styles.amountValue, { color: '#dc3545' }]}>
+                    - ₹{discountChargesAmount.toFixed(2)}
+                  </Text>
                 </View>
               )}
               

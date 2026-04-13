@@ -15,37 +15,21 @@ const QRCodeGenerator_normal = ({ invoiceData, onQrDataGenerated }) => {
       return 0;
     }
     
-    let totalFromItems = 0;
-    invoiceData.items.forEach((item, index) => {
-      const itemTotal = parseFloat(item.total) || 0;
-      totalFromItems += itemTotal;
-      console.log(`Item ${index + 1}: ${item.product} - Total: ${itemTotal}`);
+    // ✅ Use the grandTotal from invoiceData directly
+    // This ensures QR code matches the invoice grand total
+    const grandTotal = parseFloat(invoiceData.grandTotal) || 0;
+    
+    console.log('💰 QR Code Grand Total from invoice:', grandTotal);
+    console.log('💰 Invoice Data:', {
+      taxableAmount: invoiceData.taxableAmount,
+      totalGST: invoiceData.totalGST,
+      discountAmount: invoiceData.discount_charges_amount,
+      discountType: invoiceData.discount_charges,
+      additionalCharge: invoiceData.additionalChargeAmount,
+      grandTotal: invoiceData.grandTotal
     });
     
-    // ✅ ADD ADDITIONAL CHARGES TO TOTAL
-    const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
-    const grandTotalFromInvoice = parseFloat(invoiceData.grandTotal) || 0;
-    
-    console.log('💰 Additional Charge:', {
-      additionalChargeType: invoiceData.additionalCharge,
-      additionalChargeAmount: additionalChargeAmount
-    });
-    
-    let finalTotal = totalFromItems + additionalChargeAmount;
-    
-    // If grandTotal from invoice is available and matches approximately, use it
-    if (grandTotalFromInvoice > 0 && Math.abs(grandTotalFromInvoice - finalTotal) < 1) {
-      finalTotal = grandTotalFromInvoice;
-    }
-    
-    console.log('💰 Grand Total Calculation:', {
-      totalFromItems,
-      additionalChargeAmount,
-      grandTotalFromInvoice,
-      finalTotal
-    });
-    
-    return finalTotal;
+    return grandTotal;
   };
 
   const generateQRCodeData = () => {
@@ -55,35 +39,28 @@ const QRCodeGenerator_normal = ({ invoiceData, onQrDataGenerated }) => {
     }
     
     try {
+      // ✅ Use the same grandTotal from invoice
       const amount = calculateGrandTotal();
       setDisplayAmount(amount);
       
       // Format amount with 2 decimal places
       const formattedAmount = amount.toFixed(2);
       
-      console.log('📊 QR Code Amount (including charges):', formattedAmount);
+      console.log('📊 QR Code Amount (Grand Total):', formattedAmount);
       
-      // UPI ID - you can change this
+      // UPI ID
       const upiId = 'shreeshashwatrajagroprivatelimited@sbi';
       
-      // Merchant name from invoice
+      // Merchant name
       const merchantName = invoiceData.companyInfo?.name?.replace(/[^a-zA-Z0-9 ]/g, '') || 'Business';
       
       // Invoice number
       const invoiceNumber = invoiceData.invoiceNumber || `INV${Date.now().toString().slice(-6)}`;
       
-      // Transaction note with additional charge info
+      // Transaction note
       let transactionNote = `Payment for Invoice ${invoiceNumber}`;
       
-      // ✅ Add additional charge info to transaction note if present
-      const additionalChargeType = invoiceData.additionalCharge;
-      const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
-      
-      if (additionalChargeType && additionalChargeAmount > 0) {
-        transactionNote = `${transactionNote} (${additionalChargeType}: ₹${additionalChargeAmount.toFixed(2)})`;
-      }
-      
-      // Create UPI URL
+      // Create UPI URL with correct amount
       const upiParams = new URLSearchParams({
         pa: upiId,
         pn: merchantName,
@@ -94,7 +71,7 @@ const QRCodeGenerator_normal = ({ invoiceData, onQrDataGenerated }) => {
       
       const upiUrl = `upi://pay?${upiParams.toString()}`;
       
-      console.log('✅ Generated UPI URL with charges:', upiUrl);
+      console.log('✅ Generated UPI URL with amount:', formattedAmount);
       
       // Callback to parent
       if (onQrDataGenerated) {
@@ -110,7 +87,7 @@ const QRCodeGenerator_normal = ({ invoiceData, onQrDataGenerated }) => {
   };
 
   useEffect(() => {
-    if (invoiceData && invoiceData.items) {
+    if (invoiceData) {
       const amount = calculateGrandTotal();
       setDisplayAmount(amount);
       
@@ -121,16 +98,12 @@ const QRCodeGenerator_normal = ({ invoiceData, onQrDataGenerated }) => {
       
       return () => clearTimeout(timer);
     }
-  }, [invoiceData, invoiceData?.additionalCharge, invoiceData?.additionalChargeAmount]);
+  }, [invoiceData, invoiceData?.grandTotal]);
 
   if (!invoiceData) return null;
 
-  // Get the display amount (including charges)
-  const grandTotal = displayAmount > 0 ? displayAmount : calculateGrandTotal();
-  
-  // Get additional charge info for display
-  const additionalChargeType = invoiceData.additionalCharge;
-  const additionalChargeAmount = parseFloat(invoiceData.additionalChargeAmount) || 0;
+  // ✅ Use the grandTotal from invoiceData
+  const grandTotal = parseFloat(invoiceData.grandTotal) || 0;
 
   return (
     <Card className="shadow-sm border-0 mb-3 qr-code-card">
@@ -158,15 +131,7 @@ const QRCodeGenerator_normal = ({ invoiceData, onQrDataGenerated }) => {
           
           <div className="mt-3">
             <h3 className="text-success fw-bold">₹{grandTotal.toFixed(2)}</h3>
-            
-            {/* ✅ Show additional charge breakdown if present */}
-            {/* {additionalChargeType && additionalChargeAmount > 0 && (
-              <div className="mt-2">
-                <small className="text-muted">
-                  Includes {additionalChargeType}: ₹{additionalChargeAmount.toFixed(2)}
-                </small>
-              </div>
-            )} */}
+          
           </div>
         </div>
       </Card.Body>

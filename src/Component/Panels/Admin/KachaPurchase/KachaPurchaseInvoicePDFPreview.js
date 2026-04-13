@@ -518,7 +518,8 @@ useEffect(() => {
     
     note: apiData.Notes || "Thank you for your business!",
               transportDetails: transportDetails,
-
+ discount_charges: apiData.discount_charges || null,
+  discount_charges_amount: parseFloat(apiData.discount_charges_amount) || 0,
   additionalCharge: apiData.additional_charges_type || "",
   additionalChargeAmount: apiData.additional_charges_amount || "0.00",    
     
@@ -874,7 +875,8 @@ const handleDownloadPDF = async () => {
         grandTotal: editedData.grandTotal,
                   additional_charges_type: editedData.additionalCharge || '',
       additional_charges_amount: parseFloat(editedData.additionalChargeAmount) || 0,
-
+  discount_charges: editedData.discount_charges,
+  discount_charges_amount: parseFloat(editedData.discount_charges_amount) || 0,
         batchDetails: editedData.items.map(item => ({
           product: item.product,
           product_id: item.product_id,
@@ -1043,43 +1045,46 @@ const handleDownloadPDF = async () => {
     recalculateTotals(newItems);
   };
 
-  const recalculateTotals = (items) => {
-    const taxableAmount = items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      return sum + (subtotal - discountAmount);
-    }, 0);
+const recalculateTotals = (items) => {
+  const taxableAmount = items.reduce((sum, item) => {
+    const quantity = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.price) || 0;
+    const discount = parseFloat(item.discount) || 0;
     
-    const totalGST = items.reduce((sum, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.price) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      const gst = parseFloat(item.gst) || 0;
-      
-      const subtotal = quantity * price;
-      const discountAmount = subtotal * (discount / 100);
-      const amountAfterDiscount = subtotal - discountAmount;
-      const gstAmount = amountAfterDiscount * (gst / 100);
-      
-      return sum + gstAmount;
-    }, 0);
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    return sum + (subtotal - discountAmount);
+  }, 0);
+  
+  const totalGST = items.reduce((sum, item) => {
+    const quantity = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.price) || 0;
+    const discount = parseFloat(item.discount) || 0;
+    const gst = parseFloat(item.gst) || 0;
     
-      
-  const additionalChargeAmount = parseFloat(editedData.additionalChargeAmount) || 0;
-  const grandTotal = taxableAmount + totalGST + additionalChargeAmount;    
-
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    const amountAfterDiscount = subtotal - discountAmount;
+    const gstAmount = amountAfterDiscount * (gst / 100);
     
-    setEditedData(prev => ({
-      ...prev,
-      taxableAmount: taxableAmount.toFixed(2),
-      totalGST: totalGST.toFixed(2),
-      grandTotal: grandTotal.toFixed(2)
-    }));
-  };
+    return sum + gstAmount;
+  }, 0);
+  
+  // ✅ Get discount from editedData
+  const discountAmount = parseFloat(editedData?.discount_charges_amount) || 0;
+  const additionalChargeAmount = parseFloat(editedData?.additionalChargeAmount) || 0;
+  
+  // ✅ Apply discount BEFORE adding GST and additional charges
+  const afterDiscount = taxableAmount - discountAmount;
+  const grandTotal = afterDiscount + totalGST + additionalChargeAmount;
+  
+  setEditedData(prev => ({
+    ...prev,
+    taxableAmount: taxableAmount.toFixed(2),
+    totalGST: totalGST.toFixed(2),
+    grandTotal: grandTotal.toFixed(2)
+  }));
+};
 
   const calculateGSTBreakdown = () => {
     if (!currentData || !currentData.items) return { totalCGST: 0, totalSGST: 0, totalIGST: 0 };
@@ -2136,6 +2141,18 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
             </td>
           </tr>
         )}
+
+           {/* Discount Row - make sure it's shown as deduction */}
+{currentData.discount_charges && parseFloat(currentData.discount_charges_amount) > 0 && (
+  <tr className="text-danger">
+    <td className="pb-2">
+      Discount ({currentData.discount_charges === 'percentage' ? '%' : '₹'}):
+    </td>
+    <td className="text-end pb-2">
+      - ₹{parseFloat(currentData.discount_charges_amount).toFixed(2)}
+    </td>
+  </tr>
+)}
             <tr className="grand-total border-top pt-2">
               <td><strong>Grand Total:</strong></td>
               <td className="text-end"><strong className="text-success">₹{currentData.grandTotal}</strong></td>

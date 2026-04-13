@@ -33,7 +33,7 @@ const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
 const [staffMembers, setStaffMembers] = useState([]);
 const [isEditMode, setIsEditMode] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState("");
-
+const [discountCharges, setDiscountCharges] = useState([]);
   const [invoiceData, setInvoiceData] = useState(() => {
     const savedData = localStorage.getItem('draftInvoice');
     if (savedData) {
@@ -153,7 +153,12 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
           amount: parseFloat(apiData.additional_charges_amount) || 0
         }]);
       }
-      
+if (apiData.discount_charges_amount && parseFloat(apiData.discount_charges_amount) > 0) {
+  setDiscountCharges([{
+    calculationType: apiData.discount_charges || "amount",
+    amount: parseFloat(apiData.discount_charges_amount) || 0
+  }]);
+}
       const supplierAccount = accounts.find(acc => acc.id === apiData.PartyID);
       if (supplierAccount) {
         setInputName(supplierAccount.business_name);
@@ -167,7 +172,25 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
   }
 };
 
-  // Transform API data to form format
+const addDiscountChargeRow = () => {
+  setDiscountCharges([...discountCharges, { amount: '', calculationType: "amount" }]);
+};
+
+const handleDiscountChargeChange = (index, field, value) => {
+  const updatedCharges = [...discountCharges];
+  if (field === 'amount') {
+    updatedCharges[index][field] = value === '' ? '' : parseFloat(value) || 0;
+  } else {
+    updatedCharges[index][field] = value;
+  }
+  setDiscountCharges(updatedCharges);
+};
+
+const removeDiscountChargeRow = (index) => {
+  const updatedCharges = discountCharges.filter((_, i) => i !== index);
+  setDiscountCharges(updatedCharges);
+};
+
 const transformApiDataToFormFormat = (apiData) => {
   console.log('Transforming API data for form:', apiData);
   
@@ -752,63 +775,62 @@ const calculateTotals = () => {
     const quantity = parseFloat(item.quantity) || 0;
     const price = parseFloat(item.price) || 0;
     const discount = parseFloat(item.discount) || 0;
-    
     const subtotal = quantity * price;
     const discountAmount = subtotal * (discount / 100);
     return sum + (subtotal - discountAmount);
   }, 0);
-  
+
   const totalGST = invoiceData.items.reduce((sum, item) => {
     const quantity = parseFloat(item.quantity) || 0;
     const price = parseFloat(item.price) || 0;
     const discount = parseFloat(item.discount) || 0;
     const gst = parseFloat(item.gst) || 0;
-    
     const subtotal = quantity * price;
     const discountAmount = subtotal * (discount / 100);
     const amountAfterDiscount = subtotal - discountAmount;
-    const gstAmount = amountAfterDiscount * (gst / 100);
-    
-    return sum + gstAmount;
+    return sum + amountAfterDiscount * (gst / 100);
   }, 0);
-  
+
   const totalCess = invoiceData.items.reduce((sum, item) => {
     const quantity = parseFloat(item.quantity) || 0;
     const price = parseFloat(item.price) || 0;
     const discount = parseFloat(item.discount) || 0;
     const cess = parseFloat(item.cess) || 0;
-    
     const subtotal = quantity * price;
     const discountAmount = subtotal * (discount / 100);
     const amountAfterDiscount = subtotal - discountAmount;
-    const cessAmount = amountAfterDiscount * (cess / 100);
-    
-    return sum + cessAmount;
+    return sum + amountAfterDiscount * (cess / 100);
   }, 0);
-  
-  // Calculate additional charges total
+
   const additionalChargeAmount = charges.reduce((sum, charge) => {
-    const amount = charge.amount === '' ? 0 : (parseFloat(charge.amount) || 0);
-    return sum + amount;
+    return sum + (charge.amount === '' ? 0 : parseFloat(charge.amount) || 0);
   }, 0);
-  
-  let grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
-  
-  // Round grand total to nearest integer
-  const roundedGrandTotal = Math.round(grandTotal);
-  
+
+  let discountChargesTotal = 0;
+  discountCharges.forEach(charge => {
+    const amount = parseFloat(charge.amount) || 0;
+    if (charge.calculationType === "percentage") {
+      const baseAmount = taxableAmount + totalGST + totalCess + additionalChargeAmount;
+      discountChargesTotal += baseAmount * (amount / 100);
+    } else {
+      discountChargesTotal += amount;
+    }
+  });
+
+  const grandTotal = Math.round(taxableAmount + totalGST + totalCess + additionalChargeAmount - discountChargesTotal);
+
   setInvoiceData(prev => ({
     ...prev,
     taxableAmount: taxableAmount.toFixed(2),
     totalGST: totalGST.toFixed(2),
     totalCess: totalCess.toFixed(2),
     additionalChargeAmount: additionalChargeAmount,
-    grandTotal: roundedGrandTotal
+    grandTotal: grandTotal
   }));
 };
 useEffect(() => {
   calculateTotals();
-}, [invoiceData.items, charges]); 
+}, [invoiceData.items, charges, discountCharges]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -896,7 +918,12 @@ useEffect(() => {
     };
     fetchStaffMembers();
   }, []);
-  
+
+
+
+  const firstDiscount = discountCharges[0] || {};
+
+
  const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
@@ -1006,7 +1033,8 @@ useEffect(() => {
       ...invoiceData,
       invoiceNumber: finalInvoiceNumber,
       selectedSupplierId: selectedSupplierId,
-    //   type: 'sales',
+  discount_charges: firstDiscount.calculationType || "amount",
+discount_charges_amount: discountCharges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0),
       totalCGST: totalCGST.toFixed(2),
       totalSGST: totalSGST.toFixed(2),
       totalIGST: totalIGST.toFixed(2),
@@ -1968,98 +1996,128 @@ useEffect(() => {
       />
     </Form.Group>
   </Col>
+<Col md={5}>
+  <h6 className="text-primary mb-3">Amount Summary</h6>
 
-  <Col md={5}>
-    <h6 className="text-primary mb-3">Amount Summary</h6>
-    
-    {/* Additional Charges Section */}
-    <div className="mb-3">
-      <div className="d-flex justify-content-between align-items-center mb-2">
-        <label className="fw-bold">Additional Charges</label>
-        <button
-          type="button"
-          className="btn btn-sm btn-primary"
-          onClick={addChargeRow}
-        >
-          + Add Charge
-        </button>
-      </div>
-      
-      {charges.map((charge, index) => (
-        <div key={index} className="mb-2" style={{ display: 'flex', gap: '10px' }}>
-          <div style={{ width: '60%' }}>
-            <input
-              type="number"
-              value={charge.amount === 0 ? '' : charge.amount}
-              className="form-control form-control-sm"
-              onChange={(e) => handleChargeChange(index, 'amount', e.target.value)}
-              placeholder="Amount"
-              style={{ fontSize: '13px' }}
-            />
-          </div>
-          <div style={{ width: '35%' }}>
-            <select
-              value={charge.type}
-              className="form-select form-select-sm"
-              onChange={(e) => handleChargeChange(index, 'type', e.target.value)}
-              style={{ fontSize: '13px' }}
-            >
-              <option value="">Select Type</option>
-              <option value="Insurance Charge">Insurance Charge</option>
-              <option value="Loading Charge">Loading Charge</option>
-              <option value="Packing Charge">Packing Charge</option>
-              <option value="Other Taxes">Other Taxes</option>
-              <option value="Other Charges">Other Charges</option>
-              <option value="Reimbursements">Reimbursements</option>
-              <option value="Miscellaneous">Miscellaneous</option>
-            </select>
-          </div>
-          <div style={{ width: '5%' }}>
-         <button
-  type="button"
-  className=""
-  onClick={() => removeChargeRow(index)}
-  style={{ 
-    padding: '0',
-    fontSize: '18px',
-    lineHeight: '2',
-    background: 'none',
-    border: 'none',
-    color: 'black',
-    cursor: 'pointer'
-  }}
->
-  ✕
-</button>
-          </div>
-        </div>
-      ))}
-      {charges.length === 0 && (
-        <div className="text-muted small mb-2">No additional charges added</div>
-      )}
+  {/* Additional Charges */}
+  <div className="mb-3">
+    <div className="d-flex justify-content-between align-items-center mb-2">
+      <label className="fw-bold">Additional Charges</label>
+      <button type="button" className="btn btn-sm btn-primary" onClick={addChargeRow}>
+        + Add Charge
+      </button>
     </div>
-    
-    {/* Totals */}
-    <Row>
-      <Col md={6} className="d-flex flex-column align-items-start">
-        <div className="mb-2 fw-bold">Taxable Amount</div>
-        <div className="mb-2 fw-bold">Total GST</div>
-        <div className="mb-2 fw-bold">Total Cess</div>
-        <div className="mb-2 fw-bold">Additional Charges</div>
-        <div className="mb-2 fw-bold text-success">Grand Total</div>
-      </Col>
-
-      <Col md={6} className="d-flex flex-column align-items-end">
-        <div className="mb-2">₹{invoiceData.taxableAmount}</div>
-        <div className="mb-2">₹{invoiceData.totalGST}</div>
-        <div className="mb-2">₹{invoiceData.totalCess}</div>
-        <div className="mb-2">
-          ₹{charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0).toFixed(2)}
+    {charges.map((charge, index) => (
+      <div key={index} className="mb-2" style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ width: '60%' }}>
+          <input
+            type="number"
+            value={charge.amount === 0 ? '' : charge.amount}
+            className="form-control form-control-sm"
+            onChange={(e) => handleChargeChange(index, 'amount', e.target.value)}
+            placeholder="Amount"
+            style={{ fontSize: '13px' }}
+          />
         </div>
-        <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
-      </Col>
-    </Row>
-  </Col>
+        <div style={{ width: '35%' }}>
+          <select
+            value={charge.type}
+            className="form-select form-select-sm"
+            onChange={(e) => handleChargeChange(index, 'type', e.target.value)}
+            style={{ fontSize: '13px' }}
+          >
+            <option value="">Select Type</option>
+            <option value="Insurance Charge">Insurance Charge</option>
+            <option value="Loading Charge">Loading Charge</option>
+            <option value="Packing Charge">Packing Charge</option>
+            <option value="Other Taxes">Other Taxes</option>
+            <option value="Other Charges">Other Charges</option>
+            <option value="Reimbursements">Reimbursements</option>
+            <option value="Miscellaneous">Miscellaneous</option>
+          </select>
+        </div>
+        <div style={{ width: '5%' }}>
+          <button
+            type="button"
+            onClick={() => removeChargeRow(index)}
+            style={{ padding: '0', fontSize: '18px', lineHeight: '2', background: 'none', border: 'none', color: 'black', cursor: 'pointer' }}
+          >✕</button>
+        </div>
+      </div>
+    ))}
+    {charges.length === 0 && (
+      <div className="text-muted small mb-2">No additional charges added</div>
+    )}
+  </div>
+
+  {/* Discount Charges */}
+  <div className="mb-3">
+    <div className="d-flex justify-content-between align-items-center mb-2">
+      <label className="fw-bold text-danger">Discount Charges (-)</label>
+      <button type="button" className="btn btn-sm btn-danger" onClick={addDiscountChargeRow}>
+        + Add Discount
+      </button>
+    </div>
+    {discountCharges.map((charge, index) => (
+      <div key={index} className="mb-2" style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ width: '60%' }}>
+          <input
+            type="number"
+            value={charge.amount === 0 ? '' : charge.amount}
+            className="form-control form-control-sm"
+            onChange={(e) => handleDiscountChargeChange(index, 'amount', e.target.value)}
+            placeholder="Amount or %"
+          />
+        </div>
+        <div style={{ width: '35%' }}>
+          <select
+            value={charge.calculationType}
+            className="form-select form-select-sm"
+            onChange={(e) => handleDiscountChargeChange(index, 'calculationType', e.target.value)}
+          >
+            <option value="amount">Amount (₹)</option>
+            <option value="percentage">Percentage (%)</option>
+          </select>
+        </div>
+        <div style={{ width: '5%' }}>
+          <button
+            onClick={() => removeDiscountChargeRow(index)}
+            style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer' }}
+          >✕</button>
+        </div>
+      </div>
+    ))}
+  </div>
+
+  {/* Totals */}
+  <Row>
+    <Col md={6} className="d-flex flex-column align-items-start">
+      <div className="mb-2 fw-bold">Taxable Amount</div>
+      <div className="mb-2 fw-bold">Total GST</div>
+      <div className="mb-2 fw-bold">Total Cess</div>
+      <div className="mb-2 fw-bold">Additional Charges</div>
+      <div className="mb-2 fw-bold text-danger">Discount Charges</div>
+      <div className="mb-2 fw-bold text-success">Grand Total</div>
+    </Col>
+    <Col md={6} className="d-flex flex-column align-items-end">
+      <div className="mb-2">₹{invoiceData.taxableAmount}</div>
+      <div className="mb-2">₹{invoiceData.totalGST}</div>
+      <div className="mb-2">₹{invoiceData.totalCess}</div>
+      <div className="mb-2">₹{charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0).toFixed(2)}</div>
+      <div className="mb-2 text-danger">
+        - ₹{discountCharges.reduce((sum, c) => {
+          if (c.calculationType === "percentage") {
+            const base = parseFloat(invoiceData.taxableAmount) + parseFloat(invoiceData.totalGST) +
+              parseFloat(invoiceData.totalCess) + parseFloat(invoiceData.additionalChargeAmount || 0);
+            return sum + (base * (parseFloat(c.amount) / 100));
+          }
+          return sum + (parseFloat(c.amount) || 0);
+        }, 0).toFixed(2)}
+      </div>
+      <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
+    </Col>
+  </Row>
+</Col>
 </Row>
 
 {/* Footer Section - Transportation Details LEFT, Other Details RIGHT */}

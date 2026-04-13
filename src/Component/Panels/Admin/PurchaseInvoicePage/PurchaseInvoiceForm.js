@@ -27,6 +27,7 @@ const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const [hasFetchedInvoiceNumber, setHasFetchedInvoiceNumber] = useState(false);
   const navigate = useNavigate();
   const [charges, setCharges] = useState([]);
+  const [discountCharges, setDiscountCharges] = useState([]);
   const [productStock, setProductStock] = useState({});
   const [selectedStaffId, setSelectedStaffId] = useState("");
 const [staffMembers, setStaffMembers] = useState([]);
@@ -535,8 +536,19 @@ const calculateTotals = () => {
     return sum + amount;
   }, 0);
   
-  let grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
-  
+// Calculate discount charges total
+let discountChargesTotal = 0;
+discountCharges.forEach(charge => {
+  const amount = parseFloat(charge.amount) || 0;
+  if (charge.calculationType === "percentage") {
+    const baseAmount = taxableAmount + totalGST + totalCess + additionalChargeAmount;
+    discountChargesTotal += baseAmount * (amount / 100);
+  } else {
+    discountChargesTotal += amount;
+  }
+});
+
+let grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount - discountChargesTotal;  
   // Round grand total to nearest integer
   const roundedGrandTotal = Math.round(grandTotal);
 
@@ -552,7 +564,7 @@ const calculateTotals = () => {
 
 useEffect(() => {
   calculateTotals();
-}, [invoiceData.items, charges]); // Add charges to dependency
+}, [invoiceData.items, charges, discountCharges]); // Add discountCharges
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -758,7 +770,7 @@ const handleSubmit = async (e) => {
     if (missingBatchIds.length > 0) {
       console.warn('⚠️ Items missing batch_id:', missingBatchIds);
     }
-
+const firstDiscount = discountCharges[0] || {};
     const payload = {
       ...invoiceData,
       invoiceNumber: finalInvoiceNumber,
@@ -775,8 +787,11 @@ const handleSubmit = async (e) => {
      AccountID: selectedSupplierId,
       PartyName: invoiceData.supplierInfo.name,
       AccountName: invoiceData.supplierInfo.account_name,
+      discount_charges: firstDiscount.calculationType || "amount",
+  discount_charges_amount: discountCharges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0),
+
        transportDetails: invoiceData.transportDetails ,
-  additional_charges_type: charges.map(c => c.type).join(','), // Comma-separated types
+  additional_charges_type: charges.map(c => c.type).join(','), 
   additional_charges_amount: charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0),
        businessName: invoiceData.supplierInfo.businessName ,
       shippingAddress: invoiceData.shippingAddress?.addressLine1 || '',
@@ -876,7 +891,24 @@ const handleSubmit = async (e) => {
   };
 
 
-  
+ const addDiscountChargeRow = () => {
+  setDiscountCharges([...discountCharges, { amount: '', calculationType: "amount" }]);
+};
+
+const handleDiscountChargeChange = (index, field, value) => {
+  const updatedCharges = [...discountCharges];
+  if (field === 'amount') {
+    updatedCharges[index][field] = value === '' ? '' : parseFloat(value) || 0;
+  } else {
+    updatedCharges[index][field] = value;
+  }
+  setDiscountCharges(updatedCharges);
+};
+
+const removeDiscountChargeRow = (index) => {
+  const updatedCharges = discountCharges.filter((_, i) => i !== index);
+  setDiscountCharges(updatedCharges);
+};
 const editItem = async (index) => {
   const itemToEdit = invoiceData.items[index];
   
@@ -1903,27 +1935,73 @@ variant="warning"
       )}
     </div>
     
-    {/* Totals */}
-    <Row>
-      <Col md={6} className="d-flex flex-column align-items-start">
-        <div className="mb-2 fw-bold">Taxable Amount</div>
-        <div className="mb-2 fw-bold">Total GST</div>
-        <div className="mb-2 fw-bold">Total Cess</div>
-        <div className="mb-2 fw-bold">Additional Charges</div>
-        <div className="mb-2 fw-bold text-success">Grand Total</div>
-      </Col>
-
-      <Col md={6} className="d-flex flex-column align-items-end">
-        <div className="mb-2">₹{invoiceData.taxableAmount}</div>
-        <div className="mb-2">₹{invoiceData.totalGST}</div>
-        <div className="mb-2">₹{invoiceData.totalCess}</div>
-        <div className="mb-2">
-          ₹{charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0).toFixed(2)}
-        </div>
-        <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
-      </Col>
-    </Row>
+    {/* Discount Charges Section */}
+<div className="mb-3">
+  <div className="d-flex justify-content-between align-items-center mb-2">
+    <label className="fw-bold text-danger">Discount Charges (-)</label>
+    <button type="button" className="btn btn-sm btn-danger" onClick={addDiscountChargeRow}>
+      + Add Discount
+    </button>
+  </div>
+  
+  {discountCharges.map((charge, index) => (
+    <div key={index} className="mb-2" style={{ display: 'flex', gap: '10px' }}>
+      <div style={{ width: '60%' }}>
+        <input
+          type="number"
+          value={charge.amount === 0 ? '' : charge.amount}
+          className="form-control form-control-sm"
+          onChange={(e) => handleDiscountChargeChange(index, 'amount', e.target.value)}
+          placeholder="Amount or %"
+        />
+      </div>
+      <div style={{ width: '35%' }}>
+        <select
+          value={charge.calculationType}
+          className="form-select form-select-sm"
+          onChange={(e) => handleDiscountChargeChange(index, 'calculationType', e.target.value)}
+        >
+          <option value="amount">Amount (₹)</option>
+          <option value="percentage">Percentage (%)</option>
+        </select>
+      </div>
+      <div style={{ width: '5%' }}>
+        <button onClick={() => removeDiscountChargeRow(index)} style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer' }}>✕</button>
+      </div>
+    </div>
+  ))}
+</div>
+  <Row>
+  <Col md={6} className="d-flex flex-column align-items-start">
+    <div className="mb-2 fw-bold">Taxable Amount</div>
+    <div className="mb-2 fw-bold">Total GST</div>
+    <div className="mb-2 fw-bold">Total Cess</div>
+    <div className="mb-2 fw-bold">Additional Charges</div>
+    <div className="mb-2 fw-bold text-danger">Discount Charges</div>
+    <div className="mb-2 fw-bold text-success">Grand Total</div>
   </Col>
+
+  <Col md={6} className="d-flex flex-column align-items-end">
+    <div className="mb-2">₹{invoiceData.taxableAmount}</div>
+    <div className="mb-2">₹{invoiceData.totalGST}</div>
+    <div className="mb-2">₹{invoiceData.totalCess}</div>
+    <div className="mb-2">₹{invoiceData.additionalChargeAmount}</div>
+    <div className="mb-2 text-danger">
+      - ₹{discountCharges.reduce((sum, c) => {
+        if (c.calculationType === "percentage") {
+          const base = parseFloat(invoiceData.taxableAmount) + parseFloat(invoiceData.totalGST) + parseFloat(invoiceData.totalCess) + parseFloat(invoiceData.additionalChargeAmount);
+          return sum + (base * (parseFloat(c.amount) / 100));
+        }
+        return sum + (parseFloat(c.amount) || 0);
+      }, 0).toFixed(2)}
+    </div>
+    <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
+  </Col>
+</Row>
+
+
+  </Col>
+  
 </Row>
 {/* Footer Section */}
 <Row className="mb-3 bg-white p-3 rounded">

@@ -510,7 +510,9 @@ const transformApiDataToInvoiceFormat = (apiData) => {
     totalGST: totalGST.toFixed(2),
     grandTotal: grandTotal.toFixed(2),
     totalCess: "0.00",
-    
+        discount_charges: apiData.discount_charges || null,
+    discount_charges_amount: parseFloat(apiData.discount_charges_amount) || 0,
+
     note: apiData.Notes || "Thank you for your business!",
           transportDetails: transportDetails,
 
@@ -867,6 +869,8 @@ const handleQrDataGenerated = (qrUrl) => {
         taxableAmount: editedData.taxableAmount,
          mobile_number: editedData.supplierInfo.mobile_number || '',
         totalGST: editedData.totalGST,
+            discount_charges: editedData.discount_charges,
+      discount_charges_amount: parseFloat(editedData.discount_charges_amount) || 0,
           additional_charges_type: editedData.additionalCharge || '',
       additional_charges_amount: parseFloat(editedData.additionalChargeAmount) || 0,
         grandTotal: editedData.grandTotal,
@@ -2216,7 +2220,7 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
           <td className="text-end pb-2">₹{currentData.totalGST}</td>
         </tr>
         
-        {/* ✅ ADD ADDITIONAL CHARGES ROW */}
+        {/* Additional Charges Row */}
         {currentData.additionalCharge && parseFloat(currentData.additionalChargeAmount) > 0 && (
           <tr>
             <td className="pb-2">{currentData.additionalCharge}:</td>
@@ -2225,7 +2229,16 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
             </td>
           </tr>
         )}
-        
+{currentData.discount_charges && parseFloat(currentData.discount_charges_amount) > 0 && (
+  <tr className="text-danger">
+    <td className="pb-2">
+      Discount ({currentData.discount_charges === 'percentage' ? '%' : '₹'}):
+    </td>
+    <td className="text-end pb-2">
+      - ₹{parseFloat(currentData.discount_charges_amount).toFixed(2)}
+    </td>
+  </tr>
+)}
         <tr className="grand-total border-top pt-2">
           <td><strong>Grand Total:</strong></td>
           <td className="text-end">
