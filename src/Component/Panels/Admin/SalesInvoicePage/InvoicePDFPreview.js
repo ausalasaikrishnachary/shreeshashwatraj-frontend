@@ -448,6 +448,8 @@ useEffect(() => {
     const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
     const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
     const grandTotal = parseFloat(apiData.TotalAmount) || 0;
+      const roundOff = parseFloat(apiData.round_off) || 0;
+
  const transportDetails = {
     transport: apiData.transport_name || apiData.transport || '',
     grNumber: apiData.gr_rr_number || apiData.grNumber || '',
@@ -525,7 +527,7 @@ useEffect(() => {
       totalGST: totalGST.toFixed(2),
       grandTotal: grandTotal.toFixed(2),
       totalCess: "0.00",
-
+ roundOff: roundOff.toFixed(2),
       note: apiData.Notes || "Thank you for your business!",
       transportDetails: transportDetails,
       additionalCharge: apiData.additional_charges_type || "",
@@ -2199,7 +2201,7 @@ const handleItemChange = (index, field, value) => {
 
                   </Col>
                   <Col md={5}>
-                  <div className="amount-breakdown bg-light p-3 rounded">
+   <div className="amount-breakdown bg-light p-3 rounded">
   <h6 className="text-primary mb-3">Amount Summary</h6>
   <table className="amount-table w-100">
     <tbody>
@@ -2231,11 +2233,23 @@ const handleItemChange = (index, field, value) => {
         <td className="text-end pb-2">₹{currentData.totalGST}</td>
       </tr>
 
-      {/* ✅ ADD THIS ROW FOR ADDITIONAL CHARGES */}
+      {/* ADDITIONAL CHARGES */}
       {currentData.additionalCharge && currentData.additionalChargeAmount > 0 && (
         <tr>
           <td className="pb-2">{currentData.additionalCharge}:</td>
           <td className="text-end pb-2">₹{parseFloat(currentData.additionalChargeAmount).toFixed(2)}</td>
+        </tr>
+      )}
+
+      {/* ✅ ADD ROUND OFF ROW */}
+      {currentData.roundOff && parseFloat(currentData.roundOff) !== 0 && (
+        <tr>
+          <td className="pb-2">Round Off:</td>
+          <td className="text-end pb-2">
+            <span className={parseFloat(currentData.roundOff) < 0 ? "text-danger" : "text-success"}>
+              {parseFloat(currentData.roundOff) < 0 ? currentData.roundOff : `+${currentData.roundOff}`}
+            </span>
+          </td>
         </tr>
       )}
 

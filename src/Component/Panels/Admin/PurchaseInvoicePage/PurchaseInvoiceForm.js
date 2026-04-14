@@ -79,8 +79,10 @@ const [isEditMode, setIsEditMode] = useState(false);
       taxableAmount: 0,
       totalGST: 0,
       totalCess: 0,
+       roundOff: "0.00", 
       grandTotal: 0,
       transportDetails: {
+        
     transport: "",
     grNumber: "",
     vehicleNo: "",
@@ -548,9 +550,9 @@ discountCharges.forEach(charge => {
   }
 });
 
-let grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount - discountChargesTotal;  
-  // Round grand total to nearest integer
-  const roundedGrandTotal = Math.round(grandTotal);
+const actualTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount - discountChargesTotal;  
+const roundedGrandTotal = Math.round(actualTotal);
+const roundOff = roundedGrandTotal - actualTotal;
 
   setInvoiceData(prev => ({
     ...prev,
@@ -558,7 +560,8 @@ let grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount -
     totalGST: totalGST.toFixed(2),
     totalCess: totalCess.toFixed(2),
     additionalChargeAmount: additionalChargeAmount,
-    grandTotal: roundedGrandTotal
+    grandTotal: roundedGrandTotal,
+    roundOff: roundOff.toFixed(2)  // ← ADD THIS LINE
   }));
 };
 
@@ -1971,17 +1974,18 @@ variant="warning"
     </div>
   ))}
 </div>
-  <Row>
-  <Col md={6} className="d-flex flex-column align-items-start">
-    <div className="mb-2 fw-bold">Taxable Amount</div>
-    <div className="mb-2 fw-bold">Total GST</div>
-    <div className="mb-2 fw-bold">Total Cess</div>
-    <div className="mb-2 fw-bold">Additional Charges</div>
-    <div className="mb-2 fw-bold text-danger">Discount Charges</div>
-    <div className="mb-2 fw-bold text-success">Grand Total</div>
+<Row>
+  <Col md={7} className="d-flex flex-column align-items-start">
+    <div className="mb-2 fw-bold">Taxable Amount:</div>
+    <div className="mb-2 fw-bold">Total GST:</div>
+    <div className="mb-2 fw-bold">Total Cess:</div>
+    <div className="mb-2 fw-bold">Additional Charges:</div>
+    <div className="mb-2 fw-bold text-danger">Discount Charges:</div>
+    <div className="mb-2 fw-bold">Round Off:</div>
+    <div className="mb-2 fw-bold text-success fs-5">Grand Total:</div>
   </Col>
 
-  <Col md={6} className="d-flex flex-column align-items-end">
+  <Col md={5} className="d-flex flex-column align-items-end">
     <div className="mb-2">₹{invoiceData.taxableAmount}</div>
     <div className="mb-2">₹{invoiceData.totalGST}</div>
     <div className="mb-2">₹{invoiceData.totalCess}</div>
@@ -1994,6 +1998,11 @@ variant="warning"
         }
         return sum + (parseFloat(c.amount) || 0);
       }, 0).toFixed(2)}
+    </div>
+    <div className="mb-2 text-danger">
+      ₹{invoiceData.roundOff && parseFloat(invoiceData.roundOff) < 0 ? 
+        invoiceData.roundOff : 
+        `+${invoiceData.roundOff || '0.00'}`}
     </div>
     <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
   </Col>

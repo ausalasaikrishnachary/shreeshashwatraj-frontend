@@ -65,6 +65,7 @@ const [productStock, setProductStock] = useState({});
       address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
       email: "spmathur56@gmail.com",
       phone: "9801049700",
+
       gstin: "10AAOCS1541B1ZZ",
       state: "Bihar",
       stateCode: "10"
@@ -94,6 +95,7 @@ const [productStock, setProductStock] = useState({});
     grandTotal: 0,
      transportDetails: {
   transport: "",
+   roundOff: "0.00",  
   grNumber: "",
   vehicleNo: "",
   station: ""
@@ -858,22 +860,21 @@ const calculateTotals = () => {
     return sum + (subtotal - discountAmount);
   }, 0);
   
-  // ✅ Calculate from charges state, not from invoiceData
   const additionalChargeAmount = charges.reduce((sum, charge) => {
     const amount = charge.amount === '' ? 0 : (parseFloat(charge.amount) || 0);
     return sum + amount;
   }, 0);
   
-  let grandTotal = taxableAmount + additionalChargeAmount;
-  
-  // Round grand total to nearest integer
-  const roundedGrandTotal = Math.round(grandTotal);
+  const actualTotal = taxableAmount + additionalChargeAmount;
+  const roundedGrandTotal = Math.round(actualTotal);
+  const roundOff = roundedGrandTotal - actualTotal;
   
   setInvoiceData(prev => ({
     ...prev,
     taxableAmount: taxableAmount.toFixed(2),
     additionalChargeAmount: additionalChargeAmount,
-    grandTotal: roundedGrandTotal
+    grandTotal: roundedGrandTotal,
+    roundOff: roundOff.toFixed(2)  // ← ADD THIS LINE
   }));
 };
 
@@ -907,7 +908,7 @@ const clearDraft = () => {
   const currentFY = getFinancialYearShort();
   
   const resetData = {
-    invoiceNumber: `SSA/000001/${currentFY}`, // Format: SSA/000001/25-26
+    // invoiceNumber: `SSA/000001/${currentFY}`, // Format: SSA/000001/25-26
     invoiceDate: new Date().toISOString().split('T')[0],
     validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     companyInfo: {
@@ -975,7 +976,6 @@ const clearDraft = () => {
 
 useEffect(() => {
   return () => {
-    // Only clear draft if NOT in edit mode
     if (!isEditMode) {
       localStorage.removeItem('draftInvoice');
     }
@@ -1054,8 +1054,8 @@ if (!isEditMode) {
         TransactionType: "stock transfer",
         invoiceNumber: finalInvoiceNumber,
         selectedSupplierId: selectedSupplierId,
-     staffid: selectedStaffId, // Send staffid
-  assigned_staff: staffName, // Send assigned_staff name
+     staffid: selectedStaffId, 
+  assigned_staff: staffName, 
         type: 'stock transfer',
         batchDetails: batchDetails,
         product_id: firstItemProductId,
@@ -1081,13 +1081,6 @@ if (!isEditMode) {
       delete payload.supplierState;
       delete payload.items;
 
-      console.log('🚀 Final Payload with Staff Info:', {
-        TransactionType: payload.TransactionType,
-        PartyID: payload.PartyID,
-        staffid: payload.staffid,
-        assigned_staff: payload.assigned_staff,
-        staff_incentive: payload.staff_incentive
-      });
 
       let response;
       if (isEditMode && editingVoucherId) {
@@ -2086,22 +2079,27 @@ if (!isEditMode) {
       )}
     </div>
     
-    {/* Totals */}
     <Row>
-      <Col md={6} className="d-flex flex-column align-items-start">
-        <div className="mb-2 fw-bold">Taxable Amount</div>
-        <div className="mb-2 fw-bold">Additional Charges</div>
-        <div className="mb-2 fw-bold text-success">Grand Total</div>
-      </Col>
+  <Col md={7} className="d-flex flex-column align-items-start">
+    <div className="mb-2 fw-bold">Taxable Amount:</div>
+    <div className="mb-2 fw-bold">Additional Charges:</div>
+    <div className="mb-2 fw-bold">Round Off:</div>
+    <div className="mb-2 fw-bold text-success fs-5">Grand Total:</div>
+  </Col>
 
-      <Col md={6} className="d-flex flex-column align-items-end">
-        <div className="mb-2">₹{invoiceData.taxableAmount}</div>
-        <div className="mb-2">
-          ₹{charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0).toFixed(2)}
-        </div>
-        <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
-      </Col>
-    </Row>
+  <Col md={5} className="d-flex flex-column align-items-end">
+    <div className="mb-2">₹{invoiceData.taxableAmount}</div>
+    <div className="mb-2">
+      ₹{charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0).toFixed(2)}
+    </div>
+    <div className="mb-2 text-danger">
+      ₹{invoiceData.roundOff && parseFloat(invoiceData.roundOff) < 0 ? 
+        invoiceData.roundOff : 
+        `+${invoiceData.roundOff || '0.00'}`}
+    </div>
+    <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
+  </Col>
+</Row>
   </Col>
 </Row>
 

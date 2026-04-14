@@ -1,132 +1,160 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
+import {
+  Page,
+  Text,
+  View,
+  Document,
+  StyleSheet,
+  Image
+} from '@react-pdf/renderer';
+import { Font } from '@react-pdf/renderer';
 
-// Register fonts (optional - can use default fonts)
+// Register font
 Font.register({
-  family: 'Roboto',
-  src: 'https://fonts.gstatic.com/s/roboto/v27/KFOmCnqEu92Fr1Mu4mxP.ttf'
+  family: 'NotoSans',
+  src: 'https://fonts.gstatic.com/s/notosans/v36/o-0IIpQlx3QUlC5A4PNb4g.ttf'
 });
 
-// Create styles
 const styles = StyleSheet.create({
   page: {
     padding: 30,
-    backgroundColor: '#ffffff',
-    fontFamily: 'Helvetica'
+    fontFamily: 'NotoSans',
+    fontSize: 10,
+    backgroundColor: '#ffffff'
   },
+
   header: {
     marginBottom: 20,
-    borderBottom: 2,
-    borderBottomColor: '#4A90E2',
+    borderBottomWidth: 2,
+    borderBottomColor: '#000000',
     paddingBottom: 10
   },
+
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2C3E50',
     textAlign: 'center',
+    color: '#1f2937',
     marginBottom: 5
   },
+
   subtitle: {
     fontSize: 12,
-    color: '#7F8C8D',
     textAlign: 'center',
-    marginBottom: 15
-  },
-  reportInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    padding: 10,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 5
-  },
-  reportInfoText: {
-    fontSize: 10,
-    color: '#555'
-  },
-  section: {
-    marginBottom: 20
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#2C3E50',
-    borderLeft: 3,
-    borderLeftColor: '#4A90E2',
-    paddingLeft: 8
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 20,
-    gap: 10
-  },
-  statCard: {
-    width: '23%',
-    padding: 10,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 5,
-    marginRight: '2%'
-  },
-  statLabel: {
-    fontSize: 10,
-    color: '#7F8C8D',
+    color: '#6b7280',
     marginBottom: 5
   },
-  statValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2C3E50'
+
+  dateRange: {
+    fontSize: 10,
+    textAlign: 'center',
+    color: '#000000',
+    marginTop: 5
   },
-  statPositive: {
-    color: '#27AE60'
-  },
-  statNegative: {
-    color: '#E74C3C'
-  },
+
+  /* ✅ TABLE */
   table: {
     display: 'table',
     width: 'auto',
-    borderStyle: 'solid',
+    marginTop: 10,
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    marginTop: 10
+    borderColor: '#000000'
   },
+
+  /* ✅ AUTO HEIGHT ROW */
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    minHeight: 25
+    borderBottomColor: '#000000',
+    alignItems: 'stretch'   // 🔥 important for dynamic height
   },
+
   tableHeader: {
-    backgroundColor: '#4A90E2',
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0'
+    backgroundColor: '#000000',
+    borderBottomWidth: 2,
+    borderBottomColor: '#000000'
   },
-  tableHeaderCell: {
-    padding: 8,
-    fontSize: 9,
+
+  tableHeaderText: {
+    color: '#ffffff',
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center'
+    fontSize: 9
   },
+
+  /* ✅ CELL WITH WRAP */
   tableCell: {
     padding: 6,
     fontSize: 8,
-    color: '#555',
-    textAlign: 'center'
+    textAlign: 'left',
+    borderRightWidth: 1,
+    borderRightColor: '#000000',
+    flexWrap: 'wrap',        // 🔥 wrap text
+    justifyContent: 'center' // vertical alignment
   },
-  col1: { width: '5%' },
-  col2: { width: '15%' },
-  col3: { width: '10%' },
-  col4: { width: '15%' },
-  col5: { width: '15%' },
-  col6: { width: '15%' },
-  col7: { width: '15%' },
-  col8: { width: '10%' },
+
+  /* Column widths */
+  colSNo: {
+    width: '5%',
+    borderLeftWidth: 1,
+    borderLeftColor: '#000000'
+  },
+
+  colProduct: { width: '18%' },
+  colQuantity: { width: '7%' },
+  colTaxable: { width: '12%' },
+  colTotal: { width: '12%' },
+  colRetailer: { width: '14%' },
+
+  /* ✅ Bigger for long names */
+  colStaff: { width: '23%' },
+
+  /* ✅ Last column fix */
+  colDate: {
+    width: '9%',
+    borderRightWidth: 0
+  },
+
+  textRight: { textAlign: 'right' },
+  textCenter: { textAlign: 'center' },
+
+  /* ✅ TEXT WRAP FIX */
+  textWrap: {
+    wordBreak: 'break-all'
+  },
+
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginTop: 15,
+    marginBottom: 10,
+    paddingBottom: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb'
+  },
+
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 15,
+    paddingTop: 10,
+    borderTopWidth: 2,
+    borderTopColor: '#000000'
+  },
+
+  summaryText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginRight: 10
+  },
+
+  summaryValue: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#000000'
+  },
+
   footer: {
     position: 'absolute',
     bottom: 30,
@@ -134,303 +162,197 @@ const styles = StyleSheet.create({
     right: 30,
     textAlign: 'center',
     fontSize: 8,
-    color: '#95A5A6',
+    color: '#9ca3af',
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+    borderTopColor: '#e5e7eb',
     paddingTop: 10
-  },
-  chartPlaceholder: {
-    height: 200,
-    backgroundColor: '#F8F9FA',
-    marginBottom: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 5
-  },
-  chartText: {
-    fontSize: 10,
-    color: '#95A5A6'
-  },
-  filterInfo: {
-    fontSize: 9,
-    color: '#7F8C8D',
-    marginBottom: 5
-  },
-  staffPerformance: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 20
-  },
-  staffBar: {
-    marginBottom: 10,
-    width: '100%'
-  },
-  staffLabel: {
-    fontSize: 10,
-    marginBottom: 3,
-    color: '#555'
-  },
-  barBackground: {
-    backgroundColor: '#ECF0F1',
-    height: 20,
-    borderRadius: 10,
-    overflow: 'hidden'
-  },
-  barFill: {
-    backgroundColor: '#4A90E2',
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    paddingLeft: 8
-  },
-  barValue: {
-    fontSize: 9,
-    color: '#FFFFFF',
-    fontWeight: 'bold'
-  },
-  summaryText: {
-    fontSize: 10,
-    marginBottom: 5,
-    color: '#555',
-    lineHeight: 1.5
   }
 });
 
-// Helper function to format currency
+// Format currency
 const formatCurrency = (amount) => {
-  if (!amount && amount !== 0) return '₹0';
-  return `₹${parseFloat(amount).toLocaleString('en-IN')}`;
+  if (!amount || amount === '₹0') return '₹0';
+  const numAmount = typeof amount === 'string' ? parseFloat(amount.replace(/[^0-9.-]/g, '')) : amount;
+  if (isNaN(numAmount)) return '₹0';
+  return `₹${numAmount.toLocaleString('en-IN')}`;
 };
 
-// Helper function to format date
+// Format date
 const formatDate = (dateString) => {
   if (!dateString) return '-';
-  try {
-    const dateParts = dateString.split('/');
-    if (dateParts.length === 3) {
-      return `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}`;
-    }
-  } catch (err) {
-    return dateString;
-  }
   return dateString;
 };
 
-// Main PDF Component
-const SalesReportPDF = ({ 
-  salesData = [],
-  summary = { totalSales: 0, monthlyGrowth: 0, kachaSales: 0, pakkaSales: 0 },
-  staffData = [],
-  fromDate = null,
-  toDate = null,
-  transactionType = 'all',
-  generatedDate = new Date()
+
+
+// Main PDF Document Component
+export const SalesReportPDF = ({ 
+  data, 
+  summary, 
+  fromDate, 
+  toDate, 
+  transactionType,
+  generatedDate 
 }) => {
-  
-  // Get transaction type display name
-  const getTransactionTypeDisplay = () => {
-    switch(transactionType) {
-      case 'pakka': return 'Pakka/Sales';
-      case 'kacha': return 'Kacha Sales';
-      default: return 'All Transactions';
-    }
+  // Filter data based on transaction type if needed
+  const filteredData = transactionType && transactionType !== 'all'
+    ? data.filter(item => {
+        const itemType = item.TransactionType || (item.sales_type === 'pakka' ? 'Pakka' : 'Kacha');
+        return itemType.toLowerCase() === transactionType.toLowerCase();
+      })
+    : data;
+
+  // Calculate totals from filtered data
+  const calculateTotals = () => {
+    let totalTaxable = 0;
+    let totalAmount = 0;
+    
+    filteredData.forEach(item => {
+      const taxable = parseFloat(item.Subtotal?.replace(/[^0-9.-]/g, '')) || 
+                      parseFloat(item.taxable_amount) || 0;
+      const amount = parseFloat(item.total?.replace(/[^0-9.-]/g, '')) || 
+                     parseFloat(item.total_amount) || 0;
+      totalTaxable += taxable;
+      totalAmount += amount;
+    });
+    
+    return { totalTaxable, totalAmount };
   };
-
-  // Calculate totals from sales data
-  const totalRecords = salesData.length;
-  const totalTaxableAmount = salesData.reduce((sum, item) => sum + (parseFloat(item.Subtotal) || 0), 0);
-  const totalDiscount = salesData.reduce((sum, item) => sum + (parseFloat(item.discount) || 0), 0);
-  const totalGST = salesData.reduce((sum, item) => sum + (parseFloat(item.gst) || 0), 0);
-
-  // Get top performing staff
-  const topStaff = staffData.slice(0, 3);
+  
+  const totals = calculateTotals();
 
   return (
     <Document>
-      <Page size="A4" style={styles.page} orientation="landscape">
+      <Page size="A4" orientation="landscape" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Sales Report Dashboard</Text>
-          <Text style={styles.subtitle}>Comprehensive Sales Analysis and Reporting</Text>
-        </View>
-
-        {/* Report Information */}
-        <View style={styles.reportInfo}>
-          <Text style={styles.reportInfoText}>
-            Generated On: {generatedDate.toLocaleDateString('en-IN')} at {generatedDate.toLocaleTimeString()}
+          <Text style={styles.title}>Sales Report</Text>
+          <Text style={styles.subtitle}>Comprehensive Sales Analysis Report</Text>
+          <Text style={styles.dateRange}>
+            Period: {fromDate || 'All Time'} {toDate && `to ${toDate}`}
           </Text>
-          <Text style={styles.reportInfoText}>
-            Report ID: SR-{generatedDate.getTime()}
-          </Text>
-        </View>
-
-        {/* Filter Information */}
-        <View style={{ marginBottom: 15 }}>
-          {fromDate && toDate && (
-            <Text style={styles.filterInfo}>
-              Date Range: {fromDate} to {toDate}
+          {transactionType && transactionType !== 'all' && (
+            <Text style={styles.dateRange}>
+              Transaction Type: {transactionType === 'pakka' ? 'Pakka/Sales' : 'Kacha Sales'}
             </Text>
           )}
-          <Text style={styles.filterInfo}>
-            Transaction Type: {getTransactionTypeDisplay()}
-          </Text>
-          <Text style={styles.filterInfo}>
-            Total Records: {totalRecords}
+          <Text style={styles.dateRange}>
+            Generated on: {generatedDate}
           </Text>
         </View>
 
-        {/* Summary Statistics */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Summary Statistics</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Total Sales</Text>
-              <Text style={styles.statValue}>{formatCurrency(summary.totalSales)}</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Monthly Growth</Text>
-              <Text style={[
-                styles.statValue,
-                summary.monthlyGrowth >= 0 ? styles.statPositive : styles.statNegative
-              ]}>
-                {summary.monthlyGrowth >= 0 ? '+' : ''}{summary.monthlyGrowth}%
-              </Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Kacha Sales</Text>
-              <Text style={styles.statValue}>{formatCurrency(summary.kachaSales)}</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Pakka Sales</Text>
-              <Text style={styles.statValue}>{formatCurrency(summary.pakkaSales)}</Text>
-            </View>
+   
+
+        {/* Sales Transactions Table */}
+        <Text style={styles.sectionTitle}>Sales Transactions</Text>
+        
+        {/* Table Header */}
+        <View style={[styles.tableRow, styles.tableHeader]}>
+          <View style={[styles.tableCell, styles.colSNo, styles.textCenter]}>
+            <Text style={styles.tableHeaderText}>S.No</Text>
           </View>
+          <View style={[styles.tableCell, styles.colProduct]}>
+            <Text style={styles.tableHeaderText}>Product</Text>
+          </View>
+          <View style={[styles.tableCell, styles.colQuantity, styles.textCenter]}>
+            <Text style={styles.tableHeaderText}>Qty</Text>
+          </View>
+          <View style={[styles.tableCell, styles.colTaxable, styles.textRight]}>
+            <Text style={styles.tableHeaderText}>Taxable Amount</Text>
+          </View>
+          <View style={[styles.tableCell, styles.colTotal, styles.textRight]}>
+            <Text style={styles.tableHeaderText}>Total Amount</Text>
+          </View>
+          <View style={[styles.tableCell, styles.colRetailer]}>
+            <Text style={styles.tableHeaderText}>Retailer</Text>
+          </View>
+          <View style={[styles.tableCell, styles.colStaff]}>
+            <Text style={styles.tableHeaderText}>Staff</Text>
+          </View>
+          <View style={[styles.tableCell, styles.colDate, styles.textCenter]}>
+            <Text style={styles.tableHeaderText}>Date</Text>
+          </View>
+        
         </View>
 
-        {/* Additional Summary Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Financial Summary</Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+        {/* Table Body */}
+        {filteredData.map((item, index) => (
+          <View key={index} style={styles.tableRow} wrap={false}>
+            <View style={[styles.tableCell, styles.colSNo, styles.textCenter]}>
+              <Text>{index + 1}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.colProduct]}>
+              <Text>{item.product || '-'}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.colQuantity, styles.textCenter]}>
+              <Text>{item.quantity || '-'}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.colTaxable, styles.textRight]}>
+              <Text>{item.Subtotal || formatCurrency(item.taxable_amount) || '₹0'}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.colTotal, styles.textRight]}>
+              <Text>{item.total || formatCurrency(item.total_amount) || '₹0'}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.colRetailer]}>
+              <Text>{item.retailer || '-'}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.colStaff]}>
+              <Text>{item.assigned_staff || 'Not Assigned'}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.colDate, styles.textCenter]}>
+              <Text>{formatDate(item.invoice_date)}</Text>
+            </View>
+          
+          </View>
+        ))}
+
+        {/* Table Footer Summary */}
+        {filteredData.length > 0 && (
+          <View style={styles.summaryRow}>
             <Text style={styles.summaryText}>Total Taxable Amount:</Text>
-            <Text style={styles.summaryText}>{formatCurrency(totalTaxableAmount)}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-            <Text style={styles.summaryText}>Total Discount:</Text>
-            <Text style={styles.summaryText}>{formatCurrency(totalDiscount)}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-            <Text style={styles.summaryText}>Total GST:</Text>
-            <Text style={styles.summaryText}>{formatCurrency(totalGST)}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-            <Text style={styles.summaryText}>Average Transaction Value:</Text>
-            <Text style={styles.summaryText}>
-              {totalRecords > 0 ? formatCurrency(summary.totalSales / totalRecords) : formatCurrency(0)}
-            </Text>
-          </View>
-        </View>
-
-        {/* Staff Performance */}
-        {topStaff.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Top Staff Performance</Text>
-            <View style={styles.staffPerformance}>
-              {topStaff.map((staff, index) => {
-                const maxSales = Math.max(...staffData.map(s => s.sales), 1);
-                const percentage = (staff.sales / maxSales) * 100;
-                return (
-                  <View key={index} style={styles.staffBar}>
-                    <Text style={styles.staffLabel}>{staff.name}</Text>
-                    <View style={styles.barBackground}>
-                      <View style={[styles.barFill, { width: `${percentage}%` }]}>
-                        <Text style={styles.barValue}>{formatCurrency(staff.sales)}</Text>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
+            <Text style={styles.summaryValue}>{formatCurrency(totals.totalTaxable)}</Text>
           </View>
         )}
 
-        {/* Sales Transactions Table */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sales Transactions</Text>
-          <View style={styles.table}>
-            {/* Table Header */}
-            <View style={styles.tableHeader}>
-              <View style={[styles.tableHeaderCell, styles.col1]}>
-                <Text>S.No</Text>
-              </View>
-              <View style={[styles.tableHeaderCell, styles.col2]}>
-                <Text>Product</Text>
-              </View>
-              <View style={[styles.tableHeaderCell, styles.col3]}>
-                <Text>Quantity</Text>
-              </View>
-              <View style={[styles.tableHeaderCell, styles.col4]}>
-                <Text>Taxable Amount</Text>
-              </View>
-              <View style={[styles.tableHeaderCell, styles.col5]}>
-                <Text>Total Amount</Text>
-              </View>
-              <View style={[styles.tableHeaderCell, styles.col6]}>
-                <Text>Retailer</Text>
-              </View>
-              <View style={[styles.tableHeaderCell, styles.col7]}>
-                <Text>Staff</Text>
-              </View>
-              <View style={[styles.tableHeaderCell, styles.col8]}>
-                <Text>Date</Text>
-              </View>
-            </View>
-
-            {/* Table Rows */}
-            {salesData.slice(0, 20).map((item, index) => (
-              <View key={index} style={styles.tableRow} wrap={false}>
-                <View style={[styles.tableCell, styles.col1]}>
-                  <Text>{index + 1}</Text>
-                </View>
-                <View style={[styles.tableCell, styles.col2]}>
-                  <Text>{item.product || '-'}</Text>
-                </View>
-                <View style={[styles.tableCell, styles.col3]}>
-                  <Text>{item.quantity || 0}</Text>
-                </View>
-                <View style={[styles.tableCell, styles.col4]}>
-                  <Text>{formatCurrency(item.Subtotal)}</Text>
-                </View>
-                <View style={[styles.tableCell, styles.col5]}>
-                  <Text>{formatCurrency(item.total)}</Text>
-                </View>
-                <View style={[styles.tableCell, styles.col6]}>
-                  <Text>{item.retailer || '-'}</Text>
-                </View>
-                <View style={[styles.tableCell, styles.col7]}>
-                  <Text>{item.assigned_staff || '-'}</Text>
-                </View>
-                <View style={[styles.tableCell, styles.col8]}>
-                  <Text>{formatDate(item.invoice_date)}</Text>
-                </View>
-              </View>
-            ))}
+        {filteredData.length === 0 && (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <Text style={{ fontSize: 10, color: '#9ca3af' }}>No data available for selected filters</Text>
           </View>
-          
-          {salesData.length > 20 && (
-            <Text style={{ fontSize: 8, marginTop: 5, textAlign: 'center', color: '#95A5A6' }}>
-              Showing first 20 of {salesData.length} transactions
-            </Text>
-          )}
-        </View>
+        )}
 
         {/* Footer */}
-        <View style={styles.footer}>
+        <View style={styles.footer} fixed>
           <Text>This is a system-generated report. For any queries, please contact support.</Text>
-          <Text>Page 1 of 1</Text>
+          <Text>Page {`<PageNumber />`} of {`<TotalPages />`}</Text>
         </View>
       </Page>
     </Document>
   );
+};
+
+// Helper function to generate PDF blob
+export const generateSalesReportPDF = async (data, summary, fromDate, toDate, transactionType) => {
+  const { pdf } = await import('@react-pdf/renderer');
+  const currentDate = new Date().toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  
+  const pdfBlob = await pdf(
+    <SalesReportPDF
+      data={data}
+      summary={summary}
+      fromDate={fromDate}
+      toDate={toDate}
+      transactionType={transactionType}
+      generatedDate={currentDate}
+    />
+  ).toBlob();
+  
+  return pdfBlob;
 };
 
 export default SalesReportPDF;

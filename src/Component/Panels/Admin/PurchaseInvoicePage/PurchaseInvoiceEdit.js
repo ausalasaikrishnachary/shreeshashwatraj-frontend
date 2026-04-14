@@ -83,6 +83,7 @@ const [discountCharges, setDiscountCharges] = useState([]);
       totalGST: 0,
       totalCess: 0,
       grandTotal: 0,
+       roundOff: "0.00",  
       transportDetails: {
   transport: "",
   grNumber: "",
@@ -817,7 +818,9 @@ const calculateTotals = () => {
     }
   });
 
-  const grandTotal = Math.round(taxableAmount + totalGST + totalCess + additionalChargeAmount - discountChargesTotal);
+  const actualTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount - discountChargesTotal;
+  const roundedGrandTotal = Math.round(actualTotal);
+  const roundOff = roundedGrandTotal - actualTotal;
 
   setInvoiceData(prev => ({
     ...prev,
@@ -825,7 +828,8 @@ const calculateTotals = () => {
     totalGST: totalGST.toFixed(2),
     totalCess: totalCess.toFixed(2),
     additionalChargeAmount: additionalChargeAmount,
-    grandTotal: grandTotal
+    grandTotal: roundedGrandTotal,
+    roundOff: roundOff.toFixed(2)  // ← ADD THIS LINE
   }));
 };
 useEffect(() => {
@@ -2089,34 +2093,40 @@ discount_charges_amount: discountCharges.reduce((sum, c) => sum + (parseFloat(c.
     ))}
   </div>
 
-  {/* Totals */}
-  <Row>
-    <Col md={6} className="d-flex flex-column align-items-start">
-      <div className="mb-2 fw-bold">Taxable Amount</div>
-      <div className="mb-2 fw-bold">Total GST</div>
-      <div className="mb-2 fw-bold">Total Cess</div>
-      <div className="mb-2 fw-bold">Additional Charges</div>
-      <div className="mb-2 fw-bold text-danger">Discount Charges</div>
-      <div className="mb-2 fw-bold text-success">Grand Total</div>
-    </Col>
-    <Col md={6} className="d-flex flex-column align-items-end">
-      <div className="mb-2">₹{invoiceData.taxableAmount}</div>
-      <div className="mb-2">₹{invoiceData.totalGST}</div>
-      <div className="mb-2">₹{invoiceData.totalCess}</div>
-      <div className="mb-2">₹{charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0).toFixed(2)}</div>
-      <div className="mb-2 text-danger">
-        - ₹{discountCharges.reduce((sum, c) => {
-          if (c.calculationType === "percentage") {
-            const base = parseFloat(invoiceData.taxableAmount) + parseFloat(invoiceData.totalGST) +
-              parseFloat(invoiceData.totalCess) + parseFloat(invoiceData.additionalChargeAmount || 0);
-            return sum + (base * (parseFloat(c.amount) / 100));
-          }
-          return sum + (parseFloat(c.amount) || 0);
-        }, 0).toFixed(2)}
-      </div>
-      <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
-    </Col>
-  </Row>
+{/* Totals */}
+<Row>
+  <Col md={7} className="d-flex flex-column align-items-start">
+    <div className="mb-2 fw-bold">Taxable Amount:</div>
+    <div className="mb-2 fw-bold">Total GST:</div>
+    <div className="mb-2 fw-bold">Total Cess:</div>
+    <div className="mb-2 fw-bold">Additional Charges:</div>
+    <div className="mb-2 fw-bold text-danger">Discount Charges:</div>
+    <div className="mb-2 fw-bold">Round Off:</div>
+    <div className="mb-2 fw-bold text-success fs-5">Grand Total:</div>
+  </Col>
+  <Col md={5} className="d-flex flex-column align-items-end">
+    <div className="mb-2">₹{invoiceData.taxableAmount}</div>
+    <div className="mb-2">₹{invoiceData.totalGST}</div>
+    <div className="mb-2">₹{invoiceData.totalCess}</div>
+    <div className="mb-2">₹{charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0).toFixed(2)}</div>
+    <div className="mb-2 text-danger">
+      - ₹{discountCharges.reduce((sum, c) => {
+        if (c.calculationType === "percentage") {
+          const base = parseFloat(invoiceData.taxableAmount) + parseFloat(invoiceData.totalGST) +
+            parseFloat(invoiceData.totalCess) + parseFloat(invoiceData.additionalChargeAmount || 0);
+          return sum + (base * (parseFloat(c.amount) / 100));
+        }
+        return sum + (parseFloat(c.amount) || 0);
+      }, 0).toFixed(2)}
+    </div>
+    <div className="mb-2 text-danger">
+      ₹{invoiceData.roundOff && parseFloat(invoiceData.roundOff) < 0 ? 
+        invoiceData.roundOff : 
+        `+${invoiceData.roundOff || '0.00'}`}
+    </div>
+    <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
+  </Col>
+</Row>
 </Col>
 </Row>
 

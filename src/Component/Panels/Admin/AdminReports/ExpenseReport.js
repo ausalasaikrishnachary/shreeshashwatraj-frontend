@@ -18,6 +18,8 @@ import "./ExpenseReports.css";
 import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
+import { generateExpenseReportPDF } from './ExpenseReportPdf';
+
 
 const ExpenseReportDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -237,46 +239,45 @@ const ExpenseReportDashboard = () => {
     setStaffData(staffArray);
   };
 
-  // Generate report function
-  const handleGenerateReport = async () => {
-    setGeneratingReport(true);
-    try {
-      const res = await axios.post(
-        `${baseurl}/api/reports/expense-report/download`,
-        { 
-          fromDate: fromDate || null, 
-          toDate: toDate || null, 
-          format: reportFormat 
-        },
-        { responseType: "blob" }
-      );
+const handleGenerateReport = async () => {
+  setGeneratingReport(true);
+  try {
+    const pdfData = filteredData.map(item => ({
+      expense_date: item.expense_date,
+      staff: item.staff,
+      category: item.category,
+      amount: item.amount,
+      status: item.status,
+      payment_status: item.payment_status
+    }));
 
-      const name = `Expense_Report_${fromDate || "ALL"}_${toDate || "ALL"}.${
-        reportFormat === "pdf" ? "pdf" : "xlsx"
-      }`;
-      const blob =
-        reportFormat === "pdf"
-          ? new Blob([res.data], { type: "application/pdf" })
-          : new Blob([res.data], {
-              type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            });
+    const pdfBlob = await generateExpenseReportPDF(
+      pdfData,
+      dashboardStats,
+      categoryData,
+      staffData,
+      fromDate,
+      toDate
+    );
 
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(a.href);
+    const fileName = `Expense_Report_${fromDate || "ALL"}_${toDate || "ALL"}.pdf`;
+    
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(pdfBlob);
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
 
-      setShowGenerateModal(false);
-    } catch (e) {
-      console.error("❌ Download error:", e);
-      alert("Failed to generate report");
-    } finally {
-      setGeneratingReport(false);
-    }
-  };
+    setShowGenerateModal(false);
+  } catch (e) {
+    console.error("❌ PDF generation error:", e);
+    alert("Failed to generate PDF report");
+  } finally {
+    setGeneratingReport(false);
+  }
+};
 
   const getCategoryColor = (category) => {
     const colorMap = {

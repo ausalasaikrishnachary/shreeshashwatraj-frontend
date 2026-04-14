@@ -79,6 +79,7 @@ const [charges, setCharges] = useState([]);
       note: "",
       taxableAmount: 0,
       grandTotal: 0,
+       roundOff: "0.00",  
       transportDetails: {
   transport: "",
   grNumber: "",
@@ -709,16 +710,18 @@ const calculateTotals = () => {
     }
   });
 
-  const grandTotal = (taxableAmount + additionalChargeAmount - discountChargesTotal).toFixed(2);
+  const actualTotal = taxableAmount + additionalChargeAmount - discountChargesTotal;
+  const roundedGrandTotal = Math.round(actualTotal);
+  const roundOff = roundedGrandTotal - actualTotal;
 
   setInvoiceData(prev => ({
     ...prev,
     taxableAmount: taxableAmount.toFixed(2),
     additionalChargeAmount: additionalChargeAmount,
-    grandTotal: grandTotal
+    grandTotal: roundedGrandTotal,
+    roundOff: roundOff.toFixed(2)  // ← ADD THIS LINE
   }));
 };
-
 
 useEffect(() => {
   calculateTotals();
@@ -1906,29 +1909,29 @@ discount_charges_amount: discountCharges.reduce((sum, c) => sum + (parseFloat(c.
      ))}
    </div>
  
-   {/* Totals */}
-   <Row>
-     <Col md={6} className="d-flex flex-column align-items-start">
-       <div className="mb-2 fw-bold">Taxable Amount</div>
-       <div className="mb-2 fw-bold">Additional Charges</div>
-       <div className="mb-2 fw-bold text-danger">Discount Charges</div>
-       <div className="mb-2 fw-bold text-success">Grand Total</div>
-     </Col>
-     <Col md={6} className="d-flex flex-column align-items-end">
-       <div className="mb-2">₹{invoiceData.taxableAmount}</div>
-       <div className="mb-2">₹{charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0).toFixed(2)}</div>
-       <div className="mb-2 text-danger">
-         - ₹{discountCharges.reduce((sum, c) => {
-           if (c.calculationType === "percentage") {
-             const base = parseFloat(invoiceData.taxableAmount) + parseFloat(invoiceData.additionalChargeAmount || 0);
-             return sum + (base * (parseFloat(c.amount) / 100));
-           }
-           return sum + (parseFloat(c.amount) || 0);
-         }, 0).toFixed(2)}
-       </div>
-       <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
-     </Col>
-   </Row>
+  {/* Totals */}
+<Row>
+  <Col md={6} className="d-flex flex-column align-items-start">
+    <div className="mb-2 fw-bold">Taxable Amount</div>
+    <div className="mb-2 fw-bold">Additional Charges</div>
+    <div className="mb-2 fw-bold text-danger">Discount Charges</div>
+    <div className="mb-2 fw-bold text-success">Grand Total</div>
+  </Col>
+  <Col md={6} className="d-flex flex-column align-items-end">
+    <div className="mb-2">₹{invoiceData.taxableAmount}</div>
+    <div className="mb-2">₹{charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0).toFixed(2)}</div>
+    <div className="mb-2 text-danger">
+      - ₹{discountCharges.reduce((sum, c) => {
+        if (c.calculationType === "percentage") {
+          const base = parseFloat(invoiceData.taxableAmount) + parseFloat(invoiceData.additionalChargeAmount || 0);
+          return sum + (base * (parseFloat(c.amount) / 100));
+        }
+        return sum + (parseFloat(c.amount) || 0);
+      }, 0).toFixed(2)}
+    </div>
+    <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
+  </Col>
+</Row>
  </Col>
 </Row>
 

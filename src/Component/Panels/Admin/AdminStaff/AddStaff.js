@@ -328,8 +328,50 @@ function AddStaff() {
     if (currentIndex > 0) setActiveTab(tabs[currentIndex - 1].id);
   };
 
+  const validateRequiredFields = () => {
+  const errors = [];
+  
+  // Basic Details Validation
+  if (!formData.full_name.trim()) {
+    errors.push("Full Name is required");
+  }
+  if (!formData.mobileNumber.trim()) {
+    errors.push("Mobile Number is required");
+  } else if (!/^[0-9]{10}$/.test(formData.mobileNumber)) {
+    errors.push("Mobile Number must be 10 digits");
+  }
+  if (!formData.email.trim()) {
+    errors.push("Email is required");
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    errors.push("Invalid email format");
+  }
+  
+  // If enabled as retailer, validate retailer fields
+  if (enableAsRetailer) {
+    if (!formData.entity_type) {
+      errors.push("Entity Type is required when enabling as retailer");
+    }
+    if (!formData.business_name) {
+      errors.push("Business Name is required when enabling as retailer");
+    }
+    if (!formData.display_name) {
+      errors.push("Display Name is required when enabling as retailer");
+    }
+    if (!formData.opening_balance_type) {
+      errors.push("Opening Balance Type is required when enabling as retailer");
+    }
+  }
+  
+  return errors;
+};
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+      const validationErrors = validateRequiredFields();
+  if (validationErrors.length > 0) {
+    setError(validationErrors.join("\n"));
+    return;
+  }
     setIsLoading(true);
     setError("");
 
@@ -391,11 +433,13 @@ function AddStaff() {
                 <div className="admin-staff-form-grid">
                   <div className="admin-staff-form-field">
                     <label className="admin-staff-form-label">Full Name *</label>
-                    <input type="text" name="full_name" value={formData.full_name} onChange={handleInputChange} className="admin-staff-form-input" />
+                    <input type="text" name="full_name" value={formData.full_name} onChange={handleInputChange} className="admin-staff-form-input"   required />
                   </div>
                   <div className="admin-staff-form-field">
                     <label className="admin-staff-form-label">Mobile Number *</label>
-                    <input type="text" name="mobileNumber" value={formData.mobileNumber} onChange={handleInputChange} className="admin-staff-form-input" />
+                    <input type="text" name="mobileNumber" value={formData.mobileNumber} onChange={handleInputChange} className="admin-staff-form-input"    required  // ← ADD THIS
+  pattern="[0-9]{10}"  // ← ADD THIS
+  title="10-digit mobile number" />
                   </div>
                   <div className="admin-staff-form-field">
                     <label className="admin-staff-form-label">Alternate Number</label>
@@ -403,7 +447,7 @@ function AddStaff() {
                   </div>
                   <div className="admin-staff-form-field">
                     <label className="admin-staff-form-label">Email *</label>
-                    <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="admin-staff-form-input" />
+                    <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="admin-staff-form-input" required   />
                   </div>
                   <div className="admin-staff-form-field">
                     <label className="admin-staff-form-label">Date of Birth</label>

@@ -542,6 +542,20 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
                   </Text>
                 </View>
               )}
+                {(() => {
+        const roundOff = parseFloat(getSafeData(currentData, 'roundOff', '0'));
+        if (roundOff !== 0) {
+          return (
+            <View style={[styles.amountRow, { borderBottomColor: '#e9ecef' }]}>
+              <Text style={styles.amountLabel}>Round Off:</Text>
+              <Text style={[styles.amountValue, { color: roundOff < 0 ? '#dc3545' : '#28a745' }]}>
+                {roundOff < 0 ? roundOff.toFixed(2) : `+${roundOff.toFixed(2)}`}
+              </Text>
+            </View>
+          );
+        }
+        return null;
+      })()}
               
               <View style={styles.grandTotal}>
                 <Text style={styles.amountLabel}>Grand Total:</Text>

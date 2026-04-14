@@ -92,6 +92,7 @@ const currentFY = getFinancialYearShort();
       taxableAmount: 0,
       totalGST: 0,
       totalCess: 0,
+       roundOff: "0.00",
       grandTotal: 0,
       transportDetails: {
   transport: "",
@@ -977,23 +978,24 @@ const calculateTotals = () => {
     return sum + cessAmount;
   }, 0);
   
-  // Calculate additional charges total - ensure it's a number
   const additionalChargeAmount = charges.reduce((sum, charge) => {
     return sum + (parseFloat(charge.amount) || 0);
   }, 0);
   
-  let grandTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
+  const actualTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
   
-  // Round grand total to nearest integer
-  const roundedGrandTotal = Math.round(grandTotal);
+  const roundedGrandTotal = Math.round(actualTotal);
+  
+  const roundOff = roundedGrandTotal - actualTotal;
   
   setInvoiceData(prev => ({
     ...prev,
     taxableAmount: taxableAmount.toFixed(2),
     totalGST: totalGST.toFixed(2),
     totalCess: totalCess.toFixed(2),
-    additionalChargeAmount: additionalChargeAmount, // This is now a number
-    grandTotal: roundedGrandTotal
+    additionalChargeAmount: additionalChargeAmount,
+    grandTotal: roundedGrandTotal,
+    roundOff: roundOff.toFixed(2)  
   }));
 };
 
@@ -1013,7 +1015,7 @@ useEffect(() => {
     localStorage.removeItem('draftInvoice');
     
     const resetData = {
-      invoiceNumber: formatInvoiceNumber(1), // SSA/000001/26-27
+      // invoiceNumber: formatInvoiceNumber(1), // SSA/000001/26-27
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   companyInfo: {
@@ -1073,28 +1075,28 @@ useEffect(() => {
   window.alert("✅ Draft cleared successfully!");
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
-    
-    if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
-       window.alert("⚠️ Please select a supplier/customer");
-      setLoading(false);
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError(null);
+  setSuccess(false);
+  
+  if (!invoiceData.supplierInfo.name || !selectedSupplierId) {
+    window.alert("⚠️ Please select a supplier/customer");
+    setLoading(false);
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
 
-    if (invoiceData.items.length === 0) {
-         window.alert("⚠️ Please add at least one item to the invoice");
-      setLoading(false);
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
+  if (invoiceData.items.length === 0) {
+    window.alert("⚠️ Please add at least one item to the invoice");
+    setLoading(false);
+    setTimeout(() => setError(null), 3000);
+    return;
+  }
 
-    try {
-         // ✅ FIRST: Get the next invoice number from API
+  try {
+    // ✅ FIRST: Get the next invoice number from API
     let finalInvoiceNumber = invoiceData.invoiceNumber;
     
     if (!isEditMode) {
@@ -1106,7 +1108,6 @@ useEffect(() => {
         finalInvoiceNumber = invoiceNumberData.nextInvoiceNumber;
         console.log('✅ Received next invoice number:', finalInvoiceNumber);
         
-        // Update the invoiceData with the new invoice number
         setInvoiceData(prev => ({
           ...prev,
           invoiceNumber: finalInvoiceNumber
@@ -1115,198 +1116,237 @@ useEffect(() => {
         console.error('Failed to fetch next invoice number, using existing:', finalInvoiceNumber);
       }
     }
-      console.log('Submitting invoice with number:', finalInvoiceNumber);
+    console.log('Submitting invoice with number:', finalInvoiceNumber);
 
-      // Get staff information
-      const staffAccount = accounts.find(acc => acc.staffid == selectedStaffId);
-      const staffName = staffAccount?.assigned_staff || 
-                       invoiceData.supplierInfo.assigned_staff || 
-                       accounts.find(acc => acc.id == selectedSupplierId)?.assigned_staff ||
-                       'N/A';
+    // Get staff information
+    const staffAccount = accounts.find(acc => acc.staffid == selectedStaffId);
+    const staffName = staffAccount?.assigned_staff || 
+                     invoiceData.supplierInfo.assigned_staff || 
+                     accounts.find(acc => acc.id == selectedSupplierId)?.assigned_staff ||
+                     'N/A';
 
-      // Calculate GST AMOUNTS for voucher table
-      const sameState = isSameState();
-      let totalCGSTAmount = 0;
-      let totalSGSTAmount = 0;
-      let totalIGSTAmount = 0;
-      
-      // Calculate percentages for voucher table
-      let totalCGSTPercentage = 0;
-      let totalSGSTPercentage = 0;
-      let totalIGSTPercentage = 0;
-
-      // Calculate GST amounts item by item
-      invoiceData.items.forEach((item, index) => {
-        const quantity = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.price) || 0;
-        const discount = parseFloat(item.discount) || 0;
-        const gst = parseFloat(item.gst) || 0;
-        
-        const subtotal = quantity * price;
-        const discountAmount = subtotal * (discount / 100);
-        const amountAfterDiscount = subtotal - discountAmount;
-        const gstAmount = amountAfterDiscount * (gst / 100);
-        
-        if (sameState) {
-          // Same state: GST amount divided equally
-          totalCGSTAmount += gstAmount / 2;
-          totalSGSTAmount += gstAmount / 2;
-          totalCGSTPercentage = gst / 2; 
-          totalSGSTPercentage = gst / 2; 
-          totalIGSTPercentage = 0;      
-        } else {
-          // Different state: Full GST as IGST
-          totalIGSTAmount += gstAmount;
-          totalIGSTPercentage = gst;      // Percentage: 5 for 5% GST
-        }
-      });
-
-
-      // Extract batch details from items with PERCENTAGES for items table
-      const batchDetails = invoiceData.items.map(item => {
-        const quantity = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.price) || 0;
-        const discount = parseFloat(item.discount) || 0;
-        
-        return {
-          product: item.product,
-          product_id: item.product_id,
-          description: item.description,
-          batch: item.batch,
-          batch_id: item.batch_id,
-          quantity: quantity,
-           unit_id: item.unit_id, 
-          price: price,
-           original_price: parseFloat(item.original_price) || 0,  
-          discount: discount,
-          gst: parseFloat(item.gst) || 0,          
-          cgst: parseFloat(item.cgst) || 0,        
-          sgst: parseFloat(item.sgst) || 0,       
-          igst: parseFloat(item.igst) || 0,       
-          cess: parseFloat(item.cess) || 0,
-          total: parseFloat(item.total) || 0,
-          batchDetails: item.batchDetails,
-          assigned_staff: staffName,
-           hsn_code: item.hsn_code || ""  ,
-            inclusive_gst: item.inclusive_gst || ""  // ✅ ADD THIS LINE
-        };
-      });
-
-      // Get product_id and batch_id for logging
-      const firstItemProductId = invoiceData.items[0]?.product_id || null;
-      const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
-      const mobileNumber = invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number || '';
-      const payload = {
-        ...invoiceData,
-        invoiceNumber: finalInvoiceNumber,
-        selectedSupplierId: selectedSupplierId,
-        staffid: selectedStaffId,
-        assigned_staff: staffName,
-        staffName: staffName,
-        type: 'sales',
-         TransactionType: "Sales", 
-        CGSTAmount: totalCGSTAmount.toFixed(2),   
-        SGSTAmount: totalSGSTAmount.toFixed(2),    
-        IGSTAmount: totalIGSTAmount.toFixed(2),   
-  additional_charges_type: charges.map(c => c.type).join(','), // Comma-separated types
-  additional_charges_amount: charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0),
-        CGSTPercentage: totalCGSTPercentage.toFixed(2),
-        SGSTPercentage: totalSGSTPercentage.toFixed(2), 
-        IGSTPercentage: totalIGSTPercentage.toFixed(2), 
-        
-        taxType: sameState ? "CGST/SGST" : "IGST",
-        batchDetails: batchDetails,  
-        product_id: 123,
-        batch_id: "bth0001",
-        primaryProductId: firstItemProductId,
-        primaryBatchId: firstItemBatchId,
-        PartyID: selectedSupplierId,
-        AccountID: invoiceData.supplierInfo.accountId,
-        // PartyName: invoiceData.supplierInfo.name,
-  account_name: invoiceData.supplierInfo.account_name || 
-                accounts.find(acc => acc.id === selectedSupplierId)?.account_name || 
-                invoiceData.supplierInfo.name,
-  business_name: invoiceData.supplierInfo.business_name || 
-                 accounts.find(acc => acc.id === selectedSupplierId)?.business_name || 
-                 invoiceData.supplierInfo.name, 
-mobile_number: mobileNumber,
- transportDetails: invoiceData.transportDetails // Make sure this is included
-};     
-
+    const sameState = isSameState();
+    let totalCGSTAmount = 0;
+    let totalSGSTAmount = 0;
+    let totalIGSTAmount = 0;
     
+    let totalCGSTPercentage = 0;
+    let totalSGSTPercentage = 0;
+    let totalIGSTPercentage = 0;
 
-      // Remove unused fields
-      delete payload.companyState;
-      delete payload.supplierState;
-      delete payload.items;
+    invoiceData.items.forEach((item, index) => {
+      const quantity = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.price) || 0;
+      const discount = parseFloat(item.discount) || 0;
+      const gst = parseFloat(item.gst) || 0;
       
-      let response;
-      if (isEditMode && editingVoucherId) {
-        console.log('🔄 Updating existing invoice with ID:', editingVoucherId);
-        response = await fetch(`${baseurl}/transactions/${editingVoucherId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload)
-        });
+      const subtotal = quantity * price;
+      const discountAmount = subtotal * (discount / 100);
+      const amountAfterDiscount = subtotal - discountAmount;
+      const gstAmount = amountAfterDiscount * (gst / 100);
+      
+      if (sameState) {
+        totalCGSTAmount += gstAmount / 2;
+        totalSGSTAmount += gstAmount / 2;
+        totalCGSTPercentage = gst / 2; 
+        totalSGSTPercentage = gst / 2; 
+        totalIGSTPercentage = 0;      
       } else {
-        console.log('🆕 Creating new invoice with staffid:', selectedStaffId);
-        response = await fetch(`${baseurl}/transaction`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload)
-        });
+        totalIGSTAmount += gstAmount;
+        totalIGSTPercentage = gst;
       }
-      
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(responseData.error || 'Failed to submit invoice');
-      }
-      
-      console.log('✅ Server Response:', responseData);
-      
-      localStorage.removeItem('draftInvoice');
-window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice submitted successfully!');
-      setIsPreviewReady(true);
+    });
 
-      // Store preview data
-      const previewData = {
-        ...invoiceData,
-        invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
-        voucherId: responseData.voucherId || editingVoucherId,
-        product_id: responseData.product_id || firstItemProductId,
-        batch_id: responseData.batch_id || firstItemBatchId,
-        staffid: responseData.staffid || selectedStaffId,
-        assigned_staff: responseData.assigned_staff || staffName,
-        staffName: responseData.staffName || staffName,
-         mobile_number: invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number,
-        supplierInfo: {
-          ...invoiceData.supplierInfo,
-          staffid: responseData.staffid || selectedStaffId,
-          assigned_staff: responseData.assigned_staff || staffName
-        }
+ const taxableAmount = invoiceData.items.reduce((sum, item) => {
+  const quantity = parseFloat(item.quantity) || 0;
+  const price = parseFloat(item.price) || 0;
+  const discount = parseFloat(item.discount) || 0;
+  const subtotal = quantity * price;
+  const discountAmount = subtotal * (discount / 100);
+  return sum + (subtotal - discountAmount);
+}, 0);
+
+const totalGST = invoiceData.items.reduce((sum, item) => {
+  const quantity = parseFloat(item.quantity) || 0;
+  const price = parseFloat(item.price) || 0;
+  const discount = parseFloat(item.discount) || 0;
+  const gst = parseFloat(item.gst) || 0;
+  const subtotal = quantity * price;
+  const discountAmount = subtotal * (discount / 100);
+  const amountAfterDiscount = subtotal - discountAmount;
+  const gstAmount = amountAfterDiscount * (gst / 100);
+  return sum + gstAmount;
+}, 0);
+
+const totalCess = invoiceData.items.reduce((sum, item) => {
+  const quantity = parseFloat(item.quantity) || 0;
+  const price = parseFloat(item.price) || 0;
+  const discount = parseFloat(item.discount) || 0;
+  const cess = parseFloat(item.cess) || 0;
+  const subtotal = quantity * price;
+  const discountAmount = subtotal * (discount / 100);
+  const amountAfterDiscount = subtotal - discountAmount;
+  const cessAmount = amountAfterDiscount * (cess / 100);
+  return sum + cessAmount;
+}, 0);
+
+const additionalChargeAmount = charges.reduce((sum, charge) => {
+  return sum + (parseFloat(charge.amount) || 0);
+}, 0);
+
+const actualTotal = taxableAmount + totalGST + totalCess + additionalChargeAmount;
+const roundedGrandTotal = Math.round(actualTotal);
+const roundOff = roundedGrandTotal - actualTotal; 
+
+    const batchDetails = invoiceData.items.map(item => {
+      const quantity = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.price) || 0;
+      const discount = parseFloat(item.discount) || 0;
+      
+      return {
+        product: item.product,
+        product_id: item.product_id,
+        description: item.description,
+        batch: item.batch,
+        batch_id: item.batch_id,
+        quantity: quantity,
+        unit_id: item.unit_id, 
+        price: price,
+        original_price: parseFloat(item.original_price) || 0,  
+        discount: discount,
+        gst: parseFloat(item.gst) || 0,          
+        cgst: parseFloat(item.cgst) || 0,        
+        sgst: parseFloat(item.sgst) || 0,       
+        igst: parseFloat(item.igst) || 0,       
+        cess: parseFloat(item.cess) || 0,
+        total: parseFloat(item.total) || 0,
+        batchDetails: item.batchDetails,
+        assigned_staff: staffName,
+        hsn_code: item.hsn_code || "",
+        inclusive_gst: item.inclusive_gst || ""
       };
-      
-      localStorage.setItem('previewInvoice', JSON.stringify(previewData));
-      
-      // Navigate to preview page with voucher ID
-      setTimeout(() => {
-        navigate(`/sales/invoice-preview/${responseData.voucherId || editingVoucherId}`);
-      }, 2000);
-      
-    } catch (err) {
-      console.error('❌ Error in handleSubmit:', err);
-      setError(err.message);
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
 
+    const firstItemProductId = invoiceData.items[0]?.product_id || null;
+    const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
+    const mobileNumber = invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number || '';
+    
+    const payload = {
+      ...invoiceData,
+      invoiceNumber: finalInvoiceNumber,
+      selectedSupplierId: selectedSupplierId,
+      staffid: selectedStaffId,
+      assigned_staff: staffName,
+      staffName: staffName,
+      type: 'sales',
+      TransactionType: "Sales", 
+      CGSTAmount: totalCGSTAmount.toFixed(2),   
+      SGSTAmount: totalSGSTAmount.toFixed(2),    
+      IGSTAmount: totalIGSTAmount.toFixed(2),   
+      additional_charges_type: charges.map(c => c.type).join(','),
+      additional_charges_amount: additionalChargeAmount,
+      CGSTPercentage: totalCGSTPercentage.toFixed(2),
+      SGSTPercentage: totalSGSTPercentage.toFixed(2), 
+      IGSTPercentage: totalIGSTPercentage.toFixed(2), 
+      taxType: sameState ? "CGST/SGST" : "IGST",
+      batchDetails: batchDetails,  
+      product_id: 123,
+      batch_id: "bth0001",
+      primaryProductId: firstItemProductId,
+      primaryBatchId: firstItemBatchId,
+      PartyID: selectedSupplierId,
+      AccountID: invoiceData.supplierInfo.accountId,
+      account_name: invoiceData.supplierInfo.account_name || 
+                    accounts.find(acc => acc.id === selectedSupplierId)?.account_name || 
+                    invoiceData.supplierInfo.name,
+      business_name: invoiceData.supplierInfo.business_name || 
+                     accounts.find(acc => acc.id === selectedSupplierId)?.business_name || 
+                     invoiceData.supplierInfo.name, 
+      mobile_number: mobileNumber,
+      transportDetails: invoiceData.transportDetails,
+      
+      // ✅ ADD THESE CALCULATED TOTALS TO PAYLOAD
+      taxableAmount: taxableAmount.toFixed(2),
+      totalGST: totalGST.toFixed(2),
+      totalCess: totalCess.toFixed(2),
+      grandTotal: roundedGrandTotal,
+      round_off: roundOff.toFixed(2),
+    };     
+
+    // Remove unused fields
+    delete payload.companyState;
+    delete payload.supplierState;
+    delete payload.items;
+    
+    let response;
+    if (isEditMode && editingVoucherId) {
+      console.log('🔄 Updating existing invoice with ID:', editingVoucherId);
+      response = await fetch(`${baseurl}/transactions/${editingVoucherId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      console.log('🆕 Creating new invoice with staffid:', selectedStaffId);
+      response = await fetch(`${baseurl}/transaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+    }
+    
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(responseData.error || 'Failed to submit invoice');
+    }
+    
+    console.log('✅ Server Response:', responseData);
+    
+    localStorage.removeItem('draftInvoice');
+    window.alert(isEditMode ? '✅ Invoice updated successfully!' : '✅ Invoice submitted successfully!');
+    setIsPreviewReady(true);
+
+    // Store preview data
+    const previewData = {
+      ...invoiceData,
+      invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
+      voucherId: responseData.voucherId || editingVoucherId,
+      product_id: responseData.product_id || firstItemProductId,
+      batch_id: responseData.batch_id || firstItemBatchId,
+      staffid: responseData.staffid || selectedStaffId,
+      assigned_staff: responseData.assigned_staff || staffName,
+      staffName: responseData.staffName || staffName,
+      mobile_number: invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number,
+      taxableAmount: taxableAmount.toFixed(2),
+      totalGST: totalGST.toFixed(2),
+      grandTotal: roundedGrandTotal,
+      roundOff: roundOff.toFixed(2),
+      supplierInfo: {
+        ...invoiceData.supplierInfo,
+        staffid: responseData.staffid || selectedStaffId,
+        assigned_staff: responseData.assigned_staff || staffName
+      }
+    };
+    
+    localStorage.setItem('previewInvoice', JSON.stringify(previewData));
+    
+    setTimeout(() => {
+      navigate(`/sales/invoice-preview/${responseData.voucherId || editingVoucherId}`);
+    }, 2000);
+    
+  } catch (err) {
+    console.error('❌ Error in handleSubmit:', err);
+    setError(err.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const filteredAccounts = accounts.filter(acc => {
   const searchLower = searchTerm.toLowerCase();
@@ -2274,7 +2314,6 @@ const handleExclPriceChange = (e) => {
                 </Table>
               </div>
 
-       {/* Totals and Notes Section */}
 <Row className="mb-3 p-3 bg-white rounded border">
   <Col md={7}>
     <Form.Group controlId="invoiceNote">
@@ -2294,7 +2333,6 @@ const handleExclPriceChange = (e) => {
   <Col md={5}>
     <h6 className="text-primary mb-3">Amount Summary</h6>
     
-    {/* Additional Charges Section */}
     <div className="mb-3">
       <div className="d-flex justify-content-between align-items-center mb-2">
         <label className="fw-bold">Additional Charges</label>
@@ -2309,16 +2347,16 @@ const handleExclPriceChange = (e) => {
       
       {charges.map((charge, index) => (
         <div key={index} className="mb-2" style={{ display: 'flex', gap: '10px' }}>
-        <div style={{ width: '60%' }}>
-  <input
-    type="number"
-    value={charge.amount === 0 ? '' : charge.amount}
-    className="form-control form-control-sm"
-    onChange={(e) => handleChargeChange(index, 'amount', e.target.value)}
-    placeholder="Amount"
-    style={{ fontSize: '13px' }}
-  />
-</div>
+          <div style={{ width: '60%' }}>
+            <input
+              type="number"
+              value={charge.amount === 0 ? '' : charge.amount}
+              className="form-control form-control-sm"
+              onChange={(e) => handleChargeChange(index, 'amount', e.target.value)}
+              placeholder="Amount"
+              style={{ fontSize: '13px' }}
+            />
+          </div>
           <div style={{ width: '35%' }}>
             <select
               value={charge.type}
@@ -2336,23 +2374,22 @@ const handleExclPriceChange = (e) => {
               <option value="Miscellaneous">Miscellaneous</option>
             </select>
           </div>
-          <div style={{ width: '1%' }}>
-<button
-  type="button"
-  className=""
-  onClick={() => removeChargeRow(index)}
-  style={{ 
-    padding: '0',
-    fontSize: '18px',
-    lineHeight: '2',
-    background: 'none',
-    border: 'none',
-    color: 'black',
-    cursor: 'pointer'
-  }}
->
-  ✕
-</button>
+          <div style={{ width: '5%' }}>
+            <button
+              type="button"
+              onClick={() => removeChargeRow(index)}
+              style={{ 
+                padding: '0',
+                fontSize: '18px',
+                lineHeight: '1',
+                background: 'none',
+                border: 'none',
+                color: 'black',
+                cursor: 'pointer'
+              }}
+            >
+              ✕
+            </button>
           </div>
         </div>
       ))}
@@ -2361,28 +2398,35 @@ const handleExclPriceChange = (e) => {
       )}
     </div>
     
-    {/* Totals */}
+    {/* Totals with Round Off Column - UPDATED LAYOUT */}
     <Row>
-      <Col md={6} className="d-flex flex-column align-items-start">
-        <div className="mb-2 fw-bold">Taxable Amount</div>
-        <div className="mb-2 fw-bold">Total GST</div>
-        <div className="mb-2 fw-bold">Total Cess</div>
-        <div className="mb-2 fw-bold">Additional Charges</div>
-        <div className="mb-2 fw-bold text-success">Grand Total</div>
+      <Col md={7} className="d-flex flex-column align-items-start">
+        <div className="mb-2 fw-bold">Amount:</div>
+        <div className="mb-2 fw-bold">IGST:</div>
+        <div className="mb-2 fw-bold">Total GST:</div>
+        <div className="mb-2 fw-bold">Additional Charges:</div>
+        <div className="mb-2 fw-bold">Round Off:</div>
+        <div className="mb-2 fw-bold text-success fs-5">Grand Total:</div>
       </Col>
 
-      <Col md={6} className="d-flex flex-column align-items-end">
+      <Col md={5} className="d-flex flex-column align-items-end">
         <div className="mb-2">₹{invoiceData.taxableAmount}</div>
         <div className="mb-2">₹{invoiceData.totalGST}</div>
-        <div className="mb-2">₹{invoiceData.totalCess}</div>
+        <div className="mb-2">₹{invoiceData.totalGST}</div>
         <div className="mb-2">₹{parseFloat(invoiceData.additionalChargeAmount || 0).toFixed(2)}</div>
+        <div className="mb-2 text-danger">
+          ₹{invoiceData.roundOff && parseFloat(invoiceData.roundOff) < 0 ? 
+            invoiceData.roundOff : 
+            `+${invoiceData.roundOff || '0.00'}`}
+        </div>
         <div className="fw-bold text-success fs-5">₹{invoiceData.grandTotal}</div>
       </Col>
     </Row>
+
+  
   </Col>
 </Row>
 <Row className="mb-3 bg-white p-3 rounded">
-  {/* LEFT SIDE - Transportation Details with 4 fields */}
   <Col md={6}>
     <h6 className="text-primary mb-3">Transportation Details</h6>
     <Row>

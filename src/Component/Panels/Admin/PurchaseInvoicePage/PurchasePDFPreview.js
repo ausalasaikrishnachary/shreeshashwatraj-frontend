@@ -425,6 +425,8 @@ const transformApiDataToInvoiceFormat = (apiData) => {
   const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
   const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
   const grandTotal = parseFloat(apiData.TotalAmount) || 0;
+        const roundOff = parseFloat(apiData.round_off) || 0;
+
  const transportDetails = {
     transport: apiData.transport_name || apiData.transport || '',
     grNumber: apiData.gr_rr_number || apiData.grNumber || '',
@@ -512,6 +514,7 @@ const transformApiDataToInvoiceFormat = (apiData) => {
     totalCess: "0.00",
         discount_charges: apiData.discount_charges || null,
     discount_charges_amount: parseFloat(apiData.discount_charges_amount) || 0,
+ roundOff: roundOff.toFixed(2),
 
     note: apiData.Notes || "Thank you for your business!",
           transportDetails: transportDetails,
@@ -2239,6 +2242,18 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
     </td>
   </tr>
 )}
+
+      {/* ✅ ADD ROUND OFF ROW */}
+      {currentData.roundOff && parseFloat(currentData.roundOff) !== 0 && (
+        <tr>
+          <td className="pb-2">Round Off:</td>
+          <td className="text-end pb-2">
+            <span className={parseFloat(currentData.roundOff) < 0 ? "text-danger" : "text-success"}>
+              {parseFloat(currentData.roundOff) < 0 ? currentData.roundOff : `+${currentData.roundOff}`}
+            </span>
+          </td>
+        </tr>
+      )}
         <tr className="grand-total border-top pt-2">
           <td><strong>Grand Total:</strong></td>
           <td className="text-end">
