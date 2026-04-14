@@ -9,8 +9,6 @@ import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import "./SalesReport.css";
-import { pdf } from '@react-pdf/renderer';
-import SalesReportPDF from './SalesReportpdf';
 
 // ========== HELPER FUNCTIONS ==========
 const getCurrentDate = () => {
@@ -324,54 +322,30 @@ if (applyDateFilter && fromDate && toDate) {
     fetchSalesData();
   }, []);
 
-// Add this import at the top
-
-// Replace your handleGenerateReport function with this:
-const handleGenerateReport = async () => {
-  setGeneratingReport(true);
-  try {
-    if (reportFormat === 'pdf') {
-      // Generate PDF using react-pdf
-      const blob = await pdf(
-        <SalesReportPDF
-          salesData={filteredVoucherData}
-          summary={summary}
-          staffData={staffData}
-          fromDate={applyDateFilter && fromDate ? fromDate : null}
-          toDate={applyDateFilter && toDate ? toDate : null}
-          transactionType={transactionType}
-          generatedDate={new Date()}
-        />
-      ).toBlob();
-      
-      const name = `Sales_Report_${(applyDateFilter && fromDate) || "ALL"}_${(applyDateFilter && toDate) || "ALL"}.pdf`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      
-      alert(`✅ Successfully generated PDF report`);
-    } else {
-      // Handle Excel download via API
+  // Generate report function
+  const handleGenerateReport = async () => {
+    setGeneratingReport(true);
+    try {
       const res = await axios.post(
         `${baseurl}/api/reports/sales-report/download`,
         { 
           fromDate: applyDateFilter && fromDate ? fromDate : null, 
           toDate: applyDateFilter && toDate ? toDate : null, 
-          format: 'excel'
+          format: reportFormat 
         },
         { responseType: "blob" }
       );
-      
-      const name = `Sales_Report_${(applyDateFilter && fromDate) || "ALL"}_${(applyDateFilter && toDate) || "ALL"}.xlsx`;
-      const blob = new Blob([res.data], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      
+
+      const name = `Sales_Report_${(applyDateFilter && fromDate) || "ALL"}_${(applyDateFilter && toDate) || "ALL"}.${
+        reportFormat === "pdf" ? "pdf" : "xlsx"
+      }`;
+      const blob =
+        reportFormat === "pdf"
+          ? new Blob([res.data], { type: "application/pdf" })
+          : new Blob([res.data], {
+              type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            });
+
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = name;
@@ -379,19 +353,20 @@ const handleGenerateReport = async () => {
       a.click();
       a.remove();
       URL.revokeObjectURL(a.href);
+
+      // ✅ SUCCESS ALERT
+      alert(`✅ Successfully generated ${reportFormat.toUpperCase()} report`);
       
-      alert(`✅ Successfully generated Excel report`);
+      setShowGenerateModal(false);
+    } catch (e) {
+      console.error("❌ Download error:", e);
+      // ❌ ERROR ALERT
+      alert(`❌ Failed to generate report: ${e.message}`);
+      setError("Failed to generate report");
+    } finally {
+      setGeneratingReport(false);
     }
-    
-    setShowGenerateModal(false);
-  } catch (e) {
-    console.error("❌ Download error:", e);
-    alert(`❌ Failed to generate report: ${e.message}`);
-    setError("Failed to generate report");
-  } finally {
-    setGeneratingReport(false);
-  }
-};
+  };
 
   // Clear all filters
   const clearFilters = () => {
