@@ -146,6 +146,7 @@ const handleDownloadSpecificPDF = async (orderNumber, pdfData) => {
     
     const pdfModule = await import('./InvoicceprintOrder');
     const InvoicceprintOrder = pdfModule.default;
+    const { generateQRDataUrl } = pdfModule; 
     
     const { pdf } = await import('@react-pdf/renderer');
     
@@ -166,23 +167,23 @@ const handleDownloadSpecificPDF = async (orderNumber, pdfData) => {
       invoiceDate: new Date().toISOString().split('T')[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       
-          companyInfo: {
-  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-  email: "spmathur56@gmail.com",
-  phone: "9801049700",
-  gstin: "10AAOCS1541B1ZZ",
-  state: "Bihar",
-  stateCode: "10"
-},
-     
+      companyInfo: {
+        name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+        address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+        email: "spmathur56@gmail.com",
+        phone: "9801049700",
+        gstin: "10AAOCS1541B1ZZ",
+        state: "Bihar",
+        stateCode: "10"
+      },
       
       supplierInfo: {
         name: accountDetails?.name || order.customer_name,
         businessName: accountDetails?.business_name || order.customer_name,
         gstin: accountDetails?.gstin || order.gstin || "N/A",
         state: accountDetails?.billing_state || order.billing_state || "Karnataka",
-        email: accountDetails?.email || "customer@example.com"
+        email: accountDetails?.email || "customer@example.com",
+        mobile_number: accountDetails?.mobile_number || order.mobile_number || "N/A"
       },
       
       shippingAddress: accountDetails ? {
@@ -203,7 +204,6 @@ const handleDownloadSpecificPDF = async (orderNumber, pdfData) => {
         product: item.item_name,
         description: item.item_name,
         quantity: item.flash_offer === 1 ? item.buy_quantity || item.quantity : item.quantity,
-        
         flash_offer: item.flash_offer || 0,
         buy_quantity: item.buy_quantity || 0,
         get_quantity: item.get_quantity || 0,
@@ -216,19 +216,29 @@ const handleDownloadSpecificPDF = async (orderNumber, pdfData) => {
         gst: item.tax_percentage || 0,
         tax_amount: item.tax_amount || 0,
         cgst_amount: item.cgst_amount || 0,
-        sgst_amount: item.sgst_amount || 0
+        sgst_amount: item.sgst_amount || 0,
+        unit_name: item.unit_name || ""
       })),
       
       order_mode: order.order_mode || "PAKKA",
       assigned_staff: order.assigned_staff || "N/A",
-      note: "Thank you for your business!"
+      note: "Thank you for your business!",
+      transportDetails: {
+        vehicleNo: ""
+      }
     };
+    
+    // Generate QR code BEFORE creating the PDF
+    const orderMode = invoiceData.order_mode || "PAKKA";
+    const { dataUrl: qrDataUrl, amount: qrAmount } = await generateQRDataUrl(invoiceData, orderMode);
     
     const pdfDoc = <InvoicceprintOrder 
       invoiceData={invoiceData} 
       invoiceNumber={invoiceNumber}
       gstBreakdown={{}}
       isSameState={true}
+      qrDataUrl={qrDataUrl}
+      qrAmount={qrAmount}
     />;
     
     const blob = await pdf(pdfDoc).toBlob();

@@ -355,47 +355,78 @@ function RetailerReports({ loading, setLoading }) {
     { key: "billing_state", title: "State", style: { textAlign: "center" } },
   ];
 
-  // Generate report function
-  const handleGenerateReport = async () => {
-    setGeneratingReport(true);
-    try {
+ // Generate report function
+const handleGenerateReport = async () => {
+  setGeneratingReport(true);
+  try {
+    let pdfBlob;
+    
+    if (reportFormat === 'pdf') {
+      // Import the PDF generator dynamically
+      const { generateRetailerReportPDF } = await import('./RetailerReportPDF');
+      
+      // Prepare data for PDF (use the filtered data)
+      const pdfData = filteredRetailerData.map(item => ({
+        name: item.name,
+        mobile_number: item.mobile,
+        email: item.email,
+        business_name: item.business_name,
+        gstin: item.gstin,
+        gst_registered_name: item.gst_registered_name,
+        assigned_staff: item.assigned_staff,
+        created_at: item.created_at,
+        billing_state: item.billing_state
+      }));
+      
+      pdfBlob = await generateRetailerReportPDF(
+        pdfData,
+        stats,
+        stateChartData,
+        barChartData,
+        applyDateFilter && fromDate ? fromDate : null,
+        applyDateFilter && toDate ? toDate : null
+      );
+    } else {
+      // Excel download - use existing axios call
       const res = await axios.post(
         `${baseurl}/api/reports/retailer-report/download`,
         { 
-          fromDate: (applyDateFilter && fromDate) ? fromDate : null, 
-          toDate: (applyDateFilter && toDate) ? toDate : null, 
-          format: reportFormat 
+          fromDate: applyDateFilter && fromDate ? fromDate : null, 
+          toDate: applyDateFilter && toDate ? toDate : null, 
+          format: 'excel'
         },
         { responseType: "blob" }
       );
-
-      const name = `Retailer_Report_${(applyDateFilter && fromDate) || "ALL"}_${(applyDateFilter && toDate) || "ALL"}.${
-        reportFormat === "pdf" ? "pdf" : "xlsx"
-      }`;
-      const blob =
-        reportFormat === "pdf"
-          ? new Blob([res.data], { type: "application/pdf" })
-          : new Blob([res.data], {
-              type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            });
-
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(a.href);
-
-      alert(`✅ Successfully generated ${reportFormat.toUpperCase()} report`);
-      setShowGenerateModal(false);
-    } catch (e) {
-      console.error("❌ Download error:", e);
-      alert(`❌ Failed to generate report: ${e.message}`);
-    } finally {
-      setGeneratingReport(false);
+      
+      pdfBlob = res.data;
     }
-  };
+
+    const name = `Retailer_Report_${(applyDateFilter && fromDate) || "ALL"}_${(applyDateFilter && toDate) || "ALL"}.${
+      reportFormat === "pdf" ? "pdf" : "xlsx"
+    }`;
+    
+    const blobType = reportFormat === "pdf"
+      ? { type: "application/pdf" }
+      : { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
+    
+    const blob = new Blob([pdfBlob], blobType);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+
+    alert(`✅ Successfully generated ${reportFormat.toUpperCase()} report`);
+    setShowGenerateModal(false);
+  } catch (e) {
+    console.error("❌ Download error:", e);
+    alert(`❌ Failed to generate report: ${e.message}`);
+  } finally {
+    setGeneratingReport(false);
+  }
+};
 
   // Pie chart options
   const pieOptions = {
