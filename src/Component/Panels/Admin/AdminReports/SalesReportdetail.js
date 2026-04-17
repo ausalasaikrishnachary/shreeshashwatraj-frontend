@@ -248,8 +248,8 @@ const SalesReportdetail = () => {
         'Date': item.Date ? new Date(item.Date).toLocaleDateString('en-IN') : '-',
 
         'Invoice No': item.VchNo || '-',
-                'Price': (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0),
-
+                'Amount': (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0),
+ 'Rate Per Unit': item.price || '-',
         'Quantity': parseFloat(item.quantity) || 0,
       }));
 
@@ -374,7 +374,9 @@ const SalesReportdetail = () => {
     { key: "PartyName", title: "Party Name", style: { textAlign: "center" } },
     { key: "Date", title: "Date", style: { textAlign: "center" } },
     { key: "VchNo", title: "Invoice No", style: { textAlign: "center" } },
-    { key: "total", title: "Price", style: { textAlign: "center" } },
+    { key: "total", title: "Amount", style: { textAlign: "center" } },
+        { key: "price", title: "Rate per unit", style: { textAlign: "center" } },
+
     { key: "quantity", title: "Quantity", style: { textAlign: "center" } },
   ];
 
@@ -495,29 +497,34 @@ const SalesReportdetail = () => {
 
           {/* Data Table */}
           <div className="sales-voucher-table-section">
-            <div className="sales-table-section">
-              {error ? (
-                <div className="sales-error-message">{error}</div>
-              ) : (
-                <>
-                  <ReusableTable
-                    title={`Sales Transactions for ${productInfo?.name || 'Product'}`}
-                    data={tableData}
-                    columns={columns}
-                    initialEntriesPerPage={10}
-                    showEntries={true}
-                    showSearch={false}
-                    showPagination={true}
-                  />
-                  <div className="sales-table-footer">
-                    <div className="sales-footer-item">
-                      <span className="footer-label">Total Quantity:</span>
-                      <span className="footer-value">{summary.totalProducts}</span>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+           {/* Data Table Section */}
+<div className="sales-voucher-table-section">
+  <div className="sales-table-section">
+    {error ? (
+      <div className="sales-error-message">{error}</div>
+    ) : (
+      <>
+        <ReusableTable
+          title={`Sales Transactions for ${productInfo?.name || 'Product'}`}
+          data={tableData}
+          columns={columns}
+          initialEntriesPerPage={10}
+          showEntries={true}
+          showSearch={false}
+          showPagination={true}
+        />
+        
+        {/* ✅ FIXED: Total Quantity Footer */}
+        <div className="sales-table-footer">
+          <div className="sales-footer-item " style={{marginRight:'55px'}}>
+            <span className="footer-label">Total Quantity:</span>
+            <span className="footer-value">{summary.totalProducts}</span>
+          </div>
+        </div>
+      </>
+    )}
+  </div>
+</div>
           </div>
 
           {showGenerateModal && (
