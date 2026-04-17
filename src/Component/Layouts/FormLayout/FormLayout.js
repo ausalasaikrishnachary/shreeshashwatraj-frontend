@@ -3,7 +3,6 @@ import { Button } from 'react-bootstrap';
 import AdminSidebar from "../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "../../Shared/AdminSidebar/AdminHeader";
 
-
 const FormLayout = ({ 
   user, 
   title, 
@@ -22,9 +21,7 @@ const FormLayout = ({
       
       {/* Main Content Area */}
       <div className={`retailers-content-area ${isCollapsed ? "collapsed" : ""}`}>
-                <AdminHeader isCollapsed={isCollapsed} />
-
-        {/* Remove AdminHeader component since we have custom header below */}
+        <AdminHeader isCollapsed={isCollapsed} />
       
         <div className="container customer-form-container">
           <h1 className="customer-form-title">{title}</h1>
@@ -57,7 +54,9 @@ export const FormSection = ({
   onNext, 
   nextLabel,
   isLast = false,
-  onSubmit 
+  onSubmit,
+  isSubmitting = false,  // ✅ Add this prop
+  submitLabel = "Submit"  // ✅ Add this prop
 }) => {
   return (
     <div className={`card customer-form-card ${activeTab === id ? 'active-section' : ''}`}>
@@ -72,6 +71,7 @@ export const FormSection = ({
             variant="outline-secondary" 
             className="customer-back-btn"
             onClick={onBack}
+            disabled={isSubmitting}  // ✅ Disable while submitting
           >
             Back
           </Button>
@@ -81,6 +81,7 @@ export const FormSection = ({
             variant="primary" 
             className="customer-submit-btn"
             onClick={onNext}
+            disabled={isSubmitting}  // ✅ Disable while submitting
           >
             Next: {nextLabel}
           </Button>
@@ -91,8 +92,16 @@ export const FormSection = ({
             variant="primary" 
             className="customer-submit-btn"
             onClick={onSubmit}
+            disabled={isSubmitting}  // ✅ Disable while submitting
           >
-            Submit
+            {isSubmitting ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Submitting...
+              </>
+            ) : (
+              submitLabel
+            )}
           </Button>
         )}
       </div>
