@@ -45,9 +45,9 @@ const SalesReport = () => {
   const [toDate, setToDate] = useState(getCurrentDate());
   const [tempFromDate, setTempFromDate] = useState(getFirstDayOfCurrentMonth());
   const [tempToDate, setTempToDate] = useState(getCurrentDate());
-  const [applyDateFilter, setApplyDateFilter] = useState(true);
+  const [applyDateFilter, setApplyDateFilter] = useState(true); // Apply filter initially
   const [searchTerm, setSearchTerm] = useState("");
-  const [transactionType, setTransactionType] = useState("pakka"); // Changed to "pakka" by default
+  const [transactionType, setTransactionType] = useState("all");
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [reportFormat, setReportFormat] = useState("pdf");
   const [generatingReport, setGeneratingReport] = useState(false);
@@ -67,6 +67,7 @@ const SalesReport = () => {
     setApplyDateFilter(true);
   }, []);
 
+  // Fetch all data initially
   const fetchSalesData = async () => {
     setLoading(true);
     setError("");
@@ -74,11 +75,9 @@ const SalesReport = () => {
       const response = await axios.get(`${baseurl}/api/reports/sales-report`);
       if (response.data.success) {
         const data = response.data.data;
-        // Filter to only Pakka sales initially
-        const pakkaOnlyData = data.filter(item => item.sales_type === "pakka");
-        setVoucherDetails(pakkaOnlyData);
-        setFilteredVoucherData(pakkaOnlyData);
-        processData(pakkaOnlyData);
+        setVoucherDetails(data);
+        setFilteredVoucherData(data);
+        processData(data);
       } else {
         setError("Failed to fetch sales data");
       }
@@ -250,30 +249,39 @@ const SalesReport = () => {
 
     let filtered = [...voucherDetails];
 
-    // Always filter to only Pakka sales (remove Kacha sales)
-    filtered = filtered.filter((item) => isPakkaRecord(item));
-
-    if (applyDateFilter && fromDate && toDate) {
+    // Apply transaction type filter
+    if (transactionType !== "all") {
       filtered = filtered.filter((item) => {
-        const itemDate = item.invoice_date;
-        if (!itemDate) return false;
-
-        try {
-          const dateParts = itemDate.split('/');
-          if (dateParts.length === 3) {
-            const day = dateParts[0].padStart(2, '0');
-            const month = dateParts[1].padStart(2, '0');
-            const year = dateParts[2];
-            const itemDateStr = `${year}-${month}-${day}`;
-            return itemDateStr >= fromDate && itemDateStr <= toDate;
-          }
-        } catch (err) {
-          console.error("Error parsing date for filter:", itemDate);
-          return false;
+        if (transactionType === "pakka") {
+          return isPakkaRecord(item);
+        } else if (transactionType === "kacha") {
+          return isKachaRecord(item);
         }
-        return false; 
+        return true;
       });
     }
+
+if (applyDateFilter && fromDate && toDate) {
+  filtered = filtered.filter((item) => {
+    const itemDate = item.invoice_date;
+    if (!itemDate) return false;
+
+    try {
+      const dateParts = itemDate.split('/');
+      if (dateParts.length === 3) {
+        const day = dateParts[0].padStart(2, '0');
+        const month = dateParts[1].padStart(2, '0');
+        const year = dateParts[2];
+        const itemDateStr = `${year}-${month}-${day}`;
+        return itemDateStr >= fromDate && itemDateStr <= toDate;
+      }
+    } catch (err) {
+      console.error("Error parsing date for filter:", itemDate);
+      return false;
+    }
+    return false; 
+  });
+}
 
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
@@ -307,84 +315,86 @@ const SalesReport = () => {
       setSalesData([]);
       setStaffData([]);
     }
-  }, [voucherDetails, fromDate, toDate, searchTerm, applyDateFilter]);
+  }, [voucherDetails, fromDate, toDate, searchTerm, transactionType, applyDateFilter]);
 
   // Initial fetch
   useEffect(() => {
     fetchSalesData();
   }, []);
 
-  // Generate report function
-  const handleGenerateReport = async () => {
-    setGeneratingReport(true);
-    try {
-      let pdfBlob;
+// Generate report function
+const handleGenerateReport = async () => {
+  setGeneratingReport(true);
+  try {
+    let pdfBlob;
+    
+    if (reportFormat === 'pdf') {
+      // Import the PDF generator dynamically
+      const { generateSalesReportPDF } = await import('./SalesReportpdf');
       
-      if (reportFormat === 'pdf') {
-        const { generateSalesReportPDF } = await import('./SalesReportpdf');
-        
-        const pdfData = filteredVoucherData.map(item => ({
-          ...item,
-          product: item.product,
-          quantity: item.quantity,
-          Subtotal: item.Subtotal,
-          total: item.total,
-          retailer: item.retailer,
-          assigned_staff: item.assigned_staff,
-          invoice_date: item.invoice_date,
-          TransactionType: 'Pakka',
-          sales_type: item.sales_type
-        }));
-        
-        pdfBlob = await generateSalesReportPDF(
-          pdfData,
-          summary,
-          applyDateFilter && fromDate ? fromDate : null,
-          applyDateFilter && toDate ? toDate : null,
-          'pakka'
-        );
-      } else {
-        const res = await axios.post(
-          `${baseurl}/api/reports/sales-report/download`,
-          { 
-            fromDate: applyDateFilter && fromDate ? fromDate : null, 
-            toDate: applyDateFilter && toDate ? toDate : null, 
-            format: 'excel',
-            transactionType: 'pakka' // Only Pakka sales
-          },
-          { responseType: "blob" }
-        );
-        
-        pdfBlob = res.data;
-      }
-
-      const name = `Pakka_Sales_Report_${(applyDateFilter && fromDate) || "ALL"}_${(applyDateFilter && toDate) || "ALL"}_${new Date().toISOString().slice(0, 19)}.${
-        reportFormat === "pdf" ? "pdf" : "xlsx"
-      }`;
+      // Prepare data for PDF
+      const pdfData = filteredVoucherData.map(item => ({
+        ...item,
+        product: item.product,
+        quantity: item.quantity,
+        Subtotal: item.Subtotal,
+        total: item.total,
+        retailer: item.retailer,
+        assigned_staff: item.assigned_staff,
+        invoice_date: item.invoice_date,
+        TransactionType: isKachaRecord(item) ? 'Kacha' : (isPakkaRecord(item) ? 'Pakka' : '-'),
+        sales_type: item.sales_type
+      }));
       
-      const blobType = reportFormat === "pdf"
-        ? { type: "application/pdf" }
-        : { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
+      pdfBlob = await generateSalesReportPDF(
+        pdfData,
+        summary,
+        applyDateFilter && fromDate ? fromDate : null,
+        applyDateFilter && toDate ? toDate : null,
+        transactionType !== 'all' ? transactionType : null
+      );
+    } else {
+      // Excel download - use existing axios call
+      const res = await axios.post(
+        `${baseurl}/api/reports/sales-report/download`,
+        { 
+          fromDate: applyDateFilter && fromDate ? fromDate : null, 
+          toDate: applyDateFilter && toDate ? toDate : null, 
+          format: 'excel'
+        },
+        { responseType: "blob" }
+      );
       
-      const blob = new Blob([pdfBlob], blobType);
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(a.href);
-
-      alert(`✅ Successfully generated Pakka Sales ${reportFormat.toUpperCase()} report`);
-      setShowGenerateModal(false);
-    } catch (e) {
-      console.error("❌ Download error:", e);
-      alert(`❌ Failed to generate report: ${e.message}`);
-      setError("Failed to generate report");
-    } finally {
-      setGeneratingReport(false);
+      pdfBlob = res.data;
     }
-  };
+
+    const name = `Sales_Report_${(applyDateFilter && fromDate) || "ALL"}_${(applyDateFilter && toDate) || "ALL"}_${new Date().toISOString().slice(0, 19)}.${
+      reportFormat === "pdf" ? "pdf" : "xlsx"
+    }`;
+    
+    const blobType = reportFormat === "pdf"
+      ? { type: "application/pdf" }
+      : { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
+    
+    const blob = new Blob([pdfBlob], blobType);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+
+    alert(`✅ Successfully generated ${reportFormat.toUpperCase()} report`);
+    setShowGenerateModal(false);
+  } catch (e) {
+    console.error("❌ Download error:", e);
+    alert(`❌ Failed to generate report: ${e.message}`);
+    setError("Failed to generate report");
+  } finally {
+    setGeneratingReport(false);
+  }
+};
 
   // Clear all filters
   const clearFilters = () => {
@@ -396,7 +406,8 @@ const SalesReport = () => {
     setToDate(currentDate);
     setApplyDateFilter(true);
     setSearchTerm("");
-    setTransactionType("pakka"); // Keep as pakka
+    setTransactionType("all");
+    setShowTransactionDropdown(false);
   };
 
   // Clear date filters only
@@ -409,6 +420,20 @@ const SalesReport = () => {
     setToDate(currentDate);
     setApplyDateFilter(true);
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showTransactionDropdown && !event.target.closest('.transaction-dropdown-container')) {
+        setShowTransactionDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTransactionDropdown]);
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -449,23 +474,54 @@ const SalesReport = () => {
     staff_address: item.staff_address || "Not Available",
     order_mode: item.order_mode || "-",
     retailer: item.retailer || "N/A",
-    TransactionType: "Pakka"
+    TransactionType: isKachaRecord(item) ? "Kacha" : (isPakkaRecord(item) ? "Pakka" : item.TransactionType || "-")
   }));
 
   const staffColors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042'];
 
+  // Get transaction type display name
+  const getTransactionTypeDisplay = (type) => {
+    switch(type) {
+      case 'all': return 'All Transactions';
+      case 'pakka': return 'Pakka/Sales';
+      case 'kacha': return 'Kacha Sales';
+      default: return 'All Transactions';
+    }
+  };
+
+  // Get counts for transaction types
+  const getTransactionCounts = () => {
+    const allCount = voucherDetails.length;
+    const pakkaCount = voucherDetails.filter(item => isPakkaRecord(item)).length;
+    const kachaCount = voucherDetails.filter(item => isKachaRecord(item)).length;
+    
+    return { allCount, pakkaCount, kachaCount };
+  };
+
+  const transactionCounts = getTransactionCounts();
+
   if (loading) {
-    return <div className="sales-report-loading">Loading Pakka Sales data...</div>;
+    return <div className="sales-report-loading">Loading sales data...</div>;
   }
 
   return (
     <div className="sales-report">
+      {/* Header */}
+      {/* <div className="sales-report-header">
+        <div className="sales-report-header-left">
+          <h2 className="sales-report-title">Sales Report Dashboard</h2>
+          <p className="sales-report-subtitle">Comprehensive sales analysis and reporting</p>
+        </div>
+      </div> */}
+
+      {/* Stats Cards Section */}
       <div className="sales-stats-grid">
         <div className="sales-stat-card">
-          <h3>Total Pakka Sales</h3>
-          <div className="sales-stat-value">{formatCurrency(summary.pakkaSales)}</div>
+          <h3>Total Sales</h3>
+          <div className="sales-stat-value">{formatCurrency(summary.totalSales)}</div>
           <p className="sales-stat-period">
             {applyDateFilter && fromDate && toDate ? `${fromDate} to ${toDate}` : 'All time'}
+            {transactionType !== "all" && ` • ${getTransactionTypeDisplay(transactionType)}`}
           </p>
         </div>
         
@@ -478,26 +534,134 @@ const SalesReport = () => {
         </div>
         
         <div className="sales-stat-card">
-          <h3>Total Transactions</h3>
-          <div className="sales-stat-value">{filteredVoucherData.length}</div>
-          <p className="sales-stat-period">Pakka Sales Records</p>
+          <h3>Kacha Sales</h3>
+          <div className="sales-stat-value">{formatCurrency(summary.kachaSales)}</div>
+          <p className="sales-stat-period">Kacha Transaction Type</p>
         </div>
         
         <div className="sales-stat-card">
-          <h3>Average Sale Value</h3>
-          <div className="sales-stat-value">
-            {formatCurrency(filteredVoucherData.length > 0 ? summary.pakkaSales / filteredVoucherData.length : 0)}
-          </div>
-          <p className="sales-stat-period">Per Transaction</p>
+          <h3>Pakka Sales</h3>
+          <div className="sales-stat-value">{formatCurrency(summary.pakkaSales)}</div>
+          <p className="sales-stat-period">Pakka/Sales Transaction Type</p>
         </div>
       </div>
 
+      {/* Charts Section */}
+      {/* <div className="sales-charts-container">
+        <div className="sales-chart-card">
+          <h3>Sales Trend</h3>
+          <p>Monthly sales performance</p>
+          <div className="sales-chart-wrapper">
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={salesData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis 
+                  domain={[0, dataMax => Math.max(dataMax, 1000000)]}
+                  tickFormatter={(value) => (value / 1000).toFixed(0) + 'K'}
+                />
+                <Tooltip 
+                  formatter={(value) => [formatCurrency(value), 'Sales']}
+                  labelFormatter={(label) => `Month: ${label}`}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="sales" 
+                  stroke="#8884d8" 
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="sales-chart-card">
+          <h3>Staff Performance</h3>
+          <p>Sales by team members</p>
+          <div className="sales-chart-wrapper">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={staffData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis 
+                  domain={[0, dataMax => Math.max(dataMax, 100000)]}
+                  tickFormatter={(value) => (value / 1000).toFixed(0) + 'K'}
+                />
+                <Tooltip 
+                  formatter={(value) => [formatCurrency(value), 'Sales']}
+                  labelFormatter={(label) => `Staff: ${label}`}
+                />
+                <Bar dataKey="sales">
+                  {staffData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={staffColors[index % staffColors.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div> */}
+
       {/* Filter Controls Section */}
       <div className="sales-filter-controls-section">
-        {/* <div className="sales-filter-card">
+        <div className="sales-filter-card">
           <h3>Filter Options</h3>
           <div className="sales-filter-controls">
-            {(applyDateFilter || searchTerm) && (
+            {/* Transaction Type Dropdown */}
+            <div className="transaction-dropdown-container">
+              <div 
+                className="transaction-dropdown-toggle"
+                onClick={() => setShowTransactionDropdown(!showTransactionDropdown)}
+              >
+                <FaFilter className="dropdown-icon" />
+                <span className="dropdown-label">
+                  {getTransactionTypeDisplay(transactionType)}
+                </span>
+                <span className={`dropdown-arrow ${showTransactionDropdown ? 'rotate' : ''}`}>
+                  ▼
+                </span>
+              </div>
+              
+              {showTransactionDropdown && (
+                <div className="transaction-dropdown-menu">
+                  <div 
+                    className={`dropdown-item ${transactionType === 'all' ? 'active' : ''}`}
+                    onClick={() => {
+                      setTransactionType('all');
+                      setShowTransactionDropdown(false);
+                    }}
+                  >
+                    <span className="item-label">All Transactions</span>
+                    <span className="item-count">{transactionCounts.allCount}</span>
+                  </div>
+                  <div 
+                    className={`dropdown-item ${transactionType === 'pakka' ? 'active' : ''}`}
+                    onClick={() => {
+                      setTransactionType('pakka');
+                      setShowTransactionDropdown(false);
+                    }}
+                  >
+                    <span className="item-label">Pakka/Sales</span>
+                    <span className="item-count pakka-count">{transactionCounts.pakkaCount}</span>
+                  </div>
+                  <div 
+                    className={`dropdown-item ${transactionType === 'kacha' ? 'active' : ''}`}
+                    onClick={() => {
+                      setTransactionType('kacha');
+                      setShowTransactionDropdown(false);
+                    }}
+                  >
+                    <span className="item-label">Kacha Sales</span>
+                    <span className="item-count kacha-count">{transactionCounts.kachaCount}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Clear All Filters Button */}
+            {(applyDateFilter || searchTerm || transactionType !== 'all') && (
               <button
                 className="sales-clear-all-btn"
                 onClick={clearFilters}
@@ -506,7 +670,7 @@ const SalesReport = () => {
               </button>
             )}
           </div>
-        </div> */}
+        </div>
 
         {/* Search and Date Filters */}
         <div className="sales-filters-row">
@@ -516,7 +680,7 @@ const SalesReport = () => {
                 <FaSearch className="sales-search-icon" />
                 <input
                   type="text"
-                  placeholder="Search Product, Retailer, Staff..."
+                  placeholder="Search Product, staff..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="sales-search-input"
@@ -558,14 +722,16 @@ const SalesReport = () => {
                 />
               </div>
               
+              {/* Apply Date Filter Button */}
               <button
                 className="sales-apply-date-btn"
                 onClick={applyDateFilterHandler}
                 disabled={!tempFromDate || !tempToDate}
               >
-                Apply Date Filter
+                 Add Filter
               </button>
               
+              {/* Show reset button if dates are not default */}
               {(tempFromDate !== getFirstDayOfCurrentMonth() || tempToDate !== getCurrentDate()) && (
                 <button
                   className="sales-clear-date-btn"
@@ -595,7 +761,7 @@ const SalesReport = () => {
             <div className="sales-error-message">{error}</div>
           ) : (
             <ReusableTable
-              title="Pakka Sales Transactions"
+              title="Sales Transactions"
               data={processedVoucherDetails}
               columns={voucherDetailsColumns}
               initialEntriesPerPage={10}
@@ -618,9 +784,10 @@ const SalesReport = () => {
             >
               ✖
             </button>
-            <div className="sales-modal-title">Generate Pakka Sales Report</div>
+            <div className="sales-modal-title">Generate Sales Report</div>
             <div className="sales-modal-subtitle">
-              {applyDateFilter && fromDate && toDate ? `Period: ${fromDate} to ${toDate}` : 'All Pakka sales data'}
+              {applyDateFilter && fromDate && toDate ? `Period: ${fromDate} to ${toDate}` : 'All sales data'}
+              {transactionType !== 'all' && ` • ${getTransactionTypeDisplay(transactionType)}`}
             </div>
 
             <div className="sales-format-options">
@@ -653,11 +820,11 @@ const SalesReport = () => {
               onClick={handleGenerateReport}
               disabled={generatingReport}
             >
-              {generatingReport ? 'Generating...' : 'Generate Pakka Sales Report'}
+              {generatingReport ? 'Generating...' : 'Generate Report'}
             </button>
             
             <div className="sales-modal-footer">
-              <p>Report will include all Pakka sales data and statistics</p>
+              <p>Report will include all filtered data and statistics</p>
             </div>
           </div>
         </div>
@@ -677,16 +844,7 @@ const voucherDetailsColumns = [
   { 
     key: "product", 
     title: "Product", 
-    style: { textAlign: "center" },
-    render: (value, record) => (
-      <Link 
-        to={`/salesreportdetail/${record.product_id}`} 
-        state={{ productName: record.product, productId: record.product_id }}
-        style={{ color: '#1890ff', cursor: 'pointer', textDecoration: 'none' }}
-      >
-        {value}
-      </Link>
-    )
+    style: { textAlign: "center" } 
   },
   { 
     key: "quantity", 

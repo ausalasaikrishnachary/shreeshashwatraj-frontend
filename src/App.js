@@ -147,6 +147,7 @@ import DispatchReportPDF from "./Component/Panels/Admin/Period/DispatchReportPDF
 import HsnReport from "./Component/Panels/Admin/AdminReports/HsnReport";
 import PrivateRoute from "./Component/Layouts/PrivateRoute";
 import QRCodeGenerator_normal from "./Component/Panels/Admin/SalesInvoicePage/QRCodeGenerator_normal";
+import SalesReportdetail from "./Component/Panels/Admin/AdminReports/SalesReportdetail";
 
 
 
@@ -333,6 +334,8 @@ function App() {
           <Route path="/dispatch-report" element={<PrivateRoute allowedRoles={["admin"]}><DispatchReportPDF /></PrivateRoute>} />
           <Route path="/hsn-report" element={<PrivateRoute allowedRoles={["admin"]}><HsnReport /></PrivateRoute>} />
           <Route path="/qrcodenormal" element={<PrivateRoute allowedRoles={["admin"]}><QRCodeGenerator_normal /></PrivateRoute>} />
+          <Route path="/salesreportdetail" element={<PrivateRoute allowedRoles={["admin"]}><SalesReportdetail /></PrivateRoute>} />
+          <Route path="/salesreportdetail/:id" element={<PrivateRoute allowedRoles={["admin"]}><SalesReportdetail /></PrivateRoute>} />
 
         </Routes>
       </Router>
