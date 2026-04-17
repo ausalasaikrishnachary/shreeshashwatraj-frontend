@@ -60,7 +60,7 @@ const SalesReportdetail = () => {
   const [toDate, setToDate] = useState(getCurrentDate());
   const [tempFromDate, setTempFromDate] = useState(getFirstDayOfCurrentMonth());
   const [tempToDate, setTempToDate] = useState(getCurrentDate());
-  const [applyDateFilter, setApplyDateFilter] = useState(true);
+  const [applyDateFilter, setApplyDateFilter] = useState(false); // ✅ Changed to false initially
   const [searchTerm, setSearchTerm] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   
@@ -180,6 +180,7 @@ const SalesReportdetail = () => {
 
     let filtered = [...voucherDetails];
 
+    // ✅ Only apply date filter if applyDateFilter is true
     if (applyDateFilter && fromDate && toDate) {
       const fromDateObj = new Date(fromDate);
       const toDateObj = new Date(toDate);
@@ -214,7 +215,7 @@ const SalesReportdetail = () => {
   const applyDateFilterHandler = () => {
     setFromDate(tempFromDate);
     setToDate(tempToDate);
-    setApplyDateFilter(true);
+    setApplyDateFilter(true); // ✅ Enable filter when button is clicked
   };
 
   const clearFilters = () => {
@@ -224,7 +225,7 @@ const SalesReportdetail = () => {
     setTempToDate(currentDate);
     setFromDate(firstDay);
     setToDate(currentDate);
-    setApplyDateFilter(true);
+    setApplyDateFilter(false); // ✅ Disable filter when clearing
     setSearchTerm("");
   };
 
@@ -235,7 +236,7 @@ const SalesReportdetail = () => {
     setTempToDate(currentDate);
     setFromDate(firstDay);
     setToDate(currentDate);
-    setApplyDateFilter(true);
+    setApplyDateFilter(false); // ✅ Disable filter when clearing dates
   };
 
   // Generate Excel Report
@@ -243,13 +244,13 @@ const SalesReportdetail = () => {
     try {
       const excelData = filteredData.map((item, index) => ({
         'S.No': index + 1,
-        // 'Product': item.product_name || item.product || '-',
-        'Invoice No': item.VchNo || '-',
-        'Party Name': item.PartyName || '-',
+                'Party Name': item.PartyName || '-',
         'Date': item.Date ? new Date(item.Date).toLocaleDateString('en-IN') : '-',
+
+        'Invoice No': item.VchNo || '-',
+                'Price': (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0),
+
         'Quantity': parseFloat(item.quantity) || 0,
-        'Price': parseFloat(item.price) || 0,
-        'Total Amount': (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0)
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -285,18 +286,17 @@ const SalesReportdetail = () => {
     }
   };
 
-  // ✅ FIXED: Generate PDF Report — pass raw numbers, not formatted strings
+  // Generate PDF Report
   const generatePDFReport = async () => {
     try {
       const { generateSalesReportPDF } = await import('./Salesreportdetailpdf');
       
-      // ✅ KEY FIX: price and quantity must be raw numbers for the PDF to calculate totals correctly
       const reportData = filteredData.map(item => ({
         ...item,
-        product: item.product_name || item.product || '-',          // ✅ field the PDF reads
-        price: parseFloat(item.price) || 0,                         // ✅ raw number
-        quantity: parseFloat(item.quantity) || 0,                   // ✅ raw number
-        date: item.Date ? new Date(item.Date).toLocaleDateString('en-IN') : '-' // ✅ formatted date string
+        product: item.product_name || item.product || '-',
+        price: parseFloat(item.price) || 0,
+        quantity: parseFloat(item.quantity) || 0,
+        date: item.Date ? new Date(item.Date).toLocaleDateString('en-IN') : '-'
       }));
       
       const pdfBlob = await generateSalesReportPDF(
@@ -370,14 +370,12 @@ const SalesReportdetail = () => {
   }));
 
   const columns = [
-    { key: "sl_no",          title: "S.No",       style: { textAlign: "center" } },
-    // { key: "product",        title: "Product",     style: { textAlign: "center" } }, 
-    { key: "VchNo",          title: "Invoice No",  style: { textAlign: "center" } },
-    { key: "PartyName",      title: "Party Name",  style: { textAlign: "center" } },
-    { key: "Date",           title: "Date",        style: { textAlign: "center" } },
-    { key: "TransactionType",title: "Type",        style: { textAlign: "center" } },
-    { key: "quantity",       title: "Quantity",    style: { textAlign: "center" } },
-    { key: "price",          title: "Price",       style: { textAlign: "center" } },
+    { key: "sl_no", title: "S.No", style: { textAlign: "center" } },
+    { key: "PartyName", title: "Party Name", style: { textAlign: "center" } },
+    { key: "Date", title: "Date", style: { textAlign: "center" } },
+    { key: "VchNo", title: "Invoice No", style: { textAlign: "center" } },
+    { key: "total", title: "Price", style: { textAlign: "center" } },
+    { key: "quantity", title: "Quantity", style: { textAlign: "center" } },
   ];
 
   if (loading) {
@@ -390,16 +388,14 @@ const SalesReportdetail = () => {
       <div className={`p-admin-main ${isCollapsed ? 'p-sidebar-collapsed' : ''}`}>
         <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
         <div className="sales-report">
-       <div className="sales-product-header">
-  <Link to="/reports" className="sales-back-btn">
-    <FaArrowLeft /> Back
-  </Link>
-
-  {/* ✅ Center Product Name */}
-  <h2 className="sales-product-title">
-   {productInfo?.name || productName || 'Product'}
-  </h2>
-</div>
+          <div className="sales-product-header">
+            <Link to="/reports" className="sales-back-btn">
+              <FaArrowLeft /> Back
+            </Link>
+            <h2 className="sales-product-title">
+              {productInfo?.name || productName || 'Product'}
+            </h2>
+          </div>
 
           <div className="sales-stats-grid">
             <div className="sales-stat-card">
