@@ -33,6 +33,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [loading, setLoading] = useState(mode !== 'add');
   const [staffList, setStaffList] = useState([]);
+const [isSubmitting, setIsSubmitting] = useState(false);
   const [createBoth, setCreateBoth] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -98,6 +99,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
     'entity_type',
     'group',
     'gstin',
+    'email',
     'display_name',
     'shipping_state',
     'shipping_country',
@@ -362,6 +364,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
         const informationMandatoryFields = [
           'name',
           'group',
+           'email', 
           'display_name',
           'opening_balance',
           'opening_balance_type',
@@ -533,7 +536,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       navigate('/retailers');
       return;
     }
-
+ setIsSubmitting(true);
     // Validate all tabs before final submission
     let allTabsValid = true;
     const allErrors = {};
@@ -548,6 +551,7 @@ const RetailerForm = ({ user, mode = 'add' }) => {
         const informationMandatoryFields = [
           'name',
           'group',
+           'email',
           'display_name',
           'opening_balance',
           'opening_balance_type',
@@ -682,6 +686,9 @@ const RetailerForm = ({ user, mode = 'add' }) => {
       console.error(err);
       alert(`Failed to ${isEditing ? 'update' : 'add'} ${isSupplier ? 'supplier' : 'retailer'}`);
     }
+     finally {
+    setIsSubmitting(false);
+  }
 
   };
 
@@ -1478,7 +1485,8 @@ const RetailerForm = ({ user, mode = 'add' }) => {
             isLast={true}
             isViewing={isViewing}
             onCancel={handleCancel}
-            submitLabel={isEditing ? "Update Retailer" : "Add Retailer"}
+              isSubmitting={isSubmitting}  // ✅ NEW: Pass loading state
+  submitLabel={isEditing ? "Update Retailer" : "Add Retailer"}  // ✅ NEW: Dynamic text
           >
             {!isViewing && (
               <div className="mb-3">

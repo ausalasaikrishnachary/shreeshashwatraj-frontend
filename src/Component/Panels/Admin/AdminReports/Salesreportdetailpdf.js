@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
     marginTop: 2
-  },
+  },  
 
 tableContainer: {
   marginTop: 10,
@@ -143,12 +143,13 @@ headerCell: {
   textRight: { textAlign: 'right' },
   textLeft: { textAlign: 'left' },
   
-colSNo:     { width: '8%' },    
-colParty:   { width: '25%' },  
-colDate:    { width: '15%' },   
-colInvoice: { width: '17%' },  
-colTotal:   { width: '20%' },   
-colQty:     { width: '15%' },   
+colSNo:     { width: '5%' },     // S.No column
+colParty:   { width: '27%' },    // Party Name column (as requested)
+colDate:    { width: '12%' },    // Date column
+colInvoice: { width: '15%' },    // Invoice No column
+colPrice:   { width: '12%' },    // Rate per Unit column
+colTotal:   { width: '17%' },    // Total Amount column
+colQty:     { width: '12%' },    // Quantity column  
 
   // Footer Summary
   footerSummary: {
@@ -254,18 +255,16 @@ export const SalesReportPDFDocument = ({
   
         {/* TABLE SECTION */}
         <View style={styles.tableContainer}>
-          {/* Table Header */}
-          <View style={styles.tableHeader}>
-            <Text style={[styles.headerCell, styles.colSNo, styles.textCenter]}>#</Text>
-            <Text style={[styles.headerCell, styles.colParty, styles.textLeft]}>Party Name</Text>
-            <Text style={[styles.headerCell, styles.colDate, styles.textCenter]}>Date</Text>
-            <Text style={[styles.headerCell, styles.colInvoice, styles.textCenter]}>Invoice No</Text>
-                        <Text style={[styles.headerCell, styles.colTotal, styles.textRight]}>Price</Text>
-
-            
-        
-            <Text style={[styles.headerCell, styles.colQty, styles.textCenter]}>Quantity</Text>
-          </View>
+     <View style={styles.tableHeader}>
+  <Text style={[styles.headerCell, styles.colSNo, styles.textCenter]}>#</Text>
+  <Text style={[styles.headerCell, styles.colParty, styles.textLeft]}>Party Name</Text>
+  <Text style={[styles.headerCell, styles.colDate, styles.textCenter]}>Date</Text>
+  <Text style={[styles.headerCell, styles.colInvoice, styles.textCenter]}>Invoice No</Text>
+ 
+  <Text style={[styles.headerCell, styles.colTotal, styles.textRight]}>Amount</Text>
+   <Text style={[styles.headerCell, styles.colPrice, styles.textRight]}>Rate Per Unit</Text>
+  <Text style={[styles.headerCell, styles.colQty, styles.textCenter]}>Quantity</Text>
+</View>
 
 {data.map((item, index) => (
   <View key={index} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlternate}>
@@ -281,12 +280,17 @@ export const SalesReportPDFDocument = ({
     <Text style={[styles.tableCell, styles.colInvoice, styles.textCenter]}>
       {item.VchNo || '-'}
     </Text>
+  
     <Text style={[styles.tableCell, styles.colTotal, styles.textRight]}>
       {formatCurrency((parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0))}
+    </Text>
+      <Text style={[styles.tableCell, styles.colPrice, styles.textRight]}>
+      {formatCurrency(parseFloat(item.price) || 0)}
     </Text>
     <Text style={[styles.tableCell, styles.colQty, styles.textCenter]}>
       {parseFloat(item.quantity) || 0}
     </Text>
+    
   </View>
 ))}
         </View>

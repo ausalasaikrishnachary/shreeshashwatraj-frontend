@@ -24,12 +24,22 @@
 .sales-table-footer {
   display: flex;
   justify-content: flex-end;
+  gap: 30px;
   margin-top: 10px;
-  padding: 10px;
-  background: #f5f5f5;
-  border-top: 2px solid #ddd;
+  padding: 12px 20px;
+  background: #f8fafc;
+  border-top: 2px solid #e2e8f0;
+  border-radius: 0 0 8px 8px;
 }
 
+.sales-footer-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d3748;
+}
 .footer-label {
   font-weight: 600;
 }
@@ -37,10 +47,7 @@
 .footer-value {
   font-weight: 700;
 }
-.sales-footer-item {
-  font-size: 16px;
-  color: #333;
-}
+
 .sales-product-header {
   display: flex;
   justify-content: space-between;
