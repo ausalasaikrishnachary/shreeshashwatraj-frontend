@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     lineHeight: 1.2,
   },
   invoiceTitle: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: 'bold',
     marginBottom: 5,
     color: '#dc3545',
@@ -321,7 +321,7 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
   const supplierInfo = getSafeData(currentData, 'supplierInfo', {});
   const shippingAddress = getSafeData(currentData, 'shippingAddress', {});
   const items = getSafeData(currentData, 'items', []);
-  
+    const bb_bc = getSafeData(currentData, 'bb_bc', 'b2b');
   const displayInvoiceNumber = invoiceNumber || getSafeData(currentData, 'invoiceNumber', 'INV001');
   const invoiceDate = getSafeData(currentData, 'invoiceDate') 
     ? new Date(getSafeData(currentData, 'invoiceDate')).toLocaleDateString('en-IN') 
@@ -359,41 +359,36 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
             </Text>
           </View>
           <View style={styles.invoiceMeta}>
-            <Text style={styles.invoiceTitle}>TAX INVOICE</Text>
+            <Text style={styles.invoiceTitle}>{getSafeData(currentData, 'document_type') || ''}</Text>
             <Text style={styles.addressText}><Text style={styles.tableCellBold}>Invoice No:</Text> {displayInvoiceNumber}</Text>
             <Text style={styles.addressText}><Text style={styles.tableCellBold}>Invoice Date:</Text> {invoiceDate}</Text>
             <Text style={styles.addressText}><Text style={styles.tableCellBold}>Due Date:</Text> {dueDate}</Text>
           </View>
         </View>
-        
+               {/* <View style={{ marginTop: 6, paddingTop: 4, borderTop: '0.5pt solid #dee2e6' }}>
+      <Text style={[styles.addressText, { fontWeight: 'bold', color: '#007bff' }]}>Document Type:</Text>
+      <Text style={[styles.addressText, { fontWeight: 'bold' }]}>
+        {getSafeData(currentData, 'document_type') || ''}
+      </Text>
+    </View> */}
         {/* Address Section - 50% Bill To + 50% Transport Details */}
-        <View style={styles.addressSection}>
-          <View style={styles.addressBox}>
-            <Text style={styles.sectionTitle}>Bill To:</Text>
-            <Text style={styles.addressText}>
-              {getSafeData(supplierInfo, 'business_name', '')}
-            </Text>
-            <Text style={styles.addressText}>
-              {getSafeData(supplierInfo, 'mobile_number') || getSafeData(supplierInfo, 'phone_number', 'N/A')}
-            </Text>
-            <Text style={styles.addressText}>
-              GSTIN: {getSafeData(supplierInfo, 'gstin', 'N/A')}
-            </Text>
-            <Text style={styles.addressText}>
-              State: {getSafeData(supplierInfo, 'state', 'N/A')}
-            </Text>
-          </View>
-
-          <View style={styles.transportBox}>
-            <Text style={styles.sectionTitle}>Transport Details:</Text>
-            <View style={styles.transportRow}>
-              <Text style={[styles.addressText, { fontWeight: 'bold' }]}>Vehicle No.:</Text>
-              <Text style={styles.addressText}>
-                {getSafeData(currentData, 'transportDetails.vehicleNo') || '-'}
-              </Text>
-            </View>
-          </View>
-        </View>
+  <View style={styles.addressBox}>
+  <Text style={styles.sectionTitle}>Bill To:</Text>
+  <Text style={styles.addressText}>
+    {bb_bc === 'b2c' 
+      ? getSafeData(supplierInfo, 'name', 'N/A')
+      : getSafeData(supplierInfo, 'business_name', 'N/A')}
+  </Text>
+  <Text style={styles.addressText}>
+    {getSafeData(supplierInfo, 'mobile_number') || getSafeData(supplierInfo, 'phone_number', 'N/A')}
+  </Text>
+  <Text style={styles.addressText}>
+    GSTIN: {getSafeData(supplierInfo, 'gstin', 'N/A')}
+  </Text>
+  <Text style={styles.addressText}>
+    State: {getSafeData(supplierInfo, 'state', 'N/A')}
+  </Text>
+</View>
         
         {/* Items Table */}
         <View style={styles.itemsSection}>
