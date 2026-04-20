@@ -189,8 +189,7 @@ const fetchProductById = async (id) => {
       description: product.description || '',
       maintain_batch: product.maintain_batch || false,
       product_type: product.product_type || '',
-        weight: product.weight || '', 
-        document_type: product.document_type || '', 
+        weight: product.weight || '', // Add this line
     });
 
     // Log the formatted date
@@ -536,20 +535,9 @@ const handleBatchChange = async (index, e) => {
     maintain_batch: false,
     purchase_price: '',
      product_type: '', 
-      weight: '', 
-      document_type: ''
+      weight: '', // Add this line
   });
 
-
-const getDocumentType = (gstRate) => {
-  const rate = parseFloat(gstRate);
-  if (rate === 0) {
-    return 'Bill of Supply';
-  } else if (rate > 0) {
-    return 'Tax Invoice';
-  }
-  return '';
-};
 const handleChange = async (e) => {
   const { name, value, type, checked } = e.target;
   console.log(`🔄 Handling change: ${name} = ${type === 'checkbox' ? checked : value}`);
@@ -558,17 +546,6 @@ const handleChange = async (e) => {
     ...formData,
     [name]: type === 'checkbox' ? checked : value
   };
-
-  if (name === 'gst_rate') {
-    const rate = parseFloat(value);
-    if (rate === 0) {
-      updatedFormData.document_type = 'Bill of Supply';
-    } else if (rate === 5 || rate === 12 || rate === 18) {
-      updatedFormData.document_type = 'Tax Invoice';
-    } else {
-      updatedFormData.document_type = '';
-    }
-  }
 
   if (name === 'price' || name === 'gst_rate' || name === 'inclusive_gst') {
     if (updatedFormData.inclusive_gst === 'Exclusive' && 

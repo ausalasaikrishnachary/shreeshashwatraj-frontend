@@ -33,6 +33,12 @@ const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState(null);
   const navigate = useNavigate();
   const { id } = useParams(); 
+  const DocumentType = (gstRate) => {
+  const rate = parseFloat(gstRate);
+  if (rate === 0) return 'Bill of Supply';
+  if (rate > 0) return 'Tax Invoice';
+  return '';
+};
   const [customerType, setCustomerType] = useState('b2b');
 const [charges, setCharges] = useState([]);
 const [productStock, setProductStock] = useState({});
@@ -155,25 +161,8 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
       const apiData = result.data;
       const transformedData = transformApiDataToFormFormat(apiData);
       
-      const itemsWithDocType = await Promise.all(
-        transformedData.items.map(async (item) => {
-          if (!item.document_type && item.product_id) {
-            try {
-              const productRes = await fetch(`${baseurl}/products/${item.product_id}`);
-              const productData = await productRes.json();
-              return {
-                ...item,
-                document_type: productData.document_type || null
-              };
-            } catch (err) {
-              return item;
-            }
-          }
-          return item;
-        })
-      );
-      
-      setInvoiceData({ ...transformedData, items: itemsWithDocType });
+      // document_type is now derived from GST rate via DocumentType() — no API fetch needed
+      setInvoiceData(transformedData);
       setSelectedSupplierId(apiData.PartyID);
       setSelected(true);
       
@@ -252,7 +241,7 @@ const transformApiDataToFormFormat = (apiData) => {
           inclusive_gst: batch.inclusive_gst || "" ,
            unit_id: batch.unit_id || "", 
     unit_name: batch.unit_name || "" ,
-    document_type: batch.document_type || null, 
+  document_type: DocumentType(batch.gst),
       };
     }) || [];
 
@@ -748,7 +737,7 @@ const addItem = () => {
         inclusive_gst: itemForm.inclusive_gst  ,
          unit_id: itemForm.unit_id,     
       unit_name: itemForm.unit_name ,
-       document_type: itemForm.document_type || '', 
+        document_type: DocumentType(itemForm.gst), 
     };
 
     setInvoiceData(prev => ({
@@ -778,7 +767,7 @@ const addItem = () => {
         original_price: itemForm.original_price ,
           unit_id: itemForm.unit_id,      
       unit_name: itemForm.unit_name  ,
-         document_type: itemForm.document_type || '',
+          document_type: DocumentType(itemForm.gst),
     };
 
     setInvoiceData(prev => ({
@@ -1246,27 +1235,26 @@ const roundOff = roundedGrandTotal - actualTotal;
         assigned_staff: staffName,
         hsn_code: item.hsn_code || "",
         inclusive_gst: item.inclusive_gst || "",
-          document_type: item.document_type || "",       
+         document_type: DocumentType(item.gst),  
       };
     });
 
     const firstItemProductId = invoiceData.items[0]?.product_id || null;
     const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
     const mobileNumber = invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number || '';
-    
-    const uniqueDocTypes = [...new Set(
-  invoiceData.items
-    .map(item => item.document_type)
-    .filter(val => val !== null && val !== "" && val !== undefined)
+
+const uniqueDocTypes = [...new Set(
+  invoiceData.items.map(item => DocumentType(item.gst))
 )];
 
 let voucherDocumentType = null;
 
 if (uniqueDocTypes.length === 1) {
-  voucherDocumentType = uniqueDocTypes[0];  
+  voucherDocumentType = uniqueDocTypes[0];
 } else if (uniqueDocTypes.length >= 2) {
-  voucherDocumentType = "Bill of Supply cum Tax Invoice";  
+  voucherDocumentType = "Bill of Supply cum Tax Invoice";
 }
+
 
 // const sameState = isSameState();
 const taxTypeValue = sameState ? 'local' : 'interstate'; 
@@ -2044,7 +2032,6 @@ const handleExclPriceChange = (e) => {
                           inclusive_gst: inclusiveGst  ,
                            unit_id: p.unit || null,      
     unit_name: unitName   ,
-      document_type: p.document_type || ''
                         }));
 
                         try {
