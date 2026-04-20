@@ -132,6 +132,7 @@ const [endDate, setEndDate] = useState(getCurrentDate());
         totalAmount: `₹ ${parseFloat(invoice.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
         status: invoice.status,
         created: invoice.Date || invoice.EntryDate?.split('T')[0] || 'N/A',
+         document_type: invoice.document_type || "",
         originalData: invoice,
         hasPDF: !!invoice.pdf_data,
         orderNumber: invoice.order_number || 'No Order',
@@ -460,9 +461,11 @@ const transformApiDataToInvoiceFormat = (apiData) => {
     grandTotal: grandTotal.toFixed(2),
     totalCess: "0.00",
       roundOff: roundOff.toFixed(2),
+        document_type: apiData.document_type || "",
     note: apiData.Notes || "Thank you for your business!",
     transportDetails: transportDetails,
     additionalCharge: "",
+     bb_bc: apiData.bb_bc || 'b2b', 
     additionalChargeAmount: "0.00",
     totalCGST: parseFloat(apiData.CGSTAmount) || 0,
     totalSGST: parseFloat(apiData.SGSTAmount) || 0,
@@ -509,7 +512,6 @@ const generateQRCodeDataUrl = (invoiceData) => {
   });
 };
 
-// Update the handlePrintInvoice function
 const handlePrintInvoice = async (invoice) => {
   try {
     const voucherId = invoice.originalData?.VoucherID || invoice.id;
@@ -549,6 +551,7 @@ const handlePrintInvoice = async (invoice) => {
       console.error('QR generation error:', qrError);
     }
     
+    // ✅ PASS bb_bc and document_type to PDF
     await generateAndPrintPDF(transformedData, invoice.number, unitData, qrDataUrl, qrAmount);
     
   } catch (error) {
@@ -557,7 +560,7 @@ const handlePrintInvoice = async (invoice) => {
   }
 };
 
-// Update the generateAndPrintPDF function to accept unitData and QR data
+// Update the generateAndPrintPDF function to accept and pass bb_bc
 const generateAndPrintPDF = async (invoiceData, invoiceNumber, unitData, qrDataUrl, qrAmount) => {
   try {
     const reactPdf = await import('@react-pdf/renderer');
@@ -621,22 +624,25 @@ const generateAndPrintPDF = async (invoiceData, invoiceNumber, unitData, qrDataU
     const gstBreakdown = calculateGSTBreakdown();
     const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
 
+    // ✅ Ensure invoiceData has bb_bc and document_type
     const pdfDoc = (
       <SalesPdfDocument
-        invoiceData={invoiceData}
+        invoiceData={{
+          ...invoiceData,
+          bb_bc: invoiceData.bb_bc || 'b2b',  // ✅ PASS bb_bc
+          document_type: invoiceData.document_type || '',  // ✅ PASS document_type
+        }}
         invoiceNumber={invoiceData.invoiceNumber}
         gstBreakdown={gstBreakdown}
         isSameState={isSameState}
-        unitData={unitData}  // ← PASS UNIT DATA
-        qrDataUrl={qrDataUrl}  // ← PASS QR DATA URL
-        qrAmount={qrAmount || parseFloat(invoiceData.grandTotal)}  // ← PASS QR AMOUNT
+        unitData={unitData}
+        qrDataUrl={qrDataUrl}
+        qrAmount={qrAmount || parseFloat(invoiceData.grandTotal)}
       />
     );
 
     const blob = await pdf(pdfDoc).toBlob();
-
     const pdfUrl = URL.createObjectURL(blob);
-
     const printWindow = window.open(pdfUrl, '_blank');
 
     if (!printWindow) {
@@ -651,7 +657,6 @@ const generateAndPrintPDF = async (invoiceData, invoiceNumber, unitData, qrDataU
       URL.revokeObjectURL(downloadUrl);
     }
 
-    // Clean up URL after delay
     setTimeout(() => {
       URL.revokeObjectURL(pdfUrl);
     }, 1000);

@@ -33,6 +33,7 @@ const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState(null);
   const navigate = useNavigate();
   const { id } = useParams(); 
+  const [customerType, setCustomerType] = useState('b2b');
 const [charges, setCharges] = useState([]);
 const [productStock, setProductStock] = useState({});
 const [invoiceData, setInvoiceData] = useState(() => {
@@ -126,7 +127,8 @@ const currentFY = getFinancialYearShort();
     batch_id: "",
     batchDetails: null,
      hsn_code: ""  ,
-      inclusive_gst: ""  // ← ADD THIS LINE
+      inclusive_gst: ""  ,
+       document_type: ""  ,
   });
 
   const [loading, setLoading] = useState(false);
@@ -153,11 +155,28 @@ const fetchInvoiceDataForEdit = async (voucherId) => {
       const apiData = result.data;
       const transformedData = transformApiDataToFormFormat(apiData);
       
-      setInvoiceData(transformedData);
+      const itemsWithDocType = await Promise.all(
+        transformedData.items.map(async (item) => {
+          if (!item.document_type && item.product_id) {
+            try {
+              const productRes = await fetch(`${baseurl}/products/${item.product_id}`);
+              const productData = await productRes.json();
+              return {
+                ...item,
+                document_type: productData.document_type || null
+              };
+            } catch (err) {
+              return item;
+            }
+          }
+          return item;
+        })
+      );
+      
+      setInvoiceData({ ...transformedData, items: itemsWithDocType });
       setSelectedSupplierId(apiData.PartyID);
       setSelected(true);
       
-      // Load charges
       if (apiData.additional_charges_type && apiData.additional_charges_amount) {
         setCharges([{
           type: apiData.additional_charges_type,
@@ -232,7 +251,8 @@ const transformApiDataToFormFormat = (apiData) => {
          hsn_code: batch.hsn_code || ''  ,
           inclusive_gst: batch.inclusive_gst || "" ,
            unit_id: batch.unit_id || "", 
-    unit_name: batch.unit_name || ""  
+    unit_name: batch.unit_name || "" ,
+    document_type: batch.document_type || null, 
       };
     }) || [];
 
@@ -638,7 +658,6 @@ const addItem = () => {
     window.alert("⚠️ Please select a product");
     return;
   }
-
   const quantity = parseFloat(itemForm.quantity) || 0;
   if (quantity <= 0) {
     window.alert("⚠️ Cannot add item - Quantity is zero. Please enter a quantity greater than 0.");
@@ -728,7 +747,8 @@ const addItem = () => {
         original_price: itemForm.original_price ,
         inclusive_gst: itemForm.inclusive_gst  ,
          unit_id: itemForm.unit_id,     
-      unit_name: itemForm.unit_name    
+      unit_name: itemForm.unit_name ,
+       document_type: itemForm.document_type || '', 
     };
 
     setInvoiceData(prev => ({
@@ -757,7 +777,8 @@ const addItem = () => {
        inclusive_gst: itemForm.inclusive_gst  ,
         original_price: itemForm.original_price ,
           unit_id: itemForm.unit_id,      
-      unit_name: itemForm.unit_name  
+      unit_name: itemForm.unit_name  ,
+         document_type: itemForm.document_type || '',
     };
 
     setInvoiceData(prev => ({
@@ -839,7 +860,8 @@ const fetchUnitName = async (unitId) => {
         inclusive_gst: itemToEdit.inclusive_gst || ""  ,
            original_price: itemToEdit.original_price || "",
             unit_id: itemToEdit.unit_id || "",
-    unit_name: itemToEdit.unit_name || "" 
+    unit_name: itemToEdit.unit_name || "" ,
+     document_type: itemToEdit.document_type || "" 
     });
     
     setSelectedBatch(itemToEdit.batch);
@@ -1223,7 +1245,8 @@ const roundOff = roundedGrandTotal - actualTotal;
         batchDetails: item.batchDetails,
         assigned_staff: staffName,
         hsn_code: item.hsn_code || "",
-        inclusive_gst: item.inclusive_gst || ""
+        inclusive_gst: item.inclusive_gst || "",
+          document_type: item.document_type || "",       
       };
     });
 
@@ -1231,6 +1254,23 @@ const roundOff = roundedGrandTotal - actualTotal;
     const firstItemBatchId = invoiceData.items[0]?.batch_id || null;
     const mobileNumber = invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number || '';
     
+    const uniqueDocTypes = [...new Set(
+  invoiceData.items
+    .map(item => item.document_type)
+    .filter(val => val !== null && val !== "" && val !== undefined)
+)];
+
+let voucherDocumentType = null;
+
+if (uniqueDocTypes.length === 1) {
+  voucherDocumentType = uniqueDocTypes[0];  
+} else if (uniqueDocTypes.length >= 2) {
+  voucherDocumentType = "Bill of Supply cum Tax Invoice";  
+}
+
+// const sameState = isSameState();
+const taxTypeValue = sameState ? 'local' : 'interstate'; 
+const customerTypeValue = customerType || 'b2b'; 
     const payload = {
       ...invoiceData,
       invoiceNumber: finalInvoiceNumber,
@@ -1245,11 +1285,14 @@ const roundOff = roundedGrandTotal - actualTotal;
       IGSTAmount: totalIGSTAmount.toFixed(2),   
       additional_charges_type: charges.map(c => c.type).join(','),
       additional_charges_amount: additionalChargeAmount,
+      document_type:voucherDocumentType,
       CGSTPercentage: totalCGSTPercentage.toFixed(2),
       SGSTPercentage: totalSGSTPercentage.toFixed(2), 
       IGSTPercentage: totalIGSTPercentage.toFixed(2), 
       taxType: sameState ? "CGST/SGST" : "IGST",
       batchDetails: batchDetails,  
+        bb_bc: customerTypeValue,     
+  L_I: taxTypeValue,  
       product_id: 123,
       batch_id: "bth0001",
       primaryProductId: firstItemProductId,
@@ -1325,6 +1368,8 @@ const roundOff = roundedGrandTotal - actualTotal;
       taxableAmount: taxableAmount.toFixed(2),
       totalGST: totalGST.toFixed(2),
       grandTotal: roundedGrandTotal,
+        bb_bc: customerTypeValue,
+  L_I: taxTypeValue,
       roundOff: roundOff.toFixed(2),
       supplierInfo: {
         ...invoiceData.supplierInfo,
@@ -1496,10 +1541,39 @@ const handleExclPriceChange = (e) => {
                     <Form.Label className="fw-bold">Validity Date</Form.Label>
                   </Form.Group>
                 </Col>
+                   {/* B2B / B2C Checkboxes */}
+          
               </Row>
-
+  <div className="d-flex gap-1 me-1">
+              <Form.Check
+                type="checkbox"
+                id="b2b-checkbox"
+                label="B2B"
+                checked={customerType === 'b2b'}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setCustomerType('b2b');
+                  } else if (customerType === 'b2b') {
+                    setCustomerType('b2c');
+                  }
+                }}
+              />
+              <Form.Check
+                type="checkbox"
+                id="b2c-checkbox"
+                label="B2C"
+                checked={customerType === 'b2c'}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setCustomerType('b2c');
+                  } else if (customerType === 'b2c') {
+                    setCustomerType('b2b');
+                  }
+                }}
+              />
+            </div>
 <div className="bg-white rounded border">
-  <Row className="mb-0">
+ <Row className="mb-0">
     <Col md={4} className="border-end p-3">
       {!selected ? (
         <>
@@ -1577,6 +1651,7 @@ const handleExclPriceChange = (e) => {
                             setItemForm(prev => ({ ...prev, discount: 0 }));
                             setIsDropdownOpen(false);
                             setSearchTerm("");
+                            setCustomerType('b2b');
                             return;
                           }
                           
@@ -1688,7 +1763,9 @@ const handleExclPriceChange = (e) => {
           <div className="d-flex justify-content-between align-items-center mb-2">
             <strong className="text-primary">Customer Info</strong>
 
-            {/* ✅ Edit + Change Retailer Buttons */}
+         
+
+            {/* Edit + Change Retailer Buttons */}
             <div className="btn-group">
               <Button
                 variant="info"
@@ -1711,7 +1788,8 @@ const handleExclPriceChange = (e) => {
                   setSelectedStaffId("");
                   setInputName("");
                   setSearchTerm("");
-                  setIsDropdownOpen(true);   
+                  setIsDropdownOpen(true);
+                  setCustomerType('b2b');
                 }}
               >
                 Change Retailer
@@ -1719,16 +1797,23 @@ const handleExclPriceChange = (e) => {
             </div>
           </div>
 
-          {/* Customer Info Display */}
+          {/* Customer Info Display - Only Business and Name fields change */}
           <div className="bg-light p-2 rounded">
-            {/* <div><strong>Name:</strong> {invoiceData.supplierInfo.name}</div> */}
-            <div><strong>Business:</strong> {invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName}</div>
-              {(invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number) && (
-          <div><strong>Mobile:</strong> {invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number}</div>
-        )}
-        
+            {customerType === 'b2c' ? (
+              // B2C Mode - Show Customer Name instead of Business
+              <div><strong>Customer Name:</strong> {invoiceData.supplierInfo.name}</div>
+            ) : (
+              // B2B Mode (default) - Show Business Name
+              <div><strong>Business:</strong> {invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName}</div>
+            )}
+            
+            {(invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number) && (
+              <div><strong>Mobile:</strong> {invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number}</div>
+            )}
+            
             <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
             <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
+            
             {invoiceData.supplierInfo.staffid && invoiceData.supplierInfo.staffid !== null && (
               <div>
                 <strong>Assigned Staff:</strong> {
@@ -1958,7 +2043,8 @@ const handleExclPriceChange = (e) => {
                           hsn_code: p.hsn_code || "",
                           inclusive_gst: inclusiveGst  ,
                            unit_id: p.unit || null,      
-    unit_name: unitName   
+    unit_name: unitName   ,
+      document_type: p.document_type || ''
                         }));
 
                         try {

@@ -527,6 +527,8 @@ useEffect(() => {
       totalGST: totalGST.toFixed(2),
       grandTotal: grandTotal.toFixed(2),
       totalCess: "0.00",
+       document_type: apiData.document_type || "",
+        bb_bc: apiData.bb_bc || 'b2b', 
  roundOff: roundOff.toFixed(2),
       note: apiData.Notes || "Thank you for your business!",
       transportDetails: transportDetails,
@@ -1832,7 +1834,7 @@ const handleItemChange = (index, field, value) => {
                     )}
                   </Col>
                   <Col md={4} className="text-end">
-                    <h3 className="invoice-title text-danger mb-2">TAX INVOICE</h3>
+  
                     <div className="invoice-meta bg-light p-2 rounded">
                       {isEditMode ? (
                         <div className="edit-control">
@@ -1865,6 +1867,9 @@ const handleItemChange = (index, field, value) => {
                         </div>
                       ) : (
                         <>
+                        <h3 className="invoice-title text-danger mb-2" style={{ fontSize: '16px', fontWeight: '700' }}>
+  { currentData.document_type || ''}
+</h3>  
                           <p className="mb-1"><strong>Invoice No:</strong> {displayInvoiceNumber}</p>
                           <p className="mb-1">
                             <strong>Invoice Date:</strong>{" "}
@@ -1896,21 +1901,25 @@ const handleItemChange = (index, field, value) => {
               <div className="address-section mb-4">
                 <Row>
            <Col md={6}>
-  <div className="billing-address bg-light p-3 rounded">
+ <div className="billing-address bg-light p-3 rounded">
     <h5 className="text-primary mb-2">Bill To:</h5>
     {isEditMode ? (
       <div className="edit-control">
-        {/* <Form.Control 
-          className="mb-2"
-          value={currentData.supplierInfo.name}
-          onChange={(e) => handleNestedChange('supplierInfo', 'name', e.target.value)}
-        /> */}
-        <Form.Control 
-          className="mb-2"
-          value={currentData.supplierInfo.business_name || ''}
-          onChange={(e) => handleNestedChange('supplierInfo', 'business_name', e.target.value)}
-          placeholder="Business Name"
-        />
+        {currentData.bb_bc === 'b2c' ? (
+          <Form.Control 
+            className="mb-2"
+            value={currentData.supplierInfo.name || ''}
+            onChange={(e) => handleNestedChange('supplierInfo', 'name', e.target.value)}
+            placeholder="Customer Name"
+          />
+        ) : (
+          <Form.Control 
+            className="mb-2"
+            value={currentData.supplierInfo.business_name || ''}
+            onChange={(e) => handleNestedChange('supplierInfo', 'business_name', e.target.value)}
+            placeholder="Business Name"
+          />
+        )}
         <Form.Control 
           className="mb-2"
           placeholder="Mobile Number"
@@ -1931,9 +1940,12 @@ const handleItemChange = (index, field, value) => {
       </div>
     ) : (
       <>
-        {/* <p className="mb-1"><strong>{currentData.supplierInfo.name}</strong></p> */}
-        {currentData.supplierInfo.business_name && (
-          <p className="mb-1 text-muted">{currentData.supplierInfo.business_name}</p>
+        {currentData.bb_bc === 'b2c' ? (
+          <p className="mb-1 text-muted">Customer Name:{currentData.supplierInfo.name || 'N/A'}</p>
+        ) : (
+          currentData.supplierInfo.business_name && (
+            <p className="mb-1 text-muted"> Business Name: {currentData.supplierInfo.business_name}</p>
+          )
         )}
         {/* ✅ ADD MOBILE NUMBER DISPLAY */}
         {(currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number) && (
@@ -2014,6 +2026,7 @@ const handleItemChange = (index, field, value) => {
                   {currentData.transportDetails?.vehicleNo || '-'}
                 </p>
               </div>
+    
               </div>
             </Col>
             

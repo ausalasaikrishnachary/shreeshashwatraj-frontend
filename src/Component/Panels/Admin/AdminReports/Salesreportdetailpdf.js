@@ -95,61 +95,62 @@ const styles = StyleSheet.create({
     marginTop: 2
   },  
 
-tableContainer: {
-  marginTop: 10,
-  borderWidth: 1,
-  borderColor: '#000',
-  borderRadius: 2,
-  display: 'flex',
-  flexDirection: 'column'
-},
-tableHeader: {
-  flexDirection: 'row',
-  backgroundColor: '#2c3e50',
-  borderBottomWidth: 1,
-  borderBottomColor: '#000',
-  alignItems: 'stretch'  
-},
-tableRow: {
-  flexDirection: 'row',
-  borderBottomWidth: 1,
-  borderBottomColor: '#e0e0e0',
-  alignItems: 'stretch' 
-},
-tableRowAlternate: {
-  flexDirection: 'row',
-  borderBottomWidth: 1,
-  borderBottomColor: '#e0e0e0',
-  backgroundColor: '#f9f9f9',
-  alignItems: 'stretch'  
-},
-tableCell: {
-  padding: 6,
-  fontSize: 8,
-  borderRightWidth: 1,
-  borderRightColor: '#e0e0e0',
-  flex: 1  
-},
-headerCell: {
-  padding: 6,
-  fontSize: 9,
-  fontWeight: 'bold',
-  color: '#fff',
-  borderRightWidth: 1,
-  borderRightColor: '#4a6a8a',
-  flex: 1 
-},
+  tableContainer: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#000',
+    borderRadius: 2,
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#2c3e50',
+    borderBottomWidth: 1,
+    borderBottomColor: '#000',
+    alignItems: 'stretch'  
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    alignItems: 'stretch' 
+  },
+  tableRowAlternate: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#f9f9f9',
+    alignItems: 'stretch'  
+  },
+  tableCell: {
+    padding: 6,
+    fontSize: 8,
+    borderRightWidth: 1,
+    borderRightColor: '#e0e0e0',
+    flex: 1  
+  },
+  headerCell: {
+    padding: 6,
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#fff',
+    borderRightWidth: 1,
+    borderRightColor: '#4a6a8a',
+    flex: 1 
+  },
   textCenter: { textAlign: 'center' },
   textRight: { textAlign: 'right' },
   textLeft: { textAlign: 'left' },
   
-colSNo:     { width: '5%' },     // S.No column
-colParty:   { width: '27%' },    // Party Name column (as requested)
-colDate:    { width: '12%' },    // Date column
-colInvoice: { width: '15%' },    // Invoice No column
-colPrice:   { width: '12%' },    // Rate per Unit column
-colTotal:   { width: '17%' },    // Total Amount column
-colQty:     { width: '12%' },    // Quantity column  
+  // Column widths in order: S.No, Party Name, Date, Invoice No, Amount, Rate per unit, Quantity
+  colSNo:     { width: '5%' },
+  colParty:   { width: '23%' },
+  colDate:    { width: '12%' },
+  colInvoice: { width: '15%' },
+  colAmount:  { width: '15%' },
+  colRate:    { width: '15%' },
+  colQty:     { width: '15%' },
 
   // Footer Summary
   footerSummary: {
@@ -158,7 +159,8 @@ colQty:     { width: '12%' },    // Quantity column
     borderTopWidth: 2,
     borderTopColor: '#000',
     flexDirection: 'row',
-    justifyContent: 'flex-end'
+    justifyContent: 'flex-end',
+    gap: 20
   },
   summaryItem: {
     flexDirection: 'row',
@@ -222,6 +224,7 @@ export const SalesReportPDFDocument = ({
   // Calculate totals
   let totalQuantity = 0;
   let totalAmount = 0;
+  let totalRatePerUnit = 0;
   let totalTransactions = new Set();
 
   data.forEach(item => {
@@ -229,10 +232,11 @@ export const SalesReportPDFDocument = ({
     const price = parseFloat(item.price) || 0;
     totalQuantity += qty;
     totalAmount += price * qty;
+    totalRatePerUnit += price;  // ✅ Sum of Rate per unit column
     if (item.VchNo) totalTransactions.add(item.VchNo);
   });
 
-  const avgTransactionValue = totalTransactions.size > 0 ? totalAmount / totalTransactions.size : 0;
+  const avgRate = data.length > 0 ? totalRatePerUnit / data.length : 0;
 
   return (
     <Document>
@@ -252,56 +256,59 @@ export const SalesReportPDFDocument = ({
           </Text>
         </View>
 
-  
-        {/* TABLE SECTION */}
+        {/* TABLE SECTION - Column order: S.No, Party Name, Date, Invoice No, Amount, Rate per unit, Quantity */}
         <View style={styles.tableContainer}>
-     <View style={styles.tableHeader}>
-  <Text style={[styles.headerCell, styles.colSNo, styles.textCenter]}>#</Text>
-  <Text style={[styles.headerCell, styles.colParty, styles.textLeft]}>Party Name</Text>
-  <Text style={[styles.headerCell, styles.colDate, styles.textCenter]}>Date</Text>
-  <Text style={[styles.headerCell, styles.colInvoice, styles.textCenter]}>Invoice No</Text>
- 
-  <Text style={[styles.headerCell, styles.colTotal, styles.textRight]}>Amount</Text>
-   <Text style={[styles.headerCell, styles.colPrice, styles.textRight]}>Rate Per Unit</Text>
-  <Text style={[styles.headerCell, styles.colQty, styles.textCenter]}>Quantity</Text>
-</View>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.headerCell, styles.colSNo, styles.textCenter]}>S.No</Text>
+            <Text style={[styles.headerCell, styles.colParty, styles.textLeft]}>Party Name</Text>
+            <Text style={[styles.headerCell, styles.colDate, styles.textCenter]}>Date</Text>
+            <Text style={[styles.headerCell, styles.colInvoice, styles.textCenter]}>Invoice No</Text>
+            <Text style={[styles.headerCell, styles.colAmount, styles.textRight]}>Amount</Text>
+            <Text style={[styles.headerCell, styles.colRate, styles.textRight]}>Rate per unit</Text>
+            <Text style={[styles.headerCell, styles.colQty, styles.textCenter]}>Quantity</Text>
+          </View>
 
-{data.map((item, index) => (
-  <View key={index} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlternate}>
-    <Text style={[styles.tableCell, styles.colSNo, styles.textCenter]}>
-      {index + 1}
-    </Text>
-    <Text style={[styles.tableCell, styles.colParty, styles.textLeft]}>
-      {item.PartyName || '-'}
-    </Text>
-    <Text style={[styles.tableCell, styles.colDate, styles.textCenter]}>
-      {item.date || formatDate(item.Date)}
-    </Text>
-    <Text style={[styles.tableCell, styles.colInvoice, styles.textCenter]}>
-      {item.VchNo || '-'}
-    </Text>
-  
-    <Text style={[styles.tableCell, styles.colTotal, styles.textRight]}>
-      {formatCurrency((parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0))}
-    </Text>
-      <Text style={[styles.tableCell, styles.colPrice, styles.textRight]}>
-      {formatCurrency(parseFloat(item.price) || 0)}
-    </Text>
-    <Text style={[styles.tableCell, styles.colQty, styles.textCenter]}>
-      {parseFloat(item.quantity) || 0}
-    </Text>
-    
-  </View>
-))}
+          {data.map((item, index) => (
+            <View key={index} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlternate}>
+              <Text style={[styles.tableCell, styles.colSNo, styles.textCenter]}>
+                {index + 1}
+              </Text>
+              <Text style={[styles.tableCell, styles.colParty, styles.textLeft]}>
+                {item.PartyName || '-'}
+              </Text>
+              <Text style={[styles.tableCell, styles.colDate, styles.textCenter]}>
+                {item.date || formatDate(item.Date)}
+              </Text>
+              <Text style={[styles.tableCell, styles.colInvoice, styles.textCenter]}>
+                {item.VchNo || '-'}
+              </Text>
+              <Text style={[styles.tableCell, styles.colAmount, styles.textRight]}>
+                {formatCurrency((parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0))}
+              </Text>
+              <Text style={[styles.tableCell, styles.colRate, styles.textRight]}>
+                {formatCurrency(parseFloat(item.price) || 0)}
+              </Text>
+              <Text style={[styles.tableCell, styles.colQty, styles.textCenter]}>
+                {parseFloat(item.quantity) || 0}
+              </Text>
+            </View>
+          ))}
         </View>
 
-        {/* FOOTER SUMMARY */}
+        {/* FOOTER SUMMARY WITH TOTALS - Amount, Rate Per Unit, Quantity */}
         <View style={styles.footerSummary}>
+          {/* <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabelBold}>Total Amount:</Text>
+            <Text style={styles.summaryValueBold}>{formatCurrency(totalAmount)}</Text>
+          </View> */}
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabelBold}>Total Rate Per Unit:</Text>
+            <Text style={styles.summaryValueBold}>{formatCurrency(totalRatePerUnit)}</Text>
+          </View>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabelBold}>Total Quantity:</Text>
             <Text style={styles.summaryValueBold}>{totalQuantity}</Text>
           </View>
-        
         </View>
 
         {/* PAGE FOOTER */}

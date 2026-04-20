@@ -239,52 +239,89 @@ const SalesReportdetail = () => {
     setApplyDateFilter(false); // ✅ Disable filter when clearing dates
   };
 
-  // Generate Excel Report
-  const generateExcelReport = () => {
-    try {
-      const excelData = filteredData.map((item, index) => ({
+// Generate Excel Report
+const generateExcelReport = () => {
+  try {
+    // Calculate totals
+    const totalRatePerUnit = filteredData.reduce((sum, item) => {
+      return sum + (parseFloat(item.price) || 0);
+    }, 0);
+    
+    const totalQuantity = filteredData.reduce((sum, item) => {
+      return sum + (parseFloat(item.quantity) || 0);
+    }, 0);
+    
+    // Prepare data with totals row at the bottom
+    const excelData = [
+      ...filteredData.map((item, index) => ({
         'S.No': index + 1,
-                'Party Name': item.PartyName || '-',
+        'Party Name': item.PartyName || '-',
         'Date': item.Date ? new Date(item.Date).toLocaleDateString('en-IN') : '-',
-
         'Invoice No': item.VchNo || '-',
-                'Amount': (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0),
- 'Rate Per Unit': item.price || '-',
+        'Amount': (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0),
+        'Rate Per Unit': parseFloat(item.price) || 0,
         'Quantity': parseFloat(item.quantity) || 0,
-      }));
+      })),
+      // Add totals row
+      {
+        'S.No': '',
+        'Party Name': '',
+        'Date': '',
+        'Invoice No': 'TOTAL',
+        'Amount': '',
+        'Rate Per Unit': totalRatePerUnit,
+        'Quantity': totalQuantity,
+      }
+    ];
 
-      const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    
+    // Auto-size columns
+    const colWidths = [
+      { wch: 8 },   // S.No
+      { wch: 25 },  // Party Name
+      { wch: 12 },  // Date
+      { wch: 15 },  // Invoice No
+      { wch: 15 },  // Amount
+      { wch: 15 },  // Rate Per Unit
+      { wch: 12 },  // Quantity
+    ];
+    worksheet['!cols'] = colWidths;
+    
+    // Add black background to TOTAL row
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:G1');
+    const totalRowIndex = excelData.length - 1; // Last row index
+    
+    // Apply black background and white text to the TOTAL row cells
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: totalRowIndex, c: C });
+      if (!worksheet[cellAddress]) continue;
       
-      const summaryData = [
-        [],
-        ['SUMMARY REPORT'],
-        [`Product: ${productInfo?.name || 'N/A'}`],
-        [`Period: ${applyDateFilter && fromDate ? fromDate : 'All'} to ${applyDateFilter && toDate ? toDate : 'All'}`],
-        [`Generated Date: ${new Date().toLocaleString()}`],
-        [],
-        ['Summary Statistics'],
-        [`Total Sales: ₹${summary.totalSales.toLocaleString('en-IN')}`],
-        [`Total Transactions: ${summary.totalTransactions}`],
-        [`Total Quantity Sold: ${summary.totalProducts}`],
-        [`Average Transaction Value: ₹${summary.avgValue.toLocaleString('en-IN')}`]
-      ];
-      
-      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Sales Details');
-      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-      
-      const fileName = `${productInfo?.name || 'Product'}_Sales_Report_${applyDateFilter && fromDate ? fromDate : 'ALL'}_to_${applyDateFilter && toDate ? toDate : 'ALL'}_${new Date().toISOString().slice(0, 19)}.xlsx`;
-      XLSX.writeFile(workbook, fileName);
-      
-      alert('✅ Excel report generated successfully!');
-      return true;
-    } catch (error) {
-      console.error('Excel generation error:', error);
-      alert(`❌ Failed to generate Excel report: ${error.message}`);
-      return false;
+      worksheet[cellAddress].s = {
+        fill: {
+          fgColor: { rgb: "000000" }  // Black background
+        },
+        font: {
+          bold: true,
+          color: { rgb: "FFFFFF" }  // White text
+        }
+      };
     }
-  };
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sales Details');
+    
+    const fileName = `${productInfo?.name || 'Product'}_Sales_Report_${applyDateFilter && fromDate ? fromDate : 'ALL'}_to_${applyDateFilter && toDate ? toDate : 'ALL'}_${new Date().toISOString().slice(0, 19)}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+    
+    alert('✅ Excel report generated successfully!');
+    return true;
+  } catch (error) {
+    console.error('Excel generation error:', error);
+    alert(`❌ Failed to generate Excel report: ${error.message}`);
+    return false;
+  }
+};
 
   // Generate PDF Report
   const generatePDFReport = async () => {
@@ -366,9 +403,13 @@ const SalesReportdetail = () => {
     product: item.product_name || item.product,
     quantity: item.quantity,
     price: formatCurrency(item.price),
+     priceValue: parseFloat(item.price) || 0, 
     total: formatCurrency(parseFloat(item.price) * parseFloat(item.quantity))
   }));
 
+const totalRatePerUnit = filteredData.reduce((sum, item) => {
+  return sum + (parseFloat(item.price) || 0);
+}, 0);
   const columns = [
     { key: "sl_no", title: "S.No", style: { textAlign: "center" } },
     { key: "PartyName", title: "Party Name", style: { textAlign: "center" } },
@@ -514,13 +555,17 @@ const SalesReportdetail = () => {
           showPagination={true}
         />
         
-        {/* ✅ FIXED: Total Quantity Footer */}
-        <div className="sales-table-footer">
-          <div className="sales-footer-item " style={{marginRight:'55px'}}>
-            <span className="footer-label">Total Quantity:</span>
-            <span className="footer-value">{summary.totalProducts}</span>
-          </div>
-        </div>
+      <div className="sales-table-footer">
+    <div className="sales-footer-item">
+    <span className="footer-label">Total Rate Per Unit:</span>
+    <span className="footer-value">{formatCurrency(totalRatePerUnit)}</span>
+  </div>
+  <div className="sales-footer-item">
+    <span className="footer-label">Total Quantity:</span>
+    <span className="footer-value">{summary.totalProducts}</span>
+  </div>
+  
+</div>
       </>
     )}
   </div>
