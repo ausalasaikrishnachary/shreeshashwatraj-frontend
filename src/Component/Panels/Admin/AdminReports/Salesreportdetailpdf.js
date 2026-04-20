@@ -263,9 +263,10 @@ export const SalesReportPDFDocument = ({
             <Text style={[styles.headerCell, styles.colParty, styles.textLeft]}>Party Name</Text>
             <Text style={[styles.headerCell, styles.colDate, styles.textCenter]}>Date</Text>
             <Text style={[styles.headerCell, styles.colInvoice, styles.textCenter]}>Invoice No</Text>
-            <Text style={[styles.headerCell, styles.colAmount, styles.textRight]}>Amount</Text>
             <Text style={[styles.headerCell, styles.colRate, styles.textRight]}>Rate per unit</Text>
             <Text style={[styles.headerCell, styles.colQty, styles.textCenter]}>Quantity</Text>
+                        <Text style={[styles.headerCell, styles.colAmount, styles.textRight]}>Amount</Text>
+
           </View>
 
           {data.map((item, index) => (
@@ -282,32 +283,30 @@ export const SalesReportPDFDocument = ({
               <Text style={[styles.tableCell, styles.colInvoice, styles.textCenter]}>
                 {item.VchNo || '-'}
               </Text>
-              <Text style={[styles.tableCell, styles.colAmount, styles.textRight]}>
-                {formatCurrency((parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0))}
-              </Text>
+            
               <Text style={[styles.tableCell, styles.colRate, styles.textRight]}>
                 {formatCurrency(parseFloat(item.price) || 0)}
               </Text>
               <Text style={[styles.tableCell, styles.colQty, styles.textCenter]}>
                 {parseFloat(item.quantity) || 0}
               </Text>
+                <Text style={[styles.tableCell, styles.colAmount, styles.textRight]}>
+                {formatCurrency((parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0))}
+              </Text>
             </View>
           ))}
         </View>
 
-        {/* FOOTER SUMMARY WITH TOTALS - Amount, Rate Per Unit, Quantity */}
         <View style={styles.footerSummary}>
-          {/* <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabelBold}>Total Amount:</Text>
-            <Text style={styles.summaryValueBold}>{formatCurrency(totalAmount)}</Text>
-          </View> */}
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabelBold}>Total Rate Per Unit:</Text>
-            <Text style={styles.summaryValueBold}>{formatCurrency(totalRatePerUnit)}</Text>
-          </View>
+         
+         
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabelBold}>Total Quantity:</Text>
             <Text style={styles.summaryValueBold}>{totalQuantity}</Text>
+          </View>
+           <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabelBold}>Total Amount:</Text>
+            <Text style={styles.summaryValueBold}>{formatCurrency(totalAmount)}</Text>
           </View>
         </View>
 
