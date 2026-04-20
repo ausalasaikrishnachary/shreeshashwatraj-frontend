@@ -239,52 +239,53 @@ const SalesReportdetail = () => {
     setApplyDateFilter(false); // ✅ Disable filter when clearing dates
   };
 
-// Generate Excel Report
 const generateExcelReport = () => {
   try {
-    // Calculate totals
-    const totalRatePerUnit = filteredData.reduce((sum, item) => {
-      return sum + (parseFloat(item.price) || 0);
+    const totalAmount = filteredData.reduce((sum, item) => {
+      return sum + ((parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0));
     }, 0);
-    
+
     const totalQuantity = filteredData.reduce((sum, item) => {
       return sum + (parseFloat(item.quantity) || 0);
     }, 0);
     
-    // Prepare data with totals row at the bottom
+    const totalRatePerUnit = filteredData.reduce((sum, item) => {
+      return sum + (parseFloat(item.price) || 0);
+    }, 0);
+    
     const excelData = [
       ...filteredData.map((item, index) => ({
         'S.No': index + 1,
         'Party Name': item.PartyName || '-',
         'Date': item.Date ? new Date(item.Date).toLocaleDateString('en-IN') : '-',
         'Invoice No': item.VchNo || '-',
-        'Amount': (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0),
-        'Rate Per Unit': parseFloat(item.price) || 0,
+        'Rate per unit': parseFloat(item.price) || 0,
         'Quantity': parseFloat(item.quantity) || 0,
+        'Amount': (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0),
       })),
       // Add totals row
       {
         'S.No': '',
         'Party Name': '',
         'Date': '',
-        'Invoice No': 'TOTAL',
-        'Amount': '',
-        'Rate Per Unit': totalRatePerUnit,
+        'Invoice No': '',
+        'Rate per unit': "TOTAL",
         'Quantity': totalQuantity,
+        'Amount': totalAmount,
       }
     ];
 
     const worksheet = XLSX.utils.json_to_sheet(excelData);
     
-    // Auto-size columns
+    // Auto-size columns - UPDATED ORDER
     const colWidths = [
       { wch: 8 },   // S.No
       { wch: 25 },  // Party Name
       { wch: 12 },  // Date
       { wch: 15 },  // Invoice No
-      { wch: 15 },  // Amount
-      { wch: 15 },  // Rate Per Unit
+      { wch: 15 },  // Rate per unit
       { wch: 12 },  // Quantity
+      { wch: 15 },  // Amount
     ];
     worksheet['!cols'] = colWidths;
     
@@ -322,7 +323,6 @@ const generateExcelReport = () => {
     return false;
   }
 };
-
   // Generate PDF Report
   const generatePDFReport = async () => {
     try {
@@ -407,18 +407,19 @@ const generateExcelReport = () => {
     total: formatCurrency(parseFloat(item.price) * parseFloat(item.quantity))
   }));
 
-const totalRatePerUnit = filteredData.reduce((sum, item) => {
-  return sum + (parseFloat(item.price) || 0);
-}, 0);
+// const totalRatePerUnit = filteredData.reduce((sum, item) => {
+//   return sum + (parseFloat(item.price) || 0);
+// }, 0);
   const columns = [
     { key: "sl_no", title: "S.No", style: { textAlign: "center" } },
     { key: "PartyName", title: "Party Name", style: { textAlign: "center" } },
     { key: "Date", title: "Date", style: { textAlign: "center" } },
     { key: "VchNo", title: "Invoice No", style: { textAlign: "center" } },
-    { key: "total", title: "Amount", style: { textAlign: "center" } },
         { key: "price", title: "Rate per unit", style: { textAlign: "center" } },
 
     { key: "quantity", title: "Quantity", style: { textAlign: "center" } },
+        { key: "total", title: "Amount", style: { textAlign: "center" } },
+
   ];
 
   if (loading) {
@@ -555,16 +556,15 @@ const totalRatePerUnit = filteredData.reduce((sum, item) => {
           showPagination={true}
         />
         
-      <div className="sales-table-footer">
-    <div className="sales-footer-item">
-    <span className="footer-label">Total Rate Per Unit:</span>
-    <span className="footer-value">{formatCurrency(totalRatePerUnit)}</span>
-  </div>
+     <div className="sales-table-footer">
   <div className="sales-footer-item">
     <span className="footer-label">Total Quantity:</span>
     <span className="footer-value">{summary.totalProducts}</span>
   </div>
-  
+  <div className="sales-footer-item">
+    <span className="footer-label">Total Amount:</span>
+    <span className="footer-value">{formatCurrency(summary.totalSales)}</span>
+  </div>
 </div>
       </>
     )}
