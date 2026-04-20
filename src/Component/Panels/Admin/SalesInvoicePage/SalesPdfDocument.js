@@ -382,9 +382,13 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
   <Text style={styles.addressText}>
     {getSafeData(supplierInfo, 'mobile_number') || getSafeData(supplierInfo, 'phone_number', 'N/A')}
   </Text>
-  <Text style={styles.addressText}>
-    GSTIN: {getSafeData(supplierInfo, 'gstin', 'N/A')}
-  </Text>
+  
+  {bb_bc !== 'b2c' && (
+    <Text style={styles.addressText}>
+      GSTIN: {getSafeData(supplierInfo, 'gstin', 'N/A')}
+    </Text>
+  )}
+  
   <Text style={styles.addressText}>
     State: {getSafeData(supplierInfo, 'state', 'N/A')}
   </Text>
