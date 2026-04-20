@@ -1901,7 +1901,7 @@ const handleItemChange = (index, field, value) => {
               <div className="address-section mb-4">
                 <Row>
            <Col md={6}>
- <div className="billing-address bg-light p-3 rounded">
+<div className="billing-address bg-light p-3 rounded">
     <h5 className="text-primary mb-2">Bill To:</h5>
     {isEditMode ? (
       <div className="edit-control">
@@ -1926,12 +1926,17 @@ const handleItemChange = (index, field, value) => {
           value={currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number || ''}
           onChange={(e) => handleNestedChange('supplierInfo', 'mobile_number', e.target.value)}
         />
-        <Form.Control 
-          className="mb-2"
-          placeholder="GSTIN"
-          value={currentData.supplierInfo.gstin || ''}
-          onChange={(e) => handleNestedChange('supplierInfo', 'gstin', e.target.value)}
-        />
+        
+        {/* Only show GSTIN field for B2B */}
+        {currentData.bb_bc !== 'b2c' && (
+          <Form.Control 
+            className="mb-2"
+            placeholder="GSTIN"
+            value={currentData.supplierInfo.gstin || ''}
+            onChange={(e) => handleNestedChange('supplierInfo', 'gstin', e.target.value)}
+          />
+        )}
+        
         <Form.Control 
           placeholder="State"
           value={currentData.supplierInfo.state || ''}
@@ -1941,19 +1946,25 @@ const handleItemChange = (index, field, value) => {
     ) : (
       <>
         {currentData.bb_bc === 'b2c' ? (
-          <p className="mb-1 text-muted">Customer Name:{currentData.supplierInfo.name || 'N/A'}</p>
+          <p className="mb-1 text-muted">Customer Name: {currentData.supplierInfo.name || 'N/A'}</p>
         ) : (
           currentData.supplierInfo.business_name && (
-            <p className="mb-1 text-muted"> Business Name: {currentData.supplierInfo.business_name}</p>
+            <p className="mb-1 text-muted">Business Name: {currentData.supplierInfo.business_name}</p>
           )
         )}
-        {/* ✅ ADD MOBILE NUMBER DISPLAY */}
+        
+        {/* Mobile Number Display */}
         {(currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number) && (
           <p className="mb-1">
             <small>Mobile: {currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number}</small>
           </p>
         )}
-        <p className="mb-1"><small>GSTIN: {currentData.supplierInfo.gstin || 'N/A'}</small></p>
+        
+        {/* Only show GSTIN for B2B */}
+        {currentData.bb_bc !== 'b2c' && (
+          <p className="mb-1"><small>GSTIN: {currentData.supplierInfo.gstin || 'N/A'}</small></p>
+        )}
+        
         <p className="mb-0"><small>State: {currentData.supplierInfo.state || 'N/A'}</small></p>
       </>
     )}

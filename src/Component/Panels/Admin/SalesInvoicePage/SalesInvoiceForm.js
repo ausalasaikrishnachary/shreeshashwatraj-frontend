@@ -1295,8 +1295,8 @@ const customerTypeValue = customerType || 'b2b';
                      invoiceData.supplierInfo.name, 
       mobile_number: mobileNumber,
       transportDetails: invoiceData.transportDetails,
-      
-      // ✅ ADD THESE CALCULATED TOTALS TO PAYLOAD
+      gstin: customerType === 'b2c' ? null : invoiceData.supplierInfo.gstin,
+    
       taxableAmount: taxableAmount.toFixed(2),
       totalGST: totalGST.toFixed(2),
       totalCess: totalCess.toFixed(2),
@@ -1532,34 +1532,76 @@ const handleExclPriceChange = (e) => {
                    {/* B2B / B2C Checkboxes */}
           
               </Row>
-  <div className="d-flex gap-1 me-1">
-              <Form.Check
-                type="checkbox"
-                id="b2b-checkbox"
-                label="B2B"
-                checked={customerType === 'b2b'}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setCustomerType('b2b');
-                  } else if (customerType === 'b2b') {
-                    setCustomerType('b2c');
-                  }
-                }}
-              />
-              <Form.Check
-                type="checkbox"
-                id="b2c-checkbox"
-                label="B2C"
-                checked={customerType === 'b2c'}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setCustomerType('b2c');
-                  } else if (customerType === 'b2c') {
-                    setCustomerType('b2b');
-                  }
-                }}
-              />
-            </div>
+<div className="d-flex gap-3 mb-3">
+  <Form.Check
+    type="checkbox"
+    id="b2b-checkbox"
+    label="B2B"
+    checked={customerType === 'b2b'}
+    onChange={(e) => {
+      if (e.target.checked) {
+        setCustomerType('b2b');
+        // Restore GSTIN when switching back to B2B
+        if (selectedSupplierId) {
+          const supplier = accounts.find(acc => acc.id === selectedSupplierId);
+          if (supplier) {
+            setInvoiceData(prev => ({
+              ...prev,
+              supplierInfo: {
+                ...prev.supplierInfo,
+                gstin: supplier.gstin || ''
+              }
+            }));
+          }
+        }
+      } else if (customerType === 'b2b') {
+        setCustomerType('b2c');
+        // Set GSTIN to null for B2C
+        setInvoiceData(prev => ({
+          ...prev,
+          supplierInfo: {
+            ...prev.supplierInfo,
+            gstin: null
+          }
+        }));
+      }
+    }}
+  />
+  <Form.Check
+    type="checkbox"
+    id="b2c-checkbox"
+    label="B2C"
+    checked={customerType === 'b2c'}
+    onChange={(e) => {
+      if (e.target.checked) {
+        setCustomerType('b2c');
+        // Set GSTIN to null for B2C
+        setInvoiceData(prev => ({
+          ...prev,
+          supplierInfo: {
+            ...prev.supplierInfo,
+            gstin: null
+          }
+        }));
+      } else if (customerType === 'b2c') {
+        setCustomerType('b2b');
+        // Restore GSTIN when switching back to B2B
+        if (selectedSupplierId) {
+          const supplier = accounts.find(acc => acc.id === selectedSupplierId);
+          if (supplier) {
+            setInvoiceData(prev => ({
+              ...prev,
+              supplierInfo: {
+                ...prev.supplierInfo,
+                gstin: supplier.gstin || ''
+              }
+            }));
+          }
+        }
+      }
+    }}
+  />
+</div>
 <div className="bg-white rounded border">
  <Row className="mb-0">
     <Col md={4} className="border-end p-3">
@@ -1785,13 +1827,10 @@ const handleExclPriceChange = (e) => {
             </div>
           </div>
 
-          {/* Customer Info Display - Only Business and Name fields change */}
           <div className="bg-light p-2 rounded">
             {customerType === 'b2c' ? (
-              // B2C Mode - Show Customer Name instead of Business
               <div><strong>Customer Name:</strong> {invoiceData.supplierInfo.name}</div>
             ) : (
-              // B2B Mode (default) - Show Business Name
               <div><strong>Business:</strong> {invoiceData.supplierInfo.business_name || invoiceData.supplierInfo.businessName}</div>
             )}
             
@@ -1799,7 +1838,9 @@ const handleExclPriceChange = (e) => {
               <div><strong>Mobile:</strong> {invoiceData.supplierInfo.mobile_number || invoiceData.supplierInfo.phone_number}</div>
             )}
             
-            <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin}</div>
+             {customerType === 'b2b' && (
+    <div><strong>GSTIN:</strong> {invoiceData.supplierInfo.gstin || 'N/A'}</div>
+  )}
             <div><strong>State:</strong> {invoiceData.supplierInfo.state}</div>
             
             {invoiceData.supplierInfo.staffid && invoiceData.supplierInfo.staffid !== null && (
