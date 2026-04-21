@@ -655,6 +655,8 @@ const firstDiscount = discountCharges[0] || {};
         AccountID: selectedSupplierId,
          mobile_number: mobileNumber,
       supplier_mobile: mobileNumber,
+        gstin: invoiceData.supplierInfo.gstin, 
+
         PartyName: invoiceData.supplierInfo.name,
         AccountName: invoiceData.supplierInfo.account_name,
         businessName: invoiceData.supplierInfo.businessName,

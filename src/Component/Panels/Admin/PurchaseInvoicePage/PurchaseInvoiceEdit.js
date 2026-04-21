@@ -1032,7 +1032,6 @@ useEffect(() => {
       console.warn('⚠️ Items missing batch_id:', missingBatchIds);
     }
 
-    // Create payload with IDs and proper totals
     const payload = {
       ...invoiceData,
       invoiceNumber: finalInvoiceNumber,
@@ -1049,6 +1048,7 @@ discount_charges_amount: discountCharges.reduce((sum, c) => sum + (parseFloat(c.
       batch_id: "bth0001",
      staffid: staffId,
       assigned_staff: assignedStaff,
+       gstin: invoiceData.supplierInfo.gstin || '' , 
       primaryProductId: firstItemProductId,
       primaryBatchId: firstItemBatchId,
        additional_charges_type: charges.map(c => c.type).join(','),

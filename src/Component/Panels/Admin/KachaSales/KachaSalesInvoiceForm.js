@@ -1070,6 +1070,7 @@ if (!isEditMode) {
         staff_incentive: invoiceData.supplierInfo.staff_incentive || 0 ,
          gstin: invoiceData.supplierInfo.gstin || "" ,
            mobile_number: mobileNumber,
+             gstin: invoiceData.supplierInfo.gstin || "",
             transportDetails: invoiceData.transportDetails ,
               additional_charges_type: charges.map(c => c.type).join(','),
   additional_charges_amount: charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0)
