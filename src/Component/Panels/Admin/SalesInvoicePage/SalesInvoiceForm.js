@@ -1302,6 +1302,7 @@ const customerTypeValue = customerType || 'b2b';
       totalCess: totalCess.toFixed(2),
       grandTotal: roundedGrandTotal,
       round_off: roundOff.toFixed(2),
+      
     };     
 
     // Remove unused fields

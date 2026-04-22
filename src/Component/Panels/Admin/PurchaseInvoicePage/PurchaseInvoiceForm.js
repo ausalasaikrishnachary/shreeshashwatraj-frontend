@@ -792,7 +792,7 @@ const firstDiscount = discountCharges[0] || {};
       AccountName: invoiceData.supplierInfo.account_name,
       discount_charges: firstDiscount.calculationType || "amount",
   discount_charges_amount: discountCharges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0),
-
+  gstin: invoiceData.supplierInfo.gstin, 
        transportDetails: invoiceData.transportDetails ,
   additional_charges_type: charges.map(c => c.type).join(','), 
   additional_charges_amount: charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0),

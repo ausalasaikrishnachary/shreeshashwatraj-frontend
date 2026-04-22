@@ -831,463 +831,669 @@ const generateAndStorePDF = async (voucherId) => {
       setEditableDescriptions(descObj);
     };
 
-const handleGenerateInvoice = async () => {
-  try {
-    setGenerating(true);
-    setErrorMessage('');
-    setSuccessMessage('');
 
-    // ========== STEP 1: VALIDATE INVOICE DATA ==========
-    if (!fromPeriod || !periodInvoiceData) {
-      throw new Error('Invalid invoice data source. Please try again.');
-    }
+    // Add this function to handle PDF generation and storage
 
-    const selectedItems = periodInvoiceData.selectedItems || [];
-    if (selectedItems.length === 0) {
-      throw new Error('No selected items found for invoice generation');
-    }
-
-    // ========== STEP 2: FETCH NEXT INVOICE NUMBER ==========
-    let invoiceNumber = null;
+  const handleGenerateInvoice = async () => {
     try {
+      setGenerating(true);
+      setErrorMessage('');
+      setSuccessMessage('');
+      
+
+        let invoiceNumber = null;
+    try {
+      console.log('📞 Fetching next invoice number from API...');
       const invoiceNumberResponse = await fetch(`${baseurl}/next-invoice-number`);
       
       if (invoiceNumberResponse.ok) {
         const invoiceNumberData = await invoiceNumberResponse.json();
         invoiceNumber = invoiceNumberData.nextInvoiceNumber;
+        console.log('✅ Received next invoice number:', invoiceNumber);
       } else {
+        console.error('Failed to fetch next invoice number');
+        // Fallback: generate from order number or timestamp
         invoiceNumber = `INV${Date.now().toString().slice(-6)}`;
       }
     } catch (err) {
       console.error('Error fetching next invoice number:', err);
+      // Fallback: generate from order number or timestamp
       invoiceNumber = `INV${Date.now().toString().slice(-6)}`;
     }
-
-    // ========== STEP 3: GET ORDER MODE ==========
-    const orderMode = editableOrderMode || 
-                      periodInvoiceData?.order_mode || 
-                      periodInvoiceData?.originalOrder?.order_mode || 
-                      "PAKKA";
-    const normalizedOrderMode = orderMode.toUpperCase();
-    const TransactionType = normalizedOrderMode === "PAKKA" ? "Sales" : "stock transfer";
-
-    // ========== STEP 4: GET CUSTOMER INFO ==========
-    const accountDetails = periodInvoiceData.fullAccountDetails || 
-                          periodInvoiceData.customerInfo?.account_details;
-    
-    if (!accountDetails && !periodInvoiceData.customerInfo) {
-      throw new Error('Customer information is missing.');
-    }
-
-    // ========== STEP 5: GET ORDER NUMBER ==========
-    const orderNumber = periodInvoiceData.orderNumber || periodInvoiceData.originalOrder?.order_number;
-
-    // ========== STEP 6: GET STAFF INFORMATION ==========
-    const assignedStaff = periodInvoiceData.assigned_staff || 
-                         periodInvoiceData.originalOrder?.assigned_staff || 
-                         'N/A';
-    
-    const staffId = periodInvoiceData.staff_id || 
-                   periodInvoiceData.staffid || 
-                   periodInvoiceData.originalOrder?.staff_id || 
-                   null;
-    
-    const staffIncentive = periodInvoiceData.staff_incentive || 
-                          periodInvoiceData.originalOrder?.staff_incentive || 
-                          0;
-
-    // ========== STEP 7: PERFORM STOCK CHECK ==========
-    const itemsWithStockIssue = [];
-    
-    for (const item of selectedItems) {
-      const flashOffer = parseInt(item.flash_offer) || 0;
-      const buyQuantity = parseInt(item.buy_quantity) || 0;
-      const getQuantity = parseInt(item.get_quantity) || 0;
-      const stockCheckQuantity = flashOffer === 1 ? buyQuantity + getQuantity : parseFloat(item.quantity) || 0;
-      
-      if (item.product_id && stockCheckQuantity > 0) {
-        try {
-          const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
-          
-          if (batchesRes.data && Array.isArray(batchesRes.data)) {
-            const stock_quantity = batchesRes.data.reduce((total, batch) => {
-              return total + (parseFloat(batch.quantity) || 0);
-            }, 0);
-            
-            if (stockCheckQuantity > stock_quantity) {
-              itemsWithStockIssue.push({ ...item, stock_quantity, shortage: stockCheckQuantity - stock_quantity });
-            }
-          }
-        } catch (batchError) {
-          console.error(`Error fetching batches:`, batchError);
-        }
-      }
-    }
-    
-    if (itemsWithStockIssue.length > 0) {
-      let windowsAlert = "⚠️ STOCK INSUFFICIENCY DETECTED!\n\n";
-      itemsWithStockIssue.forEach((item, index) => {
-        windowsAlert += `${index + 1}. ${item.item_name}\n`;
-        windowsAlert += `   Ordered: ${item.required_total} | Available: ${item.stock_quantity}\n`;
-        windowsAlert += `   Shortage: ${item.shortage} units\n\n`;
+      // DEBUG: Add logging to see what's coming
+      console.log('🔍 DEBUG - periodInvoiceData structure:', {
+        periodInvoiceData,
+        customerInfo: periodInvoiceData?.customerInfo,
+        fullAccountDetails: periodInvoiceData?.fullAccountDetails,
+        hasCreditLimit: !!periodInvoiceData?.customerInfo?.credit_limit,
+        creditLimitRaw: periodInvoiceData?.customerInfo?.credit_limit,
+        creditLimitType: typeof periodInvoiceData?.customerInfo?.credit_limit
       });
-      alert(windowsAlert);
-      setGenerating(false);
-      return;
-    }
 
-    // ========== STEP 8: CALCULATE CREDIT LIMIT VALUES ==========
-    const parseCreditValue = (value) => {
-      if (value === null || value === undefined || value === '') return 0;
-      if (typeof value === 'string') {
-        const trimmedValue = value.trim().toUpperCase();
-        if (trimmedValue === 'NULL' || trimmedValue === '') return 0;
-        const cleanValue = value.replace(/[^0-9.-]+/g, '');
-        if (cleanValue === '') return 0;
-        const parsed = parseFloat(cleanValue);
-        return isNaN(parsed) ? 0 : parsed;
-      }
-      if (typeof value === 'number') return value;
-      return 0;
-    };
-    
-    const creditLimit = parseCreditValue(periodInvoiceData.customerInfo?.credit_limit);
-    const unpaidAmount = parseCreditValue(periodInvoiceData.customerInfo?.unpaid_amount);
 
-    // ========== STEP 9: CALCULATE ITEM TOTALS ==========
-    let taxableAmount = 0;
-    let totalGST = 0;
-    let grandTotal = 0;
-    let totalDiscount = 0;
-    let totalCGST = 0;
-    let totalSGST = 0;
-    
-    const itemsWithCalculations = selectedItems.map(item => {
-      const flashOffer = parseInt(item.flash_offer) || 0;
-      const buyQuantity = parseInt(item.buy_quantity) || 0;
-      const getQuantity = parseInt(item.get_quantity) || 0;
-      
-      const quantity = flashOffer === 1 ? buyQuantity : (parseFloat(item.quantity) || 1);
-      const stock_deduction_quantity = flashOffer === 1 ? buyQuantity + getQuantity : quantity;
-      
-      const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
-      const taxAmountPerUnit = parseFloat(item.tax_amount) || 0;
-      const cgstAmountPerUnit = parseFloat(item.cgst_amount) || 0;
-      const sgstAmountPerUnit = parseFloat(item.sgst_amount) || 0;
-      
-      const netPrice = parseFloat(item.net_price) || 0;
-      const price = netPrice;
-      
-      const discountAmountPerUnit = parseFloat(item.discount_amount) || 0;
-      const creditChargePerUnit = parseFloat(item.credit_charge) || 0;
-      
-      const cgstPercentage = parseFloat(item.cgst_percentage) || 0;
-      const sgstPercentage = parseFloat(item.sgst_percentage) || 0;
-      const taxPercentage = parseFloat(item.tax_percentage) || 0;
-      
-      const itemTaxableAmount = taxablePerUnit * quantity;
-      const itemTaxAmount = normalizedOrderMode === "KACHA" ? 0 : taxAmountPerUnit * quantity;
-      const itemCGSTAmount = normalizedOrderMode === "KACHA" ? 0 : cgstAmountPerUnit * quantity;
-      const itemSGSTAmount = normalizedOrderMode === "KACHA" ? 0 : sgstAmountPerUnit * quantity;
-      const itemDiscountAmount = discountAmountPerUnit * quantity;
-      const itemCreditCharge = creditChargePerUnit * quantity;
-      const itemTotal = normalizedOrderMode === "KACHA" ? itemTaxableAmount : itemTaxableAmount + itemTaxAmount;
-      
-      taxableAmount += itemTaxableAmount;
-      totalGST += itemTaxAmount;
-      totalCGST += itemCGSTAmount;
-      totalSGST += itemSGSTAmount;
-      totalDiscount += itemDiscountAmount;
-      grandTotal += itemTotal;
-      
-      return {
-        originalItemId: item.id,
-        product: item.item_name,
-        product_id: item.product_id,
-        product_type: normalizedOrderMode,
-        description: editableDescriptions[item.id] || item.description || '',
-        quantity: quantity,
-        stock_deduction_quantity: stock_deduction_quantity,
-        net_price: netPrice,
-        price: price,
-        edited_sale_price: parseFloat(item.edited_sale_price) || 0,
-        sale_price: parseFloat(item.sale_price) || 0,
-        unit_id: item.unit_id || null,
-        unit_name: item.unit_name || "",
-        discount_amount: itemDiscountAmount,
-        credit_charge: itemCreditCharge,
-        discount_amount_per_unit: discountAmountPerUnit,
-        credit_charge_per_unit: creditChargePerUnit,
-        discount: parseFloat(item.discount_percentage) || 0,
-        gst: normalizedOrderMode === "KACHA" ? 0 : taxPercentage,
-        cgst: normalizedOrderMode === "KACHA" ? 0 : cgstPercentage,
-        sgst: normalizedOrderMode === "KACHA" ? 0 : sgstPercentage,
-        igst: 0,
-        cess: 0,
-        total: itemTotal,
-        taxable_amount: itemTaxableAmount,
-        tax_amount: itemTaxAmount,
-        cgst_amount: itemCGSTAmount,
-        sgst_amount: itemSGSTAmount,
-        batch: item.batch_id || '',
-        batch_id: item.batch_id || '',
-        item_total: itemTotal,
-        hsn_code: item.hsn_code || "",
-        flash_offer: flashOffer,
-        buy_quantity: buyQuantity,
-        get_quantity: getQuantity
-      };
-    });
 
-    // ========== STEP 10: CREDIT LIMIT CHECK ==========
-    if (creditLimit > 0) {
-      const totalInvoiceAmount = grandTotal;
-      const currentTotal = unpaidAmount;
-      const newTotal = currentTotal + totalInvoiceAmount;
+
+      if (fromPeriod && periodInvoiceData) {
+        const selectedItems = periodInvoiceData.selectedItems || [];
+        
+        if (selectedItems.length === 0) {
+          throw new Error('No selected items found for invoice generation');
+        }
+        
+        // Check stock for each item
+        const itemsWithStockIssue = [];
+        
+for (const item of selectedItems) {
+  const flashOffer = parseInt(item.flash_offer) || 0;
+  const buyQuantity = parseInt(item.buy_quantity) || 0;
+  const getQuantity = parseInt(item.get_quantity) || 0;
+  
+  const stockCheckQuantity = flashOffer === 1 ? buyQuantity + getQuantity : parseFloat(item.quantity) || 0;
+  
+  if (item.product_id) {
+    try {
+      const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
       
-      if (newTotal > creditLimit) {
-        const exceedAmount = newTotal - creditLimit;
-        const customerName = accountDetails?.name || periodInvoiceData.customerInfo?.name || 'Customer';
+      if (batchesRes.data && Array.isArray(batchesRes.data)) {
+        const stock_quantity = batchesRes.data.reduce((total, batch) => {
+          return total + (parseFloat(batch.quantity) || 0);
+        }, 0);
         
-        const alertMessage = 
-          "⚠️ CREDIT LIMIT EXCEEDED!\n\n" +
-          `Customer: ${customerName}\n` +
-          `Credit Limit: ₹${creditLimit.toLocaleString('en-IN')}\n` +
-          `Unpaid Amount: ₹${unpaidAmount.toLocaleString('en-IN')}\n` +
-          `Invoice Amount: ₹${totalInvoiceAmount.toLocaleString('en-IN')}\n` +
-          `New Total: ₹${newTotal.toLocaleString('en-IN')}\n` +
-          `Exceeds by: ₹${exceedAmount.toLocaleString('en-IN')}\n\n` +
-          "Credit limit exceeded! Proceed anyway?\n\n" +
-          "OK = Continue with invoice\n" +
-          "Cancel = Stop invoice generation";
-        
-        const proceed = window.confirm(alertMessage);
-        
-        if (!proceed) {
-          setGenerating(false);
-          setErrorMessage('Invoice generation cancelled due to credit limit exceedance.');
-          setTimeout(() => setErrorMessage(null), 5000);
-          return;
+        // Compare with total quantity needed
+        if (stockCheckQuantity > stock_quantity) {
+          itemsWithStockIssue.push({
+            ...item,
+            stock_quantity,
+            shortage: stockCheckQuantity - stock_quantity,
+            is_flash_offer: flashOffer === 1,
+            buy_quantity: buyQuantity,
+            get_quantity: getQuantity,
+            required_total: stockCheckQuantity
+          });
         }
       }
+    } catch (batchError) {
+      console.error(`Error fetching batches for product ${item.product_id}:`, batchError);
     }
+  }
+}
+        
+      // if (fromPeriod && periodInvoiceData) {
+      //   const selectedItems = periodInvoiceData.selectedItems || [];
+        
+      //   // Check stock for each item
+      //   const itemsWithStockIssue = [];
+        
+      //   for (const item of selectedItems) {
+      //     const itemQuantity = parseFloat(item.quantity) || 0;
+          
+      //     if (item.product_id) {
+      //       try {
+      //         const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
+              
+      //         if (batchesRes.data && Array.isArray(batchesRes.data)) {
+      //           const stock_quantity = batchesRes.data.reduce((total, batch) => {
+      //             return total + (parseFloat(batch.quantity) || 0);
+      //           }, 0);
+                
+      //           if (itemQuantity > stock_quantity) {
+      //             itemsWithStockIssue.push({
+      //               ...item,
+      //               stock_quantity,
+      //               shortage: itemQuantity - stock_quantity
+      //             });
+      //           }
+      //         }
+      //       } catch (batchError) {
+      //         console.error(`Error fetching batches for product ${item.product_id}:`, batchError);
+      //       }
+      //     }
+      //   }
+        
+      //   // If stock issues found
+      //   if (itemsWithStockIssue.length > 0) {
+      //     // ✅ Prepare detailed message for notification
+      //     let notificationMessage = `⚠️ Order ${periodInvoiceData.orderNumber} requires modification.\n`;
+      //     notificationMessage += `${itemsWithStockIssue.length} item(s) are out of stock.\n\n`;
+          
+      //     itemsWithStockIssue.forEach((item, index) => {
+      //       notificationMessage += `${index + 1}. ${item.item_name}\n`;
+      //       notificationMessage += `   Ordered: ${item.quantity} | Available: ${item.stock_quantity}\n`;
+      //       notificationMessage += `   Shortage: ${item.shortage} units\n`;
+      //       notificationMessage += `   Action: Reduce quantity or remove item\n\n`;
+      //     });
+          
+      //     // ✅ Prepare alert data
+      //     const alertPayload = {
+      //       order_number: periodInvoiceData.orderNumber,
+      //       retailer_mobile: periodInvoiceData.originalOrder?.retailer_mobile,
+      //       retailer_id: periodInvoiceData.customerInfo?.id, // PartyID from customerInfo
+      //       customer_name: periodInvoiceData.originalOrder?.customer_name || 'Customer',
+      //       items_with_issues: itemsWithStockIssue.map(item => ({
+      //         product_id: item.product_id,
+      //         item_name: item.item_name,
+      //         ordered_quantity: item.quantity,
+      //         available_quantity: item.stock_quantity,
+      //         shortage: item.shortage
+      //       })),
+      //       message: notificationMessage // Detailed message
+      //     };
+          
+      //     // ✅ Send alert to backend
+      //     try {
+      //       await axios.post(`${baseurl}/orders/send-retailer-alert`, alertPayload);
+            
+      //       // Update order status
+      //       await axios.put(`${baseurl}/orders/${periodInvoiceData.orderNumber}/mark-modification-required`, {
+      //         modification_reason: 'Item out of stock'
+      //       });
+            
+      //     } catch (alertError) {
+      //       console.error('Error sending alert:', alertError);
+      //     }
+          
+      //     // ✅ Show Windows alert to admin
+      //     let windowsAlert = "⚠️ STOCK INSUFFICIENCY DETECTED!\n\n";
+      //     windowsAlert += `Order: ${periodInvoiceData.orderNumber}\n`;
+      //     // windowsAlert += `Retailer: ${periodInvoiceData.originalOrder?.retailer_mobile}\n\n`;
+      //     windowsAlert += `Items requiring modification:\n`;
+          
+      //     itemsWithStockIssue.forEach((item, index) => {
+      //       windowsAlert += `${index + 1}. ${item.item_name || 'Unknown Item'}\n`;
+      //     windowsAlert += `Ordered ${item.quantity}, Available ${item.stock_quantity}, Shortage ${item.shortage} units\n`;
 
-    // ========== STEP 11: VALIDATE TRANSPORT DETAILS ==========
-    const transportData = {
-      transport: transportDetails.transport || '',
-      grNumber: transportDetails.grNumber || '',
-      vehicleNo: transportDetails.vehicleNo || '',
-      station: transportDetails.station || ''
-    };
+      //     });
+          
+          
+      //     alert(windowsAlert);
+      //     setGenerating(false);
+      //     return;
+      //   }
+      // }
+      
+      }
+      // ========== END STOCK CHECK ==========
+      const firstDescription = editableDescriptions[invoiceData?.items[0]?.id || 0] || 
+                              invoiceData?.items[0]?.description || '';
 
-    // ========== STEP 12: BUILD FINAL PAYLOAD ==========
-    const selectedItemIds = periodInvoiceData.selectedItemIds || periodInvoiceData.selected_item_ids || [];
-    const firstItemDescription = editableDescriptions[invoiceData?.items[0]?.id || 0] || 
-                                selectedItems[0]?.description || '';
-
-    // ✅ ALL FIELDS EXCEPT STATUS - Build payload with all data first
-    const payload = {
-      // Core transaction info
-      TransactionType: TransactionType,
-      invoiceNumber: invoiceNumber,
-      VchNo: invoiceNumber,
+      const orderMode = editableOrderMode || 
+                        periodInvoiceData?.order_mode || 
+                        periodInvoiceData?.originalOrder?.order_mode || 
+                        "PAKKA";
       
-      // Order info
-      orderNumber: orderNumber,
-      order_number: orderNumber,
-      order_mode: normalizedOrderMode,
-      originalOrderNumber: orderNumber,
-      originalOrderId: periodInvoiceData.originalOrderId,
-      selectedItemIds: selectedItemIds,
+      const TransactionType = orderMode.toUpperCase() === "PAKKA" ? "Sales" : "stock transfer";   
       
-      // Items and calculations
-      items: itemsWithCalculations,
-      taxableAmount: taxableAmount,
-      totalGST: totalGST,
-      totalCess: 0,
-      grandTotal: grandTotal,
-      totalDiscount: totalDiscount,
-      totalCGST: totalCGST,
-      totalSGST: totalSGST,
-      BasicAmount: taxableAmount,
-      TotalAmount: grandTotal,
-      TaxAmount: totalGST,
-      Subtotal: taxableAmount,
-      CGSTAmount: totalCGST,
-      SGSTAmount: totalSGST,
-      
-      // Flash offer summary
-      flashOfferSummary: periodInvoiceData.flashOfferSummary || {
-        hasFlashOffer: itemsWithCalculations.some(item => item.flash_offer === 1),
-        totalItemsWithFlashOffer: itemsWithCalculations.filter(item => item.flash_offer === 1).length
-      },
-      
-      // Notes and descriptions
-      note: editableNote || periodInvoiceData.note || "",
-      note_preview: (editableNote || periodInvoiceData.note || "").substring(0, 200),
-      description_preview: firstItemDescription.substring(0, 200),
-      
-      // Customer info
-      customerInfo: {
-        name: accountDetails?.name || periodInvoiceData.customerInfo?.name,
-        businessName: accountDetails?.business_name || periodInvoiceData.customerInfo?.businessName,
-        gstin: accountDetails?.gstin || periodInvoiceData.customerInfo?.gstin,
-        state: accountDetails?.billing_state || periodInvoiceData.customerInfo?.state,
-        id: periodInvoiceData.customerInfo?.id,
-        email: accountDetails?.email || '',
-        phone: accountDetails?.mobile_number || '',
-        pan: accountDetails?.pan || '',
-        credit_limit: creditLimit,
-        unpaid_amount: unpaidAmount,
-        balance_amount: periodInvoiceData.customerInfo?.balance_amount || 0
-      },
-      
-      // Addresses
-      billingAddress: accountDetails ? {
-        addressLine1: accountDetails.billing_address_line1,
-        addressLine2: accountDetails.billing_address_line2 || '',
-        city: accountDetails.billing_city,
-        pincode: accountDetails.billing_pin_code,
-        state: accountDetails.billing_state,
-        country: accountDetails.billing_country,
-        gstin: accountDetails.billing_gstin || accountDetails.gstin
-      } : periodInvoiceData.billingAddress,
-      
-      shippingAddress: accountDetails ? {
-        addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1,
-        addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || '',
-        city: accountDetails.shipping_city || accountDetails.billing_city,
-        pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code,
-        state: accountDetails.shipping_state || accountDetails.billing_state,
-        country: accountDetails.shipping_country || accountDetails.billing_country,
-        gstin: accountDetails.shipping_gstin || accountDetails.gstin
-      } : periodInvoiceData.shippingAddress || periodInvoiceData.billingAddress,
-      
-      // Party info
-      selectedSupplierId: periodInvoiceData.customerInfo?.id || periodInvoiceData.PartyID,
-      PartyID: periodInvoiceData.customerInfo?.id || periodInvoiceData.PartyID,
-      AccountID: periodInvoiceData.customerInfo?.id || periodInvoiceData.AccountID,
-      PartyName: accountDetails?.name || periodInvoiceData.PartyName,
-      AccountName: accountDetails?.business_name || periodInvoiceData.AccountName,
-      
-      // Staff info
-      assigned_staff: assignedStaff,
-      staffid: staffId,
-      staff_id: staffId,
-      staff_incentive: staffIncentive,
-      
-      // Transport details
-      transportDetails: transportData,
-      transport_name: transportData.transport,
-      gr_rr_number: transportData.grNumber,
-      vehicle_number: transportData.vehicleNo,
-      station_name: transportData.station,
-      
-      // Tax system
-      TaxSystem: normalizedOrderMode === "KACHA" ? "KACHA_NO_GST" : "GST",
-      
-      // Flags
-      isPartialInvoice: true,
-      source: 'period_component',
-      
-      // Credit info in main payload
-      credit_limit: creditLimit,
-      unpaid_amount: unpaidAmount,
-      balance_amount: periodInvoiceData.customerInfo?.balance_amount || 0
-    };
-
-    // ========== STEP 13: ADD STATUS AS THE VERY LAST FIELD ==========
-    // ✅ STATUS IS ADDED LAST - After all other fields
-    const status = "Pending";  // Default status for new invoice
-    
-    const finalPayload = {
-      ...payload,
-      status: status,  // ← STATUS IS THE LAST FIELD
-      hsn_code: itemsWithCalculations[0]?.hsn_code || "",
-    };
-    
-    console.log('📦 Final Payload with Status as Last Field:', {
-      ...finalPayload,
-      // Verify status is the last field
-      lastField: Object.keys(finalPayload)[Object.keys(finalPayload).length - 1]
-    });
-
-    // ========== STEP 14: SEND TO BACKEND ==========
-    console.log('🚀 Sending invoice to backend with status as last field...');
-    
-    const response = await fetch(`${baseurl}/transaction`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(finalPayload),
-    });
-    
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.error || "Failed to generate invoice");
-    }
-    
-    console.log('✅ Invoice created successfully with status:', status);
-
-    // ========== STEP 15: GENERATE AND STORE PDF ==========
-    if (result.voucherId) {
-      try {
-        const updatedInvoiceData = {
-          ...invoiceData,
-          voucherId: result.voucherId,
-          TransactionType: TransactionType,
-          status: status  // Include status in invoice data
+      if (fromPeriod && periodInvoiceData) {
+        const selectedItems = periodInvoiceData.selectedItems || [];
+        const selectedItemIds = periodInvoiceData.selectedItemIds || periodInvoiceData.selected_item_ids || [];
+        
+        if (!selectedItems || selectedItems.length === 0) {
+          throw new Error('No selected items found for invoice generation');
+        }
+        
+        const accountDetails = periodInvoiceData.fullAccountDetails || 
+                              periodInvoiceData.customerInfo?.account_details;
+        
+        const orderNumber = periodInvoiceData.orderNumber || periodInvoiceData.originalOrder?.order_number;
+        
+        const firstItemDescription = editableDescriptions[invoiceData?.items[0]?.id || 0] || 
+                                    selectedItems[0]?.description || '';
+        
+        const assignedStaff = periodInvoiceData.assigned_staff || 
+                            periodInvoiceData.originalOrder?.assigned_staff || 
+                            'N/A';
+        
+        const staffId = periodInvoiceData.staff_id || 
+                      periodInvoiceData.staffid || 
+                      periodInvoiceData.originalOrder?.staff_id || 
+                      null;
+        
+        const staffIncentive = periodInvoiceData.staff_incentive || 
+                              periodInvoiceData.originalOrder?.staff_incentive || 
+                              0;
+        
+        
+        let taxableAmount = 0;
+        let totalGST = 0;
+        let grandTotal = 0;
+        let totalDiscount = 0;
+        let totalCGST = 0;
+        let totalSGST = 0;
+        
+        // FIXED: Better credit data parsing function
+        const parseCreditValue = (value) => {
+          console.log('🔄 Parsing credit value:', { rawValue: value, type: typeof value });
+          
+          if (value === null || value === undefined || value === '') {
+            console.log('Value is null/undefined/empty, returning 0');
+            return 0;
+          }
+          
+          if (typeof value === 'string') {
+            // Check for "NULL" string (case insensitive)
+            const trimmedValue = value.trim().toUpperCase();
+            if (trimmedValue === 'NULL' || trimmedValue === '') {
+              console.log('Value is "NULL" or empty string, returning 0');
+              return 0;
+            }
+            
+            // Remove any non-numeric characters except decimal point and minus sign
+            const cleanValue = value.replace(/[^0-9.-]+/g, '');
+            if (cleanValue === '') {
+              console.log('Cleaned value is empty, returning 0');
+              return 0;
+            }
+            
+            const parsed = parseFloat(cleanValue);
+            
+            if (isNaN(parsed)) {
+              console.log('Could not parse to number, returning 0');
+              return 0;
+            }
+            
+            console.log(`Successfully parsed "${value}" to ${parsed}`);
+            return parsed;
+          }
+          
+          if (typeof value === 'number') {
+            console.log(`Value is already number: ${value}`);
+            return value;
+          }
+          
+          // Try to convert other types
+          try {
+            const parsed = parseFloat(value);
+            if (!isNaN(parsed)) {
+              console.log(`Converted to number: ${parsed}`);
+              return parsed;
+            }
+          } catch (e) {
+            console.log('Conversion failed, returning 0');
+          }
+          
+          return 0;
         };
         
-        await generateAndStorePDF(result.voucherId);
+        // FIXED: Get and parse credit values with proper debugging
+        const rawCreditLimit = periodInvoiceData.customerInfo?.credit_limit;
+        const rawUnpaidAmount = periodInvoiceData.customerInfo?.unpaid_amount;
+        const rawBalanceAmount = periodInvoiceData.customerInfo?.balance_amount;
         
-        setSuccessMessage(
-          `✅ Invoice generated successfully!\n` +
-          `Invoice Number: ${result.invoiceNumber || invoiceNumber}\n` +
-          `Transaction Type: ${TransactionType}\n` +
-          `Status: ${status}`
-        );
-      } catch (pdfError) {
-        console.warn('⚠️ PDF storage failed:', pdfError.message);
-        setSuccessMessage(
-          `✅ Invoice created but PDF storage failed.\n` +
-          `Invoice Number: ${result.invoiceNumber || invoiceNumber}\n` +
-          `Status: ${status}`
-        );
+        console.log('📥 RAW CREDIT VALUES RECEIVED:', {
+          rawCreditLimit,
+          rawUnpaidAmount,
+          rawBalanceAmount,
+          types: {
+            creditLimit: typeof rawCreditLimit,
+            unpaidAmount: typeof rawUnpaidAmount,
+            balanceAmount: typeof rawBalanceAmount
+          }
+        });
+        
+        const creditLimit = parseCreditValue(rawCreditLimit);
+        const unpaidAmount = parseCreditValue(rawUnpaidAmount);
+        const balanceAmount = parseCreditValue(rawBalanceAmount);
+        
+        console.log('✅ FINAL PARSED CREDIT VALUES:', {
+          creditLimit,
+          unpaidAmount,
+          balanceAmount
+        });
+        
+const itemsWithCalculations = selectedItems.map(item => {
+  const flashOffer = parseInt(item.flash_offer) || 0;
+  const buyQuantity = parseInt(item.buy_quantity) || 0;
+  const getQuantity = parseInt(item.get_quantity) || 0;
+  
+  const quantity = flashOffer === 1 ? buyQuantity : (parseFloat(item.quantity) || 1);
+  const stock_deduction_quantity = flashOffer === 1 ? buyQuantity + getQuantity : quantity;
+  
+  const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
+  const taxAmountPerUnit = parseFloat(item.tax_amount) || 0;
+  const cgstAmountPerUnit = parseFloat(item.cgst_amount) || 0;
+  const sgstAmountPerUnit = parseFloat(item.sgst_amount) || 0;
+  
+  // CRITICAL FIX: Get net_price from the item
+  const netPrice = parseFloat(item.net_price) || 0;
+  const editedSalePrice = parseFloat(item.edited_sale_price) || 0;
+  const salePrice = parseFloat(item.sale_price) || 0;
+  
+  // Use net_price as the primary price
+const price = netPrice;
+  
+  const discountAmountPerUnit = parseFloat(item.discount_amount) || 0;
+  const creditChargePerUnit = parseFloat(item.credit_charge) || 0;
+  
+  const cgstPercentage = parseFloat(item.cgst_percentage) || 0;
+  const sgstPercentage = parseFloat(item.sgst_percentage) || 0;
+  const taxPercentage = parseFloat(item.tax_percentage) || 0;
+  
+  const itemTaxableAmount = taxablePerUnit * quantity;
+  const itemTaxAmount = orderMode.toUpperCase() === "KACHA" ? 0 : taxAmountPerUnit * quantity;
+  const itemCGSTAmount = orderMode.toUpperCase() === "KACHA" ? 0 : cgstAmountPerUnit * quantity;
+  const itemSGSTAmount = orderMode.toUpperCase() === "KACHA" ? 0 : sgstAmountPerUnit * quantity;
+  const itemDiscountAmount = discountAmountPerUnit * quantity;
+  const itemCreditCharge = creditChargePerUnit * quantity;
+  const itemTotal = orderMode.toUpperCase() === "KACHA" ? itemTaxableAmount : 
+                    itemTaxableAmount + itemTaxAmount;
+  
+  taxableAmount += itemTaxableAmount;
+  totalGST += itemTaxAmount;
+  totalCGST += itemCGSTAmount;
+  totalSGST += itemSGSTAmount;
+  totalDiscount += itemDiscountAmount;
+  grandTotal += itemTotal;
+  
+  return {
+    originalItemId: item.id,
+    product: item.item_name,
+    product_id: item.product_id,
+    product_type: orderMode,
+    description: editableDescriptions[item.id] || item.description || '',
+    
+    quantity: quantity,
+    stock_deduction_quantity: stock_deduction_quantity,
+    
+    // CRITICAL FIX: Include net_price in the payload
+    net_price: netPrice,
+    price: price,
+    edited_sale_price: editedSalePrice,
+    sale_price: salePrice,
+     unit_id: item.unit_id || null,
+  unit_name: item.unit_name || "",
+    discount_amount: itemDiscountAmount,
+    credit_charge: itemCreditCharge, 
+    discount_amount_per_unit: discountAmountPerUnit,
+    credit_charge_per_unit: creditChargePerUnit,
+    
+    discount: parseFloat(item.discount_percentage) || 0,
+    gst: orderMode.toUpperCase() === "KACHA" ? 0 : taxPercentage, 
+    cgst: orderMode.toUpperCase() === "KACHA" ? 0 : cgstPercentage, 
+    sgst: orderMode.toUpperCase() === "KACHA" ? 0 : sgstPercentage, 
+    igst: 0,
+    cess: 0,
+    
+    total: itemTotal,
+    taxable_amount: itemTaxableAmount, 
+    tax_amount: itemTaxAmount, 
+    cgst_amount: itemCGSTAmount, 
+    sgst_amount: itemSGSTAmount,
+    
+    batch: item.batch_id || '',
+    batch_id: item.batch_id || '',
+    item_total: itemTotal,
+       hsn_code: item.hsn_code || "",  
+      unit_id: item.unit_id || null,
+    flash_offer: flashOffer,
+    buy_quantity: buyQuantity,
+    get_quantity: getQuantity,
+    
+    _calculation_note: `Flash: ${flashOffer}, Price: ${price} (net: ${netPrice}, edited: ${editedSalePrice})`
+  };
+}); 
+        // FIXED: Perform credit limit check with better logic
+        console.log('📊 CREDIT CHECK - ALL VALUES:', {
+          creditLimit,
+          unpaidAmount,
+          balanceAmount,
+          grandTotal,
+          isCreditLimitSet: creditLimit > 0,
+          isCreditLimitValid: typeof creditLimit === 'number' && !isNaN(creditLimit)
+        });
+        
+        // IMPORTANT: Only check if creditLimit is a valid positive number
+        if (creditLimit > 0 && typeof creditLimit === 'number' && !isNaN(creditLimit)) {
+          const totalInvoiceAmount = grandTotal;
+          const currentTotal = unpaidAmount;
+          const newTotal = currentTotal + totalInvoiceAmount;
+          const exceedAmount = newTotal - creditLimit;
+          
+          console.log('🚨 CREDIT LIMIT CALCULATION:', {
+            creditLimit,
+            currentTotal,
+            totalInvoiceAmount,
+            newTotal,
+            exceedAmount,
+            isExceeded: newTotal > creditLimit
+          });
+          
+          if (newTotal > creditLimit) {
+            // Show Windows alert - FIXED format
+            const customerName = accountDetails?.name || periodInvoiceData.customerInfo?.name || 'Customer';
+            
+            // Create alert message with proper formatting
+            const alertMessage = 
+              "⚠️ CREDIT LIMIT EXCEEDED!\n\n" +
+              `Customer: ${customerName}\n` +
+              `Credit Limit: ₹${creditLimit.toLocaleString('en-IN')}\n` +
+              `Unpaid Amount: ₹${unpaidAmount.toLocaleString('en-IN')}\n` +
+              `Invoice Amount: ₹${totalInvoiceAmount.toLocaleString('en-IN')}\n` +
+              `New Total: ₹${newTotal.toLocaleString('en-IN')}\n` +
+              `Exceeds by: ₹${exceedAmount.toLocaleString('en-IN')}\n\n` +
+              "Credit limit exceeded! Proceed anyway?\n\n" +
+              "OK = Continue with invoice\n" +
+              "Cancel = Stop invoice generation";
+            
+            console.log('🔄 SHOWING ALERT DIALOG');
+            console.log('Alert Message:', alertMessage);
+            
+            const proceed = window.confirm(alertMessage);
+            
+            if (!proceed) {
+              setGenerating(false);
+              setErrorMessage('Invoice generation cancelled due to credit limit exceedance.');
+              setTimeout(() => setErrorMessage(null), 5000);
+              return;
+            } else {
+              console.log('✅ User chose to proceed despite credit limit');
+            }
+          } else {
+            console.log('✅ Credit limit NOT exceeded, proceeding normally');
+          }
+        } else {
+          console.log('ℹ️ No valid credit limit found:', {
+            creditLimit,
+            type: typeof creditLimit,
+            isNumber: typeof creditLimit === 'number',
+            isPositive: creditLimit > 0,
+            isNotNaN: !isNaN(creditLimit)
+          });
+          
+          if (creditLimit === 0) {
+            console.log('ℹ️ Credit limit is 0, skipping credit check');
+          } else if (creditLimit < 0) {
+            console.log('⚠️ Credit limit is negative, skipping credit check');
+          } else {
+            console.log('⚠️ Credit limit is not a valid number, skipping credit check');
+          }
+        }
+        
+        const payload = {
+          TransactionType: TransactionType,
+            flashOfferSummary: periodInvoiceData.flashOfferSummary || {
+      hasFlashOffer: itemsWithCalculations.some(item => item.flash_offer === 1),
+      totalItemsWithFlashOffer: itemsWithCalculations.filter(item => item.flash_offer === 1).length
+    },
+    
+          orderNumber: orderNumber,
+          order_number: orderNumber,
+          order_mode: orderMode.toUpperCase(),
+            hsn_code: itemsWithCalculations[0]?.hsn_code || "",  
+          items: itemsWithCalculations,
+          originalOrderNumber: orderNumber,
+          originalOrderId: periodInvoiceData.originalOrderId,
+          selectedItemIds: selectedItemIds,
+          
+          // Send calculated totals (already multiplied)
+          taxableAmount: taxableAmount,
+          totalGST: totalGST,
+          totalCess: 0,
+          grandTotal: grandTotal,
+          totalDiscount: totalDiscount,
+          totalCGST: totalCGST,
+          totalSGST: totalSGST,
+          
+          calculatedTotals: {
+            totalTaxableAmount: taxableAmount,
+            totalTaxAmount: totalGST,
+            totalGrandTotal: grandTotal,
+            totalDiscountAmount: totalDiscount,
+            itemCount: selectedItems.length,
+            staffIncentive: staffIncentive,
+            TransactionType: TransactionType,
+            totalCGST: totalCGST,
+            totalSGST: totalSGST
+          },
+          
+          BasicAmount: taxableAmount,
+          
+          note: editableNote || periodInvoiceData.note || "",
+          note_preview: (editableNote || periodInvoiceData.note || "").substring(0, 200),
+         
+          description_preview: firstItemDescription.substring(0, 200),
+          
+          customerInfo: {
+            name: accountDetails?.name || periodInvoiceData.customerInfo?.name,
+            businessName: accountDetails?.business_name || periodInvoiceData.customerInfo?.businessName,
+            gstin: accountDetails?.gstin || periodInvoiceData.customerInfo?.gstin,
+            state: accountDetails?.billing_state || periodInvoiceData.customerInfo?.state,
+            id: periodInvoiceData.customerInfo?.id,
+            email: accountDetails?.email || '',
+            phone:  accountDetails?.mobile_number || '',
+            pan: accountDetails?.pan || '',
+            // Include credit info in payload
+            credit_limit: creditLimit,
+            unpaid_amount: unpaidAmount,
+            balance_amount: balanceAmount
+          },
+          
+          billingAddress: accountDetails ? {
+            addressLine1: accountDetails.billing_address_line1,
+            addressLine2: accountDetails.billing_address_line2 || '',
+            city: accountDetails.billing_city,
+            pincode: accountDetails.billing_pin_code,
+            state: accountDetails.billing_state,
+            country: accountDetails.billing_country,
+            gstin: accountDetails.billing_gstin || accountDetails.gstin
+          } : periodInvoiceData.billingAddress,
+          
+          shippingAddress: accountDetails ? {
+            addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1,
+            addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || '',
+            city: accountDetails.shipping_city || accountDetails.billing_city,
+            pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code,
+            state: accountDetails.shipping_state || accountDetails.billing_state,
+            country: accountDetails.shipping_country || accountDetails.billing_country,
+            gstin: accountDetails.shipping_gstin || accountDetails.gstin
+          } : periodInvoiceData.shippingAddress || periodInvoiceData.billingAddress,
+          
+          selectedSupplierId: periodInvoiceData.customerInfo?.id || periodInvoiceData.PartyID,
+          PartyID: periodInvoiceData.customerInfo?.id || periodInvoiceData.PartyID,
+          AccountID: periodInvoiceData.customerInfo?.id || periodInvoiceData.AccountID,
+          PartyName: accountDetails?.name || periodInvoiceData.PartyName,
+          AccountName: accountDetails?.business_name || periodInvoiceData.AccountName,
+          
+          assigned_staff: assignedStaff,
+          staffid: staffId,
+          staff_id: staffId,
+          staff_incentive: staffIncentive,
+          
+          isPartialInvoice: true,
+          source: 'period_component',
+          
+          TaxSystem: orderMode.toUpperCase() === "KACHA" ? "KACHA_NO_GST" : "GST",
+          
+          TotalAmount: grandTotal,
+          TaxAmount: totalGST,
+          Subtotal: taxableAmount,
+          CGSTAmount: totalCGST,
+          SGSTAmount: totalSGST,
+          // Include credit info in the main payload too
+          credit_limit: creditLimit,
+          unpaid_amount: unpaidAmount,
+          balance_amount: balanceAmount
+        };
+
+        const { TransactionType: existingTransactionType, ...periodDataWithoutTransactionType } = periodInvoiceData;
+        
+        const finalPayload = {
+          ...periodDataWithoutTransactionType,
+          ...payload  ,
+          invoiceNumber: invoiceNumber,
+  VchNo: invoiceNumber,
+   transportDetails: transportDetails,
+  transport_name: transportDetails.transport,
+  gr_rr_number: transportDetails.grNumber,
+  vehicle_number: transportDetails.vehicleNo,
+  station_name: transportDetails.station,
+   transportDetails: transportDetails,  // Add this line
+        };
+        
+        console.log("📦 FINAL INVOICE PAYLOAD:", finalPayload);
+        
+        const response = await fetch(`${baseurl}/transaction`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(finalPayload),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to generate invoice");
+        }
+
+        if (result.voucherId) {
+          try {
+            const updatedInvoiceData = {
+              ...invoiceData,
+              voucherId: result.voucherId,
+              TransactionType: TransactionType
+            };
+            
+            // Generate and store PDF
+            const pdfResult = await generateAndStorePDF(result.voucherId);
+            
+            if (pdfResult.success) {
+              console.log('✅ PDF stored successfully');
+              setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber}. Transaction Type: ${TransactionType}`);
+            }
+          } catch (pdfError) {
+            console.warn('⚠️ Invoice created but PDF storage failed:', pdfError.message);
+            setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber} (PDF storage failed: ${pdfError.message})`);
+          }
+        } else {
+          setSuccessMessage(`Invoice generated successfully! Invoice Number: ${result.invoiceNumber || payload.invoiceNumber}. Transaction Type: ${TransactionType}`);
+        }
+
+        if (result.voucherId) {
+          setInvoiceData(prev => ({
+            ...prev,
+            voucherId: result.voucherId,
+            TransactionType: TransactionType
+          }));
+        }
+
+        setTimeout(() => {
+          navigate('/period');
+        }, 3000);
+
+      } else {
+        throw new Error('Invalid invoice data source');
       }
-      
-      setInvoiceData(prev => ({
-        ...prev,
-        voucherId: result.voucherId,
-        TransactionType: TransactionType,
-        status: status
-      }));
-    } else {
-      setSuccessMessage(
-        `✅ Invoice generated successfully!\n` +
-        `Invoice Number: ${result.invoiceNumber || invoiceNumber}\n` +
-        `Status: ${status}`
-      );
+    } catch (error) {
+      console.error("Error generating invoice:", error);
+      setErrorMessage(`Failed to generate invoice: ${error.message}`);
+
+      setTimeout(() => {
+        setErrorMessage(null);
+      }, 5000);
+    } finally {
+      setGenerating(false);
     }
-    
-    // Navigate after success
-    setTimeout(() => {
-      navigate('/period');
-    }, 3000);
-    
-  } catch (error) {
-    console.error("❌ Error generating invoice:", error);
-    setErrorMessage(`Failed to generate invoice: ${error.message}`);
-    
-    setTimeout(() => {
-      setErrorMessage(null);
-    }, 5000);
-  } finally {
-    setGenerating(false);
-  }
-};
+  };
 
 
   const calculateGrandTotalForQR = () => {
