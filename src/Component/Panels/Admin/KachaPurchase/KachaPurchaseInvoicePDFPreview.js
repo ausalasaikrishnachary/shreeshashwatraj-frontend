@@ -1849,7 +1849,7 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                       )}
                     </div>
                   </Col>
-                  {/* <Col md={6}>
+                  <Col md={6}>
                     <div className="shipping-address bg-light p-3 rounded">
                       <h5 className="text-primary mb-2">Ship To:</h5>
                       {isEditMode ? (
@@ -1893,20 +1893,9 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                         </>
                       )}
                     </div>
-                  </Col> */}
+                  </Col>
 
-                          <Col md={6}>
-                                                                          <h6 className="text-primary">Transportation Details:</h6>
-                                                      
-                                                                  <div className="bg-light p-3 rounded">
-                                                                    <div className="transport-field">
-                                                                      <strong>Vehicle No.:</strong>
-                                                                      <p className="mb-0 text-muted">
-                                                                        {currentData.transportDetails?.vehicleNo || '-'}
-                                                                      </p>
-                                                                    </div>
-                                                                    </div>
-                                                                  </Col>
+                         
                 </Row>
               </div>
 
@@ -2042,26 +2031,53 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
 
        {/* Totals Section */}
 <div className="totals-section mb-4">
-  <Row>
-    <Col md={7}>
-      {/* <div className="notes-section">
-        <h6 className="text-primary">Notes:</h6>
-        {isEditMode ? (
-          <Form.Control 
-            as="textarea"
-            rows={3}
-            value={currentData.note || ''}
-            onChange={(e) => handleInputChange('note', e.target.value)}
-            className="edit-control"
-          />
-        ) : (
-          <p className="bg-light p-2 rounded min-h-100">
-            {currentData.note}
-          </p>
-        )}
-      </div> */}
-      
-      {/* ✅ ADD TRANSPORT DETAILS HERE */}
+   <Row>
+   <Col md={7}>
+                    <div className="bank-details mb-2">
+
+                      <h6 className="text-primary mb-1" style={{ fontSize: '15px' }}>
+                        Bank Details:
+                      </h6>
+
+                      <div className="bg-light p-2 rounded" style={{ fontSize: '11px', lineHeight: '1.2' }}>
+
+                        <p className="mb-1" style={{ fontSize: '12px', }}  >
+                          Account Name: SHREE SHASHWATRAJ AGRO PVT LTD
+                        </p>
+
+                        <p className="mb-1" style={{ fontSize: '12px', }}>
+                          Bank Name: STATE BANK OF INDIA
+                        </p>
+
+                        <p className="mb-1" style={{ fontSize: '12px', }}>
+                          Branch: SME AURANGABAD
+                        </p>
+
+                        <p className="mb-1" style={{ fontSize: '12px', }}>
+                          Account Number: 44773710377
+                        </p>
+
+                        <p className="mb-0" style={{ fontSize: '12px', }}>
+                          IFSC Code: SBIN0063699
+                        </p>
+
+                      </div>
+                    </div>
+                      {/* <h6 className="text-primary">Notes:</h6>
+                      {isEditMode ? (
+                        <Form.Control
+                          as="textarea"
+                          rows={3}
+                          value={currentData.note || ''}
+                          onChange={(e) => handleInputChange('note', e.target.value)}
+                          className="edit-control"
+                        />
+                      ) : (
+                        <p className="bg-light p-2 rounded min-h-100">
+                          {currentData.note}
+                        </p>
+                      )} */}
+
       {/* <div className="transport-details-section mt-3">
         <h6 className="text-primary">Transportation Details:</h6>
         <div className="bg-light p-3 rounded">
@@ -2103,61 +2119,63 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
           </Row>
         </div>
       </div> */}
-    </Col>
-    <Col md={5}>
-      <div className="amount-breakdown bg-light p-3 rounded">
-        <h6 className="text-primary mb-3">Amount Summary</h6>
-        <table className="amount-table w-100">
-          <tbody>
-            <tr>
-              <td className="pb-2">Amount:</td>
-              <td className="text-end pb-2">₹{currentData.taxableAmount}</td>
-            </tr>
-            
-            {isSameState ? (
-              <>
-                <tr>
-                  <td className="pb-2">CGST:</td>
-                  <td className="text-end pb-2">₹{gstBreakdown.totalCGST}</td>
-                </tr>
-                <tr>
-                  <td className="pb-2">SGST:</td>
-                  <td className="text-end pb-2">₹{gstBreakdown.totalSGST}</td>
-                </tr>
-              </>
-            ) : (
-              <tr>
-                <td className="pb-2">IGST:</td>
-                <td className="text-end pb-2">₹{gstBreakdown.totalIGST}</td>
-              </tr>
-            )}
-            
-            <tr>
-              <td className="pb-2">Total GST:</td>
-              <td className="text-end pb-2">₹{currentData.totalGST}</td>
-            </tr>
-        {currentData.additionalCharge && parseFloat(currentData.additionalChargeAmount) > 0 && (
-          <tr>
-            <td className="pb-2">{currentData.additionalCharge}:</td>
-            <td className="text-end pb-2">
-              ₹{parseFloat(currentData.additionalChargeAmount).toFixed(2)}
-            </td>
-          </tr>
-        )}
+    <Col md={6}>
+                    <h6 className="text-primary">Transportation Details:</h6>
 
-           {/* Discount Row - make sure it's shown as deduction */}
-{currentData.discount_charges && parseFloat(currentData.discount_charges_amount) > 0 && (
-  <tr className="text-danger">
-    <td className="pb-2">
-      Discount ({currentData.discount_charges === 'percentage' ? '%' : '₹'}):
-    </td>
-    <td className="text-end pb-2">
-      - ₹{parseFloat(currentData.discount_charges_amount).toFixed(2)}
-    </td>
-  </tr>
-)}
-   
-         {/* ✅ ADD ROUND OFF ROW */}
+            <div className="bg-light p-3 rounded">
+              <div className="transport-field">
+                <strong>Vehicle No.:</strong>
+                <p className="mb-0 text-muted">
+                  {currentData.transportDetails?.vehicleNo || '-'}
+                </p>
+              </div>
+    
+              </div>
+            </Col>
+
+                  </Col>
+                  <Col md={5}>
+   <div className="amount-breakdown bg-light p-3 rounded">
+  <h6 className="text-primary mb-3">Amount Summary</h6>
+  <table className="amount-table w-100">
+    <tbody>
+      <tr>
+        <td className="pb-2">Amount:</td>
+        <td className="text-end pb-2">₹{currentData.taxableAmount}</td>
+      </tr>
+
+      {isSameState ? (
+        <>
+          <tr>
+            <td className="pb-2">CGST:</td>
+            <td className="text-end pb-2">₹{gstBreakdown.totalCGST}</td>
+          </tr>
+          <tr>
+            <td className="pb-2">SGST:</td>
+            <td className="text-end pb-2">₹{gstBreakdown.totalSGST}</td>
+          </tr>
+        </>
+      ) : (
+        <tr>
+          <td className="pb-2">IGST:</td>
+          <td className="text-end pb-2">₹{gstBreakdown.totalIGST}</td>
+        </tr>
+      )}
+
+      <tr>
+        <td className="pb-2">Total GST:</td>
+        <td className="text-end pb-2">₹{currentData.totalGST}</td>
+      </tr>
+
+      {/* ADDITIONAL CHARGES */}
+      {currentData.additionalCharge && currentData.additionalChargeAmount > 0 && (
+        <tr>
+          <td className="pb-2">{currentData.additionalCharge}:</td>
+          <td className="text-end pb-2">₹{parseFloat(currentData.additionalChargeAmount).toFixed(2)}</td>
+        </tr>
+      )}
+
+      {/* ✅ ADD ROUND OFF ROW */}
       {currentData.roundOff && parseFloat(currentData.roundOff) !== 0 && (
         <tr>
           <td className="pb-2">Round Off:</td>
@@ -2167,15 +2185,17 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
             </span>
           </td>
         </tr>
-      )}         <tr className="grand-total border-top pt-2">
-              <td><strong>Grand Total:</strong></td>
-              <td className="text-end"><strong className="text-success">₹{currentData.grandTotal}</strong></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </Col>
-  </Row>
+      )}
+
+      <tr className="grand-total border-top pt-2">
+        <td><strong>Grand Total:</strong></td>
+        <td className="text-end"><strong className="text-success">₹{currentData.grandTotal}</strong></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+                  </Col>
+                </Row>
 </div>
 
               {/* Footer */}

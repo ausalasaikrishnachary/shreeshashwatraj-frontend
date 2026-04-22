@@ -1839,7 +1839,7 @@ const handleOpenReceiptModal = () => {
                       )}
                     </div>
                   </Col>
-                  {/* <Col md={6}>
+                  <Col md={6}>
                     <div className="shipping-address bg-light p-3 rounded">
                       <h5 className="text-primary mb-2">Ship To:</h5>
                       {isEditMode ? (
@@ -1883,29 +1883,17 @@ const handleOpenReceiptModal = () => {
                         </>
                       )}
                     </div>
-{currentData.assigned_staff && currentData.assigned_staff !== 'N/A' && (
+{/* {currentData.assigned_staff && currentData.assigned_staff !== 'N/A' && (
   <div className="assigned-staff-section mt-3 p-2 bg-light rounded flex-start">
     <div className="d-flex justify-content-between align-items-center">
       <span className="text-muted">Sales Person:</span>
       <strong className="text-primary">{currentData.assigned_staff}</strong>
     </div>
   </div>
-)}
-                  </Col> */}
+)} */}
+                  </Col>
 
                   
-                              <Col md={6}>
-                                      <h6 className="text-primary">Transportation Details:</h6>
-                  
-                              <div className="bg-light p-3 rounded">
-                                <div className="transport-field">
-                                  <strong>Vehicle No.:</strong>
-                                  <p className="mb-0 text-muted">
-                                    {currentData.transportDetails?.vehicleNo || '-'}
-                                  </p>
-                                </div>
-                                </div>
-                              </Col>
                 </Row>
               </div>
 
@@ -2050,7 +2038,7 @@ const handleOpenReceiptModal = () => {
      <div className="totals-section mb-4">
                 <Row>
    <Col md={7}>
-                    <div className="bank-details">
+                    <div className="bank-details mb-2">
 
                       <h6 className="text-primary mb-1" style={{ fontSize: '15px' }}>
                         Bank Details:
@@ -2136,9 +2124,20 @@ const handleOpenReceiptModal = () => {
           </Row>
         </div>
       </div> */}
-
+           
+  <h6 className="text-primary">Transportation Details:</h6>
+                  
+                              <div className="bg-light p-3 rounded">
+                                <div className="transport-field">
+                                  <strong>Vehicle No.:</strong>
+                                  <p className="mb-0 text-muted">
+                                    {currentData.transportDetails?.vehicleNo || '-'}
+                                  </p>
+                                </div>
+                                </div>
 
                   </Col>
+                    
                   <Col md={5}>
                     <div className="amount-breakdown bg-light p-3 rounded">
                       <h6 className="text-primary mb-3">Amount Summary</h6>

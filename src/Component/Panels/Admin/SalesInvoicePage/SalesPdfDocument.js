@@ -76,10 +76,8 @@ const styles = StyleSheet.create({
   },
   transportBox: {
     width: '48%',
-    backgroundColor: '#f8f9fa',
     padding: 6,
     borderRadius: 3,
-    border: '1pt solid #dee2e6',
   },
   sectionTitle: {
     fontSize: 8,
@@ -261,6 +259,12 @@ const styles = StyleSheet.create({
     marginTop: 3,
     textAlign: 'center',
   },
+  transportRow: {
+  flexDirection: 'row',
+  marginBottom: 4,
+  alignItems: 'center',
+  width: '100%',
+},
   
   footer: {
     flexDirection: 'row',
@@ -359,7 +363,7 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
             </Text>
           </View>
           <View style={styles.invoiceMeta}>
-            <Text style={styles.invoiceTitle}>{getSafeData(currentData, 'document_type') || ''}</Text>
+            <Text style={styles.invoiceTitle}>{getSafeData(currentData, 'document_type') || 'TAX INVOICE'}</Text>
             <Text style={styles.addressText}><Text style={styles.tableCellBold}>Invoice No:</Text> {displayInvoiceNumber}</Text>
             <Text style={styles.addressText}><Text style={styles.tableCellBold}>Invoice Date:</Text> {invoiceDate}</Text>
             <Text style={styles.addressText}><Text style={styles.tableCellBold}>Due Date:</Text> {dueDate}</Text>
@@ -371,29 +375,47 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
         {getSafeData(currentData, 'document_type') || ''}
       </Text>
     </View> */}
-        {/* Address Section - 50% Bill To + 50% Transport Details */}
+{/* Address Section - 50% Bill To + 50% Transport Details */}
+<View style={styles.addressSection}>
   <View style={styles.addressBox}>
-  <Text style={styles.sectionTitle}>Bill To:</Text>
-  <Text style={styles.addressText}>
-    {bb_bc === 'b2c' 
-      ? getSafeData(supplierInfo, 'name', 'N/A')
-      : getSafeData(supplierInfo, 'business_name', 'N/A')}
-  </Text>
-  <Text style={styles.addressText}>
-    {getSafeData(supplierInfo, 'mobile_number') || getSafeData(supplierInfo, 'phone_number', 'N/A')}
-  </Text>
-  
-  {bb_bc !== 'b2c' && (
+    <Text style={styles.sectionTitle}>Bill To:</Text>
     <Text style={styles.addressText}>
-      GSTIN: {getSafeData(supplierInfo, 'gstin', 'N/A')}
+      {bb_bc === 'b2c' 
+        ? getSafeData(supplierInfo, 'name', 'N/A')
+        : getSafeData(supplierInfo, 'business_name', 'N/A')}
     </Text>
-  )}
-  
-  <Text style={styles.addressText}>
-    State: {getSafeData(supplierInfo, 'state', 'N/A')}
-  </Text>
+    <Text style={styles.addressText}>
+      {getSafeData(supplierInfo, 'mobile_number') || getSafeData(supplierInfo, 'phone_number', 'N/A')}
+    </Text>
+    
+    {bb_bc !== 'b2c' && (
+      <Text style={styles.addressText}>
+        GSTIN: {getSafeData(supplierInfo, 'gstin', 'N/A')}
+      </Text>
+    )}
+    
+    <Text style={styles.addressText}>
+      State: {getSafeData(supplierInfo, 'state', 'N/A')}
+    </Text>
+  </View>
+     <View style={styles.addressBox}>
+              <Text style={styles.sectionTitle}>Ship To:</Text>
+              <Text style={styles.addressText}>
+                {getSafeData(shippingAddress, 'addressLine1', 'N/A')}
+              </Text>
+              <Text style={styles.addressText}>
+                {getSafeData(shippingAddress, 'addressLine2', '')}
+              </Text>
+              <Text style={styles.addressText}>
+                {getSafeData(shippingAddress, 'city', '')} - {getSafeData(shippingAddress, 'pincode', '')}
+              </Text>
+              <Text style={styles.addressText}>
+                {getSafeData(shippingAddress, 'state', '')}
+              </Text>
+            </View>
+
 </View>
-        
+         
         {/* Items Table */}
         <View style={styles.itemsSection}>
           <View style={styles.table}>
@@ -475,73 +497,89 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
           </View>
         </View>
         
-        {/* Amount Summary + QR Code - 50% / 50% */}
-        <View style={styles.row}>
-          <View style={styles.col}>
-            {qrDataUrl && (
-              <View style={styles.qrSection}>
-                <Text style={styles.qrTitle}>Scan to Pay</Text>
-                <Image src={qrDataUrl} style={styles.qrImage} />
-                <Text style={styles.qrAmount}>
-                  ₹{(qrAmount || parseFloat(getSafeData(currentData, 'grandTotal', 0))).toFixed(2)}
-                </Text>
-              </View>
-            )}
+    {/* Amount Summary + QR Code + Transport Details - 50% / 50% */}
+<View style={styles.row}>
+  {/* LEFT COLUMN - QR Code + Transport Details (stacked vertically) */}
+  <View style={styles.col}>
+    {/* QR Code */}
+    {qrDataUrl && (
+      <View style={[styles.qrSection, { marginBottom: 8 }]}>
+        <Text style={styles.qrTitle}>Scan to Pay</Text>
+        <Image src={qrDataUrl} style={styles.qrImage} />
+        <Text style={styles.qrAmount}>
+          ₹{(qrAmount || parseFloat(getSafeData(currentData, 'grandTotal', 0))).toFixed(2)}
+        </Text>
+      </View>
+    )}
+ <View style={styles.transportBox}>
+  <Text style={styles.sectionTitle}>Transport Details:</Text>
+  
+  {/* Vehicle No - One Row */}
+  <View style={styles.transportRow}>
+    <Text style={[styles.addressText, { fontWeight: 'bold', width: '65%' }]}>Vehicle No.:</Text>
+    <Text style={[styles.addressText, { flex: 1 }]}>
+      {getSafeData(currentData, 'transportDetails.vehicleNo') || '-'}
+    </Text>
+  </View>
+</View>
+  </View>
+  
+  {/* RIGHT COLUMN - Amount Summary */}
+  <View style={styles.col}>
+    <View style={styles.amountSection}>
+      <Text style={styles.amountTitle}>Amount Summary</Text>
+      
+      <View style={styles.amountRow}>
+        <Text style={styles.amountLabel}>Taxable Amount:</Text>
+        <Text style={styles.amountValue}>₹{getSafeData(currentData, 'taxableAmount', '0.00')}</Text>
+      </View>
+      
+      {isSameState ? (
+        <>
+          <View style={styles.amountRow}>
+            <Text style={styles.addressText}>CGST:</Text>
+            <Text style={styles.addressText}>₹{gstBreakdown?.totalCGST || '0.00'}</Text>
           </View>
-          <View style={styles.col}>
-            <View style={styles.amountSection}>
-              <Text style={styles.amountTitle}>Amount Summary</Text>
-              
-              <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>Taxable Amount:</Text>
-                <Text style={styles.amountValue}>₹{getSafeData(currentData, 'taxableAmount', '0.00')}</Text>
-              </View>
-              
-              {isSameState ? (
-                <>
-                  <View style={styles.amountRow}>
-                    <Text style={styles.addressText}>CGST:</Text>
-                    <Text style={styles.addressText}>₹{gstBreakdown?.totalCGST || '0.00'}</Text>
-                  </View>
-                  <View style={styles.amountRow}>
-                    <Text style={styles.addressText}>SGST:</Text>
-                    <Text style={styles.addressText}>₹{gstBreakdown?.totalSGST || '0.00'}</Text>
-                  </View>
-                </>
-              ) : (
-                <View style={styles.amountRow}>
-                  <Text style={styles.addressText}>IGST:</Text>
-                  <Text style={styles.addressText}>₹{gstBreakdown?.totalIGST || '0.00'}</Text>
-                </View>
-              )}
-              
-              <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>Total GST:</Text>
-                <Text style={[styles.amountValue, { color: '#28a745' }]}>
-                  ₹{getSafeData(currentData, 'totalGST', '0.00')}
-                </Text>
-              </View>
-              
-              {/* Additional Charges Row */}
-              {additionalCharge && additionalChargeAmount > 0 && (
-                <View style={styles.amountRow}>
-                  <Text style={styles.amountLabel}>{additionalCharge}:</Text>
-                  <Text style={styles.amountValue}>₹{additionalChargeAmount.toFixed(2)}</Text>
-                </View>
-              )}
-              
-              {/* ✅ ADD DISCOUNT CHARGES ROW */}
-              {discountCharges && discountChargesAmount > 0 && (
-                <View style={[styles.amountRow, { borderBottomColor: '#ffcccc' }]}>
-                  <Text style={[styles.amountLabel, { color: '#dc3545' }]}>
-                    Discount ({discountCharges === 'percentage' ? '%' : '₹'}):
-                  </Text>
-                  <Text style={[styles.amountValue, { color: '#dc3545' }]}>
-                    - ₹{discountChargesAmount.toFixed(2)}
-                  </Text>
-                </View>
-              )}
-                {(() => {
+          <View style={styles.amountRow}>
+            <Text style={styles.addressText}>SGST:</Text>
+            <Text style={styles.addressText}>₹{gstBreakdown?.totalSGST || '0.00'}</Text>
+          </View>
+        </>
+      ) : (
+        <View style={styles.amountRow}>
+          <Text style={styles.addressText}>IGST:</Text>
+          <Text style={styles.addressText}>₹{gstBreakdown?.totalIGST || '0.00'}</Text>
+        </View>
+      )}
+      
+      <View style={styles.amountRow}>
+        <Text style={styles.amountLabel}>Total GST:</Text>
+        <Text style={[styles.amountValue, { color: '#28a745' }]}>
+          ₹{getSafeData(currentData, 'totalGST', '0.00')}
+        </Text>
+      </View>
+      
+      {/* Additional Charges Row */}
+      {additionalCharge && additionalChargeAmount > 0 && (
+        <View style={styles.amountRow}>
+          <Text style={styles.amountLabel}>{additionalCharge}:</Text>
+          <Text style={styles.amountValue}>₹{additionalChargeAmount.toFixed(2)}</Text>
+        </View>
+      )}
+      
+      {/* Discount Charges Row */}
+      {discountCharges && discountChargesAmount > 0 && (
+        <View style={[styles.amountRow, { borderBottomColor: '#ffcccc' }]}>
+          <Text style={[styles.amountLabel, { color: '#dc3545' }]}>
+            Discount ({discountCharges === 'percentage' ? '%' : '₹'}):
+          </Text>
+          <Text style={[styles.amountValue, { color: '#dc3545' }]}>
+            - ₹{discountChargesAmount.toFixed(2)}
+          </Text>
+        </View>
+      )}
+      
+      {(() => {
         const roundOff = parseFloat(getSafeData(currentData, 'roundOff', '0'));
         if (roundOff !== 0) {
           return (
@@ -555,16 +593,16 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
         }
         return null;
       })()}
-              
-              <View style={styles.grandTotal}>
-                <Text style={styles.amountLabel}>Grand Total:</Text>
-                <Text style={[styles.amountValue, { color: '#28a745', fontSize: 9 }]}>
-                  ₹{getSafeData(currentData, 'grandTotal', '0.00')}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
+      
+      <View style={styles.grandTotal}>
+        <Text style={styles.amountLabel}>Grand Total:</Text>
+        <Text style={[styles.amountValue, { color: '#28a745', fontSize: 9 }]}>
+          ₹{getSafeData(currentData, 'grandTotal', '0.00')}
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
         
         {/* Footer */}
         <View style={styles.footer}>
