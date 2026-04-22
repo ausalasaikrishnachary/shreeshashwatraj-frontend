@@ -1838,19 +1838,7 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                     </div>
                   </Col>
 
-                         <Col md={6}>
-                                                        <h6 className="text-primary">Transportation Details:</h6>
-                                    
-                                                <div className="bg-light p-3 rounded">
-                                                  <div className="transport-field">
-                                                    <strong>Vehicle No.:</strong>
-                                                    <p className="mb-0 text-muted">
-                                                      {currentData.transportDetails?.vehicleNo || '-'}
-                                                    </p>
-                                                  </div>
-                                                  </div>
-                                                </Col>
-                  {/* <Col md={6}>
+                  <Col md={6}>
                     <div className="shipping-address bg-light p-3 rounded">
                       <h5 className="text-primary mb-2">Ship To:</h5>
                       {isEditMode ? (
@@ -1894,15 +1882,15 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
                         </>
                       )}
                     </div>
-      {currentData.assigned_staff && currentData.assigned_staff !== 'N/A' && (
+      {/* {currentData.assigned_staff && currentData.assigned_staff !== 'N/A' && (
   <div className="assigned-staff-section mt-3 p-2 bg-light rounded flex-start">
     <div className="d-flex justify-content-between align-items-center">
       <span className="text-muted">Sales Person:</span>
       <strong className="text-primary">{currentData.assigned_staff}</strong>
     </div>
   </div>
-)}
-                  </Col> */}
+)} */}
+                  </Col>
                 </Row>
               </div>
 
@@ -2101,7 +2089,7 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
 
     </Col>
       <Col md={7}>
-                        <div className="bank-details">
+                        <div className="bank-details mb-2">
     
                           <h6 className="text-primary mb-1" style={{ fontSize: '15px' }}>
                             Bank Details:
@@ -2188,6 +2176,16 @@ formDataToSend.append('TransactionType', receiptFormData.TransactionType)
             </div>
           </div> */}
     
+                                                        <h6 className="text-primary">Transportation Details:</h6>
+                                    
+                                                <div className="bg-light p-3 rounded">
+                                                  <div className="transport-field">
+                                                    <strong>Vehicle No.:</strong>
+                                                    <p className="mb-0 text-muted">
+                                                      {currentData.transportDetails?.vehicleNo || '-'}
+                                                    </p>
+                                                  </div>
+                                                  </div>
     
                       </Col>
  <Col md={5}>
