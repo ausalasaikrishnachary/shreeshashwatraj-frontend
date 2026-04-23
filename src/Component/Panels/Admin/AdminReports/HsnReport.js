@@ -40,12 +40,12 @@ const fetchGstData = async (from = fromDate, to = toDate) => {
     const response = await axios.get(`${baseurl}/hsnreport`);
     const vouchers = response.data;
 
-    // ✅ Filter by Date column here
+    // Filter by Date column here
     const filteredVouchers = vouchers.filter((voucher) => {
       if (!voucher.Date) return false;
-      const voucherDate = new Date(voucher.Date).toISOString().split('T')[0]; // → "2026-04-10"
+      const voucherDate = new Date(voucher.Date).toISOString().split('T')[0];
       if (from && voucherDate < from) return false;
-      if (to   && voucherDate > to)   return false;
+      if (to && voucherDate > to) return false;
       return true;
     });
 
@@ -54,30 +54,53 @@ const fetchGstData = async (from = fromDate, to = toDate) => {
       const items = voucher.items || [];
       items.forEach((item) => {
         const hsnCode = item.hsn_code || voucher.hsn_code || 'N/A';
+        const gstRate = item.gst || 0;
         const txnType = voucher.TransactionType || '';
-        const key     = `${hsnCode}_${txnType}`;
+        // Key now includes HSN code AND GST rate
+        const key = `${hsnCode}_${gstRate}_${txnType}`;
 
         if (!groupedMap[key]) {
           groupedMap[key] = {
-            id:              key,
-            hsnCode:         hsnCode,
-            goods_name:      item.goods_name || '',
+            id: key,
+            hsnCode: hsnCode,
+            gstRate: gstRate,
+            goods_name: item.goods_name || '',
             transactionType: txnType,
-            totalQty:        0,
-            billAmt:         0,
-            taxableAmt:      0,
-            sgstAmt:         0,
-            cgstAmt:         0,
-            igstAmt:         0,
+            totalQty: 0,
+            billAmt: 0,
+            taxableAmt: 0,
+            sgstAmt: 0,
+            cgstAmt: 0,
+            igstAmt: 0,
           };
         }
 
-        groupedMap[key].totalQty   += parseFloat(item.quantity)      || 0;
-        groupedMap[key].billAmt    += parseFloat(voucher.TotalAmount) || 0;
-        groupedMap[key].taxableAmt += parseFloat(voucher.Subtotal)    || 0;
-        groupedMap[key].sgstAmt    += parseFloat(voucher.SGSTAmount)  || 0;
-        groupedMap[key].cgstAmt    += parseFloat(voucher.CGSTAmount)  || 0;
-        groupedMap[key].igstAmt    += parseFloat(voucher.IGSTAmount)  || 0;
+        // Calculate item's share of GST based on item total / voucher total
+        const itemTotal = parseFloat(item.total) || 0;
+        const voucherTotal = parseFloat(voucher.TotalAmount) || 0;
+        const voucherGSTTotal = (parseFloat(voucher.SGSTAmount) || 0) + 
+                                (parseFloat(voucher.CGSTAmount) || 0) + 
+                                (parseFloat(voucher.IGSTAmount) || 0);
+        
+        let itemSGST = 0;
+        let itemCGST = 0;
+        let itemIGST = 0;
+        let itemTaxable = 0;
+
+        if (voucherTotal > 0) {
+          const ratio = itemTotal / voucherTotal;
+          itemSGST = (parseFloat(voucher.SGSTAmount) || 0) * ratio;
+          itemCGST = (parseFloat(voucher.CGSTAmount) || 0) * ratio;
+          itemIGST = (parseFloat(voucher.IGSTAmount) || 0) * ratio;
+          itemTaxable = (parseFloat(voucher.Subtotal) || 0) * ratio;
+        }
+
+        groupedMap[key].totalQty += parseFloat(item.quantity) || 0;
+        groupedMap[key].billAmt += itemTotal;
+        groupedMap[key].taxableAmt += itemTaxable;
+        groupedMap[key].sgstAmt += itemSGST;
+        groupedMap[key].cgstAmt += itemCGST;
+        groupedMap[key].igstAmt += itemIGST;
       });
     });
 
@@ -90,14 +113,12 @@ const fetchGstData = async (from = fromDate, to = toDate) => {
   }
 };
 
-  // ✅ FIX: pass dates directly on mount
   useEffect(() => {
     const firstDay    = getFirstDayOfCurrentMonth();
     const currentDate = getCurrentDate();
     fetchGstData(firstDay, currentDate);
   }, []);
 
-  // ✅ FIX: pass tempDates directly, no setTimeout
   const applyDateFilterHandler = () => {
     setFromDate(tempFromDate);
     setToDate(tempToDate);
@@ -122,6 +143,7 @@ const fetchGstData = async (from = fromDate, to = toDate) => {
     totalQty:   item.totalQty || 0,
     billAmt:    `₹${(item.billAmt    || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     taxableAmt: `₹${(item.taxableAmt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    gstDisplay: `${item.gstRate}%`,
     sgstAmt:    `₹${(item.sgstAmt    || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     cgstAmt:    `₹${(item.cgstAmt    || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     igstAmt:    `₹${(item.igstAmt    || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -148,11 +170,14 @@ const fetchGstData = async (from = fromDate, to = toDate) => {
         [companyName],
         [`HSN REPORT FROM ${displayFromDate} To ${displayToDate}${txnLabel}`],
         [],
-        ["S.No", "HSN Code", "Total Qty", "Total Amount", "Taxable Amt", "SGST Amt", "CGST Amt", "IGST Amt"],
+        ["S.No", "HSN Code", "Goods Name", "Total Qty",  "GST Rate", "Total Amount", "Taxable Amt", "SGST Amt", "CGST Amt", "IGST Amt"],
         ...filteredData.map((item, index) => [
           index + 1,
           item.hsnCode         || "",
+         
+          item.goods_name      || "",
           Number(item.totalQty   || 0),
+           `${item.gstRate}%`   || "",
           Number(item.billAmt    || 0),
           Number(item.taxableAmt || 0),
           Number(item.sgstAmt    || 0),
@@ -163,10 +188,10 @@ const fetchGstData = async (from = fromDate, to = toDate) => {
       ];
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws["!cols"]   = [{ wch: 8 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+      ws["!cols"]   = [{ wch: 8 }, { wch: 15 }, { wch: 10 }, { wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
       ws["!merges"] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
       ];
       ws["A1"] = { v: companyName, t: "s", s: { font: { bold: true, sz: 13 }, alignment: { horizontal: "center" } } };
       ws["A2"] = { v: `HSN REPORT FROM ${displayFromDate} To ${displayToDate}${txnLabel}`, t: "s", s: { font: { bold: true, sz: 11 }, alignment: { horizontal: "center" } } };
@@ -182,7 +207,6 @@ const fetchGstData = async (from = fromDate, to = toDate) => {
     }
   };
 
-  // ✅ FIX: pass fresh dates directly
   const clearFilters = () => {
     const firstDay    = getFirstDayOfCurrentMonth();
     const currentDate = getCurrentDate();
@@ -195,7 +219,6 @@ const fetchGstData = async (from = fromDate, to = toDate) => {
     fetchGstData(firstDay, currentDate);
   };
 
-  // ✅ FIX: pass fresh dates directly
   const clearDateFilters = () => {
     const firstDay    = getFirstDayOfCurrentMonth();
     const currentDate = getCurrentDate();
@@ -208,13 +231,16 @@ const fetchGstData = async (from = fromDate, to = toDate) => {
 
   const hsnColumns = [
     { key: "sl_no",      title: "S.No",         style: { textAlign: "center", width: "60px"  }, render: (value, record, index) => index + 1 },
-    { key: "hsnCode",    title: "HSN Code",      style: { textAlign: "left",   width: "110px" } },
-    { key: "totalQty",   title: "Total Qty",     style: { textAlign: "right",  width: "100px" } },
-    { key: "billAmt",    title: "Total Amount",  style: { textAlign: "right",  width: "130px" } },
-    { key: "taxableAmt", title: "Taxable Amt",   style: { textAlign: "right",  width: "130px" } },
-    { key: "sgstAmt",    title: "SGST Amt",      style: { textAlign: "right",  width: "110px" } },
-    { key: "cgstAmt",    title: "CGST Amt",      style: { textAlign: "right",  width: "110px" } },
-    { key: "igstAmt",    title: "IGST Amt",      style: { textAlign: "right",  width: "110px" } },
+    { key: "hsnCode",    title: "HSN Code",     style: { textAlign: "left",   width: "110px" } },
+    { key: "goods_name", title: "Goods Name",   style: { textAlign: "left",   width: "200px" } },
+    { key: "totalQty",   title: "Total Qty",    style: { textAlign: "right",  width: "100px" } },
+        { key: "gstDisplay", title: "GST Rate",     style: { textAlign: "right",  width: "80px"  } },
+
+    { key: "billAmt",    title: "Total Amount", style: { textAlign: "right",  width: "130px" } },
+    { key: "taxableAmt", title: "Taxable Amt",  style: { textAlign: "right",  width: "130px" } },
+    { key: "sgstAmt",    title: "SGST Amt",     style: { textAlign: "right",  width: "110px" } },
+    { key: "cgstAmt",    title: "CGST Amt",     style: { textAlign: "right",  width: "110px" } },
+    { key: "igstAmt",    title: "IGST Amt",     style: { textAlign: "right",  width: "110px" } },
   ];
 
   if (loading) return (
