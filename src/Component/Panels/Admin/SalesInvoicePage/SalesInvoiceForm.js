@@ -1384,7 +1384,8 @@ const customerTypeValue = customerType || 'b2b';
 
   const filteredAccounts = accounts.filter(acc => {
   const searchLower = searchTerm.toLowerCase();
-  const name = (acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name)?.toLowerCase() || "";
+  // const name = (acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name)?.toLowerCase() || "";
+   const name = (acc.name || acc.display_name)?.toLowerCase() || "";
   const businessName = acc.business_name?.toLowerCase() || "";
   const displayName = acc.display_name?.toLowerCase() || "";
   
@@ -1701,7 +1702,8 @@ const handleExclPriceChange = (e) => {
                             setInvoiceData(prev => ({
                               ...prev,
                               supplierInfo: {
-                                name: supplier.gstin ? supplier.display_name : supplier.name,
+                                // name: supplier.gstin ? supplier.display_name : supplier.name,
+                                 name: supplier.name || supplier.display_name, 
                                 state: supplier.billing_state,
                                 gstin: supplier.gstin,
                                 accountId: supplier.id,
@@ -1753,7 +1755,8 @@ const handleExclPriceChange = (e) => {
                       >
                         <div>
                           <div style={{ fontWeight: 400, fontSize: '13px' }}>
-                            {acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name}
+                            {/* {acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name} */}
+                             {acc.name || acc.display_name}
                           </div>
                           <div style={{ fontSize: '11px', color: '#6c757d' }}>
                             {acc.business_name}
