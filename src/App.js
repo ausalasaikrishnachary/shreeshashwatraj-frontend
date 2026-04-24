@@ -148,6 +148,7 @@ import HsnReport from "./Component/Panels/Admin/AdminReports/HsnReport";
 import PrivateRoute from "./Component/Layouts/PrivateRoute";
 import QRCodeGenerator_normal from "./Component/Panels/Admin/SalesInvoicePage/QRCodeGenerator_normal";
 import SalesReportdetail from "./Component/Panels/Admin/AdminReports/SalesReportdetail";
+import ProductionPage from "./Component/Panels/Admin/Productionpage/ProductionPage";
 
 
 
@@ -336,6 +337,7 @@ function App() {
           <Route path="/qrcodenormal" element={<PrivateRoute allowedRoles={["admin"]}><QRCodeGenerator_normal /></PrivateRoute>} />
           <Route path="/salesreportdetail" element={<PrivateRoute allowedRoles={["admin"]}><SalesReportdetail /></PrivateRoute>} />
           <Route path="/salesreportdetail/:id" element={<PrivateRoute allowedRoles={["admin"]}><SalesReportdetail /></PrivateRoute>} />
+          <Route path="/Productionpage" element={<PrivateRoute allowedRoles={["admin"]}><ProductionPage /></PrivateRoute>} />
 
         </Routes>
       </Router>

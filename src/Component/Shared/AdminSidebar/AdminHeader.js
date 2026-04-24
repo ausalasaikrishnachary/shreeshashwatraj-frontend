@@ -58,7 +58,8 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
    "/sales/credit-note/edit":"Edit Sales CreditNote",
    "/purchase/debit-note":"Purchae DebitNotes Table",
    "/Purchase/editinvoice":"Purchase Edit Invoice",
-   "/kachapurchaseedit" :"Kacha Purchase Edit Invoice"
+   "/kachapurchaseedit" :"Kacha Purchase Edit Invoice",
+    "/Productionpage" : "Production"
 
   };
 

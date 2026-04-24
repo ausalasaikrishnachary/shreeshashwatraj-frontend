@@ -199,6 +199,15 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     { path: "/admin/marketing/offers-postings", name: "Offers & Marketing", icon: <FaTags /> },
     { path: "/reports", name: "Reports", icon: <FaFileAlt /> },
     { path: "/roleaccess", name: "Role Access", icon: <FaKey /> },
+     {
+      name: "Production",
+      icon: <FaBox />,
+      subMenu: [
+        // { path: "/kachapurchaseinvoicetable", name: "Kacha Purchase", icon: <FaPurchaseInvoice /> },
+        // { path: "/kachaPurchasevoucher", name: "Kacha Purchase Voucher", icon: <FaStickyNote /> },
+        { path: "/Productionpage", name: "Products", icon: <FaFileExport /> },
+      ],
+    },
   ];
 
   const handleOverlayClick = () => setIsMobileOpen(false);
