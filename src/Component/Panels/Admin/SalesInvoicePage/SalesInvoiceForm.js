@@ -8,7 +8,7 @@ import { baseurl } from '../../../BaseURL/BaseURL';
 import { useNavigate, useParams } from "react-router-dom";
 
 const CreateInvoice = ({ user }) => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [inputName, setInputName] = useState("");
   const [selected, setSelected] = useState(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState(null);
