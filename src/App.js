@@ -149,6 +149,8 @@ import PrivateRoute from "./Component/Layouts/PrivateRoute";
 import QRCodeGenerator_normal from "./Component/Panels/Admin/SalesInvoicePage/QRCodeGenerator_normal";
 import SalesReportdetail from "./Component/Panels/Admin/AdminReports/SalesReportdetail";
 import ProductionPage from "./Component/Panels/Admin/Productionpage/ProductionPage";
+import Productioncreate from "./Component/Panels/Admin/Productionpage/Productioncreate";
+import Productstable from "./Component/Panels/Admin/Productionpage/Productstable";
 
 
 
@@ -338,6 +340,9 @@ function App() {
           <Route path="/salesreportdetail" element={<PrivateRoute allowedRoles={["admin"]}><SalesReportdetail /></PrivateRoute>} />
           <Route path="/salesreportdetail/:id" element={<PrivateRoute allowedRoles={["admin"]}><SalesReportdetail /></PrivateRoute>} />
           <Route path="/Productionpage" element={<PrivateRoute allowedRoles={["admin"]}><ProductionPage /></PrivateRoute>} />
+          <Route path="/Productstable" element={<PrivateRoute allowedRoles={["admin"]}><Productstable /></PrivateRoute>} />
+          <Route path="/Productioncreate" element={<PrivateRoute allowedRoles={["admin"]}><Productioncreate /></PrivateRoute>} />
+                    <Route path="/Productioncreate/:id" element={<PrivateRoute allowedRoles={["admin"]}><Productioncreate /></PrivateRoute>} />
 
         </Routes>
       </Router>
