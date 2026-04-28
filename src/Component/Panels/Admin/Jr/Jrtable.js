@@ -7,116 +7,121 @@ import { baseurl } from "../../../BaseURL/BaseURL"
 import './Invoices.css';
 import { FaEdit, FaTrash, FaEye } from 'react-icons/fa';
 
-const Productstable = () => {
+const Jrtable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
-  const [productions, setProductions] = useState([]);
-  const [filteredProductions, setFilteredProductions] = useState([]);
+  const [vouchers, setVouchers] = useState([]);
+  const [filteredVouchers, setFilteredVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleting, setDeleting] = useState({});
 
-  // Fetch productions from API
+  // Fetch vouchers from API
   useEffect(() => {
-    fetchProductions();
+    fetchVouchers();
   }, []);
 
-  const fetchProductions = async () => {
+  const fetchVouchers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${baseurl}/production/list`);
+      const response = await fetch(`${baseurl}/api/jrroutes`);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch productions');
+        throw new Error('Failed to fetch vouchers');
       }
       
       const result = await response.json();
       
       if (result.success) {
-        const transformedProductions = result.data.map(production => ({
-          id: production.VoucherID,
-          voucherNo: production.VchNo,
-          date: production.Date ? new Date(production.Date).toISOString().split('T')[0] : 'N/A',
-          transactionType: production.TransactionType,
-          productId: production.product_id,
-          batchId: production.batch_id,
-          batchNumber: production.batch_number,
-          totalAmount: `₹ ${parseFloat(production.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-          totalPacks: production.TotalPacks,
-          entryDate: production.EntryDate ? new Date(production.EntryDate).toISOString().split('T')[0] : 'N/A',
-          items: production.items || [],
-          originalData: production
+        const transformedVouchers = result.data.map(voucher => ({
+          id: voucher.VoucherID,
+          voucherNo: voucher.VchNo,
+          date: voucher.Date ? new Date(voucher.Date).toISOString().split('T')[0] : 'N/A',
+          transactionType: voucher.TransactionType || 'Journal',
+          partyName: voucher.PartyName || 'N/A',
+          accountName: voucher.AccountName || 'N/A',
+          totalAmount: `₹ ${parseFloat(voucher.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+          balanceAmount: `₹ ${parseFloat(voucher.balance_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+          status: voucher.status || 'active',
+          entryDate: voucher.EntryDate ? new Date(voucher.EntryDate).toISOString().split('T')[0] : 'N/A',
+          createdAt: voucher.created_at ? new Date(voucher.created_at).toISOString().split('T')[0] : 'N/A',
+          originalData: voucher
         }));
         
-        setProductions(transformedProductions);
-        setFilteredProductions(transformedProductions);
+        setVouchers(transformedVouchers);
+        setFilteredVouchers(transformedVouchers);
+      } else {
+        setError(result.message || 'Failed to fetch vouchers');
       }
       setLoading(false);
     } catch (err) {
-      console.error('Error fetching productions:', err);
+      console.error('Error fetching vouchers:', err);
       setError(err.message);
       setLoading(false);
     }
   };
 
-const handleEdit = (production) => {
-  navigate(`/Productioncreate/${production.id}`);
-};
+  // Handle Edit
+  const handleEdit = (voucher) => {
+    navigate(`/JrCreate/${voucher.id}`);
+  };
+
   // Handle View
-  const handleView = async (production) => {
+  const handleView = async (voucher) => {
     try {
-      const response = await fetch(`${baseurl}/production/${production.id}`);
+      const response = await fetch(`${baseurl}/api/vouchers/${voucher.id}`);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch production details');
+        throw new Error('Failed to fetch voucher details');
       }
       
       const result = await response.json();
       
       if (result.success) {
-        // Store in localStorage or navigate to preview page
-        localStorage.setItem('previewProduction', JSON.stringify(result.data));
-        navigate(`/production/preview/${production.id}`);
+        localStorage.setItem('previewVoucher', JSON.stringify(result.data));
+        navigate(`/voucher/preview/${voucher.id}`);
+      } else {
+        alert('Failed to load voucher details');
       }
     } catch (error) {
-      console.error('Error viewing production:', error);
-      alert('Failed to load production details');
+      console.error('Error viewing voucher:', error);
+      alert('Failed to load voucher details');
     }
   };
 
   // Handle Delete
-  const handleDelete = async (production) => {
-    if (!window.confirm(`Delete production ${production.voucherNo}? This will revert stock changes.`)) return;
+  const handleDelete = async (voucher) => {
+    if (!window.confirm(`Delete voucher ${voucher.voucherNo}? This action cannot be undone.`)) return;
     
     try {
-      setDeleting(prev => ({ ...prev, [production.id]: true }));
+      setDeleting(prev => ({ ...prev, [voucher.id]: true }));
       
-      const response = await fetch(`${baseurl}/production/delete/${production.id}`, {
+      const response = await fetch(`${baseurl}/api/journaldelete/${voucher.id}`, {
         method: 'DELETE'
       });
       
       const result = await response.json();
       
       if (result.success) {
-        alert('Production deleted successfully!');
-        fetchProductions(); // Refresh list
+        alert('Voucher deleted successfully!');
+        fetchVouchers(); // Refresh list
       } else {
         alert('Failed to delete: ' + result.message);
       }
     } catch (error) {
-      console.error('Error deleting production:', error);
-      alert('Error deleting production: ' + error.message);
+      console.error('Error deleting voucher:', error);
+      alert('Error deleting voucher: ' + error.message);
     } finally {
-      setDeleting(prev => ({ ...prev, [production.id]: false }));
+      setDeleting(prev => ({ ...prev, [voucher.id]: false }));
     }
   };
 
-  // Columns for Production Table
+  // Columns for Voucher Table
   const columns = [
     { 
       key: 'voucherNo', 
       title: 'VOUCHER NO', 
-      style: { textAlign: 'center' },
+      style: { textAlign: 'center', width: '12%' },
       render: (value, row) => (
         <button 
           className="btn btn-link p-0 text-primary text-decoration-none"
@@ -130,43 +135,41 @@ const handleEdit = (production) => {
     { 
       key: 'date', 
       title: 'DATE', 
-      style: { textAlign: 'center' } 
+      style: { textAlign: 'center', width: '10%' } 
     },
     { 
       key: 'transactionType', 
       title: 'TRANSACTION TYPE', 
-      style: { textAlign: 'center' },
-    //   render: (value) => (
-    //     <span className={`badge ${value === 'Production' ? 'bg-success' : 'bg-info'}`}>
-    //       {value}
-    //     </span>
-    //   )
+      style: { textAlign: 'center', width: '12%' },
+    
     },
-  
+    { 
+      key: 'partyName', 
+      title: 'PARTY/CUSTOMER NAME', 
+      style: { textAlign: 'center', width: '20%' } 
+    },
     { 
       key: 'totalAmount', 
-      title: 'TOTAL AMOUNT', 
-      style: { textAlign: 'right' } 
+      title: 'AMOUNT (₹)', 
+      style: { textAlign: 'center', width: '12%' } 
     },
-  
-   
+    // { 
+    //   key: 'balanceAmount', 
+    //   title: 'BALANCE AMOUNT (₹)', 
+    //   style: { textAlign: 'right', width: '12%' } 
+    // },
+    
     {
       key: 'actions',
       title: 'ACTION',
-      style: { textAlign: 'center' },
+      style: { textAlign: 'center', width: '12%' },
       render: (value, row) => (
         <div className="d-flex justify-content-center gap-2">
-          {/* <button
-            className="btn btn-sm btn-primary"
-            onClick={() => handleView(row)}
-            title="View Details"
-          >
-            <FaEye />
-          </button> */}
+        
           <button
             className="btn btn-sm btn-warning"
             onClick={() => handleEdit(row)}
-            title="Edit Production"
+            title="Edit Voucher"
           >
             <FaEdit />
           </button>
@@ -174,7 +177,7 @@ const handleEdit = (production) => {
             className="btn btn-sm btn-danger"
             onClick={() => handleDelete(row)}
             disabled={deleting[row.id]}
-            title="Delete Production"
+            title="Delete Voucher"
           >
             {deleting[row.id] ? (
               <div className="spinner-border spinner-border-sm" role="status"></div>
@@ -187,9 +190,9 @@ const handleEdit = (production) => {
     }
   ];
 
-  // Create new production
+  // Create new voucher
   const handleCreateClick = () => {
-    navigate("/Productioncreate");
+    navigate("/JrCreate");
   };
 
   if (loading) {
@@ -226,10 +229,10 @@ const handleEdit = (production) => {
           />
           <div className="admin-content-wrapper-sales">
             <div className="alert alert-danger m-3" role="alert">
-              Error loading productions: {error}
+              <strong>Error:</strong> {error}
               <button 
                 className="btn btn-sm btn-outline-danger ms-3"
-                onClick={fetchProductions}
+                onClick={fetchVouchers}
               >
                 Retry
               </button>
@@ -252,23 +255,21 @@ const handleEdit = (production) => {
 
         <div className="admin-content-wrapper-sales">
           <div className="invoices-content-area">
-          
-
             <div className="invoices-actions-section">
               <div className="quotation-container p-4">
                 <div className="d-flex justify-content-between align-items-center mb-4">
-                  <h5 className="fw-bold">Production Transactions</h5>
+                  <h5 className="fw-bold">Journal </h5>
                   <button className="btn btn-primary" onClick={handleCreateClick}>
-                    <i className="bi bi-plus-circle me-1"></i> Create Production
+                    <i className="bi bi-plus-circle me-1"></i> Create Journal 
                   </button>
                 </div>
 
                 <ReusableTable
-                  title="Production List"
-                  data={filteredProductions}
+                  title="Journal  List"
+                  data={filteredVouchers}
                   columns={columns}
                   initialEntriesPerPage={5}
-                  searchPlaceholder="Search by voucher no, batch no or product ID..."
+                  searchPlaceholder="Search by voucher no, party name, account name..."
                   showSearch={true}
                   showEntriesSelector={true}
                   showPagination={true}
@@ -282,4 +283,4 @@ const handleEdit = (production) => {
   );
 };
 
-export default Productstable;
+export default Jrtable;

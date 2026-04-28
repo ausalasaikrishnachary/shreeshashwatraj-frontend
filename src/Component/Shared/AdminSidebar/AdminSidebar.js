@@ -205,7 +205,14 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       subMenu: [
         { path: "/Productstable", name: "Products", icon: <FaPurchaseInvoice /> },
         // { path: "/kachaPurchasevoucher", name: "Kacha Purchase Voucher", icon: <FaStickyNote /> },
-        { path: "/Productioncreate", name: "Create Product", icon: <FaFileExport /> },
+        // { path: "/Productioncreate", name: "Create Product", icon: <FaFileExport /> },
+      ],
+    },
+      {
+      name: "JR",
+      icon: <FaBox />,
+      subMenu: [
+        { path: "/Jrtable", name: "Jr Table", icon: <FaPurchaseInvoice /> },
       ],
     },
   ];

@@ -151,6 +151,8 @@ import SalesReportdetail from "./Component/Panels/Admin/AdminReports/SalesReport
 import ProductionPage from "./Component/Panels/Admin/Productionpage/ProductionPage";
 import Productioncreate from "./Component/Panels/Admin/Productionpage/Productioncreate";
 import Productstable from "./Component/Panels/Admin/Productionpage/Productstable";
+import JrCreate from "./Component/Panels/Admin/Jr/JrCreate";
+import Jrtable from "./Component/Panels/Admin/Jr/Jrtable";
 
 
 
@@ -343,6 +345,9 @@ function App() {
           <Route path="/Productstable" element={<PrivateRoute allowedRoles={["admin"]}><Productstable /></PrivateRoute>} />
           <Route path="/Productioncreate" element={<PrivateRoute allowedRoles={["admin"]}><Productioncreate /></PrivateRoute>} />
                     <Route path="/Productioncreate/:id" element={<PrivateRoute allowedRoles={["admin"]}><Productioncreate /></PrivateRoute>} />
+                    <Route path="/JrCreate" element={<PrivateRoute allowedRoles={["admin"]}><JrCreate /></PrivateRoute>} />
+                    <Route path="/JrCreate/:id" element={<PrivateRoute allowedRoles={["admin"]}><JrCreate /></PrivateRoute>} />
+                    <Route path="/Jrtable" element={<PrivateRoute allowedRoles={["admin"]}><Jrtable /></PrivateRoute>} />
 
         </Routes>
       </Router>

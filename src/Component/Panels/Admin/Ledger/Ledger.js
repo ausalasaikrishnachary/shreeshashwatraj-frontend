@@ -197,8 +197,19 @@ const Ledger = () => {
 
   const groupedArray = Object.values(groupedLedger);
 
-  // ── helper: convert UTC ISO string → local YYYY-MM-DD ──
-  const getLocalDateStr = (dateStr) => {
+useEffect(() => {
+  if (!ledgerData.length) return;
+
+  const timer = setTimeout(async () => {
+    for (const ledger of groupedArray) {
+      await updateBalanceInDB(ledger.partyID, ledger.balance, ledger.totalCredit, ledger.totalDebit);
+    }
+  }, 800);
+
+  return () => clearTimeout(timer);
+}, [ledgerData]);
+
+    const getLocalDateStr = (dateStr) => {
     if (!dateStr) return null;
     const d = new Date(dateStr);
     const year  = d.getFullYear();
@@ -248,7 +259,37 @@ const Ledger = () => {
     setIsFiltered(false);
     setOrderModeFilter("ALL");
   };
+const updateBalanceInDB = async (partyID, balance) => {
+  try {
+    // Find the party data from groupedArray
+    const partyData = groupedArray.find(p => p.partyID == partyID);
+    
+    if (!partyData) return;
+    
+    const { totalCredit, totalDebit } = partyData;
+    
+    // Use SAME logic as frontend display
+    let balance_type;
+    let absBalance;
+    
+    if (totalCredit > totalDebit) {
+      balance_type = "Cr";  // Purchase/Stock Inward
+      absBalance = totalCredit - totalDebit;
+    } else {
+      balance_type = "Dr";  // Sales/Stock Transfer
+      absBalance = totalDebit - totalCredit;
+    }
 
+    console.log(`Updating ${partyData.partyName}: Credit=${totalCredit}, Debit=${totalDebit} → ${absBalance} ${balance_type}`);
+
+    await axios.put(`${baseurl}/update-account-balance/${partyID}`, {
+      balance: absBalance,
+      balance_type,
+    });
+  } catch (err) {
+    console.error("DB update error:", err);
+  }
+};
   const exportToPDF = async () => {
     if (filteredLedger.length === 0) {
       alert("No data to export");
@@ -278,149 +319,171 @@ const Ledger = () => {
     }
   };
 
-  const ledgerColumns = [
-    {
-      key: "partyID",
-      title: "",
-      render: (_, ledger) => {
-        const balanceType = ledger.balance >= 0 ? "Cr" : "Dr";
-        const balanceAmt = Math.abs(ledger.balance).toFixed(2);
-        const openingBalanceData = getPartyOpeningBalance(ledger.partyID);
-        const openingBalanceNum = openingBalanceData.balance;
-        const openingBalanceType = openingBalanceData.type;
+const ledgerColumns = [
+  {
+    key: "partyID",
+    title: "",
+    render: (_, ledger) => {
+      const balanceType = ledger.balance <= 0 ? "Cr" : "Dr";
+      const balanceAmt = Math.abs(ledger.balance).toFixed(2);
+      const openingBalanceData = getPartyOpeningBalance(ledger.partyID);
+      const openingBalanceNum = openingBalanceData.balance;
+      const openingBalanceType = openingBalanceData.type;
 
-        const openingBalanceDisplay = openingBalanceType
-          ? `₹${openingBalanceNum.toFixed(2)} ${openingBalanceType === "Debit" ? "Dr" : "Cr"}`
-          : `₹${openingBalanceNum.toFixed(2)}`;
+      const openingBalanceDisplay = openingBalanceType
+        ? `₹${openingBalanceNum.toFixed(2)} ${openingBalanceType === "Debit" ? "Dr" : "Cr"}`
+        : `₹${openingBalanceNum.toFixed(2)}`;
 
-        // ── inner rows also filtered by APPLIED dates ──
-        const sortedTransactions = [...ledger.transactions]
-          .filter((tx) => {
-            if (!appliedStartDate && !appliedEndDate) return true;
-            const txDate = getLocalDateStr(tx.date);
-            if (!txDate) return false;
-            if (appliedStartDate && appliedEndDate) return txDate >= appliedStartDate && txDate <= appliedEndDate;
-            if (appliedStartDate) return txDate >= appliedStartDate;
-            if (appliedEndDate)   return txDate <= appliedEndDate;
-            return true;
-          })
-          .sort((a, b) => {
-            const dateA = a.date ? new Date(a.date) : new Date(0);
-            const dateB = b.date ? new Date(b.date) : new Date(0);
-            return dateA - dateB;
-          });
-
-        let runningBalance = openingBalanceNum;
-
-        if (openingBalanceType === "Credit") {
-          runningBalance = -openingBalanceNum;
-        }
-
-        const transactionsWithBalance = sortedTransactions.map((tx) => {
-          const amount = parseFloat(tx.Amount || 0);
-          const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
-
-          if (openingBalanceType === "Debit") {
-            if (dc === "D") runningBalance = runningBalance + amount;
-            else if (dc === "C") runningBalance = runningBalance - amount;
-          } else if (openingBalanceType === "Credit") {
-            if (dc === "D") runningBalance = runningBalance + amount;
-            else if (dc === "C") runningBalance = runningBalance - amount;
-          } else {
-            if (dc === "D") runningBalance = runningBalance + amount;
-            else if (dc === "C") runningBalance = runningBalance - amount;
-          }
-
-          return { ...tx, runningBalance };
+      const sortedTransactions = [...ledger.transactions]
+        .filter((tx) => {
+          if (!appliedStartDate && !appliedEndDate) return true;
+          const txDate = getLocalDateStr(tx.date);
+          if (!txDate) return false;
+          if (appliedStartDate && appliedEndDate) return txDate >= appliedStartDate && txDate <= appliedEndDate;
+          if (appliedStartDate) return txDate >= appliedStartDate;
+          if (appliedEndDate)   return txDate <= appliedEndDate;
+          return true;
+        })
+        .sort((a, b) => {
+          const dateA = a.date ? new Date(a.date) : new Date(0);
+          const dateB = b.date ? new Date(b.date) : new Date(0);
+          return dateA - dateB;
         });
 
-        return (
-          <div className="ledger-party-section">
-            {/* Party Header */}
-            <div className="ledger-party-header">
-              {ledger.partyName} (ID: {ledger.partyID}) —
-              {orderModeFilter === "ALL" && ` Opening Balance: ${openingBalanceDisplay} | `}
-              Balance: {balanceAmt} {balanceType}
-            </div>
+      // Helper function - Purchase & Stock Inward go to CREDIT side
+      const getActualDC = (tx) => {
+        const transactionType = (tx.trantype || "").toLowerCase();
+        const dataType = (tx.data_type || "").toLowerCase();
+        
+        // Purchase and Stock Inward should be CREDIT
+        if (transactionType === "purchase" || transactionType === "stock inward" ||
+            dataType === "purchase" || dataType === "stock inward") {
+          return "C";
+        }
+        
+        // Sales and Stock Transfer should be DEBIT
+        if (transactionType === "sales" || transactionType === "stock transfer" ||
+            dataType === "sales" || dataType === "stock transfer") {
+          return "D";
+        }
+        
+        return tx?.DC?.trim()?.charAt(0)?.toUpperCase();
+      };
 
-            {/* Transactions Table */}
-            <table className="ledger-transactions-table">
-              <thead>
-                <tr>
-                  <th>Transaction Date</th>
-                  <th>Transaction Type</th>
-                  <th>Rec/Vou No</th>
-                  <th>Credit</th>
-                  <th>Debit</th>
-                  {orderModeFilter === "ALL" && <th>Balance</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {transactionsWithBalance.map((tx, idx) => {
-                  const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
-                  const voucherId = tx.voucherID;
-                  const voucherDisplay = getVoucherDisplay(voucherId, tx.trantype);
-                  const amount = parseFloat(tx.Amount || 0);
-                  const amountDisplay = amount.toFixed(2);
-                  const txBalanceDisplay = Math.abs(tx.runningBalance).toFixed(2);
-                  const balanceSign = tx.runningBalance >= 0 ? "Dr" : "Cr";
+      // REVERSED: For Credit balance, we subtract debits and add credits
+      let runningBalance = openingBalanceNum;
 
-                  return (
-                    <tr key={tx.id || idx}>
-                      <td>
-                        {tx.date
-                          ? new Date(tx.date).toLocaleDateString("en-IN", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })
-                          : "-"}
-                      </td>
-                      <td>{tx.trantype || "-"}</td>
-                      <td>
-                        {voucherId ? (
-                          <span
-                            onClick={() => handleVoucherClick(voucherId, tx.trantype, tx)}
-                            className="ledger-voucher-link"
-                            title="Click to view invoice"
-                          >
-                            {voucherDisplay}
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td>
-                        {dc === "C" ? (
-                          <span className="ledger-credit-amount">{amountDisplay}</span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td>
-                        {dc === "D" ? (
-                          <span className="ledger-debit-amount">{amountDisplay}</span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      {orderModeFilter === "ALL" && (
-                        <td>
-                          <span className="ledger-balance-amount">
-                            {txBalanceDisplay} {balanceSign}
-                          </span>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      if (openingBalanceType === "Credit") {
+        runningBalance = openingBalanceNum; // Start with positive for Cr
+      } else if (openingBalanceType === "Debit") {
+        runningBalance = -openingBalanceNum; // Debit opening becomes negative
+      }
+
+      const transactionsWithBalance = sortedTransactions.map((tx) => {
+        const amount = parseFloat(tx.Amount || 0);
+        const actualDC = getActualDC(tx);
+
+        // REVERSED LOGIC: Cr balance increases with Credits, decreases with Debits
+        if (actualDC === "C") {
+          runningBalance = runningBalance + amount; // Credit adds to balance
+        } else if (actualDC === "D") {
+          runningBalance = runningBalance - amount; // Debit subtracts from balance
+        }
+
+        return { ...tx, runningBalance, actualDC };
+      });
+
+      // Calculate final balance type for header
+      const finalBalanceType = runningBalance >= 0 ? "Cr" : "Dr";
+      const finalBalanceAmt = Math.abs(runningBalance).toFixed(2);
+
+      return (
+        <div className="ledger-party-section">
+          <div className="ledger-party-header">
+            {ledger.partyName} (ID: {ledger.partyID}) —
+            {orderModeFilter === "ALL" && ` Opening Balance: ${openingBalanceDisplay} | `}
+            Balance: {finalBalanceAmt} {finalBalanceType}
           </div>
-        );
-      },
+
+          <table className="ledger-transactions-table">
+            <thead>
+              <tr>
+                <th>Transaction Date</th>
+                <th>Transaction Type</th>
+                <th>Rec/Vou No</th>
+                <th>Credit</th>
+                <th>Debit</th>
+                {orderModeFilter === "ALL" && <th>Balance</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {transactionsWithBalance.map((tx, idx) => {
+                const actualDC = tx.actualDC;
+                const voucherId = tx.voucherID;
+                const voucherDisplay = getVoucherDisplay(voucherId, tx.trantype);
+                const amount = parseFloat(tx.Amount || 0);
+                const amountDisplay = amount.toFixed(2);
+                const txBalanceDisplay = Math.abs(tx.runningBalance).toFixed(2);
+                const balanceSign = tx.runningBalance >= 0 ? "Cr" : "Dr";
+
+                return (
+                  <tr key={tx.id || idx}>
+                    <td>
+                      {tx.date
+                        ? new Date(tx.date).toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })
+                        : "-"}
+                    </td>
+                    <td>{tx.trantype || "-"}</td>
+                    <td>
+                      {voucherId ? (
+                        <span
+                          onClick={() => handleVoucherClick(voucherId, tx.trantype, tx)}
+                          className="ledger-voucher-link"
+                          title="Click to view invoice"
+                        >
+                          {voucherDisplay}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    {/* Credit Column */}
+                    <td>
+                      {actualDC === "C" ? (
+                        <span className="ledger-credit-amount">{amountDisplay}</span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    {/* Debit Column */}
+                    <td>
+                      {actualDC === "D" ? (
+                        <span className="ledger-debit-amount">{amountDisplay}</span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    {orderModeFilter === "ALL" && (
+                      <td>
+                        <span className="ledger-balance-amount">
+                          {txBalanceDisplay} {balanceSign}
+                        </span>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      );
     },
-  ];
+  },
+];
 
   return (
     <div className="ledger-wrapper">
