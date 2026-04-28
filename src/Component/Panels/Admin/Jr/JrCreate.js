@@ -20,6 +20,9 @@ const JrCreate = ({ user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
+  // Amount type state (Dr or Cr)
+  const [amountType, setAmountType] = useState('Dr');
+  
   // Voucher state
   const [voucherData, setVoucherData] = useState({
     voucherNo: '',
@@ -75,46 +78,45 @@ const JrCreate = ({ user }) => {
     }
   };
 
-const fetchVoucherData = async (voucherId) => {
-  try {
-    setLoading(true);
-    const response = await fetch(`${baseurl}/api/jrroutes/${voucherId}`);
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch voucher data');
+  const fetchVoucherData = async (voucherId) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${baseurl}/api/jrroutes/${voucherId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch voucher data');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        const data = result.data;
+        
+        setVoucherData({
+          voucherNo: data.VchNo || '',
+          invoiceDate: data.Date ? new Date(data.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        });
+        
+        setSelectedAccount({
+          id: data.AccountID || data.PartyID || '',
+          name: data.AccountName || data.PartyName || '',
+          balance: parseFloat(data.balance_amount || 0),
+          balance_type: data.balance_type || 'Dr'
+        });
+        
+        setAmount(data.TotalAmount ? parseFloat(data.TotalAmount).toString() : '');
+        setAmountType(data.amount_type || 'Dr');
+        
+      } else {
+        alert('Failed to load voucher data: ' + (result.message || 'Unknown error'));
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching voucher:', error);
+      alert('Failed to load voucher data for editing');
+      setLoading(false);
     }
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      const data = result.data;
-      
-      // Map the data correctly from your backend response
-      setVoucherData({
-        voucherNo: data.VchNo || '',
-        invoiceDate: data.Date ? new Date(data.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      });
-      
-      // Find the account from your accounts list or use the data directly
-      setSelectedAccount({
-        id: data.AccountID || data.PartyID || '',
-        name: data.AccountName || data.PartyName || '',
-        balance: parseFloat(data.balance_amount || 0),
-        balance_type: data.balance_type || 'Dr'
-      });
-      
-      setAmount(data.TotalAmount ? parseFloat(data.TotalAmount).toString() : '');
-      
-    } else {
-      alert('Failed to load voucher data: ' + (result.message || 'Unknown error'));
-    }
-    setLoading(false);
-  } catch (error) {
-    console.error('Error fetching voucher:', error);
-    alert('Failed to load voucher data for editing');
-    setLoading(false);
-  }
-};
+  };
 
   const generateVoucherNumber = async () => {
     try {
@@ -157,13 +159,6 @@ const fetchVoucherData = async (voucherId) => {
     setSearchTerm('');
   };
 
-  const handleBalanceTypeChange = (e) => {
-    setSelectedAccount(prev => ({
-      ...prev,
-      balance_type: e.target.value
-    }));
-  };
-
   const handleAmountChange = (e) => {
     setAmount(e.target.value);
   };
@@ -183,6 +178,7 @@ const fetchVoucherData = async (voucherId) => {
   const handleClearDraft = () => {
     if (window.confirm('Are you sure you want to clear all draft data?')) {
       setAmount('');
+      setAmountType('Dr');
       setSelectedAccount({ id: '', name: '', balance: 0, balance_type: 'Dr' });
       if (!isEditMode) {
         generateVoucherNumber();
@@ -195,73 +191,76 @@ const fetchVoucherData = async (voucherId) => {
     }
   };
   
-const handleSave = async () => {
-  if (!selectedAccount.id) {
-    alert('⚠️ Please select a customer/account');
-    return;
-  }
-  
-  if (!amount || parseFloat(amount) <= 0) {
-    alert('⚠️ Please enter a valid amount');
-    return;
-  }
-  
-  if (!voucherData.voucherNo) {
-    alert('⚠️ Please enter voucher number');
-    return;
-  }
-  
-  if (!voucherData.invoiceDate) {
-    alert('⚠️ Please select date');
-    return;
-  }
-  
-  setSaving(true);
-  
-  try {
-    const voucherPayload = {
-      voucherNo: voucherData.voucherNo,
-      invoiceDate: voucherData.invoiceDate,
-      partyId: selectedAccount.id,         // PartyID (same as AccountID for customer)
-      partyName: selectedAccount.name,     // PartyName
-      balance_amount: selectedAccount.balance,
-      totalAmount: parseFloat(amount),
-      transactionType: 'Journal'
-    };
-    
-    console.log('Saving voucher:', voucherPayload);
-    
-    let url = `${baseurl}/api/journalcreate`;
-    let method = 'POST';
-    
-    if (isEditMode) {
-      url = `${baseurl}/api/journalupdate/${id}`;
-      method = 'PUT';
+  const handleSave = async () => {
+    if (!selectedAccount.id) {
+      alert('⚠️ Please select a customer/account');
+      return;
     }
     
-    const response = await fetch(url, {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(voucherPayload)
-    });
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      alert(`✅ Voucher ${isEditMode ? 'updated' : 'saved'} successfully!`);
-      navigate('/Jrtable');
-    } else {
-      alert(`❌ Failed to ${isEditMode ? 'update' : 'save'} voucher: ` + (result.message || 'Unknown error'));
+    if (!amount || parseFloat(amount) <= 0) {
+      alert('⚠️ Please enter a valid amount');
+      return;
     }
-  } catch (error) {
-    console.error('Error saving voucher:', error);
-    alert(`❌ Error ${isEditMode ? 'updating' : 'saving'} voucher. Please try again.`);
-  } finally {
-    setSaving(false);
-  }
-};
+    
+    if (!voucherData.voucherNo) {
+      alert('⚠️ Please enter voucher number');
+      return;
+    }
+    
+    if (!voucherData.invoiceDate) {
+      alert('⚠️ Please select date');
+      return;
+    }
+    
+    setSaving(true);
+    
+    try {
+      const voucherPayload = {
+        voucherNo: voucherData.voucherNo,
+        invoiceDate: voucherData.invoiceDate,
+        partyId: selectedAccount.id,
+        partyName: selectedAccount.name,
+        balance_amount: parseFloat(selectedAccount.balance),
+        balance_type: selectedAccount.balance_type,
+        amount: parseFloat(amount),
+        amount_type: amountType,
+        totalAmount: parseFloat(amount),
+        transactionType: 'Journal'
+      };
+      
+      console.log('Saving voucher:', voucherPayload);
+      
+      let url = `${baseurl}/api/journalcreate`;
+      let method = 'POST';
+      
+      if (isEditMode) {
+        url = `${baseurl}/api/journalupdate/${id}`;
+        method = 'PUT';
+      }
+      
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(voucherPayload)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(`✅ Voucher ${isEditMode ? 'updated' : 'saved'} successfully!`);
+        navigate('/Jrtable');
+      } else {
+        alert(`❌ Failed to ${isEditMode ? 'update' : 'save'} voucher: ` + (result.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error saving voucher:', error);
+      alert(`❌ Error ${isEditMode ? 'updating' : 'saving'} voucher. Please try again.`);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="admin-layout">
@@ -330,7 +329,7 @@ const handleSave = async () => {
               </Row>
             </div>
             
-            {/* Journal Entry Form - Single Row */}
+            {/* Journal Entry Form - With Balance Amount Showing Type */}
             <div className="bg-white p-3 rounded shadow-sm mb-4">
               <Row className="align-items-end">
                 <Col md={3}>
@@ -400,25 +399,13 @@ const handleSave = async () => {
                   <Form.Label className="fw-bold">Balance Amount</Form.Label>
                   <Form.Control
                     type="text"
-                    value={`₹${selectedAccount.balance.toFixed(2)}`}
+                    value={`₹${selectedAccount.balance.toFixed(2)} (${selectedAccount.balance_type})`}
                     readOnly
                     className="bg-light"
                   />
                 </Col>
                 
                 <Col md={2}>
-                  <Form.Label className="fw-bold">Balance Type</Form.Label>
-                  <Form.Select
-                    value={selectedAccount.balance_type}
-                    onChange={handleBalanceTypeChange}
-                    className="border-primary"
-                  >
-                    <option value="Dr">Dr (Debit)</option>
-                    <option value="Cr">Cr (Credit)</option>
-                  </Form.Select>
-                </Col>
-                
-                <Col md={3}>
                   <Form.Label className="fw-bold">Amount (₹)</Form.Label>
                   <Form.Control
                     type="number"
@@ -427,6 +414,18 @@ const handleSave = async () => {
                     placeholder="Enter amount"
                     className="border-primary"
                   />
+                </Col>
+                
+                <Col md={1}>
+                  <Form.Label className="fw-bold">Type</Form.Label>
+                  <Form.Select
+                    value={amountType}
+                    onChange={(e) => setAmountType(e.target.value)}
+                    className="border-primary"
+                  >
+                    <option value="Dr">Dr</option>
+                    <option value="Cr">Cr</option>
+                  </Form.Select>
                 </Col>
                 
                 <Col md={2}>
@@ -448,8 +447,9 @@ const handleSave = async () => {
                       <th>Voucher No</th>
                       <th>Date</th>
                       <th>Party Name</th>
-                      <th>Amount (₹)</th>
-                      <th>Balance Type</th>
+                      <th>Balance Amount</th>
+                      <th>Transaction Amount</th>
+                      <th>Amount Type</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -457,22 +457,27 @@ const handleSave = async () => {
                       <td>{voucherData.voucherNo}</td>
                       <td>{voucherData.invoiceDate}</td>
                       <td>{selectedAccount.name}</td>
+                      <td className="text-end">₹{selectedAccount.balance.toFixed(2)} ({selectedAccount.balance_type})</td>
                       <td className="text-end">₹{parseFloat(amount).toFixed(2)}</td>
-                      <td>{selectedAccount.balance_type === 'Dr' ? 'Debit (Dr)' : 'Credit (Cr)'}</td>
+                      <td className="text-center">
+                        <span className={`badge ${amountType === 'Dr' ? 'bg-danger' : 'bg-success'}`}>
+                          {amountType}
+                        </span>
+                      </td>
                     </tr>
                   </tbody>
                 </Table>
               </div>
             )}
             
-<div className="text-center bg-white p-3 rounded shadow-sm mt-4">
-  <Button variant="primary" className="me-3 px-4" onClick={handleSave} disabled={saving}>
-    {saving ? 'Saving...' : (isEditMode ? 'Update Voucher' : 'Save Voucher')}
-  </Button>
-  <Button variant="danger" onClick={() => navigate('/Jrtable')}>
-    Cancel
-  </Button>
-</div>
+            <div className="text-center bg-white p-3 rounded shadow-sm mt-4">
+              <Button variant="primary" className="me-3 px-4" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving...' : (isEditMode ? 'Update Voucher' : 'Save Voucher')}
+              </Button>
+              <Button variant="danger" onClick={() => navigate('/Jrtable')}>
+                Cancel
+              </Button>
+            </div>
           </Container>
         </div>
       </div>

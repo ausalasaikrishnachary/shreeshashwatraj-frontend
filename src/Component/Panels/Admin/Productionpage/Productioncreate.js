@@ -138,16 +138,16 @@ const fetchProductionData = async (voucherId) => {
         if (data.voucherNo) {
           const lastNumber = parseInt(data.voucherNo.split('-')[1]) || 0;
           const newNumber = String(lastNumber + 1).padStart(3, '0');
-          setInvoiceData(prev => ({ ...prev, voucherNo: `PROD-${newNumber}` }));
+          setInvoiceData(prev => ({ ...prev, voucherNo: `COS-${newNumber}` }));
         } else {
-          setInvoiceData(prev => ({ ...prev, voucherNo: 'PROD-001' }));
+          setInvoiceData(prev => ({ ...prev, voucherNo: 'COS-001' }));
         }
       } else {
-        setInvoiceData(prev => ({ ...prev, voucherNo: 'PROD-001' }));
+        setInvoiceData(prev => ({ ...prev, voucherNo: 'COS-001' }));
       }
     } catch (error) {
       console.error('Error generating voucher number:', error);
-      setInvoiceData(prev => ({ ...prev, voucherNo: 'PROD-001' }));
+      setInvoiceData(prev => ({ ...prev, voucherNo: 'COS-001' }));
     }
   };
 

@@ -258,14 +258,14 @@ const Jrtable = () => {
             <div className="invoices-actions-section">
               <div className="quotation-container p-4">
                 <div className="d-flex justify-content-between align-items-center mb-4">
-                  <h5 className="fw-bold">Journal Vouchers</h5>
+                  <h5 className="fw-bold">Journal </h5>
                   <button className="btn btn-primary" onClick={handleCreateClick}>
-                    <i className="bi bi-plus-circle me-1"></i> Create Journal Voucher
+                    <i className="bi bi-plus-circle me-1"></i> Create Journal 
                   </button>
                 </div>
 
                 <ReusableTable
-                  title="Journal Voucher List"
+                  title="Journal  List"
                   data={filteredVouchers}
                   columns={columns}
                   initialEntriesPerPage={5}

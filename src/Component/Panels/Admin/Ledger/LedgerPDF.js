@@ -28,6 +28,27 @@ const LedgerPDF = React.forwardRef(({ filteredLedger, getPartyOpeningBalance, or
     return parseFloat(amount || 0).toFixed(2);
   };
 
+  // Helper function to determine DC based on transaction type
+  const getActualDC = (tx) => {
+    const transactionType = (tx.trantype || "").toLowerCase();
+    const dataType = (tx.data_type || "").toLowerCase();
+    
+    // Purchase and Stock Inward should be CREDIT
+    if (transactionType === "purchase" || transactionType === "stock inward" ||
+        dataType === "purchase" || dataType === "stock inward") {
+      return "C";
+    }
+    
+    // Sales and Stock Transfer should be DEBIT
+    if (transactionType === "sales" || transactionType === "stock transfer" ||
+        dataType === "sales" || dataType === "stock transfer") {
+      return "D";
+    }
+    
+    // Return original DC if no override
+    return tx?.DC?.trim()?.charAt(0)?.toUpperCase();
+  };
+
   const calculateRunningBalance = (transactions, openingBalanceNum, openingBalanceType) => {
     const sortedTransactions = [...transactions].sort((a, b) => {
       const dateA = a.date ? new Date(a.date) : new Date(0);
@@ -38,36 +59,26 @@ const LedgerPDF = React.forwardRef(({ filteredLedger, getPartyOpeningBalance, or
     let runningBalance = openingBalanceNum;
     
     if (openingBalanceType === 'Credit') {
-      runningBalance = -openingBalanceNum; 
+      runningBalance = openingBalanceNum;
+    } else if (openingBalanceType === 'Debit') {
+      runningBalance = -openingBalanceNum;
     }
 
     return sortedTransactions.map(tx => {
       const amount = parseFloat(tx.Amount || 0);
-      const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
+      const actualDC = getActualDC(tx);
 
-      if (openingBalanceType === 'Debit') {
-        if (dc === "D") {
-          runningBalance = runningBalance + amount;
-        } else if (dc === "C") {
-          runningBalance = runningBalance - amount;
-        }
-      } else if (openingBalanceType === 'Credit') {
-        if (dc === "D") {
-          runningBalance = runningBalance + amount;
-        } else if (dc === "C") {
-          runningBalance = runningBalance - amount;
-        }
-      } else {
-        if (dc === "D") {
-          runningBalance = runningBalance + amount;
-        } else if (dc === "C") {
-          runningBalance = runningBalance - amount;
-        }
+      // Credit adds to balance, Debit subtracts from balance
+      if (actualDC === "C") {
+        runningBalance = runningBalance + amount;
+      } else if (actualDC === "D") {
+        runningBalance = runningBalance - amount;
       }
 
       return {
         ...tx,
-        runningBalance
+        runningBalance,
+        actualDC
       };
     });
   };
@@ -120,15 +131,14 @@ const LedgerPDF = React.forwardRef(({ filteredLedger, getPartyOpeningBalance, or
               borderLeft: '4px solid #007bff',
               color: '#333'
             }}>
-            {ledger.partyName} (ID: {ledger.partyID}) —
-{orderModeFilter === "ALL" && (
-  <> Opening Balance: {openingBalanceDisplay} |</>
-)}{" "}
-Balance: {formatAmount(Math.abs(ledger.balance))}{" "}
-<span style={{ color: ledger.balance >= 0 ? '#28a745' : '#dc3545' }}>
-  {ledger.balance >= 0 ? 'Cr' : 'Dr'}
-</span>
-               
+              {ledger.partyName} (ID: {ledger.partyID}) —
+              {orderModeFilter === "ALL" && (
+                <> Opening Balance: {openingBalanceDisplay} |</>
+              )}{" "}
+              Balance: {formatAmount(Math.abs(ledger.balance))}{" "}
+              <span style={{ color: ledger.balance >= 0 ? '#28a745' : '#dc3545' }}>
+                {ledger.balance >= 0 ? 'Cr' : 'Dr'}
+              </span>
             </div>
 
             {/* Transaction Table or No Data Message */}
@@ -170,7 +180,7 @@ Balance: {formatAmount(Math.abs(ledger.balance))}{" "}
                 </thead>
                 <tbody>
                   {transactionsWithBalance.map((tx, idx) => {
-                    const dc = tx?.DC?.trim()?.charAt(0)?.toUpperCase();
+                    const actualDC = tx.actualDC;
                     const runningBalance = tx.runningBalance || 0;
                     
                     return (
@@ -185,18 +195,18 @@ Balance: {formatAmount(Math.abs(ledger.balance))}{" "}
                         <td style={{ 
                           padding: '8px', 
                           textAlign: 'right',
-                          color: dc === "C" ? '#28a745' : '#333',
-                          fontWeight: dc === "C" ? 'bold' : 'normal'
+                          color: actualDC === "C" ? '#28a745' : '#333',
+                          fontWeight: actualDC === "C" ? 'bold' : 'normal'
                         }}>
-                          {dc === "C" ? formatAmount(tx.Amount) : "-"}
+                          {actualDC === "C" ? formatAmount(tx.Amount) : "-"}
                         </td>
                         <td style={{ 
                           padding: '8px', 
                           textAlign: 'right',
-                          color: dc === "D" ? '#dc3545' : '#333',
-                          fontWeight: dc === "D" ? 'bold' : 'normal'
+                          color: actualDC === "D" ? '#dc3545' : '#333',
+                          fontWeight: actualDC === "D" ? 'bold' : 'normal'
                         }}>
-                          {dc === "D" ? formatAmount(tx.Amount) : "-"}
+                          {actualDC === "D" ? formatAmount(tx.Amount) : "-"}
                         </td>
                         {!shouldHideBalance && (
                           <td style={{ 
@@ -205,7 +215,7 @@ Balance: {formatAmount(Math.abs(ledger.balance))}{" "}
                             fontWeight: 'bold',
                             color: '#333'
                           }}>
-                            {formatAmount(Math.abs(runningBalance))} {runningBalance >= 0 ? 'Dr' : 'Cr'}
+                            {formatAmount(Math.abs(runningBalance))} {runningBalance >= 0 ? 'Cr' : 'Dr'}
                           </td>
                         )}
                         <td style={{ padding: '8px' }}>
@@ -235,4 +245,4 @@ Balance: {formatAmount(Math.abs(ledger.balance))}{" "}
   );
 });
 
-export default LedgerPDF;
+export default LedgerPDF; 
