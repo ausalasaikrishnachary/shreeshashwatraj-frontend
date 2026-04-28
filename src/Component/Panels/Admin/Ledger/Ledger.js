@@ -197,6 +197,18 @@ const Ledger = () => {
 
   const groupedArray = Object.values(groupedLedger);
 
+useEffect(() => {
+  if (!ledgerData.length) return;
+
+  const timer = setTimeout(async () => {
+    for (const ledger of groupedArray) {
+      await updateBalanceInDB(ledger.partyID, ledger.balance);
+    }
+  }, 800);
+
+  return () => clearTimeout(timer);
+}, [ledgerData]); // ✅ debounced — waits 800ms, cancels if re-triggered
+
   // ── helper: convert UTC ISO string → local YYYY-MM-DD ──
   const getLocalDateStr = (dateStr) => {
     if (!dateStr) return null;
@@ -248,6 +260,21 @@ const Ledger = () => {
     setIsFiltered(false);
     setOrderModeFilter("ALL");
   };
+
+
+const updateBalanceInDB = async (partyID, balance) => {
+  try {
+    const balance_type = balance >= 0 ? "Cr" : "Dr"; // ✅ match exact DB values you want
+    const absBalance = Math.abs(balance);
+
+    await axios.put(`${baseurl}/update-account-balance/${partyID}`, {
+      balance: absBalance,
+      balance_type,
+    });
+  } catch (err) {
+    console.error("DB update error:", err);
+  }
+};
 
   const exportToPDF = async () => {
     if (filteredLedger.length === 0) {

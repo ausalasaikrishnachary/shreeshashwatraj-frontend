@@ -36,7 +36,7 @@ const Productioncreate = ({ user }) => {
     qty: '',
     rate: '',
     amount: '',
-    productionType: 'Production'
+    productionType: 'Consumption'
   });
   
   // Production items list
@@ -281,18 +281,7 @@ const fetchProductionData = async (voucherId) => {
   
   // Cancel edit
   const handleCancel = () => {
-    setProductionForm({
-      itemName: '',
-      itemId: '',
-      batchNo: '',
-      batchId: '',
-      qty: '',
-      rate: '',
-      amount: '',
-      productionType: 'Production'
-    });
-    setEditingId(null);
-    setBatches([]);
+   navigate('/productstable'); 
   };
   
   // Clear Draft
@@ -414,7 +403,7 @@ const handleSave = async () => {
                 <Button variant="warning" size="sm" onClick={handleClearDraft} className="me-2">
                   Clear Draft
                 </Button>
-                <Button variant="secondary" size="sm" onClick={() => navigate('/production/list')}>
+                <Button variant="secondary" size="sm" onClick={() => navigate('/productstable')}>
                   Back to List
                 </Button>
               </div>
@@ -433,6 +422,8 @@ const handleSave = async () => {
                   </div>
                 </Col>
                 <Col md={4}>
+                                    <Form.Label className="fw-bold mt-1">Voucher No</Form.Label>
+
                   <Form.Group className="mb-2">
                     <Form.Control 
                       type="text" 
@@ -444,8 +435,9 @@ const handleSave = async () => {
                       readOnly={isEditMode}
                       disabled={isEditMode}
                     />
-                    <Form.Label className="fw-bold mt-1">Voucher No</Form.Label>
                   </Form.Group>
+                                      <Form.Label className="fw-bold mt-1">Date</Form.Label>
+
                   <Form.Group>
                     <Form.Control 
                       type="date" 
@@ -454,7 +446,6 @@ const handleSave = async () => {
                       onChange={handleInvoiceChange}
                       className="border-primary"
                     />
-                    <Form.Label className="fw-bold mt-1">Date</Form.Label>
                   </Form.Group>
                 </Col>
               </Row>
@@ -643,8 +634,9 @@ const handleSave = async () => {
                     className="border-primary"
                     size="sm"
                   >
-                    <option value="Production">Production</option>
+                  
                     <option value="Consumption">Consumption</option>
+                      <option value="Production">Production</option>
                   </Form.Select>
                 </div>
                 
