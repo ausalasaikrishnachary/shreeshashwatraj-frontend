@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Form, Button, Table } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
 import './Invoices.css';
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
-import { FaSave, FaTimes, FaPlus } from "react-icons/fa";
+import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from "react-icons/fa";
 import { baseurl } from '../../../BaseURL/BaseURL';
 
 const JrCreate = ({ user }) => {
@@ -13,34 +13,30 @@ const JrCreate = ({ user }) => {
   const { id } = useParams();
   const isEditMode = id && id !== 'create';
   
-  // State for accounts from API
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   
-  // Amount type state (Dr or Cr)
-  const [amountType, setAmountType] = useState('Dr');
-  
-  // Voucher state
   const [voucherData, setVoucherData] = useState({
     voucherNo: '',
     invoiceDate: new Date().toISOString().split('T')[0],
   });
   
-  // Selected account state
-  const [selectedAccount, setSelectedAccount] = useState({
-    id: '',
-    name: '',
+  const [journalForm, setJournalForm] = useState({
+    accountId: '',
+    accountName: '',
     balance: 0,
-    balance_type: 'Dr'
+    balance_type: 'Dr',
+    amount: '',
+    amountType: 'Dr'
   });
   
-  // Amount state
-  const [amount, setAmount] = useState('');
+  const [journalItems, setJournalItems] = useState([]);
+  const [editingId, setEditingId] = useState(null);
 
-  // Company Info
   const companyInfo = {
     name: "SHREE SHASHWATRAJ AGRO PVT LTD",
     address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
@@ -57,9 +53,19 @@ const JrCreate = ({ user }) => {
   };
 
   useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
     fetchAccounts();
     if (isEditMode) {
-      fetchVoucherData(id);
+      loadVoucherForEdit();
     } else {
       generateVoucherNumber();
     }
@@ -70,53 +76,59 @@ const JrCreate = ({ user }) => {
     try {
       const res = await fetch(`${baseurl}/accounts`);
       const data = await res.json();
-      setAccounts(data);
+      setAccounts(data || []);
     } catch (err) {
       console.error("Failed to fetch accounts:", err);
+      setAccounts([]);
     } finally {
       setLoading(false);
     }
   };
-
-  const fetchVoucherData = async (voucherId) => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${baseurl}/api/jrroutes/${voucherId}`);
+const loadVoucherForEdit = async () => {
+  if (!isEditMode || !id) return;
+  
+  try {
+    setLoading(true);
+    const response = await fetch(`${baseurl}/api/jrroutes/${id}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      const data = result.data;
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch voucher data');
+      // Set header data
+      setVoucherData({
+        voucherNo: data.VchNo || '',
+        invoiceDate: data.Date ? data.Date.split('T')[0] : new Date().toISOString().split('T')[0],
+      });
+      
+      // Determine amount type from TransactionType
+      let amountType = 'Dr';
+      if (data.TransactionType === 'Cr') {
+        amountType = 'Cr';
       }
       
-      const result = await response.json();
+      // Set single journal item (only this row)
+      const singleItem = {
+        id: data.VoucherID,
+        accountId: data.PartyID,
+        accountName: data.PartyName,
+        balance: parseFloat(data.balance_amount) || 0,
+        balance_type: data.balance_type || 'Dr',
+        amount: parseFloat(data.TotalAmount) || 0,
+        amountType: amountType,
+        newBalance: parseFloat(data.balance_amount) || 0,
+        newBalanceType: data.balance_type || 'Dr'
+      };
       
-      if (result.success) {
-        const data = result.data;
-        
-        setVoucherData({
-          voucherNo: data.VchNo || '',
-          invoiceDate: data.Date ? new Date(data.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        });
-        
-        setSelectedAccount({
-          id: data.AccountID || data.PartyID || '',
-          name: data.AccountName || data.PartyName || '',
-          balance: parseFloat(data.balance_amount || 0),
-          balance_type: data.balance_type || 'Dr'
-        });
-        
-        setAmount(data.TotalAmount ? parseFloat(data.TotalAmount).toString() : '');
-        setAmountType(data.amount_type || 'Dr');
-        
-      } else {
-        alert('Failed to load voucher data: ' + (result.message || 'Unknown error'));
-      }
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching voucher:', error);
-      alert('Failed to load voucher data for editing');
-      setLoading(false);
+      setJournalItems([singleItem]);
     }
-  };
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to load voucher');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const generateVoucherNumber = async () => {
     try {
@@ -139,7 +151,7 @@ const JrCreate = ({ user }) => {
     }
   };
 
-  const filteredAccounts = accounts.filter(account =>
+  const filteredAccounts = (accounts || []).filter(account =>
     (account.name || account.account_name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -149,37 +161,156 @@ const JrCreate = ({ user }) => {
   };
 
   const handleAccountSelect = (account) => {
-    setSelectedAccount({
-      id: account.id,
-      name: account.name || account.account_name,
+    setJournalForm({
+      accountId: account.id,
+      accountName: account.name || account.account_name,
       balance: formatBalance(account.balance),
-      balance_type: account.balance_type || 'Dr'
+      balance_type: account.balance_type || 'Dr',
+      amount: '',
+      amountType: 'Dr'
     });
     setIsDropdownOpen(false);
     setSearchTerm('');
   };
 
-  const handleAmountChange = (e) => {
-    setAmount(e.target.value);
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setJournalForm(prev => ({ ...prev, [name]: value }));
   };
   
-  const handleSaveAmount = () => {
-    if (!amount || parseFloat(amount) <= 0) {
+  // Calculate new balance based on transaction
+  const calculateNewBalance = (currentBalance, balanceType, amount, transactionType) => {
+    let newBalance = formatBalance(currentBalance);
+    let newBalanceType = balanceType || 'Dr';
+    const amt = parseFloat(amount) || 0;
+    
+    if (transactionType === 'Dr') {
+      if (balanceType === 'Dr') {
+        newBalance = newBalance + amt;
+        newBalanceType = 'Dr';
+      } else {
+        newBalance = newBalance - amt;
+        if (newBalance < 0) {
+          newBalanceType = 'Dr';
+          newBalance = Math.abs(newBalance);
+        } else {
+          newBalanceType = 'Cr';
+        }
+      }
+    } else {
+      if (balanceType === 'Dr') {
+        newBalance = newBalance - amt;
+        if (newBalance < 0) {
+          newBalanceType = 'Cr';
+          newBalance = Math.abs(newBalance);
+        } else {
+          newBalanceType = 'Dr';
+        }
+      } else {
+        newBalance = newBalance + amt;
+        newBalanceType = 'Cr';
+      }
+    }
+    
+    return { newBalance, newBalanceType };
+  };
+  
+  const handleAddOrUpdate = () => {
+    if (!journalForm.accountName) {
+      alert('Please select an account');
+      return;
+    }
+    
+    if (!journalForm.amount || parseFloat(journalForm.amount) <= 0) {
       alert('Please enter valid amount');
       return;
     }
-    alert('✅ Amount saved successfully!');
+    
+    const currentBalance = formatBalance(journalForm.balance);
+    const currentBalanceType = journalForm.balance_type || 'Dr';
+    const amountValue = parseFloat(journalForm.amount) || 0;
+    const amountTypeValue = journalForm.amountType || 'Dr';
+    
+    // Calculate new balance for display
+    const { newBalance, newBalanceType } = calculateNewBalance(
+      currentBalance,
+      currentBalanceType,
+      amountValue,
+      amountTypeValue
+    );
+    
+    const newItem = {
+      id: editingId || Date.now(),
+      accountId: journalForm.accountId,
+      accountName: journalForm.accountName,
+      balance: currentBalance,
+      balance_type: currentBalanceType,
+      amount: amountValue,
+      amountType: amountTypeValue,
+      newBalance: newBalance,
+      newBalanceType: newBalanceType
+    };
+    
+    if (editingId) {
+      setJournalItems(prev => prev.map(item => item.id === editingId ? newItem : item));
+      setEditingId(null);
+    } else {
+      setJournalItems(prev => [...prev, newItem]);
+    }
+    
+    setJournalForm({
+      accountId: '',
+      accountName: '',
+      balance: 0,
+      balance_type: 'Dr',
+      amount: '',
+      amountType: 'Dr'
+    });
+    setSearchTerm('');
+    setIsDropdownOpen(false);
   };
   
-  const handleCancel = () => {
-    navigate('/Jrtable');
+  const handleEdit = (item) => {
+    setJournalForm({
+      accountId: item.accountId,
+      accountName: item.accountName,
+      balance: item.balance || 0,
+      balance_type: item.balance_type || 'Dr',
+      amount: item.amount || 0,
+      amountType: item.amountType || 'Dr'
+    });
+    setEditingId(item.id);
+  };
+  
+  const handleDelete = (id) => {
+    setJournalItems(prev => prev.filter(item => item.id !== id));
+  };
+  
+  const handleCancelEdit = () => {
+    setJournalForm({
+      accountId: '',
+      accountName: '',
+      balance: 0,
+      balance_type: 'Dr',
+      amount: '',
+      amountType: 'Dr'
+    });
+    setEditingId(null);
+    setSearchTerm('');
   };
   
   const handleClearDraft = () => {
     if (window.confirm('Are you sure you want to clear all draft data?')) {
-      setAmount('');
-      setAmountType('Dr');
-      setSelectedAccount({ id: '', name: '', balance: 0, balance_type: 'Dr' });
+      setJournalItems([]);
+      setJournalForm({
+        accountId: '',
+        accountName: '',
+        balance: 0,
+        balance_type: 'Dr',
+        amount: '',
+        amountType: 'Dr'
+      });
+      setEditingId(null);
       if (!isEditMode) {
         generateVoucherNumber();
       }
@@ -191,75 +322,109 @@ const JrCreate = ({ user }) => {
     }
   };
   
-  const handleSave = async () => {
-    if (!selectedAccount.id) {
-      alert('⚠️ Please select a customer/account');
-      return;
-    }
-    
-    if (!amount || parseFloat(amount) <= 0) {
-      alert('⚠️ Please enter a valid amount');
-      return;
-    }
-    
-    if (!voucherData.voucherNo) {
-      alert('⚠️ Please enter voucher number');
-      return;
-    }
-    
-    if (!voucherData.invoiceDate) {
-      alert('⚠️ Please select date');
-      return;
-    }
-    
-    setSaving(true);
-    
-    try {
-      const voucherPayload = {
-        voucherNo: voucherData.voucherNo,
+  // Calculate total amount from all journal items
+  const calculateTotalAmount = () => {
+    return journalItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+  };
+  
+// Handle Save
+const handleSave = async () => {
+  if (journalItems.length === 0) {
+    alert('⚠️ Please add at least one journal entry');
+    return;
+  }
+  
+  if (!voucherData.voucherNo) {
+    alert('⚠️ Please enter voucher number');
+    return;
+  }
+  
+  if (!voucherData.invoiceDate) {
+    alert('⚠️ Please select date');
+    return;
+  }
+  
+  setSaving(true);
+  
+  try {
+    if (isEditMode && id) {
+      // For UPDATE - update ONLY this specific row
+      const item = journalItems[0];
+      const updateData = {
         invoiceDate: voucherData.invoiceDate,
-        partyId: selectedAccount.id,
-        partyName: selectedAccount.name,
-        balance_amount: parseFloat(selectedAccount.balance),
-        balance_type: selectedAccount.balance_type,
-        amount: parseFloat(amount),
-        amount_type: amountType,
-        totalAmount: parseFloat(amount),
-        transactionType: 'Journal'
+        partyId: item.accountId,
+        partyName: item.accountName,
+        balance_amount: item.balance,
+        totalAmount: item.amount,
+        amount_type: item.amountType
       };
       
-      console.log('Saving voucher:', voucherPayload);
+      console.log('Updating VoucherID:', id);
+      console.log('Update Data:', updateData);
       
-      let url = `${baseurl}/api/journalcreate`;
-      let method = 'POST';
-      
-      if (isEditMode) {
-        url = `${baseurl}/api/journalupdate/${id}`;
-        method = 'PUT';
-      }
-      
-      const response = await fetch(url, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(voucherPayload)
+      const response = await fetch(`${baseurl}/api/journalupdate/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
       });
       
       const result = await response.json();
-      
       if (result.success) {
-        alert(`✅ Voucher ${isEditMode ? 'updated' : 'saved'} successfully!`);
+        alert(`✅ ${result.message}`);
         navigate('/Jrtable');
       } else {
-        alert(`❌ Failed to ${isEditMode ? 'update' : 'save'} voucher: ` + (result.message || 'Unknown error'));
+        alert(`❌ Failed to update: ${result.message}`);
       }
-    } catch (error) {
-      console.error('Error saving voucher:', error);
-      alert(`❌ Error ${isEditMode ? 'updating' : 'saving'} voucher. Please try again.`);
-    } finally {
-      setSaving(false);
+    } else {
+      // For CREATE - insert new rows
+      const itemsToSave = journalItems.map(item => ({
+        voucherNo: voucherData.voucherNo,
+        invoiceDate: voucherData.invoiceDate,
+        partyId: item.accountId,
+        partyName: item.accountName,
+        balance_amount: item.balance || 0,
+        amount: item.amount || 0,
+        amount_type: item.amountType || 'Dr',
+        transactionType: 'Journal'
+      }));
+
+      const response = await fetch(`${baseurl}/api/journalcreate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ journalItems: itemsToSave })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        alert(`✅ ${result.message}`);
+        navigate('/Jrtable');
+      } else {
+        alert(`❌ Failed to save: ${result.message}`);
+      }
     }
+  } catch (error) {
+    console.error('Error saving voucher:', error);
+    alert('❌ Error saving voucher. Please try again.');
+  } finally {
+    setSaving(false);
+  }
+};
+  
+  // Calculate debit and credit totals for display
+  const debitTotal = journalItems
+    .filter(item => item.amountType === 'Dr')
+    .reduce((sum, item) => sum + (item.amount || 0), 0);
+  
+  const creditTotal = journalItems
+    .filter(item => item.amountType === 'Cr')
+    .reduce((sum, item) => sum + (item.amount || 0), 0);
+  
+  const isBalanced = debitTotal === creditTotal;
+
+  // Safe number formatting function
+  const safeToFixed = (value, digits = 2) => {
+    const num = parseFloat(value);
+    return isNaN(num) ? '0.00' : num.toFixed(digits);
   };
 
   return (
@@ -329,149 +494,270 @@ const JrCreate = ({ user }) => {
               </Row>
             </div>
             
-            {/* Journal Entry Form - With Balance Amount Showing Type */}
+            {/* Journal Entry Form Section */}
             <div className="bg-white p-3 rounded shadow-sm mb-4">
-              <Row className="align-items-end">
-                <Col md={3}>
-                  <Form.Label className="fw-bold">Party/Customer Name</Form.Label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type="text"
-                      className="form-control border-primary"
-                      placeholder="Search customer..."
-                      value={selectedAccount.name || searchTerm}
-                      onChange={(e) => {
-                        setSearchTerm(e.target.value);
-                        setIsDropdownOpen(true);
-                        if (!e.target.value) {
-                          setSelectedAccount({ id: '', name: '', balance: 0, balance_type: 'Dr' });
-                        }
+              <h6 className="text-primary mb-3">
+                {editingId ? 'Edit Journal Entry' : 'Add Journal Entry'}
+              </h6>
+              
+              <div className="d-flex align-items-end gap-2 flex-wrap">
+                <div style={{ minWidth: '200px', flex: 2, position: 'relative' }} ref={dropdownRef}>
+                  <Form.Label className="fw-bold small">Account/Customer Name</Form.Label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm border-primary"
+                    placeholder="Search account..."
+                    value={journalForm.accountName || searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setIsDropdownOpen(true);
+                      if (!e.target.value) {
+                        setJournalForm(prev => ({
+                          ...prev,
+                          accountId: '',
+                          accountName: '',
+                          balance: 0,
+                          balance_type: 'Dr'
+                        }));
+                      }
+                    }}
+                    onClick={() => setIsDropdownOpen(true)}
+                  />
+                  
+                  {isDropdownOpen && !journalForm.accountId && (
+                    <div
+                      className="position-absolute w-100"
+                      style={{
+                        top: '100%',
+                        left: 0,
+                        zIndex: 9999,
+                        backgroundColor: '#fff',
+                        border: '1px solid #dee2e6',
+                        borderRadius: '6px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        maxHeight: '300px',
+                        overflowY: 'auto'
                       }}
-                      onClick={() => setIsDropdownOpen(true)}
-                    />
-                    
-                    {isDropdownOpen && !selectedAccount.id && (
-                      <div className="position-absolute w-100" style={{
-                        top: '100%', left: 0, zIndex: 9999, backgroundColor: '#fff',
-                        border: '1px solid #dee2e6', borderRadius: '6px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: '300px', overflowY: 'auto'
+                    >
+                      <div style={{ 
+                        padding: '8px 16px', 
+                        borderBottom: '1px solid #dee2e6', 
+                        color: '#0d6efd', 
+                        fontWeight: 600,
+                        position: 'sticky',
+                        top: 0,
+                        backgroundColor: '#fff'
                       }}>
-                        <div style={{ padding: '8px 16px', borderBottom: '1px solid #dee2e6', 
-                          color: '#0d6efd', fontWeight: 600, position: 'sticky', top: 0, backgroundColor: '#fff' }}>
-                          Select Customer
-                        </div>
-                        <div>
-                          {loading ? (
-                            <div style={{ padding: '16px', textAlign: 'center' }}>Loading...</div>
-                          ) : filteredAccounts.length === 0 ? (
-                            <div style={{ padding: '16px', textAlign: 'center', color: '#6c757d' }}>
-                              No customers found
-                            </div>
-                          ) : (
-                            filteredAccounts.map(account => (
-                              <div key={account.id} onClick={() => handleAccountSelect(account)} style={{
-                                padding: '8px 16px', cursor: 'pointer', borderLeft: '3px solid transparent'
+                        Select Account/Customer
+                      </div>
+                      <div>
+                        {loading ? (
+                          <div style={{ padding: '16px', textAlign: 'center' }}>Loading...</div>
+                        ) : filteredAccounts.length === 0 ? (
+                          <div style={{ padding: '16px', textAlign: 'center', color: '#6c757d' }}>
+                            No accounts found
+                          </div>
+                        ) : (
+                          filteredAccounts.map(account => (
+                            <div
+                              key={account.id}
+                              onClick={() => handleAccountSelect(account)}
+                              style={{
+                                padding: '8px 16px',
+                                cursor: 'pointer',
+                                borderLeft: '3px solid transparent',
+                                transition: 'background-color 0.2s'
                               }}
                               onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                                <div style={{ fontWeight: 500, fontSize: '14px' }}>
-                                  {account.name || account.account_name}
-                                </div>
-                                <div style={{ fontSize: '12px', color: '#6c757d' }}>
-                                  Balance: ₹{formatBalance(account.balance).toFixed(2)} ({account.balance_type || 'Dr'})
-                                </div>
+                              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                            >
+                              <div style={{ fontWeight: 500, fontSize: '14px' }}>
+                                {account.name || account.account_name}
                               </div>
-                            ))
-                          )}
-                        </div>
-                        <div style={{ padding: '8px 16px', borderTop: '1px solid #dee2e6', position: 'sticky', bottom: 0, backgroundColor: '#fff' }}>
-                          <button className="btn btn-sm btn-outline-secondary w-100" onClick={() => {
+                              <div style={{ fontSize: '12px', color: '#6c757d' }}>
+                                Balance: ₹{safeToFixed(account.balance)} ({account.balance_type || 'Dr'})
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <div style={{ 
+                        padding: '8px 16px', 
+                        borderTop: '1px solid #dee2e6',
+                        position: 'sticky',
+                        bottom: 0,
+                        backgroundColor: '#fff'
+                      }}>
+                        <button
+                          className="btn btn-sm btn-outline-secondary w-100"
+                          onClick={() => {
                             setIsDropdownOpen(false);
                             setSearchTerm('');
-                          }}>Close</button>
-                        </div>
+                          }}
+                        >
+                          Close
+                        </button>
                       </div>
-                    )}
-                  </div>
-                </Col>
+                    </div>
+                  )}
+                </div>
                 
-                <Col md={2}>
-                  <Form.Label className="fw-bold">Balance Amount</Form.Label>
+                <div style={{ minWidth: '120px', flex: 1 }}>
+                  <Form.Label className="fw-bold small">Current Balance</Form.Label>
                   <Form.Control
                     type="text"
-                    value={`₹${selectedAccount.balance.toFixed(2)} (${selectedAccount.balance_type})`}
+                    value={`₹${safeToFixed(journalForm.balance)} (${journalForm.balance_type || 'Dr'})`}
                     readOnly
-                    className="bg-light"
+                    className="bg-light form-control-sm"
                   />
-                </Col>
+                </div>
                 
-                <Col md={2}>
-                  <Form.Label className="fw-bold">Amount (₹)</Form.Label>
+                <div style={{ minWidth: '120px', flex: 1 }}>
+                  <Form.Label className="fw-bold small">Amount (₹)</Form.Label>
                   <Form.Control
                     type="number"
-                    value={amount}
-                    onChange={handleAmountChange}
-                    placeholder="Enter amount"
-                    className="border-primary"
+                    name="amount"
+                    value={journalForm.amount}
+                    onChange={handleFormChange}
+                    placeholder="0.00"
+                    className="border-primary form-control-sm"
                   />
-                </Col>
+                </div>
                 
-                <Col md={1}>
-                  <Form.Label className="fw-bold">Type</Form.Label>
+                <div style={{ minWidth: '100px', flex: 0.8 }}>
+                  <Form.Label className="fw-bold small">Type</Form.Label>
                   <Form.Select
-                    value={amountType}
-                    onChange={(e) => setAmountType(e.target.value)}
-                    className="border-primary"
+                    name="amountType"
+                    value={journalForm.amountType}
+                    onChange={handleFormChange}
+                    className="border-primary form-control-sm"
                   >
-                    <option value="Dr">Dr</option>
-                    <option value="Cr">Cr</option>
+                    <option value="Dr">Dr (Debit)</option>
+                    <option value="Cr">Cr (Credit)</option>
                   </Form.Select>
-                </Col>
+                </div>
                 
-                <Col md={2}>
-                  <Button variant="success" onClick={handleSaveAmount} className="w-100">
-                    <FaPlus className="me-1" />
-                    Add Amount
-                  </Button>
-                </Col>
-              </Row>
+                <div style={{ minWidth: '100px' }}>
+                  <div className="d-flex gap-1">
+                    <Button 
+                      variant={editingId ? "warning" : "success"} 
+                      onClick={handleAddOrUpdate}
+                      size="sm"
+                      disabled={saving}
+                    >
+                      {editingId ? <FaSave className="me-1" /> : <FaPlus className="me-1" />}
+                      {editingId ? 'Update' : 'Add'}
+                    </Button>
+                    {editingId && (
+                      <Button variant="secondary" onClick={handleCancelEdit} size="sm">
+                        <FaTimes />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Preview of new balance */}
+              {/* {journalForm.accountName && journalForm.amount && (
+                <div className="mt-2 p-2 bg-light rounded" style={{ fontSize: '12px' }}>
+                  <strong>Preview:</strong> After {journalForm.amountType} of ₹{parseFloat(journalForm.amount) || 0}, 
+                  balance will be: 
+                  <span className={`ms-2 fw-bold ${journalForm.amountType === 'Dr' ? 'text-danger' : 'text-success'}`}>
+                    ₹{safeToFixed(calculateNewBalance(
+                      journalForm.balance, 
+                      journalForm.balance_type, 
+                      journalForm.amount, 
+                      journalForm.amountType
+                    ).newBalance)} ({calculateNewBalance(
+                      journalForm.balance, 
+                      journalForm.balance_type, 
+                      journalForm.amount, 
+                      journalForm.amountType
+                    ).newBalanceType})
+                  </span>
+                </div>
+              )} */}
             </div>
             
-            {/* Display Voucher Details */}
-            {amount && parseFloat(amount) > 0 && selectedAccount.name && (
-              <div className="bg-white p-3 rounded shadow-sm mb-4">
-                <h6 className="text-primary mb-3">Voucher Details</h6>
-                <Table bordered className="mb-0">
+            {/* Journal Items Table */}
+            <div className="bg-white p-3 rounded shadow-sm mb-4">
+              <h6 className="text-primary mb-3">Journal Entries</h6>
+              <div className="table-responsive">
+                <Table bordered responsive size="sm" className="mb-0">
                   <thead className="table-dark">
                     <tr>
-                      <th>Voucher No</th>
-                      <th>Date</th>
-                      <th>Party Name</th>
-                      <th>Balance Amount</th>
-                      <th>Transaction Amount</th>
-                      <th>Amount Type</th>
+                      <th>Account Name</th>
+                      <th>Current Balance</th>
+                      <th>Amount (₹)</th>
+                      <th>Type</th>
+                      <th>New Balance</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td>{voucherData.voucherNo}</td>
-                      <td>{voucherData.invoiceDate}</td>
-                      <td>{selectedAccount.name}</td>
-                      <td className="text-end">₹{selectedAccount.balance.toFixed(2)} ({selectedAccount.balance_type})</td>
-                      <td className="text-end">₹{parseFloat(amount).toFixed(2)}</td>
-                      <td className="text-center">
-                        <span className={`badge ${amountType === 'Dr' ? 'bg-danger' : 'bg-success'}`}>
-                          {amountType}
-                        </span>
-                      </td>
-                    </tr>
+                    {journalItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="text-center text-muted py-3">
+                          No entries added. Please add entries using the form above.
+                        </td>
+                      </tr>
+                    ) : (
+                      journalItems.map((item) => (
+                        <tr key={item.id}>
+                          <td>{item.accountName}</td>
+                          <td className="text-end">₹{safeToFixed(item.balance)} ({item.balance_type})</td>
+                          <td className="text-end">₹{safeToFixed(item.amount)}</td>
+                          <td className="text-center">
+                            <span className={`badge ${item.amountType === 'Dr' ? 'bg-danger' : 'bg-success'}`}>
+                              {item.amountType}
+                            </span>
+                          </td>
+                          <td className="text-end">
+                            <span className={item.newBalanceType === 'Dr' ? 'text-danger' : 'text-success'}>
+                              ₹{safeToFixed(item.newBalance)} ({item.newBalanceType})
+                            </span>
+                          </td>
+                          <td>
+                            <div className="d-flex gap-1">
+                              <Button variant="warning" size="sm" onClick={() => handleEdit(item)}>
+                                <FaEdit />
+                              </Button>
+                              <Button variant="danger" size="sm" onClick={() => handleDelete(item.id)}>
+                                <FaTrash />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
+                  {/* {journalItems.length > 0 && (
+                    <tfoot className="table-light">
+                      <tr>
+                        <td colSpan="2" className="text-end fw-bold">Totals:</td>
+                        <td className="text-end fw-bold">₹{safeToFixed(calculateTotalAmount())}</td>
+                        <td colSpan="2">
+                          <div className={`text-center fw-bold ${isBalanced ? 'text-success' : 'text-danger'}`}>
+                            {isBalanced ? '✓ Balanced' : `✗ Unbalanced (Dr: ₹${safeToFixed(debitTotal)} | Cr: ₹${safeToFixed(creditTotal)})`}
+                          </div>
+                        </td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  )} */}
                 </Table>
               </div>
-            )}
+            </div>
             
+            {/* Action Buttons */}
             <div className="text-center bg-white p-3 rounded shadow-sm mt-4">
-              <Button variant="primary" className="me-3 px-4" onClick={handleSave} disabled={saving}>
+              <Button 
+                variant="primary" 
+                className="me-3 px-4" 
+                onClick={handleSave}
+                // disabled={saving || (journalItems.length > 0 && !isBalanced)}
+                title={journalItems.length > 0 && !isBalanced ? "Debit and Credit totals must be equal" : ""}
+              >
                 {saving ? 'Saving...' : (isEditMode ? 'Update Voucher' : 'Save Voucher')}
               </Button>
               <Button variant="danger" onClick={() => navigate('/Jrtable')}>
