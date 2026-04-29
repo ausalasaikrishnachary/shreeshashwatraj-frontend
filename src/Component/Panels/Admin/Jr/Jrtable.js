@@ -61,15 +61,36 @@ const Jrtable = () => {
     }
   };
 
-  // Handle Edit
-  const handleEdit = (voucher) => {
-    navigate(`/JrCreate/${voucher.id}`);
+  // Handle Edit - based on Voucher ID
+  const handleEdit = async (voucher) => {
+    try {
+      // Fetch complete voucher data by ID
+      const response = await fetch(`${baseurl}/api/jrroutes/${voucher.id}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch voucher details');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Store the voucher data to pass to edit form
+        localStorage.setItem('editVoucherData', JSON.stringify(result.data));
+        // Navigate to edit page with voucher ID
+        navigate(`/JrCreate/${voucher.id}`);
+      } else {
+        alert('Failed to load voucher details for editing');
+      }
+    } catch (error) {
+      console.error('Error fetching voucher for edit:', error);
+      alert('Error loading voucher details: ' + error.message);
+    }
   };
 
   // Handle View
   const handleView = async (voucher) => {
     try {
-      const response = await fetch(`${baseurl}/api/vouchers/${voucher.id}`);
+      const response = await fetch(`${baseurl}/api/jrroutes/${voucher.id}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch voucher details');
@@ -89,7 +110,7 @@ const Jrtable = () => {
     }
   };
 
-  // Handle Delete
+  // Handle Delete - based on Voucher ID
   const handleDelete = async (voucher) => {
     if (!window.confirm(`Delete voucher ${voucher.voucherNo}? This action cannot be undone.`)) return;
     
@@ -141,7 +162,6 @@ const Jrtable = () => {
       key: 'transactionType', 
       title: 'TRANSACTION TYPE', 
       style: { textAlign: 'center', width: '12%' },
-    
     },
     { 
       key: 'partyName', 
@@ -153,19 +173,12 @@ const Jrtable = () => {
       title: 'AMOUNT (₹)', 
       style: { textAlign: 'center', width: '12%' } 
     },
-    // { 
-    //   key: 'balanceAmount', 
-    //   title: 'BALANCE AMOUNT (₹)', 
-    //   style: { textAlign: 'right', width: '12%' } 
-    // },
-    
     {
       key: 'actions',
       title: 'ACTION',
       style: { textAlign: 'center', width: '12%' },
       render: (value, row) => (
         <div className="d-flex justify-content-center gap-2">
-        
           <button
             className="btn btn-sm btn-warning"
             onClick={() => handleEdit(row)}
@@ -192,7 +205,8 @@ const Jrtable = () => {
 
   // Create new voucher
   const handleCreateClick = () => {
-    navigate("/JrCreate");
+    localStorage.removeItem('editVoucherData');
+    navigate("/JrCreate/create");
   };
 
   if (loading) {
@@ -258,14 +272,14 @@ const Jrtable = () => {
             <div className="invoices-actions-section">
               <div className="quotation-container p-4">
                 <div className="d-flex justify-content-between align-items-center mb-4">
-                  <h5 className="fw-bold">Journal </h5>
+                  <h5 className="fw-bold">Journal Vouchers</h5>
                   <button className="btn btn-primary" onClick={handleCreateClick}>
                     <i className="bi bi-plus-circle me-1"></i> Create Journal 
                   </button>
                 </div>
 
                 <ReusableTable
-                  title="Journal  List"
+                  title="Journal List"
                   data={filteredVouchers}
                   columns={columns}
                   initialEntriesPerPage={5}
@@ -280,7 +294,7 @@ const Jrtable = () => {
         </div>
       </div>
     </div>
-  );
+  );  
 };
 
 export default Jrtable;
