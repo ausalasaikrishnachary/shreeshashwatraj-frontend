@@ -90,7 +90,18 @@ const loadVoucherForEdit = async () => {
   try {
     setLoading(true);
     
-    // Since id is now the VchNo (e.g., "JRN-001"), directly fetch all entries by VchNo
+    // First fetch all accounts to get current balances
+    const accountsResponse = await fetch(`${baseurl}/accounts`);
+    const accountsData = await accountsResponse.json();
+    const accountsMap = new Map();
+    (accountsData || []).forEach(acc => {
+      accountsMap.set(acc.id, {
+        balance: parseFloat(acc.balance) || 0,
+        balance_type: acc.balance_type || 'Dr'
+      });
+    });
+    
+    // Fetch all entries by VchNo
     const allEntriesResponse = await fetch(`${baseurl}/api/jrroutes/vchno/${id}`);
     
     if (!allEntriesResponse.ok) {
@@ -111,18 +122,60 @@ const loadVoucherForEdit = async () => {
           invoiceDate: firstEntry.Date ? firstEntry.Date.split('T')[0] : new Date().toISOString().split('T')[0],
         });
         
-        // Transform all entries to journal items
-        const journalItemsList = allEntries.map(entry => ({
-          id: entry.VoucherID,
-          accountId: entry.PartyID,
-          accountName: entry.PartyName,
-          balance: parseFloat(entry.balance_amount) || 0,
-          balance_type: entry.balance_type || 'Dr',
-          amount: parseFloat(entry.TotalAmount) || 0,
-          amountType: entry.amount_type || 'Dr',
-          newBalance: parseFloat(entry.balance_amount) || 0,
-          newBalanceType: entry.balance_type || 'Dr'
-        }));
+        // Transform all entries to journal items with CURRENT balances from accounts API
+        const journalItemsList = allEntries.map(entry => {
+          const currentBalance = accountsMap.get(entry.PartyID) || {
+            balance: parseFloat(entry.balance_amount) || 0,
+            balance_type: entry.balance_type || 'Dr'
+          };
+          
+          // Calculate new balance after this transaction
+          const amountValue = parseFloat(entry.TotalAmount) || 0;
+          const amountType = entry.amount_type || 'Dr';
+          let newBalance = currentBalance.balance;
+          let newBalanceType = currentBalance.balance_type;
+          const amt = amountValue;
+          
+          if (amountType === 'Dr') {
+            if (currentBalance.balance_type === 'Dr') {
+              newBalance = currentBalance.balance + amt;
+              newBalanceType = 'Dr';
+            } else {
+              newBalance = currentBalance.balance - amt;
+              if (newBalance < 0) {
+                newBalanceType = 'Dr';
+                newBalance = Math.abs(newBalance);
+              } else {
+                newBalanceType = 'Cr';
+              }
+            }
+          } else {
+            if (currentBalance.balance_type === 'Dr') {
+              newBalance = currentBalance.balance - amt;
+              if (newBalance < 0) {
+                newBalanceType = 'Cr';
+                newBalance = Math.abs(newBalance);
+              } else {
+                newBalanceType = 'Dr';
+              }
+            } else {
+              newBalance = currentBalance.balance + amt;
+              newBalanceType = 'Cr';
+            }
+          }
+          
+          return {
+            id: entry.VoucherID,
+            accountId: entry.PartyID,
+            accountName: entry.PartyName,
+            balance: currentBalance.balance,
+            balance_type: currentBalance.balance_type,
+            amount: amountValue,
+            amountType: amountType,
+            newBalance: newBalance,
+            newBalanceType: newBalanceType
+          };
+        });
         
         setJournalItems(journalItemsList);
       }
@@ -730,7 +783,7 @@ const handleSave = async () => {
                   <thead className="table-dark">
                     <tr>
                       <th>Account Name</th>
-                      <th>Current Balance</th>
+                      <th>Previous Balance</th>
                       <th>Amount (₹)</th>
                       <th>Type</th>
                       <th>New Balance</th>
