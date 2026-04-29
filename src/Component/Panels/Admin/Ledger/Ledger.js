@@ -397,41 +397,35 @@ const updateBalanceInDB = async (partyID, balance) => {
           return tx?.DC?.trim()?.charAt(0)?.toUpperCase();
         };
 
-        // REVERSED: For Credit balance, we subtract debits and add credits
-        let runningBalance = openingBalanceNum;
+       // Start from ZERO - ignore opening balance
+let runningBalance = 0;
 
-        if (openingBalanceType === "Credit") {
-          runningBalance = openingBalanceNum; // Start with positive for Cr
-        } else if (openingBalanceType === "Debit") {
-          runningBalance = -openingBalanceNum; // Debit opening becomes negative
-        }
+const transactionsWithBalance = sortedTransactions.map((tx) => {
+  const amount = parseFloat(tx.Amount || 0);
+  const actualDC = getActualDC(tx);
 
-        const transactionsWithBalance = sortedTransactions.map((tx) => {
-          const amount = parseFloat(tx.Amount || 0);
-          const actualDC = getActualDC(tx);
+  // Simple: Credit adds, Debit subtracts from running balance
+  if (actualDC === "C") {
+    runningBalance = runningBalance + amount;
+  } else if (actualDC === "D") {
+    runningBalance = runningBalance - amount;
+  }
 
-          // REVERSED LOGIC: Cr balance increases with Credits, decreases with Debits
-          if (actualDC === "C") {
-            runningBalance = runningBalance + amount; // Credit adds to balance
-          } else if (actualDC === "D") {
-            runningBalance = runningBalance - amount; // Debit subtracts from balance
-          }
-
-          return { ...tx, runningBalance, actualDC };
-        });
+  return { ...tx, runningBalance, actualDC };
+});
 
         // Calculate final balance type for header
         const finalBalanceType = runningBalance >= 0 ? "Cr" : "Dr";
         const finalBalanceAmt = Math.abs(runningBalance).toFixed(2);
 
-        return (
-          <div className="ledger-party-section">
-            <div className="ledger-party-header">
-              {ledger.partyName} (ID: {ledger.partyID}) —
-              {orderModeFilter === "ALL" && ` Opening Balance: ${openingBalanceDisplay} | `}
-              Balance: {finalBalanceAmt} {finalBalanceType}
-            </div>
+     return (
+  <div className="ledger-party-section">
+    <div className="ledger-party-header">
+      {ledger.partyName} (ID: {ledger.partyID}) —
+                    {orderModeFilter === "ALL" && ` Opening Balance: ${openingBalanceDisplay} | `}
 
+      Balance: {finalBalanceAmt} {finalBalanceType}
+    </div>
             <table className="ledger-transactions-table">
               <thead>
                 <tr>
