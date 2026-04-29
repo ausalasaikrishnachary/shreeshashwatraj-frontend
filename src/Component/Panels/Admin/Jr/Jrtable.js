@@ -21,51 +21,50 @@ const Jrtable = () => {
     fetchVouchers();
   }, []);
 
-  const fetchVouchers = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${baseurl}/api/jrroutes`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch vouchers');
-      }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        const transformedVouchers = result.data.map(voucher => ({
-          id: voucher.VoucherID,
-          voucherNo: voucher.VchNo,
-          date: voucher.Date ? new Date(voucher.Date).toISOString().split('T')[0] : 'N/A',
-          transactionType: voucher.TransactionType || 'Journal',
-          partyName: voucher.PartyName || 'N/A',
-          accountName: voucher.AccountName || 'N/A',
-          totalAmount: `₹ ${parseFloat(voucher.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-          balanceAmount: `₹ ${parseFloat(voucher.balance_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-          status: voucher.status || 'active',
-          entryDate: voucher.EntryDate ? new Date(voucher.EntryDate).toISOString().split('T')[0] : 'N/A',
-          createdAt: voucher.created_at ? new Date(voucher.created_at).toISOString().split('T')[0] : 'N/A',
-          originalData: voucher
-        }));
-        
-        setVouchers(transformedVouchers);
-        setFilteredVouchers(transformedVouchers);
-      } else {
-        setError(result.message || 'Failed to fetch vouchers');
-      }
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching vouchers:', err);
-      setError(err.message);
-      setLoading(false);
+const fetchVouchers = async () => {
+  try {
+    setLoading(true);
+    const response = await fetch(`${baseurl}/api/jrroutes`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch vouchers');
     }
-  };
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // Transform each entry to individual row
+      const transformedVouchers = result.data.map(voucher => ({
+        id: voucher.VoucherID,
+        voucherNo: voucher.VchNo,
+        date: voucher.Date ? new Date(voucher.Date).toISOString().split('T')[0] : 'N/A',
+        transactionType: voucher.TransactionType || 'Journal',
+        partyName: voucher.PartyName || 'N/A',
+        accountName: voucher.AccountName || 'N/A',
+        totalAmount: `₹ ${parseFloat(voucher.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+        balanceAmount: `₹ ${parseFloat(voucher.balance_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+        status: voucher.status || 'active',
+        originalData: voucher
+      }));
+      
+      setVouchers(transformedVouchers);
+      setFilteredVouchers(transformedVouchers);
+    } else {
+      setError(result.message || 'Failed to fetch vouchers');
+    }
+    setLoading(false);
+  } catch (err) {
+    console.error('Error fetching vouchers:', err);
+    setError(err.message);
+    setLoading(false);
+  }
+};
 
-  // Handle Edit - based on Voucher ID
+  // Handle Edit - pass VchNo instead of ID
   const handleEdit = async (voucher) => {
     try {
-      // Fetch complete voucher data by ID
-      const response = await fetch(`${baseurl}/api/jrroutes/${voucher.id}`);
+      // Fetch ALL entries for this VchNo
+      const response = await fetch(`${baseurl}/api/jrroutes/vchno/${voucher.voucherNo}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch voucher details');
@@ -74,10 +73,14 @@ const Jrtable = () => {
       const result = await response.json();
       
       if (result.success) {
-        // Store the voucher data to pass to edit form
-        localStorage.setItem('editVoucherData', JSON.stringify(result.data));
-        // Navigate to edit page with voucher ID
-        navigate(`/JrCreate/${voucher.id}`);
+        // Store all entries data to pass to edit form
+        localStorage.setItem('editVoucherData', JSON.stringify({
+          voucherNo: voucher.voucherNo,
+          date: voucher.date,
+          entries: result.data
+        }));
+        // Navigate to edit page with VchNo (not ID)
+        navigate(`/JrCreate/${voucher.voucherNo}`);
       } else {
         alert('Failed to load voucher details for editing');
       }
@@ -90,7 +93,8 @@ const Jrtable = () => {
   // Handle View
   const handleView = async (voucher) => {
     try {
-      const response = await fetch(`${baseurl}/api/jrroutes/${voucher.id}`);
+      // Fetch ALL entries for this VchNo
+      const response = await fetch(`${baseurl}/api/jrroutes/vchno/${voucher.voucherNo}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch voucher details');
@@ -99,8 +103,12 @@ const Jrtable = () => {
       const result = await response.json();
       
       if (result.success) {
-        localStorage.setItem('previewVoucher', JSON.stringify(result.data));
-        navigate(`/voucher/preview/${voucher.id}`);
+        localStorage.setItem('previewVoucher', JSON.stringify({
+          voucherNo: voucher.voucherNo,
+          date: voucher.date,
+          entries: result.data
+        }));
+        navigate(`/voucher/preview/${voucher.voucherNo}`);
       } else {
         alert('Failed to load voucher details');
       }
@@ -110,15 +118,18 @@ const Jrtable = () => {
     }
   };
 
-  // Handle Delete - based on Voucher ID
+  // Handle Delete - delete by VchNo
   const handleDelete = async (voucher) => {
     if (!window.confirm(`Delete voucher ${voucher.voucherNo}? This action cannot be undone.`)) return;
     
     try {
       setDeleting(prev => ({ ...prev, [voucher.id]: true }));
       
-      const response = await fetch(`${baseurl}/api/journaldelete/${voucher.id}`, {
-        method: 'DELETE'
+      // Delete by VchNo to remove all entries
+      const response = await fetch(`${baseurl}/api/journaldelete/${voucher.voucherNo}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vchNo: voucher.voucherNo })
       });
       
       const result = await response.json();
@@ -143,15 +154,15 @@ const Jrtable = () => {
       key: 'voucherNo', 
       title: 'VOUCHER NO', 
       style: { textAlign: 'center', width: '12%' },
-      render: (value, row) => (
-        <button 
-          className="btn btn-link p-0 text-primary text-decoration-none"
-          onClick={() => handleView(row)}
-          title="Click to view details"
-        >
-          {value}
-        </button>
-      )
+      // render: (value, row) => (
+      //   <button 
+      //     className="btn btn-link p-0 text-primary text-decoration-none"
+      //     onClick={() => handleView(row)}
+      //     title="Click to view details"
+      //   >
+      //     {value}
+      //   </button>
+      // )
     },
     { 
       key: 'date', 

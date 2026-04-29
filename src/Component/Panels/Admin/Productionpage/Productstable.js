@@ -117,15 +117,15 @@ const handleEdit = (production) => {
       key: 'voucherNo', 
       title: 'VOUCHER NO', 
       style: { textAlign: 'center' },
-      render: (value, row) => (
-        <button 
-          className="btn btn-link p-0 text-primary text-decoration-none"
-          onClick={() => handleView(row)}
-          title="Click to view details"
-        >
-          {value}
-        </button>
-      )
+      // render: (value, row) => (
+      //   <button 
+      //     className="btn btn-link p-0 text-primary text-decoration-none"
+      //     onClick={() => handleView(row)}
+      //     title="Click to view details"
+      //   >
+      //     {value}
+      //   </button>
+      // )
     },
     { 
       key: 'date', 

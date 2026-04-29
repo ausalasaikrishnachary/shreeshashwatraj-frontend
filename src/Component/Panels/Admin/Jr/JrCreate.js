@@ -89,42 +89,49 @@ const loadVoucherForEdit = async () => {
   
   try {
     setLoading(true);
-    const response = await fetch(`${baseurl}/api/jrroutes/${id}`);
-    const result = await response.json();
     
-    if (result.success) {
-      const data = result.data;
+    // Since id is now the VchNo (e.g., "JRN-001"), directly fetch all entries by VchNo
+    const allEntriesResponse = await fetch(`${baseurl}/api/jrroutes/vchno/${id}`);
+    
+    if (!allEntriesResponse.ok) {
+      throw new Error('Failed to fetch voucher details');
+    }
+    
+    const allEntriesResult = await allEntriesResponse.json();
+    
+    if (allEntriesResult.success) {
+      const allEntries = allEntriesResult.data;
       
-      // Set header data
-      setVoucherData({
-        voucherNo: data.VchNo || '',
-        invoiceDate: data.Date ? data.Date.split('T')[0] : new Date().toISOString().split('T')[0],
-      });
-      
-      // Determine amount type from TransactionType
-      let amountType = 'Dr';
-      if (data.TransactionType === 'Cr') {
-        amountType = 'Cr';
+      if (allEntries.length > 0) {
+        const firstEntry = allEntries[0];
+        
+        // Set header data
+        setVoucherData({
+          voucherNo: firstEntry.VchNo || '',
+          invoiceDate: firstEntry.Date ? firstEntry.Date.split('T')[0] : new Date().toISOString().split('T')[0],
+        });
+        
+        // Transform all entries to journal items
+        const journalItemsList = allEntries.map(entry => ({
+          id: entry.VoucherID,
+          accountId: entry.PartyID,
+          accountName: entry.PartyName,
+          balance: parseFloat(entry.balance_amount) || 0,
+          balance_type: entry.balance_type || 'Dr',
+          amount: parseFloat(entry.TotalAmount) || 0,
+          amountType: entry.amount_type || 'Dr',
+          newBalance: parseFloat(entry.balance_amount) || 0,
+          newBalanceType: entry.balance_type || 'Dr'
+        }));
+        
+        setJournalItems(journalItemsList);
       }
-      
-      // Set single journal item (only this row)
-      const singleItem = {
-        id: data.VoucherID,
-        accountId: data.PartyID,
-        accountName: data.PartyName,
-        balance: parseFloat(data.balance_amount) || 0,
-        balance_type: data.balance_type || 'Dr',
-        amount: parseFloat(data.TotalAmount) || 0,
-        amountType: amountType,
-        newBalance: parseFloat(data.balance_amount) || 0,
-        newBalanceType: data.balance_type || 'Dr'
-      };
-      
-      setJournalItems([singleItem]);
+    } else {
+      alert(allEntriesResult.message || 'Failed to load voucher');
     }
   } catch (error) {
-    console.error('Error:', error);
-    alert('Failed to load voucher');
+    console.error('Error loading voucher:', error);
+    alert('Failed to load voucher: ' + error.message);
   } finally {
     setLoading(false);
   }
@@ -327,7 +334,6 @@ const loadVoucherForEdit = async () => {
     return journalItems.reduce((sum, item) => sum + (item.amount || 0), 0);
   };
   
-// Handle Save
 const handleSave = async () => {
   if (journalItems.length === 0) {
     alert('⚠️ Please add at least one journal entry');
@@ -371,33 +377,35 @@ const handleSave = async () => {
   setSaving(true);
   
   try {
-    if (isEditMode && id) {
-      // For UPDATE - update ONLY this specific row
-      const item = journalItems[0];
-      const updateData = {
-        invoiceDate: voucherData.invoiceDate,
+    if (isEditMode && id && id !== 'create') {
+      // For UPDATE - id is the VchNo
+      const vchNo = id;
+      
+      // Prepare items for update
+      const itemsToUpdate = journalItems.map(item => ({
         partyId: item.accountId,
         partyName: item.accountName,
-        balance_amount: item.balance,
-        totalAmount: item.amount,
+        balance_amount: item.balance || 0,
+        amount: item.amount,
         amount_type: item.amountType
-      };
+      }));
       
-      console.log('Updating VoucherID:', id);
-      console.log('Update Data:', updateData);
-      
-      const response = await fetch(`${baseurl}/api/journalupdate/${id}`, {
+      // Call update API that replaces all entries
+      const updateResponse = await fetch(`${baseurl}/api/journalupdatefull/${vchNo}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updateData)
+        body: JSON.stringify({ 
+          invoiceDate: voucherData.invoiceDate,
+          items: itemsToUpdate 
+        })
       });
       
-      const result = await response.json();
-      if (result.success) {
-        alert(`✅ ${result.message}`);
+      const updateResult = await updateResponse.json();
+      if (updateResult.success) {
+        alert(`✅ ${updateResult.message}`);
         navigate('/Jrtable');
       } else {
-        alert(`❌ Failed to update: ${result.message}`);
+        alert(`❌ Failed to update: ${updateResult.message}`);
       }
     } else {
       // For CREATE - insert new rows
