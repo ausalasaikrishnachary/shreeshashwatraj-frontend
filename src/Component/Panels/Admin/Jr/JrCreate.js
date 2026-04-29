@@ -344,6 +344,30 @@ const handleSave = async () => {
     return;
   }
   
+  // Calculate totals
+  const debitTotal = journalItems
+    .filter(item => item.amountType === 'Dr')
+    .reduce((sum, item) => sum + (item.amount || 0), 0);
+  
+  const creditTotal = journalItems
+    .filter(item => item.amountType === 'Cr')
+    .reduce((sum, item) => sum + (item.amount || 0), 0);
+  
+  // Check if debit and credit totals match
+  if (debitTotal !== creditTotal) {
+    alert(`⚠️ Journal Voucher is not balanced!\n\nTotal Debit (Dr): ₹${safeToFixed(debitTotal)}\nTotal Credit (Cr): ₹${safeToFixed(creditTotal)}\nDifference: ₹${safeToFixed(Math.abs(debitTotal - creditTotal))}\n\nPlease ensure Debit and Credit amounts are equal.`);
+    return;
+  }
+  
+  // Check if there's at least one Debit and one Credit entry
+  const hasDebit = journalItems.some(item => item.amountType === 'Dr');
+  const hasCredit = journalItems.some(item => item.amountType === 'Cr');
+  
+  if (!hasDebit || !hasCredit) {
+    alert('⚠️ Journal Voucher must have both Debit (Dr) and Credit (Cr) entries!\n\nPlease add at least one Debit and one Credit entry.');
+    return;
+  }
+  
   setSaving(true);
   
   try {
@@ -524,82 +548,93 @@ const handleSave = async () => {
                     onClick={() => setIsDropdownOpen(true)}
                   />
                   
-                  {isDropdownOpen && !journalForm.accountId && (
-                    <div
-                      className="position-absolute w-100"
-                      style={{
-                        top: '100%',
-                        left: 0,
-                        zIndex: 9999,
-                        backgroundColor: '#fff',
-                        border: '1px solid #dee2e6',
-                        borderRadius: '6px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                        maxHeight: '300px',
-                        overflowY: 'auto'
-                      }}
-                    >
-                      <div style={{ 
-                        padding: '8px 16px', 
-                        borderBottom: '1px solid #dee2e6', 
-                        color: '#0d6efd', 
-                        fontWeight: 600,
-                        position: 'sticky',
-                        top: 0,
-                        backgroundColor: '#fff'
-                      }}>
-                        Select Account/Customer
-                      </div>
-                      <div>
-                        {loading ? (
-                          <div style={{ padding: '16px', textAlign: 'center' }}>Loading...</div>
-                        ) : filteredAccounts.length === 0 ? (
-                          <div style={{ padding: '16px', textAlign: 'center', color: '#6c757d' }}>
-                            No accounts found
-                          </div>
-                        ) : (
-                          filteredAccounts.map(account => (
-                            <div
-                              key={account.id}
-                              onClick={() => handleAccountSelect(account)}
-                              style={{
-                                padding: '8px 16px',
-                                cursor: 'pointer',
-                                borderLeft: '3px solid transparent',
-                                transition: 'background-color 0.2s'
-                              }}
-                              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                            >
-                              <div style={{ fontWeight: 500, fontSize: '14px' }}>
-                                {account.name || account.account_name}
-                              </div>
-                              <div style={{ fontSize: '12px', color: '#6c757d' }}>
-                                Balance: ₹{safeToFixed(account.balance)} ({account.balance_type || 'Dr'})
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      <div style={{ 
-                        padding: '8px 16px', 
-                        borderTop: '1px solid #dee2e6',
-                        position: 'sticky',
-                        bottom: 0,
-                        backgroundColor: '#fff'
-                      }}>
-                        <button
-                          className="btn btn-sm btn-outline-secondary w-100"
-                          onClick={() => {
-                            setIsDropdownOpen(false);
-                            setSearchTerm('');
-                          }}
-                        >
-                          Close
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                 {isDropdownOpen && !journalForm.accountId && (
+  <div
+    className="position-absolute w-100"
+    style={{
+      top: '100%',
+      left: 0,
+      zIndex: 9999,
+      backgroundColor: '#fff',
+      border: '1px solid #dee2e6',
+      borderRadius: '6px',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      maxHeight: '300px',
+      overflowY: 'auto'
+    }}
+  >
+    <div style={{ 
+      padding: '8px 16px', 
+      borderBottom: '1px solid #dee2e6', 
+      color: '#0d6efd', 
+      fontWeight: 600,
+      position: 'sticky',
+      top: 0,
+      backgroundColor: '#fff'
+    }}>
+      Select Account/Customer
+    </div>
+    <div>
+      {loading ? (
+        <div style={{ padding: '16px', textAlign: 'center' }}>Loading...</div>
+      ) : filteredAccounts.length === 0 ? (
+        <div style={{ padding: '16px', textAlign: 'center', color: '#6c757d' }}>
+          No accounts found
+        </div>
+      ) : (
+        filteredAccounts.map(account => (
+          <div
+            key={account.id}
+            onClick={() => handleAccountSelect(account)}
+            style={{
+              padding: '8px 16px',
+              cursor: 'pointer',
+              borderLeft: '3px solid transparent',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <div style={{ fontWeight: 500, fontSize: '14px' }}>
+              {account.name || account.account_name}
+              {account.group && (
+                <span style={{ 
+                  fontSize: '12px', 
+                  color: '#6c757d', 
+                  marginLeft: '8px',
+                  fontWeight: 'normal'
+                }}>
+                  ({account.group})
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: '12px', color: '#6c757d' }}>
+              Balance: ₹{safeToFixed(account.balance)} ({account.balance_type || 'Dr'})
+           
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+    <div style={{ 
+      padding: '8px 16px', 
+      borderTop: '1px solid #dee2e6',
+      position: 'sticky',
+      bottom: 0,
+      backgroundColor: '#fff'
+    }}>
+      <button
+        className="btn btn-sm btn-outline-secondary w-100"
+        onClick={() => {
+          setIsDropdownOpen(false);
+          setSearchTerm('');
+        }}
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
                 </div>
                 
                 <div style={{ minWidth: '120px', flex: 1 }}>
