@@ -7,7 +7,7 @@ import ReusableTable from '../../../Layouts/TableLayout/DataTable';
 import { baseurl } from '../../../BaseURL/BaseURL';
 import './Receipts.css';
 import Select from "react-select";
-  
+
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ReceiptsPDF from './ReceiptsPDF'; // You'll need to create this component
@@ -33,20 +33,20 @@ const ReceiptsTable = () => {
   const [invoiceBalance, setInvoiceBalance] = useState(0);
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-const [isRangeDownloading, setIsRangeDownloading] = useState(false);
-const pdfRef = useRef();
+  const [isRangeDownloading, setIsRangeDownloading] = useState(false);
+  const pdfRef = useRef();
   const [searchTerm, setSearchTerm] = useState("");
 
-const [invoices, setInvoices] = useState([]);
-const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
-  const y = 2025 + i;
-  return { value: y, label: y };
-});
+  const [invoices, setInvoices] = useState([]);
+  const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
+    const y = 2025 + i;
+    return { value: y, label: y };
+  });
 
   const [formData, setFormData] = useState({
     receiptNumber: 'REC001',
     retailerId: '',
-    retailerName: '',  
+    retailerName: '',
     amount: '',
     currency: 'INR',
     paymentMethod: 'Cash',
@@ -60,15 +60,15 @@ const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
     retailerGstin: '',
     transactionProofFile: '',
     invoiceNumber: '',
-      account_name: '', // Add this
-  business_name: '' // Add this
+    account_name: '', // Add this
+    business_name: '' // Add this
   });
 
   const fetchInvoices = async () => {
     try {
       console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber`);
       const response = await fetch(`${baseurl}/api/vouchersnumber?type=Sales`);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('data:', data);
@@ -81,198 +81,198 @@ const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
     }
   };
 
-const fetchInvoiceBalance = async (retailerId, invoiceNumber) => {
-  if (!retailerId || !invoiceNumber) {
-    setInvoiceBalance(0);
-    setFormData(prev => ({
-      ...prev,
-      amount: ''
-    }));
-    return;
-  }
-
-  try {
-    setIsFetchingBalance(true);
-    console.log(`Fetching balance for retailer ${retailerId}, invoice ${invoiceNumber}`);
-    
-    const selectedRetailer = accounts.find(acc => acc.id == retailerId);
-    if (!selectedRetailer) {
-      console.error('Retailer not found');
-      setInvoiceBalance(0);
-      setFormData(prev => ({ ...prev, amount: '' }));
-      setIsFetchingBalance(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `${baseurl}/api/receipts?retailer_id=${retailerId}&invoice_number=${invoiceNumber}`
-      );
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Received receipt data for balance check:', data);
-        
-        let balanceAmount = 0;
-        
-        if (Array.isArray(data)) {
-          const relevantReceipts = data.filter(receipt => {
-            const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
-            const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
-            
-            return receiptRetailerId == retailerId && 
-                   receiptInvoiceNumber === invoiceNumber;
-          });
-          
-          if (relevantReceipts.length > 0) {
-            const latestReceipt = relevantReceipts.sort((a, b) => 
-              new Date(b.created_at) - new Date(a.created_at)
-            )[0];
-            
-            balanceAmount = parseFloat(latestReceipt.total_balance_amount || latestReceipt.balance_amount || 0);
-            console.log('Found balance from receipts array for retailer', retailerId, 'invoice', invoiceNumber, ':', balanceAmount);
-          }
-        } else if (data.total_balance_amount || data.balance_amount) {
-          balanceAmount = parseFloat(data.total_balance_amount || data.balance_amount || 0);
-          console.log('Found balance from single receipt:', balanceAmount);
-        } else if (data.data) {
-          const receiptData = data.data;
-          if (Array.isArray(receiptData)) {
-            const relevantReceipt = receiptData.find(receipt => {
-              const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
-              return receiptRetailerId == retailerId && receipt.invoice_number === invoiceNumber;
-            });
-            if (relevantReceipt) {
-              balanceAmount = parseFloat(relevantReceipt.total_balance_amount || relevantReceipt.balance_amount || 0);
-            }
-          }
-        }
-        
-        if (balanceAmount > 0) {
-          setInvoiceBalance(balanceAmount);
-          setFormData(prev => ({
-            ...prev,
-            amount: balanceAmount.toString()
-          }));
-          setIsFetchingBalance(false);
-          return;
-        }
-      }
-    } catch (apiError) {
-      console.error('API error fetching receipt balance:', apiError);
-    }
-
-    // Check in existing receipt data
-    const existingReceipt = receiptData.find(receipt => {
-      const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
-      const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
-      
-      return receiptRetailerId == retailerId && receiptInvoiceNumber === invoiceNumber;
-    });
-
-    if (existingReceipt?.total_balance_amount) {
-      console.log('Found balance in existing data for retailer', retailerId, 'invoice', invoiceNumber, ':', existingReceipt.total_balance_amount);
-      const balance = parseFloat(existingReceipt.total_balance_amount);
-      setInvoiceBalance(balance);
-      setFormData(prev => ({
-        ...prev,
-        amount: balance.toString()
-      }));
-      setIsFetchingBalance(false);
-      return;
-    }
-
-    // Check invoices data
-    console.warn('No balance found from receipts API, checking invoices data');
-const selectedInvoiceData = invoices.find(
-  inv => inv.InvoiceNumber === invoiceNumber
-);
-    
-    if (selectedInvoiceData) {
-      const invoiceRetailerId = selectedInvoiceData.PartyID || selectedInvoiceData.AccountID;
-      
-      if (invoiceRetailerId != retailerId) {
-        console.log('Invoice does not belong to selected retailer. Invoice retailer ID:', invoiceRetailerId, 'Selected retailer ID:', retailerId);
-        setInvoiceBalance(0);
-        setFormData(prev => ({
-          ...prev,
-          amount: ''
-        }));
-        alert('This invoice does not belong to the selected retailer.');
-        setIsFetchingBalance(false);
-        return;
-      }
-      
-      const invoiceAmount = parseFloat(
-        selectedInvoiceData.TotalAmount || 
-        selectedInvoiceData.total_amount || 
-        selectedInvoiceData.amount || 
-        0
-      );
-      
-      const receiptsForInvoice = receiptData.filter(receipt => {
-        const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
-        const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
-        
-        return receiptRetailerId == retailerId && 
-               receiptInvoiceNumber === invoiceNumber;
-      });
-      
-      const totalPaid = receiptsForInvoice.reduce((sum, receipt) => {
-        return sum + parseFloat(receipt.paid_amount || receipt.amount || 0);
-      }, 0);
-      
-      const balance = invoiceAmount - totalPaid;
-      
-      console.log(`Invoice amount: ${invoiceAmount}, Total paid: ${totalPaid}, Balance: ${balance}`);
-      
-      if (balance > 0) {
-        setInvoiceBalance(balance);
-        setFormData(prev => ({
-          ...prev,
-          amount: balance.toString()
-        }));
-      } else {
-        setInvoiceBalance(0);
-        setFormData(prev => ({
-          ...prev,
-          amount: ''
-        }));
-        if (balance === 0) {
-          alert('This invoice is already fully paid.');
-        } else {
-          alert('Invoice has been overpaid. Please check the invoice details.');
-        }
-      }
-    } else {
-      // No invoice found
-      console.warn('Invoice not found in invoices data for retailer:', retailerId);
+  const fetchInvoiceBalance = async (retailerId, invoiceNumber) => {
+    if (!retailerId || !invoiceNumber) {
       setInvoiceBalance(0);
       setFormData(prev => ({
         ...prev,
         amount: ''
       }));
-      alert('Invoice not found for the selected retailer.');
+      return;
     }
-  } catch (err) {
-    console.error('Error fetching invoice balance:', err);
-    setInvoiceBalance(0);
-    setFormData(prev => ({
-      ...prev,
-      amount: ''
-    }));
-    alert('Error fetching invoice balance. Please try again or enter amount manually.');
-  } finally {
-    setIsFetchingBalance(false);
-  }
-};
+
+    try {
+      setIsFetchingBalance(true);
+      console.log(`Fetching balance for retailer ${retailerId}, invoice ${invoiceNumber}`);
+
+      const selectedRetailer = accounts.find(acc => acc.id == retailerId);
+      if (!selectedRetailer) {
+        console.error('Retailer not found');
+        setInvoiceBalance(0);
+        setFormData(prev => ({ ...prev, amount: '' }));
+        setIsFetchingBalance(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${baseurl}/api/receipts?retailer_id=${retailerId}&invoice_number=${invoiceNumber}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Received receipt data for balance check:', data);
+
+          let balanceAmount = 0;
+
+          if (Array.isArray(data)) {
+            const relevantReceipts = data.filter(receipt => {
+              const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+              const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
+
+              return receiptRetailerId == retailerId &&
+                receiptInvoiceNumber === invoiceNumber;
+            });
+
+            if (relevantReceipts.length > 0) {
+              const latestReceipt = relevantReceipts.sort((a, b) =>
+                new Date(b.created_at) - new Date(a.created_at)
+              )[0];
+
+              balanceAmount = parseFloat(latestReceipt.total_balance_amount || latestReceipt.balance_amount || 0);
+              console.log('Found balance from receipts array for retailer', retailerId, 'invoice', invoiceNumber, ':', balanceAmount);
+            }
+          } else if (data.total_balance_amount || data.balance_amount) {
+            balanceAmount = parseFloat(data.total_balance_amount || data.balance_amount || 0);
+            console.log('Found balance from single receipt:', balanceAmount);
+          } else if (data.data) {
+            const receiptData = data.data;
+            if (Array.isArray(receiptData)) {
+              const relevantReceipt = receiptData.find(receipt => {
+                const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+                return receiptRetailerId == retailerId && receipt.invoice_number === invoiceNumber;
+              });
+              if (relevantReceipt) {
+                balanceAmount = parseFloat(relevantReceipt.total_balance_amount || relevantReceipt.balance_amount || 0);
+              }
+            }
+          }
+
+          if (balanceAmount > 0) {
+            setInvoiceBalance(balanceAmount);
+            setFormData(prev => ({
+              ...prev,
+              amount: balanceAmount.toString()
+            }));
+            setIsFetchingBalance(false);
+            return;
+          }
+        }
+      } catch (apiError) {
+        console.error('API error fetching receipt balance:', apiError);
+      }
+
+      // Check in existing receipt data
+      const existingReceipt = receiptData.find(receipt => {
+        const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+        const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
+
+        return receiptRetailerId == retailerId && receiptInvoiceNumber === invoiceNumber;
+      });
+
+      if (existingReceipt?.total_balance_amount) {
+        console.log('Found balance in existing data for retailer', retailerId, 'invoice', invoiceNumber, ':', existingReceipt.total_balance_amount);
+        const balance = parseFloat(existingReceipt.total_balance_amount);
+        setInvoiceBalance(balance);
+        setFormData(prev => ({
+          ...prev,
+          amount: balance.toString()
+        }));
+        setIsFetchingBalance(false);
+        return;
+      }
+
+      // Check invoices data
+      console.warn('No balance found from receipts API, checking invoices data');
+      const selectedInvoiceData = invoices.find(
+        inv => inv.InvoiceNumber === invoiceNumber
+      );
+
+      if (selectedInvoiceData) {
+        const invoiceRetailerId = selectedInvoiceData.PartyID || selectedInvoiceData.AccountID;
+
+        if (invoiceRetailerId != retailerId) {
+          console.log('Invoice does not belong to selected retailer. Invoice retailer ID:', invoiceRetailerId, 'Selected retailer ID:', retailerId);
+          setInvoiceBalance(0);
+          setFormData(prev => ({
+            ...prev,
+            amount: ''
+          }));
+          alert('This invoice does not belong to the selected retailer.');
+          setIsFetchingBalance(false);
+          return;
+        }
+
+        const invoiceAmount = parseFloat(
+          selectedInvoiceData.TotalAmount ||
+          selectedInvoiceData.total_amount ||
+          selectedInvoiceData.amount ||
+          0
+        );
+
+        const receiptsForInvoice = receiptData.filter(receipt => {
+          const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+          const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
+
+          return receiptRetailerId == retailerId &&
+            receiptInvoiceNumber === invoiceNumber;
+        });
+
+        const totalPaid = receiptsForInvoice.reduce((sum, receipt) => {
+          return sum + parseFloat(receipt.paid_amount || receipt.amount || 0);
+        }, 0);
+
+        const balance = invoiceAmount - totalPaid;
+
+        console.log(`Invoice amount: ${invoiceAmount}, Total paid: ${totalPaid}, Balance: ${balance}`);
+
+        if (balance > 0) {
+          setInvoiceBalance(balance);
+          setFormData(prev => ({
+            ...prev,
+            amount: balance.toString()
+          }));
+        } else {
+          setInvoiceBalance(0);
+          setFormData(prev => ({
+            ...prev,
+            amount: ''
+          }));
+          if (balance === 0) {
+            alert('This invoice is already fully paid.');
+          } else {
+            alert('Invoice has been overpaid. Please check the invoice details.');
+          }
+        }
+      } else {
+        // No invoice found
+        console.warn('Invoice not found in invoices data for retailer:', retailerId);
+        setInvoiceBalance(0);
+        setFormData(prev => ({
+          ...prev,
+          amount: ''
+        }));
+        alert('Invoice not found for the selected retailer.');
+      }
+    } catch (err) {
+      console.error('Error fetching invoice balance:', err);
+      setInvoiceBalance(0);
+      setFormData(prev => ({
+        ...prev,
+        amount: ''
+      }));
+      alert('Error fetching invoice balance. Please try again or enter amount manually.');
+    } finally {
+      setIsFetchingBalance(false);
+    }
+  };
   useEffect(() => {
 
     if (formData.retailerId && formData.invoiceNumber) {
       const timer = setTimeout(() => {
         fetchInvoiceBalance(formData.retailerId, formData.invoiceNumber);
       }, 300);
-      
+
       return () => clearTimeout(timer);
     }
   }, [formData.retailerId, formData.invoiceNumber]);
@@ -285,13 +285,13 @@ const selectedInvoiceData = invoices.find(
         alert('File size should be less than 5MB');
         return;
       }
-      
+
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (!allowedTypes.includes(file.type)) {
         alert('Please select a valid file type (PDF, JPG, PNG, DOC, DOCX)');
         return;
       }
-    
+
       setFormData(prev => ({
         ...prev,
         transactionProofFile: file
@@ -301,120 +301,120 @@ const selectedInvoiceData = invoices.find(
 
 
   // Filter receipts by date range
-const filterReceiptsByDateRange = (receipts, start, end) => {
-  if (!start || !end) return receipts;
-  
-  const startDate = new Date(start);
-  startDate.setHours(0, 0, 0, 0);
-  
-  const endDate = new Date(end);
-  endDate.setHours(23, 59, 59, 999);
-  
-  return receipts.filter(receipt => {
-    const receiptDate = new Date(receipt.Date || receipt.receipt_date || receipt.created);
-    return receiptDate >= startDate && receiptDate <= endDate;
-  });
-};
+  const filterReceiptsByDateRange = (receipts, start, end) => {
+    if (!start || !end) return receipts;
 
-// Filter receipts by month and year
-const filterReceiptsByMonthYear = (receipts, month, year) => {
-  if (!month || !year) return receipts;
-  
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'];
-  const monthIndex = monthNames.indexOf(month);
-  
-  return receipts.filter(receipt => {
-    const receiptDate = new Date(receipt.Date || receipt.receipt_date || receipt.created);
-    return receiptDate.getMonth() === monthIndex && 
-           receiptDate.getFullYear() === parseInt(year);
-  });
-};
+    const startDate = new Date(start);
+    startDate.setHours(0, 0, 0, 0);
 
-// Generate PDF from the ReceiptsPDF component
-const generatePDF = async (filteredData, type = 'month') => {
-  if (!filteredData || filteredData.length === 0) {
-    alert('No receipts found for the selected period');
-    return;
-  }
+    const endDate = new Date(end);
+    endDate.setHours(23, 59, 59, 999);
 
-  try {
-    // Create a temporary div to render the PDF component
-    const element = document.createElement('div');
-    element.style.position = 'absolute';
-    element.style.left = '-9999px';
-    element.style.top = '-9999px';
-    document.body.appendChild(element);
-
-    // Use ReactDOM to render the component
-    const ReactDOM = require('react-dom');
-    await new Promise((resolve) => {
-      ReactDOM.render(
-        <ReceiptsPDF 
-          ref={pdfRef}
-          receipts={filteredData}
-          startDate={type === 'range' ? startDate : null}
-          endDate={type === 'range' ? endDate : null}
-          month={type === 'month' ? month : null}
-          year={type === 'month' ? year : null}
-            title="Receipts Report" 
-        />,
-        element,
-        resolve
-      );
+    return receipts.filter(receipt => {
+      const receiptDate = new Date(receipt.Date || receipt.receipt_date || receipt.created);
+      return receiptDate >= startDate && receiptDate <= endDate;
     });
+  };
 
-    // Wait for rendering to complete
-    await new Promise(resolve => setTimeout(resolve, 500));
+  // Filter receipts by month and year
+  const filterReceiptsByMonthYear = (receipts, month, year) => {
+    if (!month || !year) return receipts;
 
-    // Capture the element as canvas
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      logging: false,
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: '#ffffff'
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthIndex = monthNames.indexOf(month);
+
+    return receipts.filter(receipt => {
+      const receiptDate = new Date(receipt.Date || receipt.receipt_date || receipt.created);
+      return receiptDate.getMonth() === monthIndex &&
+        receiptDate.getFullYear() === parseInt(year);
     });
+  };
 
-    const imgData = canvas.toDataURL('image/png');
-    
-    // Create PDF
-    const pdf = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: 'a4'
-    });
-
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
-    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-    const width = imgWidth * ratio;
-    const height = imgHeight * ratio;
-
-    pdf.addImage(imgData, 'PNG', 0, 0, width, height);
-
-    // Generate filename
-    let filename = 'receipts_report';
-    if (type === 'range') {
-      filename = `receipts_${startDate}_to_${endDate}.pdf`;
-    } else {
-      filename = `receipts_${month}_${year}.pdf`;
+  // Generate PDF from the ReceiptsPDF component
+  const generatePDF = async (filteredData, type = 'month') => {
+    if (!filteredData || filteredData.length === 0) {
+      alert('No receipts found for the selected period');
+      return;
     }
 
-    // Save PDF
-    pdf.save(filename);
+    try {
+      // Create a temporary div to render the PDF component
+      const element = document.createElement('div');
+      element.style.position = 'absolute';
+      element.style.left = '-9999px';
+      element.style.top = '-9999px';
+      document.body.appendChild(element);
 
-    // Cleanup
-    ReactDOM.unmountComponentAtNode(element);
-    document.body.removeChild(element);
+      // Use ReactDOM to render the component
+      const ReactDOM = require('react-dom');
+      await new Promise((resolve) => {
+        ReactDOM.render(
+          <ReceiptsPDF
+            ref={pdfRef}
+            receipts={filteredData}
+            startDate={type === 'range' ? startDate : null}
+            endDate={type === 'range' ? endDate : null}
+            month={type === 'month' ? month : null}
+            year={type === 'month' ? year : null}
+            title="Receipts Report"
+          />,
+          element,
+          resolve
+        );
+      });
 
-  } catch (error) {
-    console.error('PDF generation error:', error);
-    alert('Error generating PDF. Please try again.');
-  }
-};
+      // Wait for rendering to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Capture the element as canvas
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const width = imgWidth * ratio;
+      const height = imgHeight * ratio;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, width, height);
+
+      // Generate filename
+      let filename = 'receipts_report';
+      if (type === 'range') {
+        filename = `receipts_${startDate}_to_${endDate}.pdf`;
+      } else {
+        filename = `receipts_${month}_${year}.pdf`;
+      }
+
+      // Save PDF
+      pdf.save(filename);
+
+      // Cleanup
+      ReactDOM.unmountComponentAtNode(element);
+      document.body.removeChild(element);
+
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      alert('Error generating PDF. Please try again.');
+    }
+  };
   // File remove handler
   const handleRemoveFile = () => {
     setFormData(prev => ({
@@ -431,17 +431,17 @@ const generatePDF = async (filteredData, type = 'month') => {
   ];
 
   const columns = [
-  { 
-    key: 'payee', 
-    title: 'Retailer Name', 
-    style: { textAlign: 'left' },
-    render: (value, row) => {
-      return row?.PartyName || 'N/A';
-    }
-  },
-    { 
-      key: 'VchNo', 
-      title: 'RECEIPT NUMBER', 
+    {
+      key: 'payee',
+      title: 'Retailer Name',
+      style: { textAlign: 'left' },
+      render: (value, row) => {
+        return row?.PartyName || 'N/A';
+      }
+    },
+    {
+      key: 'VchNo',
+      title: 'RECEIPT NUMBER',
       style: { textAlign: 'center' },
       render: (value, row) => (
         <button
@@ -453,23 +453,23 @@ const generatePDF = async (filteredData, type = 'month') => {
         </button>
       )
     },
-    { 
-      key: 'paid_amount', 
-      title: 'AMOUNT', 
+    {
+      key: 'paid_amount',
+      title: 'AMOUNT',
       style: { textAlign: 'center' },
       render: (value) => value || '₹ 0.00'
     },
-    { 
-      key: 'payment_method', 
-      title: 'PAYMENT METHOD', 
+    {
+      key: 'payment_method',
+      title: 'PAYMENT METHOD',
       style: { textAlign: 'center' },
       render: (value) => value || 'Cash'
     },
     {
-      key:'InvoiceNumber',
-      title:'Accounting',
-      style:{textAlign:'center'},
-      render:(value) => value || '0'
+      key: 'InvoiceNumber',
+      title: 'Accounting',
+      style: { textAlign: 'center' },
+      render: (value) => value || '0'
     },
     {
       key: 'Date',
@@ -488,7 +488,7 @@ const generatePDF = async (filteredData, type = 'month') => {
     }
   ];
 
-   // Define tabs with their corresponding routes
+  // Define tabs with their corresponding routes
   const tabs = [
     { name: 'Invoices', path: '/sales/invoices' },
     { name: 'Receipts', path: '/sales/receipts' },
@@ -564,102 +564,102 @@ const generatePDF = async (filteredData, type = 'month') => {
     }
   };
 
-const fetchReceipts = async () => {
-  try {
-    setIsLoading(true);
-    console.log("Fetching receipts from:", `${baseurl}/api/receipts`);
+  const fetchReceipts = async () => {
+    try {
+      setIsLoading(true);
+      console.log("Fetching receipts from:", `${baseurl}/api/receipts`);
 
-    const response = await fetch(`${baseurl}/api/receipts?data_type=Sales`);
+      const response = await fetch(`${baseurl}/api/receipts?data_type=Sales`);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Fetch error:", response.status, errorText);
-      alert("Failed to load receipts");
-      return;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Fetch error:", response.status, errorText);
+        alert("Failed to load receipts");
+        return;
+      }
+
+      const data = await response.json();
+      console.log("Raw API Data:", data);
+
+      const receiptsArray = Array.isArray(data)
+        ? data
+        : data.data || data.receipts || [];
+
+      /* ===============================
+         ✅ SORT DATA (NO EXTRA FILTER)
+      =============================== */
+      const sortedData = receiptsArray.sort((a, b) => {
+        const dateA = new Date(a.receipt_date || a.created_at || a.Date);
+        const dateB = new Date(b.receipt_date || b.created_at || b.Date);
+        return (
+          dateB - dateA ||
+          (b.VoucherID || 0) - (a.VoucherID || 0) ||
+          (b.id || 0) - (a.id || 0)
+        );
+      });
+
+      /* ===============================
+         ✅ TRANSFORM DATA
+      =============================== */
+      const transformedData = sortedData.map(receipt => {
+        const voucherId =
+          receipt.VoucherID ||
+          receipt.receipt_id ||
+          "";
+
+        const retailerName =
+          receipt.PartyName ||
+          "N/A";
+
+        const amount = parseFloat(receipt.paid_amount || 0);
+
+        return {
+          ...receipt,
+          id: voucherId,
+          VoucherID: voucherId,
+          retailerId: receipt.PartyID || receipt.retailer_id || "",
+          payee: retailerName,
+          VchNo: receipt.VchNo || "",
+          amount: `₹ ${amount.toLocaleString("en-IN")}`,
+          paid_amount: amount,
+          Date: receipt.receipt_date || receipt.Date || receipt.created_at,
+          receipt_date: receipt.receipt_date
+            ? new Date(receipt.receipt_date).toLocaleDateString("en-IN")
+            : "N/A",
+          payment_method:
+            receipt.payment_method ||
+            receipt.PaymentMethod ||
+            "N/A",
+          InvoiceNumber:
+            receipt.invoice_number ||
+            receipt.InvoiceNumber ||
+            receipt.invoice_no ||
+            "",
+          data_type: receipt.data_type || "Sales",
+          total_balance_amount: parseFloat(
+            receipt.total_balance_amount || receipt.balance_amount || 0
+          ),
+          balance_amount: parseFloat(
+            receipt.balance_amount || receipt.total_balance_amount || 0
+          ),
+          invoice_numbers: Array.isArray(receipt.invoice_numbers)
+            ? receipt.invoice_numbers
+            : receipt.invoice_number
+              ? [receipt.invoice_number]
+              : []
+        };
+      });
+
+      console.log("Final Sales Receipt Data:", transformedData);
+      setReceiptData(transformedData);
+
+    } catch (err) {
+      console.error("Error fetching receipts:", err);
+      alert("Server connection error");
+    } finally {
+      setIsLoading(false);
     }
-
-    const data = await response.json();
-    console.log("Raw API Data:", data);
-
-    const receiptsArray = Array.isArray(data)
-      ? data
-      : data.data || data.receipts || [];
-
-    /* ===============================
-       ✅ SORT DATA (NO EXTRA FILTER)
-    =============================== */
-    const sortedData = receiptsArray.sort((a, b) => {
-      const dateA = new Date(a.receipt_date || a.created_at || a.Date);
-      const dateB = new Date(b.receipt_date || b.created_at || b.Date);
-      return (
-        dateB - dateA ||
-        (b.VoucherID || 0) - (a.VoucherID || 0) ||
-        (b.id || 0) - (a.id || 0)
-      );
-    });
-
-    /* ===============================
-       ✅ TRANSFORM DATA
-    =============================== */
-    const transformedData = sortedData.map(receipt => {
-      const voucherId =
-        receipt.VoucherID ||
-        receipt.receipt_id ||
-        "";
-
-      const retailerName =
-        receipt.PartyName ||
-        "N/A";
-
-      const amount = parseFloat(receipt.paid_amount || 0);
-
-      return {
-        ...receipt,
-        id: voucherId,
-        VoucherID: voucherId,
-        retailerId: receipt.PartyID || receipt.retailer_id || "",
-        payee: retailerName,
-        VchNo: receipt.VchNo || "",
-        amount: `₹ ${amount.toLocaleString("en-IN")}`,
-        paid_amount: amount,
-        Date: receipt.receipt_date || receipt.Date || receipt.created_at,
-        receipt_date: receipt.receipt_date
-          ? new Date(receipt.receipt_date).toLocaleDateString("en-IN")
-          : "N/A",
-        payment_method:
-          receipt.payment_method ||
-          receipt.PaymentMethod ||
-          "N/A",
-        InvoiceNumber:
-          receipt.invoice_number ||
-          receipt.InvoiceNumber ||
-          receipt.invoice_no ||
-          "",
-        data_type: receipt.data_type || "Sales",
-        total_balance_amount: parseFloat(
-          receipt.total_balance_amount || receipt.balance_amount || 0
-        ),
-        balance_amount: parseFloat(
-          receipt.balance_amount || receipt.total_balance_amount || 0
-        ),
-        invoice_numbers: Array.isArray(receipt.invoice_numbers)
-          ? receipt.invoice_numbers
-          : receipt.invoice_number
-          ? [receipt.invoice_number]
-          : []
-      };
-    });
-
-    console.log("Final Sales Receipt Data:", transformedData);
-    setReceiptData(transformedData);
-
-  } catch (err) {
-    console.error("Error fetching receipts:", err);
-    alert("Server connection error");
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
 
 
@@ -701,7 +701,7 @@ const fetchReceipts = async () => {
       console.log('Receipt number not fetched yet, fetching now...');
       await fetchNextReceiptNumber();
     }
-    
+
     // Reset form data for new receipt
     setFormData(prev => ({
       ...prev,
@@ -715,7 +715,7 @@ const fetchReceipts = async () => {
     }));
     setSelectedInvoice('');
     setInvoiceBalance(0);
-    
+
     setIsModalOpen(true);
   };
 
@@ -727,7 +727,7 @@ const fetchReceipts = async () => {
       ...prev,
       retailerId: '',
       amount: '',
-        retailerName: '',
+      retailerName: '',
       account_name: '', // Add this
       business_name: '', // Add this
       currency: 'INR',
@@ -753,7 +753,7 @@ const fetchReceipts = async () => {
       ...prev,
       [name]: value
     }));
-    
+
     if (name === 'amount') {
     }
   };
@@ -762,21 +762,21 @@ const fetchReceipts = async () => {
   const handleRetailerChange = (e) => {
     const selectedRetailerId = e.target.value;
     const selectedRetailer = accounts.find(acc => acc.id == selectedRetailerId);
-    
+
     setFormData(prev => ({
       ...prev,
       retailerId: selectedRetailerId,
       retailerMobile: selectedRetailer?.mobile_number || '',
       retailerEmail: selectedRetailer?.email || '',
       retailerGstin: selectedRetailer?.gstin || '',
-   retailerName: selectedRetailer?.name || '',
-      account_name: selectedRetailer?.account_name || '', 
-    business_name: selectedRetailer?.businessname_name || selectedRetailer?.business_name ,
-         amount: '',
+      retailerName: selectedRetailer?.name || '',
+      account_name: selectedRetailer?.account_name || '',
+      business_name: selectedRetailer?.businessname_name || selectedRetailer?.business_name,
+      amount: '',
     }));
-    
+
     setInvoiceBalance(0);
-    
+
     // If invoice is already selected, fetch balance
     if (formData.invoiceNumber) {
       fetchInvoiceBalance(selectedRetailerId, formData.invoiceNumber);
@@ -784,23 +784,23 @@ const fetchReceipts = async () => {
   };
 
   // Handle invoice selection change
-const handleInvoiceChange = (e) => {
-  const selectedInvoiceNumber = e.target.value;
+  const handleInvoiceChange = (e) => {
+    const selectedInvoiceNumber = e.target.value;
 
-  const selectedInvoice = invoices.find(
-    inv => inv.InvoiceNumber === selectedInvoiceNumber
-  );
+    const selectedInvoice = invoices.find(
+      inv => inv.InvoiceNumber === selectedInvoiceNumber
+    );
 
-  setFormData(prev => ({
-    ...prev,
-    invoiceNumber: selectedInvoiceNumber,
-    amount: selectedInvoice?.TotalAmount || ''
-  }));
+    setFormData(prev => ({
+      ...prev,
+      invoiceNumber: selectedInvoiceNumber,
+      amount: selectedInvoice?.TotalAmount || ''
+    }));
 
-  setInvoiceBalance(
-    selectedInvoice ? parseFloat(selectedInvoice.TotalAmount) : 0
-  );
-};
+    setInvoiceBalance(
+      selectedInvoice ? parseFloat(selectedInvoice.TotalAmount) : 0
+    );
+  };
 
   // Create receipt - Fixed with 2 second delay
   const handleCreateReceipt = async () => {
@@ -814,10 +814,10 @@ const handleInvoiceChange = (e) => {
       alert('Please enter a valid amount');
       return;
     }
-   if (!formData.invoiceNumber) {
-  alert('Please select an invoice number');
-  return;
-}
+    // if (!formData.invoiceNumber) {
+    //   alert('Please select an invoice number');
+    //   return;
+    // }
 
     if (!formData.receiptDate) {
       alert('Please select a receipt date');
@@ -826,16 +826,16 @@ const handleInvoiceChange = (e) => {
 
     try {
       setIsLoading(true);
-      
+
       // Create FormData instead of JSON
       const formDataToSend = new FormData();
-      
+
       // Append all form fields
       formDataToSend.append('receipt_number', formData.receiptNumber);
       formDataToSend.append('retailer_id', formData.retailerId);
       formDataToSend.append('amount', formData.amount);
-    formDataToSend.append('account_name', formData.account_name || ''); // Add this
-    formDataToSend.append('business_name', formData.business_name || ''); // Add this
+      formDataToSend.append('account_name', formData.account_name || ''); // Add this
+      formDataToSend.append('business_name', formData.business_name || ''); // Add this
 
       formDataToSend.append('currency', formData.currency);
       formDataToSend.append('payment_method', formData.paymentMethod);
@@ -844,9 +844,9 @@ const handleInvoiceChange = (e) => {
       formDataToSend.append('bank_name', formData.bankName);
       formDataToSend.append('transaction_date', formData.transactionDate || '');
       formDataToSend.append('reconciliation_option', formData.reconciliationOption);
-      formDataToSend.append('retailer_name', formData.retailerName); 
+      formDataToSend.append('retailer_name', formData.retailerName);
       formDataToSend.append('invoice_number', formData.invoiceNumber);
-          formDataToSend.append('data_type', 'Sales');
+      formDataToSend.append('data_type', 'Sales');
 
       // Append file if exists
       if (formData.transactionProofFile) {
@@ -864,10 +864,10 @@ const handleInvoiceChange = (e) => {
 
       console.log('Response status:', response.status);
       console.log('Response headers:', response.headers);
-      
+
       const responseText = await response.text();
       console.log('Raw response text:', responseText);
-      
+
       if (response.ok) {
         let result;
         try {
@@ -876,45 +876,45 @@ const handleInvoiceChange = (e) => {
           console.error('Failed to parse response as JSON:', parseError);
           throw new Error('Invalid response from server');
         }
-        
+
         console.log('Receipt created successfully:', result);
         console.log('Full response structure:', JSON.stringify(result, null, 2));
-        
+
         // Extract receipt ID
         let receiptId = null;
-        
+
         // Try to find VoucherID or similar ID in the response
         if (result.VoucherID) {
           receiptId = result.VoucherID;
         } else if (result.id) {
-         
+
         }
-        
+
         console.log('Extracted receipt ID:', receiptId);
-        
+
         if (receiptId) {
           // Show success message
           alert('Receipt created successfully! Redirecting to view page in 2 seconds...');
-          
+
           // Close modal
           handleCloseModal();
-          
+
           // Refresh the receipts list
           await fetchReceipts();
-          
+
           // Generate next receipt number
           await fetchNextReceiptNumber();
-          
+
           // Navigate to the receipt view after 2 seconds
           setTimeout(() => {
             navigate(`/receipts_view/${receiptId}`);
           }, 2000); // 2 seconds delay
         } else {
           console.error('No receipt ID found in response:', result);
-          
+
           // Still show success but don't redirect
           alert('Receipt created successfully! Please check the receipts list.');
-          
+
           // Close modal and refresh
           handleCloseModal();
           await fetchReceipts();
@@ -924,12 +924,12 @@ const handleInvoiceChange = (e) => {
         const errorText = await response.text();
         console.error('Failed to create receipt. Status:', response.status);
         console.error('Error response:', errorText);
-        
+
         let errorMessage = 'Failed to create receipt. ';
         try {
           const errorData = JSON.parse(errorText);
           errorMessage += errorData.error || errorData.message || 'Please try again.';
-          
+
           if (errorData.error?.includes('already exists') || errorData.message?.includes('already exists')) {
             console.log('Duplicate receipt number detected, fetching new number...');
             await fetchNextReceiptNumber();
@@ -954,73 +954,73 @@ const handleInvoiceChange = (e) => {
     navigate(`/receipts_view/${receiptId}`);
   };
 
-const handleDownload = async () => {
-  try {
-    setIsDownloading(true);
-    
-    // Filter receipts by selected month and year
-    const filteredReceipts = filterReceiptsByMonthYear(receiptData, month, year);
-    
-    if (filteredReceipts.length === 0) {
-      alert(`No receipts found for ${month} ${year}`);
+  const handleDownload = async () => {
+    try {
+      setIsDownloading(true);
+
+      // Filter receipts by selected month and year
+      const filteredReceipts = filterReceiptsByMonthYear(receiptData, month, year);
+
+      if (filteredReceipts.length === 0) {
+        alert(`No receipts found for ${month} ${year}`);
+        setIsDownloading(false);
+        return;
+      }
+
+      console.log(`Downloading ${filteredReceipts.length} receipts for:`, month, year);
+
+      // Generate PDF
+      await generatePDF(filteredReceipts, 'month');
+
+    } catch (err) {
+      console.error('Download error:', err);
+      alert('Error downloading receipts: ' + err.message);
+    } finally {
       setIsDownloading(false);
-      return;
     }
-    
-    console.log(`Downloading ${filteredReceipts.length} receipts for:`, month, year);
-    
-    // Generate PDF
-    await generatePDF(filteredReceipts, 'month');
-    
-  } catch (err) {
-    console.error('Download error:', err);
-    alert('Error downloading receipts: ' + err.message);
-  } finally {
-    setIsDownloading(false);
-  }
-};
+  };
 
-const handleDownloadRange = async () => {
-  try {
-    if (!startDate || !endDate) {
-      alert('Please select both start and end dates');
-      return;
-    }
+  const handleDownloadRange = async () => {
+    try {
+      if (!startDate || !endDate) {
+        alert('Please select both start and end dates');
+        return;
+      }
 
-    if (new Date(startDate) > new Date(endDate)) {
-      alert('Start date cannot be after end date');
-      return;
-    }
+      if (new Date(startDate) > new Date(endDate)) {
+        alert('Start date cannot be after end date');
+        return;
+      }
 
-    setIsRangeDownloading(true);
-    
-    // Filter receipts by date range
-    const filteredReceipts = filterReceiptsByDateRange(receiptData, startDate, endDate);
-    
-    if (filteredReceipts.length === 0) {
-      alert(`No receipts found from ${startDate} to ${endDate}`);
+      setIsRangeDownloading(true);
+
+      // Filter receipts by date range
+      const filteredReceipts = filterReceiptsByDateRange(receiptData, startDate, endDate);
+
+      if (filteredReceipts.length === 0) {
+        alert(`No receipts found from ${startDate} to ${endDate}`);
+        setIsRangeDownloading(false);
+        return;
+      }
+
+      console.log(`Downloading ${filteredReceipts.length} receipts for date range:`, startDate, 'to', endDate);
+
+      // Generate PDF
+      await generatePDF(filteredReceipts, 'range');
+
+    } catch (err) {
+      console.error('Download range error:', err);
+      alert('Error downloading receipts: ' + err.message);
+    } finally {
       setIsRangeDownloading(false);
-      return;
     }
-    
-    console.log(`Downloading ${filteredReceipts.length} receipts for date range:`, startDate, 'to', endDate);
-    
-    // Generate PDF
-    await generatePDF(filteredReceipts, 'range');
-    
-  } catch (err) {
-    console.error('Download range error:', err);
-    alert('Error downloading receipts: ' + err.message);
-  } finally {
-    setIsRangeDownloading(false);
-  }
-};
+  };
 
   const filteredInvoices = formData.retailerId
-  ? invoices.filter(
+    ? invoices.filter(
       (inv) => String(inv.PartyID) === String(formData.retailerId)
     )
-  : [];
+    : [];
 
   return (
     <div className="receipts-wrapper">
@@ -1093,44 +1093,44 @@ const handleDownloadRange = async () => {
                       <option>November</option>
                       <option>December</option>
                     </select>
-                    
-<Select
-  options={yearOptions}
-  value={{ value: year, label: year }}
-  onChange={(selected) => setYear(selected.value)}
-  maxMenuHeight={150}
-  styles={{
-    control: (provided) => ({
-      ...provided,
-      width: '100px',  // Adjust width as needed
-      minWidth: '100px',
-    }),
-    menu: (provided) => ({
-      ...provided,
-      width: '100px',  // Same width as control
-      minWidth: '100px',
-    }),
-    option: (provided) => ({
-      ...provided,
-      whiteSpace: 'nowrap',
-      padding: '8px 12px',
-    })
-  }}
-/>
+
+                    <Select
+                      options={yearOptions}
+                      value={{ value: year, label: year }}
+                      onChange={(selected) => setYear(selected.value)}
+                      maxMenuHeight={150}
+                      styles={{
+                        control: (provided) => ({
+                          ...provided,
+                          width: '100px',  // Adjust width as needed
+                          minWidth: '100px',
+                        }),
+                        menu: (provided) => ({
+                          ...provided,
+                          width: '100px',  // Same width as control
+                          minWidth: '100px',
+                        }),
+                        option: (provided) => ({
+                          ...provided,
+                          whiteSpace: 'nowrap',
+                          padding: '8px 12px',
+                        })
+                      }}
+                    />
                   </div>
                 </div>
                 <div className="col-md-auto">
-          <button
-  className="btn btn-success mt-4"
-  onClick={handleDownload}
-  disabled={isDownloading}
->
-  {isDownloading ? (
-    <div className="spinner-border spinner-border-sm" role="status"></div>
-  ) : (
-    <i className="bi bi-download me-1"></i>
-  )} Download
-</button>
+                  <button
+                    className="btn btn-success mt-4"
+                    onClick={handleDownload}
+                    disabled={isDownloading}
+                  >
+                    {isDownloading ? (
+                      <div className="spinner-border spinner-border-sm" role="status"></div>
+                    ) : (
+                      <i className="bi bi-download me-1"></i>
+                    )} Download
+                  </button>
                 </div>
                 <div className="col-md-auto">
                   <label className="form-label mb-1">Select Date Range:</label>
@@ -1150,17 +1150,17 @@ const handleDownloadRange = async () => {
                   </div>
                 </div>
                 <div className="col-md-auto">
-               <button
-  className="btn btn-success mt-4"
-  onClick={handleDownloadRange}
-  disabled={isRangeDownloading}
->
-  {isRangeDownloading ? (
-    <div className="spinner-border spinner-border-sm" role="status"></div>
-  ) : (
-    <i className="bi bi-download me-1"></i>
-  )} Download Range
-</button>
+                  <button
+                    className="btn btn-success mt-4"
+                    onClick={handleDownloadRange}
+                    disabled={isRangeDownloading}
+                  >
+                    {isRangeDownloading ? (
+                      <div className="spinner-border spinner-border-sm" role="status"></div>
+                    ) : (
+                      <i className="bi bi-download me-1"></i>
+                    )} Download Range
+                  </button>
                 </div>
                 <div className="col-md-auto">
                   <button
@@ -1176,12 +1176,12 @@ const handleDownloadRange = async () => {
               {/* Receipts Table */}
               <ReusableTable
                 title="Receipts"
-                data={receiptData} 
+                data={receiptData}
                 columns={columns}
                 searchPlaceholder="Search receipts..."
                 initialEntriesPerPage={5}
                 showSearch={true}
-                showEntriesSelector={false} 
+                showEntriesSelector={false}
                 showPagination={true}
                 isLoading={isLoading}
               />
@@ -1205,14 +1205,14 @@ const handleDownloadRange = async () => {
                   <div className="modal-body">
                     <div className="row mb-4">
                       <div className="col-md-6">
-                          <div className="company-info-recepits-table text-center">
-  <label className="form-label-recepits-table">SHREE SHASHWATRAJ AGRO PVT LTD</label>
-  <p>Growth Center, Jasoiya, Aurangabad</p>
-  <p>Bihar, 824101</p>
-  <p>GST : 10AAOCS1541B1ZZ</p>
-  <p>Email: spmathur56@gmail.com</p>
-  <p>Phone: 9801049700</p>
-</div>
+                        <div className="company-info-recepits-table text-center">
+                          <label className="form-label-recepits-table">SHREE SHASHWATRAJ AGRO PVT LTD</label>
+                          <p>Growth Center, Jasoiya, Aurangabad</p>
+                          <p>Bihar, 824101</p>
+                          <p>GST : 10AAOCS1541B1ZZ</p>
+                          <p>Email: spmathur56@gmail.com</p>
+                          <p>Phone: 9801049700</p>
+                        </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
@@ -1269,128 +1269,128 @@ const handleDownloadRange = async () => {
                             required
                           >
                             <option value="">Select Retailer</option>
-           {accounts
-  .filter(acc => {
-    const searchLower = searchTerm.toLowerCase();
+                            {accounts
+                              .filter(acc => {
+                                const searchLower = searchTerm.toLowerCase();
 
-    const primaryName = acc.gstin?.trim()
-      ? (acc.display_name || acc.name)
-      : (acc.name || acc.display_name);
+                                const primaryName = acc.gstin?.trim()
+                                  ? (acc.display_name || acc.name)
+                                  : (acc.name || acc.display_name);
 
-    const name = primaryName?.toLowerCase() || "";
-    const businessName = acc.business_name?.toLowerCase() || "";
-    const displayName = acc.display_name?.toLowerCase() || "";
+                                const name = primaryName?.toLowerCase() || "";
+                                const businessName = acc.business_name?.toLowerCase() || "";
+                                const displayName = acc.display_name?.toLowerCase() || "";
 
-    return (
-      (
-        acc.role === "retailer" ||
-        (acc.role === "supplier" && acc.is_dual_account == 1) ||
-        (acc.role === "staff" && acc.is_dual_account == 1) ||
-        acc.group?.trim().toLowerCase() === "sundry debtors"
-      ) &&
-      (
-        name.includes(searchLower) ||
-        businessName.includes(searchLower) ||
-        displayName.includes(searchLower)
-      )
-    );
-  })
-  .map((acc) => {
-    const displayText = acc.gstin?.trim()
-      ? (acc.display_name || acc.name)
-      : (acc.name || acc.display_name);
+                                return (
+                                  (
+                                    acc.role === "retailer" ||
+                                    (acc.role === "supplier" && acc.is_dual_account == 1) ||
+                                    (acc.role === "staff" && acc.is_dual_account == 1) ||
+                                    acc.group?.trim().toLowerCase() === "sundry debtors"
+                                  ) &&
+                                  (
+                                    name.includes(searchLower) ||
+                                    businessName.includes(searchLower) ||
+                                    displayName.includes(searchLower)
+                                  )
+                                );
+                              })
+                              .map((acc) => {
+                                const displayText = acc.gstin?.trim()
+                                  ? (acc.display_name || acc.name)
+                                  : (acc.name || acc.display_name);
 
-    return (
-      <option key={acc.id} value={acc.id}>
-        {displayText}
-      </option>
-    );
-  })
-}
+                                return (
+                                  <option key={acc.id} value={acc.id}>
+                                    {displayText}
+                                  </option>
+                                );
+                              })
+                            }
                           </select>
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-1">
-                          <label className="form-label">Invoice Number *</label>
+                          <label className="form-label">Invoice Number</label>
                           <div className="input-group">
-<select
-  className="form-select"
-  name="invoiceNumber"
-  value={formData.invoiceNumber}
-  onChange={handleInvoiceChange}
-  disabled={!formData.retailerId}
->
-  <option value="">Select Invoice Number</option>
-  {filteredInvoices.map((invoice) => (
-    <option key={invoice.VoucherID} value={invoice.InvoiceNumber}>
-      {invoice.InvoiceNumber}
-    </option>
-  ))}
-</select>
+                            <select
+                              className="form-select"
+                              name="invoiceNumber"
+                              value={formData.invoiceNumber}
+                              onChange={handleInvoiceChange}
+                              disabled={!formData.retailerId}
+                            >
+                              <option value="">Select Invoice Number</option>
+                              {filteredInvoices.map((invoice) => (
+                                <option key={invoice.VoucherID} value={invoice.InvoiceNumber}>
+                                  {invoice.InvoiceNumber}
+                                </option>
+                              ))}
+                            </select>
 
 
-               
+
                           </div>
                         </div>
                       </div>
                     </div>
 
-<div className="row mb-4">
-  <div className="col-md-6">
-    <div className="mb-1">
-      <label className="form-label">Amount *</label>
-      <div className="input-group custom-amount-receipts-table">
-        <select
-          className="form-select currency-select-receipts-table"
-          name="currency"
-          value={formData.currency}
-          onChange={handleInputChange}
-        >
-          <option>INR</option>
-          <option>USD</option>
-          <option>EUR</option>
-          <option>GBP</option>
-        </select>
-        <input
-          type="number"
-          className="form-control amount-input-receipts-table"
-          name="amount"
-          value={formData.amount}
-          onChange={handleInputChange}
-          placeholder={isFetchingBalance ? "Fetching balance..." : (invoiceBalance > 0 ? "Auto-filled from balance" : "Enter amount")}
-          min="0"
-          step="1"
-          required
-          disabled={isFetchingBalance}
-        />
-        {isFetchingBalance && (
-          <div className="input-group-text">
-            <div className="spinner-border spinner-border-sm" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          </div>
-        )}
-      </div>
-      {isFetchingBalance ? (
-        <small className="text-info">
-          <i className="bi bi-arrow-clockwise me-1"></i>
-          Fetching invoice balance...
-        </small>
-      ) : invoiceBalance > 0 && formData.amount && formData.amount === invoiceBalance.toString() ? (
-        <small className="text-success">
-          <i className="bi bi-check-circle me-1"></i>
-          {/* Auto-filled from invoice balance (₹{invoiceBalance.toLocaleString('en-IN')}) */}
-        </small>
-      ) : null}
-    </div>
-  </div>
-</div>
+                    <div className="row mb-4">
+                      <div className="col-md-6">
+                        <div className="mb-1">
+                          <label className="form-label">Amount *</label>
+                          <div className="input-group custom-amount-receipts-table">
+                            <select
+                              className="form-select currency-select-receipts-table"
+                              name="currency"
+                              value={formData.currency}
+                              onChange={handleInputChange}
+                            >
+                              <option>INR</option>
+                              <option>USD</option>
+                              <option>EUR</option>
+                              <option>GBP</option>
+                            </select>
+                            <input
+                              type="number"
+                              className="form-control amount-input-receipts-table"
+                              name="amount"
+                              value={formData.amount}
+                              onChange={handleInputChange}
+                              placeholder={isFetchingBalance ? "Fetching balance..." : (invoiceBalance > 0 ? "Auto-filled from balance" : "Enter amount")}
+                              min="0"
+                              step="1"
+                              required
+                              disabled={isFetchingBalance}
+                            />
+                            {isFetchingBalance && (
+                              <div className="input-group-text">
+                                <div className="spinner-border spinner-border-sm" role="status">
+                                  <span className="visually-hidden">Loading...</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          {isFetchingBalance ? (
+                            <small className="text-info">
+                              <i className="bi bi-arrow-clockwise me-1"></i>
+                              Fetching invoice balance...
+                            </small>
+                          ) : invoiceBalance > 0 && formData.amount && formData.amount === invoiceBalance.toString() ? (
+                            <small className="text-success">
+                              <i className="bi bi-check-circle me-1"></i>
+                              {/* Auto-filled from invoice balance (₹{invoiceBalance.toLocaleString('en-IN')}) */}
+                            </small>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
 
                     <div className="row mb-4">
                       <div className="col-md-12">
                         <div className="mb-3">
-                          <label className="form-label">Note</label>
+                          <label className="form-label">Remark</label>
                           <textarea
                             className="form-control"
                             rows="3"
@@ -1401,9 +1401,9 @@ const handleDownloadRange = async () => {
                           ></textarea>
                         </div>
                       </div>
-                 
+
                     </div>
-                    
+
                     <div className="row">
                       <div className="col-md-6">
                         <div className="mb-3">
@@ -1431,10 +1431,10 @@ const handleDownloadRange = async () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="row">
                       <div className="col-md-6">
-                        
+
                         <div className="mb-3">
                           <label className="form-label">Reconciliation Option</label>
                           <select
@@ -1448,19 +1448,19 @@ const handleDownloadRange = async () => {
                           </select>
                         </div>
                       </div>
-                           <div className="col-md-6">
+                      <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Transaction Proof Document</label>
-                          <input 
-                            type="file" 
-                            className="form-control" 
+                          <input
+                            type="file"
+                            className="form-control"
                             onChange={(e) => handleFileChange(e)}
                             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                           />
                           <small className="text-muted">
                             {formData.transactionProofFile ? formData.transactionProofFile.name : 'No file chosen'}
                           </small>
-                          
+
                           {formData.transactionProofFile && (
                             <div className="mt-2">
                               <div className="d-flex align-items-center">
@@ -1468,11 +1468,11 @@ const handleDownloadRange = async () => {
                                   <i className="bi bi-file-earmark-check"></i>
                                 </span>
                                 <span className="small">
-                                  {formData.transactionProofFile.name} 
+                                  {formData.transactionProofFile.name}
                                   ({Math.round(formData.transactionProofFile.size / 1024)} KB)
                                 </span>
-                                <button 
-                                  type="button" 
+                                <button
+                                  type="button"
                                   className="btn btn-sm btn-outline-danger ms-2"
                                   onClick={() => handleRemoveFile()}
                                 >
@@ -1509,7 +1509,7 @@ const handleDownloadRange = async () => {
           )}
         </div>
 
-        
+
       </div>
     </div>
   );

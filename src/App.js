@@ -153,6 +153,7 @@ import Productioncreate from "./Component/Panels/Admin/Productionpage/Production
 import Productstable from "./Component/Panels/Admin/Productionpage/Productstable";
 import JrCreate from "./Component/Panels/Admin/Jr/JrCreate";
 import Jrtable from "./Component/Panels/Admin/Jr/Jrtable";
+import PaymentTable from "./Component/Panels/Admin/Payment/PaymentTable";
 
 
 
@@ -207,6 +208,7 @@ function App() {
           {/* <Route path="/purchase/invoice-preview" element={<PurchasePDFPreview />} /> */}
           <Route path="/Purchase/editinvoice/:id" element={<PrivateRoute allowedRoles={["admin"]}><PurchaseInvoiceEdit /></PrivateRoute>} />
           <Route path="/sales/receipts" element={<PrivateRoute allowedRoles={["admin"]}><AdminReceiptsTable /></PrivateRoute>} />
+          <Route path="/sales/payments" element={<PrivateRoute allowedRoles={["admin"]}><PaymentTable /></PrivateRoute>} />
           {/* <Route path="/createreceipt" element={<CreateReceiptForm />} /> */}
           <Route path="/sales/quotations" element={<PrivateRoute allowedRoles={["admin"]}><QuotationsTable /></PrivateRoute>} />
           <Route path="/sales/bill_of_supply" element={<PrivateRoute allowedRoles={["admin"]}><BillOfSupplyTable /></PrivateRoute>} />

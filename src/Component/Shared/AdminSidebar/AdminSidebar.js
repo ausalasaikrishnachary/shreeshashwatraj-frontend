@@ -164,6 +164,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
         { path: "/sales/invoices", name: "Invoices", icon: <FaFileInvoice /> },
         { path: "/sales/receipts", name: "Receipts", icon: <FaReceipt /> },
         { path: "/sales/credit_note", name: "Credit Note", icon: <FaCreditCard /> },
+        { path: "/sales/payments", name: "Payment", icon: <FaMoneyBillWave /> }
       ],
     },
     {
@@ -209,10 +210,10 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       ],
     },
       {
-      name: "JR",
+      name: "Journal",
       icon: <FaBox />,
       subMenu: [
-        { path: "/Jrtable", name: "Jr Table", icon: <FaPurchaseInvoice /> },
+        { path: "/Jrtable", name: "Journal Table", icon: <FaPurchaseInvoice /> },
       ],
     },
   ];
