@@ -121,61 +121,45 @@ const fetchAdvanceReceipts = async () => {
   }
 };
 
+// Handle advance receipt selection/deselection
 const handleAdvanceReceiptSelection = (receipt, isChecked) => {
   let updatedSelection = [...selectedAdvanceReceipts];
   
   if (isChecked) {
-    // Add receipt to selection
     updatedSelection.push(receipt);
   } else {
-    // Remove receipt from selection
     updatedSelection = updatedSelection.filter(r => r.id !== receipt.id);
   }
   
   setSelectedAdvanceReceipts(updatedSelection);
   
-  // Calculate total selected amount - use available_amount or total_amount
   const total = updatedSelection.reduce((sum, r) => {
-    // Use available_amount if exists, otherwise total_amount
     const amount = r.available_amount || r.total_amount || 0;
     return sum + parseFloat(amount);
   }, 0);
   
   setTotalAdvanceAmount(total);
   
-  // Get the original invoice balance
   const originalInvoiceBalance = paymentData?.summary?.balanceDue || 
                                  parseFloat(invoiceData?.grandTotal || 0);
   
-  // Calculate the remaining amount to be paid after adjusting advance receipts
-  // If advance receipts cover the full amount, remaining can be 0
   let remainingAmount = originalInvoiceBalance - total;
   
-  // Ensure remaining amount is not negative
   if (remainingAmount < 0) {
     remainingAmount = 0;
   }
   
-  // Update the receipt amount in the form
   setReceiptFormData(prev => ({
     ...prev,
     amount: remainingAmount.toFixed(2)
   }));
-  
-  // Show notification
-  if (remainingAmount === 0 && total > 0) {
-    setSuccessMessage(`Advance receipts (₹${total.toFixed(2)}) fully cover the invoice amount. No additional payment needed.`);
-    setTimeout(() => setSuccessMessage(null), 5000);
-  } else if (total > 0) {
-    console.log(`💰 Adjusted ${total.toFixed(2)} in advance receipts. Remaining to pay: ${remainingAmount.toFixed(2)}`);
-  }
 };
 
+// Clear all advance receipts
 const handleClearAllAdvanceReceipts = () => {
   setSelectedAdvanceReceipts([]);
   setTotalAdvanceAmount(0);
   
-  // Reset the receipt amount to original invoice balance
   const originalInvoiceBalance = paymentData?.summary?.balanceDue || 
                                  parseFloat(invoiceData?.grandTotal || 0);
   
@@ -183,9 +167,153 @@ const handleClearAllAdvanceReceipts = () => {
     ...prev,
     amount: originalInvoiceBalance.toFixed(2)
   }));
-  
-  setSuccessMessage(null);
 };
+
+const handleCreateReceiptFromInvoice = async () => {
+  let receiptAmount = parseFloat(receiptFormData.amount);
+  if (isNaN(receiptAmount)) receiptAmount = 0;
+  
+  if (receiptAmount <= 0 && selectedAdvanceReceipts.length === 0) {
+    alert('Please enter a valid amount or select advance receipts');
+    return;
+  }
+
+  try {
+    setIsCreatingReceipt(true);
+    let newReceiptId = null;
+
+    // =============================================
+    // PART 1: UPDATE EXISTING ADVANCE RECEIPTS (PUT)
+    // =============================================
+    if (selectedAdvanceReceipts.length > 0) {
+      console.log('🔄 Updating advance receipts via PUT API...');
+      
+      for (const advanceReceipt of selectedAdvanceReceipts) {
+        const availableAmount = parseFloat(advanceReceipt.available_amount || advanceReceipt.total_amount || 0);
+        
+        const formData = new FormData();
+        formData.append('invoice_number', receiptFormData.invoiceNumber);
+        formData.append('TransactionType', 'Receipt');
+        formData.append('paid_amount', availableAmount.toString());
+       formData.append('paid_date', receiptFormData.receiptDate);
+        formData.append('note', `Advance adjusted against invoice ${receiptFormData.invoiceNumber}`);
+        
+        // ✅ FIX: Use correct endpoint (without /api/)
+        const updateResponse = await fetch(`${baseurl}/api/voucher/${advanceReceipt.id}`, {
+          method: 'PUT',
+          body: formData
+        });
+        
+        if (!updateResponse.ok) {
+          const errorText = await updateResponse.text();
+          console.error('Update failed:', errorText);
+          throw new Error(`Failed to update advance receipt ${advanceReceipt.receipt_number}: ${updateResponse.status}`);
+        }
+        
+        const updateResult = await updateResponse.json();
+        console.log(`✅ Updated advance receipt: ${advanceReceipt.receipt_number}`, updateResult);
+      }
+    }
+
+    // =============================================
+    // PART 2: CREATE NEW RECEIPT FOR REMAINING AMOUNT (POST)
+    // =============================================
+    if (receiptAmount > 0) {
+      console.log('💰 Creating new receipt for remaining amount:', receiptAmount);
+      
+      const formDataToSend = new FormData();
+      
+      formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
+      formDataToSend.append('retailer_id', receiptFormData.retailerId);
+      formDataToSend.append('assigned_staff_name', receiptFormData.assignedStaffName);
+      formDataToSend.append('staff_id', receiptFormData.staff_id);
+      formDataToSend.append('TransactionType', 'Receipt');
+      formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
+      formDataToSend.append('account_name', receiptFormData.account_name || '');
+      formDataToSend.append('business_name', receiptFormData.business_name || '');
+      formDataToSend.append('amount', receiptAmount.toString());
+      formDataToSend.append('paid_amount', receiptAmount.toString());
+      formDataToSend.append('currency', receiptFormData.currency);
+      formDataToSend.append('payment_method', receiptFormData.paymentMethod);
+      formDataToSend.append('receipt_date', receiptFormData.receiptDate);
+      formDataToSend.append('note', receiptFormData.note || `Payment for invoice ${receiptFormData.invoiceNumber}`);
+      formDataToSend.append('bank_name', receiptFormData.bankName);
+      formDataToSend.append('transaction_date', receiptFormData.transactionDate || '');
+      formDataToSend.append('reconciliation_option', receiptFormData.reconciliationOption);
+      formDataToSend.append('invoice_number', receiptFormData.invoiceNumber);
+      formDataToSend.append('retailer_mobile', receiptFormData.retailerMobile);
+      formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
+      formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
+      formDataToSend.append('product_id', receiptFormData.product_id || '');
+      formDataToSend.append('batch_id', receiptFormData.batch_id || '');
+      formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
+      formDataToSend.append('invoice_staff_id', receiptFormData.retailer_staff_id || '');
+      formDataToSend.append('invoice_assigned_staff', receiptFormData.invoice_assigned_staff || '');
+      formDataToSend.append('from_invoice', 'true');
+      formDataToSend.append('data_type', 'Sales');
+      
+      if (invoiceData && invoiceData.voucherId) {
+        formDataToSend.append('voucher_id', invoiceData.voucherId);
+      }
+      
+      if (receiptFormData.transactionProofFile) {
+        formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
+      }
+      
+      const response = await fetch(`${baseurl}/api/receipts`, {
+        method: 'POST',
+        body: formDataToSend,
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to create receipt');
+      }
+      
+      const result = await response.json();
+      console.log('✅ New receipt created successfully:', result);
+      newReceiptId = result.voucherId;
+    }
+
+    // =============================================
+    // PART 3: SHOW SUCCESS MESSAGE
+    // =============================================
+    let successMsg = '';
+    if (selectedAdvanceReceipts.length > 0 && receiptAmount > 0) {
+      const advanceReceiptNumbers = selectedAdvanceReceipts.map(r => r.receipt_number).join(', ');
+      successMsg = `✅ Success!\n\n1️⃣ Advance receipt(s) [${advanceReceiptNumbers}] adjusted: ₹${totalAdvanceAmount.toFixed(2)}\n2️⃣ New receipt [${receiptFormData.receiptNumber}] created: ₹${receiptAmount.toFixed(2)}\n\nTotal: ₹${(totalAdvanceAmount + receiptAmount).toFixed(2)}`;
+    } else if (selectedAdvanceReceipts.length > 0) {
+      const advanceReceiptNumbers = selectedAdvanceReceipts.map(r => r.receipt_number).join(', ');
+      successMsg = `✅ Advance receipt(s) [${advanceReceiptNumbers}] adjusted: ₹${totalAdvanceAmount.toFixed(2)}`;
+    } else if (receiptAmount > 0) {
+      successMsg = `✅ Receipt [${receiptFormData.receiptNumber}] created: ₹${receiptAmount.toFixed(2)}`;
+    }
+    alert(successMsg);
+    
+    // Close modal and reset
+    handleCloseReceiptModal();
+    setSelectedAdvanceReceipts([]);
+    setTotalAdvanceAmount(0);
+    
+    // Refresh data
+    if (invoiceData && invoiceData.invoiceNumber) {
+      fetchPaymentData(invoiceData.invoiceNumber);
+    }
+    fetchAdvanceReceipts();
+    
+    // Navigate to the newly created receipt if exists
+    if (newReceiptId) {
+      navigate(`/receipts_view/${newReceiptId}`);
+    }
+    
+  } catch (err) {
+    console.error('❌ Error:', err);
+    alert('Error: ' + err.message);
+  } finally {
+    setIsCreatingReceipt(false);
+  }
+};
+
 
 const [showAdvanceReceiptsModal, setShowAdvanceReceiptsModal] = useState(false);
 
@@ -1391,156 +1519,8 @@ const handleOpenAdvanceReceiptsModal = () => {
     if (fileInput) fileInput.value = '';
   };
 
-const handleCreateReceiptFromInvoice = async () => {
-  // Validate amount
-  let receiptAmount = parseFloat(receiptFormData.amount);
-  if (isNaN(receiptAmount)) receiptAmount = 0;
-  
-  if (receiptAmount <= 0 && selectedAdvanceReceipts.length === 0) {
-    alert('Please enter a valid amount or select advance receipts');
-    return;
-  }
+// Modified create receipt function - UPDATES advance receipts instead of creating new ones
 
-  try {
-    setIsCreatingReceipt(true);
-
-    const formDataToSend = new FormData();
-
-    // Add all receipt data
-    formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
-    formDataToSend.append('retailer_id', receiptFormData.retailerId);
-    formDataToSend.append('assigned_staff_name', receiptFormData.assignedStaffName);
-    formDataToSend.append('staff_id', receiptFormData.staff_id);
-    formDataToSend.append('TransactionType', receiptFormData.TransactionType);
-    formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
-    formDataToSend.append('account_name', receiptFormData.account_name || '');
-    formDataToSend.append('business_name', receiptFormData.business_name || '');
-    formDataToSend.append('amount', receiptAmount.toString());
-    formDataToSend.append('currency', receiptFormData.currency);
-    formDataToSend.append('payment_method', receiptFormData.paymentMethod);
-    formDataToSend.append('receipt_date', receiptFormData.receiptDate);
-    formDataToSend.append('note', receiptFormData.note);
-    formDataToSend.append('bank_name', receiptFormData.bankName);
-    formDataToSend.append('transaction_date', receiptFormData.transactionDate || '');
-    formDataToSend.append('reconciliation_option', receiptFormData.reconciliationOption);
-    formDataToSend.append('invoice_number', receiptFormData.invoiceNumber);
-    formDataToSend.append('retailer_mobile', receiptFormData.retailerMobile);
-    formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
-    formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
-    formDataToSend.append('product_id', receiptFormData.product_id || '');
-    formDataToSend.append('batch_id', receiptFormData.batch_id || '');
-    formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
-    formDataToSend.append('invoice_staff_id', receiptFormData.retailer_staff_id || '');
-    formDataToSend.append('invoice_assigned_staff', receiptFormData.invoice_assigned_staff || '');
-    formDataToSend.append('from_invoice', 'true');
-    formDataToSend.append('data_type', 'Sales');
-
-    // Add advance receipt IDs if selected
-    const hasAdvanceReceipts = selectedAdvanceReceipts.length > 0;
-    if (hasAdvanceReceipts) {
-      const advanceReceiptIds = selectedAdvanceReceipts.map(r => r.id).join(',');
-      formDataToSend.append('advance_receipt_ids', advanceReceiptIds);
-      formDataToSend.append('total_advance_adjusted', totalAdvanceAmount.toString());
-      formDataToSend.append('has_advance_receipts', 'true');
-    }
-
-    if (invoiceData && invoiceData.voucherId) {
-      formDataToSend.append('voucher_id', invoiceData.voucherId);
-    }
-
-    if (receiptFormData.transactionProofFile) {
-      formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
-    }
-
-    // Debug log
-    console.log("📤 Sending to Receipt API:");
-    for (let [key, value] of formDataToSend.entries()) {
-      console.log(`${key}:`, value);
-    }
-
-    // First, create the receipt
-    const response = await fetch(`${baseurl}/api/receipts`, {
-      method: 'POST',
-      body: formDataToSend,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || 'Failed to create receipt');
-    }
-
-    const result = await response.json();
-    console.log('✅ Receipt created successfully:', result);
-    console.log('📌 Result voucherId:', result.voucherId);
-
-    // If advance receipts were selected, call the apply-advance API
-    if (hasAdvanceReceipts && result.voucherId) {
-      console.log('🔄 Applying advance receipts to invoice...');
-      console.log('📌 Selected advance receipts:', selectedAdvanceReceipts);
-      console.log('📌 Total advance amount:', totalAdvanceAmount);
-      
-      const applyAdvanceResponse = await fetch(`${baseurl}/api/receipts/apply-advance`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          receipt_id: result.voucherId,
-          advance_receipt_ids: selectedAdvanceReceipts.map(r => r.id),
-          invoice_number: receiptFormData.invoiceNumber,
-          customer_id: receiptFormData.retailerId,
-          total_advance_adjusted: totalAdvanceAmount,
-          receipt_amount: receiptAmount,
-          staff_id: receiptFormData.staff_id,
-          assigned_staff_name: receiptFormData.assignedStaffName
-        })
-      });
-
-      console.log("invoice number sent for advance application:", receiptFormData.invoiceNumber);
-
-      const advanceResult = await applyAdvanceResponse.json();
-      console.log('📌 Apply advance response:', advanceResult);
-
-      if (applyAdvanceResponse.ok && advanceResult.success) {
-        console.log('✅ Advance receipts applied:', advanceResult);
-        
-        // Show success message with advance adjustment details
-        alert(`Receipt created successfully!\n\nAdvance receipts adjusted: ₹${advanceResult.total_adjusted || 0}\nRemaining to pay: ₹${advanceResult.remaining_to_adjust || 0}`);
-      } else {
-        console.error('❌ Failed to apply advance receipts:', advanceResult);
-        alert('Receipt created but failed to apply advance receipts. Please check manually.\nError: ' + (advanceResult.error || 'Unknown error'));
-      }
-    } else {
-      if (hasAdvanceReceipts && !result.voucherId) {
-        console.error('❌ No voucherId in receipt creation response');
-        alert('Receipt created but voucherId not found. Advance receipts not adjusted.');
-      } else {
-        alert('Receipt created successfully!');
-      }
-    }
-
-    // Reset and close
-    handleCloseReceiptModal();
-    setSelectedAdvanceReceipts([]);
-    setTotalAdvanceAmount(0);
-
-    // Refresh payment data
-    if (invoiceData && invoiceData.invoiceNumber) {
-      fetchPaymentData(invoiceData.invoiceNumber);
-    }
-
-    // Navigate to receipt view
-    if (result.voucherId) {
-      navigate(`/receipts_view/${result.voucherId}`);
-    }
-
-  } catch (err) {
-    console.error('❌ Error creating receipt:', err);
-    alert('Error creating receipt: ' + err.message);
-  } finally {
-    setIsCreatingReceipt(false);
-  }
-};
 
   if (loading) {
     return (
