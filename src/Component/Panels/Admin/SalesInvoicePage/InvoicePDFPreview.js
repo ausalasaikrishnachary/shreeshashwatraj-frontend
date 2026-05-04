@@ -24,11 +24,18 @@ const InvoicePDFPreview = () => {
   const [deleting, setDeleting] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [success, setSuccess] = useState(false);
-const [unitData, setUnitData] = useState({}); // This is correct
-const [loadingUnits, setLoadingUnits] = useState(false);
+  const [unitData, setUnitData] = useState({}); // This is correct
+  const [loadingUnits, setLoadingUnits] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const [showAllReceipts, setShowAllReceipts] = useState(false);
-const [qrAmount, setQrAmount] = useState(null);
+  const [qrAmount, setQrAmount] = useState(null);
+  // Add these states near your other state declarations
+const [advanceReceipts, setAdvanceReceipts] = useState([]);
+const [loadingAdvanceReceipts, setLoadingAdvanceReceipts] = useState(false);
+const [selectedAdvanceReceipts, setSelectedAdvanceReceipts] = useState([]);
+const [totalAdvanceAmount, setTotalAdvanceAmount] = useState(0);
+const [successMessage, setSuccessMessage] = useState(null);
+
   const [receiptFormData, setReceiptFormData] = useState({
     receiptNumber: '',
     retailerId: '',
@@ -59,6 +66,133 @@ const [qrAmount, setQrAmount] = useState(null);
   });
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
+
+const fetchAdvanceReceipts = async () => {
+  try {
+    setLoadingAdvanceReceipts(true);
+    const customerId = invoiceData?.supplierInfo?.id;
+    
+    console.log('📌 Fetching advance receipts for customerId:', customerId);
+    
+    if (!customerId) {
+      console.log('No customer ID found');
+      setAdvanceReceipts([]);
+      return;
+    }
+    
+    const response = await fetch(`${baseurl}/api/receipts/advance/${customerId}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Advance receipts API response:', data);
+      
+      let receipts = [];
+      
+      if (data.success && Array.isArray(data.receipts)) {
+        receipts = data.receipts;
+      } else if (Array.isArray(data)) {
+        receipts = data;
+      } else if (data.receipts && Array.isArray(data.receipts)) {
+        receipts = data.receipts;
+      } else if (data.data && Array.isArray(data.data)) {
+        receipts = data.data;
+      } else {
+        console.warn('Unexpected API response format:', data);
+        receipts = [];
+      }
+      
+      // Log each receipt's amount
+      receipts.forEach(r => {
+        console.log(`📌 Receipt ${r.receipt_number}: total_amount=${r.total_amount}, available_amount=${r.available_amount}`);
+      });
+      
+      setAdvanceReceipts(receipts);
+      console.log('Set advance receipts count:', receipts.length);
+    } else {
+      const errorText = await response.text();
+      console.error('Failed to fetch advance receipts:', errorText);
+      setAdvanceReceipts([]);
+    }
+  } catch (error) {
+    console.error('Error fetching advance receipts:', error);
+    setAdvanceReceipts([]);
+  } finally {
+    setLoadingAdvanceReceipts(false);
+  }
+};
+
+const handleAdvanceReceiptSelection = (receipt, isChecked) => {
+  let updatedSelection = [...selectedAdvanceReceipts];
+  
+  if (isChecked) {
+    // Add receipt to selection
+    updatedSelection.push(receipt);
+  } else {
+    // Remove receipt from selection
+    updatedSelection = updatedSelection.filter(r => r.id !== receipt.id);
+  }
+  
+  setSelectedAdvanceReceipts(updatedSelection);
+  
+  // Calculate total selected amount - use available_amount or total_amount
+  const total = updatedSelection.reduce((sum, r) => {
+    // Use available_amount if exists, otherwise total_amount
+    const amount = r.available_amount || r.total_amount || 0;
+    return sum + parseFloat(amount);
+  }, 0);
+  
+  setTotalAdvanceAmount(total);
+  
+  // Get the original invoice balance
+  const originalInvoiceBalance = paymentData?.summary?.balanceDue || 
+                                 parseFloat(invoiceData?.grandTotal || 0);
+  
+  // Calculate the remaining amount to be paid after adjusting advance receipts
+  // If advance receipts cover the full amount, remaining can be 0
+  let remainingAmount = originalInvoiceBalance - total;
+  
+  // Ensure remaining amount is not negative
+  if (remainingAmount < 0) {
+    remainingAmount = 0;
+  }
+  
+  // Update the receipt amount in the form
+  setReceiptFormData(prev => ({
+    ...prev,
+    amount: remainingAmount.toFixed(2)
+  }));
+  
+  // Show notification
+  if (remainingAmount === 0 && total > 0) {
+    setSuccessMessage(`Advance receipts (₹${total.toFixed(2)}) fully cover the invoice amount. No additional payment needed.`);
+    setTimeout(() => setSuccessMessage(null), 5000);
+  } else if (total > 0) {
+    console.log(`💰 Adjusted ${total.toFixed(2)} in advance receipts. Remaining to pay: ${remainingAmount.toFixed(2)}`);
+  }
+};
+
+const handleClearAllAdvanceReceipts = () => {
+  setSelectedAdvanceReceipts([]);
+  setTotalAdvanceAmount(0);
+  
+  // Reset the receipt amount to original invoice balance
+  const originalInvoiceBalance = paymentData?.summary?.balanceDue || 
+                                 parseFloat(invoiceData?.grandTotal || 0);
+  
+  setReceiptFormData(prev => ({
+    ...prev,
+    amount: originalInvoiceBalance.toFixed(2)
+  }));
+  
+  setSuccessMessage(null);
+};
+
+const [showAdvanceReceiptsModal, setShowAdvanceReceiptsModal] = useState(false);
+
+const handleOpenAdvanceReceiptsModal = () => {
+  fetchAdvanceReceipts();
+  setShowAdvanceReceiptsModal(true);
+};
 
   const handleEditInvoice = () => {
     if (!isInvoiceEditable(paymentData)) {
@@ -104,67 +238,67 @@ const [qrAmount, setQrAmount] = useState(null);
     }
   }, [invoiceData]);
 
-const fetchPaymentData = async (invoiceNumber) => {
-  try {
-    setPaymentLoading(true);
-    setPaymentError(null);
+  const fetchPaymentData = async (invoiceNumber) => {
+    try {
+      setPaymentLoading(true);
+      setPaymentError(null);
 
-    console.log('Fetching payment data for invoice:', invoiceNumber);
-    
-    const encodedInvoiceNumber = encodeURIComponent(invoiceNumber);
-    const response = await fetch(`${baseurl}/invoices/${encodedInvoiceNumber}`);
+      console.log('Fetching payment data for invoice:', invoiceNumber);
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const encodedInvoiceNumber = encodeURIComponent(invoiceNumber);
+      const response = await fetch(`${baseurl}/invoices/${encodedInvoiceNumber}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Payment API result:", result);
+
+      if (result.success && result.data) {
+        const transformedData = transformPaymentData(result.data);
+        setPaymentData(transformedData);
+      } else {
+        throw new Error(result.message || 'No payment data received');
+      }
+    } catch (error) {
+      console.error('Error fetching payment data:', error);
+      setPaymentError(error.message);
+      if (invoiceData) {
+        const fallbackPaymentData = {
+          invoice: {
+            invoiceNumber: invoiceData.invoiceNumber,
+            invoiceDate: invoiceData.invoiceDate,
+            totalAmount: parseFloat(invoiceData.grandTotal) || 0,
+            overdueDays: 0
+          },
+          receipts: [],
+          summary: {
+            totalPaid: 0,
+            balanceDue: parseFloat(invoiceData.grandTotal) || 0,
+            status: 'Pending'
+          }
+        };
+        setPaymentData(fallbackPaymentData);
+      }
+    } finally {
+      setPaymentLoading(false);
     }
+  };
 
-    const result = await response.json();
-    console.log("Payment API result:", result);
+  const fetchUnitName = async (unitId) => {
+    if (!unitId || unitId === 'null' || unitId === null) return;
+    if (unitData[unitId]) return;
 
-    if (result.success && result.data) {
-      const transformedData = transformPaymentData(result.data);
-      setPaymentData(transformedData);
-    } else {
-      throw new Error(result.message || 'No payment data received');
+    try {
+      const res = await fetch(`${baseurl}/units/${unitId}`);
+      const data = await res.json();
+      // data.name = "Pieces" from your API
+      setUnitData(prev => ({ ...prev, [unitId]: data.name }));
+    } catch (err) {
+      console.error(err);
     }
-  } catch (error) {
-    console.error('Error fetching payment data:', error);
-    setPaymentError(error.message);
-    if (invoiceData) {
-      const fallbackPaymentData = {
-        invoice: {
-          invoiceNumber: invoiceData.invoiceNumber,
-          invoiceDate: invoiceData.invoiceDate,
-          totalAmount: parseFloat(invoiceData.grandTotal) || 0,
-          overdueDays: 0
-        },
-        receipts: [],
-        summary: {
-          totalPaid: 0,
-          balanceDue: parseFloat(invoiceData.grandTotal) || 0,
-          status: 'Pending'
-        }
-      };
-      setPaymentData(fallbackPaymentData);
-    }
-  } finally {
-    setPaymentLoading(false);
-  }
-};
-
-const fetchUnitName = async (unitId) => {
-  if (!unitId || unitId === 'null' || unitId === null) return;
-  if (unitData[unitId]) return;
-  
-  try {
-    const res = await fetch(`${baseurl}/units/${unitId}`);
-    const data = await res.json();
-    // data.name = "Pieces" from your API
-    setUnitData(prev => ({ ...prev, [unitId]: data.name }));
-  } catch (err) {
-    console.error(err);
-  }
-};
+  };
   const transformPaymentData = (apiData) => {
     const salesEntry = apiData.sales || apiData.stocktransfer || {};
     const receiptEntries = apiData.receipts || [];
@@ -367,16 +501,16 @@ const fetchUnitName = async (unitId) => {
     }
   };
 
-  
-useEffect(() => {
-  if (invoiceData?.items && invoiceData.items.length > 0) {
-    invoiceData.items.forEach(item => {
-      if (item.unit_id && item.unit_id !== 'null' && item.unit_id !== null) {
-        fetchUnitName(item.unit_id);
-      }
-    });
-  }
-}, [invoiceData]);
+
+  useEffect(() => {
+    if (invoiceData?.items && invoiceData.items.length > 0) {
+      invoiceData.items.forEach(item => {
+        if (item.unit_id && item.unit_id !== 'null' && item.unit_id !== null) {
+          fetchUnitName(item.unit_id);
+        }
+      });
+    }
+  }, [invoiceData]);
   const transformApiDataToInvoiceFormat = (apiData) => {
     console.log('Transforming API data:', apiData);
 
@@ -399,7 +533,7 @@ useEffect(() => {
       const discount = parseFloat(batch.discount) || 0;
       const gst = parseFloat(batch.gst) || 0;
       const cess = parseFloat(batch.cess) || 0;
-  const original_price = parseFloat(batch.original_price) || 0;
+      const original_price = parseFloat(batch.original_price) || 0;
       const subtotal = quantity * price;
       const discountAmount = subtotal * (discount / 100);
       const amountAfterDiscount = subtotal - discountAmount;
@@ -424,15 +558,15 @@ useEffect(() => {
         id: index + 1,
         product: batch.product || 'Product',
         description: batch.description || `Batch: ${batch.batch}`,
-         hsn_code: batch.hsn_code || '',
+        hsn_code: batch.hsn_code || '',
         quantity: quantity,
         price: price,
         discount: discount,
         gst: gst,
-          unit_id: batch.unit_id || null,
- original_price: original_price, 
-  unit_id: batch.unit_id || null, 
-    unit_name: batch.unit_name || '', 
+        unit_id: batch.unit_id || null,
+        original_price: original_price,
+        unit_id: batch.unit_id || null,
+        unit_name: batch.unit_name || '',
         cgst: cgst,
         sgst: sgst,
         igst: igst,
@@ -448,14 +582,14 @@ useEffect(() => {
     const taxableAmount = parseFloat(apiData.BasicAmount) || parseFloat(apiData.Subtotal) || 0;
     const totalGST = parseFloat(apiData.TaxAmount) || (parseFloat(apiData.IGSTAmount) + parseFloat(apiData.CGSTAmount) + parseFloat(apiData.SGSTAmount)) || 0;
     const grandTotal = parseFloat(apiData.TotalAmount) || 0;
-      const roundOff = parseFloat(apiData.round_off) || 0;
+    const roundOff = parseFloat(apiData.round_off) || 0;
 
- const transportDetails = {
-    transport: apiData.transport_name || apiData.transport || '',
-    grNumber: apiData.gr_rr_number || apiData.grNumber || '',
-    vehicleNo: apiData.vehicle_number || apiData.vehicleNo ||  '',
-    station: apiData.station_name || apiData.station || ''
-  };
+    const transportDetails = {
+      transport: apiData.transport_name || apiData.transport || '',
+      grNumber: apiData.gr_rr_number || apiData.grNumber || '',
+      vehicleNo: apiData.vehicle_number || apiData.vehicleNo || '',
+      station: apiData.station_name || apiData.station || ''
+    };
     const assignedStaff = apiData.assigned_staff || apiData.AssignedStaff || apiData.staff_name || 'N/A';
     const staffId = apiData.staffid || apiData.staff_id || null;
 
@@ -484,7 +618,7 @@ useEffect(() => {
         staffid: staffId,
         assigned_staff: assignedStaff,
         mobile_number: apiData.retailer_mobile || apiData.mobile_number || apiData.customer_mobile || '',
-  phone_number: apiData.phone_number || ''
+        phone_number: apiData.phone_number || ''
       },
 
       billingAddress: {
@@ -527,13 +661,13 @@ useEffect(() => {
       totalGST: totalGST.toFixed(2),
       grandTotal: grandTotal.toFixed(2),
       totalCess: "0.00",
-       document_type: apiData.document_type || "",
-        bb_bc: apiData.bb_bc || 'b2b', 
- roundOff: roundOff.toFixed(2),
+      document_type: apiData.document_type || "",
+      bb_bc: apiData.bb_bc || 'b2b',
+      roundOff: roundOff.toFixed(2),
       note: apiData.Notes || "Thank you for your business!",
       transportDetails: transportDetails,
       additionalCharge: apiData.additional_charges_type || "",
-    additionalChargeAmount: apiData.additional_charges_amount || "0.00",
+      additionalChargeAmount: apiData.additional_charges_amount || "0.00",
 
       totalCGST: parseFloat(apiData.CGSTAmount) || 0,
       totalSGST: parseFloat(apiData.SGSTAmount) || 0,
@@ -639,247 +773,247 @@ useEffect(() => {
     const progressPercentage = totalAmount > 0 ?
       ((totalPaid - totalCreditNotes) / totalAmount) * 100 : 0;
 
-   return (
-  <Card className="shadow-sm mb-3">
-    <Card.Header className="bg-primary text-white">
-      <h5 className="mb-0">
-        <FaReceipt className="me-2" />
-        Payment Status
-      </h5>
-    </Card.Header>
-    <Card.Body>
-      <div className="d-flex justify-content-between align-items-center mb-1 p-2 bg-light rounded">
-        <span className="fw-bold">Status:</span>
-        <Badge bg={
-          summary?.status === 'Paid' ? 'success' :
-            summary?.status === 'Partial' ? 'warning' : 'danger'
-        }>
-          {summary?.status || 'Pending'}
-        </Badge>
-      </div>
+    return (
+      <Card className="shadow-sm mb-3">
+        <Card.Header className="bg-primary text-white">
+          <h5 className="mb-0">
+            <FaReceipt className="me-2" />
+            Payment Status
+          </h5>
+        </Card.Header>
+        <Card.Body>
+          <div className="d-flex justify-content-between align-items-center mb-1 p-2 bg-light rounded">
+            <span className="fw-bold">Status:</span>
+            <Badge bg={
+              summary?.status === 'Paid' ? 'success' :
+                summary?.status === 'Partial' ? 'warning' : 'danger'
+            }>
+              {summary?.status || 'Pending'}
+            </Badge>
+          </div>
 
-      <div className="payment-amounts mb-3">
-        <div className="d-flex justify-content-between align-items-center mb-2">
-          <span className="text-muted">
-            <FaRupeeSign className="me-1" />
-             Invoice:
-          </span>
-          <small className="text-muted ms-1">
-            (On {formatIndianDate(invoice?.invoiceDate)})
-          </small>
-          <span className="fw-bold text-primary">
-            ₹{totalAmount.toFixed(2)}
-          </span>
-        </div>
-
-        {/* Header with counter */}
-        <div className="d-flex justify-content-between align-items-center mb-2">
-          <small className="text-muted">
-            <FaReceipt className="me-1" />
-            Recent (Last {Math.min(3, allTransactions.length)} of {allTransactions.length})
-          </small>
-          {allTransactions.length > 3 && (
-           <small 
-  className="text-primary fw-bold" 
-  style={{ cursor: 'pointer' }} 
-  onClick={() => setShowAllReceipts(!showAllReceipts)}
->
-  {showAllReceipts ? 'Show Less' : 'View All'}
-</small>
-          )}
-        </div>
-
-        {/* Scrollable Receipts Section */}
-        <div className="receipts-scrollable" style={{ 
-          maxHeight: '200px', 
-          overflowY: 'auto',
-          paddingRight: '5px'
-        }}>
-          {allTransactions.length > 0 ? (
-            (showAllReceipts ? allTransactions : [...allTransactions].slice(-3))
-              .reverse()
-              .map((transaction, index) => (
-                <div
-                  key={`${transaction.type}-${index}`}
-                  className={`d-flex justify-content-between align-items-center mb-2 ps-3 border-start ${transaction.type === 'receipt' ? 'border-success' : 'border-warning'
-                    }`}
-                >
-                  <span className={transaction.type === 'receipt' ? 'text-success' : 'text-warning'}>
-                    {transaction.type === 'receipt' ? (
-                      <FaCheckCircle className="me-1" />
-                    ) : (
-                      <FaTimes className="me-1" />
-                    )}
-                    {transaction.type === 'receipt' ? ' Receipt:' : 'Credit Note:'}
-                  </span>
-                  <small className="text-muted ms-1">
-                    (On {formatIndianDate(transaction.paidDate)}) – {transaction.receiptNumber}
-                  </small>
-                  <span className={`fw-bold ${transaction.type === 'receipt' ? 'text-success' : 'text-warning'
-                    }`}>
-                    ₹{(transaction.paidAmount || 0).toFixed(2)}
-                  </span>
-                </div>
-              ))
-          ) : (
-            <div className="text-center text-muted py-2">
-              <small>No receipts or credit notes recorded</small>
+          <div className="payment-amounts mb-3">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <span className="text-muted">
+                <FaRupeeSign className="me-1" />
+                Invoice:
+              </span>
+              <small className="text-muted ms-1">
+                (On {formatIndianDate(invoice?.invoiceDate)})
+              </small>
+              <span className="fw-bold text-primary">
+                ₹{totalAmount.toFixed(2)}
+              </span>
             </div>
-          )}
-        </div>
 
-        {/* Balance Due */}
-        <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top mt-2">
-          <span className="text-danger">
-            <FaExclamationTriangle className="me-1" />
-            Balance Due:
-          </span>
-          <span className="fw-bold text-danger">
-            ₹{balanceDue.toFixed(2)}
-          </span>
-        </div>
-      </div>
-    </Card.Body>
-  </Card>
-);
-  };
-const handlePrint = async () => {
-  try {
-    setDownloading(true);
-    setError(null);
+            {/* Header with counter */}
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <small className="text-muted">
+                <FaReceipt className="me-1" />
+                Recent (Last {Math.min(3, allTransactions.length)} of {allTransactions.length})
+              </small>
+              {allTransactions.length > 3 && (
+                <small
+                  className="text-primary fw-bold"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setShowAllReceipts(!showAllReceipts)}
+                >
+                  {showAllReceipts ? 'Show Less' : 'View All'}
+                </small>
+              )}
+            </div>
 
-    if (!currentData) {
-      throw new Error('No invoice data available');
-    }
+            {/* Scrollable Receipts Section */}
+            <div className="receipts-scrollable" style={{
+              maxHeight: '200px',
+              overflowY: 'auto',
+              paddingRight: '5px'
+            }}>
+              {allTransactions.length > 0 ? (
+                (showAllReceipts ? allTransactions : [...allTransactions].slice(-3))
+                  .reverse()
+                  .map((transaction, index) => (
+                    <div
+                      key={`${transaction.type}-${index}`}
+                      className={`d-flex justify-content-between align-items-center mb-2 ps-3 border-start ${transaction.type === 'receipt' ? 'border-success' : 'border-warning'
+                        }`}
+                    >
+                      <span className={transaction.type === 'receipt' ? 'text-success' : 'text-warning'}>
+                        {transaction.type === 'receipt' ? (
+                          <FaCheckCircle className="me-1" />
+                        ) : (
+                          <FaTimes className="me-1" />
+                        )}
+                        {transaction.type === 'receipt' ? ' Receipt:' : 'Credit Note:'}
+                      </span>
+                      <small className="text-muted ms-1">
+                        (On {formatIndianDate(transaction.paidDate)}) – {transaction.receiptNumber}
+                      </small>
+                      <span className={`fw-bold ${transaction.type === 'receipt' ? 'text-success' : 'text-warning'
+                        }`}>
+                        ₹{(transaction.paidAmount || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  ))
+              ) : (
+                <div className="text-center text-muted py-2">
+                  <small>No receipts or credit notes recorded</small>
+                </div>
+              )}
+            </div>
 
-    let pdf;
-    let SalesPdfDocument;
-
-    try {
-      const reactPdf = await import('@react-pdf/renderer');
-      pdf = reactPdf.pdf;
-
-      const pdfModule = await import('./SalesPdfDocument');
-      SalesPdfDocument = pdfModule.default;
-    } catch (importError) {
-      console.error('Error importing PDF modules:', importError);
-      throw new Error('Failed to load PDF generation libraries');
-    }
-
-    const gstBreakdown = calculateGSTBreakdown();
-    const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
-
-    // Create PDF document with QR data
-    const pdfDoc = (
-      <SalesPdfDocument
-        invoiceData={currentData}
-        invoiceNumber={currentData.invoiceNumber}
-        gstBreakdown={gstBreakdown}
-        isSameState={isSameState}
-        qrDataUrl={qrDataUrl}  // ← PASS QR DATA URL
-        qrAmount={qrAmount || parseFloat(currentData.grandTotal)}  // ← PASS QR AMOUNT
-          unitData={unitData} 
-      />
+            {/* Balance Due */}
+            <div className="d-flex justify-content-between align-items-center mb-2 pt-2 border-top mt-2">
+              <span className="text-danger">
+                <FaExclamationTriangle className="me-1" />
+                Balance Due:
+              </span>
+              <span className="fw-bold text-danger">
+                ₹{balanceDue.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </Card.Body>
+      </Card>
     );
+  };
+  const handlePrint = async () => {
+    try {
+      setDownloading(true);
+      setError(null);
 
-    const blob = await pdf(pdfDoc).toBlob();
-    const pdfUrl = URL.createObjectURL(blob);
-    const printWindow = window.open(pdfUrl, '_blank');
+      if (!currentData) {
+        throw new Error('No invoice data available');
+      }
 
-    if (printWindow) {
-     
-    } else {
-      alert('Popup blocked. Please allow popups or use download option.');
+      let pdf;
+      let SalesPdfDocument;
+
+      try {
+        const reactPdf = await import('@react-pdf/renderer');
+        pdf = reactPdf.pdf;
+
+        const pdfModule = await import('./SalesPdfDocument');
+        SalesPdfDocument = pdfModule.default;
+      } catch (importError) {
+        console.error('Error importing PDF modules:', importError);
+        throw new Error('Failed to load PDF generation libraries');
+      }
+
+      const gstBreakdown = calculateGSTBreakdown();
+      const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+
+      // Create PDF document with QR data
+      const pdfDoc = (
+        <SalesPdfDocument
+          invoiceData={currentData}
+          invoiceNumber={currentData.invoiceNumber}
+          gstBreakdown={gstBreakdown}
+          isSameState={isSameState}
+          qrDataUrl={qrDataUrl}  // ← PASS QR DATA URL
+          qrAmount={qrAmount || parseFloat(currentData.grandTotal)}  // ← PASS QR AMOUNT
+          unitData={unitData}
+        />
+      );
+
+      const blob = await pdf(pdfDoc).toBlob();
+      const pdfUrl = URL.createObjectURL(blob);
+      const printWindow = window.open(pdfUrl, '_blank');
+
+      if (printWindow) {
+
+      } else {
+        alert('Popup blocked. Please allow popups or use download option.');
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `Invoice_${currentData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+      }
+
+      setTimeout(() => {
+        URL.revokeObjectURL(pdfUrl);
+      }, 5000);
+
+    } catch (error) {
+      console.error('Error generating PDF for print:', error);
+      setError('Failed to generate PDF for printing: ' + error.message);
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setDownloading(false);
+    }
+  };
+  const handleDownloadPDF = async () => {
+    try {
+      setDownloading(true);
+      setError(null);
+
+      if (!currentData) {
+        throw new Error('No invoice data available');
+      }
+
+      let pdf;
+      let SalesPdfDocument;
+
+      try {
+        const reactPdf = await import('@react-pdf/renderer');
+        pdf = reactPdf.pdf;
+
+        const pdfModule = await import('./SalesPdfDocument');
+        SalesPdfDocument = pdfModule.default;
+      } catch (importError) {
+        console.error('Error importing PDF modules:', importError);
+        throw new Error('Failed to load PDF generation libraries');
+      }
+
+      const gstBreakdown = calculateGSTBreakdown();
+      const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+
+      const pdfDoc = (
+        <SalesPdfDocument
+          invoiceData={currentData}
+          invoiceNumber={currentData.invoiceNumber}
+          gstBreakdown={gstBreakdown}
+          isSameState={isSameState}
+          qrDataUrl={qrDataUrl}  // ← PASS QR DATA URL
+          qrAmount={qrAmount || parseFloat(currentData.grandTotal)}
+          unitData={unitData}
+        />
+      );
+
+      let blob;
+      try {
+        blob = await pdf(pdfDoc).toBlob();
+      } catch (pdfError) {
+        console.error('Error generating PDF blob:', pdfError);
+        throw new Error('Failed to generate PDF file');
+      }
+
+      const filename = `Invoice_${currentData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `Invoice_${currentData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(downloadUrl);
+
+      setSuccess('PDF downloaded successfully!');
+      setTimeout(() => setSuccess(false), 3000);
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setError('Failed to generate PDF: ' + error.message);
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setDownloading(false);
     }
-
-    setTimeout(() => {
-      URL.revokeObjectURL(pdfUrl);
-    }, 5000);
-
-  } catch (error) {
-    console.error('Error generating PDF for print:', error);
-    setError('Failed to generate PDF for printing: ' + error.message);
-    setTimeout(() => setError(null), 5000);
-  } finally {
-    setDownloading(false);
-  }
-};
-const handleDownloadPDF = async () => {
-  try {
-    setDownloading(true);
-    setError(null);
-
-    if (!currentData) {
-      throw new Error('No invoice data available');
-    }
-
-    let pdf;
-    let SalesPdfDocument;
-
-    try {
-      const reactPdf = await import('@react-pdf/renderer');
-      pdf = reactPdf.pdf;
-
-      const pdfModule = await import('./SalesPdfDocument');
-      SalesPdfDocument = pdfModule.default;
-    } catch (importError) {
-      console.error('Error importing PDF modules:', importError);
-      throw new Error('Failed to load PDF generation libraries');
-    }
-
-    const gstBreakdown = calculateGSTBreakdown();
-    const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
-
-    const pdfDoc = (
-      <SalesPdfDocument
-        invoiceData={currentData}
-        invoiceNumber={currentData.invoiceNumber}
-        gstBreakdown={gstBreakdown}
-        isSameState={isSameState}
-        qrDataUrl={qrDataUrl}  // ← PASS QR DATA URL
-        qrAmount={qrAmount || parseFloat(currentData.grandTotal)}  
-          unitData={unitData} 
-      />
-    );
-
-    let blob;
-    try {
-      blob = await pdf(pdfDoc).toBlob();
-    } catch (pdfError) {
-      console.error('Error generating PDF blob:', pdfError);
-      throw new Error('Failed to generate PDF file');
-    }
-
-    const filename = `Invoice_${currentData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
-
-    const downloadUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(downloadUrl);
-
-    setSuccess('PDF downloaded successfully!');
-    setTimeout(() => setSuccess(false), 3000);
-
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    setError('Failed to generate PDF: ' + error.message);
-    setTimeout(() => setError(null), 5000);
-  } finally {
-    setDownloading(false);
-  }
-};
+  };
 
   const handleEditToggle = () => {
     handleEditInvoice();
@@ -913,7 +1047,7 @@ const handleDownloadPDF = async () => {
           batch_id: item.batch_id,
           quantity: parseFloat(item.quantity) || 0,
           price: parseFloat(item.price) || 0,
-             original_price: parseFloat(item.original_price) || 0, // ← ADD THIS
+          original_price: parseFloat(item.original_price) || 0, // ← ADD THIS
           discount: parseFloat(item.discount) || 0,
           gst: parseFloat(item.gst) || 0,
           cgst: parseFloat(item.cgst) || 0,
@@ -960,24 +1094,24 @@ const handleDownloadPDF = async () => {
   };
 
 
-// Handler for QR code data generation
-const handleQrDataGenerated = (qrUrl) => {
-  console.log('QR Data generated:', qrUrl);
-  
-  if (qrUrl) {
-    const canvas = document.createElement('canvas');
-    const QRCode = require('qrcode');
-    QRCode.toDataURL(qrUrl, { errorCorrectionLevel: 'H', margin: 1, width: 150 }, (err, url) => {
-      if (!err) {
-        setQrDataUrl(url);
-        const amountMatch = qrUrl.match(/am=([^&]+)/);
-        if (amountMatch) {
-          setQrAmount(parseFloat(amountMatch[1]));
+  // Handler for QR code data generation
+  const handleQrDataGenerated = (qrUrl) => {
+    console.log('QR Data generated:', qrUrl);
+
+    if (qrUrl) {
+      const canvas = document.createElement('canvas');
+      const QRCode = require('qrcode');
+      QRCode.toDataURL(qrUrl, { errorCorrectionLevel: 'H', margin: 1, width: 150 }, (err, url) => {
+        if (!err) {
+          setQrDataUrl(url);
+          const amountMatch = qrUrl.match(/am=([^&]+)/);
+          if (amountMatch) {
+            setQrAmount(parseFloat(amountMatch[1]));
+          }
         }
-      }
-    });
-  }
-};
+      });
+    }
+  };
   const handleDeleteInvoice = async () => {
     if (!invoiceData || !invoiceData.voucherId) return;
 
@@ -1027,34 +1161,34 @@ const handleQrDataGenerated = (qrUrl) => {
     }));
   };
 
-const handleItemChange = (index, field, value) => {
-  const newItems = [...editedData.items];
-  newItems[index] = {
-    ...newItems[index],
-    [field]: value
+  const handleItemChange = (index, field, value) => {
+    const newItems = [...editedData.items];
+    newItems[index] = {
+      ...newItems[index],
+      [field]: value
+    };
+
+    const item = newItems[index];
+    const quantity = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.price) || 0;
+    const discount = parseFloat(item.discount) || 0;
+    const gst = parseFloat(item.gst) || 0;
+
+    const subtotal = quantity * price;
+    const discountAmount = subtotal * (discount / 100);
+    const amountAfterDiscount = subtotal - discountAmount;
+    const gstAmount = amountAfterDiscount * (gst / 100);
+    const total = amountAfterDiscount + gstAmount;
+
+    newItems[index].total = total.toFixed(2);
+
+    setEditedData(prev => ({
+      ...prev,
+      items: newItems
+    }));
+
+    recalculateTotals(newItems);
   };
-
-  const item = newItems[index];
-  const quantity = parseFloat(item.quantity) || 0;
-  const price = parseFloat(item.price) || 0;
-  const discount = parseFloat(item.discount) || 0;
-  const gst = parseFloat(item.gst) || 0;
-
-  const subtotal = quantity * price;
-  const discountAmount = subtotal * (discount / 100);
-  const amountAfterDiscount = subtotal - discountAmount;
-  const gstAmount = amountAfterDiscount * (gst / 100);
-  const total = amountAfterDiscount + gstAmount;
-
-  newItems[index].total = total.toFixed(2);
-
-  setEditedData(prev => ({
-    ...prev,
-    items: newItems
-  }));
-
-  recalculateTotals(newItems);
-};
 
   const addNewItem = () => {
     const newItem = {
@@ -1257,118 +1391,156 @@ const handleItemChange = (index, field, value) => {
     if (fileInput) fileInput.value = '';
   };
 
-  const handleCreateReceiptFromInvoice = async () => {
-    if (!receiptFormData.amount || parseFloat(receiptFormData.amount) <= 0) {
-      alert('Please enter a valid amount');
-      return;
+const handleCreateReceiptFromInvoice = async () => {
+  // Validate amount
+  let receiptAmount = parseFloat(receiptFormData.amount);
+  if (isNaN(receiptAmount)) receiptAmount = 0;
+  
+  if (receiptAmount <= 0 && selectedAdvanceReceipts.length === 0) {
+    alert('Please enter a valid amount or select advance receipts');
+    return;
+  }
+
+  try {
+    setIsCreatingReceipt(true);
+
+    const formDataToSend = new FormData();
+
+    // Add all receipt data
+    formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
+    formDataToSend.append('retailer_id', receiptFormData.retailerId);
+    formDataToSend.append('assigned_staff_name', receiptFormData.assignedStaffName);
+    formDataToSend.append('staff_id', receiptFormData.staff_id);
+    formDataToSend.append('TransactionType', receiptFormData.TransactionType);
+    formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
+    formDataToSend.append('account_name', receiptFormData.account_name || '');
+    formDataToSend.append('business_name', receiptFormData.business_name || '');
+    formDataToSend.append('amount', receiptAmount.toString());
+    formDataToSend.append('currency', receiptFormData.currency);
+    formDataToSend.append('payment_method', receiptFormData.paymentMethod);
+    formDataToSend.append('receipt_date', receiptFormData.receiptDate);
+    formDataToSend.append('note', receiptFormData.note);
+    formDataToSend.append('bank_name', receiptFormData.bankName);
+    formDataToSend.append('transaction_date', receiptFormData.transactionDate || '');
+    formDataToSend.append('reconciliation_option', receiptFormData.reconciliationOption);
+    formDataToSend.append('invoice_number', receiptFormData.invoiceNumber);
+    formDataToSend.append('retailer_mobile', receiptFormData.retailerMobile);
+    formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
+    formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
+    formDataToSend.append('product_id', receiptFormData.product_id || '');
+    formDataToSend.append('batch_id', receiptFormData.batch_id || '');
+    formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
+    formDataToSend.append('invoice_staff_id', receiptFormData.retailer_staff_id || '');
+    formDataToSend.append('invoice_assigned_staff', receiptFormData.invoice_assigned_staff || '');
+    formDataToSend.append('from_invoice', 'true');
+    formDataToSend.append('data_type', 'Sales');
+
+    // Add advance receipt IDs if selected
+    const hasAdvanceReceipts = selectedAdvanceReceipts.length > 0;
+    if (hasAdvanceReceipts) {
+      const advanceReceiptIds = selectedAdvanceReceipts.map(r => r.id).join(',');
+      formDataToSend.append('advance_receipt_ids', advanceReceiptIds);
+      formDataToSend.append('total_advance_adjusted', totalAdvanceAmount.toString());
+      formDataToSend.append('has_advance_receipts', 'true');
     }
 
-    try {
-      setIsCreatingReceipt(true);
+    if (invoiceData && invoiceData.voucherId) {
+      formDataToSend.append('voucher_id', invoiceData.voucherId);
+    }
 
-      const formDataToSend = new FormData();
+    if (receiptFormData.transactionProofFile) {
+      formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
+    }
 
-      // ✅ Add ALL receipt data including account_name and business_name
-      formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
-      formDataToSend.append('retailer_id', receiptFormData.retailerId);
-      formDataToSend.append('assigned_staff_name', receiptFormData.assignedStaffName);
-      formDataToSend.append('staff_id', receiptFormData.staff_id);
-      formDataToSend.append('TransactionType', receiptFormData.TransactionType);
-      formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
+    // Debug log
+    console.log("📤 Sending to Receipt API:");
+    for (let [key, value] of formDataToSend.entries()) {
+      console.log(`${key}:`, value);
+    }
 
-      // ✅ Add account_name and business_name
-      formDataToSend.append('account_name', receiptFormData.account_name || ''); // Add this
-      formDataToSend.append('business_name', receiptFormData.business_name || ''); // Add this
+    // First, create the receipt
+    const response = await fetch(`${baseurl}/api/receipts`, {
+      method: 'POST',
+      body: formDataToSend,
+    });
 
-      formDataToSend.append('amount', receiptFormData.amount);
-      formDataToSend.append('currency', receiptFormData.currency);
-      formDataToSend.append('payment_method', receiptFormData.paymentMethod);
-      formDataToSend.append('receipt_date', receiptFormData.receiptDate);
-      formDataToSend.append('note', receiptFormData.note);
-      formDataToSend.append('bank_name', receiptFormData.bankName);
-      formDataToSend.append('transaction_date', receiptFormData.transactionDate || '');
-      formDataToSend.append('reconciliation_option', receiptFormData.reconciliationOption);
-      formDataToSend.append('invoice_number', receiptFormData.invoiceNumber);
-      formDataToSend.append('retailer_mobile', receiptFormData.retailerMobile);
-      formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
-      formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to create receipt');
+    }
 
-      formDataToSend.append('product_id', receiptFormData.product_id || '');
-      formDataToSend.append('batch_id', receiptFormData.batch_id || '');
+    const result = await response.json();
+    console.log('✅ Receipt created successfully:', result);
+    console.log('📌 Result voucherId:', result.voucherId);
 
-      formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
-
-      formDataToSend.append('invoice_staff_id', receiptFormData.retailer_staff_id || '');
-      formDataToSend.append('invoice_assigned_staff', receiptFormData.invoice_assigned_staff || '');
-
-      formDataToSend.append('from_invoice', 'true');
-      formDataToSend.append('data_type', 'Sales');
-
-      if (invoiceData && invoiceData.voucherId) {
-        formDataToSend.append('voucher_id', invoiceData.voucherId);
-      }
-
-      if (receiptFormData.transactionProofFile) {
-        formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
-      }
-
-      // Debug: Log all FormData entries
-      console.log("📤 Sending to Receipt API:");
-      for (let [key, value] of formDataToSend.entries()) {
-        console.log(`${key}:`, value);
-      }
-
-      const response = await fetch(`${baseurl}/api/receipts`, {
+    // If advance receipts were selected, call the apply-advance API
+    if (hasAdvanceReceipts && result.voucherId) {
+      console.log('🔄 Applying advance receipts to invoice...');
+      console.log('📌 Selected advance receipts:', selectedAdvanceReceipts);
+      console.log('📌 Total advance amount:', totalAdvanceAmount);
+      
+      const applyAdvanceResponse = await fetch(`${baseurl}/api/receipts/apply-advance`, {
         method: 'POST',
-        body: formDataToSend,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          receipt_id: result.voucherId,
+          advance_receipt_ids: selectedAdvanceReceipts.map(r => r.id),
+          invoice_number: receiptFormData.invoiceNumber,
+          customer_id: receiptFormData.retailerId,
+          total_advance_adjusted: totalAdvanceAmount,
+          receipt_amount: receiptAmount,
+          staff_id: receiptFormData.staff_id,
+          assigned_staff_name: receiptFormData.assignedStaffName
+        })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Receipt created successfully:', result);
+      console.log("invoice number sent for advance application:", receiptFormData.invoiceNumber);
 
-        // Check if staff data was saved
-        if (result.data) {
-          console.log('Receipt saved with staff data:', {
-            staff_id: result.data.staff_id,
-            assigned_staff: result.data.assigned_staff,
-            account_name: result.data.account_name, // Check this
-            business_name: result.data.business_name, // Check this
-            data_type: result.data.data_type
-          });
-        }
+      const advanceResult = await applyAdvanceResponse.json();
+      console.log('📌 Apply advance response:', advanceResult);
 
-        handleCloseReceiptModal();
-        alert('Receipt created successfully!');
-
-        // Refresh payment data
-        if (invoiceData && invoiceData.invoiceNumber) {
-          fetchPaymentData(invoiceData.invoiceNumber);
-        }
-
-        // Navigate to receipt view
-        if (result.id || result.data?.id) {
-          navigate(`/receipts_view/${result.id || result.data.id}`);
-        }
+      if (applyAdvanceResponse.ok && advanceResult.success) {
+        console.log('✅ Advance receipts applied:', advanceResult);
+        
+        // Show success message with advance adjustment details
+        alert(`Receipt created successfully!\n\nAdvance receipts adjusted: ₹${advanceResult.total_adjusted || 0}\nRemaining to pay: ₹${advanceResult.remaining_to_adjust || 0}`);
       } else {
-        const errorText = await response.text();
-        console.error('❌ Failed to create receipt:', errorText);
-        let errorMessage = 'Failed to create receipt. ';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage += errorData.error || 'Please try again.';
-        } catch {
-          errorMessage += 'Please try again.';
-        }
-        alert(errorMessage);
+        console.error('❌ Failed to apply advance receipts:', advanceResult);
+        alert('Receipt created but failed to apply advance receipts. Please check manually.\nError: ' + (advanceResult.error || 'Unknown error'));
       }
-    } catch (err) {
-      console.error('❌ Error creating receipt:', err);
-      alert('Network error. Please check your connection and try again.');
-    } finally {
-      setIsCreatingReceipt(false);
+    } else {
+      if (hasAdvanceReceipts && !result.voucherId) {
+        console.error('❌ No voucherId in receipt creation response');
+        alert('Receipt created but voucherId not found. Advance receipts not adjusted.');
+      } else {
+        alert('Receipt created successfully!');
+      }
     }
-  };
+
+    // Reset and close
+    handleCloseReceiptModal();
+    setSelectedAdvanceReceipts([]);
+    setTotalAdvanceAmount(0);
+
+    // Refresh payment data
+    if (invoiceData && invoiceData.invoiceNumber) {
+      fetchPaymentData(invoiceData.invoiceNumber);
+    }
+
+    // Navigate to receipt view
+    if (result.voucherId) {
+      navigate(`/receipts_view/${result.voucherId}`);
+    }
+
+  } catch (err) {
+    console.error('❌ Error creating receipt:', err);
+    alert('Error creating receipt: ' + err.message);
+  } finally {
+    setIsCreatingReceipt(false);
+  }
+};
 
   if (loading) {
     return (
@@ -1564,215 +1736,332 @@ const handleItemChange = (index, field, value) => {
       </Modal>
 
       {/* Receipt Modal */}
-      <Modal show={showReceiptModal} onHide={handleCloseReceiptModal} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Create Receipt from Invoice</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="row mb-4">
-            <div className="col-md-6">
-           <div className="company-info-recepits-table text-center">
-  <label className="form-label-recepits-table">SHREE SHASHWATRAJ AGRO PVT LTD</label>
-  <p>Growth Center, Jasoiya, Aurangabad</p>
-  <p>Bihar, 824101</p>
-  <p>GST : 10AAOCS1541B1ZZ</p>
-  <p>Email: spmathur56@gmail.com</p>
-  <p>Phone: 9801049700</p>
-</div>
-            </div>
-            <div className="col-md-6">
-              <div className="mb-3">
-                <label className="form-label">Receipt Number</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="receiptNumber"
-                  value={receiptFormData.receiptNumber}
-                  onChange={handleReceiptInputChange}
-                  placeholder="REC0001"
-                  readOnly
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Receipt Date</label>
-                <input
-                  type="date"
-                  className="form-control"
-                  name="receiptDate"
-                  value={receiptFormData.receiptDate}
-                  onChange={handleReceiptInputChange}
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Payment Method</label>
-                <select
-                  className="form-select"
-                  name="paymentMethod"
-                  value={receiptFormData.paymentMethod}
-                  onChange={handleReceiptInputChange}
-                >
-                  <option>Direct Deposit</option>
-                  <option>Online Payment</option>
-                  <option>Credit/Debit Card</option>
-                  <option>Demand Draft</option>
-                  <option>Cheque</option>
-                  <option>Cash</option>
-                </select>
-              </div>
-            </div>
+     <Modal show={showReceiptModal} onHide={handleCloseReceiptModal} size="lg">
+  <Modal.Header closeButton>
+    <Modal.Title>Create Receipt from Invoice</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    {/* Existing receipt form fields */}
+    <div className="row mb-4">
+      <div className="col-md-6">
+        <div className="company-info-recepits-table text-center">
+          <label className="form-label-recepits-table">SHREE SHASHWATRAJ AGRO PVT LTD</label>
+          <p>Growth Center, Jasoiya, Aurangabad</p>
+          <p>Bihar, 824101</p>
+          <p>GST : 10AAOCS1541B1ZZ</p>
+          <p>Email: spmathur56@gmail.com</p>
+          <p>Phone: 9801049700</p>
+        </div>
+      </div>
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">Receipt Number</label>
+          <input
+            type="text"
+            className="form-control"
+            name="receiptNumber"
+            value={receiptFormData.receiptNumber}
+            onChange={handleReceiptInputChange}
+            placeholder="REC0001"
+            readOnly
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Receipt Date</label>
+          <input
+            type="date"
+            className="form-control"
+            name="receiptDate"
+            value={receiptFormData.receiptDate}
+            onChange={handleReceiptInputChange}
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Payment Method</label>
+          <select
+            className="form-select"
+            name="paymentMethod"
+            value={receiptFormData.paymentMethod}
+            onChange={handleReceiptInputChange}
+          >
+            <option>Direct Deposit</option>
+            <option>Online Payment</option>
+            <option>Credit/Debit Card</option>
+            <option>Demand Draft</option>
+            <option>Cheque</option>
+            <option>Cash</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    {/* Advance Receipts Section */}
+    <div className="row mb-4">
+      <div className="col-12">
+        <div className="border rounded p-3 bg-light">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h6 className="text-primary mb-0">
+              <FaReceipt className="me-2" />
+              Adjust Advance Receipts
+            </h6>
+            <Button 
+              variant="outline-primary" 
+              size="sm" 
+              onClick={handleOpenAdvanceReceiptsModal}
+              disabled={loadingAdvanceReceipts}
+            >
+              {loadingAdvanceReceipts ? 'Loading...' : 'Select Advance Receipts'}
+            </Button>
           </div>
-          <div className="row mb-4">
-            <div className="col-md-6">
-              <div className="mb-3">
-                <label className="form-label">Retailer *</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={receiptFormData.retailerBusinessName || 'Auto-filled from invoice'}
-                  readOnly
-                  disabled
-                />
-                <small className="text-muted">Auto-filled from invoice</small>
-              </div>
-            </div>
-            <div className="col-md-6">
-              <div className="mb-3">
-                <label className="form-label">Amount *</label>
-                <div className="input-group custom-amount-receipts-table">
-                  <select
-                    className="form-select currency-select-receipts-table"
-                    name="currency"
-                    value={receiptFormData.currency}
-                    onChange={handleReceiptInputChange}
-                  >
-                    <option>INR</option>
-                    <option>USD</option>
-                    <option>EUR</option>
-                    <option>GBP</option>
-                  </select>
-                  <input
-                    type="number"
-                    className="form-control amount-input-receipts-table"
-                    name="amount"
-                    value={receiptFormData.amount}
-                    onChange={handleReceiptInputChange}
-                    placeholder="Amount"
-                    min="0"
-                    step="1"
-                    required
-                  />
+          
+          {selectedAdvanceReceipts.length > 0 && (
+            <div className="mt-2">
+              <div className="alert alert-info p-2">
+                <strong>Selected Advance Receipts:</strong>
+                {selectedAdvanceReceipts.map(receipt => (
+                  <div key={receipt.id} className="d-flex justify-content-between align-items-center mt-1">
+                    <span>{receipt.receipt_number}</span>
+                    <span className="text-success">₹{parseFloat(receipt.total_amount).toFixed(2)}</span>
+                    <Button 
+                      variant="danger" 
+                      size="sm" 
+                      onClick={() => handleAdvanceReceiptSelection(receipt, false)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+                <div className="border-top mt-2 pt-2">
+                  <strong>Total Adjusted: </strong>
+                  <span className="text-success">₹{totalAdvanceAmount.toFixed(2)}</span>
                 </div>
               </div>
             </div>
-          </div>
-          <div className="row mb-4">
-            <div className="col-md-6">
-              <div className="mb-3">
-                <label className="form-label">Note</label>
-                <textarea
-                  className="form-control"
-                  rows="3"
-                  name="note"
-                  value={receiptFormData.note}
-                  onChange={handleReceiptInputChange}
-                  placeholder="Additional notes..."
-                ></textarea>
-              </div>
-            </div>
-            <div className="col-md-6">
-              <div className="mb-3">
-                <label className="form-label">For</label>
-                <p className="mt-2">Authorised Signatory</p>
-              </div>
-            </div>
-          </div>
-          <div className="row">
-            <div className="col-md-6">
-              <div className="mb-3">
-                <label className="form-label">Bank Name</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="bankName"
-                  value={receiptFormData.bankName}
-                  onChange={handleReceiptInputChange}
-                  placeholder="Bank Name"
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Transaction Proof</label>
-                <input
-                  type="file"
-                  className="form-control"
-                  onChange={(e) => handleFileChange(e)}
-                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                />
-                <small className="text-muted">
-                  {receiptFormData.transactionProofFile ? receiptFormData.transactionProofFile.name : 'No file chosen'}
-                </small>
+          )}
+        </div>
+      </div>
+    </div>
 
-                {receiptFormData.transactionProofFile && (
-                  <div className="mt-2">
-                    <div className="d-flex align-items-center">
-                      <span className="badge bg-success me-2">
-                        <i className="bi bi-file-earmark-check"></i>
-                      </span>
-                      <span className="small">
-                        {receiptFormData.transactionProofFile.name}
-                        ({Math.round(receiptFormData.transactionProofFile.size / 1024)} KB)
-                      </span>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-danger ms-2"
-                        onClick={() => handleRemoveFile()}
-                      >
-                        <i className="bi bi-x"></i>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="col-md-6">
-              <div className="mb-3">
-                <label className="form-label">Transaction Date</label>
-                <input
-                  type="date"
-                  className="form-control"
-                  name="transactionDate"
-                  value={receiptFormData.transactionDate}
-                  onChange={handleReceiptInputChange}
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Reconciliation Option</label>
-                <select
-                  className="form-select"
-                  name="reconciliationOption"
-                  value={receiptFormData.reconciliationOption}
-                  onChange={handleReceiptInputChange}
+    <div className="row mb-4">
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">Retailer *</label>
+          <input
+            type="text"
+            className="form-control"
+            value={receiptFormData.retailerBusinessName || 'Auto-filled from invoice'}
+            readOnly
+            disabled
+          />
+          <small className="text-muted">Auto-filled from invoice</small>
+        </div>
+      </div>
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">Amount *</label>
+          <div className="input-group custom-amount-receipts-table">
+            <select
+              className="form-select currency-select-receipts-table"
+              name="currency"
+              value={receiptFormData.currency}
+              onChange={handleReceiptInputChange}
+            >
+              <option>INR</option>
+              <option>USD</option>
+              <option>EUR</option>
+              <option>GBP</option>
+            </select>
+            <input
+              type="number"
+              className="form-control amount-input-receipts-table"
+              name="amount"
+              value={receiptFormData.amount}
+              onChange={handleReceiptInputChange}
+              placeholder="Amount"
+              min="0"
+              step="1"
+              required
+            />
+          </div>
+          {totalAdvanceAmount > 0 && (
+            <small className="text-muted">
+              Remaining amount after adjusting advance: ₹{receiptFormData.amount}
+            </small>
+          )}
+        </div>
+      </div>
+    </div>
+
+    {/* Rest of your existing receipt form fields */}
+    <div className="row mb-4">
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">Note</label>
+          <textarea
+            className="form-control"
+            rows="3"
+            name="note"
+            value={receiptFormData.note}
+            onChange={handleReceiptInputChange}
+            placeholder="Additional notes..."
+          ></textarea>
+        </div>
+      </div>
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">For</label>
+          <p className="mt-2">Authorised Signatory</p>
+        </div>
+      </div>
+    </div>
+    <div className="row">
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">Bank Name</label>
+          <input
+            type="text"
+            className="form-control"
+            name="bankName"
+            value={receiptFormData.bankName}
+            onChange={handleReceiptInputChange}
+            placeholder="Bank Name"
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Transaction Proof</label>
+          <input
+            type="file"
+            className="form-control"
+            onChange={(e) => handleFileChange(e)}
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+          />
+          <small className="text-muted">
+            {receiptFormData.transactionProofFile ? receiptFormData.transactionProofFile.name : 'No file chosen'}
+          </small>
+          {receiptFormData.transactionProofFile && (
+            <div className="mt-2">
+              <div className="d-flex align-items-center">
+                <span className="badge bg-success me-2">
+                  <i className="bi bi-file-earmark-check"></i>
+                </span>
+                <span className="small">
+                  {receiptFormData.transactionProofFile.name}
+                  ({Math.round(receiptFormData.transactionProofFile.size / 1024)} KB)
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-danger ms-2"
+                  onClick={() => handleRemoveFile()}
                 >
-                  <option>Do Not Reconcile</option>
-                  <option>Customer Reconcile</option>
-                </select>
+                  <i className="bi bi-x"></i>
+                </button>
               </div>
             </div>
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseReceiptModal}>
-            Close
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleCreateReceiptFromInvoice}
-            disabled={isCreatingReceipt}
+          )}
+        </div>
+      </div>
+      <div className="col-md-6">
+        <div className="mb-3">
+          <label className="form-label">Transaction Date</label>
+          <input
+            type="date"
+            className="form-control"
+            name="transactionDate"
+            value={receiptFormData.transactionDate}
+            onChange={handleReceiptInputChange}
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Reconciliation Option</label>
+          <select
+            className="form-select"
+            name="reconciliationOption"
+            value={receiptFormData.reconciliationOption}
+            onChange={handleReceiptInputChange}
           >
-            {isCreatingReceipt ? 'Creating...' : 'Create Receipt'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+            <option>Do Not Reconcile</option>
+            <option>Customer Reconcile</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </Modal.Body>
+  <Modal.Footer>
+    <Button variant="secondary" onClick={handleCloseReceiptModal}>
+      Close
+    </Button>
+    <Button
+      variant="primary"
+      onClick={handleCreateReceiptFromInvoice}
+      disabled={isCreatingReceipt}
+    >
+      {isCreatingReceipt ? 'Creating...' : 'Create Receipt'}
+    </Button>
+  </Modal.Footer>
+</Modal>
 
+<Modal show={showAdvanceReceiptsModal} onHide={() => setShowAdvanceReceiptsModal(false)} size="lg">
+  <Modal.Header closeButton>
+    <Modal.Title>Select Advance Receipts to Adjust</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    {advanceReceipts.length === 0 ? (
+      <Alert variant="info">No advance receipts available for this customer.</Alert>
+    ) : (
+      <Table striped bordered hover>
+        <thead>
+          <tr>
+            <th width="5%">Select</th>
+            <th>Receipt Number</th>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Payment Method</th>
+            <th>Remark</th>
+          </tr>
+        </thead>
+        <tbody>
+          {advanceReceipts.map(receipt => (
+            <tr key={receipt.id}>
+              <td className="text-center">
+                <Form.Check
+                  type="checkbox"
+                  checked={selectedAdvanceReceipts.some(r => r.id === receipt.id)}
+                  onChange={(e) => handleAdvanceReceiptSelection(receipt, e.target.checked)}
+                />
+              </td>
+              <td>{receipt.receipt_number}</td>
+              <td>{new Date(receipt.receipt_date).toLocaleDateString()}</td>
+              <td className="text-end fw-bold text-success">
+                ₹{parseFloat(receipt.total_amount).toFixed(2)}
+              </td>
+              <td>{receipt.payment_method}</td>
+              <td>{receipt.note}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="table-active">
+            <td colSpan="4" className="text-end fw-bold">Total Selected:</td>
+            <td className="text-end fw-bold text-success">₹{totalAdvanceAmount.toFixed(2)}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </Table>
+    )}
+  </Modal.Body>
+  <Modal.Footer>
+    <Button variant="secondary" onClick={() => setShowAdvanceReceiptsModal(false)}>
+      Close
+    </Button>
+    <Button 
+      variant="primary" 
+      onClick={() => setShowAdvanceReceiptsModal(false)}
+      disabled={selectedAdvanceReceipts.length === 0}
+    >
+      Apply Selected
+    </Button>
+  </Modal.Footer>
+</Modal>
       {/* Main Content */}
       <Container fluid className="invoice-preview-container">
         <Row>
@@ -1834,7 +2123,7 @@ const handleItemChange = (index, field, value) => {
                     )}
                   </Col>
                   <Col md={4} className="text-end">
-  
+
                     <div className="invoice-meta bg-light p-2 rounded">
                       {isEditMode ? (
                         <div className="edit-control">
@@ -1851,7 +2140,7 @@ const handleItemChange = (index, field, value) => {
                             <Form.Control
                               type="date"
                               size="sm"
-                              value={currentData.invoiceDate} 
+                              value={currentData.invoiceDate}
                               onChange={(e) => handleInputChange('invoiceDate', e.target.value)}
                             />
                           </div>
@@ -1867,9 +2156,9 @@ const handleItemChange = (index, field, value) => {
                         </div>
                       ) : (
                         <>
-                        <h3 className="invoice-title text-danger mb-2" style={{ fontSize: '16px', fontWeight: '700' }}>
-  { currentData.document_type || ''}
-</h3>  
+                          <h3 className="invoice-title text-danger mb-2" style={{ fontSize: '16px', fontWeight: '700' }}>
+                            {currentData.document_type || ''}
+                          </h3>
                           <p className="mb-1"><strong>Invoice No:</strong> {displayInvoiceNumber}</p>
                           <p className="mb-1">
                             <strong>Invoice Date:</strong>{" "}
@@ -1900,76 +2189,76 @@ const handleItemChange = (index, field, value) => {
               {/* Customer and Address Details */}
               <div className="address-section mb-4">
                 <Row>
-           <Col md={6}>
-<div className="billing-address bg-light p-3 rounded">
-    <h5 className="text-primary mb-2">Bill To:</h5>
-    {isEditMode ? (
-      <div className="edit-control">
-        {currentData.bb_bc === 'b2c' ? (
-          <Form.Control 
-            className="mb-2"
-            value={currentData.supplierInfo.name || ''}
-            onChange={(e) => handleNestedChange('supplierInfo', 'name', e.target.value)}
-            placeholder="Customer Name"
-          />
-        ) : (
-          <Form.Control 
-            className="mb-2"
-            value={currentData.supplierInfo.business_name || ''}
-            onChange={(e) => handleNestedChange('supplierInfo', 'business_name', e.target.value)}
-            placeholder="Business Name"
-          />
-        )}
-        <Form.Control 
-          className="mb-2"
-          placeholder="Mobile Number"
-          value={currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number || ''}
-          onChange={(e) => handleNestedChange('supplierInfo', 'mobile_number', e.target.value)}
-        />
-        
-        {/* Only show GSTIN field for B2B */}
-        {currentData.bb_bc !== 'b2c' && (
-          <Form.Control 
-            className="mb-2"
-            placeholder="GSTIN"
-            value={currentData.supplierInfo.gstin || ''}
-            onChange={(e) => handleNestedChange('supplierInfo', 'gstin', e.target.value)}
-          />
-        )}
-        
-        <Form.Control 
-          placeholder="State"
-          value={currentData.supplierInfo.state || ''}
-          onChange={(e) => handleNestedChange('supplierInfo', 'state', e.target.value)}
-        />
-      </div>
-    ) : (
-      <>
-        {currentData.bb_bc === 'b2c' ? (
-          <p className="mb-1 text-muted">Customer Name: {currentData.supplierInfo.name || 'N/A'}</p>
-        ) : (
-          currentData.supplierInfo.business_name && (
-            <p className="mb-1 text-muted">Business Name: {currentData.supplierInfo.business_name}</p>
-          )
-        )}
-        
-        {/* Mobile Number Display */}
-        {(currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number) && (
-          <p className="mb-1">
-            <small>Mobile: {currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number}</small>
-          </p>
-        )}
-        
-        {/* Only show GSTIN for B2B */}
-        {currentData.bb_bc !== 'b2c' && (
-          <p className="mb-1"><small>GSTIN: {currentData.supplierInfo.gstin || 'N/A'}</small></p>
-        )}
-        
-        <p className="mb-0"><small>State: {currentData.supplierInfo.state || 'N/A'}</small></p>
-      </>
-    )}
-  </div>
-</Col>
+                  <Col md={6}>
+                    <div className="billing-address bg-light p-3 rounded">
+                      <h5 className="text-primary mb-2">Bill To:</h5>
+                      {isEditMode ? (
+                        <div className="edit-control">
+                          {currentData.bb_bc === 'b2c' ? (
+                            <Form.Control
+                              className="mb-2"
+                              value={currentData.supplierInfo.name || ''}
+                              onChange={(e) => handleNestedChange('supplierInfo', 'name', e.target.value)}
+                              placeholder="Customer Name"
+                            />
+                          ) : (
+                            <Form.Control
+                              className="mb-2"
+                              value={currentData.supplierInfo.business_name || ''}
+                              onChange={(e) => handleNestedChange('supplierInfo', 'business_name', e.target.value)}
+                              placeholder="Business Name"
+                            />
+                          )}
+                          <Form.Control
+                            className="mb-2"
+                            placeholder="Mobile Number"
+                            value={currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number || ''}
+                            onChange={(e) => handleNestedChange('supplierInfo', 'mobile_number', e.target.value)}
+                          />
+
+                          {/* Only show GSTIN field for B2B */}
+                          {currentData.bb_bc !== 'b2c' && (
+                            <Form.Control
+                              className="mb-2"
+                              placeholder="GSTIN"
+                              value={currentData.supplierInfo.gstin || ''}
+                              onChange={(e) => handleNestedChange('supplierInfo', 'gstin', e.target.value)}
+                            />
+                          )}
+
+                          <Form.Control
+                            placeholder="State"
+                            value={currentData.supplierInfo.state || ''}
+                            onChange={(e) => handleNestedChange('supplierInfo', 'state', e.target.value)}
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          {currentData.bb_bc === 'b2c' ? (
+                            <p className="mb-1 text-muted">Customer Name: {currentData.supplierInfo.name || 'N/A'}</p>
+                          ) : (
+                            currentData.supplierInfo.business_name && (
+                              <p className="mb-1 text-muted">Business Name: {currentData.supplierInfo.business_name}</p>
+                            )
+                          )}
+
+                          {/* Mobile Number Display */}
+                          {(currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number) && (
+                            <p className="mb-1">
+                              <small>Mobile: {currentData.supplierInfo.mobile_number || currentData.supplierInfo.phone_number}</small>
+                            </p>
+                          )}
+
+                          {/* Only show GSTIN for B2B */}
+                          {currentData.bb_bc !== 'b2c' && (
+                            <p className="mb-1"><small>GSTIN: {currentData.supplierInfo.gstin || 'N/A'}</small></p>
+                          )}
+
+                          <p className="mb-0"><small>State: {currentData.supplierInfo.state || 'N/A'}</small></p>
+                        </>
+                      )}
+                    </div>
+                  </Col>
                   <Col md={6}>
                     <div className="shipping-address bg-light p-3 rounded">
                       <h5 className="text-primary mb-2">Ship To:</h5>
@@ -2025,12 +2314,12 @@ const handleItemChange = (index, field, value) => {
                   </Col>
 
 
-        
-         
-        
-            
-          </Row>
-               
+
+
+
+
+                </Row>
+
               </div>
 
               {/* Items Table */}
@@ -2043,86 +2332,86 @@ const handleItemChange = (index, field, value) => {
                     </Button>
                   )}
                 </div>
-           {!isEditMode ? (
-  <table className="items-table table table-bordered table-sm">
-    <thead className="table-dark">
-      <tr>
-        <th width="5%">#</th>
-        <th width="20%">Product</th>
-        <th width="10%">HSN Code</th>
-        <th width="8%">Units</th>
-        <th width="15%">Rate (Incl of Tax)</th>
-                <th width="15%">Rate (Excl of Tax)</th>
+                {!isEditMode ? (
+                  <table className="items-table table table-bordered table-sm">
+                    <thead className="table-dark">
+                      <tr>
+                        <th width="5%">#</th>
+                        <th width="20%">Product</th>
+                        <th width="10%">HSN Code</th>
+                        <th width="8%">Units</th>
+                        <th width="15%">Rate (Incl of Tax)</th>
+                        <th width="15%">Rate (Excl of Tax)</th>
 
-      
-        <th width="8%">Disc %</th>
-          <th width="8%">GST %</th>
-        <th width="12%">Amount (₹)</th>
-      </tr>
-    </thead>
-    <tbody>
-      {currentData.items.map((item, index) => (
-        <tr key={index}>
-          <td className="text-center">{index + 1}</td>
-          <td>{item.product}</td>
-          <td className="text-center">{item.hsn_code || '-'}</td>
-       <td className="text-center">
-  {item.quantity} {unitData[item.unit_id] || ''}
-</td>
-          <td className="text-end">₹{parseFloat(item.original_price).toFixed(2)}</td>
-                    <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
 
-          <td className="text-center">{parseFloat(item.discount || 0).toFixed(1)}%</td>
-                    <td className="text-center">{item.gst}%</td>
+                        <th width="8%">Disc %</th>
+                        <th width="8%">GST %</th>
+                        <th width="12%">Amount (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentData.items.map((item, index) => (
+                        <tr key={index}>
+                          <td className="text-center">{index + 1}</td>
+                          <td>{item.product}</td>
+                          <td className="text-center">{item.hsn_code || '-'}</td>
+                          <td className="text-center">
+                            {item.quantity} {unitData[item.unit_id] || ''}
+                          </td>
+                          <td className="text-end">₹{parseFloat(item.original_price).toFixed(2)}</td>
+                          <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
 
-          <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-) : (
+                          <td className="text-center">{parseFloat(item.discount || 0).toFixed(1)}%</td>
+                          <td className="text-center">{item.gst}%</td>
 
-                 <table className="items-table table table-bordered table-sm">
-  <thead className="table-dark">
-    <tr>
-      <th width="5%">#</th>
-      <th width="25%">Product</th>
-      <th width="10%">HSN Code</th>
-      <th width="10%">Units</th>
-      <th width="15%">Price</th>
-      <th width="12%">Original Price</th>
-      <th width="10%">GST %</th>
-      <th width="8%">Discount %</th>
-      <th width="10%">Taxable Amount (₹)</th>
-    </tr>
-  </thead>
-  <tbody>
-    {currentData.items.map((item, index) => (
-      <tr key={index}>
-        <td className="text-center">{index + 1}</td>
-        <td className="text-center">{item.product}</td>
-        <td className="text-center">{item.hsn_code || '-'}</td>
-             <td className="text-center">
-            {item.quantity} {item.unit_name || ''}  {/* ✅ Show unit name */}
-          </td>
-        <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
-        <td className="text-end">₹{parseFloat(item.original_price).toFixed(2)}</td>
-        <td className="text-center">{item.gst}%</td>
-        <td className="text-center">
-          {parseFloat(item.discount || 0).toFixed(1)}%
-        </td>
-        <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
-      </tr>
-    ))}
-  </tbody>
-</table>
+                          <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+
+                  <table className="items-table table table-bordered table-sm">
+                    <thead className="table-dark">
+                      <tr>
+                        <th width="5%">#</th>
+                        <th width="25%">Product</th>
+                        <th width="10%">HSN Code</th>
+                        <th width="10%">Units</th>
+                        <th width="15%">Price</th>
+                        <th width="12%">Original Price</th>
+                        <th width="10%">GST %</th>
+                        <th width="8%">Discount %</th>
+                        <th width="10%">Taxable Amount (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentData.items.map((item, index) => (
+                        <tr key={index}>
+                          <td className="text-center">{index + 1}</td>
+                          <td className="text-center">{item.product}</td>
+                          <td className="text-center">{item.hsn_code || '-'}</td>
+                          <td className="text-center">
+                            {item.quantity} {item.unit_name || ''}  {/* ✅ Show unit name */}
+                          </td>
+                          <td className="text-end">₹{parseFloat(item.price).toFixed(2)}</td>
+                          <td className="text-end">₹{parseFloat(item.original_price).toFixed(2)}</td>
+                          <td className="text-center">{item.gst}%</td>
+                          <td className="text-center">
+                            {parseFloat(item.discount || 0).toFixed(1)}%
+                          </td>
+                          <td className="text-end fw-bold">₹{parseFloat(item.total).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
               </div>
 
               {/* Totals Section */}
               <div className="totals-section mb-4">
                 <Row>
-   <Col md={7}>
+                  <Col md={7}>
                     <div className="bank-details mb-2">
 
                       <h6 className="text-primary mb-1" style={{ fontSize: '15px' }}>
@@ -2153,7 +2442,7 @@ const handleItemChange = (index, field, value) => {
 
                       </div>
                     </div>
-                      {/* <h6 className="text-primary">Notes:</h6>
+                    {/* <h6 className="text-primary">Notes:</h6>
                       {isEditMode ? (
                         <Form.Control
                           as="textarea"
@@ -2168,7 +2457,7 @@ const handleItemChange = (index, field, value) => {
                         </p>
                       )} */}
 
-      {/* <div className="transport-details-section mt-3">
+                    {/* <div className="transport-details-section mt-3">
         <h6 className="text-primary">Transportation Details:</h6>
         <div className="bg-light p-3 rounded">
           <Row className="mb-2">
@@ -2209,81 +2498,81 @@ const handleItemChange = (index, field, value) => {
           </Row>
         </div>
       </div> */}
-    <Col md={6}>
-                    <h6 className="text-primary">Transportation Details:</h6>
+                    <Col md={6}>
+                      <h6 className="text-primary">Transportation Details:</h6>
 
-            <div className="bg-light p-3 rounded">
-              <div className="transport-field">
-                <strong>Vehicle No.:</strong>
-                <p className="mb-0 text-muted">
-                  {currentData.transportDetails?.vehicleNo || '-'}
-                </p>
-              </div>
-    
-              </div>
-            </Col>
+                      <div className="bg-light p-3 rounded">
+                        <div className="transport-field">
+                          <strong>Vehicle No.:</strong>
+                          <p className="mb-0 text-muted">
+                            {currentData.transportDetails?.vehicleNo || '-'}
+                          </p>
+                        </div>
+
+                      </div>
+                    </Col>
 
                   </Col>
                   <Col md={5}>
-   <div className="amount-breakdown bg-light p-3 rounded">
-  <h6 className="text-primary mb-3">Amount Summary</h6>
-  <table className="amount-table w-100">
-    <tbody>
-      <tr>
-        <td className="pb-2">Amount:</td>
-        <td className="text-end pb-2">₹{currentData.taxableAmount}</td>
-      </tr>
+                    <div className="amount-breakdown bg-light p-3 rounded">
+                      <h6 className="text-primary mb-3">Amount Summary</h6>
+                      <table className="amount-table w-100">
+                        <tbody>
+                          <tr>
+                            <td className="pb-2">Amount:</td>
+                            <td className="text-end pb-2">₹{currentData.taxableAmount}</td>
+                          </tr>
 
-      {isSameState ? (
-        <>
-          <tr>
-            <td className="pb-2">CGST:</td>
-            <td className="text-end pb-2">₹{gstBreakdown.totalCGST}</td>
-          </tr>
-          <tr>
-            <td className="pb-2">SGST:</td>
-            <td className="text-end pb-2">₹{gstBreakdown.totalSGST}</td>
-          </tr>
-        </>
-      ) : (
-        <tr>
-          <td className="pb-2">IGST:</td>
-          <td className="text-end pb-2">₹{gstBreakdown.totalIGST}</td>
-        </tr>
-      )}
+                          {isSameState ? (
+                            <>
+                              <tr>
+                                <td className="pb-2">CGST:</td>
+                                <td className="text-end pb-2">₹{gstBreakdown.totalCGST}</td>
+                              </tr>
+                              <tr>
+                                <td className="pb-2">SGST:</td>
+                                <td className="text-end pb-2">₹{gstBreakdown.totalSGST}</td>
+                              </tr>
+                            </>
+                          ) : (
+                            <tr>
+                              <td className="pb-2">IGST:</td>
+                              <td className="text-end pb-2">₹{gstBreakdown.totalIGST}</td>
+                            </tr>
+                          )}
 
-      <tr>
-        <td className="pb-2">Total GST:</td>
-        <td className="text-end pb-2">₹{currentData.totalGST}</td>
-      </tr>
+                          <tr>
+                            <td className="pb-2">Total GST:</td>
+                            <td className="text-end pb-2">₹{currentData.totalGST}</td>
+                          </tr>
 
-      {/* ADDITIONAL CHARGES */}
-      {currentData.additionalCharge && currentData.additionalChargeAmount > 0 && (
-        <tr>
-          <td className="pb-2">{currentData.additionalCharge}:</td>
-          <td className="text-end pb-2">₹{parseFloat(currentData.additionalChargeAmount).toFixed(2)}</td>
-        </tr>
-      )}
+                          {/* ADDITIONAL CHARGES */}
+                          {currentData.additionalCharge && currentData.additionalChargeAmount > 0 && (
+                            <tr>
+                              <td className="pb-2">{currentData.additionalCharge}:</td>
+                              <td className="text-end pb-2">₹{parseFloat(currentData.additionalChargeAmount).toFixed(2)}</td>
+                            </tr>
+                          )}
 
-      {/* ✅ ADD ROUND OFF ROW */}
-      {currentData.roundOff && parseFloat(currentData.roundOff) !== 0 && (
-        <tr>
-          <td className="pb-2">Round Off:</td>
-          <td className="text-end pb-2">
-            <span className={parseFloat(currentData.roundOff) < 0 ? "text-danger" : "text-success"}>
-              {parseFloat(currentData.roundOff) < 0 ? currentData.roundOff : `+${currentData.roundOff}`}
-            </span>
-          </td>
-        </tr>
-      )}
+                          {/* ✅ ADD ROUND OFF ROW */}
+                          {currentData.roundOff && parseFloat(currentData.roundOff) !== 0 && (
+                            <tr>
+                              <td className="pb-2">Round Off:</td>
+                              <td className="text-end pb-2">
+                                <span className={parseFloat(currentData.roundOff) < 0 ? "text-danger" : "text-success"}>
+                                  {parseFloat(currentData.roundOff) < 0 ? currentData.roundOff : `+${currentData.roundOff}`}
+                                </span>
+                              </td>
+                            </tr>
+                          )}
 
-      <tr className="grand-total border-top pt-2">
-        <td><strong>Grand Total:</strong></td>
-        <td className="text-end"><strong className="text-success">₹{currentData.grandTotal}</strong></td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+                          <tr className="grand-total border-top pt-2">
+                            <td><strong>Grand Total:</strong></td>
+                            <td className="text-end"><strong className="text-success">₹{currentData.grandTotal}</strong></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </Col>
                 </Row>
               </div>
@@ -2323,32 +2612,32 @@ const handleItemChange = (index, field, value) => {
                       </div>
                     </div>
                   </Col> */}
-                               <Col md={12} className="text-end">
-                   <div className="signature-section">
-                     <p className="mb-2">For {currentData.companyInfo.name}</p>
-                     <div className="signature-space border-bottom" style={{width: '200px', height: '40px', marginLeft: 'auto'}}></div>
-                     <p className="mt-2">Authorized Signatory</p>
-                   </div>
-                 </Col>
+                  <Col md={12} className="text-end">
+                    <div className="signature-section">
+                      <p className="mb-2">For {currentData.companyInfo.name}</p>
+                      <div className="signature-space border-bottom" style={{ width: '200px', height: '40px', marginLeft: 'auto' }}></div>
+                      <p className="mt-2">Authorized Signatory</p>
+                    </div>
+                  </Col>
                 </Row>
               </div>
             </div>
           </Col>
 
           {/* Payment Sidebar */}
-         <Col lg={4} className="d-print-none no-print">
-  <PaymentStatus />
-  
-  {/* QR Code Generator */}
-  {invoiceData && (
-    <div className="mt-3">
-      <QRCodeGenerator_normal 
-        invoiceData={invoiceData}
-        onQrDataGenerated={handleQrDataGenerated}
-      />
-    </div>
-  )}
-</Col>
+          <Col lg={4} className="d-print-none no-print">
+            <PaymentStatus />
+
+            {/* QR Code Generator */}
+            {invoiceData && (
+              <div className="mt-3">
+                <QRCodeGenerator_normal
+                  invoiceData={invoiceData}
+                  onQrDataGenerated={handleQrDataGenerated}
+                />
+              </div>
+            )}
+          </Col>
         </Row>
       </Container>
     </div>
