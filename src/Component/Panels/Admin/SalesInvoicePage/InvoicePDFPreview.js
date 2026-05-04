@@ -29,7 +29,8 @@ const InvoicePDFPreview = () => {
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const [showAllReceipts, setShowAllReceipts] = useState(false);
   const [qrAmount, setQrAmount] = useState(null);
-  // Add these states near your other state declarations
+const [isAdvanceOnly, setIsAdvanceOnly] = useState(false);
+const [isBothMode, setIsBothMode] = useState(false);
 const [advanceReceipts, setAdvanceReceipts] = useState([]);
 const [loadingAdvanceReceipts, setLoadingAdvanceReceipts] = useState(false);
 const [selectedAdvanceReceipts, setSelectedAdvanceReceipts] = useState([]);
@@ -173,20 +174,18 @@ const handleCreateReceiptFromInvoice = async () => {
   let receiptAmount = parseFloat(receiptFormData.amount);
   if (isNaN(receiptAmount)) receiptAmount = 0;
   
-  if (receiptAmount <= 0 && selectedAdvanceReceipts.length === 0) {
-    alert('Please enter a valid amount or select advance receipts');
-    return;
-  }
-
   try {
     setIsCreatingReceipt(true);
     let newReceiptId = null;
 
     // =============================================
-    // PART 1: UPDATE EXISTING ADVANCE RECEIPTS (PUT)
+    // MODE 1: ADVANCE ONLY MODE
     // =============================================
-    if (selectedAdvanceReceipts.length > 0) {
-      console.log('🔄 Updating advance receipts via PUT API...');
+    if (isAdvanceOnly && !isBothMode) {
+      if (selectedAdvanceReceipts.length === 0) {
+        alert('Please select advance receipts to adjust');
+        return;
+      }
       
       for (const advanceReceipt of selectedAdvanceReceipts) {
         const availableAmount = parseFloat(advanceReceipt.available_amount || advanceReceipt.total_amount || 0);
@@ -195,34 +194,32 @@ const handleCreateReceiptFromInvoice = async () => {
         formData.append('invoice_number', receiptFormData.invoiceNumber);
         formData.append('TransactionType', 'Receipt');
         formData.append('paid_amount', availableAmount.toString());
-       formData.append('paid_date', receiptFormData.receiptDate);
-        formData.append('note', `Advance adjusted against invoice ${receiptFormData.invoiceNumber}`);
+        formData.append('paid_date', receiptFormData.receiptDate);
+        formData.append('note', advanceReceipt.note || '');
         
-        // ✅ FIX: Use correct endpoint (without /api/)
         const updateResponse = await fetch(`${baseurl}/api/voucher/${advanceReceipt.id}`, {
           method: 'PUT',
           body: formData
         });
         
         if (!updateResponse.ok) {
-          const errorText = await updateResponse.text();
-          console.error('Update failed:', errorText);
-          throw new Error(`Failed to update advance receipt ${advanceReceipt.receipt_number}: ${updateResponse.status}`);
+          throw new Error(`Failed to update advance receipt ${advanceReceipt.receipt_number}`);
         }
-        
-        const updateResult = await updateResponse.json();
-        console.log(`✅ Updated advance receipt: ${advanceReceipt.receipt_number}`, updateResult);
       }
+      
+      alert(`✅ Advance receipts adjusted: ₹${totalAdvanceAmount.toFixed(2)}`);
     }
-
+    
     // =============================================
-    // PART 2: CREATE NEW RECEIPT FOR REMAINING AMOUNT (POST)
+    // MODE 2: NORMAL RECEIPT ONLY MODE
     // =============================================
-    if (receiptAmount > 0) {
-      console.log('💰 Creating new receipt for remaining amount:', receiptAmount);
+    else if (!isAdvanceOnly && !isBothMode) {
+      if (receiptAmount <= 0) {
+        alert('Please enter a valid amount');
+        return;
+      }
       
       const formDataToSend = new FormData();
-      
       formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
       formDataToSend.append('retailer_id', receiptFormData.retailerId);
       formDataToSend.append('assigned_staff_name', receiptFormData.assignedStaffName);
@@ -271,24 +268,112 @@ const handleCreateReceiptFromInvoice = async () => {
       }
       
       const result = await response.json();
-      console.log('✅ New receipt created successfully:', result);
       newReceiptId = result.voucherId;
+      
+      alert(`✅ Receipt [${receiptFormData.receiptNumber}] created: ₹${receiptAmount.toFixed(2)}`);
+      
+      if (newReceiptId) {
+        navigate(`/receipts_view/${newReceiptId}`);
+      }
     }
-
+    
     // =============================================
-    // PART 3: SHOW SUCCESS MESSAGE
+    // MODE 3: BOTH MODE
     // =============================================
-    let successMsg = '';
-    if (selectedAdvanceReceipts.length > 0 && receiptAmount > 0) {
-      const advanceReceiptNumbers = selectedAdvanceReceipts.map(r => r.receipt_number).join(', ');
-      successMsg = `✅ Success!\n\n1️⃣ Advance receipt(s) [${advanceReceiptNumbers}] adjusted: ₹${totalAdvanceAmount.toFixed(2)}\n2️⃣ New receipt [${receiptFormData.receiptNumber}] created: ₹${receiptAmount.toFixed(2)}\n\nTotal: ₹${(totalAdvanceAmount + receiptAmount).toFixed(2)}`;
-    } else if (selectedAdvanceReceipts.length > 0) {
-      const advanceReceiptNumbers = selectedAdvanceReceipts.map(r => r.receipt_number).join(', ');
-      successMsg = `✅ Advance receipt(s) [${advanceReceiptNumbers}] adjusted: ₹${totalAdvanceAmount.toFixed(2)}`;
-    } else if (receiptAmount > 0) {
-      successMsg = `✅ Receipt [${receiptFormData.receiptNumber}] created: ₹${receiptAmount.toFixed(2)}`;
+    else if (isBothMode) {
+      // Update advance receipts
+      if (selectedAdvanceReceipts.length > 0) {
+        for (const advanceReceipt of selectedAdvanceReceipts) {
+          const availableAmount = parseFloat(advanceReceipt.available_amount || advanceReceipt.total_amount || 0);
+          
+          const formData = new FormData();
+          formData.append('invoice_number', receiptFormData.invoiceNumber);
+          formData.append('TransactionType', 'Receipt');
+          formData.append('paid_amount', availableAmount.toString());
+          formData.append('paid_date', receiptFormData.receiptDate);
+          formData.append('note', `Advance adjusted against invoice ${receiptFormData.invoiceNumber}`);
+          
+          const updateResponse = await fetch(`${baseurl}/api/voucher/${advanceReceipt.id}`, {
+            method: 'PUT',
+            body: formData
+          });
+          
+          if (!updateResponse.ok) {
+            throw new Error(`Failed to update advance receipt ${advanceReceipt.receipt_number}`);
+          }
+        }
+      }
+      
+      // Create new receipt
+      if (receiptAmount > 0) {
+        const formDataToSend = new FormData();
+        formDataToSend.append('receipt_number', receiptFormData.receiptNumber);
+        formDataToSend.append('retailer_id', receiptFormData.retailerId);
+        formDataToSend.append('assigned_staff_name', receiptFormData.assignedStaffName);
+        formDataToSend.append('staff_id', receiptFormData.staff_id);
+        formDataToSend.append('TransactionType', 'Receipt');
+        formDataToSend.append('retailer_name', receiptFormData.retailerBusinessName);
+        formDataToSend.append('account_name', receiptFormData.account_name || '');
+        formDataToSend.append('business_name', receiptFormData.business_name || '');
+        formDataToSend.append('amount', receiptAmount.toString());
+        formDataToSend.append('paid_amount', receiptAmount.toString());
+        formDataToSend.append('currency', receiptFormData.currency);
+        formDataToSend.append('payment_method', receiptFormData.paymentMethod);
+        formDataToSend.append('receipt_date', receiptFormData.receiptDate);
+        formDataToSend.append('note', receiptFormData.note || `Payment for invoice ${receiptFormData.invoiceNumber}`);
+        formDataToSend.append('bank_name', receiptFormData.bankName);
+        formDataToSend.append('transaction_date', receiptFormData.transactionDate || '');
+        formDataToSend.append('reconciliation_option', receiptFormData.reconciliationOption);
+        formDataToSend.append('invoice_number', receiptFormData.invoiceNumber);
+        formDataToSend.append('retailer_mobile', receiptFormData.retailerMobile);
+        formDataToSend.append('retailer_email', receiptFormData.retailerEmail);
+        formDataToSend.append('retailer_gstin', receiptFormData.retailerGstin);
+        formDataToSend.append('product_id', receiptFormData.product_id || '');
+        formDataToSend.append('batch_id', receiptFormData.batch_id || '');
+        formDataToSend.append('retailer_business_name', receiptFormData.retailerBusinessName);
+        formDataToSend.append('invoice_staff_id', receiptFormData.retailer_staff_id || '');
+        formDataToSend.append('invoice_assigned_staff', receiptFormData.invoice_assigned_staff || '');
+        formDataToSend.append('from_invoice', 'true');
+        formDataToSend.append('data_type', 'Sales');
+        
+        if (invoiceData && invoiceData.voucherId) {
+          formDataToSend.append('voucher_id', invoiceData.voucherId);
+        }
+        
+        if (receiptFormData.transactionProofFile) {
+          formDataToSend.append('transaction_proof', receiptFormData.transactionProofFile);
+        }
+        
+        const response = await fetch(`${baseurl}/api/receipts`, {
+          method: 'POST',
+          body: formDataToSend,
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Failed to create receipt');
+        }
+        
+        const result = await response.json();
+        newReceiptId = result.voucherId;
+      }
+      
+      // Show combined success message
+      let successMsg = '';
+      if (selectedAdvanceReceipts.length > 0 && receiptAmount > 0) {
+        const advanceReceiptNumbers = selectedAdvanceReceipts.map(r => r.receipt_number).join(', ');
+        successMsg = `✅ Success!\n\n1️⃣ Advance receipts [${advanceReceiptNumbers}] adjusted: ₹${totalAdvanceAmount.toFixed(2)}\n2️⃣ New receipt [${receiptFormData.receiptNumber}] created: ₹${receiptAmount.toFixed(2)}`;
+      } else if (selectedAdvanceReceipts.length > 0) {
+        successMsg = `✅ Advance receipts adjusted: ₹${totalAdvanceAmount.toFixed(2)}`;
+      } else if (receiptAmount > 0) {
+        successMsg = `✅ New receipt [${receiptFormData.receiptNumber}] created: ₹${receiptAmount.toFixed(2)}`;
+      }
+      alert(successMsg);
+      
+      if (newReceiptId) {
+        navigate(`/receipts_view/${newReceiptId}`);
+      }
     }
-    alert(successMsg);
     
     // Close modal and reset
     handleCloseReceiptModal();
@@ -300,11 +385,6 @@ const handleCreateReceiptFromInvoice = async () => {
       fetchPaymentData(invoiceData.invoiceNumber);
     }
     fetchAdvanceReceipts();
-    
-    // Navigate to the newly created receipt if exists
-    if (newReceiptId) {
-      navigate(`/receipts_view/${newReceiptId}`);
-    }
     
   } catch (err) {
     console.error('❌ Error:', err);
@@ -1497,11 +1577,13 @@ const handleOpenAdvanceReceiptsModal = () => {
     console.log("📌 Opening Receipt Modal");
     setShowReceiptModal(true);
   };
-  const handleCloseReceiptModal = () => {
-    setShowReceiptModal(false);
-    setIsCreatingReceipt(false);
-  };
-
+const handleCloseReceiptModal = () => {
+  setShowReceiptModal(false);
+  setIsCreatingReceipt(false);
+  setIsAdvanceOnly(false); // Reset checkbox
+  setSelectedAdvanceReceipts([]);
+  setTotalAdvanceAmount(0);
+};
   const handleReceiptInputChange = (e) => {
     const { name, value } = e.target;
     setReceiptFormData(prev => ({
@@ -1716,13 +1798,13 @@ const handleOpenAdvanceReceiptsModal = () => {
       </Modal>
 
       {/* Receipt Modal */}
-     <Modal show={showReceiptModal} onHide={handleCloseReceiptModal} size="lg">
+  <Modal show={showReceiptModal} onHide={handleCloseReceiptModal} size="lg">
   <Modal.Header closeButton>
     <Modal.Title>Create Receipt from Invoice</Modal.Title>
   </Modal.Header>
   <Modal.Body>
-    {/* Existing receipt form fields */}
-    <div className="row mb-4">
+    {/* Company Info */}
+    <div className="row">
       <div className="col-md-6">
         <div className="company-info-recepits-table text-center">
           <label className="form-label-recepits-table">SHREE SHASHWATRAJ AGRO PVT LTD</label>
@@ -1744,6 +1826,7 @@ const handleOpenAdvanceReceiptsModal = () => {
             onChange={handleReceiptInputChange}
             placeholder="REC0001"
             readOnly
+            disabled={isAdvanceOnly && !isBothMode}
           />
         </div>
         <div className="mb-3">
@@ -1754,6 +1837,7 @@ const handleOpenAdvanceReceiptsModal = () => {
             name="receiptDate"
             value={receiptFormData.receiptDate}
             onChange={handleReceiptInputChange}
+            disabled={isAdvanceOnly && !isBothMode}
           />
         </div>
         <div className="mb-3">
@@ -1763,6 +1847,7 @@ const handleOpenAdvanceReceiptsModal = () => {
             name="paymentMethod"
             value={receiptFormData.paymentMethod}
             onChange={handleReceiptInputChange}
+            disabled={isAdvanceOnly && !isBothMode}
           >
             <option>Direct Deposit</option>
             <option>Online Payment</option>
@@ -1775,7 +1860,62 @@ const handleOpenAdvanceReceiptsModal = () => {
       </div>
     </div>
 
-    {/* Advance Receipts Section */}
+   {/* Mode Selection - Three Options */}
+<div className="row">
+  <div className="col-12">
+    <label className="form-label fw-bold mb-2">Select Mode:</label>
+    <div className="d-flex gap-3 align-items-center">
+      
+      <Form.Check
+        type="radio"
+        name="receiptMode"
+        id="mode-advance-only"
+        label="Advance Only"
+        checked={isAdvanceOnly && !isBothMode}
+        onChange={() => {
+          setIsAdvanceOnly(true);
+          setIsBothMode(false);
+        }}
+        inline
+      />
+      
+      <Form.Check
+        type="radio"
+        name="receiptMode"
+        id="mode-both"
+        label="Both"
+        checked={isBothMode}
+        onChange={() => {
+          setIsAdvanceOnly(false);
+          setIsBothMode(true);
+        }}
+        inline
+      />
+      
+      <Form.Check
+        type="radio"
+        name="receiptMode"
+        id="mode-normal"
+        label="Normal Receipt"
+        checked={!isAdvanceOnly && !isBothMode}
+        onChange={() => {
+          setIsAdvanceOnly(false);
+          setIsBothMode(false);
+        }}
+        inline
+      />
+      
+    </div>
+    {/* Show current mode description */}
+    <small className="text-muted d-block mt-1">
+      {isAdvanceOnly && !isBothMode && 'ℹ️ Only advance receipts will be updated. No new receipt created.'}
+      {isBothMode && 'ℹ️ Advance receipts will be updated AND a new receipt will be created.'}
+      {!isAdvanceOnly && !isBothMode && 'ℹ️ Only a new receipt will be created. No advance updates.'}
+    </small>
+  </div>
+</div>
+
+    {/* Advance Receipts Selection */}
     <div className="row mb-4">
       <div className="col-12">
         <div className="border rounded p-3 bg-light">
@@ -1822,6 +1962,7 @@ const handleOpenAdvanceReceiptsModal = () => {
       </div>
     </div>
 
+    {/* Retailer and Amount */}
     <div className="row mb-4">
       <div className="col-md-6">
         <div className="mb-3">
@@ -1845,6 +1986,7 @@ const handleOpenAdvanceReceiptsModal = () => {
               name="currency"
               value={receiptFormData.currency}
               onChange={handleReceiptInputChange}
+              disabled={isAdvanceOnly && !isBothMode}
             >
               <option>INR</option>
               <option>USD</option>
@@ -1861,9 +2003,15 @@ const handleOpenAdvanceReceiptsModal = () => {
               min="0"
               step="1"
               required
+              disabled={isAdvanceOnly && !isBothMode}
             />
           </div>
-          {totalAdvanceAmount > 0 && (
+          {isBothMode && (
+            <small className="text-success d-block mt-1">
+              ✓ This amount will be used for the NEW receipt
+            </small>
+          )}
+          {totalAdvanceAmount > 0 && !isAdvanceOnly && (
             <small className="text-muted">
               Remaining amount after adjusting advance: ₹{receiptFormData.amount}
             </small>
@@ -1872,7 +2020,7 @@ const handleOpenAdvanceReceiptsModal = () => {
       </div>
     </div>
 
-    {/* Rest of your existing receipt form fields */}
+    {/* Note */}
     <div className="row mb-4">
       <div className="col-md-6">
         <div className="mb-3">
@@ -1884,6 +2032,7 @@ const handleOpenAdvanceReceiptsModal = () => {
             value={receiptFormData.note}
             onChange={handleReceiptInputChange}
             placeholder="Additional notes..."
+            disabled={isAdvanceOnly && !isBothMode}
           ></textarea>
         </div>
       </div>
@@ -1894,6 +2043,8 @@ const handleOpenAdvanceReceiptsModal = () => {
         </div>
       </div>
     </div>
+
+    {/* Bank Details */}
     <div className="row">
       <div className="col-md-6">
         <div className="mb-3">
@@ -1905,6 +2056,7 @@ const handleOpenAdvanceReceiptsModal = () => {
             value={receiptFormData.bankName}
             onChange={handleReceiptInputChange}
             placeholder="Bank Name"
+            disabled={isAdvanceOnly && !isBothMode}
           />
         </div>
         <div className="mb-3">
@@ -1914,6 +2066,7 @@ const handleOpenAdvanceReceiptsModal = () => {
             className="form-control"
             onChange={(e) => handleFileChange(e)}
             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+            disabled={isAdvanceOnly && !isBothMode}
           />
           <small className="text-muted">
             {receiptFormData.transactionProofFile ? receiptFormData.transactionProofFile.name : 'No file chosen'}
@@ -1949,6 +2102,7 @@ const handleOpenAdvanceReceiptsModal = () => {
             name="transactionDate"
             value={receiptFormData.transactionDate}
             onChange={handleReceiptInputChange}
+            disabled={isAdvanceOnly && !isBothMode}
           />
         </div>
         <div className="mb-3">
@@ -1958,6 +2112,7 @@ const handleOpenAdvanceReceiptsModal = () => {
             name="reconciliationOption"
             value={receiptFormData.reconciliationOption}
             onChange={handleReceiptInputChange}
+            disabled={isAdvanceOnly && !isBothMode}
           >
             <option>Do Not Reconcile</option>
             <option>Customer Reconcile</option>
