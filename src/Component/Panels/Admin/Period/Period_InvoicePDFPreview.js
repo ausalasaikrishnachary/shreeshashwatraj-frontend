@@ -32,7 +32,17 @@ import QRCodeGenerator from './QRCodeGenerator';
     const [fromPeriod, setFromPeriod] = useState(false);
     const [periodInvoiceData, setPeriodInvoiceData] = useState(null);
     const [editableOrderMode, setEditableOrderMode] = useState('');
-    const [qrData, setQrData] = useState(''); // For QR code data
+    // const [qrData, setQrData] = useState(''); // For QR code data
+    const [qrData, setQrData] = useState('');
+const [companyInfo, setCompanyInfo] = useState({
+  name: "",
+  address: "",
+  email: "",
+  phone: "",
+  gstin: "",
+  state: "",
+  stateCode: "",
+});
 
 const transformPeriodDataToInvoiceFormat = (periodData) => {
   const accountDetails = periodData.fullAccountDetails || periodData.customerInfo?.account_details;
@@ -144,15 +154,18 @@ const price = netPrice;
     originalOrderNumber: orderNumber,
     order_mode: orderMode,
     
-    companyInfo: periodData.companyInfo || {
-     name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-  email: "spmathur56@gmail.com",
-  phone: "9801049700",
-  gstin: "10AAOCS1541B1ZZ",
-  state: "Bihar",
-  stateCode: "10"
-    },
+  //   companyInfo: periodData.companyInfo || {
+  //    name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+  // address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+  // email: "spmathur56@gmail.com",
+  // phone: "9801049700",
+  // gstin: "10AAOCS1541B1ZZ",
+  // state: "Bihar",
+  // stateCode: "10"
+  //   },
+
+
+  companyInfo: periodData.companyInfo || companyInfo,
     
     supplierInfo: {
       name: accountDetails?.name || periodData.customerInfo?.name || periodData.originalOrder?.customer_name || 'Customer',
@@ -303,6 +316,50 @@ const [transportDetails, setTransportDetails] = useState({
   station: ""
 });
 
+useEffect(() => {
+  const fetchCompanyInfo = async () => {
+    try {
+      const res = await fetch(`${baseurl}/api/company-info`);
+      const text = await res.text();
+
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        throw new Error("Company API response is not JSON");
+      }
+
+      if (result.success && result.data) {
+        const company = {
+          name: result.data.company_name || "",
+          address: result.data.address || "",
+          email: result.data.email || "",
+          phone: result.data.phone || "",
+          gstin: result.data.gstin || "",
+          state: result.data.state || "",
+          stateCode: result.data.state_code || "",
+        };
+
+        setCompanyInfo(company);
+      }
+    } catch (error) {
+      console.error("Company info fetch error:", error);
+    }
+  };
+
+  fetchCompanyInfo();
+}, []);
+
+useEffect(() => {
+  if (!invoiceData) return;
+  if (!companyInfo.name) return;
+
+  setInvoiceData((prev) => ({
+    ...prev,
+    companyInfo: companyInfo,
+  }));
+}, [companyInfo]);
+
 // 2. Handler for transport changes
 const handleTransportChange = (newTransport) => {
   setTransportDetails(newTransport);
@@ -391,15 +448,17 @@ const handleTransportChange = (newTransport) => {
       invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       
-      companyInfo: {
-     name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-  email: "spmathur56@gmail.com",
-  phone: "9801049700",
-  gstin: "10AAOCS1541B1ZZ",
-  state: "Bihar",
-  stateCode: "10"
-      },
+  //     companyInfo: {
+  //    name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+  // address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+  // email: "spmathur56@gmail.com",
+  // phone: "9801049700",
+  // gstin: "10AAOCS1541B1ZZ",
+  // state: "Bihar",
+  // stateCode: "10"
+  //     },
+
+  companyInfo: companyInfo,
       
       supplierInfo: {
         name: apiData.PartyName || 'Customer',

@@ -1,7 +1,7 @@
 // frontend/src/components/Purchase/Voucher/VoucherPDF.js
 import React, { forwardRef } from 'react';
 
-const VoucherPDF = forwardRef(({ vouchers, startDate, endDate, month, year, title = 'Purchase Vouchers Report' }, ref) => {
+const VoucherPDF = forwardRef(({ vouchers, startDate, endDate, month, year, companyInfo, title = 'Purchase Vouchers Report' }, ref) => {
   // Format currency
   const formatCurrency = (amount) => {
     if (!amount && amount !== 0) return '₹ 0.00';

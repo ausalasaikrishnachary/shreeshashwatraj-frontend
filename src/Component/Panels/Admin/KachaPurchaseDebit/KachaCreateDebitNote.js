@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
@@ -6,8 +6,46 @@ import ItemsTable from "./DebitNoteItemsTable";
 import CustomerInfo from "./DebitNoteCustomerInfo";
 import useCreditNoteLogic from "./useCreditNoteLogic";
 import "./CreateDebitNote.css";
+import { baseurl } from "../../../BaseURL/BaseURL";
 
 const KachaCreateDebitNote = () => {
+
+  const [companyInfo, setCompanyInfo] = useState({
+  name: "",
+  address: "",
+  email: "",
+  phone: "",
+  gstin: "",
+  state: "",
+  stateCode: "",
+});
+
+useEffect(() => {
+  const fetchCompanyInfo = async () => {
+    try {
+      const res = await fetch(`${baseurl}/api/company-info`);
+      const result = await res.json();
+
+      if (result.success && result.data) {
+        setCompanyInfo({
+          name: result.data.company_name || "",
+          address: result.data.address || "",
+          email: result.data.email || "",
+          phone: result.data.phone || "",
+          gstin: result.data.gstin || "",
+          state: result.data.state || "",
+          stateCode: result.data.state_code || "",
+        });
+      }
+    } catch (error) {
+      console.error("Company info fetch error:", error);
+    }
+  };
+
+  fetchCompanyInfo();
+}, []);
+
+
   const {
     // Layout
     isCollapsed,
@@ -79,24 +117,33 @@ const KachaCreateDebitNote = () => {
             <div className="row g-0 align-items-start">
 
               {/* LEFT */}
-                   <div className="col-lg-8 col-md-7 border-end p-3">
-  <strong className="d-block mb-2">Navkar Exports</strong>
-  <div className="company-details" style={{ fontSize: '13px' }}>
+<div className="col-lg-8 col-md-7 border-end p-3">
+  <strong className="d-block mb-2">{companyInfo.name}</strong>
+
+  <div className="company-details" style={{ fontSize: "13px" }}>
     <div className="mb-1">
-      <strong>Name:</strong> SHREE SHASHWAT RAJ AGRO PVT.LTD.
+      <strong>Name:</strong> {companyInfo.name}
     </div>
+
     <div className="mb-1">
-      <strong>Address:</strong> NO.PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD,
-      BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113
+      <strong>Address:</strong> {companyInfo.address}
     </div>
+
     <div className="mb-1">
-      <strong>Email:</strong> spmathur56@gmail.com
+      <strong>Email:</strong> {companyInfo.email}
     </div>
+
     <div className="mb-1">
-      <strong>Phone:</strong> 9801049700
+      <strong>Phone:</strong> {companyInfo.phone}
     </div>
+
     <div className="mb-1">
-      <strong>GSTIN:</strong> 10AAOCS1541B1ZZ
+      <strong>GSTIN:</strong> {companyInfo.gstin}
+    </div>
+
+    <div className="mb-1">
+      <strong>State:</strong> {companyInfo.state}
+      {companyInfo.stateCode ? `, Code: ${companyInfo.stateCode}` : ""}
     </div>
   </div>
 </div>

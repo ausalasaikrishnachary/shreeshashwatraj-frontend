@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
 import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
@@ -6,8 +6,44 @@ import ItemsTable from "./ItemsTable";
 import CustomerInfo from "./CustomerInfo";
 import useCreditNoteLogic from "./useCreditNoteLogic";
 import "./Createnote.css";
+import { baseurl } from "../../../BaseURL/BaseURL";
 
 const KachaCreateNote = () => {
+  const [companyInfo, setCompanyInfo] = useState({
+    name: "",
+    address: "",
+    email: "",
+    phone: "",
+    gstin: "",
+    state: "",
+    stateCode: "",
+  });
+
+  useEffect(() => {
+    const fetchCompanyInfo = async () => {
+      try {
+        const res = await fetch(`${baseurl}/api/company-info`);
+        const result = await res.json();
+
+        if (result.success && result.data) {
+          setCompanyInfo({
+            name: result.data.company_name || "",
+            address: result.data.address || "",
+            email: result.data.email || "",
+            phone: result.data.phone || "",
+            gstin: result.data.gstin || "",
+            state: result.data.state || "",
+            stateCode: result.data.state_code || "",
+          });
+        }
+      } catch (error) {
+        console.error("Company info fetch error:", error);
+      }
+    };
+
+    fetchCompanyInfo();
+  }, []);
+
   const {
     // Layout
     isCollapsed,
@@ -60,11 +96,12 @@ const KachaCreateNote = () => {
     <div className="credit-note-wrapper">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
 
-      <div className={`credit-note-main-content ${isCollapsed ? "collapsed" : ""}`}>
+      <div
+        className={`credit-note-main-content ${isCollapsed ? "collapsed" : ""}`}
+      >
         <AdminHeader isCollapsed={isCollapsed} />
 
         <div className="container my-4">
-
           {/* ERROR WARNING */}
           {error && (
             <div className="alert alert-warning alert-dismissible fade show">
@@ -73,33 +110,47 @@ const KachaCreateNote = () => {
           )}
 
           {/* MAIN BLOCK */}
-          <div className="border bg-white p-3" style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.06)" }}>
-
+          <div
+            className="border bg-white p-3"
+            style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.06)" }}
+          >
             {/* INVOICE HEADER */}
             <div className="row g-0 align-items-start">
-
               {/* LEFT */}
-         <div className="col-lg-8 col-md-7 border-end p-3">
-  <strong className="d-block mb-2">Navkar Exports</strong>
-  <div className="company-details" style={{ fontSize: '13px' }}>
-    <div className="mb-1">
-      <strong>Name:</strong> SHREE SHASHWAT RAJ AGRO PVT.LTD.
-    </div>
-    <div className="mb-1">
-      <strong>Address:</strong> NO.PATNA ROAD, 0, SHREE SHASHWAT RAJ AGRO PVT LTD,
-      BHAKHARUAN MORE, DAUDNAGAR, Aurangabad, Bihar 824113
-    </div>
-    <div className="mb-1">
-      <strong>Email:</strong> spmathur56@gmail.com
-    </div>
-    <div className="mb-1">
-      <strong>Phone:</strong> 9801049700
-    </div>
-    <div className="mb-1">
-      <strong>GSTIN:</strong> 10AAOCS1541B1ZZ
-    </div>
-  </div>
-</div>
+              <div className="col-lg-8 col-md-7 border-end p-3">
+                <strong className="d-block mb-2 text-primary">
+                  {companyInfo.name}
+                </strong>
+
+                <div className="company-details" style={{ fontSize: "13px" }}>
+                  <div className="mb-1">
+                    <strong>Name:</strong> {companyInfo.name}
+                  </div>
+
+                  <div className="mb-1">
+                    <strong>Address:</strong> {companyInfo.address}
+                  </div>
+
+                  <div className="mb-1">
+                    <strong>Email:</strong> {companyInfo.email}
+                  </div>
+
+                  <div className="mb-1">
+                    <strong>Phone:</strong> {companyInfo.phone}
+                  </div>
+
+                  <div className="mb-1">
+                    <strong>GSTIN:</strong> {companyInfo.gstin}
+                  </div>
+
+                  <div className="mb-1">
+                    <strong>State:</strong> {companyInfo.state}
+                    {companyInfo.stateCode
+                      ? `, Code: ${companyInfo.stateCode}`
+                      : ""}
+                  </div>
+                </div>
+              </div>
               {/* RIGHT */}
               <div className="col-lg-4 col-md-5 p-3">
                 <label className="form-label small">Credit Note No</label>
@@ -163,7 +214,11 @@ const KachaCreateNote = () => {
             {/* TOTALS */}
             <div className="row mt-3">
               <div className="col-md-8">
-                <textarea className="form-control" rows="4" placeholder="Note" />
+                <textarea
+                  className="form-control"
+                  rows="4"
+                  placeholder="Note"
+                />
               </div>
 
               <div className="col-md-4 border p-2">
@@ -198,7 +253,6 @@ const KachaCreateNote = () => {
 
           {/* CREDIT NOTES TABLE */}
           <ReusableTable title="Credit Notes" />
-
         </div>
       </div>
     </div>
@@ -206,4 +260,3 @@ const KachaCreateNote = () => {
 };
 
 export default KachaCreateNote;
-

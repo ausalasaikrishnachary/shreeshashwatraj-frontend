@@ -36,7 +36,7 @@ import {
   FaCalendarAlt,
   FaHourglass,
 } from "react-icons/fa";
-import { FiHome } from 'react-icons/fi';
+import { FiHome } from "react-icons/fi";
 
 import "./AdminSidebar.css";
 import UserCard from "../../Panels/UserCard/UserCard";
@@ -44,7 +44,7 @@ import UserCard from "../../Panels/UserCard/UserCard";
 function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isTablet, setIsTablet] = useState(
-    window.innerWidth <= 1024 && window.innerWidth > 768
+    window.innerWidth <= 1024 && window.innerWidth > 768,
   );
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -88,7 +88,8 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       path.startsWith("/category") ||
       path.startsWith("/company") ||
       path.startsWith("/units")
-    ) return setOpenDropdown("Inventory");
+    )
+      return setOpenDropdown("Inventory");
 
     if (path.startsWith("/retailersscore") || path.startsWith("/salesmanscore"))
       return setOpenDropdown("Scores");
@@ -114,9 +115,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     ) {
       return setOpenDropdown("Kacha Purchase");
     }
-
   }, [location.pathname]);
-
 
   const toggleDropdown = (menuName) => {
     setOpenDropdown(openDropdown === menuName ? null : menuName);
@@ -131,12 +130,17 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     { path: "/admindashboard", name: "Dashboard", icon: <FaTachometerAlt /> },
     { path: "/retailers", name: "Contacts", icon: <FaUsers /> },
     { path: "/staff", name: "Staff", icon: <FaUserTie /> },
+    { path: "/company_info", name: "Company Info", icon: <FaUserTie /> },
     { path: "/sales_visit", name: "Sales Visit", icon: <FaClipboardList /> },
-    { path: "/credit-period", name: "Credit Period Fix", icon: <FaCalendarAlt /> },
+    {
+      path: "/credit-period",
+      name: "Credit Period Fix",
+      icon: <FaCalendarAlt />,
+    },
     {
       path: "/period",
       name: "Order List",
-      icon: <FaHourglass />
+      icon: <FaHourglass />,
     },
     {
       name: "Scores",
@@ -151,7 +155,11 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       icon: <FaHandHoldingUsd />,
       subMenu: [
         { path: "/sale_items", name: "Sales Catalogue", icon: <FaBookOpen /> },
-        { path: "/purchased_items", name: "Purchased Items", icon: <FaShoppingCart /> },
+        {
+          path: "/purchased_items",
+          name: "Purchased Items",
+          icon: <FaShoppingCart />,
+        },
         { path: "/category", name: "Category", icon: <FaTags /> },
         { path: "/company", name: "Company", icon: <FaBoxes /> },
         { path: "/units", name: "Units", icon: <FaRuler /> },
@@ -163,52 +171,96 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       subMenu: [
         { path: "/sales/invoices", name: "Invoices", icon: <FaFileInvoice /> },
         { path: "/sales/receipts", name: "Receipts", icon: <FaReceipt /> },
-        { path: "/sales/credit_note", name: "Credit Note", icon: <FaCreditCard /> },
+        {
+          path: "/sales/credit_note",
+          name: "Credit Note",
+          icon: <FaCreditCard />,
+        },
       ],
     },
     {
       name: "Purchase",
       icon: <FaBox />,
       subMenu: [
-        { path: "/purchase/purchase-invoice", name: "Purchase Invoice", icon: <FaPurchaseInvoice /> },
+        {
+          path: "/purchase/purchase-invoice",
+          name: "Purchase Invoice",
+          icon: <FaPurchaseInvoice />,
+        },
         { path: "/purchase/voucher", name: "Voucher", icon: <FaStickyNote /> },
-        { path: "/purchase/debit-note", name: "Debit Note", icon: <FaFileExport /> },
+        {
+          path: "/purchase/debit-note",
+          name: "Debit Note",
+          icon: <FaFileExport />,
+        },
       ],
     },
     {
       name: "Kacha Sales",
       icon: <FaChartLine />,
       subMenu: [
-        { path: "/kachinvoicetable", name: "Kacha Sales Invoices", icon: <FaFileInvoice /> },
+        {
+          path: "/kachinvoicetable",
+          name: "Kacha Sales Invoices",
+          icon: <FaFileInvoice />,
+        },
         { path: "/kachareceipts", name: "Kacha Receipts", icon: <FaReceipt /> },
-        { path: "/kachacreditenotetable", name: "Kacha Credit Note", icon: <FaCreditCard /> },
+        {
+          path: "/kachacreditenotetable",
+          name: "Kacha Credit Note",
+          icon: <FaCreditCard />,
+        },
       ],
     },
     {
       name: "Kacha Purchase",
       icon: <FaBox />,
       subMenu: [
-        { path: "/kachapurchaseinvoicetable", name: "Kacha Purchase", icon: <FaPurchaseInvoice /> },
-        { path: "/kachaPurchasevoucher", name: "Kacha Purchase Voucher", icon: <FaStickyNote /> },
-        { path: "/kachadebitnotetable", name: "Kacha Debit Note", icon: <FaFileExport /> },
+        {
+          path: "/kachapurchaseinvoicetable",
+          name: "Kacha Purchase",
+          icon: <FaPurchaseInvoice />,
+        },
+        {
+          path: "/kachaPurchasevoucher",
+          name: "Kacha Purchase Voucher",
+          icon: <FaStickyNote />,
+        },
+        {
+          path: "/kachadebitnotetable",
+          name: "Kacha Debit Note",
+          icon: <FaFileExport />,
+        },
       ],
     },
-    { path: "/admin_expensive", name: "Expense Requests", icon: <FaMoneyBillWave /> },
+    {
+      path: "/admin_expensive",
+      name: "Expense Requests",
+      icon: <FaMoneyBillWave />,
+    },
     { path: "/ledger", name: "Ledger", icon: <FiHome /> },
     { path: "/expenses", name: "Expenses", icon: <FaMoneyBill /> },
-    { path: "/admin/marketing/offers-postings", name: "Offers & Marketing", icon: <FaTags /> },
+    {
+      path: "/admin/marketing/offers-postings",
+      name: "Offers & Marketing",
+      icon: <FaTags />,
+    },
     { path: "/reports", name: "Reports", icon: <FaFileAlt /> },
     { path: "/roleaccess", name: "Role Access", icon: <FaKey /> },
-     {
+    {
       name: "Production",
       icon: <FaBox />,
       subMenu: [
-        { path: "/Productstable", name: "Products", icon: <FaPurchaseInvoice /> },
+        {
+          path: "/Productstable",
+          name: "Products",
+          icon: <FaPurchaseInvoice />,
+        },
         // { path: "/kachaPurchasevoucher", name: "Kacha Purchase Voucher", icon: <FaStickyNote /> },
         // { path: "/Productioncreate", name: "Create Product", icon: <FaFileExport /> },
       ],
     },
-      {
+    {
       name: "JR",
       icon: <FaBox />,
       subMenu: [
@@ -221,17 +273,17 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
   const handleMobileToggle = () => setIsMobileOpen(!isMobileOpen);
 
   const isPurchaseActive = location.pathname.startsWith("/purchase/");
-  
+
   // Check if current path is a Kacha Sales page
-  const isKachaSalesActive = 
+  const isKachaSalesActive =
     location.pathname.startsWith("/kachinvoicetable") ||
     location.pathname.startsWith("/kachareceipts") ||
     location.pathname.startsWith("/kachacreditenotetable") ||
     location.pathname.startsWith("/kachacreditenote") ||
     location.pathname.startsWith("/kacha_sales");
-  
+
   // Check if current path is a Kacha Purchase page
-  const isKachaPurchaseActive = 
+  const isKachaPurchaseActive =
     location.pathname.startsWith("/kachapurchaseinvoicetable") ||
     location.pathname.startsWith("/kachaPurchasevoucher") ||
     location.pathname.startsWith("/kachadebitnotetable") ||
@@ -251,8 +303,9 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       )}
 
       <div
-        className={`sidebar ${isCollapsed ? "collapsed" : ""} ${isMobileOpen ? "open" : ""
-          } ${isMobile ? "mobile" : ""} ${isTablet ? "tablet" : ""}`}
+        className={`sidebar ${isCollapsed ? "collapsed" : ""} ${
+          isMobileOpen ? "open" : ""
+        } ${isMobile ? "mobile" : ""} ${isTablet ? "tablet" : ""}`}
       >
         <div className="sidebar-header">
           <h2
@@ -286,21 +339,24 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
                 {item.subMenu ? (
                   <>
                     <button
-                      className={`dropdown-btn-link ${openDropdown === item.name ? "open" : ""
-                        } ${(item.name === "Inventory" &&
+                      className={`dropdown-btn-link ${
+                        openDropdown === item.name ? "open" : ""
+                      } ${
+                        (item.name === "Inventory" &&
                           (location.pathname.startsWith("/sale_items") ||
                             location.pathname.startsWith("/purchased_items") ||
                             location.pathname.startsWith("/category") ||
                             location.pathname.startsWith("/company") ||
                             location.pathname.startsWith("/units"))) ||
-                          (item.name === "Sales" &&
-                            location.pathname.startsWith("/sales/")) ||
-                          (item.name === "Purchase" && isPurchaseActive) ||
-                          (item.name === "Kacha Sales" && isKachaSalesActive) ||
-                          (item.name === "Kacha Purchase" && isKachaPurchaseActive)
+                        (item.name === "Sales" &&
+                          location.pathname.startsWith("/sales/")) ||
+                        (item.name === "Purchase" && isPurchaseActive) ||
+                        (item.name === "Kacha Sales" && isKachaSalesActive) ||
+                        (item.name === "Kacha Purchase" &&
+                          isKachaPurchaseActive)
                           ? "active"
                           : ""
-                        }`}
+                      }`}
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleDropdown(item.name);

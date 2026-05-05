@@ -1,60 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Table } from 'react-bootstrap';
-import { useNavigate, useParams } from 'react-router-dom';
-import './Invoices.css';
-import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
-import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus, FaEye } from "react-icons/fa";
-import { baseurl } from '../../../BaseURL/BaseURL';
+import React, { useState, useEffect } from "react";
+import { Container, Row, Col, Form, Button, Table } from "react-bootstrap";
+import { useNavigate, useParams } from "react-router-dom";
+import "./Invoices.css";
+import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
+import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
+import {
+  FaEdit,
+  FaTrash,
+  FaSave,
+  FaTimes,
+  FaPlus,
+  FaEye,
+} from "react-icons/fa";
+import { baseurl } from "../../../BaseURL/BaseURL";
 
 const Productioncreate = ({ user }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
   const { id } = useParams(); // Get ID from URL for edit mode
-  const isEditMode = id && id !== 'create';
-  
+  const isEditMode = id && id !== "create";
+
   // State for products from API
   const [products, setProducts] = useState([]);
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  
+
   // Invoice header state
   const [invoiceData, setInvoiceData] = useState({
-    voucherNo: '',
-    invoiceDate: new Date().toISOString().split('T')[0],
+    voucherNo: "",
+    invoiceDate: new Date().toISOString().split("T")[0],
   });
-  
+
   // Form state for production entry
   const [productionForm, setProductionForm] = useState({
-    itemName: '',
-    itemId: '',
-    batchNo: '',
-    batchId: '',
-    qty: '',
-    rate: '',
-    amount: '',
-    productionType: 'Consumption'
+    itemName: "",
+    itemId: "",
+    batchNo: "",
+    batchId: "",
+    qty: "",
+    rate: "",
+    amount: "",
+    productionType: "Consumption",
   });
-  
+
   // Production items list
   const [productionItems, setProductionItems] = useState([]);
-  
+
   const [editingId, setEditingId] = useState(null);
-  const [narration, setNarration] = useState('');
+  const [narration, setNarration] = useState("");
 
   // Company Info
-  const companyInfo = {
-    name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-    address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-    email: "spmathur56@gmail.com",
-    phone: "9801049700",
-    gstin: "10AAOCS1541B1ZZ",
-    state: "Bihar",
-    stateCode: "10"
-  };
+  const [companyInfo, setCompanyInfo] = useState({
+    name: "",
+    address: "",
+    email: "",
+    phone: "",
+    gstin: "",
+    state: "",
+    stateCode: "",
+  });
 
   useEffect(() => {
     fetchProducts();
@@ -65,56 +72,95 @@ const Productioncreate = ({ user }) => {
     }
   }, [isEditMode, id]);
 
-const fetchProductionData = async (voucherId) => {
-  try {
-    setLoading(true);
-    const response = await fetch(`${baseurl}/production/${voucherId}`);
-    const result = await response.json();
-    
-    console.log('API Response:', result); // Debug log
-    
-    if (result.success) {
-      const data = result.data;
-      
-      // Check if data has voucher property (from your GET API)
-      if (data.voucher) {
-        // Set invoice data from voucher object
-        setInvoiceData({
-          voucherNo: data.voucher.VchNo || '',
-          invoiceDate: data.voucher.Date ? new Date(data.voucher.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        });
-      } else {
-        // Fallback: if data is directly the voucher object
-        setInvoiceData({
-          voucherNo: data.VchNo || '',
-          invoiceDate: data.Date ? new Date(data.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        });
+  useEffect(() => {
+    const fetchCompanyInfo = async () => {
+      try {
+        const res = await fetch(`${baseurl}/api/company-info`);
+        const text = await res.text();
+
+        let result;
+        try {
+          result = JSON.parse(text);
+        } catch {
+          throw new Error("Company API response is not JSON");
+        }
+
+        if (result.success && result.data) {
+          setCompanyInfo({
+            name: result.data.company_name || "",
+            address: result.data.address || "",
+            email: result.data.email || "",
+            phone: result.data.phone || "",
+            gstin: result.data.gstin || "",
+            state: result.data.state || "",
+            stateCode: result.data.state_code || "",
+          });
+        }
+      } catch (error) {
+        console.error("Company info fetch error:", error);
       }
-      
-      // Transform items for the table
-      const items = (data.items || []).map(item => ({
-        id: item.id || Date.now(),
-        itemName: item.product || '',
-        itemId: item.product_id || '',
-        batchNo: item.batch || 'N.A.',
-        batchId: item.batch_id || '',
-        qty: item.quantity || 0,
-        rate: item.price || 0,
-        amount: item.total || 0,
-        type: item.transaction_type || 'Production'
-      }));
-      
-      setProductionItems(items);
-    } else {
-      alert('Failed to load production data: ' + (result.message || 'Unknown error'));
+    };
+
+    fetchCompanyInfo();
+  }, []);
+
+  const fetchProductionData = async (voucherId) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${baseurl}/production/${voucherId}`);
+      const result = await response.json();
+
+      console.log("API Response:", result); // Debug log
+
+      if (result.success) {
+        const data = result.data;
+
+        // Check if data has voucher property (from your GET API)
+        if (data.voucher) {
+          // Set invoice data from voucher object
+          setInvoiceData({
+            voucherNo: data.voucher.VchNo || "",
+            invoiceDate: data.voucher.Date
+              ? new Date(data.voucher.Date).toISOString().split("T")[0]
+              : new Date().toISOString().split("T")[0],
+          });
+        } else {
+          // Fallback: if data is directly the voucher object
+          setInvoiceData({
+            voucherNo: data.VchNo || "",
+            invoiceDate: data.Date
+              ? new Date(data.Date).toISOString().split("T")[0]
+              : new Date().toISOString().split("T")[0],
+          });
+        }
+
+        // Transform items for the table
+        const items = (data.items || []).map((item) => ({
+          id: item.id || Date.now(),
+          itemName: item.product || "",
+          itemId: item.product_id || "",
+          batchNo: item.batch || "N.A.",
+          batchId: item.batch_id || "",
+          qty: item.quantity || 0,
+          rate: item.price || 0,
+          amount: item.total || 0,
+          type: item.transaction_type || "Production",
+        }));
+
+        setProductionItems(items);
+      } else {
+        alert(
+          "Failed to load production data: " +
+            (result.message || "Unknown error"),
+        );
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching production data:", error);
+      alert("Failed to load production data for editing");
+      setLoading(false);
     }
-    setLoading(false);
-  } catch (error) {
-    console.error('Error fetching production data:', error);
-    alert('Failed to load production data for editing');
-    setLoading(false);
-  }
-};
+  };
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -123,7 +169,7 @@ const fetchProductionData = async (voucherId) => {
       const data = await response.json();
       setProducts(data);
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error("Error fetching products:", error);
     } finally {
       setLoading(false);
     }
@@ -136,18 +182,21 @@ const fetchProductionData = async (voucherId) => {
       if (response.ok) {
         const data = await response.json();
         if (data.voucherNo) {
-          const lastNumber = parseInt(data.voucherNo.split('-')[1]) || 0;
-          const newNumber = String(lastNumber + 1).padStart(3, '0');
-          setInvoiceData(prev => ({ ...prev, voucherNo: `COS-${newNumber}` }));
+          const lastNumber = parseInt(data.voucherNo.split("-")[1]) || 0;
+          const newNumber = String(lastNumber + 1).padStart(3, "0");
+          setInvoiceData((prev) => ({
+            ...prev,
+            voucherNo: `COS-${newNumber}`,
+          }));
         } else {
-          setInvoiceData(prev => ({ ...prev, voucherNo: 'COS-001' }));
+          setInvoiceData((prev) => ({ ...prev, voucherNo: "COS-001" }));
         }
       } else {
-        setInvoiceData(prev => ({ ...prev, voucherNo: 'COS-001' }));
+        setInvoiceData((prev) => ({ ...prev, voucherNo: "COS-001" }));
       }
     } catch (error) {
-      console.error('Error generating voucher number:', error);
-      setInvoiceData(prev => ({ ...prev, voucherNo: 'COS-001' }));
+      console.error("Error generating voucher number:", error);
+      setInvoiceData((prev) => ({ ...prev, voucherNo: "COS-001" }));
     }
   };
 
@@ -159,102 +208,105 @@ const fetchProductionData = async (voucherId) => {
       setBatches(data);
       return data;
     } catch (error) {
-      console.error('Error fetching batches:', error);
+      console.error("Error fetching batches:", error);
       setBatches([]);
       return [];
     }
   };
 
   // Filter products based on search term
-  const filteredProducts = products.filter(product =>
-    product.goods_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProducts = products.filter(
+    (product) =>
+      product.goods_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.name?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Handle invoice header change
   const handleInvoiceChange = (e) => {
     const { name, value } = e.target;
-    setInvoiceData(prev => ({ ...prev, [name]: value }));
+    setInvoiceData((prev) => ({ ...prev, [name]: value }));
   };
 
   // Handle product selection
   const handleProductSelect = async (product) => {
-    setProductionForm(prev => ({
+    setProductionForm((prev) => ({
       ...prev,
       itemName: product.goods_name || product.name,
       itemId: product.id,
       rate: product.net_price || product.price || 0,
-      batchNo: '',
-      batchId: ''
+      batchNo: "",
+      batchId: "",
     }));
-    
+
     await fetchBatchesForProduct(product.id);
     setIsDropdownOpen(false);
-    setSearchTerm('');
+    setSearchTerm("");
   };
 
   // Handle form input change
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setProductionForm(prev => {
+    setProductionForm((prev) => {
       const updated = { ...prev, [name]: value };
-      
-      if (name === 'qty' || name === 'rate') {
+
+      if (name === "qty" || name === "rate") {
         const qty = parseFloat(updated.qty) || 0;
         const rate = parseFloat(updated.rate) || 0;
         updated.amount = (qty * rate).toFixed(2);
       }
-      
+
       return updated;
     });
   };
-  
+
   // Add or Update item
   const handleAddOrUpdate = () => {
     if (!productionForm.itemName) {
-      alert('Please select an item');
+      alert("Please select an item");
       return;
     }
-    
+
     if (!productionForm.qty || parseFloat(productionForm.qty) <= 0) {
-      alert('Please enter valid quantity');
+      alert("Please enter valid quantity");
       return;
     }
-    
+
     const newItem = {
       id: editingId || Date.now(),
       itemName: productionForm.itemName,
       itemId: productionForm.itemId,
-      batchNo: productionForm.batchNo || 'N.A.',
+      batchNo: productionForm.batchNo || "N.A.",
       batchId: productionForm.batchId,
       qty: productionForm.qty,
       rate: productionForm.rate,
       amount: productionForm.amount,
-      type: productionForm.productionType
+      type: productionForm.productionType,
     };
-    
+
     if (editingId) {
-      setProductionItems(prev => prev.map(item => item.id === editingId ? newItem : item));
+      setProductionItems((prev) =>
+        prev.map((item) => (item.id === editingId ? newItem : item)),
+      );
       setEditingId(null);
     } else {
-      setProductionItems(prev => [...prev, newItem]);
+      setProductionItems((prev) => [...prev, newItem]);
     }
-    
+
     // Reset form
     setProductionForm({
-      itemName: '',
-      itemId: '',
-      batchNo: '',
-      batchId: '',
-      qty: '',
-      rate: '',
-      amount: '',
-      productionType: 'Production'
+      itemName: "",
+      itemId: "",
+      batchNo: "",
+      batchId: "",
+      qty: "",
+      rate: "",
+      amount: "",
+      productionType: "Production",
     });
     setBatches([]);
-    setSearchTerm('');
+    setSearchTerm("");
   };
-  
+
   // Edit item
   const handleEdit = async (item) => {
     setProductionForm({
@@ -265,170 +317,198 @@ const fetchProductionData = async (voucherId) => {
       qty: item.qty,
       rate: item.rate,
       amount: item.amount,
-      productionType: item.type
+      productionType: item.type,
     });
     setEditingId(item.id);
-    
+
     if (item.itemId) {
       await fetchBatchesForProduct(item.itemId);
     }
   };
-  
+
   // Delete item
   const handleDelete = (id) => {
-    setProductionItems(prev => prev.filter(item => item.id !== id));
+    setProductionItems((prev) => prev.filter((item) => item.id !== id));
   };
-  
+
   // Cancel edit
   const handleCancel = () => {
-   navigate('/productstable'); 
+    navigate("/productstable");
   };
-  
+
   // Clear Draft
   const handleClearDraft = () => {
-    if (window.confirm('Are you sure you want to clear all draft data?')) {
+    if (window.confirm("Are you sure you want to clear all draft data?")) {
       setProductionItems([]);
       setProductionForm({
-        itemName: '',
-        itemId: '',
-        batchNo: '',
-        batchId: '',
-        qty: '',
-        rate: '',
-        amount: '',
-        productionType: 'Production'
+        itemName: "",
+        itemId: "",
+        batchNo: "",
+        batchId: "",
+        qty: "",
+        rate: "",
+        amount: "",
+        productionType: "Production",
       });
-      setNarration('');
+      setNarration("");
       setEditingId(null);
       setBatches([]);
       if (!isEditMode) {
         generateVoucherNumber();
       }
-      setInvoiceData(prev => ({
+      setInvoiceData((prev) => ({
         ...prev,
-        invoiceDate: new Date().toISOString().split('T')[0],
+        invoiceDate: new Date().toISOString().split("T")[0],
       }));
-      alert('✅ Draft cleared successfully!');
+      alert("✅ Draft cleared successfully!");
     }
   };
-  
-// Save Production (Create or Update)
-const handleSave = async () => {
-  if (productionItems.length === 0) {
-    alert('⚠️ Please add at least one production item');
-    return;
-  }
-  
-  if (!invoiceData.voucherNo) {
-    alert('⚠️ Please enter voucher number');
-    return;
-  }
-  
-  if (!invoiceData.invoiceDate) {
-    alert('⚠️ Please select date');
-    return;
-  }
-  
-  setSaving(true);
-  
-  try {
-    const productionData = {
-      voucherNo: invoiceData.voucherNo,
-      invoiceDate: invoiceData.invoiceDate,
-      productionItems: productionItems.map(item => ({
-        itemName: item.itemName,
-        itemId: item.itemId,
-        batchNo: item.batchNo,
-        batchId: item.batchId,
-        qty: parseFloat(item.qty),
-        rate: parseFloat(item.rate),
-        amount: parseFloat(item.amount),
-        type: item.type
-      }))
-    };
-    
-    let url = `${baseurl}/production/create`;
-    let method = 'POST';
-    
-    if (isEditMode) {
-      // Use the voucher ID from the URL for update
-      url = `${baseurl}/production/update/${id}`;
-      method = 'PUT';
+
+  // Save Production (Create or Update)
+  const handleSave = async () => {
+    if (productionItems.length === 0) {
+      alert("⚠️ Please add at least one production item");
+      return;
     }
-    
-    console.log('Saving to:', url, 'with method:', method); // Debug log
-    
-    const response = await fetch(url, {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(productionData)
-    });
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      alert(`✅ Production ${isEditMode ? 'updated' : 'saved'} successfully!`);
-      navigate('/productstable'); // Update with your actual list route
-    } else {
-      alert(`❌ Failed to ${isEditMode ? 'update' : 'save'} production: ` + (result.message || 'Unknown error'));
+
+    if (!invoiceData.voucherNo) {
+      alert("⚠️ Please enter voucher number");
+      return;
     }
-  } catch (error) {
-    console.error('Error saving production:', error);
-    alert(`❌ Error ${isEditMode ? 'updating' : 'saving'} production. Please try again.`);
-  } finally {
-    setSaving(false);
-  }
-};
+
+    if (!invoiceData.invoiceDate) {
+      alert("⚠️ Please select date");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const productionData = {
+        voucherNo: invoiceData.voucherNo,
+        invoiceDate: invoiceData.invoiceDate,
+        productionItems: productionItems.map((item) => ({
+          itemName: item.itemName,
+          itemId: item.itemId,
+          batchNo: item.batchNo,
+          batchId: item.batchId,
+          qty: parseFloat(item.qty),
+          rate: parseFloat(item.rate),
+          amount: parseFloat(item.amount),
+          type: item.type,
+        })),
+      };
+
+      let url = `${baseurl}/production/create`;
+      let method = "POST";
+
+      if (isEditMode) {
+        // Use the voucher ID from the URL for update
+        url = `${baseurl}/production/update/${id}`;
+        method = "PUT";
+      }
+
+      console.log("Saving to:", url, "with method:", method); // Debug log
+
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(productionData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(
+          `✅ Production ${isEditMode ? "updated" : "saved"} successfully!`,
+        );
+        navigate("/productstable"); // Update with your actual list route
+      } else {
+        alert(
+          `❌ Failed to ${isEditMode ? "update" : "save"} production: ` +
+            (result.message || "Unknown error"),
+        );
+      }
+    } catch (error) {
+      console.error("Error saving production:", error);
+      alert(
+        `❌ Error ${isEditMode ? "updating" : "saving"} production. Please try again.`,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="admin-layout">
-      <AdminSidebar 
-        isCollapsed={sidebarCollapsed} 
-        setIsCollapsed={setSidebarCollapsed} 
+      <AdminSidebar
+        isCollapsed={sidebarCollapsed}
+        setIsCollapsed={setSidebarCollapsed}
       />
-      <div className={`admin-main-content ${sidebarCollapsed ? "collapsed" : ""}`}>
+      <div
+        className={`admin-main-content ${sidebarCollapsed ? "collapsed" : ""}`}
+      >
         <AdminHeader
           isCollapsed={sidebarCollapsed}
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           isMobile={window.innerWidth <= 768}
         />
-        
+
         <div className="admin-content-wrapper">
           <Container fluid className="production-container">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h3 className="text-primary">{isEditMode ? 'Edit Production' : 'Create Production'}</h3>
+              <h3 className="text-primary">
+                {isEditMode ? "Edit Production" : "Create Production"}
+              </h3>
               <div>
-                <Button variant="warning" size="sm" onClick={handleClearDraft} className="me-2">
+                <Button
+                  variant="warning"
+                  size="sm"
+                  onClick={handleClearDraft}
+                  className="me-2"
+                >
                   Clear Draft
                 </Button>
-                <Button variant="secondary" size="sm" onClick={() => navigate('/productstable')}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate("/productstable")}
+                >
                   Back to List
                 </Button>
               </div>
             </div>
-            
+
             {/* Company Info Section */}
             <div className="bg-white p-3 rounded shadow-sm mb-4">
               <Row>
                 <Col md={8}>
                   <div>
-                    <strong className="text-primary fs-5">{companyInfo.name}</strong><br />
-                    {companyInfo.address}<br />
-                    Email: {companyInfo.email} | Phone: {companyInfo.phone}<br />
-                    GSTIN/UIN: {companyInfo.gstin}<br />
-                    State Name: {companyInfo.state}, Code: {companyInfo.stateCode}
+                    <strong className="text-primary fs-5">
+                      {companyInfo.name || "Company Name"}
+                    </strong>
+                    <br />
+                    {companyInfo.address || "Company Address"}
+                    <br />
+                    Email: {companyInfo.email || "-"} | Phone:{" "}
+                    {companyInfo.phone || "-"}
+                    <br />
+                    GSTIN/UIN: {companyInfo.gstin || "-"}
+                    <br />
+                    State Name: {companyInfo.state || "-"}, Code:{" "}
+                    {companyInfo.stateCode || "-"}
                   </div>
                 </Col>
                 <Col md={4}>
-                                    <Form.Label className="fw-bold mt-1">Voucher No</Form.Label>
+                  <Form.Label className="fw-bold mt-1">Voucher No</Form.Label>
 
                   <Form.Group className="mb-2">
-                    <Form.Control 
-                      type="text" 
+                    <Form.Control
+                      type="text"
                       name="voucherNo"
-                      value={invoiceData.voucherNo} 
+                      value={invoiceData.voucherNo}
                       onChange={handleInvoiceChange}
                       className="border-primary"
                       placeholder="Voucher No"
@@ -436,13 +516,13 @@ const handleSave = async () => {
                       disabled={isEditMode}
                     />
                   </Form.Group>
-                                      <Form.Label className="fw-bold mt-1">Date</Form.Label>
+                  <Form.Label className="fw-bold mt-1">Date</Form.Label>
 
                   <Form.Group>
-                    <Form.Control 
-                      type="date" 
+                    <Form.Control
+                      type="date"
                       name="invoiceDate"
-                      value={invoiceData.invoiceDate} 
+                      value={invoiceData.invoiceDate}
                       onChange={handleInvoiceChange}
                       className="border-primary"
                     />
@@ -450,16 +530,18 @@ const handleSave = async () => {
                 </Col>
               </Row>
             </div>
-            
+
             {/* Production Form Section */}
             <div className="bg-white p-3 rounded shadow-sm mb-4">
               <h6 className="text-primary mb-3">
-                {editingId ? 'Edit Production Item' : 'Add Production Item'}
+                {editingId ? "Edit Production Item" : "Add Production Item"}
               </h6>
-              
+
               {/* Horizontal Form */}
               <div className="d-flex align-items-end gap-2 flex-wrap">
-                <div style={{ minWidth: '180px', flex: 2, position: 'relative' }}>
+                <div
+                  style={{ minWidth: "180px", flex: 2, position: "relative" }}
+                >
                   <Form.Label className="fw-bold small">Item Name</Form.Label>
                   <input
                     type="text"
@@ -470,88 +552,111 @@ const handleSave = async () => {
                       setSearchTerm(e.target.value);
                       setIsDropdownOpen(true);
                       if (!e.target.value) {
-                        setProductionForm(prev => ({
+                        setProductionForm((prev) => ({
                           ...prev,
-                          itemName: '',
-                          itemId: '',
-                          rate: '',
+                          itemName: "",
+                          itemId: "",
+                          rate: "",
                         }));
                         setBatches([]);
                       }
                     }}
                     onClick={() => setIsDropdownOpen(true)}
                   />
-                  
+
                   {/* Product Dropdown */}
                   {isDropdownOpen && !productionForm.itemId && (
                     <div
                       className="position-absolute w-100"
                       style={{
-                        top: '100%',
+                        top: "100%",
                         left: 0,
                         zIndex: 9999,
-                        backgroundColor: '#fff',
-                        border: '1px solid #dee2e6',
-                        borderRadius: '6px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                        maxHeight: '300px',
-                        overflowY: 'auto'
+                        backgroundColor: "#fff",
+                        border: "1px solid #dee2e6",
+                        borderRadius: "6px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                        maxHeight: "300px",
+                        overflowY: "auto",
                       }}
                     >
-                      <div style={{ 
-                        padding: '8px 16px', 
-                        borderBottom: '1px solid #dee2e6', 
-                        color: '#0d6efd', 
-                        fontWeight: 600,
-                        position: 'sticky',
-                        top: 0,
-                        backgroundColor: '#fff'
-                      }}>
+                      <div
+                        style={{
+                          padding: "8px 16px",
+                          borderBottom: "1px solid #dee2e6",
+                          color: "#0d6efd",
+                          fontWeight: 600,
+                          position: "sticky",
+                          top: 0,
+                          backgroundColor: "#fff",
+                        }}
+                      >
                         Select Product
                       </div>
                       <div>
                         {loading ? (
-                          <div style={{ padding: '16px', textAlign: 'center' }}>Loading...</div>
+                          <div style={{ padding: "16px", textAlign: "center" }}>
+                            Loading...
+                          </div>
                         ) : filteredProducts.length === 0 ? (
-                          <div style={{ padding: '16px', textAlign: 'center', color: '#6c757d' }}>
+                          <div
+                            style={{
+                              padding: "16px",
+                              textAlign: "center",
+                              color: "#6c757d",
+                            }}
+                          >
                             No products found
                           </div>
                         ) : (
-                          filteredProducts.map(product => (
+                          filteredProducts.map((product) => (
                             <div
                               key={product.id}
                               onClick={() => handleProductSelect(product)}
                               style={{
-                                padding: '8px 16px',
-                                cursor: 'pointer',
-                                borderLeft: '3px solid transparent',
-                                transition: 'background-color 0.2s'
+                                padding: "8px 16px",
+                                cursor: "pointer",
+                                borderLeft: "3px solid transparent",
+                                transition: "background-color 0.2s",
                               }}
-                              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                              onMouseEnter={(e) =>
+                                (e.currentTarget.style.backgroundColor =
+                                  "#f8f9fa")
+                              }
+                              onMouseLeave={(e) =>
+                                (e.currentTarget.style.backgroundColor =
+                                  "transparent")
+                              }
                             >
-                              <div style={{ fontWeight: 400, fontSize: '13px' }}>
+                              <div
+                                style={{ fontWeight: 400, fontSize: "13px" }}
+                              >
                                 {product.goods_name || product.name}
                               </div>
-                              <div style={{ fontSize: '11px', color: '#6c757d' }}>
-                                Rate: ₹{product.net_price || product.price || 0} | Unit: {product.unit_name || '-'}
+                              <div
+                                style={{ fontSize: "11px", color: "#6c757d" }}
+                              >
+                                Rate: ₹{product.net_price || product.price || 0}{" "}
+                                | Unit: {product.unit_name || "-"}
                               </div>
                             </div>
                           ))
                         )}
                       </div>
-                      <div style={{ 
-                        padding: '8px 16px', 
-                        borderTop: '1px solid #dee2e6',
-                        position: 'sticky',
-                        bottom: 0,
-                        backgroundColor: '#fff'
-                      }}>
+                      <div
+                        style={{
+                          padding: "8px 16px",
+                          borderTop: "1px solid #dee2e6",
+                          position: "sticky",
+                          bottom: 0,
+                          backgroundColor: "#fff",
+                        }}
+                      >
                         <button
                           className="btn btn-sm btn-outline-secondary w-100"
                           onClick={() => {
                             setIsDropdownOpen(false);
-                            setSearchTerm('');
+                            setSearchTerm("");
                           }}
                         >
                           Close
@@ -560,18 +665,20 @@ const handleSave = async () => {
                     </div>
                   )}
                 </div>
-                
-                <div style={{ minWidth: '120px', flex: 1 }}>
+
+                <div style={{ minWidth: "120px", flex: 1 }}>
                   <Form.Label className="fw-bold small">Batch No.</Form.Label>
                   <Form.Select
                     name="batchNo"
                     value={productionForm.batchNo}
                     onChange={(e) => {
-                      const selectedBatch = batches.find(b => b.batch_number === e.target.value);
-                      setProductionForm(prev => ({
+                      const selectedBatch = batches.find(
+                        (b) => b.batch_number === e.target.value,
+                      );
+                      setProductionForm((prev) => ({
                         ...prev,
                         batchNo: e.target.value,
-                        batchId: selectedBatch?.id || ''
+                        batchId: selectedBatch?.id || "",
                       }));
                     }}
                     className="border-primary"
@@ -579,15 +686,15 @@ const handleSave = async () => {
                     disabled={batches.length === 0}
                   >
                     <option value="">Select Batch</option>
-                    {batches.map(batch => (
+                    {batches.map((batch) => (
                       <option key={batch.id} value={batch.batch_number}>
                         {batch.batch_number} (Qty: {batch.quantity})
                       </option>
                     ))}
                   </Form.Select>
                 </div>
-                
-                <div style={{ minWidth: '100px', flex: 1 }}>
+
+                <div style={{ minWidth: "100px", flex: 1 }}>
                   <Form.Label className="fw-bold small">Qty</Form.Label>
                   <Form.Control
                     type="number"
@@ -599,8 +706,8 @@ const handleSave = async () => {
                     size="sm"
                   />
                 </div>
-                
-                <div style={{ minWidth: '100px', flex: 1 }}>
+
+                <div style={{ minWidth: "100px", flex: 1 }}>
                   <Form.Label className="fw-bold small">Rate</Form.Label>
                   <Form.Control
                     type="number"
@@ -612,8 +719,8 @@ const handleSave = async () => {
                     size="sm"
                   />
                 </div>
-                
-                <div style={{ minWidth: '100px', flex: 1 }}>
+
+                <div style={{ minWidth: "100px", flex: 1 }}>
                   <Form.Label className="fw-bold small">Amount</Form.Label>
                   <Form.Control
                     type="text"
@@ -624,9 +731,11 @@ const handleSave = async () => {
                     size="sm"
                   />
                 </div>
-                
-                <div style={{ minWidth: '130px', flex: 1.2 }}>
-                  <Form.Label className="fw-bold small">Production Type</Form.Label>
+
+                <div style={{ minWidth: "130px", flex: 1.2 }}>
+                  <Form.Label className="fw-bold small">
+                    Production Type
+                  </Form.Label>
                   <Form.Select
                     name="productionType"
                     value={productionForm.productionType}
@@ -634,25 +743,32 @@ const handleSave = async () => {
                     className="border-primary"
                     size="sm"
                   >
-                  
                     <option value="Consumption">Consumption</option>
-                      <option value="Production">Production</option>
+                    <option value="Production">Production</option>
                   </Form.Select>
                 </div>
-                
-                <div style={{ minWidth: '100px' }}>
+
+                <div style={{ minWidth: "100px" }}>
                   <div className="d-flex gap-1">
-                    <Button 
-                      variant={editingId ? "warning" : "success"} 
+                    <Button
+                      variant={editingId ? "warning" : "success"}
                       onClick={handleAddOrUpdate}
                       size="sm"
                       disabled={saving}
                     >
-                      {editingId ? <FaSave className="me-1" /> : <FaPlus className="me-1" />}
-                      {editingId ? 'Update' : 'Add'}
+                      {editingId ? (
+                        <FaSave className="me-1" />
+                      ) : (
+                        <FaPlus className="me-1" />
+                      )}
+                      {editingId ? "Update" : "Add"}
                     </Button>
                     {editingId && (
-                      <Button variant="secondary" onClick={handleCancel} size="sm">
+                      <Button
+                        variant="secondary"
+                        onClick={handleCancel}
+                        size="sm"
+                      >
                         <FaTimes />
                       </Button>
                     )}
@@ -660,7 +776,7 @@ const handleSave = async () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Production Items Table */}
             <div className="bg-white p-3 rounded shadow-sm mb-4">
               <h6 className="text-primary mb-3">Production Items</h6>
@@ -693,16 +809,26 @@ const handleSave = async () => {
                           <td>{parseFloat(item.rate).toFixed(2)}</td>
                           <td>{parseFloat(item.amount).toFixed(2)}</td>
                           <td>
-                            <span className={`badge ${item.type === 'Production' ? 'bg-success' : 'bg-info'}`}>
+                            <span
+                              className={`badge ${item.type === "Production" ? "bg-success" : "bg-info"}`}
+                            >
                               {item.type}
                             </span>
                           </td>
                           <td>
                             <div className="d-flex gap-1">
-                              <Button variant="warning" size="sm" onClick={() => handleEdit(item)}>
+                              <Button
+                                variant="warning"
+                                size="sm"
+                                onClick={() => handleEdit(item)}
+                              >
                                 <FaEdit />
                               </Button>
-                              <Button variant="danger" size="sm" onClick={() => handleDelete(item.id)}>
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => handleDelete(item.id)}
+                              >
                                 <FaTrash />
                               </Button>
                             </div>
@@ -714,16 +840,20 @@ const handleSave = async () => {
                 </Table>
               </div>
             </div>
-            
+
             {/* Action Buttons */}
             <div className="text-center bg-white p-3 rounded shadow-sm mt-4">
-              <Button 
-                variant="primary" 
-                className="me-3 px-4" 
+              <Button
+                variant="primary"
+                className="me-3 px-4"
                 onClick={handleSave}
                 disabled={saving}
               >
-                {saving ? 'Saving...' : (isEditMode ? 'Update Production' : 'Save Production')}
+                {saving
+                  ? "Saving..."
+                  : isEditMode
+                    ? "Update Production"
+                    : "Save Production"}
               </Button>
               <Button variant="danger" onClick={handleClearDraft}>
                 Cancel
