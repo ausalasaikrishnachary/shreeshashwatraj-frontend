@@ -20,7 +20,6 @@ import { baseurl } from "../../../BaseURL/BaseURL";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import { generateExpenseReportPDF } from './ExpenseReportPdf';
 
-
 const ExpenseReportDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [expenseData, setExpenseData] = useState([]);

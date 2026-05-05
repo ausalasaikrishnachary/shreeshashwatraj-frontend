@@ -1,17 +1,19 @@
 // frontend/src/components/Sales/Receipts/ReceiptsTable.js
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import AdminSidebar from "../../../Shared/AdminSidebar/AdminSidebar";
-import AdminHeader from "../../../Shared/AdminSidebar/AdminHeader";
-import ReusableTable from "../../../Layouts/TableLayout/DataTable";
-import { baseurl } from "../../../BaseURL/BaseURL";
-import "./Receipts.css";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
+import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
+import ReusableTable from '../../../Layouts/TableLayout/DataTable';
+import { baseurl } from '../../../BaseURL/BaseURL';
+import './Receipts.css';
 import Select from "react-select";
 
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import ReceiptsPDF from "./ReceiptsPDF"; // You'll need to create this component
-import { useRef } from "react";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import ReceiptsPDF from './ReceiptsPDF'; // You'll need to create this component
+import { useRef } from 'react';
+
+
 
 const ReceiptsTable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -19,15 +21,15 @@ const ReceiptsTable = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [accounts, setAccounts] = useState([]);
   const [receiptData, setReceiptData] = useState([]);
-  const [nextReceiptNumber, setNextReceiptNumber] = useState("REC001");
+  const [nextReceiptNumber, setNextReceiptNumber] = useState('REC001');
   const [hasFetchedReceiptNumber, setHasFetchedReceiptNumber] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [month, setMonth] = useState("July");
-  const [year, setYear] = useState("2026");
-  const [startDate, setStartDate] = useState("2025-06-08");
-  const [endDate, setEndDate] = useState("2025-07-08");
-  const [activeTab, setActiveTab] = useState("Receipts");
-  const [selectedInvoice, setSelectedInvoice] = useState("");
+  const [month, setMonth] = useState('July');
+  const [year, setYear] = useState('2026');
+  const [startDate, setStartDate] = useState('2025-06-08');
+  const [endDate, setEndDate] = useState('2025-07-08');
+  const [activeTab, setActiveTab] = useState('Receipts');
+  const [selectedInvoice, setSelectedInvoice] = useState('');
   const [invoiceBalance, setInvoiceBalance] = useState(0);
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -42,264 +44,178 @@ const ReceiptsTable = () => {
   });
 
   const [formData, setFormData] = useState({
-    receiptNumber: "REC001",
-    retailerId: "",
-    retailerName: "",
-    amount: "",
-    currency: "INR",
-    paymentMethod: "Cash",
-    receiptDate: new Date().toISOString().split("T")[0],
-    note: "",
-    bankName: "",
-    transactionDate: "",
-    reconciliationOption: "Do Not Reconcile",
-    retailerMobile: "",
-    retailerEmail: "",
-    retailerGstin: "",
-    transactionProofFile: "",
-    invoiceNumber: "",
-    account_name: "", // Add this
-    business_name: "", // Add this
+    receiptNumber: 'REC001',
+    retailerId: '',
+    retailerName: '',
+    amount: '',
+    currency: 'INR',
+    paymentMethod: 'Cash',
+    receiptDate: new Date().toISOString().split('T')[0],
+    note: '',
+    bankName: '',
+    transactionDate: '',
+    reconciliationOption: 'Do Not Reconcile',
+    retailerMobile: '',
+    retailerEmail: '',
+    retailerGstin: '',
+    transactionProofFile: '',
+    invoiceNumber: '',
+    account_name: '', // Add this
+    business_name: '' // Add this
   });
-
-  const [companyInfo, setCompanyInfo] = useState({
-    name: "",
-    address: "",
-    email: "",
-    phone: "",
-    gstin: "",
-    state: "",
-    stateCode: "",
-  });
-
-  useEffect(() => {
-    const fetchCompanyInfo = async () => {
-      try {
-        const res = await fetch(`${baseurl}/api/company-info`);
-        const result = await res.json();
-
-        if (result.success && result.data) {
-          setCompanyInfo({
-            name: result.data.company_name || "",
-            address: result.data.address || "",
-            email: result.data.email || "",
-            phone: result.data.phone || "",
-            gstin: result.data.gstin || "",
-            state: result.data.state || "",
-            stateCode: result.data.state_code || "",
-          });
-        }
-      } catch (error) {
-        console.error("Company info fetch error:", error);
-      }
-    };
-
-    fetchCompanyInfo();
-  }, []);
 
   const fetchInvoices = async () => {
     try {
-      console.log("Fetching invoices from:", `${baseurl}/api/vouchersnumber`);
+      console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber`);
       const response = await fetch(`${baseurl}/api/vouchersnumber?type=Sales`);
 
       if (response.ok) {
         const data = await response.json();
-        console.log("data:", data);
+        console.log('data:', data);
         setInvoices(data);
       } else {
-        console.error("Failed to fetch invoices. Status:", response.status);
+        console.error('Failed to fetch invoices. Status:', response.status);
       }
     } catch (err) {
-      console.error("Error fetching invoices:", err);
+      console.error('Error fetching invoices:', err);
     }
   };
 
   const fetchInvoiceBalance = async (retailerId, invoiceNumber) => {
     if (!retailerId || !invoiceNumber) {
       setInvoiceBalance(0);
-      setFormData((prev) => ({
+      setFormData(prev => ({
         ...prev,
-        amount: "",
+        amount: ''
       }));
       return;
     }
 
     try {
       setIsFetchingBalance(true);
-      console.log(
-        `Fetching balance for retailer ${retailerId}, invoice ${invoiceNumber}`,
-      );
+      console.log(`Fetching balance for retailer ${retailerId}, invoice ${invoiceNumber}`);
 
-      const selectedRetailer = accounts.find((acc) => acc.id == retailerId);
+      const selectedRetailer = accounts.find(acc => acc.id == retailerId);
       if (!selectedRetailer) {
-        console.error("Retailer not found");
+        console.error('Retailer not found');
         setInvoiceBalance(0);
-        setFormData((prev) => ({ ...prev, amount: "" }));
+        setFormData(prev => ({ ...prev, amount: '' }));
         setIsFetchingBalance(false);
         return;
       }
 
       try {
         const response = await fetch(
-          `${baseurl}/api/receipts?retailer_id=${retailerId}&invoice_number=${invoiceNumber}`,
+          `${baseurl}/api/receipts?retailer_id=${retailerId}&invoice_number=${invoiceNumber}`
         );
 
         if (response.ok) {
           const data = await response.json();
-          console.log("Received receipt data for balance check:", data);
+          console.log('Received receipt data for balance check:', data);
 
           let balanceAmount = 0;
 
           if (Array.isArray(data)) {
-            const relevantReceipts = data.filter((receipt) => {
-              const receiptRetailerId =
-                receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
-              const receiptInvoiceNumber =
-                receipt.invoice_number || receipt.InvoiceNumber;
+            const relevantReceipts = data.filter(receipt => {
+              const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+              const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
 
-              return (
-                receiptRetailerId == retailerId &&
-                receiptInvoiceNumber === invoiceNumber
-              );
+              return receiptRetailerId == retailerId &&
+                receiptInvoiceNumber === invoiceNumber;
             });
 
             if (relevantReceipts.length > 0) {
-              const latestReceipt = relevantReceipts.sort(
-                (a, b) => new Date(b.created_at) - new Date(a.created_at),
+              const latestReceipt = relevantReceipts.sort((a, b) =>
+                new Date(b.created_at) - new Date(a.created_at)
               )[0];
 
-              balanceAmount = parseFloat(
-                latestReceipt.total_balance_amount ||
-                  latestReceipt.balance_amount ||
-                  0,
-              );
-              console.log(
-                "Found balance from receipts array for retailer",
-                retailerId,
-                "invoice",
-                invoiceNumber,
-                ":",
-                balanceAmount,
-              );
+              balanceAmount = parseFloat(latestReceipt.total_balance_amount || latestReceipt.balance_amount || 0);
+              console.log('Found balance from receipts array for retailer', retailerId, 'invoice', invoiceNumber, ':', balanceAmount);
             }
           } else if (data.total_balance_amount || data.balance_amount) {
-            balanceAmount = parseFloat(
-              data.total_balance_amount || data.balance_amount || 0,
-            );
-            console.log("Found balance from single receipt:", balanceAmount);
+            balanceAmount = parseFloat(data.total_balance_amount || data.balance_amount || 0);
+            console.log('Found balance from single receipt:', balanceAmount);
           } else if (data.data) {
             const receiptData = data.data;
             if (Array.isArray(receiptData)) {
-              const relevantReceipt = receiptData.find((receipt) => {
-                const receiptRetailerId =
-                  receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
-                return (
-                  receiptRetailerId == retailerId &&
-                  receipt.invoice_number === invoiceNumber
-                );
+              const relevantReceipt = receiptData.find(receipt => {
+                const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+                return receiptRetailerId == retailerId && receipt.invoice_number === invoiceNumber;
               });
               if (relevantReceipt) {
-                balanceAmount = parseFloat(
-                  relevantReceipt.total_balance_amount ||
-                    relevantReceipt.balance_amount ||
-                    0,
-                );
+                balanceAmount = parseFloat(relevantReceipt.total_balance_amount || relevantReceipt.balance_amount || 0);
               }
             }
           }
 
           if (balanceAmount > 0) {
             setInvoiceBalance(balanceAmount);
-            setFormData((prev) => ({
+            setFormData(prev => ({
               ...prev,
-              amount: balanceAmount.toString(),
+              amount: balanceAmount.toString()
             }));
             setIsFetchingBalance(false);
             return;
           }
         }
       } catch (apiError) {
-        console.error("API error fetching receipt balance:", apiError);
+        console.error('API error fetching receipt balance:', apiError);
       }
 
       // Check in existing receipt data
-      const existingReceipt = receiptData.find((receipt) => {
-        const receiptRetailerId =
-          receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
-        const receiptInvoiceNumber =
-          receipt.invoice_number || receipt.InvoiceNumber;
+      const existingReceipt = receiptData.find(receipt => {
+        const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+        const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
 
-        return (
-          receiptRetailerId == retailerId &&
-          receiptInvoiceNumber === invoiceNumber
-        );
+        return receiptRetailerId == retailerId && receiptInvoiceNumber === invoiceNumber;
       });
 
       if (existingReceipt?.total_balance_amount) {
-        console.log(
-          "Found balance in existing data for retailer",
-          retailerId,
-          "invoice",
-          invoiceNumber,
-          ":",
-          existingReceipt.total_balance_amount,
-        );
+        console.log('Found balance in existing data for retailer', retailerId, 'invoice', invoiceNumber, ':', existingReceipt.total_balance_amount);
         const balance = parseFloat(existingReceipt.total_balance_amount);
         setInvoiceBalance(balance);
-        setFormData((prev) => ({
+        setFormData(prev => ({
           ...prev,
-          amount: balance.toString(),
+          amount: balance.toString()
         }));
         setIsFetchingBalance(false);
         return;
       }
 
       // Check invoices data
-      console.warn(
-        "No balance found from receipts API, checking invoices data",
-      );
+      console.warn('No balance found from receipts API, checking invoices data');
       const selectedInvoiceData = invoices.find(
-        (inv) => inv.InvoiceNumber === invoiceNumber,
+        inv => inv.InvoiceNumber === invoiceNumber
       );
 
       if (selectedInvoiceData) {
-        const invoiceRetailerId =
-          selectedInvoiceData.PartyID || selectedInvoiceData.AccountID;
+        const invoiceRetailerId = selectedInvoiceData.PartyID || selectedInvoiceData.AccountID;
 
         if (invoiceRetailerId != retailerId) {
-          console.log(
-            "Invoice does not belong to selected retailer. Invoice retailer ID:",
-            invoiceRetailerId,
-            "Selected retailer ID:",
-            retailerId,
-          );
+          console.log('Invoice does not belong to selected retailer. Invoice retailer ID:', invoiceRetailerId, 'Selected retailer ID:', retailerId);
           setInvoiceBalance(0);
-          setFormData((prev) => ({
+          setFormData(prev => ({
             ...prev,
-            amount: "",
+            amount: ''
           }));
-          alert("This invoice does not belong to the selected retailer.");
+          alert('This invoice does not belong to the selected retailer.');
           setIsFetchingBalance(false);
           return;
         }
 
         const invoiceAmount = parseFloat(
           selectedInvoiceData.TotalAmount ||
-            selectedInvoiceData.total_amount ||
-            selectedInvoiceData.amount ||
-            0,
+          selectedInvoiceData.total_amount ||
+          selectedInvoiceData.amount ||
+          0
         );
 
-        const receiptsForInvoice = receiptData.filter((receipt) => {
-          const receiptRetailerId =
-            receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
-          const receiptInvoiceNumber =
-            receipt.invoice_number || receipt.InvoiceNumber;
+        const receiptsForInvoice = receiptData.filter(receipt => {
+          const receiptRetailerId = receipt.PartyID || receipt.AccountID || receipt.retailer?.id;
+          const receiptInvoiceNumber = receipt.invoice_number || receipt.InvoiceNumber;
 
-          return (
-            receiptRetailerId == retailerId &&
-            receiptInvoiceNumber === invoiceNumber
-          );
+          return receiptRetailerId == retailerId &&
+            receiptInvoiceNumber === invoiceNumber;
         });
 
         const totalPaid = receiptsForInvoice.reduce((sum, receipt) => {
@@ -308,58 +224,50 @@ const ReceiptsTable = () => {
 
         const balance = invoiceAmount - totalPaid;
 
-        console.log(
-          `Invoice amount: ${invoiceAmount}, Total paid: ${totalPaid}, Balance: ${balance}`,
-        );
+        console.log(`Invoice amount: ${invoiceAmount}, Total paid: ${totalPaid}, Balance: ${balance}`);
 
         if (balance > 0) {
           setInvoiceBalance(balance);
-          setFormData((prev) => ({
+          setFormData(prev => ({
             ...prev,
-            amount: balance.toString(),
+            amount: balance.toString()
           }));
         } else {
           setInvoiceBalance(0);
-          setFormData((prev) => ({
+          setFormData(prev => ({
             ...prev,
-            amount: "",
+            amount: ''
           }));
           if (balance === 0) {
-            alert("This invoice is already fully paid.");
+            alert('This invoice is already fully paid.');
           } else {
-            alert(
-              "Invoice has been overpaid. Please check the invoice details.",
-            );
+            alert('Invoice has been overpaid. Please check the invoice details.');
           }
         }
       } else {
         // No invoice found
-        console.warn(
-          "Invoice not found in invoices data for retailer:",
-          retailerId,
-        );
+        console.warn('Invoice not found in invoices data for retailer:', retailerId);
         setInvoiceBalance(0);
-        setFormData((prev) => ({
+        setFormData(prev => ({
           ...prev,
-          amount: "",
+          amount: ''
         }));
-        alert("Invoice not found for the selected retailer.");
+        alert('Invoice not found for the selected retailer.');
       }
     } catch (err) {
-      console.error("Error fetching invoice balance:", err);
+      console.error('Error fetching invoice balance:', err);
       setInvoiceBalance(0);
-      setFormData((prev) => ({
+      setFormData(prev => ({
         ...prev,
-        amount: "",
+        amount: ''
       }));
-      alert(
-        "Error fetching invoice balance. Please try again or enter amount manually.",
-      );
+      alert('Error fetching invoice balance. Please try again or enter amount manually.');
     } finally {
       setIsFetchingBalance(false);
     }
   };
   useEffect(() => {
+
     if (formData.retailerId && formData.invoiceNumber) {
       const timer = setTimeout(() => {
         fetchInvoiceBalance(formData.retailerId, formData.invoiceNumber);
@@ -374,29 +282,23 @@ const ReceiptsTable = () => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert("File size should be less than 5MB");
+        alert('File size should be less than 5MB');
         return;
       }
 
-      const allowedTypes = [
-        "application/pdf",
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ];
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (!allowedTypes.includes(file.type)) {
-        alert("Please select a valid file type (PDF, JPG, PNG, DOC, DOCX)");
+        alert('Please select a valid file type (PDF, JPG, PNG, DOC, DOCX)');
         return;
       }
 
-      setFormData((prev) => ({
+      setFormData(prev => ({
         ...prev,
-        transactionProofFile: file,
+        transactionProofFile: file
       }));
     }
   };
+
 
   // Filter receipts by date range
   const filterReceiptsByDateRange = (receipts, start, end) => {
@@ -408,10 +310,8 @@ const ReceiptsTable = () => {
     const endDate = new Date(end);
     endDate.setHours(23, 59, 59, 999);
 
-    return receipts.filter((receipt) => {
-      const receiptDate = new Date(
-        receipt.Date || receipt.receipt_date || receipt.created,
-      );
+    return receipts.filter(receipt => {
+      const receiptDate = new Date(receipt.Date || receipt.receipt_date || receipt.created);
       return receiptDate >= startDate && receiptDate <= endDate;
     });
   };
@@ -420,68 +320,52 @@ const ReceiptsTable = () => {
   const filterReceiptsByMonthYear = (receipts, month, year) => {
     if (!month || !year) return receipts;
 
-    const monthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
     const monthIndex = monthNames.indexOf(month);
 
-    return receipts.filter((receipt) => {
-      const receiptDate = new Date(
-        receipt.Date || receipt.receipt_date || receipt.created,
-      );
-      return (
-        receiptDate.getMonth() === monthIndex &&
-        receiptDate.getFullYear() === parseInt(year)
-      );
+    return receipts.filter(receipt => {
+      const receiptDate = new Date(receipt.Date || receipt.receipt_date || receipt.created);
+      return receiptDate.getMonth() === monthIndex &&
+        receiptDate.getFullYear() === parseInt(year);
     });
   };
 
   // Generate PDF from the ReceiptsPDF component
-  const generatePDF = async (filteredData, type = "month") => {
+  const generatePDF = async (filteredData, type = 'month') => {
     if (!filteredData || filteredData.length === 0) {
-      alert("No receipts found for the selected period");
+      alert('No receipts found for the selected period');
       return;
     }
 
     try {
       // Create a temporary div to render the PDF component
-      const element = document.createElement("div");
-      element.style.position = "absolute";
-      element.style.left = "-9999px";
-      element.style.top = "-9999px";
+      const element = document.createElement('div');
+      element.style.position = 'absolute';
+      element.style.left = '-9999px';
+      element.style.top = '-9999px';
       document.body.appendChild(element);
 
       // Use ReactDOM to render the component
-      const ReactDOM = require("react-dom");
+      const ReactDOM = require('react-dom');
       await new Promise((resolve) => {
         ReactDOM.render(
           <ReceiptsPDF
             ref={pdfRef}
             receipts={filteredData}
-            startDate={type === "range" ? startDate : null}
-            endDate={type === "range" ? endDate : null}
-            month={type === "month" ? month : null}
-            year={type === "month" ? year : null}
+            startDate={type === 'range' ? startDate : null}
+            endDate={type === 'range' ? endDate : null}
+            month={type === 'month' ? month : null}
+            year={type === 'month' ? year : null}
             title="Receipts Report"
           />,
           element,
-          resolve,
+          resolve
         );
       });
 
       // Wait for rendering to complete
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Capture the element as canvas
       const canvas = await html2canvas(element, {
@@ -489,16 +373,16 @@ const ReceiptsTable = () => {
         logging: false,
         useCORS: true,
         allowTaint: false,
-        backgroundColor: "#ffffff",
+        backgroundColor: '#ffffff'
       });
 
-      const imgData = canvas.toDataURL("image/png");
+      const imgData = canvas.toDataURL('image/png');
 
       // Create PDF
       const pdf = new jsPDF({
-        orientation: "landscape",
-        unit: "mm",
-        format: "a4",
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
       });
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -509,11 +393,11 @@ const ReceiptsTable = () => {
       const width = imgWidth * ratio;
       const height = imgHeight * ratio;
 
-      pdf.addImage(imgData, "PNG", 0, 0, width, height);
+      pdf.addImage(imgData, 'PNG', 0, 0, width, height);
 
       // Generate filename
-      let filename = "receipts_report";
-      if (type === "range") {
+      let filename = 'receipts_report';
+      if (type === 'range') {
         filename = `receipts_${startDate}_to_${endDate}.pdf`;
       } else {
         filename = `receipts_${month}_${year}.pdf`;
@@ -525,135 +409,115 @@ const ReceiptsTable = () => {
       // Cleanup
       ReactDOM.unmountComponentAtNode(element);
       document.body.removeChild(element);
+
     } catch (error) {
-      console.error("PDF generation error:", error);
-      alert("Error generating PDF. Please try again.");
+      console.error('PDF generation error:', error);
+      alert('Error generating PDF. Please try again.');
     }
   };
   // File remove handler
   const handleRemoveFile = () => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      transactionProofFile: null,
+      transactionProofFile: null
     }));
   };
 
   const receiptStats = [
-    {
-      label: "Total Receipts",
-      value: "₹ 2,50,000",
-      change: "+18%",
-      type: "total",
-    },
-    {
-      label: "Cash Receipts",
-      value: "₹ 1,50,000",
-      change: "+15%",
-      type: "cash",
-    },
-    { label: "Bank Receipts", value: "₹ 80,000", change: "+20%", type: "bank" },
-    {
-      label: "Digital Receipts",
-      value: "₹ 20,000",
-      change: "+25%",
-      type: "digital",
-    },
+    { label: 'Total Receipts', value: '₹ 2,50,000', change: '+18%', type: 'total' },
+    { label: 'Cash Receipts', value: '₹ 1,50,000', change: '+15%', type: 'cash' },
+    { label: 'Bank Receipts', value: '₹ 80,000', change: '+20%', type: 'bank' },
+    { label: 'Digital Receipts', value: '₹ 20,000', change: '+25%', type: 'digital' }
   ];
 
   const columns = [
     {
-      key: "payee",
-      title: "Retailer Name",
-      style: { textAlign: "left" },
+      key: 'payee',
+      title: 'Retailer Name',
+      style: { textAlign: 'left' },
       render: (value, row) => {
-        return row?.PartyName || "N/A";
-      },
+        return row?.PartyName || 'N/A';
+      }
     },
     {
-      key: "VchNo",
-      title: "RECEIPT NUMBER",
-      style: { textAlign: "center" },
+      key: 'VchNo',
+      title: 'RECEIPT NUMBER',
+      style: { textAlign: 'center' },
       render: (value, row) => (
         <button
           className="btn btn-link p-0 text-primary text-decoration-none"
           onClick={() => handleViewReceipt(row.VoucherID)}
           title="Click to view receipt"
         >
-          {value || "N/A"}
+          {value || 'N/A'}
         </button>
-      ),
+      )
     },
     {
-      key: "paid_amount",
-      title: "AMOUNT",
-      style: { textAlign: "center" },
-      render: (value) => value || "₹ 0.00",
+      key: 'paid_amount',
+      title: 'AMOUNT',
+      style: { textAlign: 'center' },
+      render: (value) => value || '₹ 0.00'
     },
     {
-      key: "payment_method",
-      title: "PAYMENT METHOD",
-      style: { textAlign: "center" },
-      render: (value) => value || "Cash",
+      key: 'payment_method',
+      title: 'PAYMENT METHOD',
+      style: { textAlign: 'center' },
+      render: (value) => value || 'Cash'
     },
     {
-      key: "InvoiceNumber",
-      title: "Accounting",
-      style: { textAlign: "center" },
-      render: (value) => value || "0",
+      key: 'InvoiceNumber',
+      title: 'Accounting',
+      style: { textAlign: 'center' },
+      render: (value) => value || '0'
     },
     {
-      key: "Date",
-      title: "DATE",
-      style: { textAlign: "center" },
+      key: 'Date',
+      title: 'DATE',
+      style: { textAlign: 'center' },
       render: (value) => {
-        if (!value) return "N/A";
+        if (!value) return 'N/A';
 
         const dateObj = new Date(value);
-        const day = String(dateObj.getDate()).padStart(2, "0");
-        const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const year = dateObj.getFullYear();
 
         return `${day}-${month}-${year}`; // DD-MM-YYYY
-      },
-    },
+      }
+    }
   ];
 
   // Define tabs with their corresponding routes
   const tabs = [
-    { name: "Invoices", path: "/sales/invoices" },
-    { name: "Receipts", path: "/sales/receipts" },
+    { name: 'Invoices', path: '/sales/invoices' },
+    { name: 'Receipts', path: '/sales/receipts' },
     // { name: 'Quotations', path: '/sales/quotations' },
     // { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
-    { name: "CreditNote", path: "/sales/credit_note" },
+    { name: 'CreditNote', path: '/sales/credit_note' },
     // { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
     // { name: 'Receivables', path: '/sales/receivables' }
   ];
   // Fetch next receipt number
   const fetchNextReceiptNumber = async () => {
     try {
-      console.log(
-        "Fetching next receipt number from:",
-        `${baseurl}/api/next-receipt-number`,
-      );
+      console.log('Fetching next receipt number from:', `${baseurl}/api/next-receipt-number`);
       const response = await fetch(`${baseurl}/api/next-receipt-number`);
       if (response.ok) {
         const data = await response.json();
-        console.log("Received next receipt number:", data.nextReceiptNumber);
+        console.log('Received next receipt number:', data.nextReceiptNumber);
         setNextReceiptNumber(data.nextReceiptNumber);
-        setFormData((prev) => ({
+        setFormData(prev => ({
           ...prev,
-          receiptNumber: data.nextReceiptNumber,
+          receiptNumber: data.nextReceiptNumber
         }));
         setHasFetchedReceiptNumber(true);
       } else {
-        console.error(
-          "Failed to fetch next receipt number. Status:",
-          response.status,
-        );
+        console.error('Failed to fetch next receipt number. Status:', response.status);
         await generateFallbackReceiptNumber();
       }
     } catch (err) {
-      console.error("Error fetching next receipt number:", err);
+      console.error('Error fetching next receipt number:', err);
       await generateFallbackReceiptNumber();
     }
   };
@@ -661,7 +525,7 @@ const ReceiptsTable = () => {
   // Fallback receipt number generation
   const generateFallbackReceiptNumber = async () => {
     try {
-      console.log("Attempting fallback receipt number generation...");
+      console.log('Attempting fallback receipt number generation...');
       const response = await fetch(`${baseurl}/api/last-receipt`);
       if (response.ok) {
         const data = await response.json();
@@ -670,15 +534,12 @@ const ReceiptsTable = () => {
           const numberMatch = lastNumber.match(/REC(\d+)/);
           if (numberMatch) {
             const nextNum = parseInt(numberMatch[1], 10) + 1;
-            const fallbackReceiptNumber = `REC${nextNum.toString().padStart(3, "0")}`;
-            console.log(
-              "Fallback receipt number generated:",
-              fallbackReceiptNumber,
-            );
+            const fallbackReceiptNumber = `REC${nextNum.toString().padStart(3, '0')}`;
+            console.log('Fallback receipt number generated:', fallbackReceiptNumber);
             setNextReceiptNumber(fallbackReceiptNumber);
-            setFormData((prev) => ({
+            setFormData(prev => ({
               ...prev,
-              receiptNumber: fallbackReceiptNumber,
+              receiptNumber: fallbackReceiptNumber
             }));
             setHasFetchedReceiptNumber(true);
             return;
@@ -686,18 +547,18 @@ const ReceiptsTable = () => {
         }
       }
       // Default fallback
-      setNextReceiptNumber("REC001");
-      setFormData((prev) => ({
+      setNextReceiptNumber('REC001');
+      setFormData(prev => ({
         ...prev,
-        receiptNumber: "REC001",
+        receiptNumber: 'REC001'
       }));
       setHasFetchedReceiptNumber(true);
     } catch (err) {
-      console.error("Error in fallback receipt number generation:", err);
-      setNextReceiptNumber("REC001");
-      setFormData((prev) => ({
+      console.error('Error in fallback receipt number generation:', err);
+      setNextReceiptNumber('REC001');
+      setFormData(prev => ({
         ...prev,
-        receiptNumber: "REC001",
+        receiptNumber: 'REC001'
       }));
       setHasFetchedReceiptNumber(true);
     }
@@ -725,8 +586,8 @@ const ReceiptsTable = () => {
         : data.data || data.receipts || [];
 
       /* ===============================
-       ✅ SORT DATA (NO EXTRA FILTER)
-    =============================== */
+         ✅ SORT DATA (NO EXTRA FILTER)
+      =============================== */
       const sortedData = receiptsArray.sort((a, b) => {
         const dateA = new Date(a.receipt_date || a.created_at || a.Date);
         const dateB = new Date(b.receipt_date || b.created_at || b.Date);
@@ -738,12 +599,17 @@ const ReceiptsTable = () => {
       });
 
       /* ===============================
-       ✅ TRANSFORM DATA
-    =============================== */
-      const transformedData = sortedData.map((receipt) => {
-        const voucherId = receipt.VoucherID || receipt.receipt_id || "";
+         ✅ TRANSFORM DATA
+      =============================== */
+      const transformedData = sortedData.map(receipt => {
+        const voucherId =
+          receipt.VoucherID ||
+          receipt.receipt_id ||
+          "";
 
-        const retailerName = receipt.PartyName || "N/A";
+        const retailerName =
+          receipt.PartyName ||
+          "N/A";
 
         const amount = parseFloat(receipt.paid_amount || 0);
 
@@ -761,7 +627,9 @@ const ReceiptsTable = () => {
             ? new Date(receipt.receipt_date).toLocaleDateString("en-IN")
             : "N/A",
           payment_method:
-            receipt.payment_method || receipt.PaymentMethod || "N/A",
+            receipt.payment_method ||
+            receipt.PaymentMethod ||
+            "N/A",
           InvoiceNumber:
             receipt.invoice_number ||
             receipt.InvoiceNumber ||
@@ -769,21 +637,22 @@ const ReceiptsTable = () => {
             "",
           data_type: receipt.data_type || "Sales",
           total_balance_amount: parseFloat(
-            receipt.total_balance_amount || receipt.balance_amount || 0,
+            receipt.total_balance_amount || receipt.balance_amount || 0
           ),
           balance_amount: parseFloat(
-            receipt.balance_amount || receipt.total_balance_amount || 0,
+            receipt.balance_amount || receipt.total_balance_amount || 0
           ),
           invoice_numbers: Array.isArray(receipt.invoice_numbers)
             ? receipt.invoice_numbers
             : receipt.invoice_number
               ? [receipt.invoice_number]
-              : [],
+              : []
         };
       });
 
       console.log("Final Sales Receipt Data:", transformedData);
       setReceiptData(transformedData);
+
     } catch (err) {
       console.error("Error fetching receipts:", err);
       alert("Server connection error");
@@ -791,6 +660,8 @@ const ReceiptsTable = () => {
       setIsLoading(false);
     }
   };
+
+
 
   // Fetch accounts for retailer dropdown
   const fetchAccounts = async () => {
@@ -800,19 +671,17 @@ const ReceiptsTable = () => {
         const data = await res.json();
         setAccounts(data);
       } else {
-        console.error("Failed to fetch accounts:", res.statusText);
-        alert("Failed to load accounts. Please try again later.");
+        console.error('Failed to fetch accounts:', res.statusText);
+        alert('Failed to load accounts. Please try again later.');
       }
     } catch (err) {
-      console.error("Error fetching accounts:", err);
-      alert(
-        "Error connecting to server. Please check your network or try again later.",
-      );
+      console.error('Error fetching accounts:', err);
+      alert('Error connecting to server. Please check your network or try again later.');
     }
   };
 
   useEffect(() => {
-    console.log("Component mounted, fetching initial data...");
+    console.log('Component mounted, fetching initial data...');
     fetchAccounts();
     fetchReceipts();
     fetchNextReceiptNumber();
@@ -827,27 +696,24 @@ const ReceiptsTable = () => {
 
   // Create receipt modal
   const handleCreateClick = async () => {
-    console.log(
-      "Create button clicked, current receipt number:",
-      nextReceiptNumber,
-    );
+    console.log('Create button clicked, current receipt number:', nextReceiptNumber);
     if (!hasFetchedReceiptNumber) {
-      console.log("Receipt number not fetched yet, fetching now...");
+      console.log('Receipt number not fetched yet, fetching now...');
       await fetchNextReceiptNumber();
     }
 
     // Reset form data for new receipt
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      retailerId: "",
-      amount: "",
-      invoiceNumber: "",
-      note: "",
-      bankName: "",
-      transactionDate: "",
-      transactionProofFile: "",
+      retailerId: '',
+      amount: '',
+      invoiceNumber: '',
+      note: '',
+      bankName: '',
+      transactionDate: '',
+      transactionProofFile: ''
     }));
-    setSelectedInvoice("");
+    setSelectedInvoice('');
     setInvoiceBalance(0);
 
     setIsModalOpen(true);
@@ -855,27 +721,27 @@ const ReceiptsTable = () => {
 
   // Close modal and reset form
   const handleCloseModal = () => {
-    console.log("Closing modal");
+    console.log('Closing modal');
     setIsModalOpen(false);
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      retailerId: "",
-      amount: "",
-      retailerName: "",
-      account_name: "", // Add this
-      business_name: "", // Add this
-      currency: "INR",
-      paymentMethod: "Direct Deposit",
-      receiptDate: new Date().toISOString().split("T")[0],
-      note: "",
-      bankName: "",
-      transactionDate: "",
-      reconciliationOption: "Do Not Reconcile",
+      retailerId: '',
+      amount: '',
+      retailerName: '',
+      account_name: '', // Add this
+      business_name: '', // Add this
+      currency: 'INR',
+      paymentMethod: 'Direct Deposit',
+      receiptDate: new Date().toISOString().split('T')[0],
+      note: '',
+      bankName: '',
+      transactionDate: '',
+      reconciliationOption: 'Do Not Reconcile',
       receiptNumber: nextReceiptNumber,
-      invoiceNumber: "",
-      transactionProofFile: "",
+      invoiceNumber: '',
+      transactionProofFile: ''
     }));
-    setSelectedInvoice("");
+    setSelectedInvoice('');
     setInvoiceBalance(0);
   };
 
@@ -883,33 +749,30 @@ const ReceiptsTable = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     console.log(`Form field changed: ${name} = ${value}`);
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: value
     }));
 
-    if (name === "amount") {
+    if (name === 'amount') {
     }
   };
 
   // Handle retailer selection change
   const handleRetailerChange = (e) => {
     const selectedRetailerId = e.target.value;
-    const selectedRetailer = accounts.find(
-      (acc) => acc.id == selectedRetailerId,
-    );
+    const selectedRetailer = accounts.find(acc => acc.id == selectedRetailerId);
 
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       retailerId: selectedRetailerId,
-      retailerMobile: selectedRetailer?.mobile_number || "",
-      retailerEmail: selectedRetailer?.email || "",
-      retailerGstin: selectedRetailer?.gstin || "",
-      retailerName: selectedRetailer?.name || "",
-      account_name: selectedRetailer?.account_name || "",
-      business_name:
-        selectedRetailer?.businessname_name || selectedRetailer?.business_name,
-      amount: "",
+      retailerMobile: selectedRetailer?.mobile_number || '',
+      retailerEmail: selectedRetailer?.email || '',
+      retailerGstin: selectedRetailer?.gstin || '',
+      retailerName: selectedRetailer?.name || '',
+      account_name: selectedRetailer?.account_name || '',
+      business_name: selectedRetailer?.businessname_name || selectedRetailer?.business_name,
+      amount: '',
     }));
 
     setInvoiceBalance(0);
@@ -925,17 +788,17 @@ const ReceiptsTable = () => {
     const selectedInvoiceNumber = e.target.value;
 
     const selectedInvoice = invoices.find(
-      (inv) => inv.InvoiceNumber === selectedInvoiceNumber,
+      inv => inv.InvoiceNumber === selectedInvoiceNumber
     );
 
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       invoiceNumber: selectedInvoiceNumber,
-      amount: selectedInvoice?.TotalAmount || "",
+      amount: selectedInvoice?.TotalAmount || ''
     }));
 
     setInvoiceBalance(
-      selectedInvoice ? parseFloat(selectedInvoice.TotalAmount) : 0,
+      selectedInvoice ? parseFloat(selectedInvoice.TotalAmount) : 0
     );
   };
 
@@ -943,21 +806,21 @@ const ReceiptsTable = () => {
   const handleCreateReceipt = async () => {
     // Validation
     if (!formData.retailerId) {
-      alert("Please select a retailer");
+      alert('Please select a retailer');
       return;
     }
 
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      alert("Please enter a valid amount");
+      alert('Please enter a valid amount');
       return;
     }
-    if (!formData.invoiceNumber) {
-      alert("Please select an invoice number");
-      return;
-    }
+    // if (!formData.invoiceNumber) {
+    //   alert('Please select an invoice number');
+    //   return;
+    // }
 
     if (!formData.receiptDate) {
-      alert("Please select a receipt date");
+      alert('Please select a receipt date');
       return;
     }
 
@@ -968,63 +831,54 @@ const ReceiptsTable = () => {
       const formDataToSend = new FormData();
 
       // Append all form fields
-      formDataToSend.append("receipt_number", formData.receiptNumber);
-      formDataToSend.append("retailer_id", formData.retailerId);
-      formDataToSend.append("amount", formData.amount);
-      formDataToSend.append("account_name", formData.account_name || ""); // Add this
-      formDataToSend.append("business_name", formData.business_name || ""); // Add this
+      formDataToSend.append('receipt_number', formData.receiptNumber);
+      formDataToSend.append('retailer_id', formData.retailerId);
+      formDataToSend.append('amount', formData.amount);
+      formDataToSend.append('account_name', formData.account_name || ''); // Add this
+      formDataToSend.append('business_name', formData.business_name || ''); // Add this
 
-      formDataToSend.append("currency", formData.currency);
-      formDataToSend.append("payment_method", formData.paymentMethod);
-      formDataToSend.append("receipt_date", formData.receiptDate);
-      formDataToSend.append("note", formData.note);
-      formDataToSend.append("bank_name", formData.bankName);
-      formDataToSend.append("transaction_date", formData.transactionDate || "");
-      formDataToSend.append(
-        "reconciliation_option",
-        formData.reconciliationOption,
-      );
-      formDataToSend.append("retailer_name", formData.retailerName);
-      formDataToSend.append("invoice_number", formData.invoiceNumber);
-      formDataToSend.append("data_type", "Sales");
+      formDataToSend.append('currency', formData.currency);
+      formDataToSend.append('payment_method', formData.paymentMethod);
+      formDataToSend.append('receipt_date', formData.receiptDate);
+      formDataToSend.append('note', formData.note);
+      formDataToSend.append('bank_name', formData.bankName);
+      formDataToSend.append('transaction_date', formData.transactionDate || '');
+      formDataToSend.append('reconciliation_option', formData.reconciliationOption);
+      formDataToSend.append('retailer_name', formData.retailerName);
+      formDataToSend.append('invoice_number', formData.invoiceNumber);
+      formDataToSend.append('data_type', 'Sales');
 
       // Append file if exists
       if (formData.transactionProofFile) {
-        formDataToSend.append(
-          "transaction_proof",
-          formData.transactionProofFile,
-        );
+        formDataToSend.append('transaction_proof', formData.transactionProofFile);
       }
 
-      console.log("Sending receipt data with FormData...");
-      console.log("Invoice Number:", formData.invoiceNumber);
-      console.log("Amount:", formData.amount);
+      console.log('Sending receipt data with FormData...');
+      console.log('Invoice Number:', formData.invoiceNumber);
+      console.log('Amount:', formData.amount);
 
       const response = await fetch(`${baseurl}/api/receipts`, {
-        method: "POST",
+        method: 'POST',
         body: formDataToSend,
       });
 
-      console.log("Response status:", response.status);
-      console.log("Response headers:", response.headers);
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
 
       const responseText = await response.text();
-      console.log("Raw response text:", responseText);
+      console.log('Raw response text:', responseText);
 
       if (response.ok) {
         let result;
         try {
           result = JSON.parse(responseText);
         } catch (parseError) {
-          console.error("Failed to parse response as JSON:", parseError);
-          throw new Error("Invalid response from server");
+          console.error('Failed to parse response as JSON:', parseError);
+          throw new Error('Invalid response from server');
         }
 
-        console.log("Receipt created successfully:", result);
-        console.log(
-          "Full response structure:",
-          JSON.stringify(result, null, 2),
-        );
+        console.log('Receipt created successfully:', result);
+        console.log('Full response structure:', JSON.stringify(result, null, 2));
 
         // Extract receipt ID
         let receiptId = null;
@@ -1033,15 +887,14 @@ const ReceiptsTable = () => {
         if (result.VoucherID) {
           receiptId = result.VoucherID;
         } else if (result.id) {
+
         }
 
-        console.log("Extracted receipt ID:", receiptId);
+        console.log('Extracted receipt ID:', receiptId);
 
         if (receiptId) {
           // Show success message
-          alert(
-            "Receipt created successfully! Redirecting to view page in 2 seconds...",
-          );
+          alert('Receipt created successfully! Redirecting to view page in 2 seconds...');
 
           // Close modal
           handleCloseModal();
@@ -1057,12 +910,10 @@ const ReceiptsTable = () => {
             navigate(`/receipts_view/${receiptId}`);
           }, 2000); // 2 seconds delay
         } else {
-          console.error("No receipt ID found in response:", result);
+          console.error('No receipt ID found in response:', result);
 
           // Still show success but don't redirect
-          alert(
-            "Receipt created successfully! Please check the receipts list.",
-          );
+          alert('Receipt created successfully! Please check the receipts list.');
 
           // Close modal and refresh
           handleCloseModal();
@@ -1071,34 +922,27 @@ const ReceiptsTable = () => {
         }
       } else {
         const errorText = await response.text();
-        console.error("Failed to create receipt. Status:", response.status);
-        console.error("Error response:", errorText);
+        console.error('Failed to create receipt. Status:', response.status);
+        console.error('Error response:', errorText);
 
-        let errorMessage = "Failed to create receipt. ";
+        let errorMessage = 'Failed to create receipt. ';
         try {
           const errorData = JSON.parse(errorText);
-          errorMessage +=
-            errorData.error || errorData.message || "Please try again.";
+          errorMessage += errorData.error || errorData.message || 'Please try again.';
 
-          if (
-            errorData.error?.includes("already exists") ||
-            errorData.message?.includes("already exists")
-          ) {
-            console.log(
-              "Duplicate receipt number detected, fetching new number...",
-            );
+          if (errorData.error?.includes('already exists') || errorData.message?.includes('already exists')) {
+            console.log('Duplicate receipt number detected, fetching new number...');
             await fetchNextReceiptNumber();
-            errorMessage +=
-              " A new receipt number has been generated. Please try again.";
+            errorMessage += ' A new receipt number has been generated. Please try again.';
           }
         } catch {
-          errorMessage += "Please try again.";
+          errorMessage += 'Please try again.';
         }
         alert(errorMessage);
       }
     } catch (err) {
-      console.error("Error creating receipt:", err);
-      alert("Network error. Please check your connection and try again.");
+      console.error('Error creating receipt:', err);
+      alert('Network error. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -1106,7 +950,7 @@ const ReceiptsTable = () => {
 
   // View receipt details
   const handleViewReceipt = (receiptId) => {
-    console.log("View receipt:", receiptId);
+    console.log('View receipt:', receiptId);
     navigate(`/receipts_view/${receiptId}`);
   };
 
@@ -1115,11 +959,7 @@ const ReceiptsTable = () => {
       setIsDownloading(true);
 
       // Filter receipts by selected month and year
-      const filteredReceipts = filterReceiptsByMonthYear(
-        receiptData,
-        month,
-        year,
-      );
+      const filteredReceipts = filterReceiptsByMonthYear(receiptData, month, year);
 
       if (filteredReceipts.length === 0) {
         alert(`No receipts found for ${month} ${year}`);
@@ -1127,17 +967,14 @@ const ReceiptsTable = () => {
         return;
       }
 
-      console.log(
-        `Downloading ${filteredReceipts.length} receipts for:`,
-        month,
-        year,
-      );
+      console.log(`Downloading ${filteredReceipts.length} receipts for:`, month, year);
 
       // Generate PDF
-      await generatePDF(filteredReceipts, "month");
+      await generatePDF(filteredReceipts, 'month');
+
     } catch (err) {
-      console.error("Download error:", err);
-      alert("Error downloading receipts: " + err.message);
+      console.error('Download error:', err);
+      alert('Error downloading receipts: ' + err.message);
     } finally {
       setIsDownloading(false);
     }
@@ -1146,23 +983,19 @@ const ReceiptsTable = () => {
   const handleDownloadRange = async () => {
     try {
       if (!startDate || !endDate) {
-        alert("Please select both start and end dates");
+        alert('Please select both start and end dates');
         return;
       }
 
       if (new Date(startDate) > new Date(endDate)) {
-        alert("Start date cannot be after end date");
+        alert('Start date cannot be after end date');
         return;
       }
 
       setIsRangeDownloading(true);
 
       // Filter receipts by date range
-      const filteredReceipts = filterReceiptsByDateRange(
-        receiptData,
-        startDate,
-        endDate,
-      );
+      const filteredReceipts = filterReceiptsByDateRange(receiptData, startDate, endDate);
 
       if (filteredReceipts.length === 0) {
         alert(`No receipts found from ${startDate} to ${endDate}`);
@@ -1170,18 +1003,14 @@ const ReceiptsTable = () => {
         return;
       }
 
-      console.log(
-        `Downloading ${filteredReceipts.length} receipts for date range:`,
-        startDate,
-        "to",
-        endDate,
-      );
+      console.log(`Downloading ${filteredReceipts.length} receipts for date range:`, startDate, 'to', endDate);
 
       // Generate PDF
-      await generatePDF(filteredReceipts, "range");
+      await generatePDF(filteredReceipts, 'range');
+
     } catch (err) {
-      console.error("Download range error:", err);
-      alert("Error downloading receipts: " + err.message);
+      console.error('Download range error:', err);
+      alert('Error downloading receipts: ' + err.message);
     } finally {
       setIsRangeDownloading(false);
     }
@@ -1189,16 +1018,14 @@ const ReceiptsTable = () => {
 
   const filteredInvoices = formData.retailerId
     ? invoices.filter(
-        (inv) => String(inv.PartyID) === String(formData.retailerId),
-      )
+      (inv) => String(inv.PartyID) === String(formData.retailerId)
+    )
     : [];
 
   return (
     <div className="receipts-wrapper">
       <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-      <div
-        className={`receipts-main-content ${isCollapsed ? "collapsed" : ""}`}
-      >
+      <div className={`receipts-main-content ${isCollapsed ? 'collapsed' : ''}`}>
         <AdminHeader isCollapsed={isCollapsed} />
         <div className="receipts-content-area">
           {/* Tabs Section */}
@@ -1207,7 +1034,7 @@ const ReceiptsTable = () => {
               {tabs.map((tab) => (
                 <button
                   key={tab.name}
-                  className={`receipts-tab ${activeTab === tab.name ? "receipts-tab--active" : ""}`}
+                  className={`receipts-tab ${activeTab === tab.name ? 'receipts-tab--active' : ''}`}
                   onClick={() => handleTabClick(tab)}
                 >
                   {tab.name}
@@ -1221,9 +1048,7 @@ const ReceiptsTable = () => {
             <div className="receipts-header-top">
               <div className="receipts-title-section">
                 <h1 className="receipts-main-title">Receipt Management</h1>
-                <p className="receipts-subtitle">
-                  Create, manage and track all your payment receipts
-                </p>
+                <p className="receipts-subtitle">Create, manage and track all your payment receipts</p>
               </div>
             </div>
           </div>
@@ -1231,15 +1056,10 @@ const ReceiptsTable = () => {
           {/* Stats Grid */}
           <div className="receipts-stats-grid">
             {receiptStats.map((stat, index) => (
-              <div
-                key={index}
-                className={`receipts-stat-card receipts-stat-card--${stat.type}`}
-              >
+              <div key={index} className={`receipts-stat-card receipts-stat-card--${stat.type}`}>
                 <h3 className="receipts-stat-label">{stat.label}</h3>
                 <div className="receipts-stat-value">{stat.value}</div>
-                <div
-                  className={`receipts-stat-change ${stat.change.startsWith("+") ? "receipts-stat-change--positive" : "receipts-stat-change--negative"}`}
-                >
+                <div className={`receipts-stat-change ${stat.change.startsWith('+') ? 'receipts-stat-change--positive' : 'receipts-stat-change--negative'}`}>
                   {stat.change} from last month
                 </div>
               </div>
@@ -1253,9 +1073,7 @@ const ReceiptsTable = () => {
               {/* Filters and Actions */}
               <div className="row align-items-end g-3 mb-3">
                 <div className="col-md-auto">
-                  <label className="form-label mb-1">
-                    Select Month and Year Data:
-                  </label>
+                  <label className="form-label mb-1">Select Month and Year Data:</label>
                   <div className="d-flex">
                     <select
                       className="form-select me-2"
@@ -1284,19 +1102,19 @@ const ReceiptsTable = () => {
                       styles={{
                         control: (provided) => ({
                           ...provided,
-                          width: "100px", // Adjust width as needed
-                          minWidth: "100px",
+                          width: '100px',  // Adjust width as needed
+                          minWidth: '100px',
                         }),
                         menu: (provided) => ({
                           ...provided,
-                          width: "100px", // Same width as control
-                          minWidth: "100px",
+                          width: '100px',  // Same width as control
+                          minWidth: '100px',
                         }),
                         option: (provided) => ({
                           ...provided,
-                          whiteSpace: "nowrap",
-                          padding: "8px 12px",
-                        }),
+                          whiteSpace: 'nowrap',
+                          padding: '8px 12px',
+                        })
                       }}
                     />
                   </div>
@@ -1308,14 +1126,10 @@ const ReceiptsTable = () => {
                     disabled={isDownloading}
                   >
                     {isDownloading ? (
-                      <div
-                        className="spinner-border spinner-border-sm"
-                        role="status"
-                      ></div>
+                      <div className="spinner-border spinner-border-sm" role="status"></div>
                     ) : (
                       <i className="bi bi-download me-1"></i>
-                    )}{" "}
-                    Download
+                    )} Download
                   </button>
                 </div>
                 <div className="col-md-auto">
@@ -1342,14 +1156,10 @@ const ReceiptsTable = () => {
                     disabled={isRangeDownloading}
                   >
                     {isRangeDownloading ? (
-                      <div
-                        className="spinner-border spinner-border-sm"
-                        role="status"
-                      ></div>
+                      <div className="spinner-border spinner-border-sm" role="status"></div>
                     ) : (
                       <i className="bi bi-download me-1"></i>
-                    )}{" "}
-                    Download Range
+                    )} Download Range
                   </button>
                 </div>
                 <div className="col-md-auto">
@@ -1358,7 +1168,7 @@ const ReceiptsTable = () => {
                     onClick={handleCreateClick}
                     disabled={isLoading}
                   >
-                    {isLoading ? "Creating..." : "Create Receipt"}
+                    {isLoading ? 'Creating...' : 'Create Receipt'}
                   </button>
                 </div>
               </div>
@@ -1380,10 +1190,7 @@ const ReceiptsTable = () => {
 
           {/* Create Receipt Modal */}
           {isModalOpen && (
-            <div
-              className="modal"
-              style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
-            >
+            <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
               <div className="modal-dialog modal-lg">
                 <div className="modal-content">
                   <div className="modal-header">
@@ -1399,22 +1206,12 @@ const ReceiptsTable = () => {
                     <div className="row mb-4">
                       <div className="col-md-6">
                         <div className="company-info-recepits-table text-center">
-                          <label className="form-label-recepits-table">
-                            {companyInfo.name}
-                          </label>
-
-                          <p>{companyInfo.address}</p>
-
-                          <p>
-                            {companyInfo.state}
-                            {companyInfo.stateCode
-                              ? `, Code: ${companyInfo.stateCode}`
-                              : ""}
-                          </p>
-
-                          <p>GST : {companyInfo.gstin}</p>
-                          <p>Email: {companyInfo.email}</p>
-                          <p>Phone: {companyInfo.phone}</p>
+                          <label className="form-label-recepits-table">SHREE SHASHWATRAJ AGRO PVT LTD</label>
+                          <p>Growth Center, Jasoiya, Aurangabad</p>
+                          <p>Bihar, 824101</p>
+                          <p>GST : 10AAOCS1541B1ZZ</p>
+                          <p>Email: spmathur56@gmail.com</p>
+                          <p>Phone: 9801049700</p>
                         </div>
                       </div>
                       <div className="col-md-6">
@@ -1473,49 +1270,49 @@ const ReceiptsTable = () => {
                           >
                             <option value="">Select Retailer</option>
                             {accounts
-                              .filter((acc) => {
+                              .filter(acc => {
                                 const searchLower = searchTerm.toLowerCase();
 
                                 const primaryName = acc.gstin?.trim()
-                                  ? acc.display_name || acc.name
-                                  : acc.name || acc.display_name;
+                                  ? (acc.display_name || acc.name)
+                                  : (acc.name || acc.display_name);
 
                                 const name = primaryName?.toLowerCase() || "";
-                                const businessName =
-                                  acc.business_name?.toLowerCase() || "";
-                                const displayName =
-                                  acc.display_name?.toLowerCase() || "";
+                                const businessName = acc.business_name?.toLowerCase() || "";
+                                const displayName = acc.display_name?.toLowerCase() || "";
 
                                 return (
-                                  (acc.role === "retailer" ||
-                                    (acc.role === "supplier" &&
-                                      acc.is_dual_account == 1) ||
-                                    (acc.role === "staff" &&
-                                      acc.is_dual_account == 1) ||
-                                    acc.group?.trim().toLowerCase() ===
-                                      "sundry debtors") &&
-                                  (name.includes(searchLower) ||
+                                  (
+                                    acc.role === "retailer" ||
+                                    (acc.role === "supplier" && acc.is_dual_account == 1) ||
+                                    (acc.role === "staff" && acc.is_dual_account == 1) ||
+                                    acc.group?.trim().toLowerCase() === "sundry debtors"
+                                  ) &&
+                                  (
+                                    name.includes(searchLower) ||
                                     businessName.includes(searchLower) ||
-                                    displayName.includes(searchLower))
+                                    displayName.includes(searchLower)
+                                  )
                                 );
                               })
                               .map((acc) => {
                                 const displayText = acc.gstin?.trim()
-                                  ? acc.display_name || acc.name
-                                  : acc.name || acc.display_name;
+                                  ? (acc.display_name || acc.name)
+                                  : (acc.name || acc.display_name);
 
                                 return (
                                   <option key={acc.id} value={acc.id}>
                                     {displayText}
                                   </option>
                                 );
-                              })}
+                              })
+                            }
                           </select>
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-1">
-                          <label className="form-label">Invoice Number *</label>
+                          <label className="form-label">Invoice Number</label>
                           <div className="input-group">
                             <select
                               className="form-select"
@@ -1526,14 +1323,14 @@ const ReceiptsTable = () => {
                             >
                               <option value="">Select Invoice Number</option>
                               {filteredInvoices.map((invoice) => (
-                                <option
-                                  key={invoice.VoucherID}
-                                  value={invoice.InvoiceNumber}
-                                >
+                                <option key={invoice.VoucherID} value={invoice.InvoiceNumber}>
                                   {invoice.InvoiceNumber}
                                 </option>
                               ))}
                             </select>
+
+
+
                           </div>
                         </div>
                       </div>
@@ -1561,13 +1358,7 @@ const ReceiptsTable = () => {
                               name="amount"
                               value={formData.amount}
                               onChange={handleInputChange}
-                              placeholder={
-                                isFetchingBalance
-                                  ? "Fetching balance..."
-                                  : invoiceBalance > 0
-                                    ? "Auto-filled from balance"
-                                    : "Enter amount"
-                              }
+                              placeholder={isFetchingBalance ? "Fetching balance..." : (invoiceBalance > 0 ? "Auto-filled from balance" : "Enter amount")}
                               min="0"
                               step="1"
                               required
@@ -1575,13 +1366,8 @@ const ReceiptsTable = () => {
                             />
                             {isFetchingBalance && (
                               <div className="input-group-text">
-                                <div
-                                  className="spinner-border spinner-border-sm"
-                                  role="status"
-                                >
-                                  <span className="visually-hidden">
-                                    Loading...
-                                  </span>
+                                <div className="spinner-border spinner-border-sm" role="status">
+                                  <span className="visually-hidden">Loading...</span>
                                 </div>
                               </div>
                             )}
@@ -1591,9 +1377,7 @@ const ReceiptsTable = () => {
                               <i className="bi bi-arrow-clockwise me-1"></i>
                               Fetching invoice balance...
                             </small>
-                          ) : invoiceBalance > 0 &&
-                            formData.amount &&
-                            formData.amount === invoiceBalance.toString() ? (
+                          ) : invoiceBalance > 0 && formData.amount && formData.amount === invoiceBalance.toString() ? (
                             <small className="text-success">
                               <i className="bi bi-check-circle me-1"></i>
                               {/* Auto-filled from invoice balance (₹{invoiceBalance.toLocaleString('en-IN')}) */}
@@ -1606,7 +1390,7 @@ const ReceiptsTable = () => {
                     <div className="row mb-4">
                       <div className="col-md-12">
                         <div className="mb-3">
-                          <label className="form-label">Note</label>
+                          <label className="form-label">Remark</label>
                           <textarea
                             className="form-control"
                             rows="3"
@@ -1617,6 +1401,7 @@ const ReceiptsTable = () => {
                           ></textarea>
                         </div>
                       </div>
+
                     </div>
 
                     <div className="row">
@@ -1649,10 +1434,9 @@ const ReceiptsTable = () => {
 
                     <div className="row">
                       <div className="col-md-6">
+
                         <div className="mb-3">
-                          <label className="form-label">
-                            Reconciliation Option
-                          </label>
+                          <label className="form-label">Reconciliation Option</label>
                           <select
                             className="form-select"
                             name="reconciliationOption"
@@ -1666,9 +1450,7 @@ const ReceiptsTable = () => {
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">
-                            Transaction Proof Document
-                          </label>
+                          <label className="form-label">Transaction Proof Document</label>
                           <input
                             type="file"
                             className="form-control"
@@ -1676,9 +1458,7 @@ const ReceiptsTable = () => {
                             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                           />
                           <small className="text-muted">
-                            {formData.transactionProofFile
-                              ? formData.transactionProofFile.name
-                              : "No file chosen"}
+                            {formData.transactionProofFile ? formData.transactionProofFile.name : 'No file chosen'}
                           </small>
 
                           {formData.transactionProofFile && (
@@ -1688,11 +1468,8 @@ const ReceiptsTable = () => {
                                   <i className="bi bi-file-earmark-check"></i>
                                 </span>
                                 <span className="small">
-                                  {formData.transactionProofFile.name}(
-                                  {Math.round(
-                                    formData.transactionProofFile.size / 1024,
-                                  )}{" "}
-                                  KB)
+                                  {formData.transactionProofFile.name}
+                                  ({Math.round(formData.transactionProofFile.size / 1024)} KB)
                                 </span>
                                 <button
                                   type="button"
@@ -1721,13 +1498,9 @@ const ReceiptsTable = () => {
                       type="button"
                       className="btn btn-primary"
                       onClick={handleCreateReceipt}
-                      disabled={
-                        isLoading ||
-                        !formData.amount ||
-                        parseFloat(formData.amount) <= 0
-                      }
+                      disabled={isLoading || !formData.amount || parseFloat(formData.amount) <= 0}
                     >
-                      {isLoading ? "Creating..." : "Create Receipt"}
+                      {isLoading ? 'Creating...' : 'Create Receipt'}
                     </button>
                   </div>
                 </div>
@@ -1735,6 +1508,8 @@ const ReceiptsTable = () => {
             </div>
           )}
         </div>
+
+
       </div>
     </div>
   );
