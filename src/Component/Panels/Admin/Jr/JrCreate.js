@@ -37,15 +37,25 @@ const JrCreate = ({ user }) => {
   const [journalItems, setJournalItems] = useState([]);
   const [editingId, setEditingId] = useState(null);
 
-  const companyInfo = {
-    name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-    address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-    email: "spmathur56@gmail.com",
-    phone: "9801049700",
-    gstin: "10AAOCS1541B1ZZ",
-    state: "Bihar",
-    stateCode: "10"
-  };
+  // const companyInfo = {
+  //   name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+  //   address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+  //   email: "spmathur56@gmail.com",
+  //   phone: "9801049700",
+  //   gstin: "10AAOCS1541B1ZZ",
+  //   state: "Bihar",
+  //   stateCode: "10"
+  // };
+
+  const [companyInfo, setCompanyInfo] = useState({
+  name: "",
+  address: "",
+  email: "",
+  phone: "",
+  gstin: "",
+  state: "",
+  stateCode: "",
+});
 
   const formatBalance = (balance) => {
     const num = parseFloat(balance);
@@ -62,14 +72,53 @@ const JrCreate = ({ user }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    fetchAccounts();
-    if (isEditMode) {
-      loadVoucherForEdit();
-    } else {
-      generateVoucherNumber();
+  const fetchCompanyInfo = async () => {
+  try {
+    const url = `${baseurl}/api/company-info`;
+    console.log("Company API URL:", url);
+
+    const res = await fetch(url);
+
+    const text = await res.text();
+
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch (err) {
+      console.error("Company API returned non-JSON:", text);
+      throw new Error("Company info API did not return JSON");
     }
-  }, [isEditMode, id]);
+
+    if (!res.ok) {
+      throw new Error(result.error || "Failed to fetch company info");
+    }
+
+    if (result.success && result.data) {
+      setCompanyInfo({
+        name: result.data.company_name || "",
+        address: result.data.address || "",
+        email: result.data.email || "",
+        phone: result.data.phone || "",
+        gstin: result.data.gstin || "",
+        state: result.data.state || "",
+        stateCode: result.data.state_code || "",
+      });
+    }
+  } catch (error) {
+    console.error("Company info fetch error:", error);
+  }
+};
+
+ useEffect(() => {
+  fetchCompanyInfo();
+  fetchAccounts();
+
+  if (isEditMode) {
+    loadVoucherForEdit();
+  } else {
+    generateVoucherNumber();
+  }
+}, [isEditMode, id]);
 
   const fetchAccounts = async () => {
     setLoading(true);
@@ -84,6 +133,8 @@ const JrCreate = ({ user }) => {
       setLoading(false);
     }
   };
+
+  
 const loadVoucherForEdit = async () => {
   if (!isEditMode || !id) return;
   
