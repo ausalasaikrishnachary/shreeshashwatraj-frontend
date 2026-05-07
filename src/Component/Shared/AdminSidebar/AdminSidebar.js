@@ -171,13 +171,6 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       subMenu: [
         { path: "/sales/invoices", name: "Invoices", icon: <FaFileInvoice /> },
         { path: "/sales/receipts", name: "Receipts", icon: <FaReceipt /> },
-
-        {
-          path: "/sales/credit_note",
-          name: "Credit Note",
-          icon: <FaCreditCard />,
-        },
-
         { path: "/sales/credit_note", name: "Credit Note", icon: <FaCreditCard /> },
         { path: "/sales/payments", name: "Payment", icon: <FaMoneyBillWave /> }
 

@@ -972,7 +972,7 @@ const columns = [
       // { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
       { name: 'CreditNote', path: '/sales/credit_note' },
       // { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
-      // { name: 'Receivables', path: '/sales/receivables' }
+      { name: 'Payments', path: '/sales/payments' }
     ];
 
     // Handle tab click - navigate to corresponding route

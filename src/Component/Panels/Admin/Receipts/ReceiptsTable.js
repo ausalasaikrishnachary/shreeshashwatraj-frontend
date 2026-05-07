@@ -720,6 +720,7 @@ const ReceiptsTable = () => {
     { name: "Invoices", path: "/sales/invoices" },
     { name: "Receipts", path: "/sales/receipts" },
     { name: "CreditNote", path: "/sales/credit_note" },
+    { name: "Payments", path: "/sales/payments" },
   ];
 
   const fetchNextReceiptNumber = async () => {
