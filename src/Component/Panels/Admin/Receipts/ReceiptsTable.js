@@ -34,7 +34,7 @@ const ReceiptsTable = () => {
   const [isRangeDownloading, setIsRangeDownloading] = useState(false);
   const pdfRef = useRef();
   const [searchTerm, setSearchTerm] = useState("");
-  
+
   // New state variables for advance receipts modes
   const [isAdvanceOnly, setIsAdvanceOnly] = useState(false);
   const [isBothMode, setIsBothMode] = useState(false);
@@ -43,7 +43,7 @@ const ReceiptsTable = () => {
   const [selectedAdvanceReceipts, setSelectedAdvanceReceipts] = useState([]);
   const [totalAdvanceAmount, setTotalAdvanceAmount] = useState(0);
   const [showAdvanceReceiptsModal, setShowAdvanceReceiptsModal] = useState(false);
-  
+
   const [companyInfo, setCompanyInfo] = useState({
     name: "",
     address: "",
@@ -282,8 +282,8 @@ const ReceiptsTable = () => {
 
               balanceAmount = parseFloat(
                 latestReceipt.total_balance_amount ||
-                  latestReceipt.balance_amount ||
-                  0
+                latestReceipt.balance_amount ||
+                0
               );
               console.log(
                 "Found balance from receipts array for retailer",
@@ -313,8 +313,8 @@ const ReceiptsTable = () => {
               if (relevantReceipt) {
                 balanceAmount = parseFloat(
                   relevantReceipt.total_balance_amount ||
-                    relevantReceipt.balance_amount ||
-                    0
+                  relevantReceipt.balance_amount ||
+                  0
                 );
               }
             }
@@ -395,9 +395,9 @@ const ReceiptsTable = () => {
 
         const invoiceAmount = parseFloat(
           selectedInvoiceData.TotalAmount ||
-            selectedInvoiceData.total_amount ||
-            selectedInvoiceData.amount ||
-            0
+          selectedInvoiceData.total_amount ||
+          selectedInvoiceData.amount ||
+          0
         );
 
         const receiptsForInvoice = receiptData.filter((receipt) => {
@@ -721,6 +721,7 @@ const ReceiptsTable = () => {
     { name: "Receipts", path: "/sales/receipts" },
     { name: "CreditNote", path: "/sales/credit_note" },
     { name: "Payments", path: "/sales/payments" },
+    { name: "Journal", path: "/Jrtable" },
   ];
 
   const fetchNextReceiptNumber = async () => {
@@ -1018,7 +1019,7 @@ const ReceiptsTable = () => {
   // Updated create receipt with three modes
   const handleCreateReceipt = async () => {
     const receiptAmount = parseFloat(formData.amount);
-    
+
     try {
       setIsLoading(true);
 
@@ -1061,7 +1062,7 @@ const ReceiptsTable = () => {
         await fetchReceipts();
         await fetchNextReceiptNumber();
       }
-      
+
       // MODE 2: NORMAL RECEIPT ONLY MODE
       else if (!isAdvanceOnly && !isBothMode) {
         if (!formData.retailerId) {
@@ -1076,6 +1077,11 @@ const ReceiptsTable = () => {
 
         if (!formData.receiptDate) {
           alert("Please select a receipt date");
+          return;
+        }
+
+        if (!formData.invoiceNumber) {
+          alert("Please select Invoice Number");
           return;
         }
 
@@ -1139,7 +1145,7 @@ const ReceiptsTable = () => {
           throw new Error(responseText || "Failed to create receipt");
         }
       }
-      
+
       // MODE 3: BOTH MODE
       else if (isBothMode) {
         let newReceiptId = null;
@@ -1432,6 +1438,7 @@ const ReceiptsTable = () => {
                     Download
                   </button>
                 </div>
+                
                 <div className="col-md-auto">
                   <label className="form-label mb-1">Select Date Range:</label>
                   <div className="d-flex">
@@ -1710,7 +1717,9 @@ const ReceiptsTable = () => {
                       </div>
                       <div className="col-md-6">
                         <div className="mb-1">
-                          <label className="form-label">Invoice Number</label>
+                          <label className="form-label">
+                            Invoice Number {!isAdvanceOnly && !isBothMode && <span>*</span>}
+                          </label>
                           <div className="input-group">
                             <select
                               className="form-select"
@@ -1959,8 +1968,8 @@ const ReceiptsTable = () => {
                     <button className="btn btn-secondary" onClick={() => setShowAdvanceReceiptsModal(false)}>
                       Close
                     </button>
-                    <button 
-                      className="btn btn-primary" 
+                    <button
+                      className="btn btn-primary"
                       onClick={() => setShowAdvanceReceiptsModal(false)}
                       disabled={selectedAdvanceReceipts.length === 0}
                     >

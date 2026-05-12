@@ -497,7 +497,9 @@ const PaymentTable = () => {
     // { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
     { name: 'CreditNote', path: '/sales/credit_note' },
     // { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
-    { name: 'Payments', path: '/sales/payments' }
+    { name: 'Payments', path: '/sales/payments' },
+    { name: 'Journal', path: '/Jrtable' }
+
   ];
   // Fetch next receipt number
   const fetchNextReceiptNumber = async () => {

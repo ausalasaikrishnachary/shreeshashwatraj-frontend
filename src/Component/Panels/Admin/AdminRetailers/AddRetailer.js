@@ -1114,7 +1114,7 @@ const [isSubmitting, setIsSubmitting] = useState(false);
               )}
             </div>
 
-            {formData.group === 'Retailer' ? (
+            {formData.group === 'Retailer' || formData.group === 'Sundry Creditors' ? (
               <div className="row">
                 <div className="col-md-6">
                   {renderField({

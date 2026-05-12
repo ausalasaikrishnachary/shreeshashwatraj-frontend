@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // Added useLocation
 import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
 import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
 import ReusableTable from '../../../Layouts/TableLayout/DataTable';
@@ -10,55 +10,83 @@ import { FaEdit, FaTrash, FaEye } from 'react-icons/fa';
 const Jrtable = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation(); // To get current path
   const [vouchers, setVouchers] = useState([]);
   const [filteredVouchers, setFilteredVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleting, setDeleting] = useState({});
+  const [activeTab, setActiveTab] = useState('Journal'); // State for active tab
+
+  // Define tabs with their corresponding routes
+  const tabs = [
+    { name: 'Invoices', path: '/sales/invoices' },
+    { name: 'Receipts', path: '/sales/receipts' },
+    // { name: 'Quotations', path: '/sales/quotations' },
+    // { name: 'BillOfSupply', path: '/sales/bill_of_supply' },
+    { name: 'CreditNote', path: '/sales/credit_note' },
+    // { name: 'DeliveryChallan', path: '/sales/delivery_challan' },
+    { name: 'Payments', path: '/sales/payments' },
+    { name: 'Journal', path: '/Jrtable' }
+  ];
+
+  // Set active tab based on current path when component mounts or path changes
+  useEffect(() => {
+    const currentTab = tabs.find(tab => tab.path === location.pathname);
+    if (currentTab) {
+      setActiveTab(currentTab.name);
+    }
+  }, [location.pathname]);
 
   // Fetch vouchers from API
   useEffect(() => {
     fetchVouchers();
   }, []);
 
-const fetchVouchers = async () => {
-  try {
-    setLoading(true);
-    const response = await fetch(`${baseurl}/api/jrroutes`);
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch vouchers');
-    }
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      // Transform each entry to individual row
-      const transformedVouchers = result.data.map(voucher => ({
-        id: voucher.VoucherID,
-        voucherNo: voucher.VchNo,
-        date: voucher.Date ? new Date(voucher.Date).toISOString().split('T')[0] : 'N/A',
-        transactionType: voucher.TransactionType || 'Journal',
-        partyName: voucher.PartyName || 'N/A',
-        accountName: voucher.AccountName || 'N/A',
-        totalAmount: `₹ ${parseFloat(voucher.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-        balanceAmount: `₹ ${parseFloat(voucher.balance_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-        status: voucher.status || 'active',
-        originalData: voucher
-      }));
+  const fetchVouchers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${baseurl}/api/jrroutes`);
       
-      setVouchers(transformedVouchers);
-      setFilteredVouchers(transformedVouchers);
-    } else {
-      setError(result.message || 'Failed to fetch vouchers');
+      if (!response.ok) {
+        throw new Error('Failed to fetch vouchers');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Transform each entry to individual row
+        const transformedVouchers = result.data.map(voucher => ({
+          id: voucher.VoucherID,
+          voucherNo: voucher.VchNo,
+          date: voucher.Date ? new Date(voucher.Date).toISOString().split('T')[0] : 'N/A',
+          transactionType: voucher.TransactionType || 'Journal',
+          partyName: voucher.PartyName || 'N/A',
+          accountName: voucher.AccountName || 'N/A',
+          totalAmount: `₹ ${parseFloat(voucher.TotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+          balanceAmount: `₹ ${parseFloat(voucher.balance_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+          status: voucher.status || 'active',
+          originalData: voucher
+        }));
+        
+        setVouchers(transformedVouchers);
+        setFilteredVouchers(transformedVouchers);
+      } else {
+        setError(result.message || 'Failed to fetch vouchers');
+      }
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching vouchers:', err);
+      setError(err.message);
+      setLoading(false);
     }
-    setLoading(false);
-  } catch (err) {
-    console.error('Error fetching vouchers:', err);
-    setError(err.message);
-    setLoading(false);
-  }
-};
+  };
+
+  // Handle tab click - navigate to the corresponding route
+  const handleTabClick = (tab) => {
+    navigate(tab.path);
+    setActiveTab(tab.name);
+  };
 
   // Handle Edit - pass VchNo instead of ID
   const handleEdit = async (voucher) => {
@@ -154,15 +182,6 @@ const fetchVouchers = async () => {
       key: 'voucherNo', 
       title: 'VOUCHER NO', 
       style: { textAlign: 'center', width: '12%' },
-      // render: (value, row) => (
-      //   <button 
-      //     className="btn btn-link p-0 text-primary text-decoration-none"
-      //     onClick={() => handleView(row)}
-      //     title="Click to view details"
-      //   >
-      //     {value}
-      //   </button>
-      // )
     },
     { 
       key: 'date', 
@@ -277,6 +296,22 @@ const fetchVouchers = async () => {
           onToggleSidebar={() => setIsCollapsed(!isCollapsed)}
           isMobile={window.innerWidth <= 768}
         />
+ <div className="receipts-content-area">
+        {/* Tabs Section */}
+        <div className="receipts-tabs-section">
+          <div className="receipts-tabs-container">
+            {tabs.map((tab) => (
+              <button
+                key={tab.name}
+                className={`receipts-tab ${activeTab === tab.name ? 'receipts-tab--active' : ''}`}
+                onClick={() => handleTabClick(tab)}
+              >
+                {tab.name}
+              </button>
+            ))}
+          </div>
+        </div>
+        
 
         <div className="admin-content-wrapper-sales">
           <div className="invoices-content-area">
@@ -302,6 +337,7 @@ const fetchVouchers = async () => {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>
