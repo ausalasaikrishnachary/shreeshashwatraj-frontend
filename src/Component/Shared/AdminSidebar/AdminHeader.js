@@ -48,7 +48,7 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
    "/kachacreditview" : "Kacha Credit view",
    "/kachinvoicetable" :'Kacha Sales Invoices',
    "/purchase/purchase-invoice" :"Purchase Invoices Table",
-   "/purchase/voucher" :"Purchase Voucher",
+   "/purchase/voucher" :"Payment Management",
    "/kachareceipts" :"Kacha Receipts Table",
    "/salesitemspage" :"Sales Catalog",
    "/sales/createinvoice" :"Create Invoice",
@@ -56,7 +56,7 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
    "/purchase/debit-note/edit":"Edit Purchase DebitNote",
    "/sales/credit_note":"Sales CreditNotes Table",
    "/sales/credit-note/edit":"Edit Sales CreditNote",
-   "/purchase/debit-note":"Purchae DebitNotes Table",
+   "/purchase/debit-note":"Purchase DebitNotes Table",
    "/Purchase/editinvoice":"Purchase Edit Invoice",
    "/kachapurchaseedit" :"Kacha Purchase Edit Invoice",
     "/Productionpage" : "Production"

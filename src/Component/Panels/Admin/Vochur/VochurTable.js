@@ -570,7 +570,7 @@ const VochurTable = () => {
     },
     {
       key: "VchNo",
-      title: "VOUCHER NUMBER",
+      title: "PAYMENT NUMBER",
       style: { textAlign: "center" },
       render: (value, row) => (
         <button
@@ -620,9 +620,9 @@ const VochurTable = () => {
   const tabs = [
     { name: "Purchase Invoice", path: "/purchase/purchase-invoice" },
     // { name: 'Purchase Order', path: '/purchase/purchase-order' },
-    { name: "Voucher", path: "/purchase/voucher" },
+    { name: "Payment", path: "/purchase/voucher" },
     { name: "Debit Note", path: "/purchase/debit-note" },
-    // { name: 'Payables', path: '/purchase/payables' }
+    { name: 'Journal', path: '/Jrtable' }
   ];
 
   // Fetch next receipt number
@@ -827,7 +827,7 @@ const VochurTable = () => {
       nextReceiptNumber,
     );
     if (!hasFetchedReceiptNumber) {
-      console.log("Voucher number not fetched yet, fetching now...");
+      console.log("Payment number not fetched yet, fetching now...");
       await fetchNextReceiptNumber();
     }
 
@@ -1048,7 +1048,7 @@ const VochurTable = () => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log("✅ Voucher created successfully:", result);
+        console.log("✅ Payment created successfully:", result);
 
         // Refresh the receipts list
         await fetchReceipts();
@@ -1056,16 +1056,16 @@ const VochurTable = () => {
         // Close modal
         handleCloseModal();
 
-        alert("Voucher created successfully!");
+        alert("Payment created successfully!");
 
         // Generate next receipt number
         await fetchNextReceiptNumber();
       } else {
         const errorText = await response.text();
-        console.error("❌ Failed to create voucher. Status:", response.status);
+        console.error("❌ Failed to create payment. Status:", response.status);
         console.error("Error response:", errorText);
 
-        let errorMessage = "Failed to create voucher. ";
+        let errorMessage = "Failed to create payment. ";
         try {
           const errorData = JSON.parse(errorText);
           errorMessage +=
@@ -1198,16 +1198,16 @@ const VochurTable = () => {
           </div>
 
           {/* Header Section */}
-          <div className="receipts-header-section">
+          {/* <div className="receipts-header-section">
             <div className="receipts-header-top">
               <div className="receipts-title-section">
-                <h1 className="receipts-main-title">Voucher Management</h1>
+                <h1 className="receipts-main-title">Payment Management</h1>
                 <p className="receipts-subtitle">
-                  Create, manage and track all your payment receipts
+                  Create, manage and track all your payment
                 </p>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Stats Grid */}
           <div className="receipts-stats-grid">
@@ -1338,7 +1338,7 @@ const VochurTable = () => {
                     onClick={handleCreateClick}
                     disabled={isLoading}
                   >
-                    {isLoading ? "Creating..." : "Create Voucher"}
+                    {isLoading ? "Creating..." : "Create Payment"}
                   </button>
                 </div>
               </div>
@@ -1348,7 +1348,7 @@ const VochurTable = () => {
                 title="Receipts"
                 data={receiptData}
                 columns={columns}
-                searchPlaceholder="Search receipts..."
+                searchPlaceholder="Search Payments..."
                 initialEntriesPerPage={5}
                 showSearch={true}
                 showEntriesSelector={false}
@@ -1367,7 +1367,7 @@ const VochurTable = () => {
               <div className="modal-dialog modal-lg">
                 <div className="modal-content">
                   <div className="modal-header">
-                    <h5 className="modal-title">Create Voucher</h5>
+                    <h5 className="modal-title">Create Payment</h5>
                     <button
                       type="button"
                       className="btn-close"
@@ -1399,7 +1399,7 @@ const VochurTable = () => {
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">Voucher Number</label>
+                          <label className="form-label">Payment Number</label>
                           <input
                             type="text"
                             className="form-control"
@@ -1411,7 +1411,7 @@ const VochurTable = () => {
                           />
                         </div>
                         <div className="mb-3">
-                          <label className="form-label">Voucher Date</label>
+                          <label className="form-label">Payment Date</label>
                           <input
                             type="date"
                             className="form-control"
@@ -1653,7 +1653,7 @@ const VochurTable = () => {
                         parseFloat(formData.amount) <= 0
                       }
                     >
-                      {isLoading ? "Creating..." : "Create Voucher"}
+                      {isLoading ? "Creating..." : "Create Payment"}
                     </button>
                   </div>
                 </div>
