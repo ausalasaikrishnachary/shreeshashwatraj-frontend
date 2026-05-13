@@ -169,12 +169,12 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
 
 
     {
-  name: "Direct Deposit",
+  name: "Bank statement upload",
   icon: <FaMoneyCheckAlt />,
   subMenu: [
     {
       path: "/bulkreceipts_payments",
-      name: "Direct Deposit",
+      name: "Bank statement upload",
       icon: <FaMoneyCheckAlt />
     },
   ],
