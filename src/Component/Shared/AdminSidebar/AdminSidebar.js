@@ -169,12 +169,12 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
 
 
     {
-  name: "Bulk Receipts Payments",
+  name: "Direct Deposit",
   icon: <FaMoneyCheckAlt />,
   subMenu: [
     {
       path: "/bulkreceipts_payments",
-      name: "Bulk Receipts Payments",
+      name: "Direct Deposit",
       icon: <FaMoneyCheckAlt />
     },
   ],

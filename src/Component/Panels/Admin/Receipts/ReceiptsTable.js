@@ -1036,7 +1036,7 @@ const ReceiptsTable = () => {
           );
 
           const formDataToSend = new FormData();
-          formDataToSend.append("invoice_number", formData.invoiceNumber);
+          formDataToSend.append("invoice_number", formData.invoiceNumber || "");
           formDataToSend.append("TransactionType", "Receipt");
           formDataToSend.append("paid_amount", availableAmount.toString());
           formDataToSend.append("paid_date", formData.receiptDate);
@@ -1080,10 +1080,10 @@ const ReceiptsTable = () => {
           return;
         }
 
-        if (!formData.invoiceNumber) {
-          alert("Please select Invoice Number");
-          return;
-        }
+        // if (!formData.invoiceNumber) {
+        //   alert("Please select Invoice Number");
+        //   return;
+        // }
 
         const formDataToSend = new FormData();
         formDataToSend.append("receipt_number", formData.receiptNumber);
@@ -1718,7 +1718,7 @@ const ReceiptsTable = () => {
                       <div className="col-md-6">
                         <div className="mb-1">
                           <label className="form-label">
-                            Invoice Number {!isAdvanceOnly && !isBothMode && <span>*</span>}
+                            Invoice Number {!isAdvanceOnly && !isBothMode && <span></span>}
                           </label>
                           <div className="input-group">
                             <select
@@ -1750,7 +1750,7 @@ const ReceiptsTable = () => {
                               name="currency"
                               value={formData.currency}
                               onChange={handleInputChange}
-                              disabled={isAdvanceOnly && !isBothMode}
+                              disabled={ !isBothMode}
                             >
                               <option>INR</option>
                               <option>USD</option>
@@ -1767,8 +1767,7 @@ const ReceiptsTable = () => {
                               min="0"
                               step="1"
                               required
-                              disabled={isFetchingBalance || (isAdvanceOnly && !isBothMode)}
-                            />
+disabled={isFetchingBalance}                            />
                             {isFetchingBalance && (
                               <div className="input-group-text">
                                 <div className="spinner-border spinner-border-sm" role="status">
@@ -1802,7 +1801,7 @@ const ReceiptsTable = () => {
                             value={formData.note}
                             onChange={handleInputChange}
                             placeholder="Additional notes..."
-                            disabled={isAdvanceOnly && !isBothMode}
+                            disabled={false}
                           ></textarea>
                         </div>
                       </div>
