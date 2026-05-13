@@ -35,6 +35,7 @@ import {
   FaRuler,
   FaCalendarAlt,
   FaHourglass,
+  FaMoneyCheckAlt 
 } from "react-icons/fa";
 import { FiHome } from "react-icons/fi";
 
@@ -165,6 +166,19 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
         { path: "/units", name: "Units", icon: <FaRuler /> },
       ],
     },
+
+
+    {
+  name: "Bulk Receipts Payments",
+  icon: <FaMoneyCheckAlt />,
+  subMenu: [
+    {
+      path: "/bulkreceipts_payments",
+      name: "Bulk Receipts Payments",
+      icon: <FaMoneyCheckAlt />
+    },
+  ],
+},
     {
       name: "Sales",
       icon: <FaChartLine />,
