@@ -168,17 +168,12 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     },
 
 
-    {
-  name: "Bank statement upload",
-  icon: <FaMoneyCheckAlt />,
-  subMenu: [
-    {
-      path: "/bulkreceipts_payments",
+
+  {
+      path: "/BankStatementTable",
       name: "Bank statement upload",
-      icon: <FaMoneyCheckAlt />
-    },
-  ],
-},
+  icon: <FaMoneyCheckAlt />,
+    },,
     {
       name: "Sales",
       icon: <FaChartLine />,

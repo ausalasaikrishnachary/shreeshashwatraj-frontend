@@ -1,0 +1,214 @@
+
+.bank-statement-wrapper {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.bank-statement-main-content {
+  flex: 1;
+  margin-left: 250px;
+  transition: margin-left 0.3s ease;
+  width: calc(100% - 250px);
+}
+
+.bank-statement-main-content.collapsed {
+  margin-left: 80px;
+  width: calc(100% - 80px);
+}
+
+.bank-statement-content-area {
+  padding: 20px;
+}
+
+/* Tabs Section */
+.bank-statement-tabs-section {
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 20px;
+  padding: 0 20px;
+}
+
+.bank-statement-tabs-container {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+}
+
+.bank-statement-tab {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6c757d;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.bank-statement-tab:hover {
+  color: #0d6efd;
+}
+
+.bank-statement-tab--active {
+  color: #0d6efd;
+}
+
+.bank-statement-tab--active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #0d6efd;
+}
+
+/* Header Section */
+.bank-statement-header-section {
+  margin-bottom: 30px;
+}
+
+.bank-statement-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.bank-statement-title-section {
+  flex: 1;
+}
+
+.bank-statement-main-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+
+.bank-statement-subtitle {
+  color: #6c757d;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Stats Grid */
+.bank-statement-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.bank-statement-stat-card {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.bank-statement-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.bank-statement-stat-card--credit {
+  border-left: 4px solid #28a745;
+}
+
+.bank-statement-stat-card--debit {
+  border-left: 4px solid #dc3545;
+}
+
+.bank-statement-stat-card--total {
+  border-left: 4px solid #17a2b8;
+}
+
+.bank-statement-stat-card--balance {
+  border-left: 4px solid #ffc107;
+}
+
+.bank-statement-stat-label {
+  font-size: 14px;
+  color: #6c757d;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.bank-statement-stat-value {
+  font-size: 28px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+
+.bank-statement-stat-change {
+  font-size: 12px;
+}
+
+.bank-statement-stat-change--positive {
+  color: #28a745;
+}
+
+.bank-statement-stat-change--negative {
+  color: #dc3545;
+}
+
+/* Actions Section */
+.bank-statement-actions-section {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.bank-statement-container {
+  background: white;
+  border-radius: 8px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .bank-statement-main-content {
+    margin-left: 0;
+    width: 100%;
+  }
+  
+  .bank-statement-main-content.collapsed {
+    margin-left: 0;
+    width: 100%;
+  }
+  
+  .bank-statement-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .bank-statement-header-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .bank-statement-tabs-container {
+    padding: 0;
+  }
+  
+  .bank-statement-tab {
+    padding: 10px 15px;
+    font-size: 12px;
+  }
+}
+
+@media print {
+  .bank-statement-tabs-section,
+  .bank-statement-actions-section .row .col-md-auto button,
+  .bank-statement-actions-section .row .col-md-auto .d-flex {
+    display: none;
+  }
+  
+  .bank-statement-stat-card {
+    break-inside: avoid;
+  }
+}

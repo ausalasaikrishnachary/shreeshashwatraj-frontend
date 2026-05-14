@@ -20,107 +20,121 @@ const BulkReceiptsPayments = ({ user }) => {
   const fileInputRef = useRef(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Download template
-  const downloadTemplate = () => {
-    const headers = ['TransactionID', 'Amount', 'Bank Name', 'Bank A/C'];
-    const sampleData = [
-  ['1', '5000', 'SBI', '1234567890'],
-  ['2', '10000', 'HDFC', '9876543210'],
-  ['3', '7500', 'ICICI', '5678901234'],
-  ['4', '2500', 'Axis Bank', '1122334455'],
-  ['5', '15000', 'Kotak Mahindra', '9988776655'],
-  ['6', '3200', 'Bank of Baroda', '5544332211'],
-  ['7', '8500', 'Canara Bank', '6677889900'],
-  ['8', '4200', 'Yes Bank', '4433221100'],
-  ['9', '12000', 'PNB', '7766554433'],
-  ['10', '6800', 'Union Bank', '8899776655']
-];
-    
-    const wsData = [headers, ...sampleData];
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!cols'] = headers.map(() => ({ wch: 20 }));
-    
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Direct_Deposit_Template');
-    
-    XLSX.writeFile(wb, 'direct_deposit_bulk_upload_template.xlsx');
-  };
+// Download template - Updated with bank statement fields
+const downloadTemplate = () => {
+  const headers = ['TransactionID', 'Txn Date', 'Value Date', 'Description', 'Ref No./Cheque No.', 'Branch Code', 'Debit', 'Credit', 'Balance'];
+  const sampleData = [
+    ['1', '2024-01-15', '2024-01-15', 'Salary Credit', 'REF001', 'BR001', '', '50000', '50000'],
+    ['2', '2024-01-16', '2024-01-16', 'Rent Payment', 'CHQ001', 'BR001', '15000', '', '35000'],
+    ['3', '2024-01-17', '2024-01-17', 'Electricity Bill', 'NEFT001', 'BR002', '2500', '', '32500'],
+    ['4', '2024-01-18', '2024-01-18', 'Interest Credit', 'INT001', 'BR001', '', '1000', '33500'],
+    ['5', '2024-01-19', '2024-01-19', 'ATM Withdrawal', 'ATM001', 'BR003', '5000', '', '28500']
+  ];
+  
+  const wsData = [headers, ...sampleData];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = headers.map(() => ({ wch: 20 }));
+  
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Bank_Statement_Template');
+  
+  XLSX.writeFile(wb, 'bank_statement_bulk_upload_template.xlsx');
+};
 
-  // Handle file upload
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+// Handle file upload - Updated with new fields
+const handleFileUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
 
-    if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
-      alert('Please upload a valid Excel file (XLSX, XLS, CSV)');
-      return;
-    }
+  if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
+    alert('Please upload a valid Excel file (XLSX, XLS, CSV)');
+    return;
+  }
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size should be less than 5MB');
-      return;
-    }
+  if (file.size > 5 * 1024 * 1024) {
+    alert('File size should be less than 5MB');
+    return;
+  }
 
-    setExcelFile(file);
-    setExcelData([]);
-    setImportResults(null);
-    setLoading(true);
+  setExcelFile(file);
+  setExcelData([]);
+  setImportResults(null);
+  setLoading(true);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        
-        if (jsonData.length === 0) {
-          alert('Excel file is empty');
-          setLoading(false);
-          return;
-        }
-
-        // Process data
-        const processedData = jsonData.map((row, index) => ({
-          id: index + 1,
-          transaction_id: row['TransactionID'] || row['transaction_id'] || '',
-          amount: row['Amount'] || row['amount'] || '',
-          bank_name: row['Bank Name'] || row['bank_name'] || '',
-          bank_account_number: row['Bank A/C'] || row['bank_account_number'] || '',
-          status: 'pending',
-          error: null
-        }));
-
-        // Validate data
-        const validatedData = processedData.map(item => {
-          const errors = [];
-          if (!item.transaction_id) errors.push('Transaction ID required');
-          if (!item.amount || isNaN(item.amount) || item.amount <= 0) errors.push('Valid amount required');
-          if (!item.bank_name) errors.push('Bank name required');
-          if (!item.bank_account_number) errors.push('Bank account number required');
-          
-          return {
-            ...item,
-            status: errors.length > 0 ? 'error' : 'pending',
-            error: errors.join(', ')
-          };
-        });
-
-        setExcelData(validatedData);
-        
-      } catch (error) {
-        console.error('Error reading Excel file:', error);
-        alert('Error reading Excel file. Please check the format.');
-      } finally {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      
+      if (jsonData.length === 0) {
+        alert('Excel file is empty');
         setLoading(false);
+        return;
       }
-    };
-    
-    reader.readAsArrayBuffer(file);
-  };
 
-// Submit data to backend
+      // Process data with new fields
+      const processedData = jsonData.map((row, index) => ({
+        id: index + 1,
+        transaction_id: row['TransactionID'] || row['transaction_id'] || '',
+        txn_date: row['Txn Date'] || row['txn_date'] || '',
+        value_date: row['Value Date'] || row['value_date'] || '',
+        description: row['Description'] || row['description'] || '',
+        ref_no: row['Ref No./Cheque No.'] || row['ref_no'] || row['cheque_no'] || '',
+        branch_code: row['Branch Code'] || row['branch_code'] || '',
+        debit: row['Debit'] || row['debit'] || '',
+        credit: row['Credit'] || row['credit'] || '',
+        balance: row['Balance'] || row['balance'] || '',
+        status: 'pending',
+        error: null
+      }));
+
+      // Validate data
+      const validatedData = processedData.map(item => {
+        const errors = [];
+        if (!item.transaction_id) errors.push('Transaction ID required');
+        if (!item.txn_date) errors.push('Transaction Date required');
+        if (!item.description) errors.push('Description required');
+        
+        // Validate at least one of debit or credit is present and valid
+        const hasValidDebit = item.debit && !isNaN(item.debit) && item.debit > 0;
+        const hasValidCredit = item.credit && !isNaN(item.credit) && item.credit > 0;
+        
+        if (!hasValidDebit && !hasValidCredit) {
+          errors.push('Either Debit or Credit amount required');
+        }
+        
+        if (hasValidDebit && hasValidCredit) {
+          errors.push('Cannot have both Debit and Credit');
+        }
+        
+        if (item.balance && isNaN(item.balance)) {
+          errors.push('Balance must be a valid number');
+        }
+        
+        return {
+          ...item,
+          status: errors.length > 0 ? 'error' : 'pending',
+          error: errors.join(', ')
+        };
+      });
+
+      setExcelData(validatedData);
+      
+    } catch (error) {
+      console.error('Error reading Excel file:', error);
+      alert('Error reading Excel file. Please check the format.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  reader.readAsArrayBuffer(file);
+};
+// Submit data to backend - Updated with new fields
 const handleSubmit = async () => {
   if (excelData.length === 0) {
     alert('No data to submit. Please upload a valid Excel file.');
@@ -147,12 +161,16 @@ const handleSubmit = async () => {
       setUploadProgress(progress);
 
       try {
-        // REMOVED created_by from here
         const response = await axios.post(`${baseurl}/api/direct-deposit/import`, {
-          transaction_id: record.transaction_id,
-          amount: parseFloat(record.amount),
-          bank_name: record.bank_name,
-          bank_account_number: record.bank_account_number
+          // transaction_id: record.transaction_id,
+          txn_date: record.txn_date,
+          value_date: record.value_date,
+          description: record.description,
+          ref_no: record.ref_no,
+          branch_code: record.branch_code,
+          debit: record.debit ? parseFloat(record.debit) : null,
+          credit: record.credit ? parseFloat(record.credit) : null,
+          balance: record.balance ? parseFloat(record.balance) : null
         });
 
         if (response.data.success) {
@@ -288,65 +306,76 @@ const handleSubmit = async () => {
               </div>
 
               {/* Data Preview Table */}
-              {excelData.length > 0 && (
-                <div className="row mb-4">
-                  <div className="col-12">
-                    <h5>Step 3: Preview Data ({excelData.length} records)</h5>
-                    <div className="table-responsive" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                      <Table striped bordered hover size="sm">
-                        <thead className="table-light sticky-top">
-                          <tr>
-                            <th>#</th>
-                            <th>Transaction ID</th>
-                            <th>Amount (₹)</th>
-                            <th>Bank Name</th>
-                            <th>Bank A/C</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {excelData.map((item, index) => (
-                            <tr key={index} className={
-                              item.status === 'success' ? 'table-success' : 
-                              item.status === 'error' ? 'table-danger' : ''
-                            }>
-                              <td>{index + 1}</td>
-                              <td>{item.transaction_id}</td>
-                              <td>₹{Number(item.amount).toLocaleString('en-IN')}</td>
-                              <td>{item.bank_name}</td>
-                              <td>{item.bank_account_number}</td>
-                              <td>
-                                <span className={`badge ${
-                                  item.status === 'success' ? 'bg-success' : 
-                                  item.status === 'error' ? 'bg-danger' : 'bg-secondary'
-                                }`}>
-                                  {item.status === 'success' ? '✓ Submitted' : 
-                                   item.status === 'error' ? '✗ Error' : '⏳ Pending'}
-                                </span>
-                                {item.error && (
-                                  <div className="small text-danger mt-1">{item.error}</div>
-                                )}
-                              </td>
-                              <td>
-                                {item.status === 'pending' && (
-                                  <Button
-                                    variant="danger"
-                                    size="sm"
-                                    onClick={() => handleRemoveRecord(item.id)}
-                                  >
-                                    <FaTrash />
-                                  </Button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </Table>
-                    </div>
-                  </div>
-                </div>
-              )}
+        {/* Data Preview Table - Updated columns */}
+{excelData.length > 0 && (
+  <div className="row mb-4">
+    <div className="col-12">
+      <h5>Step 3: Preview Data ({excelData.length} records)</h5>
+      <div className="table-responsive" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+        <Table striped bordered hover size="sm">
+          <thead className="table-light sticky-top">
+            <tr>
+              <th>#</th>
+              <th>Transaction ID</th>
+              <th>Txn Date</th>
+              <th>Value Date</th>
+              <th>Description</th>
+              <th>Ref No.</th>
+              <th>Branch Code</th>
+              <th>Debit (₹)</th>
+              <th>Credit (₹)</th>
+              <th>Balance (₹)</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {excelData.map((item, index) => (
+              <tr key={index} className={
+                item.status === 'success' ? 'table-success' : 
+                item.status === 'error' ? 'table-danger' : ''
+              }>
+                <td>{index + 1}</td>
+                <td>{item.transaction_id}</td>
+                <td>{item.txn_date}</td>
+                <td>{item.value_date || '-'}</td>
+                <td>{item.description}</td>
+                <td>{item.ref_no || '-'}</td>
+                <td>{item.branch_code || '-'}</td>
+                <td className="text-danger">{item.debit ? `₹${Number(item.debit).toLocaleString('en-IN')}` : '-'}</td>
+                <td className="text-success">{item.credit ? `₹${Number(item.credit).toLocaleString('en-IN')}` : '-'}</td>
+                <td>{item.balance ? `₹${Number(item.balance).toLocaleString('en-IN')}` : '-'}</td>
+                <td>
+                  <span className={`badge ${
+                    item.status === 'success' ? 'bg-success' : 
+                    item.status === 'error' ? 'bg-danger' : 'bg-secondary'
+                  }`}>
+                    {item.status === 'success' ? '✓ Submitted' : 
+                     item.status === 'error' ? '✗ Error' : '⏳ Pending'}
+                  </span>
+                  {item.error && (
+                    <div className="small text-danger mt-1">{item.error}</div>
+                  )}
+                </td>
+                <td>
+                  {item.status === 'pending' && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => handleRemoveRecord(item.id)}
+                    >
+                      <FaTrash />
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
+    </div>
+  </div>
+)}
 
               {/* Upload Progress */}
               {importing && (

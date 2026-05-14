@@ -153,6 +153,7 @@ import JrCreate from "./Component/Panels/Admin/Jr/JrCreate";
 import Jrtable from "./Component/Panels/Admin/Jr/Jrtable";
 import PaymentTable from "./Component/Panels/Admin/Payment/PaymentTable";
 import Bulkreceipts_payments from "./Component/Panels/Admin/Receipts_Paymentsbulk/Bulkreceipts_payments";
+import BankStatementTable from "./Component/Panels/Admin/Receipts_Paymentsbulk/BankStatementTable";
 
 function App() {
   return (
@@ -1420,6 +1421,14 @@ function App() {
             element={
               <PrivateRoute allowedRoles={["admin"]}>
                 <Bulkreceipts_payments />
+              </PrivateRoute>
+            }
+          />
+            <Route
+            path="/BankStatementTable"
+            element={
+              <PrivateRoute allowedRoles={["admin"]}>
+                <BankStatementTable />
               </PrivateRoute>
             }
           />
