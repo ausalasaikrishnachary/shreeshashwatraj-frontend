@@ -171,7 +171,7 @@ const handleCreateVoucher = async (row, retailerId, transactionType) => {
     },
     {
       key: "ref_no",
-      title: "Voucher No.",
+      title: "Ref/Cheque No.",
       style: { textAlign: "center" },
       render: (value) => value || "-",
     },
