@@ -54,19 +54,17 @@ const BankStatementTable = () => {
   const fetchAccounts = async () => {
     try {
       const res = await fetch(`${baseurl}/accounts`);
-      if (res.ok) {
-        const data = await res.json();
-        const retailers = data.filter(acc => acc.role === "retailer" || acc.group === "Retailer");
-        setAccounts(retailers);
-      } else {
-        console.error("Failed to fetch accounts:", res.statusText);
-      }
+       if (res.ok) {
+      const data = await res.json();
+      setAccounts(data); // ← Removed the filter, now setting all accounts
+    } else {
+      console.error("Failed to fetch accounts:", res.statusText);
+    }
     } catch (err) {
       console.error("Error fetching accounts:", err);
     }
   };
 
-// Handle create voucher for a specific row
 const handleCreateVoucher = async (row, retailerId, transactionType) => {
   if (!retailerId) {
     alert("Please select a retailer for this transaction");
@@ -79,18 +77,17 @@ const handleCreateVoucher = async (row, retailerId, transactionType) => {
     return;
   }
 
-  // Get amount based on transaction type
-let amount = 0;
-if (row.debit && parseFloat(row.debit) > 0) {
-  amount = parseFloat(row.debit);
-} else if (row.credit && parseFloat(row.credit) > 0) {
-  amount = parseFloat(row.credit);
-}
+  let amount = 0;
+  if (row.debit && parseFloat(row.debit) > 0) {
+    amount = parseFloat(row.debit);
+  } else if (row.credit && parseFloat(row.credit) > 0) {
+    amount = parseFloat(row.credit);
+  }
 
-if (amount <= 0) {
-  alert('No amount found for this transaction');
-  return;
-}
+  if (amount <= 0) {
+    alert('No amount found for this transaction');
+    return;
+  }
 
   const transactionTypeText = transactionType === "credit" ? "Receipt" : "Payment";
 
@@ -108,8 +105,8 @@ if (amount <= 0) {
       account_name: selectedRetailer.account_name || "",
       business_name: selectedRetailer.business_name || "",
       amount: amount,
-transaction_type: transactionType === "credit" ? "receipts" : "payments", // keep this same
-      dc: row.debit && parseFloat(row.debit) > 0 ? "D" : "C",  // ← ADD THIS
+      transaction_type: transactionType === "credit" ? "receipts" : "payments",
+      dc: row.debit && parseFloat(row.debit) > 0 ? "D" : "C",
       txn_date: row.txn_date,
       value_date: row.value_date,
       description: row.description,
@@ -118,7 +115,7 @@ transaction_type: transactionType === "credit" ? "receipts" : "payments", // kee
       payment_method: "Direct Deposit",
       bank_name: row.bank_name || "Bank Transfer",
       data_type: "Sales",
-      balance: row.balance ? parseFloat(row.balance) : null,  // ← ADD THIS
+      balance: row.balance ? parseFloat(row.balance) : null,
     };
 
     const response = await axios.post(`${baseurl}/api/direct-deposit/create-voucher`, payload);
@@ -127,12 +124,13 @@ transaction_type: transactionType === "credit" ? "receipts" : "payments", // kee
       alert(`✅ ${transactionTypeText} created successfully!\nVoucher Number: ${response.data.voucher_number}`);
       setActionMessage({ type: 'success', message: `${transactionTypeText} created for ${selectedRetailer.name}` });
       
-      // Update the status in the UI
-      const updatedStatements = bankStatements.map(item => 
-        item.id === row.id ? { ...item, status: 'approved', voucher_id: response.data.voucher_id } : item
-      );
-      setBankStatements(updatedStatements);
-      applyFilters(updatedStatements);
+      await fetchBankStatements();
+      
+      setSelectedRetailerPerRow(prev => ({
+        ...prev,
+        [row.id]: ''
+      }));
+      
     } else {
       throw new Error(response.data.message || "Failed to create voucher");
     }
@@ -151,15 +149,7 @@ transaction_type: transactionType === "credit" ? "receipts" : "payments", // kee
       key: "transaction_id",
       title: "Transaction ID",
       style: { textAlign: "center" },
-      render: (value, row) => (
-        <button
-          className="btn btn-link p-0 text-primary text-decoration-none"
-          onClick={() => handleViewStatement(row.id)}
-          title="Click to view details"
-        >
-          {value || "N/A"}
-        </button>
-      ),
+     
     },
     {
       key: "txn_date",
@@ -181,7 +171,7 @@ transaction_type: transactionType === "credit" ? "receipts" : "payments", // kee
     },
     {
       key: "ref_no",
-      title: "Ref No.",
+      title: "Voucher No.",
       style: { textAlign: "center" },
       render: (value) => value || "-",
     },
@@ -209,31 +199,31 @@ transaction_type: transactionType === "credit" ? "receipts" : "payments", // kee
       style: { textAlign: "right" },
       render: (value) => value ? `₹ ${parseFloat(value).toLocaleString('en-IN')}` : "-",
     },
-    {
-      key: "retailer_selection",
-      title: "Select Retailer",
-      style: { textAlign: "center", minWidth: "200px" },
-      render: (value, row) => (
-        <select
-          className="form-select form-select-sm"
-          value={selectedRetailerPerRow[row.id] || ""}
-          onChange={(e) => {
-            setSelectedRetailerPerRow(prev => ({
-              ...prev,
-              [row.id]: e.target.value
-            }));
-          }}
-          style={{ minWidth: "150px" }}
-        >
-          <option value="">-- Select Retailer --</option>
-          {accounts.map((account) => (
-            <option key={account.id} value={account.id}>
-              {account.name} {account.business_name ? `(${account.business_name})` : ""}
-            </option>
-          ))}
-        </select>
-      ),
-    },
+ {
+  key: "retailer_selection",
+  title: "Select Customers",
+  style: { textAlign: "center", minWidth: "200px" },
+  render: (value, row) => (
+    <select
+      className="form-select form-select-sm"
+      value={selectedRetailerPerRow[row.id] || ""}
+      onChange={(e) => {
+        setSelectedRetailerPerRow(prev => ({
+          ...prev,
+          [row.id]: e.target.value
+        }));
+      }}
+      style={{ minWidth: "150px" }}
+    >
+      <option value="">-- Select Customers --</option>
+      {accounts.map((account) => (
+        <option key={account.id} value={account.id}>
+          {account.business_name } ({account.group || "No Group"})
+        </option>
+      ))}
+    </select>
+  ),
+},
    {
   key: "transaction_type",
   title: "Transaction Type",
@@ -264,14 +254,14 @@ transaction_type: transactionType === "credit" ? "receipts" : "payments", // kee
          onClick={() => handleCreateVoucher(
   row, 
   selectedRetailerPerRow[row.id], 
-  transactionTypePerRow[row.id] || "credit"  // ✅ matches dropdown default
+  transactionTypePerRow[row.id] || "credit"  
 )}
-          disabled={processingId === row.id}
+          disabled={processingId === row.id || !selectedRetailerPerRow[row.id]}  
         >
           {processingId === row.id ? (
             <div className="spinner-border spinner-border-sm" role="status"></div>
           ) : (
-            "Create Voucher"
+            "Submit"
           )}
         </button>
       ),
