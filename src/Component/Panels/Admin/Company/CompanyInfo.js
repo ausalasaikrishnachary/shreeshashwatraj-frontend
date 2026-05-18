@@ -334,7 +334,7 @@ const CompanyInfo = () => {
       console.error("Fetch company info error:", error);
     }
   };
-
+ 
   const handleChange = (e) => {
     const { name, value } = e.target;
 

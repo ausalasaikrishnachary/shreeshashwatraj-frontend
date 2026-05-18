@@ -47,7 +47,7 @@ const BankStatementTable = () => {
     { name: "CreditNote", path: "/sales/credit_note" },
     { name: "Payments", path: "/sales/payments" },
     { name: "Journal", path: "/Jrtable" },
-    { name: "Bank Statement", path: "/sales/bank-statement" },
+    // { name: "Bank Statement", path: "/sales/bank-statement" },
   ];
 
   // Fetch accounts
@@ -107,7 +107,17 @@ const handleCreateVoucher = async (row, retailerId, transactionType) => {
       amount: amount,
       transaction_type: transactionType === "credit" ? "receipts" : "payments",
       dc: row.debit && parseFloat(row.debit) > 0 ? "D" : "C",
-      txn_date: row.txn_date,
+      txn_date: row['Txn Date']
+  ? new Date(row['Txn Date']).toISOString().split('T')[0]
+  : row['txn_date']
+  ? new Date(row['txn_date']).toISOString().split('T')[0]
+  : '',
+
+value_date: row['Value Date']
+  ? new Date(row['Value Date']).toISOString().split('T')[0]
+  : row['value_date']
+  ? new Date(row['value_date']).toISOString().split('T')[0]
+  : '',
       value_date: row.value_date,
       description: row.description,
       ref_no: row.ref_no,
