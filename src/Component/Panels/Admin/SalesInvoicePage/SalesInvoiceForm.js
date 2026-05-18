@@ -34,6 +34,7 @@ const CreateInvoice = ({ user }) => {
   const [selectedStaffId, setSelectedStaffId] = useState("");
   const [isPriceEditing, setIsPriceEditing] = useState(false);
   const [tempPrice, setTempPrice] = useState("");
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [productSearchTerm, setProductSearchTerm] = useState("");

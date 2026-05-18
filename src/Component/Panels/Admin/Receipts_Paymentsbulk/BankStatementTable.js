@@ -7,7 +7,7 @@ import ReusableTable from "../../../Layouts/TableLayout/DataTable";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import "./BankStatement.css";
 import Select from "react-select";
-import { FaDownload, FaUpload, FaFileExcel } from "react-icons/fa";
+import { FaDownload, FaUpload, FaFileExcel ,FaSearch } from "react-icons/fa";
 import * as XLSX from 'xlsx';
 import axios from 'axios';
 
@@ -28,14 +28,15 @@ const BankStatementTable = () => {
   const [excelFile, setExcelFile] = useState(null);
   const fileInputRef = useRef(null);
   const [importResults, setImportResults] = useState(null);
+   const [bankSearchTerm, setBankSearchTerm] = useState("");
+  const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
   
-  // States for retailer and transaction type per row
   const [accounts, setAccounts] = useState([]);
   const [selectedRetailerPerRow, setSelectedRetailerPerRow] = useState({});
   const [transactionTypePerRow, setTransactionTypePerRow] = useState({});
   const [processingId, setProcessingId] = useState(null);
   const [actionMessage, setActionMessage] = useState(null);
-
+const [globalSelectedRetailer, setGlobalSelectedRetailer] = useState("");
   const yearOptions = Array.from({ length: 2050 - 2025 + 1 }, (_, i) => {
     const y = 2025 + i;
     return { value: y, label: y };
@@ -65,6 +66,8 @@ const BankStatementTable = () => {
     }
   };
 
+
+  
 const handleCreateVoucher = async (row, retailerId, transactionType) => {
   if (!retailerId) {
     alert("Please select a retailer for this transaction");
@@ -89,7 +92,20 @@ const handleCreateVoucher = async (row, retailerId, transactionType) => {
     return;
   }
 
-  const transactionTypeText = transactionType === "credit" ? "Receipt" : "Payment";
+  // Updated to handle contra
+  let transactionTypeText = "";
+  let apiTransactionType = "";
+  
+  if (transactionType === "credit") {
+    transactionTypeText = "Receipt";
+    apiTransactionType = "receipts";
+  } else if (transactionType === "debit") {
+    transactionTypeText = "Payment";
+    apiTransactionType = "payment";
+  } else if (transactionType === "contra") {
+    transactionTypeText = "Contra";
+    apiTransactionType = "contra";
+  }
 
   if (!window.confirm(`Create ${transactionTypeText} for ${selectedRetailer.name} with amount ₹${amount.toLocaleString('en-IN')}?`)) {
     return;
@@ -105,7 +121,7 @@ const handleCreateVoucher = async (row, retailerId, transactionType) => {
       account_name: selectedRetailer.account_name || "",
       business_name: selectedRetailer.business_name || "",
       amount: amount,
-      transaction_type: transactionType === "credit" ? "receipts" : "payments",
+      transaction_type: apiTransactionType,
       dc: row.debit && parseFloat(row.debit) > 0 ? "D" : "C",
       txn_date: row['Txn Date']
   ? new Date(row['Txn Date']).toISOString().split('T')[0]
@@ -122,7 +138,7 @@ value_date: row['Value Date']
       description: row.description,
       ref_no: row.ref_no,
       branch_code: row.branch_code,
-      payment_method: "Direct Deposit",
+      payment_method: transactionType === "contra" ? "Contra Entry" : "Direct Deposit",
       bank_name: row.bank_name || "Bank Transfer",
       data_type: "Sales",
       balance: row.balance ? parseFloat(row.balance) : null,
@@ -153,6 +169,22 @@ value_date: row['Value Date']
     setTimeout(() => setActionMessage(null), 5000);
   }
 };
+
+
+useEffect(() => {
+  if (bankStatements.length > 0) {
+    const initialSelections = {};
+    bankStatements.forEach(statement => {
+      if (statement.id && statement.party_id) {
+        initialSelections[statement.id] = statement.party_id.toString();
+      }
+    });
+    if (Object.keys(initialSelections).length > 0) {
+      setSelectedRetailerPerRow(prev => ({ ...prev, ...initialSelections }));
+    }
+  }
+}, [bankStatements]);
+
 
   const columns = [
     {
@@ -209,32 +241,7 @@ value_date: row['Value Date']
       style: { textAlign: "right" },
       render: (value) => value ? `₹ ${parseFloat(value).toLocaleString('en-IN')}` : "-",
     },
- {
-  key: "retailer_selection",
-  title: "Select Customers",
-  style: { textAlign: "center", minWidth: "200px" },
-  render: (value, row) => (
-    <select
-      className="form-select form-select-sm"
-      value={selectedRetailerPerRow[row.id] || ""}
-      onChange={(e) => {
-        setSelectedRetailerPerRow(prev => ({
-          ...prev,
-          [row.id]: e.target.value
-        }));
-      }}
-      style={{ minWidth: "150px" }}
-    >
-      <option value="">-- Select Customers --</option>
-      {accounts.map((account) => (
-        <option key={account.id} value={account.id}>
-          {account.business_name } ({account.group || "No Group"})
-        </option>
-      ))}
-    </select>
-  ),
-},
-   {
+    {
   key: "transaction_type",
   title: "Transaction Type",
   style: { textAlign: "center", minWidth: "150px" },
@@ -249,33 +256,278 @@ value_date: row['Value Date']
         }));
       }}
     >
-      <option value="credit"> Receipt</option>
+      <option value="credit">Receipt</option>
       <option value="debit">Payment</option>
+      <option value="contra">Contra</option>
     </select>
   ),
 },
-    {
-      key: "actions",
-      title: "Actions",
-      style: { textAlign: "center" },
-      render: (value, row) => (
-        <button
-          className="btn btn-sm btn-primary"
-         onClick={() => handleCreateVoucher(
-  row, 
-  selectedRetailerPerRow[row.id], 
-  transactionTypePerRow[row.id] || "credit"  
-)}
-          disabled={processingId === row.id || !selectedRetailerPerRow[row.id]}  
-        >
-          {processingId === row.id ? (
-            <div className="spinner-border spinner-border-sm" role="status"></div>
-          ) : (
-            "Submit"
-          )}
-        </button>
-      ),
-    },
+{
+  key: "retailer_selection",
+  title: "Account",
+  style: { textAlign: "left", minWidth: "250px" },
+  render: (value, row) => {
+    // Store dropdown states in a global object using row.id as key
+    if (!window.accountDropdownStates) {
+      window.accountDropdownStates = {};
+    }
+    if (!window.accountDropdownStates[row.id]) {
+      window.accountDropdownStates[row.id] = {
+        isOpen: false,
+        searchTerm: ""
+      };
+    }
+    
+    const state = window.accountDropdownStates[row.id];
+    
+    // Get the selected account object
+    const selectedAccountId = selectedRetailerPerRow[row.id];
+    const selectedAccount = selectedAccountId 
+      ? accounts.find(a => a.id.toString() === selectedAccountId)
+      : null;
+    
+    // Display value for the input
+    const displayValue = selectedAccount 
+      ? (selectedAccount.party_name || selectedAccount.business_name || selectedAccount.name || "Select Account")
+      : "";
+    
+    // Filter accounts based on search term
+    const filteredAccounts = accounts.filter(account =>
+      state.searchTerm === "" ||
+      account.party_name?.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
+      account.business_name?.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
+      account.name?.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
+      account.role?.toLowerCase().includes(state.searchTerm.toLowerCase())
+    );
+
+    return (
+      <div style={{ position: "relative", width: "100%" }}>
+        <input
+          type="text"
+          className="form-control form-control-sm"
+          placeholder="Search accounts..."
+          value={displayValue}
+          onFocus={() => {
+            state.isOpen = true;
+            state.searchTerm = "";
+            window.accountDropdownStates[row.id] = state;
+            // Force re-render
+            setBankStatements([...bankStatements]);
+          }}
+          onChange={(e) => {
+            state.searchTerm = e.target.value;
+            state.isOpen = true;
+            window.accountDropdownStates[row.id] = state;
+            window.accountDropdownStates = { ...window.accountDropdownStates };
+            // Clear selection when typing
+            if (e.target.value === "") {
+              setSelectedRetailerPerRow(prev => ({
+                ...prev,
+                [row.id]: ""
+              }));
+            } else {
+              // Clear selection when user starts typing new search
+              setSelectedRetailerPerRow(prev => ({
+                ...prev,
+                [row.id]: ""
+              }));
+            }
+            // Force re-render
+            setBankStatements([...bankStatements]);
+          }}
+          style={{ 
+            paddingRight: selectedAccount ? "35px" : "10px",
+            fontSize: "13px"
+          }}
+          readOnly={state.isOpen ? false : false}
+        />
+        
+        {/* Clear button - only show when there's a selected account */}
+        {selectedAccount && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedRetailerPerRow(prev => ({
+                ...prev,
+                [row.id]: ""
+              }));
+              state.searchTerm = "";
+              window.accountDropdownStates[row.id] = state;
+              // Force re-render
+              setBankStatements([...bankStatements]);
+            }}
+            style={{
+              position: "absolute",
+              right: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "transparent",
+              border: "none",
+              color: "#999",
+              cursor: "pointer",
+              padding: "0",
+              fontSize: "14px",
+              zIndex: 10,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+            aria-label="Clear selection"
+          >
+            ✕
+          </button>
+        )}
+
+        {/* Dropdown icon */}
+        {!selectedAccount && (
+          <div
+            style={{
+              position: "absolute",
+              right: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              pointerEvents: "none",
+              color: "#6c757d",
+              fontSize: "12px"
+            }}
+          >
+            ▼
+          </div>
+        )}
+
+        {state.isOpen && (
+          <div
+            className="position-absolute w-100"
+            style={{
+              top: "100%",
+              left: 0,
+              zIndex: 9999,
+              backgroundColor: "#fff",
+              border: "1px solid #dee2e6",
+              borderRadius: "6px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+              maxHeight: "280px",
+              overflowY: "auto",
+              marginTop: "2px"
+            }}
+          >
+            <div style={{ padding: "8px 12px", borderBottom: "1px solid #dee2e6", fontWeight: 600, fontSize: "12px" }}>
+              Select Account
+            </div>
+            
+            {/* Search input inside dropdown */}
+            <div style={{ padding: "8px", borderBottom: "1px solid #dee2e6" }}>
+              <input
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="Search by name or role..."
+                value={state.searchTerm}
+                onChange={(e) => {
+                  state.searchTerm = e.target.value;
+                  window.accountDropdownStates[row.id] = state;
+                  window.accountDropdownStates = { ...window.accountDropdownStates };
+                  setBankStatements([...bankStatements]);
+                }}
+                autoFocus
+                style={{ fontSize: "12px" }}
+              />
+            </div>
+
+            {filteredAccounts.length === 0 ? (
+              <div style={{ padding: "12px", textAlign: "center", color: "#6c757d", fontSize: "12px" }}>
+                No accounts found
+              </div>
+            ) : (
+              filteredAccounts.map((account) => (
+                <div
+                  key={account.id}
+                  onClick={() => {
+                    setSelectedRetailerPerRow(prev => ({
+                      ...prev,
+                      [row.id]: account.id.toString()
+                    }));
+                    state.isOpen = false;
+                    state.searchTerm = "";
+                    window.accountDropdownStates[row.id] = state;
+                    setBankStatements([...bankStatements]);
+                  }}
+                  style={{
+                    padding: "8px 12px",
+                    cursor: "pointer",
+                    borderLeft: selectedAccountId === account.id.toString() ? "3px solid #0d6efd" : "3px solid transparent",
+                    backgroundColor: selectedAccountId === account.id.toString() ? "#f8f9fa" : "transparent"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8f9fa"}
+                  onMouseLeave={(e) => {
+                    if (selectedAccountId !== account.id.toString()) {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                    }
+                  }}
+                >
+                  <div style={{ fontWeight: 500, fontSize: "13px" }}>
+                    {account.party_name || account.business_name || account.name || "No Name"}
+                  </div>
+                  <div style={{ fontSize: "11px", color: "#6c757d", marginTop: "2px" }}>
+                    {account.role || "No Role"}
+                  </div>
+                </div>
+              ))
+            )}
+            
+            <div style={{ padding: "8px 12px", borderTop: "1px solid #dee2e6" }}>
+              <button
+                className="btn btn-sm btn-outline-secondary w-100"
+                onClick={() => {
+                  state.isOpen = false;
+                  state.searchTerm = "";
+                  window.accountDropdownStates[row.id] = state;
+                  setBankStatements([...bankStatements]);
+                }}
+                style={{ fontSize: "12px" }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  },
+},
+   
+  {
+  key: "actions",
+  title: "Actions",
+  style: { textAlign: "center" },
+  render: (value, row) => (
+    <div style={{ display: 'flex', gap: '2px', justifyContent: 'center' }}>
+      <button
+        className="btn btn-sm btn-primary"
+        onClick={() => handleCreateVoucher(
+          row, 
+          selectedRetailerPerRow[row.id], 
+          transactionTypePerRow[row.id] || "credit"  
+        )}
+        disabled={processingId === row.id || !selectedRetailerPerRow[row.id]}  
+      >
+        {processingId === row.id ? (
+          <div className="spinner-border spinner-border-sm" role="status"></div>
+        ) : (
+          "Submit"
+        )}
+      </button>
+      
+      <button
+        className="btn btn-sm btn-danger"
+        onClick={() => handleDelete(row.id)}
+        disabled={processingId === row.id}
+      >
+        Delete
+      </button>
+    </div>
+  ),
+},
   ];
 
   // Download template
@@ -299,140 +551,185 @@ value_date: row['Value Date']
     XLSX.writeFile(wb, 'bank_statement_bulk_upload_template.xlsx');
   };
 
-  // Handle file upload
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+// Handle file upload
+const handleFileUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
 
-    if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
-      alert('Please upload a valid Excel file (XLSX, XLS, CSV)');
-      return;
-    }
+  if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
+    alert('Please upload a valid Excel file (XLSX, XLS, CSV)');
+    return;
+  }
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size should be less than 5MB');
-      return;
-    }
+  if (file.size > 5 * 1024 * 1024) {
+    alert('File size should be less than 5MB');
+    return;
+  }
 
-    setExcelFile(file);
-    setIsImporting(true);
+  setExcelFile(file);
+  setIsImporting(true);
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        
-        if (jsonData.length === 0) {
-          alert('Excel file is empty');
-          setIsImporting(false);
-          return;
-        }
-
-        let successCount = 0;
-        let failCount = 0;
-        const errors = [];
-
-        for (let i = 0; i < jsonData.length; i++) {
-          const row = jsonData[i];
-          
-          try {
-            const response = await axios.post(`${baseurl}/api/direct-deposit/import`, {
-              txn_date: row['Txn Date'] || row['txn_date'] || '',
-              value_date: row['Value Date'] || row['value_date'] || '',
-              description: row['Description'] || row['description'] || '',
-              ref_no: row['Ref No./Cheque No.'] || row['ref_no'] || '',
-              branch_code: row['Branch Code'] || row['branch_code'] || '',
-              debit: row['Debit'] ? parseFloat(row['Debit']) : null,
-              credit: row['Credit'] ? parseFloat(row['Credit']) : null,
-              balance: row['Balance'] ? parseFloat(row['Balance']) : null
-            });
-
-            if (response.data.success) {
-              successCount++;
-            } else {
-              failCount++;
-              errors.push(`Row ${i + 1}: ${response.data.message}`);
-            }
-          } catch (error) {
-            failCount++;
-            errors.push(`Row ${i + 1}: ${error.response?.data?.message || error.message}`);
-          }
-        }
-
-        setImportResults({
-          total: jsonData.length,
-          success: successCount,
-          failed: failCount,
-          errors: errors
-        });
-
-        alert(`Import completed!\nSuccess: ${successCount}\nFailed: ${failCount}`);
-        
-        fetchBankStatements();
-        
-      } catch (error) {
-        console.error('Error reading Excel file:', error);
-        alert('Error reading Excel file. Please check the format.');
-      } finally {
-        setIsImporting(false);
-        setExcelFile(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      }
-    };
-    
-    reader.readAsArrayBuffer(file);
-  };
-
-  // Fetch bank statements
-  const fetchBankStatements = async () => {
+  const reader = new FileReader();
+  reader.onload = async (e) => {
     try {
-      setIsLoading(true);
-      console.log("Fetching bank statements from:", `${baseurl}/api/direct-deposit/statements`);
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
       
-      const response = await fetch(`${baseurl}/api/direct-deposit/statements`);
-      
-      console.log("Response status:", response.status);
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log("API Response:", result);
-        
-        let statements = [];
-        if (result.success && Array.isArray(result.data)) {
-          statements = result.data;
-        } else if (Array.isArray(result)) {
-          statements = result;
-        } else if (result.data && Array.isArray(result.data)) {
-          statements = result.data;
-        } else {
-          console.warn("Unexpected response structure:", result);
-          statements = [];
-        }
-        
-        console.log("Processed statements count:", statements.length);
-        setBankStatements(statements);
-        setFilteredStatements(statements);
-        
-      } else {
-        const errorText = await response.text();
-        console.error('Failed to fetch bank statements:', response.status, errorText);
-        setBankStatements([]);
-        setFilteredStatements([]);
+      if (jsonData.length === 0) {
+        alert('Excel file is empty');
+        setIsImporting(false);
+        return;
       }
-    } catch (err) {
-      console.error('Error fetching bank statements:', err);
+
+      let successCount = 0;
+      let failCount = 0;
+      const errors = [];
+
+      // Get selected bank account info if any
+      const selectedBankAccount = globalSelectedRetailer 
+        ? accounts.find(acc => acc.id === parseInt(globalSelectedRetailer))
+        : null;
+
+      for (let i = 0; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        
+        try {
+          const payload = {
+            txn_date: row['Txn Date'] || row['txn_date'] || '',
+            value_date: row['Value Date'] || row['value_date'] || '',
+            description: row['Description'] || row['description'] || '',
+            ref_no: row['Ref No./Cheque No.'] || row['ref_no'] || '',
+            branch_code: row['Branch Code'] || row['branch_code'] || '',
+            debit: row['Debit'] ? parseFloat(row['Debit']) : null,
+            credit: row['Credit'] ? parseFloat(row['Credit']) : null,
+            balance: row['Balance'] ? parseFloat(row['Balance']) : null
+          };
+
+          // Only add party_id and party_name if a bank account is selected
+          if (selectedBankAccount) {
+            payload.party_id = globalSelectedRetailer;
+            payload.party_name = selectedBankAccount.business_name;
+          }
+
+          const response = await axios.post(`${baseurl}/api/direct-deposit/import`, payload);
+
+          if (response.data.success) {
+            successCount++;
+          } else {
+            failCount++;
+            errors.push(`Row ${i + 1}: ${response.data.message}`);
+          }
+        } catch (error) {
+          failCount++;
+          errors.push(`Row ${i + 1}: ${error.response?.data?.message || error.message}`);
+        }
+      }
+
+      setImportResults({
+        total: jsonData.length,
+        success: successCount,
+        failed: failCount,
+        errors: errors
+      });
+
+      alert(`Import completed!\nSuccess: ${successCount}\nFailed: ${failCount}`);
+      
+      fetchBankStatements();
+      
+    } catch (error) {
+      console.error('Error reading Excel file:', error);
+      alert('Error reading Excel file. Please check the format.');
+    } finally {
+      setIsImporting(false);
+      setExcelFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+  
+  reader.readAsArrayBuffer(file);
+};
+
+// Fetch bank statements
+const fetchBankStatements = async () => {
+  try {
+    setIsLoading(true);
+    console.log("Fetching bank statements from:", `${baseurl}/api/direct-deposit/statements`);
+    
+    const response = await fetch(`${baseurl}/api/direct-deposit/statements`);
+    
+    console.log("Response status:", response.status);
+    
+    if (response.ok) {
+      const result = await response.json();
+      console.log("API Response:", result);
+      
+      let statements = [];
+      if (result.success && Array.isArray(result.data)) {
+        statements = result.data;
+      } else if (Array.isArray(result)) {
+        statements = result;
+      } else if (result.data && Array.isArray(result.data)) {
+        statements = result.data;
+      } else {
+        console.warn("Unexpected response structure:", result);
+        statements = [];
+      }
+      
+      // ✅ SORT BY TRANSACTION ID IN DESCENDING ORDER (highest ID first)
+      const sortedStatements = statements.sort((a, b) => {
+        return b.transaction_id - a.transaction_id; // Descending order
+      });
+      
+      console.log("Processed statements count:", sortedStatements.length);
+      setBankStatements(sortedStatements);
+      setFilteredStatements(sortedStatements);
+      
+    } else {
+      const errorText = await response.text();
+      console.error('Failed to fetch bank statements:', response.status, errorText);
       setBankStatements([]);
       setFilteredStatements([]);
-    } finally {
-      setIsLoading(false);
     }
-  };
+  } catch (err) {
+    console.error('Error fetching bank statements:', err);
+    setBankStatements([]);
+    setFilteredStatements([]);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+// Delete function
+const handleDelete = async (id) => {
+  if (!window.confirm('Are you sure you want to delete this record?')) {
+    return;
+  }
+  
+  setProcessingId(id);
+  
+  try {
+    const response = await axios.delete(`${baseurl}/api/direct-deposit/statements/${id}`);
+    
+    if (response.data.success) {
+      alert('✅ Record deleted successfully');
+      fetchBankStatements(); // Refresh the table
+    } else {
+      alert('❌ Failed to delete record: ' + (response.data.message || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Error deleting:', error);
+    alert('❌ Error deleting record: ' + (error.response?.data?.message || error.message));
+  } finally {
+    setProcessingId(null);
+  }
+};
+
 
   // Apply filters
   const applyFilters = (statements) => {
@@ -764,26 +1061,139 @@ value_date: row['Value Date']
                   </button>
                 </div>
 
-                <div className="col-md-auto">
-                  <div className="d-flex align-items-center">
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      accept=".xlsx,.xls,.csv"
-                      onChange={handleFileUpload}
-                      style={{ display: 'none' }}
-                      id="excel-upload"
-                    />
-                    <label htmlFor="excel-upload" className="btn btn-info text-white mb-0">
-                      {isImporting ? (
-                        <div className="spinner-border spinner-border-sm" role="status"></div>
-                      ) : (
-                        <FaUpload className="me-1" />
-                      )}{" "}
-                      Import Excel
-                    </label>
+   <div className="col-md-auto">
+  <div className="d-flex align-items-center gap-3">
+    <div className="position-relative">
+      <label className="form-label fw-bold mb-1">Bank Accounts</label>
+      <div style={{ position: "relative", display: "inline-block", width: "100%" }}>
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Search bank accounts..."
+          value={bankSearchTerm}
+          onChange={(e) => {
+            setBankSearchTerm(e.target.value);
+            setIsBankDropdownOpen(true);
+          }}
+          onClick={() => setIsBankDropdownOpen(true)}
+          style={{ 
+            minWidth: "200px", 
+            paddingRight: "35px"  // Add space for the clear button
+          }}
+        />
+        {bankSearchTerm && (
+          <button
+            type="button"
+            onClick={() => {
+              setBankSearchTerm("");
+              setGlobalSelectedRetailer("");
+              setIsBankDropdownOpen(true);
+            }}
+            style={{
+              position: "absolute",
+              right: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "transparent",
+              border: "none",
+              color: "#999",
+              cursor: "pointer",
+              padding: "0",
+              fontSize: "16px",
+              zIndex: 10
+            }}
+          >
+            ✕
+          </button>
+        )}
+        {isBankDropdownOpen && (
+          <div
+            className="position-absolute w-100"
+            style={{
+              top: "100%",
+              left: 0,
+              zIndex: 9999,
+              backgroundColor: "#fff",
+              border: "1px solid #dee2e6",
+              borderRadius: "6px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+              maxHeight: "250px",
+              overflowY: "auto",
+            }}
+          >
+            <div style={{ padding: "8px 12px", borderBottom: "1px solid #dee2e6", fontWeight: 600 }}>
+              Select Bank Account
+            </div>
+            {accounts
+              .filter(account => account.group === "Bank Accounts")
+              .filter(account => 
+                bankSearchTerm === "" || 
+                account.name?.toLowerCase().includes(bankSearchTerm.toLowerCase()) || 
+                account.group?.toLowerCase().includes(bankSearchTerm.toLowerCase())  
+              )
+              .map((account) => (
+                <div
+                  key={account.id}
+                  onClick={() => {
+                    setGlobalSelectedRetailer(account.id.toString());
+                    setBankSearchTerm(account.name);  
+                    setIsBankDropdownOpen(false);
+                  }}
+                  style={{
+                    padding: "8px 12px",
+                    cursor: "pointer",
+                    borderLeft: "3px solid transparent",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8f9fa"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                >
+                  <div style={{ fontWeight: 500 }}>{account.name}</div>
+                  <div style={{ fontSize: "11px", color: "#6c757d" }}>
+                    {account.group || "No Group"}
                   </div>
                 </div>
+              ))}
+            {accounts.filter(account => account.group === "Bank Accounts").length === 0 && (
+              <div style={{ padding: "12px", textAlign: "center", color: "#6c757d" }}>
+                No bank accounts found
+              </div>
+            )}
+            <div style={{ padding: "8px 12px", borderTop: "1px solid #dee2e6" }}>
+              <button
+                className="btn btn-sm btn-outline-secondary w-100"
+                onClick={() => setIsBankDropdownOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+    
+    <div>
+      <label className="form-label fw-bold mb-1">&nbsp;</label>
+      <div>
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept=".xlsx,.xls,.csv"
+          onChange={handleFileUpload}
+          style={{ display: 'none' }}
+          id="excel-upload"
+        />
+        <label htmlFor="excel-upload" className="btn btn-info text-white">
+          {isImporting ? (
+            <div className="spinner-border spinner-border-sm" role="status"></div>
+          ) : (
+            <FaUpload className="me-1" />
+          )}{" "}
+          Import Excel
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
               </div>
 
               {/* Import Results Alert */}
