@@ -1582,7 +1582,7 @@ const ReceiptsTable = () => {
                               }}
                             />
                             <label className="form-check-label" htmlFor="mode-advance-only">
-                              Advance Only
+                              Adjust Advance Reciept
                             </label>
                           </div>
 
@@ -1616,7 +1616,7 @@ const ReceiptsTable = () => {
                               }}
                             />
                             <label className="form-check-label" htmlFor="mode-normal">
-                              Normal Receipt
+                              Create New Receipt
                             </label>
                           </div>
                         </div>

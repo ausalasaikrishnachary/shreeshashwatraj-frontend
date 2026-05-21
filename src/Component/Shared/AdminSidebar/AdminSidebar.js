@@ -194,7 +194,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
           name: "Purchase Invoice",
           icon: <FaPurchaseInvoice />,
         },
-        { path: "/purchase/voucher", name: "Voucher", icon: <FaStickyNote /> },
+        { path: "/purchase/voucher", name: "Payment Voucher", icon: <FaStickyNote /> },
         {
           path: "/purchase/debit-note",
           name: "Debit Note",

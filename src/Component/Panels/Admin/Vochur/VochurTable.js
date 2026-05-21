@@ -537,20 +537,20 @@ const VochurTable = () => {
 
   const receiptStats = [
     {
-      label: "Total Receipts",
+      label: "Total Payment Voucher",
       value: "₹ 2,50,000",
       change: "+18%",
       type: "total",
     },
     {
-      label: "Cash Receipts",
+      label: "Cash Payment Voucher",
       value: "₹ 1,50,000",
       change: "+15%",
       type: "cash",
     },
-    { label: "Bank Receipts", value: "₹ 80,000", change: "+20%", type: "bank" },
+    { label: "Bank Payment Voucher", value: "₹ 80,000", change: "+20%", type: "bank" },
     {
-      label: "Digital Receipts",
+      label: "Digital Payment Voucher",
       value: "₹ 20,000",
       change: "+25%",
       type: "digital",
@@ -620,7 +620,7 @@ const VochurTable = () => {
   const tabs = [
     { name: "Purchase Invoice", path: "/purchase/purchase-invoice" },
     // { name: 'Purchase Order', path: '/purchase/purchase-order' },
-    { name: "Payment", path: "/purchase/voucher" },
+    { name: "Payment Voucher", path: "/purchase/voucher" },
     { name: "Debit Note", path: "/purchase/debit-note" },
     { name: 'Journal', path: '/Jrtable' }
   ];
@@ -1230,7 +1230,7 @@ const VochurTable = () => {
           {/* Actions Section */}
           <div className="receipts-actions-section">
             <div className="quotation-container p-3">
-              <h5 className="mb-3 fw-bold">View Receipts</h5>
+              <h5 className="mb-3 fw-bold">View Payment Voucher</h5>
               {/* Filters and Actions */}
               <div className="row align-items-end g-3 mb-3">
                 <div className="col-md-auto">
@@ -1343,9 +1343,9 @@ const VochurTable = () => {
                 </div>
               </div>
 
-              {/* Receipts Table */}
+              {/* Payment Voucher Table */}
               <ReusableTable
-                title="Receipts"
+                title="Payment Voucher"
                 data={receiptData}
                 columns={columns}
                 searchPlaceholder="Search Payments..."
