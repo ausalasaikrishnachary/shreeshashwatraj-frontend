@@ -9,6 +9,7 @@ import GstReport from "./GstReport";
 import "./Reports.css";
 import { FaChartBar } from "react-icons/fa";
 import HsnReport from "./HsnReport";
+import Bill_By_Bill_Report from "./Bill_By_Bill_Report";
 
 function Reports() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -18,26 +19,28 @@ function Reports() {
   // Export handlers
 
   // Render report content
-const renderReportContent = () => {
-  switch (activeReport) {
-    case "sales":
-      return <SalesReport />;
-    case "expense":
-      return <ExpenseReport />;
-    case "offer":
-      return <OfferReport />;
-    case "retailers":
-      return <RetailerReports loading={loading} setLoading={setLoading} />;
-    case "catalogue":
-      return <StockReport />;
-         case "gst":
-      return <GstReport />;
-           case "hsn":
-      return <HsnReport />;
-    default:
-      return <RetailerReports loading={loading} setLoading={setLoading} />;
-  }
-};
+  const renderReportContent = () => {
+    switch (activeReport) {
+      case "sales":
+        return <SalesReport />;
+      case "expense":
+        return <ExpenseReport />;
+      case "offer":
+        return <OfferReport />;
+      case "retailers":
+        return <RetailerReports loading={loading} setLoading={setLoading} />;
+      case "catalogue":
+        return <StockReport />;
+      case "gst":
+        return <GstReport />;
+      case "hsn":
+        return <HsnReport />;
+      case "Bill by Bill":
+        return <Bill_By_Bill_Report />;
+      default:
+        return <RetailerReports loading={loading} setLoading={setLoading} />;
+    }
+  };
 
   return (
     <div className="admin-layout">
@@ -51,7 +54,7 @@ const renderReportContent = () => {
                 <h1>Business Reports</h1>
                 <p>Comprehensive analytics and insights for your business</p>
               </div>
-      
+
             </div>
           </div>
 
@@ -61,37 +64,42 @@ const renderReportContent = () => {
               <div className="report-links-grid">
                 <div className="report-link-item" onClick={() => setActiveReport("retailers")}>
                   <span className={`report-link-text ${activeReport === "retailers" ? "active" : ""}`}>
-                    Retailers Reports
+                    Retailer Report
                   </span>
                 </div>
                 <div className="report-link-item" onClick={() => setActiveReport("expense")}>
                   <span className={`report-link-text ${activeReport === "expense" ? "active" : ""}`}>
-                    Expense Reports
+                    Expense Report
                   </span>
                 </div>
                 <div className="report-link-item" onClick={() => setActiveReport("offer")}>
                   <span className={`report-link-text ${activeReport === "offer" ? "active" : ""}`}>
-                    Offer Reports
+                    Offer Report
                   </span>
                 </div>
                 <div className="report-link-item" onClick={() => setActiveReport("sales")}>
                   <span className={`report-link-text ${activeReport === "sales" ? "active" : ""}`}>
-                    Sales Reports
+                    Sales Report
                   </span>
                 </div>
-                  <div className="report-link-item" onClick={() => setActiveReport("catalogue")}>
+                <div className="report-link-item" onClick={() => setActiveReport("catalogue")}>
                   <span className={`report-link-text ${activeReport === "catalogue" ? "active" : ""}`}>
-                  Stock Report
+                    Stock Report
                   </span>
                 </div>
-                   <div className="report-link-item" onClick={() => setActiveReport("gst")}>
+                <div className="report-link-item" onClick={() => setActiveReport("gst")}>
                   <span className={`report-link-text ${activeReport === "gst" ? "active" : ""}`}>
-                  GST Report
+                    GST Report
                   </span>
                 </div>
-                   <div className="report-link-item" onClick={() => setActiveReport("hsn")}>
+                <div className="report-link-item" onClick={() => setActiveReport("hsn")}>
                   <span className={`report-link-text ${activeReport === "hsn" ? "active" : ""}`}>
-                  HSN Report
+                    HSN Report
+                  </span>
+                </div>
+                <div className="report-link-item" onClick={() => setActiveReport("Bill by Bill")}>
+                  <span className={`report-link-text ${activeReport === "Bill by Bill" ? "active" : ""}`}>
+                    Bill by Bill
                   </span>
                 </div>
               </div>
