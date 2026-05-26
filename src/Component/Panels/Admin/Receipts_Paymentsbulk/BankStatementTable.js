@@ -170,19 +170,19 @@ const handleCreateVoucher = async (row, retailerId, transactionType) => {
 };
 
 
-useEffect(() => {
-  if (bankStatements.length > 0) {
-    const initialSelections = {};
-    bankStatements.forEach(statement => {
-      if (statement.id && statement.party_id) {
-        initialSelections[statement.id] = statement.party_id.toString();
-      }
-    });
-    if (Object.keys(initialSelections).length > 0) {
-      setSelectedRetailerPerRow(prev => ({ ...prev, ...initialSelections }));
-    }
-  }
-}, [bankStatements]);
+// useEffect(() => {
+//   if (bankStatements.length > 0) {
+//     const initialSelections = {};
+//     bankStatements.forEach(statement => {
+//       if (statement.id && statement.party_id) {
+//         initialSelections[statement.id] = statement.party_id.toString();
+//       }
+//     });
+//     if (Object.keys(initialSelections).length > 0) {
+//       setSelectedRetailerPerRow(prev => ({ ...prev, ...initialSelections }));
+//     }
+//   }
+// }, [bankStatements]);
 
 
   const columns = [
