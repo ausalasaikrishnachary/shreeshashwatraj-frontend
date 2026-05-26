@@ -103,51 +103,34 @@ const InvoicePDFPreview = () => {
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
 
-  const fetchCompanyInfo = async () => {
-    try {
-      const res = await fetch(`${baseurl}/api/company-info`);
-
-      if (!res.ok) {
-        throw new Error(`Company info API failed: ${res.status}`);
-      }
-
-      const result = await res.json();
-
-      if (result.success && result.data) {
-        const apiCompanyInfo = {
-          name: result.data.company_name || "",
-          address: result.data.address || "",
-          email: result.data.email || "",
-          phone: result.data.phone || "",
-          gstin: result.data.gstin || "",
-          state: result.data.state || "",
-          stateCode: result.data.state_code || "",
-        };
-
-        setCompanyInfo(apiCompanyInfo);
-
-        setInvoiceData((prev) =>
-          prev
-            ? {
-                ...prev,
-                companyInfo: apiCompanyInfo,
-              }
-            : prev,
-        );
-
-        setEditedData((prev) =>
-          prev
-            ? {
-                ...prev,
-                companyInfo: apiCompanyInfo,
-              }
-            : prev,
-        );
-      }
-    } catch (error) {
-      console.error("Company info fetch error:", error);
+const fetchCompanyInfo = async () => {
+  try {
+    console.log("🔵 FETCHING COMPANY INFO...");
+    const res = await fetch(`${baseurl}/api/company-info`);
+    const result = await res.json();
+    console.log("🔵 COMPANY INFO RESPONSE:", result);
+    
+    if (result.success && result.data) {
+      console.log("🔵 EMAIL FROM DB:", result.data.email);
+      console.log("🔵 PHONE FROM DB:", result.data.phone);
+      console.log("🔵 GSTIN FROM DB:", result.data.gstin);
+      
+      const apiCompanyInfo = {
+        name: result.data.company_name || "",
+        address: result.data.address || "",
+        email: result.data.email || "",
+        phone: result.data.phone || "",
+        gstin: result.data.gstin || "",
+        state: result.data.state || "",
+        stateCode: result.data.state_code || "",
+      };
+      
+      setCompanyInfo(apiCompanyInfo);
     }
-  };
+  } catch (error) {
+    console.error("Company info fetch error:", error);
+  }
+};
 
   const fetchAdvanceReceipts = async () => {
     try {
@@ -659,19 +642,34 @@ formDataToSend.append('company_state_code', companyInfo.stateCode || '');
     }
   };
 
-  useEffect(() => {
-    fetchTransactionData();
-  }, [id]);
-
-  useEffect(() => {
-    fetchCompanyInfo();
-  }, []);
+useEffect(() => {
+  const loadData = async () => {
+    await fetchCompanyInfo();        // First load company info
+    await fetchTransactionData();    // Then load transaction data
+  };
+  loadData();
+}, [id]);
 
   useEffect(() => {
     if (invoiceData && invoiceData.invoiceNumber) {
       fetchPaymentData(invoiceData.invoiceNumber);
     }
   }, [invoiceData]);
+
+  // Add this NEW useEffect after your existing ones
+useEffect(() => {
+  // This updates invoiceData whenever companyInfo is fetched
+  if (invoiceData && companyInfo.name) {
+    setInvoiceData(prev => ({
+      ...prev,
+      companyInfo: companyInfo
+    }));
+    setEditedData(prev => ({
+      ...prev,
+      companyInfo: companyInfo
+    }));
+  }
+}, [companyInfo]);  // Runs when companyInfo changes
 
   const fetchPaymentData = async (invoiceNumber) => {
     try {
@@ -1076,7 +1074,15 @@ formDataToSend.append('company_state_code', companyInfo.stateCode || '');
       //   stateCode: "10"
       // },
 
-      companyInfo: companyInfo,
+      companyInfo: {
+  name: companyInfo.name || "SHREE SHASHWATRAJ AGRO PVT LTD",
+  address: companyInfo.address || "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+  email: companyInfo.email || "spmathur56@gmail.com",
+  phone: companyInfo.phone || "9801049700",
+  gstin: companyInfo.gstin || "10AAOCS1541B1ZZ",
+  state: companyInfo.state || "Bihar",
+  stateCode: companyInfo.stateCode || "10"
+},
 
       supplierInfo: {
         name: apiData.PartyName || "Customer",
@@ -2729,17 +2735,14 @@ formDataToSend.append('company_state_code', companyInfo.stateCode || '');
                           {currentData.companyInfo.address}
                         </p>
                         <p className="company-contact text-muted small mb-1">
-                          Email: {currentData.companyInfo.email} | Phone:{" "}
-                          {currentData.companyInfo.phone}
+                          Email: {currentData.companyInfo.email || "spmathur56@gmail.com"} | Phone: {currentData.companyInfo.phone || "9801049700"}
                         </p>
-                        <p className="text-muted small mb-0">
-                          GSTIN/UIN: {currentData.companyInfo.gstin}
-                        </p>
-                        <p className="text-muted small mb-0">
-                          State Name :{" "}
-                          {currentData.companyInfo.state || "Bihar"}, Code :{" "}
-                          {currentData.companyInfo.stateCode || "10"}
-                        </p>
+                         <p className="text-muted small mb-0">
+                            GSTIN/UIN: {currentData.companyInfo.gstin || "10AAOCS1541B1ZZ"}
+                         </p>
+                         <p className="text-muted small mb-0">
+                           State Name : {currentData.companyInfo.state || "Bihar"}, Code : {currentData.companyInfo.stateCode || "10"}
+                         </p>
                       </>
                     )}
                   </Col>
