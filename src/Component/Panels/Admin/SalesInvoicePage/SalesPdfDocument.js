@@ -92,14 +92,13 @@ const styles = StyleSheet.create({
     lineHeight: 1.2,
   },
 
-  /* ── TABLE — client style: NO horizontal lines, YES vertical lines, taller rows ── */
+  /* ── TABLE ── */
   itemsSection: {
     marginBottom: 4,
   },
   table: {
     display: 'table',
     width: '100%',
-    /* outer box: top + bottom + left + right border */
     borderStyle: 'solid',
     borderWidth: 1,
     borderColor: '#000000',
@@ -107,22 +106,20 @@ const styles = StyleSheet.create({
   },
   tableRow: {
     flexDirection: 'row',
-    /* NO borderBottom — removes horizontal lines between rows */
-    minHeight: 22,
+    minHeight: 14,
   },
-  /* header row gets a bottom border to separate it from data rows */
   tableHeader: {
     backgroundColor: '#343a40',
     borderBottomWidth: 1,
     borderBottomColor: '#000000',
-    minHeight: 20,
+    minHeight: 14,
   },
 
-  /* ── COLUMN CELLS — right border acts as vertical divider ── */
+  /* ── COLUMN CELLS ── */
   colSNo: {
     width: '5%',
     paddingHorizontal: 2,
-    paddingVertical: 3,
+    paddingVertical: 1,
     borderRightWidth: 1,
     borderRightColor: '#000000',
     borderRightStyle: 'solid',
@@ -130,7 +127,7 @@ const styles = StyleSheet.create({
   colProduct: {
     width: '22%',
     paddingHorizontal: 3,
-    paddingVertical: 3,
+    paddingVertical: 1,
     borderRightWidth: 1,
     borderRightColor: '#000000',
     borderRightStyle: 'solid',
@@ -138,7 +135,7 @@ const styles = StyleSheet.create({
   colHsn: {
     width: '10%',
     paddingHorizontal: 2,
-    paddingVertical: 3,
+    paddingVertical: 1,
     borderRightWidth: 1,
     borderRightColor: '#000000',
     borderRightStyle: 'solid',
@@ -146,7 +143,7 @@ const styles = StyleSheet.create({
   colQuantity: {
     width: '10%',
     paddingHorizontal: 2,
-    paddingVertical: 3,
+    paddingVertical: 1,
     borderRightWidth: 1,
     borderRightColor: '#000000',
     borderRightStyle: 'solid',
@@ -154,7 +151,7 @@ const styles = StyleSheet.create({
   colRateIncl: {
     width: '12%',
     paddingHorizontal: 2,
-    paddingVertical: 3,
+    paddingVertical: 1,
     borderRightWidth: 1,
     borderRightColor: '#000000',
     borderRightStyle: 'solid',
@@ -162,7 +159,7 @@ const styles = StyleSheet.create({
   colRateExcl: {
     width: '12%',
     paddingHorizontal: 2,
-    paddingVertical: 3,
+    paddingVertical: 1,
     borderRightWidth: 1,
     borderRightColor: '#000000',
     borderRightStyle: 'solid',
@@ -170,7 +167,7 @@ const styles = StyleSheet.create({
   colDiscount: {
     width: '8%',
     paddingHorizontal: 2,
-    paddingVertical: 3,
+    paddingVertical: 1,
     borderRightWidth: 1,
     borderRightColor: '#000000',
     borderRightStyle: 'solid',
@@ -178,21 +175,20 @@ const styles = StyleSheet.create({
   colGST: {
     width: '7%',
     paddingHorizontal: 2,
-    paddingVertical: 3,
+    paddingVertical: 1,
     borderRightWidth: 1,
     borderRightColor: '#000000',
     borderRightStyle: 'solid',
   },
-  /* last column — no right border (outer box handles it) */
   colTotal: {
     width: '14%',
     paddingHorizontal: 2,
-    paddingVertical: 3,
+    paddingVertical: 1,
   },
 
   tableCell: {
     fontSize: 7,
-    lineHeight: 1.3,
+    lineHeight: 1.1,
     color: '#2c3e50',
   },
   tableCellHeader: {
@@ -205,7 +201,6 @@ const styles = StyleSheet.create({
   tableCellCenter: { textAlign: 'center' },
   tableCellBold:   { fontWeight: 'bold' },
 
-  /* alternating row tint — matches client image subtle banding */
   rowEven: {
     backgroundColor: '#f9f9f9',
   },
@@ -498,7 +493,7 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
               </View>
             </View>
 
-            {/* ── Data rows — no horizontal lines, vertical lines only ── */}
+            {/* ── Data rows ── */}
             {items.map((item, index) => {
               const quantity       = parseFloat(getSafeData(item, 'quantity', 1));
               const price          = parseFloat(getSafeData(item, 'price', 0));
@@ -518,7 +513,6 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
                 ? `${quantity} ${unitName}`
                 : quantity.toString();
 
-              /* alternating background like client image */
               const rowBg = index % 2 === 0 ? styles.rowOdd : styles.rowEven;
 
               return (

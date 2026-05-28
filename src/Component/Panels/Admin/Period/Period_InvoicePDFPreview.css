@@ -1,9 +1,12 @@
 /* InvoicePDFPreview.css */
 
+/* ============================================================
+   PAGE WRAPPER
+   ============================================================ */
 .invoice-preview-page {
   background: #f5f5f5;
   min-height: 100vh;
-  padding-bottom: 30px;
+  padding-bottom: 2px;
 }
 
 .action-bar {
@@ -12,152 +15,135 @@
 
 .invoice-preview-container-order {
   max-width: 1420px;
-margin:0 auto;
-  padding: 20px;
+  margin: 0 auto;
+  padding: 2px;
 }
 
+/* ============================================================
+   INVOICE PDF PREVIEW WRAPPER
+   ============================================================ */
 .invoice-pdf-preview {
   background: white;
-  padding: 40px;
+  padding: 10px 12px;
   font-family: 'Arial', sans-serif;
   color: #333;
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
-  border-radius: 8px;
-}
-
-.invoice-header {
-  border-bottom: 2px solid #333;
-  padding-bottom: 15px;
-  margin-bottom: 20px;
-}
-
-
-.company-name {
-  color: #2c3e50;
-  margin-bottom: 5px;
-  font-size: 24px;
-  font-weight: bold;
-}
-
-.company-address {
-  margin-bottom: 5px;
-  color: #666;
-  font-size: 14px;
-}
-
-.company-contact {
-  font-size: 13px;
-  color: #666;
-}
-/* QR Code Styles */
-.qr-code-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.qr-code-details {
-  background: #f8f9fa;
-  border-left: 4px solid #007bff;
-  padding: 15px;
-  margin-top: 20px;
   border-radius: 4px;
 }
 
-.qr-code-details p {
-  margin-bottom: 5px;
+/* ============================================================
+   HEADER
+   ============================================================ */
+.invoice-header {
+  border-bottom: 2px solid #333;
+  padding-bottom: 2px;
+  margin-bottom: 2px;
 }
 
-/* QR Code in invoice preview */
-.invoice-qr-code {
-  text-align: center;
-  margin-top: 20px;
-  padding: 15px;
-  border-top: 1px dashed #ddd;
+.company-name {
+  color: #2c3e50;
+  margin-bottom: 1px;
+  font-size: 20px;
+  font-weight: bold;
+  line-height: 1.15;
 }
 
-.qr-code-section {
-  background: #f9f9f9;
-  border-radius: 8px;
-  padding: 15px;
-  margin-top: 20px;
+.company-address {
+  margin-bottom: 1px;
+  color: #666;
+  font-size: 12px;
+  line-height: 1.15;
 }
 
-.qr-code-section h6 {
-  color: #333;
-  font-weight: 600;
-  margin-bottom: 10px;
+.company-contact {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.15;
+  margin-bottom: 0;
 }
 
 .invoice-title {
   color: #e74c3c;
-  margin-bottom: 10px;
-  font-size: 28px;
+  margin-bottom: 1px;
+  font-size: 22px;
   font-weight: bold;
+  line-height: 1.15;
 }
 
+/* ============================================================
+   INVOICE META
+   ============================================================ */
 .invoice-meta {
   background: #f8f9fa;
-  padding: 10px;
-  border-radius: 5px;
+  padding: 3px 6px;
+  border-radius: 3px;
 }
 
 .invoice-meta p {
-  margin-bottom: 5px;
-  font-size: 14px;
+  margin-bottom: 1px;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
+/* ============================================================
+   ADDRESS SECTION
+   ============================================================ */
 .address-section {
-  margin-bottom: 20px;
+  margin-bottom: 2px;
 }
 
 .address-section h5 {
   color: #2c3e50;
-  margin-bottom: 10px;
-  font-size: 16px;
+  margin-bottom: 1px;
+  font-size: 12px;
   font-weight: bold;
+  line-height: 1.15;
 }
 
 .billing-address,
 .shipping-address {
   background: #f8f9fa;
-  padding: 15px;
-  border-radius: 5px;
-  min-height: 150px;
+  padding: 4px 7px;
+  border-radius: 3px;
+  min-height: 70px;
 }
 
 .billing-address p,
 .shipping-address p {
-  margin-bottom: 5px;
-  font-size: 14px;
+  margin-bottom: 1px;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
+/* ============================================================
+   ITEMS / TABLE SECTION
+   ============================================================ */
 .items-section {
-  margin-bottom: 20px;
+  margin-bottom: 2px;
 }
 
 .items-section h6 {
   color: #2c3e50;
-  font-size: 16px;
+  font-size: 11px;
   font-weight: bold;
+  margin-bottom: 1px;
+  line-height: 1.15;
 }
 
 .items-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 15px;
+  margin-bottom: 2px;
 }
 
+/* ── CHANGED: further reduced font size to 8px with proportional padding ── */
 .items-table th,
 .items-table td {
   border: 1px solid #ddd;
-  padding: 10px 12px;
+  padding: 1px 2px;          /* reduced from 1px 3px */
   text-align: left;
-  font-size: 13px;
+  font-size: 8px;             /* reduced from 10px */
+  line-height: 1.1;           /* slightly tighter */
 }
 
 .items-table th {
@@ -165,7 +151,10 @@ margin:0 auto;
   color: white;
   font-weight: bold;
   text-align: center;
+  padding: 1px 2px;           /* reduced from 2px 3px */
+  font-size: 8px;             /* reduced from 10px */
 }
+/* ─────────────────────────────────────────── */
 
 .items-table tbody tr:nth-child(even) {
   background-color: #f8f9fa;
@@ -175,42 +164,54 @@ margin:0 auto;
   background-color: #e9ecef;
 }
 
+/* ============================================================
+   TOTALS SECTION
+   ============================================================ */
 .totals-section {
-  margin-bottom: 20px;
+  margin-bottom: 2px;
 }
 
+/* ============================================================
+   NOTES SECTION
+   ============================================================ */
 .notes-section {
-  min-height: 150px;
+  min-height: 50px;
 }
 
 .notes-section h6 {
   color: #2c3e50;
-  margin-bottom: 8px;
-  font-size: 15px;
+  margin-bottom: 1px;
+  font-size: 12px;
   font-weight: bold;
+  line-height: 1.15;
 }
 
 .notes-section p {
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.2;
+  margin-bottom: 1px;
 }
 
 .min-h-100 {
-  min-height: 100px;
+  min-height: 50px;
 }
 
+/* ============================================================
+   AMOUNT BREAKDOWN
+   ============================================================ */
 .amount-breakdown {
   background: #f8f9fa;
-  padding: 20px;
-  border-radius: 5px;
+  padding: 6px 10px;
+  border-radius: 3px;
   border: 1px solid #dee2e6;
 }
 
 .amount-breakdown h6 {
   color: #2c3e50;
-  font-size: 16px;
+  font-size: 12px;
   font-weight: bold;
-  margin-bottom: 15px;
+  margin-bottom: 1px;
+  line-height: 1.15;
 }
 
 .amount-table {
@@ -218,9 +219,10 @@ margin:0 auto;
 }
 
 .amount-table td {
-  padding: 8px 0;
+  padding: 1px 0;
   border-bottom: 1px solid #dee2e6;
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 .amount-table td:last-child {
@@ -235,67 +237,295 @@ margin:0 auto;
 
 .amount-table .grand-total td {
   border-bottom: none;
-  font-size: 18px;
-  padding-top: 12px;
-  padding-bottom: 5px;
+  font-size: 14px;
+  padding-top: 2px;
+  padding-bottom: 1px;
 }
 
+/* ============================================================
+   FOOTER
+   ============================================================ */
 .invoice-footer {
   border-top: 2px solid #333;
-  padding-top: 20px;
-  margin-top: 30px;
+  padding-top: 4px;
+  margin-top: 4px;
 }
 
 .bank-details h6,
 .signature-section p {
   color: #2c3e50;
-  margin-bottom: 8px;
-  font-size: 15px;
+  margin-bottom: 1px;
+  font-size: 12px;
   font-weight: bold;
+  line-height: 1.15;
 }
 
 .bank-details p {
-  font-size: 13px;
-  margin-bottom: 5px;
+  font-size: 12px;
+  margin-bottom: 1px;
+  line-height: 1.2;
 }
 
 .signature-space {
-  height: 50px;
+  height: 35px;
   border-bottom: 2px solid #333;
-  margin: 15px 0;
+  margin: 4px 0;
   width: 200px;
   margin-left: auto;
 }
 
 .signature-section p {
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 .terms-section {
-  margin-top: 20px;
-  padding-top: 15px;
+  margin-top: 4px;
+  padding-top: 4px;
   border-top: 1px solid #dee2e6;
 }
 
 .terms-section p {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
-  margin-bottom: 8px;
+  margin-bottom: 1px;
+  line-height: 1.2;
 }
 
 .terms-section ul {
   margin: 0;
-  padding-left: 25px;
-  font-size: 12px;
+  padding-left: 16px;
+  font-size: 11px;
   color: #666;
 }
 
 .terms-section li {
-  margin-bottom: 5px;
-  line-height: 1.5;
+  margin-bottom: 1px;
+  line-height: 1.2;
 }
 
-/* Edit Mode Styles */
+/* ============================================================
+   QR CODE STYLES
+   ============================================================ */
+.qr-code-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 6px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+}
+
+.qr-code-details {
+  background: #f8f9fa;
+  border-left: 4px solid #007bff;
+  padding: 4px 6px;
+  margin-top: 2px;
+  border-radius: 3px;
+}
+
+.qr-code-details p {
+  margin-bottom: 1px;
+  line-height: 1.2;
+  font-size: 12px;
+}
+
+.invoice-qr-code {
+  text-align: center;
+  margin-top: 2px;
+  padding: 4px;
+  border-top: 1px dashed #ddd;
+}
+
+.qr-code-section {
+  background: #f9f9f9;
+  border-radius: 3px;
+  padding: 5px;
+  margin-top: 2px;
+}
+
+.qr-code-section h6 {
+  color: #333;
+  font-weight: 600;
+  margin-bottom: 1px;
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+/* ============================================================
+   BOOTSTRAP ROW / COL GAP OVERRIDES
+   (scoped to the invoice container so other pages are unaffected)
+   ============================================================ */
+.invoice-preview-container-order .row {
+  --bs-gutter-x: 4px;
+  --bs-gutter-y: 2px;
+  margin-left: -2px;
+  margin-right: -2px;
+}
+
+.invoice-preview-container-order .row > * {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+/* ============================================================
+   CARD GAP COMPRESSION (2px between cards)
+   ============================================================ */
+.invoice-preview-container-order .card {
+  margin-bottom: 2px;
+  border-radius: 3px;
+}
+
+.invoice-preview-container-order .card-body {
+  padding: 5px 8px;
+}
+
+.invoice-preview-container-order .card-header {
+  padding: 3px 8px;
+  line-height: 1.2;
+}
+
+.invoice-preview-container-order .card-footer {
+  padding: 3px 8px;
+}
+
+/* ============================================================
+   BOOTSTRAP SPACING UTILITY OVERRIDES (scoped)
+   ============================================================ */
+.invoice-preview-container-order .mb-3 {
+  margin-bottom: 2px !important;
+}
+
+.invoice-preview-container-order .mb-2 {
+  margin-bottom: 1px !important;
+}
+
+.invoice-preview-container-order .mb-1 {
+  margin-bottom: 1px !important;
+}
+
+.invoice-preview-container-order .mt-3 {
+  margin-top: 2px !important;
+}
+
+.invoice-preview-container-order .mt-2 {
+  margin-top: 1px !important;
+}
+
+.invoice-preview-container-order .mt-1 {
+  margin-top: 1px !important;
+}
+
+.invoice-preview-container-order .mb-4 {
+  margin-bottom: 2px !important;
+}
+
+.invoice-preview-container-order .p-3 {
+  padding: 5px 8px !important;
+}
+
+.invoice-preview-container-order .p-4 {
+  padding: 6px 10px !important;
+}
+
+.invoice-preview-container-order .py-2 {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+}
+
+.invoice-preview-container-order .py-3 {
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+}
+
+.invoice-preview-container-order .px-3 {
+  padding-left: 5px !important;
+  padding-right: 5px !important;
+}
+
+.invoice-preview-container-order .gap-2 {
+  gap: 2px !important;
+}
+
+.invoice-preview-container-order .gap-3 {
+  gap: 2px !important;
+}
+
+/* ============================================================
+   ACTION BAR COMPACT
+   ============================================================ */
+.action-bar {
+  padding: 4px 10px !important;
+}
+
+.action-bar h4 {
+  font-size: 14px;
+  margin-bottom: 0;
+  line-height: 1.2;
+}
+
+/* ── CHANGED: uniform size for ALL action bar buttons ── */
+.action-bar .btn {
+  font-size: 12px;
+  padding: 5px 12px;          /* uniform padding matching Prints / Generate Invoice */
+  margin-left: 4px !important;
+  line-height: 1.4;
+  height: auto;
+  min-height: 32px;           /* ensures all buttons are the same height */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* ─────────────────────────────────────────── */
+
+/* ============================================================
+   ALERT COMPRESSION
+   ============================================================ */
+.invoice-preview-page .alert {
+  padding: 4px 10px;
+  margin-bottom: 2px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.invoice-preview-page .alert-heading {
+  font-size: 13px;
+  margin-bottom: 1px;
+}
+
+/* ============================================================
+   MODAL COMPRESSION
+   ============================================================ */
+.invoice-preview-page .modal-body p {
+  margin-bottom: 1px;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.invoice-preview-page .modal-header {
+  padding: 6px 12px;
+}
+
+.invoice-preview-page .modal-body {
+  padding: 8px 12px;
+}
+
+.invoice-preview-page .modal-footer {
+  padding: 4px 12px;
+  gap: 4px;
+}
+
+/* ============================================================
+   STICKY SIDEBAR
+   ============================================================ */
+.invoice-preview-container-order .sticky-top {
+  top: 46px;
+}
+
+/* ============================================================
+   EDIT MODE
+   ============================================================ */
 .invoice-pdf-preview.edit-mode {
   border: 2px dashed #007bff;
 }
@@ -304,6 +534,9 @@ margin:0 auto;
 .invoice-pdf-preview textarea.form-control {
   border: 1px solid #007bff;
   background-color: #fff8dc;
+  padding: 2px 4px;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 .invoice-pdf-preview input.form-control:focus,
@@ -312,48 +545,57 @@ margin:0 auto;
   box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
 }
 
-/* Print Styles */
+/* ============================================================
+   SPINNER / LOADING ELEMENTS
+   ============================================================ */
+.invoice-preview-page .spinner-border-sm {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+/* ============================================================
+   PRINT STYLES
+   ============================================================ */
 @media print {
   body {
     margin: 0;
     padding: 0;
   }
-  
+
   .action-bar {
     display: none !important;
   }
-  
+
   .invoice-preview-page {
     background: white;
     padding: 0;
   }
-  
+
   .invoice-preview-container {
     max-width: 100%;
     padding: 0;
     margin: 0;
   }
-  
+
   .invoice-pdf-preview {
     box-shadow: none !important;
-    padding: 20px;
+    padding: 10px;
     margin: 0;
     border-radius: 0;
   }
-  
+
   .invoice-header {
     page-break-after: avoid;
   }
-  
+
   .items-section {
     page-break-inside: avoid;
   }
-  
+
   .invoice-footer {
     page-break-before: avoid;
   }
-  
-  /* Hide edit mode elements */
+
   input.form-control,
   textarea.form-control,
   button {
@@ -361,66 +603,72 @@ margin:0 auto;
   }
 }
 
-/* Responsive Styles */
+/* ============================================================
+   RESPONSIVE — TABLET
+   ============================================================ */
 @media (max-width: 768px) {
   .invoice-pdf-preview {
-    padding: 20px;
-  }
-  
-  .company-name {
-    font-size: 20px;
-  }
-  
-  .invoice-title {
-    font-size: 22px;
-  }
-  
-  .items-table th,
-  .items-table td {
     padding: 6px 8px;
-    font-size: 11px;
   }
-  
-  .action-bar h4 {
+
+  .company-name {
     font-size: 16px;
   }
-  
-  .action-bar .btn {
-    font-size: 12px;
-    padding: 5px 10px;
+
+  .invoice-title {
+    font-size: 18px;
   }
-  
+
+  .items-table th,
+  .items-table td {
+    padding: 1px 1px;
+    font-size: 7px;
+  }
+
+  .action-bar h4 {
+    font-size: 13px;
+  }
+
+  .action-bar .btn {
+    font-size: 11px;
+    padding: 4px 8px;
+    min-height: 28px;
+  }
+
   .action-bar .btn .me-1 {
     display: none;
   }
 }
 
+/* ============================================================
+   RESPONSIVE — MOBILE
+   ============================================================ */
 @media (max-width: 576px) {
   .invoice-pdf-preview {
-    padding: 15px;
+    padding: 5px 6px;
   }
-  
+
   .action-bar {
-    padding: 10px !important;
+    padding: 3px 6px !important;
   }
-  
+
   .action-bar .d-flex {
     flex-direction: column;
-    gap: 10px;
+    gap: 2px;
   }
-  
+
   .action-bar .btn {
     width: 100%;
     margin: 0 !important;
-    margin-bottom: 5px !important;
+    margin-bottom: 2px !important;
   }
-  
+
   .items-table {
-    font-size: 10px;
+    font-size: 7px;
   }
-  
+
   .billing-address,
   .shipping-address {
-    margin-bottom: 15px;
+    margin-bottom: 2px;
   }
 }
