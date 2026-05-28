@@ -7,6 +7,7 @@ import { baseurl } from "../../../BaseURL/BaseURL";
 import LedgerPDF from "./LedgerPDF";
 import html2pdf from "html2pdf.js";
 import ReusableTable from "../../../Layouts/TableLayout/ReusableTable";
+import Bill_By_Bill_Report from "./../AdminReports/Bill_By_Bill_Report"; // Import the Bill by Bill component
 import "./Ledger.css";
 
 const Ledger = () => {
@@ -25,6 +26,7 @@ const Ledger = () => {
   const pdfContentRef = useRef(null);
   const [orderModeFilter, setOrderModeFilter] = useState("ALL");
   const [accounts, setAccounts] = useState([]);
+  const [activeView, setActiveView] = useState("LEDGER"); // New state for view selection
 
   useEffect(() => {
     fetchLedger();
@@ -286,6 +288,7 @@ const Ledger = () => {
     setIsFiltered(false);
     setOrderModeFilter("ALL");
   };
+  
   const updateBalanceInDB = async (partyID, balance) => {
     try {
       const partyData = groupedArray.find(p => p.partyID == partyID);
@@ -321,6 +324,7 @@ const Ledger = () => {
       console.error("DB update error:", err);
     }
   };
+  
   const exportToPDF = async () => {
     if (filteredLedger.length === 0) {
       alert("No data to export");
@@ -381,40 +385,6 @@ const Ledger = () => {
             return dateA - dateB;
           });
 
-        // Helper function - Purchase & Stock Inward go to CREDIT side
-        // const getActualDC = (tx) => {
-        //   const transactionType = (tx.trantype || "").toLowerCase();
-        //   const dataType = (tx.data_type || "").toLowerCase();
-
-        //   // CREDIT side
-        //   if (
-        //     transactionType === "purchase" ||
-        //     transactionType === "stock inward" ||
-        //     transactionType === "creditnote" ||
-        //     transactionType === "receipt" ||
-        //     dataType === "stock inward"
-        //     // dataType === "sales" 
-        //   ) {
-        //     return "C";
-        //   }
-
-        //   // DEBIT side
-        //   if (
-        //     transactionType === "sales" ||
-        //     transactionType === "stock transfer" ||
-        //     transactionType === "debitnote" ||
-        //     transactionType === "purchase voucher" ||
-        //     transactionType === "Payment" ||
-        //     dataType === "purchase" ||
-        //     dataType === "stock transfer"
-
-        //   ) {
-        //     return "D";
-        //   }
-
-        //   return tx?.DC?.trim()?.charAt(0)?.toUpperCase();
-        // };
-
         const getActualDC = (tx) => {
           const transactionType = (tx.trantype || "").toLowerCase();
           const dataType = (tx.data_type || "").toLowerCase();
@@ -435,7 +405,7 @@ const Ledger = () => {
             transactionType === "stock transfer" ||
             transactionType === "debitnote" ||
             transactionType === "purchase voucher" ||
-            transactionType === "payment"   // ✅ FIXED
+            transactionType === "payment"
           ) {
             return "D";
           }
@@ -504,8 +474,8 @@ const Ledger = () => {
                           })
                           : "-"}
                       </td>
-                      <td>{tx.trantype || "-"}</td>
-                      <td>
+                       <td>{tx.trantype || "-"}</td>
+                       <td>
                         {voucherId ? (
                           <span
                             onClick={() => handleVoucherClick(voucherId, tx.trantype, tx)}
@@ -517,23 +487,23 @@ const Ledger = () => {
                         ) : (
                           "-"
                         )}
-                      </td>
+                       </td>
                       {/* Credit Column */}
-                      <td>
+                       <td>
                         {actualDC === "C" ? (
                           <span className="ledger-credit-amount">{amountDisplay}</span>
                         ) : (
                           "-"
                         )}
-                      </td>
+                       </td>
                       {/* Debit Column */}
-                      <td>
+                       <td>
                         {actualDC === "D" ? (
                           <span className="ledger-debit-amount">{amountDisplay}</span>
                         ) : (
                           "-"
                         )}
-                      </td>
+                       </td>
                       {orderModeFilter === "ALL" && (
                         <td>
                           <span className="ledger-balance-amount">
@@ -560,146 +530,174 @@ const Ledger = () => {
 
         <div className="ledger-container">
 
-          {/* Search Filters */}
-          <div className="ledger-filters">
-            <div className="ledger-filters-left">
-
-              {/* Search */}
-              <div className="ledger-filter-group">
-                <label className="ledger-filter-label">Search:</label>
-                <input
-                  type="text"
-                  placeholder="Search by Name or ID..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="ledger-search-input"
-                />
-              </div>
-
-              {/* From Date */}
-              <div className="ledger-filter-group">
-                <label className="ledger-filter-label">From:</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="ledger-date-input"
-                />
-              </div>
-
-              {/* To Date */}
-              <div className="ledger-filter-group">
-                <label className="ledger-filter-label">To:</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate}
-                  className="ledger-date-input"
-                />
-              </div>
-
-              {/* Apply / Clear toggle button */}
-              {(searchTerm || startDate || endDate || orderModeFilter !== "ALL") && (
-                <>
-                  {isFiltered ? (
-                    <button
-                      onClick={handleClearFilter}
-                      className="ledger-clear-filters-btn ledger-clear-filters-btn--active"
-                    >
-                      Clear Filter
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleApplyFilter}
-                      className="ledger-clear-filters-btn-apply-filter"
-                    >
-                      Apply Filter
-                    </button>
-                  )}
-                </>
-              )}
-
-            </div>
-
-            {/* Export PDF */}
+          {/* View Mode Tabs - ALL, PAKKA, KACHA, BILL BY BILL */}
+          <div className="ledger-view-tabs">
             <button
-              onClick={exportToPDF}
-              disabled={exportLoading || filteredLedger.length === 0}
-              className={`ledger-export-btn ${exportLoading ? "ledger-export-btn--loading" : ""}`}
+              onClick={() => setActiveView("LEDGER")}
+              className={`ledger-view-tab ${activeView === "LEDGER" ? "ledger-view-tab--active" : ""}`}
             >
-              {exportLoading ? (
-                <>
-                  <span className="ledger-spinner" role="status" aria-hidden="true"></span>
-                  Generating PDF...
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="ledger-export-icon"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
-                  Export PDF
-                </>
-              )}
+              📒 LEDGER
+            </button>
+            <button
+              onClick={() => setActiveView("BILL_BY_BILL")}
+              className={`ledger-view-tab ${activeView === "BILL_BY_BILL" ? "ledger-view-tab--active" : ""}`}
+            >
+              📊 BILL BY BILL
             </button>
           </div>
 
-          <div className="ledger-order-mode">
-            {["ALL", "PAKKA", "KACHA"].map((mode) => (
-              <button
-                key={mode}
-                onClick={() => {
-                  setOrderModeFilter(mode);
-                  if (mode !== "ALL") {
-                    setIsFiltered(true);
-                  } else {
-                    setIsFiltered(false);
-                  }
-                }}
-                className={`ledger-order-btn ${orderModeFilter === mode ? "ledger-order-btn--active" : ""}`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
+          {/* LEDGER VIEW */}
+          {activeView === "LEDGER" && (
+            <>
+              {/* Search Filters */}
+              <div className="ledger-filters">
+                <div className="ledger-filters-left">
 
-          <div className="ledger-pdf-hidden">
-            <LedgerPDF
-              ref={pdfContentRef}
-              filteredLedger={filteredLedger}
-              getPartyOpeningBalance={getPartyOpeningBalance}
-              orderModeFilter={orderModeFilter}
-            />
-          </div>
+                  {/* Search */}
+                  <div className="ledger-filter-group">
+                    <label className="ledger-filter-label">Search:</label>
+                    <input
+                      type="text"
+                      placeholder="Search by Name or ID..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="ledger-search-input"
+                    />
+                  </div>
 
-          {/* Loading / ReusableTable */}
-          {loading ? (
-            <div className="ledger-loading-container">
-              <div className="ledger-spinner ledger-spinner--large" role="status">
-                <span className="ledger-visually-hidden">Loading...</span>
+                  {/* From Date */}
+                  <div className="ledger-filter-group">
+                    <label className="ledger-filter-label">From:</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="ledger-date-input"
+                    />
+                  </div>
+
+                  {/* To Date */}
+                  <div className="ledger-filter-group">
+                    <label className="ledger-filter-label">To:</label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      min={startDate}
+                      className="ledger-date-input"
+                    />
+                  </div>
+
+                  {/* Apply / Clear toggle button */}
+                  {(searchTerm || startDate || endDate || orderModeFilter !== "ALL") && (
+                    <>
+                      {isFiltered ? (
+                        <button
+                          onClick={handleClearFilter}
+                          className="ledger-clear-filters-btn ledger-clear-filters-btn--active"
+                        >
+                          Clear Filter
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleApplyFilter}
+                          className="ledger-clear-filters-btn-apply-filter"
+                        >
+                          Apply Filter
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                </div>
+
+                {/* Export PDF */}
+                <button
+                  onClick={exportToPDF}
+                  disabled={exportLoading || filteredLedger.length === 0}
+                  className={`ledger-export-btn ${exportLoading ? "ledger-export-btn--loading" : ""}`}
+                >
+                  {exportLoading ? (
+                    <>
+                      <span className="ledger-spinner" role="status" aria-hidden="true"></span>
+                      Generating PDF...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="ledger-export-icon"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                      Export PDF
+                    </>
+                  )}
+                </button>
               </div>
-              <p className="ledger-loading-text">Loading ledger...</p>
-            </div>
-          ) : (
-            <div className="ledger-table-wrapper">
-              <ReusableTable
-                data={filteredLedger}
-                columns={ledgerColumns}
-                initialEntriesPerPage={10}
-                showSearch={false}
-                showEntriesSelector={true}
-                showPagination={true}
-              />
+
+              <div className="ledger-order-mode">
+                {["ALL", "PAKKA", "KACHA"].map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => {
+                      setOrderModeFilter(mode);
+                      if (mode !== "ALL") {
+                        setIsFiltered(true);
+                      } else {
+                        setIsFiltered(false);
+                      }
+                    }}
+                    className={`ledger-order-btn ${orderModeFilter === mode ? "ledger-order-btn--active" : ""}`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+
+              <div className="ledger-pdf-hidden">
+                <LedgerPDF
+                  ref={pdfContentRef}
+                  filteredLedger={filteredLedger}
+                  getPartyOpeningBalance={getPartyOpeningBalance}
+                  orderModeFilter={orderModeFilter}
+                />
+              </div>
+
+              {/* Loading / ReusableTable */}
+              {loading ? (
+                <div className="ledger-loading-container">
+                  <div className="ledger-spinner ledger-spinner--large" role="status">
+                    <span className="ledger-visually-hidden">Loading...</span>
+                  </div>
+                  <p className="ledger-loading-text">Loading ledger...</p>
+                </div>
+              ) : (
+                <div className="ledger-table-wrapper">
+                  <ReusableTable
+                    data={filteredLedger}
+                    columns={ledgerColumns}
+                    initialEntriesPerPage={10}
+                    showSearch={false}
+                    showEntriesSelector={true}
+                    showPagination={true}
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* BILL BY BILL VIEW */}
+          {activeView === "BILL_BY_BILL" && (
+            <div className="bill-by-bill-view">
+              <Bill_By_Bill_Report />
             </div>
           )}
 

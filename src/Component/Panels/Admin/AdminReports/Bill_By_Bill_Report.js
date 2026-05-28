@@ -490,37 +490,37 @@ function Bill_By_Bill_Report() {
         return value || "-";
       }
     },
-    {
-      key: "duedate",
-      title: "Due Date",
-      style: { textAlign: "center", width: "110px" },
-      render: (value, row) => {
-        if (row.rowType === 'child') return null;
-        if (!value) return "-";
-        const dueDate = new Date(value);
-        const today = new Date();
-        const isOverdue = dueDate < today && parseFloat(row.pendingamount) > 0;
-        return (
-          <span style={{ 
-            color: isOverdue ? '#dc3545' : '#333', 
-            fontWeight: isOverdue ? 'bold' : 'normal',
-            position: 'relative'
-          }}>
-            {value}
-            {isOverdue && (
-              <span style={{ 
-                fontSize: "10px", 
-                display: "block",
-                color: '#dc3545',
-                marginTop: '2px'
-              }}>
-                ⚠️ Overdue
-              </span>
-            )}
-          </span>
-        );
-      }
-    },
+    // {
+    //   key: "duedate",
+    //   title: "Due Date",
+    //   style: { textAlign: "center", width: "110px" },
+    //   render: (value, row) => {
+    //     if (row.rowType === 'child') return null;
+    //     if (!value) return "-";
+    //     const dueDate = new Date(value);
+    //     const today = new Date();
+    //     const isOverdue = dueDate < today && parseFloat(row.pendingamount) > 0;
+    //     return (
+    //       <span style={{ 
+    //         color: isOverdue ? '#dc3545' : '#333', 
+    //         fontWeight: isOverdue ? 'bold' : 'normal',
+    //         position: 'relative'
+    //       }}>
+    //         {value}
+    //         {isOverdue && (
+    //           <span style={{ 
+    //             fontSize: "10px", 
+    //             display: "block",
+    //             color: '#dc3545',
+    //             marginTop: '2px'
+    //           }}>
+    //             ⚠️ Overdue
+    //           </span>
+    //         )}
+    //       </span>
+    //     );
+    //   }
+    // },
     {
       key: "originalamount",
       title: "Bill Amount (₹)",
@@ -540,19 +540,19 @@ function Bill_By_Bill_Report() {
         );
       }
     },
-    {
-      key: "totalpaid",
-      title: "Paid Amount (₹)",
-      style: { textAlign: "right", width: "130px" },
-      render: (value, row) => {
-        if (row.rowType === 'child') return null;
-        return (
-          <span style={{ color: '#28a745', fontWeight: 500 }}>
-            ₹ {parseFloat(value || 0).toLocaleString('en-IN')}
-          </span>
-        );
-      }
-    },
+    // {
+    //   key: "totalpaid",
+    //   title: "Paid Amount (₹)",
+    //   style: { textAlign: "right", width: "130px" },
+    //   render: (value, row) => {
+    //     if (row.rowType === 'child') return null;
+    //     return (
+    //       <span style={{ color: '#28a745', fontWeight: 500 }}>
+    //         ₹ {parseFloat(value || 0).toLocaleString('en-IN')}
+    //       </span>
+    //     );
+    //   }
+    // },
     {
       key: "pendingamount",
       title: "Pending Amount (₹)",
@@ -601,72 +601,72 @@ function Bill_By_Bill_Report() {
         );
       }
     },
-    {
-      key: "agingbucket",
-      title: "Aging",
-      style: { textAlign: "center", width: "100px" },
-      render: (value, row) => {
-        if (row.rowType === 'child') return null;
-        const agingColors = {
-          '0-30 Days': '#ffc107',
-          '31-60 Days': '#fd7e14',
-          '61-90 Days': '#dc3545',
-          '90+ Days': '#721c24',
-          'Not Due': '#28a745',
-          'Paid': '#6c757d'
-        };
-        return (
-          <span style={{
-            backgroundColor: agingColors[value] || '#6c757d',
-            color: 'white',
-            padding: '4px 10px',
-            borderRadius: '20px',
-            fontSize: '11px',
-            fontWeight: 600,
-            display: 'inline-block'
-          }}>
-            {value || 'Not Due'}
-          </span>
-        );
-      }
-    }
+    // {
+    //   key: "agingbucket",
+    //   title: "Aging",
+    //   style: { textAlign: "center", width: "100px" },
+    //   render: (value, row) => {
+    //     if (row.rowType === 'child') return null;
+    //     const agingColors = {
+    //       '0-30 Days': '#ffc107',
+    //       '31-60 Days': '#fd7e14',
+    //       '61-90 Days': '#dc3545',
+    //       '90+ Days': '#721c24',
+    //       'Not Due': '#28a745',
+    //       'Paid': '#6c757d'
+    //     };
+    //     return (
+    //       <span style={{
+    //         backgroundColor: agingColors[value] || '#6c757d',
+    //         color: 'white',
+    //         padding: '4px 10px',
+    //         borderRadius: '20px',
+    //         fontSize: '11px',
+    //         fontWeight: 600,
+    //         display: 'inline-block'
+    //       }}>
+    //         {value || 'Not Due'}
+    //       </span>
+    //     );
+    //   }
+    // }
   ];
 
   // Combine columns based on row type
   const getTableColumns = () => {
     const baseColumns = [...Columns];
     
-    baseColumns.push({
-      key: "payment_method_display",
-      title: "Payment Method",
-      style: { textAlign: "left", width: "120px" },
-      render: (value, row) => {
-        if (row.rowType === 'child') {
-          return (
-            <span style={{ fontSize: '13px' }}>
-              {row.payment_method || '-'}
-            </span>
-          );
-        }
-        return null;
-      }
-    });
+    // baseColumns.push({
+    //   key: "payment_method_display",
+    //   title: "Payment Method",
+    //   style: { textAlign: "left", width: "120px" },
+    //   render: (value, row) => {
+    //     if (row.rowType === 'child') {
+    //       return (
+    //         <span style={{ fontSize: '13px' }}>
+    //           {row.payment_method || '-'}
+    //         </span>
+    //       );
+    //     }
+    //     return null;
+    //   }
+    // });
     
-    baseColumns.push({
-      key: "reference_display",
-      title: "Reference",
-      style: { textAlign: "left", width: "120px" },
-      render: (value, row) => {
-        if (row.rowType === 'child') {
-          return (
-            <span style={{ fontSize: '12px', color: '#6c757d' }}>
-              {row.cheque_no || row.bank_name || '-'}
-            </span>
-          );
-        }
-        return null;
-      }
-    });
+    // baseColumns.push({
+    //   key: "reference_display",
+    //   title: "Reference",
+    //   style: { textAlign: "left", width: "120px" },
+    //   render: (value, row) => {
+    //     if (row.rowType === 'child') {
+    //       return (
+    //         <span style={{ fontSize: '12px', color: '#6c757d' }}>
+    //           {row.cheque_no || row.bank_name || '-'}
+    //         </span>
+    //       );
+    //     }
+    //     return null;
+    //   }
+    // });
     
     return baseColumns;
   };
