@@ -52,7 +52,7 @@ function Reports() {
             <div className="header-content">
               <div className="header-text">
                 <h1>Business Reports</h1>
-                <p>Comprehensive analytics and insights for your business</p>
+                {/* <p>Comprehensive analytics and insights for your business</p> */}
               </div>
 
             </div>

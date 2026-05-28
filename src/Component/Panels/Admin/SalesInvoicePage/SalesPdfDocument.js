@@ -18,18 +18,19 @@ const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
     backgroundColor: '#FFFFFF',
-    padding: 20,
+    padding: 14,
     fontSize: 8,
     fontFamily: 'NotoSans',
     width: '100%',
     minHeight: '100%',
   },
-  
+
+  /* ── HEADER ── */
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
-    paddingBottom: 10,
+    marginBottom: 4,
+    paddingBottom: 4,
     borderBottom: '1pt solid #e0e0e0',
   },
   companyInfo: {
@@ -38,127 +39,156 @@ const styles = StyleSheet.create({
   invoiceMeta: {
     flex: 1,
     backgroundColor: '#f8f9fa',
-    padding: 6,
-    borderRadius: 3,
+    padding: 4,
+    borderRadius: 2,
     border: '1pt solid #dee2e6',
   },
   companyName: {
     fontSize: 11,
     fontWeight: 'bold',
-    marginBottom: 3,
+    marginBottom: 2,
     color: '#2c3e50',
   },
   companyAddress: {
     fontSize: 7,
     color: '#666666',
-    marginBottom: 2,
+    marginBottom: 1,
     lineHeight: 1.2,
   },
   invoiceTitle: {
     fontSize: 9,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 2,
     color: '#dc3545',
     textAlign: 'center',
   },
-  
+
+  /* ── ADDRESS SECTION ── */
   addressSection: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: 4,
+    gap: 4,
   },
   addressBox: {
-    width: '48%',
-    marginRight: '4%',
+    flex: 1,
     backgroundColor: '#f8f9fa',
-    padding: 6,
-    borderRadius: 3,
+    padding: 4,
+    borderRadius: 2,
     border: '1pt solid #dee2e6',
   },
-  transportBox: {
-    width: '48%',
-    padding: 6,
-    borderRadius: 3,
-  },
+
+  /* ── SECTION TITLE ── */
   sectionTitle: {
     fontSize: 8,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 2,
     color: '#007bff',
     borderBottom: '1pt solid #007bff',
-    paddingBottom: 2,
+    paddingBottom: 1,
   },
   addressText: {
     fontSize: 7,
-    marginBottom: 2,
+    marginBottom: 1,
     lineHeight: 1.2,
   },
-  
-  salesPersonSection: {
-    marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    backgroundColor: '#f8f9fa',
-    padding: 5,
-    borderRadius: 3,
-    border: '1pt solid #dee2e6',
-    gap: 8,
-  },
-  salesPersonLabel: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: '#666666',
-  },
-  salesPersonName: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: '#007bff',
-  },
-  
+
+  /* ── TABLE ── */
   itemsSection: {
-    marginBottom: 12,
+    marginBottom: 4,
   },
-  itemsTitle: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    marginBottom: 6,
-    color: '#007bff',
-    paddingBottom: 3,
-    borderBottom: '1pt solid #007bff',
-  },
-  
   table: {
     display: 'table',
     width: '100%',
     borderStyle: 'solid',
-    borderWidth: 0.5,
-    borderColor: '#dee2e6',
-    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#000000',
+    marginBottom: 4,
   },
   tableRow: {
     flexDirection: 'row',
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#dee2e6',
-    minHeight: 22,
+    minHeight: 14,
   },
   tableHeader: {
     backgroundColor: '#343a40',
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#212529',
+    borderBottomWidth: 1,
+    borderBottomColor: '#000000',
+    minHeight: 14,
   },
-  
-  colSNo: { width: '5%', paddingHorizontal: 4, paddingVertical: 4 },
-  colProduct: { width: '22%', paddingHorizontal: 4, paddingVertical: 4 },
-  colHsn: { width: '10%', paddingHorizontal: 4, paddingVertical: 4 },
-  colQuantity: { width: '10%', paddingHorizontal: 4, paddingVertical: 4 },
-  colRateIncl: { width: '12%', paddingHorizontal: 4, paddingVertical: 4 },
-  colRateExcl: { width: '12%', paddingHorizontal: 4, paddingVertical: 4 },
-  colDiscount: { width: '8%', paddingHorizontal: 4, paddingVertical: 4 },
-  colGST: { width: '7%', paddingHorizontal: 4, paddingVertical: 4 },
-  colTotal: { width: '14%', paddingHorizontal: 4, paddingVertical: 4 },
-  
+
+  /* ── COLUMN CELLS ── */
+  colSNo: {
+    width: '5%',
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    borderRightWidth: 1,
+    borderRightColor: '#000000',
+    borderRightStyle: 'solid',
+  },
+  colProduct: {
+    width: '22%',
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    borderRightWidth: 1,
+    borderRightColor: '#000000',
+    borderRightStyle: 'solid',
+  },
+  colHsn: {
+    width: '10%',
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    borderRightWidth: 1,
+    borderRightColor: '#000000',
+    borderRightStyle: 'solid',
+  },
+  colQuantity: {
+    width: '10%',
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    borderRightWidth: 1,
+    borderRightColor: '#000000',
+    borderRightStyle: 'solid',
+  },
+  colRateIncl: {
+    width: '12%',
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    borderRightWidth: 1,
+    borderRightColor: '#000000',
+    borderRightStyle: 'solid',
+  },
+  colRateExcl: {
+    width: '12%',
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    borderRightWidth: 1,
+    borderRightColor: '#000000',
+    borderRightStyle: 'solid',
+  },
+  colDiscount: {
+    width: '8%',
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    borderRightWidth: 1,
+    borderRightColor: '#000000',
+    borderRightStyle: 'solid',
+  },
+  colGST: {
+    width: '7%',
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    borderRightWidth: 1,
+    borderRightColor: '#000000',
+    borderRightStyle: 'solid',
+  },
+  colTotal: {
+    width: '14%',
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+  },
+
   tableCell: {
     fontSize: 7,
-    lineHeight: 1.2,
+    lineHeight: 1.1,
     color: '#2c3e50',
   },
   tableCellHeader: {
@@ -166,64 +196,98 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ffffff',
   },
-  tableCellLeft: {
-    textAlign: 'left',
+  tableCellLeft:   { textAlign: 'left' },
+  tableCellRight:  { textAlign: 'right' },
+  tableCellCenter: { textAlign: 'center' },
+  tableCellBold:   { fontWeight: 'bold' },
+
+  rowEven: {
+    backgroundColor: '#f9f9f9',
   },
-  tableCellRight: {
-    textAlign: 'right',
+  rowOdd: {
+    backgroundColor: '#ffffff',
   },
-  tableCellCenter: {
-    textAlign: 'center',
-  },
-  tableCellBold: {
-    fontWeight: 'bold',
-  },
-  
+
+  /* ── QR + AMOUNT ROW ── */
   row: {
     flexDirection: 'row',
-    marginBottom: 10,
-    gap: 10,
+    marginBottom: 4,
+    gap: 4,
   },
   col: {
     flex: 1,
   },
-  
-  notesBox: {
-    backgroundColor: '#f8f9fa',
-    padding: 6,
-    borderRadius: 3,
-    border: '0.5pt solid #dee2e6',
-    minHeight: 60,
+
+  /* ── QR CARD ── */
+  qrSection: {
+    backgroundColor: '#f0f8ff',
+    padding: 1,
+    borderRadius: 2,
+    border: '1pt solid #007bff',
+    alignItems: 'center',
+    marginBottom: 4,
   },
-  
+  qrTitle: {
+    fontSize: 7,
+    fontWeight: 'bold',
+    color: '#007bff',
+    marginBottom: 1,
+    textAlign: 'center',
+  },
+  qrImage: {
+    width: 46,
+    height: 46,
+  },
+  qrAmount: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#28a745',
+    marginTop: 1,
+    textAlign: 'center',
+  },
+
+  /* ── TRANSPORT BOX ── */
+  transportBox: {
+    padding: 4,
+    borderRadius: 2,
+    border: '1pt solid #dee2e6',
+  },
+  transportRow: {
+    flexDirection: 'row',
+    marginBottom: 1,
+    alignItems: 'center',
+    width: '100%',
+  },
+
+  /* ── AMOUNT SUMMARY ── */
   amountSection: {
     backgroundColor: '#f8f9fa',
-    padding: 8,
-    borderRadius: 3,
-    border: '0.5pt solid #dee2e6',
+    padding: 4,
+    borderRadius: 2,
+    border: '1pt solid #dee2e6',
   },
   amountTitle: {
     fontSize: 8,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 3,
     color: '#007bff',
     textAlign: 'center',
-    borderBottom: '0.5pt solid #dee2e6',
-    paddingBottom: 3,
+    borderBottom: '1pt solid #dee2e6',
+    paddingBottom: 2,
   },
   amountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
-    paddingBottom: 2,
-    borderBottom: '0.5pt dotted #e9ecef',
+    marginBottom: 2,
+    paddingBottom: 1,
+    borderBottom: '1pt dotted #e9ecef',
   },
   grandTotal: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     borderTop: '1.5pt solid #007bff',
-    paddingTop: 5,
-    marginTop: 5,
+    paddingTop: 3,
+    marginTop: 2,
   },
   amountLabel: {
     fontSize: 8,
@@ -233,47 +297,16 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: 'bold',
   },
-  
-  qrSection: {
-    backgroundColor: '#f0f8ff',
-    padding: 5,
-    borderRadius: 3,
-    border: '0.5pt solid #007bff',
-    alignItems: 'center',
-  },
-  qrTitle: {
-    fontSize: 7,
-    fontWeight: 'bold',
-    color: '#007bff',
-    marginBottom: 3,
-    textAlign: 'center',
-  },
-  qrImage: {
-    width: 50,
-    height: 50,
-  },
-  qrAmount: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: '#28a745',
-    marginTop: 3,
-    textAlign: 'center',
-  },
-  transportRow: {
-  flexDirection: 'row',
-  marginBottom: 4,
-  alignItems: 'center',
-  width: '100%',
-},
-  
+
+  /* ── FOOTER ── */
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginTop: 15,
-    paddingTop: 10,
-    borderTop: '0.5pt solid #e0e0e0',
-    gap: 8,
+    marginTop: 4,
+    paddingTop: 4,
+    borderTop: '1pt solid #e0e0e0',
+    gap: 6,
   },
   bankDetails: {
     flex: 1.2,
@@ -281,13 +314,13 @@ const styles = StyleSheet.create({
   bankTitle: {
     fontSize: 8,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 2,
     color: '#007bff',
   },
   bankText: {
     fontSize: 6.5,
     lineHeight: 1.2,
-    marginBottom: 1.5,
+    marginBottom: 1,
   },
   signature: {
     flex: 0.8,
@@ -299,9 +332,46 @@ const styles = StyleSheet.create({
   },
   signatureLine: {
     width: 90,
+    marginBottom: 2,
+    marginTop: 10,
+    borderBottom: '1pt solid #000',
+  },
+
+  /* ── MISC ── */
+  salesPersonSection: {
+    marginBottom: 4,
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    backgroundColor: '#f8f9fa',
+    padding: 4,
+    borderRadius: 2,
+    border: '1pt solid #dee2e6',
+    gap: 6,
+  },
+  salesPersonLabel: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#666666',
+  },
+  salesPersonName: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#007bff',
+  },
+  notesBox: {
+    backgroundColor: '#f8f9fa',
+    padding: 4,
+    borderRadius: 2,
+    border: '1pt solid #dee2e6',
+    minHeight: 50,
+  },
+  itemsTitle: {
+    fontSize: 9,
+    fontWeight: 'bold',
     marginBottom: 3,
-    marginTop: 12,
-    borderBottom: '0.5pt solid #000',
+    color: '#007bff',
+    paddingBottom: 2,
+    borderBottom: '1pt solid #007bff',
   },
 });
 
@@ -321,46 +391,36 @@ const getSafeData = (data, path, defaultValue = '') => {
 
 const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameState, qrDataUrl, qrAmount, unitData }) => {
   const currentData = invoiceData || {};
-  const companyInfo = getSafeData(currentData, 'companyInfo', {});
-  const supplierInfo = getSafeData(currentData, 'supplierInfo', {});
+  const companyInfo     = getSafeData(currentData, 'companyInfo', {});
+  const supplierInfo    = getSafeData(currentData, 'supplierInfo', {});
   const shippingAddress = getSafeData(currentData, 'shippingAddress', {});
-  const items = getSafeData(currentData, 'items', []);
-    const bb_bc = getSafeData(currentData, 'bb_bc', 'b2b');
+  const items  = getSafeData(currentData, 'items', []);
+  const bb_bc  = getSafeData(currentData, 'bb_bc', 'b2b');
+
   const displayInvoiceNumber = invoiceNumber || getSafeData(currentData, 'invoiceNumber', 'INV001');
-  const invoiceDate = getSafeData(currentData, 'invoiceDate') 
-    ? new Date(getSafeData(currentData, 'invoiceDate')).toLocaleDateString('en-IN') 
+  const invoiceDate = getSafeData(currentData, 'invoiceDate')
+    ? new Date(getSafeData(currentData, 'invoiceDate')).toLocaleDateString('en-IN')
     : new Date().toLocaleDateString('en-IN');
-    
-  const dueDate = getSafeData(currentData, 'validityDate') 
-    ? new Date(getSafeData(currentData, 'validityDate')).toLocaleDateString('en-IN') 
+  const dueDate = getSafeData(currentData, 'validityDate')
+    ? new Date(getSafeData(currentData, 'validityDate')).toLocaleDateString('en-IN')
     : 'N/A';
-  
-  // Get additional charges
-  const additionalCharge = getSafeData(currentData, 'additionalCharge', '');
+
+  const additionalCharge       = getSafeData(currentData, 'additionalCharge', '');
   const additionalChargeAmount = parseFloat(getSafeData(currentData, 'additionalChargeAmount', '0'));
-  
-  // ✅ GET DISCOUNT CHARGES
-  const discountCharges = getSafeData(currentData, 'discount_charges', '');
-  const discountChargesAmount = parseFloat(getSafeData(currentData, 'discount_charges_amount', '0'));
-  
+  const discountCharges        = getSafeData(currentData, 'discount_charges', '');
+  const discountChargesAmount  = parseFloat(getSafeData(currentData, 'discount_charges_amount', '0'));
+
   return (
     <Document>
       <Page size="A5" style={styles.page}>
-        {/* Header */}
+
+        {/* ── HEADER ── */}
         <View style={styles.header}>
           <View style={styles.companyInfo}>
-            <Text style={styles.companyName}>
-              SHREE SHASHWATRAJ AGRO PVT LTD
-            </Text>
-            <Text style={styles.companyAddress}>
-              Growth Center, Jasoiya, Aurangabad, Bihar - 824101
-            </Text>
-            <Text style={styles.companyAddress}>
-              GSTIN/UIN: 10AAOCS1541B1ZZ
-            </Text>
-            <Text style={styles.companyAddress}>
-              State Name: Bihar | Code: 10
-            </Text>
+            <Text style={styles.companyName}>SHREE SHASHWATRAJ AGRO PVT LTD</Text>
+            <Text style={styles.companyAddress}>Growth Center, Jasoiya, Aurangabad, Bihar - 824101</Text>
+            <Text style={styles.companyAddress}>GSTIN/UIN: 10AAOCS1541B1ZZ</Text>
+            <Text style={styles.companyAddress}>State Name: Bihar | Code: 10</Text>
           </View>
           <View style={styles.invoiceMeta}>
             <Text style={styles.invoiceTitle}>{getSafeData(currentData, 'document_type') || 'TAX INVOICE'}</Text>
@@ -369,91 +429,94 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
             <Text style={styles.addressText}><Text style={styles.tableCellBold}>Due Date:</Text> {dueDate}</Text>
           </View>
         </View>
-               {/* <View style={{ marginTop: 6, paddingTop: 4, borderTop: '0.5pt solid #dee2e6' }}>
-      <Text style={[styles.addressText, { fontWeight: 'bold', color: '#007bff' }]}>Document Type:</Text>
-      <Text style={[styles.addressText, { fontWeight: 'bold' }]}>
-        {getSafeData(currentData, 'document_type') || ''}
-      </Text>
-    </View> */}
-{/* Address Section - 50% Bill To + 50% Transport Details */}
-<View style={styles.addressSection}>
-  <View style={styles.addressBox}>
-    <Text style={styles.sectionTitle}>Bill To:</Text>
-    <Text style={styles.addressText}>
-      {bb_bc === 'b2c' 
-        ? getSafeData(supplierInfo, 'name', 'N/A')
-        : getSafeData(supplierInfo, 'business_name', 'N/A')}
-    </Text>
-    <Text style={styles.addressText}>
-      {getSafeData(supplierInfo, 'mobile_number') || getSafeData(supplierInfo, 'phone_number', 'N/A')}
-    </Text>
-    
-    {bb_bc !== 'b2c' && (
-      <Text style={styles.addressText}>
-        GSTIN: {getSafeData(supplierInfo, 'gstin', 'N/A')}
-      </Text>
-    )}
-    
-    <Text style={styles.addressText}>
-      State: {getSafeData(supplierInfo, 'state', 'N/A')}
-    </Text>
-  </View>
-     <View style={styles.addressBox}>
-              <Text style={styles.sectionTitle}>Ship To:</Text>
-              <Text style={styles.addressText}>
-                {getSafeData(shippingAddress, 'addressLine1', 'N/A')}
-              </Text>
-              <Text style={styles.addressText}>
-                {getSafeData(shippingAddress, 'addressLine2', '')}
-              </Text>
-              <Text style={styles.addressText}>
-                {getSafeData(shippingAddress, 'city', '')} - {getSafeData(shippingAddress, 'pincode', '')}
-              </Text>
-              <Text style={styles.addressText}>
-                {getSafeData(shippingAddress, 'state', '')}
-              </Text>
-            </View>
 
-</View>
-         
-        {/* Items Table */}
+        {/* ── BILL TO / SHIP TO ── */}
+        <View style={styles.addressSection}>
+          <View style={styles.addressBox}>
+            <Text style={styles.sectionTitle}>Bill To:</Text>
+            <Text style={styles.addressText}>
+              {bb_bc === 'b2c'
+                ? getSafeData(supplierInfo, 'name', 'N/A')
+                : getSafeData(supplierInfo, 'business_name', 'N/A')}
+            </Text>
+            <Text style={styles.addressText}>
+              {getSafeData(supplierInfo, 'mobile_number') || getSafeData(supplierInfo, 'phone_number', 'N/A')}
+            </Text>
+            {bb_bc !== 'b2c' && (
+              <Text style={styles.addressText}>GSTIN: {getSafeData(supplierInfo, 'gstin', 'N/A')}</Text>
+            )}
+            <Text style={styles.addressText}>State: {getSafeData(supplierInfo, 'state', 'N/A')}</Text>
+          </View>
+          <View style={styles.addressBox}>
+            <Text style={styles.sectionTitle}>Ship To:</Text>
+            <Text style={styles.addressText}>{getSafeData(shippingAddress, 'addressLine1', 'N/A')}</Text>
+            <Text style={styles.addressText}>{getSafeData(shippingAddress, 'addressLine2', '')}</Text>
+            <Text style={styles.addressText}>
+              {getSafeData(shippingAddress, 'city', '')} - {getSafeData(shippingAddress, 'pincode', '')}
+            </Text>
+            <Text style={styles.addressText}>{getSafeData(shippingAddress, 'state', '')}</Text>
+          </View>
+        </View>
+
+        {/* ── ITEMS TABLE ── */}
         <View style={styles.itemsSection}>
           <View style={styles.table}>
-            {/* Table Header */}
+
+            {/* ── Header row ── */}
             <View style={[styles.tableRow, styles.tableHeader]}>
-              <View style={styles.colSNo}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>#</Text></View>
-              <View style={styles.colProduct}><Text style={[styles.tableCellHeader, styles.tableCellLeft]}>Product</Text></View>
-              <View style={styles.colHsn}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>HSN</Text></View>
-              <View style={styles.colQuantity}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>Units</Text></View>
-              <View style={styles.colRateIncl}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Rate (Incl)</Text></View>
-              <View style={styles.colRateExcl}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Rate (Excl)</Text></View>
-              <View style={styles.colDiscount}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>Disc%</Text></View>
-              <View style={styles.colGST}><Text style={[styles.tableCellHeader, styles.tableCellCenter]}>GST%</Text></View>
-              <View style={styles.colTotal}><Text style={[styles.tableCellHeader, styles.tableCellRight]}>Amount</Text></View>
+              <View style={styles.colSNo}>
+                <Text style={[styles.tableCellHeader, styles.tableCellCenter]}>#</Text>
+              </View>
+              <View style={styles.colProduct}>
+                <Text style={[styles.tableCellHeader, styles.tableCellLeft]}>Product</Text>
+              </View>
+              <View style={styles.colHsn}>
+                <Text style={[styles.tableCellHeader, styles.tableCellCenter]}>HSN</Text>
+              </View>
+              <View style={styles.colQuantity}>
+                <Text style={[styles.tableCellHeader, styles.tableCellCenter]}>Units</Text>
+              </View>
+              <View style={styles.colRateIncl}>
+                <Text style={[styles.tableCellHeader, styles.tableCellRight]}>Rate (Incl)</Text>
+              </View>
+              <View style={styles.colRateExcl}>
+                <Text style={[styles.tableCellHeader, styles.tableCellRight]}>Rate (Excl)</Text>
+              </View>
+              <View style={styles.colDiscount}>
+                <Text style={[styles.tableCellHeader, styles.tableCellCenter]}>Disc%</Text>
+              </View>
+              <View style={styles.colGST}>
+                <Text style={[styles.tableCellHeader, styles.tableCellCenter]}>GST%</Text>
+              </View>
+              <View style={styles.colTotal}>
+                <Text style={[styles.tableCellHeader, styles.tableCellRight]}>Amount</Text>
+              </View>
             </View>
-            
-            {/* Table Rows */}
+
+            {/* ── Data rows ── */}
             {items.map((item, index) => {
-              const quantity = parseFloat(getSafeData(item, 'quantity', 1));
-              const price = parseFloat(getSafeData(item, 'price', 0));
-              const originalPrice = parseFloat(getSafeData(item, 'original_price', price));
-              const gst = parseFloat(getSafeData(item, 'gst', 0));
-              const discount = parseFloat(getSafeData(item, 'discount', 0));
-              const hsnCode = getSafeData(item, 'hsn_code', '');
-              const unitName = getSafeData(item, 'unit_name') || (unitData && unitData[item.unit_id]) || '';
-              
-              const subtotal = quantity * price;
-              const discountAmount = subtotal * (discount / 100);
+              const quantity       = parseFloat(getSafeData(item, 'quantity', 1));
+              const price          = parseFloat(getSafeData(item, 'price', 0));
+              const originalPrice  = parseFloat(getSafeData(item, 'original_price', price));
+              const gst            = parseFloat(getSafeData(item, 'gst', 0));
+              const discount       = parseFloat(getSafeData(item, 'discount', 0));
+              const hsnCode        = getSafeData(item, 'hsn_code', '');
+              const unitName       = getSafeData(item, 'unit_name') || (unitData && unitData[item.unit_id]) || '';
+
+              const subtotal            = quantity * price;
+              const discountAmount      = subtotal * (discount / 100);
               const amountAfterDiscount = subtotal - discountAmount;
-              const gstAmount = amountAfterDiscount * (gst / 100);
-              const itemTotal = amountAfterDiscount + gstAmount;
-              
+              const gstAmount           = amountAfterDiscount * (gst / 100);
+              const itemTotal           = amountAfterDiscount + gstAmount;
+
               const quantityDisplay = unitName && unitName !== 'null' && unitName !== ''
                 ? `${quantity} ${unitName}`
                 : quantity.toString();
-              
+
+              const rowBg = index % 2 === 0 ? styles.rowOdd : styles.rowEven;
+
               return (
-                <View style={styles.tableRow} key={index}>
+                <View style={[styles.tableRow, rowBg]} key={index}>
                   <View style={styles.colSNo}>
                     <Text style={[styles.tableCell, styles.tableCellCenter]}>{index + 1}</Text>
                   </View>
@@ -463,22 +526,16 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
                     </Text>
                   </View>
                   <View style={styles.colHsn}>
-                    <Text style={[styles.tableCell, styles.tableCellCenter]}>
-                      {hsnCode || '-'}
-                    </Text>
+                    <Text style={[styles.tableCell, styles.tableCellCenter]}>{hsnCode || '-'}</Text>
                   </View>
                   <View style={styles.colQuantity}>
-                    <Text style={[styles.tableCell, styles.tableCellCenter]}>
-                      {quantityDisplay}
-                    </Text>
+                    <Text style={[styles.tableCell, styles.tableCellCenter]}>{quantityDisplay}</Text>
                   </View>
                   <View style={styles.colRateIncl}>
-                    <Text style={[styles.tableCell, styles.tableCellRight]}>
-                      ₹{originalPrice.toFixed(2)}
-                    </Text>
+                    <Text style={[styles.tableCell, styles.tableCellRight]}>{'\u20B9'}{originalPrice.toFixed(2)}</Text>
                   </View>
                   <View style={styles.colRateExcl}>
-                    <Text style={[styles.tableCell, styles.tableCellRight]}>₹{price.toFixed(2)}</Text>
+                    <Text style={[styles.tableCell, styles.tableCellRight]}>{'\u20B9'}{price.toFixed(2)}</Text>
                   </View>
                   <View style={styles.colDiscount}>
                     <Text style={[styles.tableCell, styles.tableCellCenter]}>{discount}%</Text>
@@ -488,7 +545,7 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
                   </View>
                   <View style={styles.colTotal}>
                     <Text style={[styles.tableCell, styles.tableCellRight, styles.tableCellBold]}>
-                      ₹{itemTotal.toFixed(2)}
+                      {'\u20B9'}{itemTotal.toFixed(2)}
                     </Text>
                   </View>
                 </View>
@@ -496,115 +553,111 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
             })}
           </View>
         </View>
-        
-    {/* Amount Summary + QR Code + Transport Details - 50% / 50% */}
-<View style={styles.row}>
-  {/* LEFT COLUMN - QR Code + Transport Details (stacked vertically) */}
-  <View style={styles.col}>
-    {/* QR Code */}
-    {qrDataUrl && (
-      <View style={[styles.qrSection, { marginBottom: 8 }]}>
-        <Text style={styles.qrTitle}>Scan to Pay</Text>
-        <Image src={qrDataUrl} style={styles.qrImage} />
-        <Text style={styles.qrAmount}>
-          ₹{(qrAmount || parseFloat(getSafeData(currentData, 'grandTotal', 0))).toFixed(2)}
-        </Text>
-      </View>
-    )}
- <View style={styles.transportBox}>
-  <Text style={styles.sectionTitle}>Transport Details:</Text>
-  
-  {/* Vehicle No - One Row */}
-  <View style={styles.transportRow}>
-    <Text style={[styles.addressText, { fontWeight: 'bold', width: '65%' }]}>Vehicle No.:</Text>
-    <Text style={[styles.addressText, { flex: 1 }]}>
-      {getSafeData(currentData, 'transportDetails.vehicleNo') || '-'}
-    </Text>
-  </View>
-</View>
-  </View>
-  
-  {/* RIGHT COLUMN - Amount Summary */}
-  <View style={styles.col}>
-    <View style={styles.amountSection}>
-      <Text style={styles.amountTitle}>Amount Summary</Text>
-      
-      <View style={styles.amountRow}>
-        <Text style={styles.amountLabel}>Taxable Amount:</Text>
-        <Text style={styles.amountValue}>₹{getSafeData(currentData, 'taxableAmount', '0.00')}</Text>
-      </View>
-      
-      {isSameState ? (
-        <>
-          <View style={styles.amountRow}>
-            <Text style={styles.addressText}>CGST:</Text>
-            <Text style={styles.addressText}>₹{gstBreakdown?.totalCGST || '0.00'}</Text>
-          </View>
-          <View style={styles.amountRow}>
-            <Text style={styles.addressText}>SGST:</Text>
-            <Text style={styles.addressText}>₹{gstBreakdown?.totalSGST || '0.00'}</Text>
-          </View>
-        </>
-      ) : (
-        <View style={styles.amountRow}>
-          <Text style={styles.addressText}>IGST:</Text>
-          <Text style={styles.addressText}>₹{gstBreakdown?.totalIGST || '0.00'}</Text>
-        </View>
-      )}
-      
-      <View style={styles.amountRow}>
-        <Text style={styles.amountLabel}>Total GST:</Text>
-        <Text style={[styles.amountValue, { color: '#28a745' }]}>
-          ₹{getSafeData(currentData, 'totalGST', '0.00')}
-        </Text>
-      </View>
-      
-      {/* Additional Charges Row */}
-      {additionalCharge && additionalChargeAmount > 0 && (
-        <View style={styles.amountRow}>
-          <Text style={styles.amountLabel}>{additionalCharge}:</Text>
-          <Text style={styles.amountValue}>₹{additionalChargeAmount.toFixed(2)}</Text>
-        </View>
-      )}
-      
-      {/* Discount Charges Row */}
-      {discountCharges && discountChargesAmount > 0 && (
-        <View style={[styles.amountRow, { borderBottomColor: '#ffcccc' }]}>
-          <Text style={[styles.amountLabel, { color: '#dc3545' }]}>
-            Discount ({discountCharges === 'percentage' ? '%' : '₹'}):
-          </Text>
-          <Text style={[styles.amountValue, { color: '#dc3545' }]}>
-            - ₹{discountChargesAmount.toFixed(2)}
-          </Text>
-        </View>
-      )}
-      
-      {(() => {
-        const roundOff = parseFloat(getSafeData(currentData, 'roundOff', '0'));
-        if (roundOff !== 0) {
-          return (
-            <View style={[styles.amountRow, { borderBottomColor: '#e9ecef' }]}>
-              <Text style={styles.amountLabel}>Round Off:</Text>
-              <Text style={[styles.amountValue, { color: roundOff < 0 ? '#dc3545' : '#28a745' }]}>
-                {roundOff < 0 ? roundOff.toFixed(2) : `+${roundOff.toFixed(2)}`}
-              </Text>
+
+        {/* ── QR + AMOUNT SUMMARY ROW ── */}
+        <View style={styles.row}>
+
+          {/* LEFT: QR card + Transport */}
+          <View style={styles.col}>
+            {qrDataUrl && (
+              <View style={styles.qrSection}>
+                <Text style={styles.qrTitle}>Scan to Pay</Text>
+                <Image src={qrDataUrl} style={styles.qrImage} />
+                <Text style={styles.qrAmount}>
+                  {'\u20B9'}{(qrAmount || parseFloat(getSafeData(currentData, 'grandTotal', 0))).toFixed(2)}
+                </Text>
+              </View>
+            )}
+            <View style={styles.transportBox}>
+              <Text style={styles.sectionTitle}>Transport Details:</Text>
+              <View style={styles.transportRow}>
+                <Text style={[styles.addressText, { fontWeight: 'bold', width: '65%' }]}>Vehicle No.:</Text>
+                <Text style={[styles.addressText, { flex: 1 }]}>
+                  {getSafeData(currentData, 'transportDetails.vehicleNo') || '-'}
+                </Text>
+              </View>
             </View>
-          );
-        }
-        return null;
-      })()}
-      
-      <View style={styles.grandTotal}>
-        <Text style={styles.amountLabel}>Grand Total:</Text>
-        <Text style={[styles.amountValue, { color: '#28a745', fontSize: 9 }]}>
-          ₹{getSafeData(currentData, 'grandTotal', '0.00')}
-        </Text>
-      </View>
-    </View>
-  </View>
-</View>
-        
-        {/* Footer */}
+          </View>
+
+          {/* RIGHT: Amount Summary */}
+          <View style={styles.col}>
+            <View style={styles.amountSection}>
+              <Text style={styles.amountTitle}>Amount Summary</Text>
+
+              <View style={styles.amountRow}>
+                <Text style={styles.amountLabel}>Taxable Amount:</Text>
+                <Text style={styles.amountValue}>{'\u20B9'}{getSafeData(currentData, 'taxableAmount', '0.00')}</Text>
+              </View>
+
+              {isSameState ? (
+                <>
+                  <View style={styles.amountRow}>
+                    <Text style={styles.addressText}>CGST:</Text>
+                    <Text style={styles.addressText}>{'\u20B9'}{gstBreakdown?.totalCGST || '0.00'}</Text>
+                  </View>
+                  <View style={styles.amountRow}>
+                    <Text style={styles.addressText}>SGST:</Text>
+                    <Text style={styles.addressText}>{'\u20B9'}{gstBreakdown?.totalSGST || '0.00'}</Text>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.amountRow}>
+                  <Text style={styles.addressText}>IGST:</Text>
+                  <Text style={styles.addressText}>{'\u20B9'}{gstBreakdown?.totalIGST || '0.00'}</Text>
+                </View>
+              )}
+
+              <View style={styles.amountRow}>
+                <Text style={styles.amountLabel}>Total GST:</Text>
+                <Text style={[styles.amountValue, { color: '#28a745' }]}>
+                  {'\u20B9'}{getSafeData(currentData, 'totalGST', '0.00')}
+                </Text>
+              </View>
+
+              {additionalCharge && additionalChargeAmount > 0 && (
+                <View style={styles.amountRow}>
+                  <Text style={styles.amountLabel}>{additionalCharge}:</Text>
+                  <Text style={styles.amountValue}>{'\u20B9'}{additionalChargeAmount.toFixed(2)}</Text>
+                </View>
+              )}
+
+              {discountCharges && discountChargesAmount > 0 && (
+                <View style={[styles.amountRow, { borderBottomColor: '#ffcccc' }]}>
+                  <Text style={[styles.amountLabel, { color: '#dc3545' }]}>
+                    Discount ({discountCharges === 'percentage' ? '%' : '\u20B9'}):
+                  </Text>
+                  <Text style={[styles.amountValue, { color: '#dc3545' }]}>
+                    - {'\u20B9'}{discountChargesAmount.toFixed(2)}
+                  </Text>
+                </View>
+              )}
+
+              {(() => {
+                const roundOff = parseFloat(getSafeData(currentData, 'roundOff', '0'));
+                if (roundOff !== 0) {
+                  return (
+                    <View style={[styles.amountRow, { borderBottomColor: '#e9ecef' }]}>
+                      <Text style={styles.amountLabel}>Round Off:</Text>
+                      <Text style={[styles.amountValue, { color: roundOff < 0 ? '#dc3545' : '#28a745' }]}>
+                        {roundOff < 0 ? roundOff.toFixed(2) : `+${roundOff.toFixed(2)}`}
+                      </Text>
+                    </View>
+                  );
+                }
+                return null;
+              })()}
+
+              <View style={styles.grandTotal}>
+                <Text style={styles.amountLabel}>Grand Total:</Text>
+                <Text style={[styles.amountValue, { color: '#28a745', fontSize: 9 }]}>
+                  {'\u20B9'}{getSafeData(currentData, 'grandTotal', '0.00')}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* ── FOOTER ── */}
         <View style={styles.footer}>
           <View style={styles.bankDetails}>
             <Text style={styles.bankTitle}>Bank Details:</Text>
@@ -613,15 +666,15 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
             <Text style={styles.bankText}>A/C: 44773710377</Text>
             <Text style={styles.bankText}>IFSC: SBIN0063699</Text>
           </View>
-          
           <View style={styles.signature}>
             <View style={styles.signatureBox}>
               <Text style={styles.bankText}>For {getSafeData(companyInfo, 'name', 'Company Name')}</Text>
               <View style={styles.signatureLine} />
-              <Text style={[styles.bankText, { marginTop: 3 }]}>Authorized Signatory</Text>
+              <Text style={[styles.bankText, { marginTop: 2 }]}>Authorized Signatory</Text>
             </View>
           </View>
         </View>
+
       </Page>
     </Document>
   );

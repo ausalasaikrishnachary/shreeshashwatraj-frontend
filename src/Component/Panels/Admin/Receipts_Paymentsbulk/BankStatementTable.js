@@ -675,47 +675,55 @@ const handleFileUpload = async (e) => {
               dc = "C";
             }
 
-            // Only create voucher if there's an amount and selected bank account
-            if (amount > 0 && selectedBankAccount) {
-          const voucherPayload = {
-  transaction_id: transactionId,
-  retailer_id: selectedBankAccount.id,
-  retailer_name: selectedBankAccount.name,
-  account_name: selectedBankAccount.account_name || "",
-  business_name: selectedBankAccount.business_name || "",
-  amount: amount,
-  transaction_type: transactionType, // ✅ This is already 'receipts' or 'payment' (not null)
-  dc: dc,
-  txn_date: row['Txn Date'] || row['txn_date'] || '',
-  value_date: row['Value Date'] || row['value_date'] || '',
-  description: row['Description'] || row['description'] || '',
-  ref_no: row['Ref No./Cheque No.'] || row['ref_no'] || '',
-  branch_code: row['Branch Code'] || row['branch_code'] || '',
-  payment_method: "Direct Deposit",
-  bank_name: selectedBankAccount.name || "Bank Transfer",
-  data_type: "Sales",
-  balance: row['Balance'] ? parseFloat(row['Balance']) : null
-  // Remove 'status' field - backend handles it
-  // Remove 'vchr_no' field - backend generates it
-};
+         // Only create voucher if there's an amount and selected bank account
+if (amount > 0 && selectedBankAccount) {
+  const voucherPayload = {
+    transaction_id: transactionId,
+    retailer_id: selectedBankAccount.id,
+    retailer_name: selectedBankAccount.name,
+    account_name: selectedBankAccount.account_name || "",
+    business_name: selectedBankAccount.business_name || "",
+    amount: amount,
+    transaction_type: transactionType,
+    dc: dc,
+    txn_date: row['Txn Date'] || row['txn_date'] || '',
+    value_date: row['Value Date'] || row['value_date'] || '',
+    description: row['Description'] || row['description'] || '',
+    ref_no: row['Ref No./Cheque No.'] || row['ref_no'] || '',
+    branch_code: row['Branch Code'] || row['branch_code'] || '',
+    payment_method: "Direct Deposit",
+    bank_name: selectedBankAccount.name || "Bank Transfer",
+    data_type: "Sales",
+    balance: row['Balance'] ? parseFloat(row['Balance']) : null
+  };
 
-              try {
-                const voucherResponse = await axios.post(`${baseurl}/api/direct-deposit/create-voucher`, voucherPayload);
-                if (voucherResponse.data.success) {
-                  voucherSuccessCount++;
-                  console.log(`✅ Voucher created for row ${i + 1}: ${voucherResponse.data.voucher_number || 'Pending'}`);
-                } else {
-                  voucherFailCount++;
-                  errors.push(`Row ${i + 1} (Voucher): ${voucherResponse.data.message}`);
-                }
-              } catch (voucherError) {
-                voucherFailCount++;
-                errors.push(`Row ${i + 1} (Voucher): ${voucherError.response?.data?.message || voucherError.message}`);
-                console.error("Error creating voucher:", voucherError);
-              }
-            } else if (amount > 0 && !selectedBankAccount) {
-              errors.push(`Row ${i + 1}: Import successful but voucher not created because no bank account selected`);
-            }
+  try {
+    const voucherResponse = await axios.post(
+      `${baseurl}/api/direct-deposit/create-voucher`,
+      voucherPayload
+    );
+
+    if (voucherResponse.data.success) {
+      voucherSuccessCount++;
+      console.log(
+        `✅ Voucher created for row ${i + 1}: ${
+          voucherResponse.data.voucher_number || 'Pending'
+        }`
+      );
+    } else {
+      voucherFailCount++;
+      errors.push(`Row ${i + 1} (Voucher): ${voucherResponse.data.message}`);
+    }
+  } catch (voucherError) {
+    voucherFailCount++;
+    errors.push(
+      `Row ${i + 1} (Voucher): ${
+        voucherError.response?.data?.message || voucherError.message
+      }`
+    );
+    console.error("Error creating voucher:", voucherError);
+  }
+}
           } else {
             importFailCount++;
             errors.push(`Row ${i + 1} (Import): ${importResponse.data.message}`);
