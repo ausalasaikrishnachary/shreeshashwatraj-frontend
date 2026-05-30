@@ -35,7 +35,7 @@ import {
   FaRuler,
   FaCalendarAlt,
   FaHourglass,
-  FaMoneyCheckAlt 
+  FaMoneyCheckAlt,
 } from "react-icons/fa";
 import { FiHome } from "react-icons/fi";
 
@@ -52,7 +52,6 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Detect screen size changes
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
@@ -71,12 +70,10 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     return () => window.removeEventListener("resize", handleResize);
   }, [isCollapsed]);
 
-  // Handle mobile toggle
   useEffect(() => {
     if (onToggleMobile !== undefined) setIsMobileOpen(onToggleMobile);
   }, [onToggleMobile]);
 
-  // Keep dropdown open when route matches
   useEffect(() => {
     const path = location.pathname;
 
@@ -95,7 +92,6 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     if (path.startsWith("/retailersscore") || path.startsWith("/salesmanscore"))
       return setOpenDropdown("Scores");
 
-    // Check for Kacha Sales paths
     if (
       path.startsWith("/kachinvoicetable") ||
       path.startsWith("/kachareceipts") ||
@@ -106,7 +102,6 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       return setOpenDropdown("Kacha Sales");
     }
 
-    // Check for Kacha Purchase paths
     if (
       path.startsWith("/kachapurchaseinvoicetable") ||
       path.startsWith("/kachaPurchasevoucher") ||
@@ -166,23 +161,27 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
         { path: "/units", name: "Units", icon: <FaRuler /> },
       ],
     },
-
-
-
-  {
+    {
       path: "/BankStatementTable",
       name: "Bank statement upload",
-  icon: <FaMoneyCheckAlt />,
-    },,
+      icon: <FaMoneyCheckAlt />,
+    },
     {
       name: "Sales",
       icon: <FaChartLine />,
       subMenu: [
         { path: "/sales/invoices", name: "Invoices", icon: <FaFileInvoice /> },
         { path: "/sales/receipts", name: "Receipts", icon: <FaReceipt /> },
-        { path: "/sales/credit_note", name: "Credit Note", icon: <FaCreditCard /> },
-        { path: "/sales/payments", name: "Payment", icon: <FaMoneyBillWave /> }
-
+        {
+          path: "/sales/credit_note",
+          name: "Credit Note",
+          icon: <FaCreditCard />,
+        },
+        {
+          path: "/sales/payments",
+          name: "Payment",
+          icon: <FaMoneyBillWave />,
+        },
       ],
     },
     {
@@ -194,7 +193,11 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
           name: "Purchase Invoice",
           icon: <FaPurchaseInvoice />,
         },
-        { path: "/purchase/voucher", name: "Payment Voucher", icon: <FaStickyNote /> },
+        {
+          path: "/purchase/voucher",
+          name: "Payment Voucher",
+          icon: <FaStickyNote />,
+        },
         {
           path: "/purchase/debit-note",
           name: "Debit Note",
@@ -211,7 +214,11 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
           name: "Kacha Sales Invoices",
           icon: <FaFileInvoice />,
         },
-        { path: "/kachareceipts", name: "Kacha Receipts", icon: <FaReceipt /> },
+        {
+          path: "/kachareceipts",
+          name: "Kacha Receipts",
+          icon: <FaReceipt />,
+        },
         {
           path: "/kachacreditenotetable",
           name: "Kacha Credit Note",
@@ -263,15 +270,17 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
           name: "Products",
           icon: <FaPurchaseInvoice />,
         },
-        // { path: "/kachaPurchasevoucher", name: "Kacha Purchase Voucher", icon: <FaStickyNote /> },
-        // { path: "/Productioncreate", name: "Create Product", icon: <FaFileExport /> },
       ],
     },
-      {
+    {
       name: "Journal",
       icon: <FaBox />,
       subMenu: [
-        { path: "/Jrtable", name: "Journal Table", icon: <FaPurchaseInvoice /> },
+        {
+          path: "/Jrtable",
+          name: "Journal Table",
+          icon: <FaPurchaseInvoice />,
+        },
       ],
     },
   ];
@@ -281,7 +290,6 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
 
   const isPurchaseActive = location.pathname.startsWith("/purchase/");
 
-  // Check if current path is a Kacha Sales page
   const isKachaSalesActive =
     location.pathname.startsWith("/kachinvoicetable") ||
     location.pathname.startsWith("/kachareceipts") ||
@@ -289,7 +297,6 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     location.pathname.startsWith("/kachacreditenote") ||
     location.pathname.startsWith("/kacha_sales");
 
-  // Check if current path is a Kacha Purchase page
   const isKachaPurchaseActive =
     location.pathname.startsWith("/kachapurchaseinvoicetable") ||
     location.pathname.startsWith("/kachaPurchasevoucher") ||
@@ -297,11 +304,15 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
     location.pathname.startsWith("/kachaPurchase") ||
     location.pathname.startsWith("/kachapurchase");
 
+  const showLinkText = !isCollapsed && !isTablet;
+  const showMobileLinkText = isMobile;
+
   return (
     <>
-      {isMobile && (
+      {/* ── Mobile floating toggle (outside sidebar) ── */}
+      {isMobile && !isMobileOpen && (
         <button className="sidebar-toggle" onClick={handleMobileToggle}>
-          {isMobileOpen ? <FaTimes /> : <FaBars />}
+          <FaBars />
         </button>
       )}
 
@@ -314,15 +325,21 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
           isMobileOpen ? "open" : ""
         } ${isMobile ? "mobile" : ""} ${isTablet ? "tablet" : ""}`}
       >
+        {/* ── Sidebar Header ── */}
         <div className="sidebar-header">
           <h2
             className="logo"
             onClick={handleLogoClick}
-            style={{ cursor: isTablet ? "pointer" : "default" }}
+            style={{ cursor: isTablet || isMobile ? "pointer" : "default" }}
           >
-            {isCollapsed || isMobile || isTablet ? "RP" : "RetailPro"}
+            {isCollapsed || isTablet
+              ? "RP"
+              : isMobile
+              ? "RetailPro"
+              : "RetailPro"}
           </h2>
 
+          {/* Desktop collapse button */}
           {!isMobile && !isTablet && (
             <button
               className="sidebar-collapse-btn"
@@ -332,8 +349,13 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
             </button>
           )}
 
+          {/* Mobile close button — sits on the RIGHT matching the hamburger position */}
           {isMobile && isMobileOpen && (
-            <button className="sidebar-close-btn" onClick={handleMobileToggle}>
+            <button
+              className="sidebar-close-btn"
+              onClick={handleMobileToggle}
+              aria-label="Close sidebar"
+            >
               <FaTimes />
             </button>
           )}
@@ -342,7 +364,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
         <nav>
           <ul>
             {menuItems.map((item) => (
-              <li key={item.name}>
+              <li key={item.name || item.path}>
                 {item.subMenu ? (
                   <>
                     <button
@@ -359,8 +381,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
                           location.pathname.startsWith("/sales/")) ||
                         (item.name === "Purchase" && isPurchaseActive) ||
                         (item.name === "Kacha Sales" && isKachaSalesActive) ||
-                        (item.name === "Kacha Purchase" &&
-                          isKachaPurchaseActive)
+                        (item.name === "Kacha Purchase" && isKachaPurchaseActive)
                           ? "active"
                           : ""
                       }`}
@@ -370,7 +391,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
                       }}
                     >
                       <span className="icon">{item.icon}</span>
-                      {!isMobile && !isTablet && !isCollapsed && (
+                      {(showLinkText || showMobileLinkText) && (
                         <>
                           <span className="link-text">{item.name}</span>
                           <span className="dropdown-arrow">
@@ -397,14 +418,12 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
                               to={sub.path}
                               className="submenu-link"
                               onClick={() => {
-                                if (isMobile) {
-                                  setIsMobileOpen(false);
-                                }
+                                if (isMobile) setIsMobileOpen(false);
                               }}
                               end
                             >
                               <span className="submenu-icon">{sub.icon}</span>
-                              {!isMobile && (!isCollapsed || !isTablet) && (
+                              {(showLinkText || showMobileLinkText) && (
                                 <span className="submenu-text">{sub.name}</span>
                               )}
                             </NavLink>
@@ -425,7 +444,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
                     end
                   >
                     <span className="icon">{item.icon}</span>
-                    {!isMobile && (!isCollapsed || !isTablet) && (
+                    {(showLinkText || showMobileLinkText) && (
                       <span className="link-text">{item.name}</span>
                     )}
                   </NavLink>

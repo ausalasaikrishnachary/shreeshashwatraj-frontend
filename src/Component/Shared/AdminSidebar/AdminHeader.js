@@ -12,7 +12,7 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
     "/retailers/add": "Add Contact",
     "/retailersscore": "Score",
     "/staff": "Staff",
-    "/AddProductPage":"Purchase Catalogue",
+    "/AddProductPage": "Purchase Catalogue",
     "/products": "Products",
     "/add-product": "Add Product",
     "/marketing": "Offers & Marketing",
@@ -21,70 +21,61 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
     "/reports": "Reports",
     "/roleaccess": "Role Access",
     "/sales_visit": "Sales Visit",
-    "/sale_items": "Sales Catalogue",
-    "/purchased_items": "Purchased Items",
-    "/purchased_items": "Purchase Items",
     "/sale_items": "Sales Items",
-    "/admin_expensive" : "Expense Requests",
+    "/purchased_items": "Purchase Items",
+    "/admin_expensive": "Expense Requests",
     "/ledger": "Ledger",
     "/sales/create_note": "Sales Credit Note",
     "/purchase/create_note": "Purchase Debit Note",
     "/purchase/create-purchase-invoice": "Create Purchase Invoice",
-    "/kacha_sales" : "kacha Sales Create Invoice",
+    "/kacha_sales": "Kacha Sales Create Invoice",
     "/period": "Order",
-    "/credit-period" : "Credit Period",
-    "/kachareceipts" :" Receipts",
+    "/credit-period": "Credit Period",
+    "/kachareceipts": "Receipts",
     "/sales/receipts": "Receipts",
-   "/sales/invoices": "Sales Invoices Table",
-   "/kachapurchaseinvoicetable": "Kacha Purchases Table",
-   "/kachapurchaseinvoice":"Create Kacha Purchase Invoice",
-   "/kachaPurchasevoucher":"Kacha Purchase Voucher",
-   "/kachacreditenotetable":'Kacha CreditNotes Table',
-   '/kachacreditenote': "Kacha Credit Note",
-   "/kachaeditcreditnote" : "Kacha Edit Credit Note",
-   "/kachadebitnotetable" : "Kacha DebitNotes Table",
-   "/kachadebitnote" :"Kacha Debit Note ",
-   "/kachaeditdebitenote" :"Kacha Edit Debit Note",
-   "/kachacreditview" : "Kacha Credit view",
-   "/kachinvoicetable" :'Kacha Sales Invoices',
-   "/purchase/purchase-invoice" :"Purchase Invoices Table",
-   "/purchase/voucher" :"Payment Management",
-   "/kachareceipts" :"Kacha Receipts Table",
-   "/salesitemspage" :"Sales Catalog",
-   "/sales/createinvoice" :"Create Invoice",
-   '/purchase/debit_note': "Create Purchase DebitNote",
-   "/purchase/debit-note/edit":"Edit Purchase DebitNote",
-   "/sales/credit_note":"Sales CreditNotes Table",
-   "/sales/credit-note/edit":"Edit Sales CreditNote",
-   "/purchase/debit-note":"Purchase DebitNotes Table",
-   "/Purchase/editinvoice":"Purchase Edit Invoice",
-   "/kachapurchaseedit" :"Kacha Purchase Edit Invoice",
-    "/Productionpage" : "Production"
-
+    "/sales/invoices": "Sales Invoices Table",
+    "/kachapurchaseinvoicetable": "Kacha Purchases Table",
+    "/kachapurchaseinvoice": "Create Kacha Purchase Invoice",
+    "/kachaPurchasevoucher": "Kacha Purchase Voucher",
+    "/kachacreditenotetable": "Kacha CreditNotes Table",
+    "/kachacreditenote": "Kacha Credit Note",
+    "/kachaeditcreditnote": "Kacha Edit Credit Note",
+    "/kachadebitnotetable": "Kacha DebitNotes Table",
+    "/kachadebitnote": "Kacha Debit Note",
+    "/kachaeditdebitenote": "Kacha Edit Debit Note",
+    "/kachacreditview": "Kacha Credit View",
+    "/kachinvoicetable": "Kacha Sales Invoices",
+    "/purchase/purchase-invoice": "Purchase Invoices Table",
+    "/purchase/voucher": "Payment Management",
+    "/salesitemspage": "Sales Catalog",
+    "/sales/createinvoice": "Create Invoice",
+    "/purchase/debit_note": "Create Purchase DebitNote",
+    "/purchase/debit-note/edit": "Edit Purchase DebitNote",
+    "/sales/credit_note": "Sales CreditNotes Table",
+    "/sales/credit-note/edit": "Edit Sales CreditNote",
+    "/purchase/debit-note": "Purchase DebitNotes Table",
+    "/Purchase/editinvoice": "Purchase Edit Invoice",
+    "/kachapurchaseedit": "Kacha Purchase Edit Invoice",
+    "/Productionpage": "Production",
   };
 
   const getPageTitle = () => {
-    // Exact match first
     if (pageTitles[location.pathname]) {
       return pageTitles[location.pathname];
     }
-    
-    // Then check for partial matches
     for (const path in pageTitles) {
       if (location.pathname.startsWith(path)) {
         return pageTitles[path];
       }
     }
-    
     return "Dashboard";
   };
 
   return (
-    <header className={`admin-header ${isCollapsed ? "collapsed" : ""}`}>
+    <header className="admin-header">
       <div className="admin-header-content">
         <div className="header-left">
-          {/* Mobile toggle button - show on mobile and tablet */}
-          {(isMobile || window.innerWidth <= 1024) && (
+          {isMobile && (
             <button
               className="header-toggle-btn"
               onClick={onToggleSidebar}
@@ -95,10 +86,9 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
           )}
           <h1 className="page-title">{getPageTitle()}</h1>
         </div>
-        
+
         <div className="header-right">
           <span className="welcome-text">Welcome back, Admin User</span>
-          {/* Add user avatar or other header elements here */}
         </div>
       </div>
     </header>
