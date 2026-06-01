@@ -1,4 +1,4 @@
-/* Receipts.css */
+/* Payment.css */
 .receipts-wrapper,
 .create-receipt-wrapper {
   display: flex;
@@ -24,7 +24,7 @@
   min-height: calc(100vh - 60px);
 }
 
-/* Header Styles */
+/* ===== Header Styles ===== */
 .receipts-header-section,
 .create-receipt-header-section {
   background: white;
@@ -63,7 +63,7 @@
   margin: 0;
 }
 
-/* Tab Navigation */
+/* ===== Tab Navigation ===== */
 .create-receipt-tab-navigation {
   display: flex;
   gap: 8px;
@@ -82,6 +82,7 @@
   color: #6b7280;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .create-receipt-tab--active {
@@ -94,7 +95,7 @@
   background: #e5e7eb;
 }
 
-/* Stats Grid */
+/* ===== Stats Grid ===== */
 .receipts-stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -110,9 +111,9 @@
   border-left: 4px solid #e5e7eb;
 }
 
-.receipts-stat-card--total { border-left-color: #10b981; }
-.receipts-stat-card--cash { border-left-color: #3b82f6; }
-.receipts-stat-card--bank { border-left-color: #f59e0b; }
+.receipts-stat-card--total   { border-left-color: #10b981; }
+.receipts-stat-card--cash    { border-left-color: #3b82f6; }
+.receipts-stat-card--bank    { border-left-color: #f59e0b; }
 .receipts-stat-card--digital { border-left-color: #8b5cf6; }
 
 .receipts-stat-label {
@@ -137,7 +138,7 @@
 .receipts-stat-change--positive { color: #10b981; }
 .receipts-stat-change--negative { color: #ef4444; }
 
-/* Form Styles */
+/* ===== Form Styles ===== */
 .create-receipt-form-container {
   background: white;
   border-radius: 8px;
@@ -165,7 +166,7 @@
   border-top: 1px solid #e5e7eb;
 }
 
-/* Quotation Container */
+/* ===== Quotation Container ===== */
 .quotation-container {
   background: #fff;
   border: 1px solid #d1d1d1;
@@ -182,38 +183,7 @@
   max-width: 250px;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .receipts-main-content,
-  .create-receipt-main-content {
-    margin-left: 0;
-  }
-
-  .receipts-main-content.collapsed,
-  .create-receipt-main-content.collapsed {
-    margin-left: 0;
-  }
-
-  .receipts-header-top,
-  .create-receipt-header-top {
-    flex-direction: column;
-  }
-
-  .receipts-stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .create-receipt-tab-navigation {
-    width: 100%;
-    overflow-x: auto;
-  }
-
-  .receipt-form-actions {
-    flex-direction: column;
-  }
-}
-
-/* Form specific styles */
+/* ===== Form Specific Styles ===== */
 .form-control:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
@@ -225,7 +195,7 @@
   margin-bottom: 8px;
 }
 
-/* Payment method specific styling */
+/* ===== Payment Method Options ===== */
 .payment-method-options {
   display: flex;
   gap: 15px;
@@ -266,8 +236,7 @@
   color: #374151;
 }
 
-
-/* Tabs Section Styles for Receipts */
+/* ===== Receipts Tabs Section ===== */
 .receipts-tabs-section {
   background: white;
   border-radius: 8px;
@@ -307,21 +276,7 @@
   background-color: #eff6ff;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .receipts-tabs-container {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-  }
-  
-  .receipts-tab {
-    padding: 10px 16px;
-    font-size: 13px;
-  }
-}
-
-
-
+/* ===== Custom Amount Input ===== */
 .custom-amount-receipts-table {
   display: flex;
 }
@@ -338,14 +293,14 @@
   border-left: none !important;
 }
 
-
+/* ===== Company Info ===== */
 .company-info-recepits-table {
   display: flex;
-  flex-direction: column; /* Stack vertically */
-  align-items: start;    /* Center horizontally */
-  justify-content: start; /* Center vertically if container has height */
-  text-align: center;     /* Center text */
-  gap: 3px;               /* Small gap between lines */
+  flex-direction: column;
+  align-items: start;
+  justify-content: start;
+  text-align: center;
+  gap: 3px;
 }
 
 .company-info-recepits-table label {
@@ -357,5 +312,388 @@
 .company-info-recepits-table p {
   margin: 0;
   font-size: 15px;
-  line-height: 1.5; /* reduce spacing between lines */
+  line-height: 1.5;
+}
+
+/* ============================================================
+   RESPONSIVE — TABLET  (≤ 1024px)
+   ============================================================ */
+@media (max-width: 1024px) {
+  .receipts-main-content,
+  .create-receipt-main-content {
+    margin-left: 80px;
+  }
+
+  .receipts-main-content.collapsed,
+  .create-receipt-main-content.collapsed {
+    margin-left: 0;
+  }
+
+  .receipts-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .receipts-main-title,
+  .create-receipt-main-title {
+    font-size: 20px;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE — MOBILE  (≤ 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+
+  /* Layout — full width */
+  .receipts-main-content,
+  .create-receipt-main-content,
+  .receipts-main-content.collapsed,
+  .create-receipt-main-content.collapsed {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .receipts-content-area,
+  .create-receipt-content-area {
+    padding: 12px;
+    min-height: calc(100vh - 56px);
+  }
+
+  /* Header */
+  .receipts-header-section,
+  .create-receipt-header-section {
+    padding: 14px 12px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+  }
+
+  .receipts-header-top,
+  .create-receipt-header-top {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .receipts-main-title,
+  .create-receipt-main-title {
+    font-size: 18px;
+  }
+
+  .receipts-subtitle,
+  .create-receipt-subtitle {
+    font-size: 13px;
+  }
+
+  /* Header action buttons — full width row */
+  .receipts-header-top > *:last-child,
+  .create-receipt-header-top > *:last-child {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .receipts-header-top > *:last-child .btn,
+  .create-receipt-header-top > *:last-child .btn {
+    flex: 1 1 auto;
+    min-width: 120px;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  /* Stats — 2 compact columns */
+  .receipts-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .receipts-stat-card {
+    padding: 12px 10px;
+    border-radius: 6px;
+    border-left-width: 3px;
+  }
+
+  .receipts-stat-label {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  .receipts-stat-value {
+    font-size: 17px;
+    margin-bottom: 4px;
+  }
+
+  .receipts-stat-change {
+    font-size: 11px;
+  }
+
+  /* Main tabs — swipe scroll */
+  .receipts-tabs-section {
+    border-radius: 6px;
+    margin-bottom: 14px;
+  }
+
+  .receipts-tabs-container {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .receipts-tabs-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .receipts-tab {
+    padding: 10px 14px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  /* Inner tab nav — swipe scroll */
+  .create-receipt-tab-navigation {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .create-receipt-tab-navigation::-webkit-scrollbar {
+    display: none;
+  }
+
+  .create-receipt-tab {
+    flex-shrink: 0;
+    padding: 7px 12px;
+    font-size: 13px;
+  }
+
+  /* Search bar — full width */
+  .searchbarr {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* Quotation container */
+  .quotation-container {
+    border-radius: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Table — horizontal scroll */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table {
+    min-width: 600px;
+    font-size: 13px;
+  }
+
+  .table thead th {
+    font-size: 12px;
+    padding: 8px 10px;
+    white-space: nowrap;
+  }
+
+  .table tbody td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  /* Form container */
+  .create-receipt-form-container {
+    border-radius: 6px;
+  }
+
+  .receipt-form-section {
+    padding: 14px 0;
+  }
+
+  .receipt-section-title {
+    font-size: 15px;
+    margin-bottom: 14px;
+  }
+
+  /* Form actions — stack & full width */
+  .receipt-form-actions {
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 14px;
+  }
+
+  .receipt-form-actions .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Payment method cards — 2 per row */
+  .payment-method-options {
+    gap: 10px;
+  }
+
+  .payment-method-option {
+    flex: 1 1 calc(50% - 10px);
+    min-width: 100px;
+  }
+
+  .payment-method-card {
+    padding: 10px 8px;
+  }
+
+  .payment-method-icon {
+    font-size: 20px;
+    margin-bottom: 6px;
+  }
+
+  .payment-method-name {
+    font-size: 12px;
+  }
+
+  /* Custom amount input */
+  .custom-amount-receipts-table {
+    width: 100%;
+  }
+
+  .currency-select-receipts-table {
+    width: 35% !important;
+    font-size: 13px !important;
+  }
+
+  .amount-input-receipts-table {
+    width: 65% !important;
+    font-size: 13px !important;
+  }
+
+  /* Company info */
+  .company-info-recepits-table label {
+    font-size: 14px;
+  }
+
+  .company-info-recepits-table p {
+    font-size: 13px;
+  }
+
+  /* Prevent iOS auto-zoom on input focus */
+  .form-control,
+  .form-select,
+  select,
+  input,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  .form-label {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE — SMALL MOBILE  (≤ 480px)
+   ============================================================ */
+@media (max-width: 480px) {
+
+  .receipts-content-area,
+  .create-receipt-content-area {
+    padding: 8px;
+  }
+
+  .receipts-header-section,
+  .create-receipt-header-section {
+    padding: 12px 10px;
+  }
+
+  .receipts-main-title,
+  .create-receipt-main-title {
+    font-size: 16px;
+  }
+
+  /* Stats — tighter 2-column */
+  .receipts-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .receipts-stat-card {
+    padding: 10px 8px;
+  }
+
+  .receipts-stat-value {
+    font-size: 14px;
+  }
+
+  .receipts-stat-label {
+    font-size: 10px;
+  }
+
+  .receipts-stat-change {
+    font-size: 10px;
+  }
+
+  /* Tabs */
+  .receipts-tab {
+    padding: 9px 11px;
+    font-size: 11px;
+  }
+
+  .create-receipt-tab {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* Table */
+  .table {
+    font-size: 11px;
+  }
+
+  .table thead th,
+  .table tbody td {
+    padding: 7px 6px;
+  }
+
+  /* Payment method — single column, horizontal card layout */
+  .payment-method-option {
+    flex: 1 1 100%;
+  }
+
+  .payment-method-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+    padding: 10px 12px;
+  }
+
+  .payment-method-icon {
+    font-size: 18px;
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .payment-method-name {
+    font-size: 13px;
+  }
+
+  /* Form actions */
+  .receipt-form-actions .btn {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+
+  .receipt-section-title {
+    font-size: 14px;
+  }
+
+  /* Company info */
+  .company-info-recepits-table label {
+    font-size: 13px;
+  }
+
+  .company-info-recepits-table p {
+    font-size: 12px;
+  }
 }

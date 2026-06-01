@@ -13,7 +13,7 @@
   padding: 0;
 }
 
-/* GST Type Toggle Switch - Same style as retailers status toggle */
+/* GST Type Toggle Switch */
 .gst-type-toggle {
   display: flex;
   align-items: center;
@@ -77,27 +77,25 @@
   transition: color 0.2s;
 }
 
-.gst-type-toggle .status-text.active {
-  color: #28a745;
-}
+.gst-type-toggle .status-text.active   { color: #28a745; }
+.gst-type-toggle .status-text.inactive { color: #6c757d; }
 
-.gst-type-toggle .status-text.inactive {
-  color: #6c757d;
-}
 .admin-main-content.collapsed {
   margin-left: 80px;
 }
+
 .salesinvoice-edit {
-  display: flex;           
-  flex-direction: column;     
-  gap: 0.4rem;              
-  justify-content: center;  
-  align-items: center;      
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  justify-content: center;
+  align-items: center;
 }
 
 .salesinvoice-edit .btn {
-  font-size: 0.75rem;     
+  font-size: 0.75rem;
 }
+
 .year-select {
   height: 28px !important;
   min-height: 28px !important;
@@ -106,13 +104,10 @@
   line-height: 1.2 !important;
 }
 
-
-
 .admin-content-wrapper-sales {
   flex: 1;
   padding: 20px;
   background-color: #f8f9fa;
-  /* margin-top: 80px; Account for header height */
   min-height: calc(100vh - 80px);
 }
 
@@ -151,111 +146,6 @@
   text-align: center;
 }
 
-/* Fix for the Add button going outside the card */
-.item-section {
-  position: relative;
-  overflow: visible;
-}
-
-
-
-.sales-invoice-add {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  min-width: 80px; /* Ensure minimum width */
-}
-
-.sales-invoice-add-btn {
-  height: 42px;
-  min-width: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-}
-
-.sales-invoice-cancel-btn {
-  height: 42px;
-  min-width: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Ensure the row doesn't overflow */
-.item-section .row.align-items-end {
-  margin-right: -5px; /* Adjust negative margin if needed */
-  margin-left: -5px;
-}
-
-.item-section .col {
-  padding-left: 5px;
-  padding-right: 5px;
-}
-
-/* Specifically target the last column */
-.item-section .col-md-1 {
-  padding-right: 0;
-  padding-left: 5px;
-}
-
-/* If the button is still overflowing, adjust the form container */
-.bg-white.p-4.rounded {
-  overflow: hidden; /* Prevent content from overflowing */
-  position: relative;
-}
-
-/* Make the form controls slightly smaller to fit better */
-.item-section .form-control,
-.item-section .form-select {
-  padding: 0.375rem 0.5rem;
-  font-size: 0.875rem;
-}
-
-/* Responsive fix for smaller screens */
-@media (max-width: 1200px) {
-  .item-section .col-md-1 {
-    flex: 0 0 10%;
-    max-width: 10%;
-  }
-  
-  .item-section .col-md-2 {
-    flex: 0 0 15%;
-    max-width: 15%;
-  }
-}
-
-@media (max-width: 992px) {
-  .item-section .row {
-    flex-wrap: wrap;
-  }
-  
-  .sales-invoice-add {
-    margin-top: 10px;
-    flex-direction: row;
-    width: 100%;
-    justify-content: flex-end;
-  }
-  
-  .sales-invoice-add .btn {
-    width: auto;
-    padding-left: 10px;
-    padding-right: 15px;
-  }
-}
-
-/* If the issue persists, reduce padding on the form container */
-.item-section.bg-white.p-4.rounded {
-  padding: 1rem !important;
-}
-
-/* Ensure the Add button column has enough space */
-.item-section .col-md-1:last-child {
-  padding-right: 0;
-}
-
-
 .invoices-stat-card:hover {
   transform: translateY(-3px);
 }
@@ -277,27 +167,14 @@
   margin-top: 8px;
 }
 
-.invoices-stat-change--positive {
-  color: #28a745;
-}
-
-.invoices-stat-change--negative {
-  color: #dc3545;
-}
+.invoices-stat-change--positive { color: #28a745; }
+.invoices-stat-change--negative { color: #dc3545; }
 
 /* Color Variants */
-.invoices-stat-card--total {
-  border-left: 5px solid #007bff;
-}
-.invoices-stat-card--paid {
-  border-left: 5px solid #28a745;
-}
-.invoices-stat-card--pending {
-  border-left: 5px solid #ffc107;
-}
-.invoices-stat-card--overdue {
-  border-left: 5px solid #dc3545;
-}
+.invoices-stat-card--total   { border-left: 5px solid #007bff; }
+.invoices-stat-card--paid    { border-left: 5px solid #28a745; }
+.invoices-stat-card--pending { border-left: 5px solid #ffc107; }
+.invoices-stat-card--overdue { border-left: 5px solid #dc3545; }
 
 /* ===== Actions Section ===== */
 .invoices-actions-section {
@@ -374,59 +251,67 @@ input.form-control {
   font-weight: 500;
 }
 
-.status-paid {
-  background-color: #d4edda;
-  color: #155724;
+.status-paid    { background-color: #d4edda; color: #155724; }
+.status-pending { background-color: #fff3cd; color: #856404; }
+.status-overdue { background-color: #f8d7da; color: #721c24; }
+
+/* ===== Item Section ===== */
+.item-section {
+  position: relative;
+  overflow: visible;
 }
 
-.status-pending {
-  background-color: #fff3cd;
-  color: #856404;
+.sales-invoice-add {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 80px;
 }
 
-.status-overdue {
-  background-color: #f8d7da;
-  color: #721c24;
+.sales-invoice-add-btn {
+  height: 42px;
+  min-width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
-/* ===== Responsive ===== */
-@media (max-width: 992px) {
-  .admin-content-wrapper {
-    padding: 15px;
-  }
-  .invoices-main-title {
-    font-size: 1.5rem;
-  }
-  .invoices-stats-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+.sales-invoice-cancel-btn {
+  height: 42px;
+  min-width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-@media (max-width: 768px) {
-  .invoices-stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .row.g-3 > .col-md-auto {
-    width: 100%;
-  }
-
-  .d-flex {
-    flex-direction: column;
-  }
-
-  .d-flex select,
-  .d-flex input {
-    margin-bottom: 10px;
-  }
-
-  .btn {
-    width: 100%;
-  }
+.item-section .row.align-items-end {
+  margin-right: -5px;
+  margin-left: -5px;
 }
 
+.item-section .col {
+  padding-left: 5px;
+  padding-right: 5px;
+}
 
-/* Tabs Section Styles */
+.item-section .col-md-1 {
+  padding-right: 0;
+  padding-left: 5px;
+}
+
+.bg-white.p-4.rounded {
+  overflow: hidden;
+  position: relative;
+}
+
+.item-section .form-control,
+.item-section .form-select {
+  padding: 0.375rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* ===== Tabs Section ===== */
 .invoices-tabs-section {
   background: white;
   border-radius: 8px;
@@ -466,49 +351,18 @@ input.form-control {
   background-color: #eff6ff;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .invoices-tabs-container {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-  }
-  
-  .invoices-tab {
-    padding: 10px 16px;
-    font-size: 13px;
-  }
-}
-
-
-/* Invoices.css - Add these styles */
-
+/* ===== Invoice PDF Preview ===== */
 .invoice-pdf-preview {
   font-family: 'Arial', sans-serif;
   line-height: 1.4;
 }
 
-.min-h-100 {
-  min-height: 100px;
-}
+.min-h-100     { min-height: 100px; }
+.company-name  { font-size: 1.5rem; font-weight: bold; }
+.invoice-title { font-size: 1.25rem; font-weight: bold; }
 
-.company-name {
-  font-size: 1.5rem;
-  font-weight: bold;
-}
-
-.invoice-title {
-  font-size: 1.25rem;
-  font-weight: bold;
-}
-
-.items-table th {
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.items-table td {
-  font-size: 0.8rem;
-}
+.items-table th { font-size: 0.75rem; font-weight: 600; }
+.items-table td { font-size: 0.8rem; }
 
 .amount-table td {
   padding: 4px 0;
@@ -525,30 +379,7 @@ input.form-control {
   margin: 20px 0;
 }
 
-/* Print Styles */
-@media print {
-  .modal-header,
-  .modal-footer,
-  .btn {
-    display: none !important;
-  }
-  
-  .modal-body {
-    padding: 0 !important;
-  }
-  
-  .invoice-pdf-preview {
-    box-shadow: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-  
-  body {
-    background: white !important;
-  }
-}
-
-/* Enhanced styling for form */
+/* ===== Enhanced Form Styles ===== */
 .invoice-box {
   border: 1px solid #dee2e6;
   border-radius: 0.375rem;
@@ -559,44 +390,399 @@ input.form-control {
   padding-bottom: 0.5rem;
 }
 
-.table-dark {
-  background-color: #2c3e50 !important;
-}
+.table-dark   { background-color: #2c3e50 !important; }
+.border-primary { border-color: #0d6efd !important; }
 
-.border-primary {
-  border-color: #0d6efd !important;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .invoice-pdf-preview {
-    padding: 10px !important;
-  }
-  
-  .company-name {
-    font-size: 1.25rem;
-  }
-  
-  .items-table {
-    font-size: 0.7rem;
-  }
-}
-
-
-/* Action buttons styling */
+/* ===== Action Buttons ===== */
 .btn-sm {
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
 }
 
-/* Ensure proper spacing for action buttons */
-.d-flex.gap-2 {
-  gap: 0.5rem;
-}
+.d-flex.gap-2 { gap: 0.5rem; }
 
-/* Hover effects for action buttons */
 .btn-outline-primary:hover,
 .btn-outline-danger:hover {
   transform: translateY(-1px);
   transition: all 0.2s ease;
+}
+
+/* ===== Print ===== */
+@media print {
+  .modal-header,
+  .modal-footer,
+  .btn {
+    display: none !important;
+  }
+
+  .modal-body { padding: 0 !important; }
+
+  .invoice-pdf-preview {
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body { background: white !important; }
+}
+
+/* ============================================================
+   RESPONSIVE — TABLET  (≤ 1200px)
+   ============================================================ */
+@media (max-width: 1200px) {
+  .item-section .col-md-1 {
+    flex: 0 0 10%;
+    max-width: 10%;
+  }
+
+  .item-section .col-md-2 {
+    flex: 0 0 15%;
+    max-width: 15%;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE — TABLET  (≤ 992px)
+   ============================================================ */
+@media (max-width: 992px) {
+  .admin-content-wrapper-sales {
+    padding: 15px;
+  }
+
+  .invoices-main-title {
+    font-size: 1.5rem;
+  }
+
+  .invoices-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* Item section row wraps */
+  .item-section .row {
+    flex-wrap: wrap;
+  }
+
+  .sales-invoice-add {
+    margin-top: 10px;
+    flex-direction: row;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .sales-invoice-add .btn {
+    width: auto;
+    padding-left: 10px;
+    padding-right: 15px;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE — MOBILE  (≤ 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+
+  /* Layout — sidebar off-canvas, full width */
+  .admin-main-content,
+  .admin-main-content.collapsed {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .admin-content-wrapper-sales {
+    padding: 12px;
+    min-height: calc(100vh - 56px);
+  }
+
+  /* Header */
+  .invoices-header-section {
+    margin-bottom: 16px;
+  }
+
+  .invoices-main-title {
+    font-size: 1.3rem;
+  }
+
+  .invoices-subtitle {
+    font-size: 0.875rem;
+  }
+
+  /* Stats — 2 columns */
+  .invoices-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .invoices-stat-card {
+    padding: 14px 10px;
+    border-radius: 8px;
+  }
+
+  .invoices-stat-card:hover {
+    transform: none; /* disable lift on touch */
+  }
+
+  .invoices-stat-label {
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+  }
+
+  .invoices-stat-value {
+    font-size: 1.1rem;
+  }
+
+  .invoices-stat-change {
+    font-size: 0.75rem;
+    margin-top: 4px;
+  }
+
+  /* Tabs — horizontal scroll */
+  .invoices-tabs-section {
+    border-radius: 6px;
+    margin-bottom: 14px;
+  }
+
+  .invoices-tabs-container {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .invoices-tabs-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .invoices-tab {
+    padding: 10px 14px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  /* Actions section */
+  .invoices-actions-section {
+    padding: 12px 10px;
+    border-radius: 8px;
+  }
+
+  .invoices-actions-section h5 {
+    font-size: 1rem;
+  }
+
+  /* Filter row — stack vertically */
+  .row.g-3 > .col-md-auto {
+    width: 100%;
+  }
+
+  /* Search / filter inputs full width */
+  .d-flex {
+    flex-direction: column;
+  }
+
+  .d-flex select,
+  .d-flex input {
+    margin-bottom: 10px;
+    width: 100%;
+  }
+
+  /* Buttons full width */
+  .btn {
+    width: 100%;
+  }
+
+  /* Keep action icon buttons inline */
+  .credit-note-table__actions .btn,
+  .salesinvoice-edit .btn,
+  .d-flex.gap-2 .btn {
+    width: auto;
+  }
+
+  /* Year select override */
+  .year-select {
+    width: 100%;
+  }
+
+  /* Quotation container */
+  .quotation-container {
+    border-radius: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Table — horizontal scroll */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table {
+    min-width: 620px;
+    font-size: 13px;
+  }
+
+  .table thead th {
+    font-size: 12px;
+    padding: 9px 8px;
+    white-space: nowrap;
+  }
+
+  .table tbody td {
+    padding: 9px 8px;
+    font-size: 12px;
+  }
+
+  /* Status badges */
+  .status-badge {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+  }
+
+  /* Action buttons — stacked */
+  .salesinvoice-edit {
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .salesinvoice-edit .btn {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.45rem;
+    width: 100%;
+  }
+
+  /* Item section */
+  .item-section.bg-white.p-4.rounded {
+    padding: 0.75rem !important;
+  }
+
+  .sales-invoice-add {
+    flex-direction: row;
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+
+  .sales-invoice-add-btn,
+  .sales-invoice-cancel-btn {
+    height: 38px;
+    font-size: 0.82rem;
+  }
+
+  /* Invoice PDF preview */
+  .invoice-pdf-preview {
+    padding: 10px !important;
+  }
+
+  .company-name {
+    font-size: 1.1rem;
+  }
+
+  .invoice-title {
+    font-size: 1rem;
+  }
+
+  .items-table {
+    font-size: 0.7rem;
+  }
+
+  /* GST toggle */
+  .gst-type-toggle .switch {
+    width: 50px;
+    height: 24px;
+  }
+
+  .gst-type-toggle .slider:before {
+    height: 18px;
+    width: 18px;
+  }
+
+  .gst-type-toggle input:checked + .slider:before {
+    transform: translateX(26px);
+  }
+
+  .gst-type-toggle .status-text {
+    font-size: 12px;
+  }
+
+  /* Form inputs — prevent iOS auto-zoom */
+  .form-control,
+  .form-select,
+  select.form-select,
+  input.form-control {
+    font-size: 16px !important; /* prevents iOS zoom on focus */
+  }
+}
+
+/* ============================================================
+   RESPONSIVE — SMALL MOBILE  (≤ 480px)
+   ============================================================ */
+@media (max-width: 480px) {
+
+  .admin-content-wrapper-sales {
+    padding: 8px;
+  }
+
+  .invoices-main-title {
+    font-size: 1.15rem;
+  }
+
+  /* Stats — single column */
+  .invoices-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .invoices-stat-card {
+    padding: 10px 8px;
+  }
+
+  .invoices-stat-value {
+    font-size: 1rem;
+  }
+
+  .invoices-stat-label {
+    font-size: 0.72rem;
+  }
+
+  .invoices-tab {
+    padding: 9px 11px;
+    font-size: 11px;
+  }
+
+  .invoices-actions-section {
+    padding: 10px 8px;
+  }
+
+  .table {
+    font-size: 11px;
+  }
+
+  .table thead th,
+  .table tbody td {
+    padding: 7px 6px;
+  }
+
+  .status-badge {
+    font-size: 0.68rem;
+    padding: 2px 6px;
+  }
+
+  .btn-sm {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .salesinvoice-edit .btn {
+    font-size: 0.65rem;
+    padding: 0.18rem 0.35rem;
+  }
+
+  .invoice-pdf-preview {
+    padding: 6px !important;
+  }
+
+  .company-name {
+    font-size: 1rem;
+  }
 }
