@@ -1,3 +1,6 @@
+/* PurchaseInvoice.css */
+
+/* ===== Layout ===== */
 .admin-layout {
   display: flex;
   min-height: 100vh;
@@ -17,7 +20,8 @@
 .admin-content-wrapper {
   padding: 20px;
 }
-.purchase-invoice-add{
+
+.purchase-invoice-add {
   width: 50px !important;
 }
 
@@ -26,7 +30,7 @@
   min-height: calc(100vh - 80px);
 }
 
-/* Navigation Tabs */
+/* ===== Navigation Tabs ===== */
 .purchase-invoice-tabs-section {
   background: white;
   border-radius: 10px 10px 0 0;
@@ -66,13 +70,12 @@
   background-color: #f8f9fa;
 }
 
+/* ===== Header Section ===== */
 .purchase-invoice-header-section {
   background: white;
   margin-top: 20px;
-  /* border-radius: 0 0 10px 10px; */
   padding: 25px;
   margin-bottom: 24px;
-  /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); */
 }
 
 .purchase-invoice-header-top {
@@ -98,7 +101,7 @@
   margin-bottom: 0;
 }
 
-/* Stats Grid */
+/* ===== Stats Grid ===== */
 .purchase-invoice-stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -114,21 +117,10 @@
   border-left: 4px solid #007bff;
 }
 
-.purchase-invoice-stat-card--total {
-  border-left-color: #007bff;
-}
-
-.purchase-invoice-stat-card--paid {
-  border-left-color: #28a745;
-}
-
-.purchase-invoice-stat-card--pending {
-  border-left-color: #ffc107;
-}
-
-.purchase-invoice-stat-card--overdue {
-  border-left-color: #dc3545;
-}
+.purchase-invoice-stat-card--total   { border-left-color: #007bff; }
+.purchase-invoice-stat-card--paid    { border-left-color: #28a745; }
+.purchase-invoice-stat-card--pending { border-left-color: #ffc107; }
+.purchase-invoice-stat-card--overdue { border-left-color: #dc3545; }
 
 .purchase-invoice-stat-label {
   font-size: 14px;
@@ -146,20 +138,11 @@
   margin-bottom: 8px;
 }
 
-.purchase-invoice-stat-change {
-  font-size: 12px;
-  font-weight: 500;
-}
+.purchase-invoice-stat-change          { font-size: 12px; font-weight: 500; }
+.purchase-invoice-stat-change--positive { color: #28a745; }
+.purchase-invoice-stat-change--negative { color: #dc3545; }
 
-.purchase-invoice-stat-change--positive {
-  color: #28a745;
-}
-
-.purchase-invoice-stat-change--negative {
-  color: #dc3545;
-}
-
-/* Actions Section */
+/* ===== Actions Section ===== */
 .purchase-invoice-actions-section {
   background: white;
   border-radius: 10px;
@@ -171,26 +154,28 @@
   background: white;
 }
 
-/* Form Controls */
+/* ===== Form Controls ===== */
 .form-label {
   font-weight: 600;
   color: #495057;
   font-size: 14px;
 }
 
-.form-select, .form-control {
+.form-select,
+.form-control {
   border: 1px solid #dee2e6;
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 14px;
 }
 
-.form-select:focus, .form-control:focus {
+.form-select:focus,
+.form-control:focus {
   border-color: #007bff;
   box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
 }
 
-/* Buttons */
+/* ===== Buttons ===== */
 .btn {
   border-radius: 6px;
   font-weight: 500;
@@ -199,107 +184,320 @@
   transition: all 0.2s ease;
 }
 
-.btn-success {
-  background-color: #28a745;
-  border-color: #28a745;
-}
+.btn-success          { background-color: #28a745; border-color: #28a745; }
+.btn-success:hover    { background-color: #218838; border-color: #1e7e34; }
+.btn-info             { background-color: #17a2b8; border-color: #17a2b8; }
+.btn-info:hover       { background-color: #138496; border-color: #117a8b; }
+.btn-primary          { background-color: #007bff; border-color: #007bff; }
+.btn-primary:hover    { background-color: #0056b3; border-color: #004085; }
+.btn-sm               { padding: 4px 12px; font-size: 12px; }
 
-.btn-success:hover {
-  background-color: #218838;
-  border-color: #1e7e34;
-}
+/* ============================================================
+   RESPONSIVE — TABLET  (≤ 1024px)
+   ============================================================ */
+@media (max-width: 1024px) {
+  .admin-main-content         { margin-left: 80px; }
+  .admin-main-content.collapsed { margin-left: 0; }
 
-.btn-info {
-  background-color: #17a2b8;
-  border-color: #17a2b8;
-}
-
-.btn-info:hover {
-  background-color: #138496;
-  border-color: #117a8b;
-}
-
-.btn-primary {
-  background-color: #007bff;
-  border-color: #007bff;
-}
-
-.btn-primary:hover {
-  background-color: #0056b3;
-  border-color: #004085;
-}
-
-.btn-sm {
-  padding: 4px 12px;
-  font-size: 12px;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .admin-main-content {
-    margin-left: 0;
-  }
-  
-  .admin-main-content.collapsed {
-    margin-left: 0;
-  }
-  
-  .admin-content-wrapper {
-    padding: 15px;
-  }
-  
   .purchase-invoice-stats-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .purchase-invoice-header-top {
-    flex-direction: column;
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
   }
-  
-  .purchase-invoice-tabs-container {
-    flex-wrap: wrap;
+
+  .purchase-invoice-main-title {
+    font-size: 24px;
   }
-  
+
+  .purchase-invoice-tabs-section {
+    padding: 0 16px;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE — MOBILE  (≤ 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+
+  /* Layout — full width */
+  .admin-main-content,
+  .admin-main-content.collapsed {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .admin-content-wrapper {
+    padding: 12px;
+  }
+
+  .purchase-invoice-content-area {
+    min-height: calc(100vh - 56px);
+  }
+
+  /* Tabs — horizontal swipe scroll */
+  .purchase-invoice-tabs-section {
+    padding: 0 12px;
+    border-radius: 8px 8px 0 0;
+  }
+
+  .purchase-invoice-tabs-container {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .purchase-invoice-tabs-container::-webkit-scrollbar {
+    display: none;
+  }
+
   .purchase-invoice-tab {
-    flex: 1;
-    min-width: 120px;
-    text-align: center;
+    flex-shrink: 0;
     padding: 12px 16px;
     font-size: 13px;
+    /* remove the wrapping & centering — let tabs scroll */
+    flex: unset;
+    min-width: unset;
+    text-align: left;
   }
-  
+
+  /* Header */
+  .purchase-invoice-header-section {
+    margin-top: 12px;
+    padding: 16px 14px;
+    margin-bottom: 14px;
+  }
+
+  .purchase-invoice-header-top {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .purchase-invoice-main-title {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  .purchase-invoice-subtitle {
+    font-size: 14px;
+  }
+
+  /* Header action buttons — full width */
+  .purchase-invoice-header-top > *:last-child {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .purchase-invoice-header-top > *:last-child .btn {
+    flex: 1 1 auto;
+    min-width: 120px;
+    text-align: center;
+  }
+
+  /* Stats — 2-column compact */
+  .purchase-invoice-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .purchase-invoice-stat-card {
+    padding: 14px 12px;
+    border-radius: 8px;
+    border-left-width: 3px;
+  }
+
+  .purchase-invoice-stat-label {
+    font-size: 11px;
+    margin-bottom: 5px;
+    letter-spacing: 0.3px;
+  }
+
+  .purchase-invoice-stat-value {
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+
+  .purchase-invoice-stat-change {
+    font-size: 11px;
+  }
+
+  /* Actions section */
+  .purchase-invoice-actions-section {
+    border-radius: 8px;
+  }
+
+  /* Filter row — stack vertically */
   .row.align-items-end {
     flex-direction: column;
     align-items: stretch !important;
   }
-  
+
   .col-md-auto {
     width: 100%;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
   }
-  
+
   .d-flex {
     flex-direction: column;
     gap: 8px;
   }
-  
+
   .me-2 {
     margin-right: 0 !important;
   }
+
+  /* Buttons — full width */
+  .btn {
+    width: 100%;
+    padding: 9px 16px;
+  }
+
+  /* Keep inline action / icon buttons auto-width */
+  .btn-sm,
+  .btn-outline-primary,
+  .btn-outline-danger,
+  .btn-outline-secondary,
+  .btn-outline-warning,
+  .btn-outline-info,
+  .d-flex.gap-2 .btn {
+    width: auto !important;
+  }
+
+  /* Quotation container */
+  .quotation-container {
+    border-radius: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Table — horizontal scroll */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table {
+    min-width: 620px;
+    font-size: 13px;
+  }
+
+  .table thead th {
+    font-size: 12px;
+    padding: 9px 10px;
+    white-space: nowrap;
+  }
+
+  .table tbody td {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+
+  /* purchase-invoice-add col */
+  .purchase-invoice-add {
+    width: 100% !important;
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+
+  .purchase-invoice-add .btn {
+    width: auto !important;
+    flex: 1 1 auto;
+  }
+
+  /* Form inputs — prevent iOS auto-zoom */
+  .form-control,
+  .form-select,
+  select,
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  textarea {
+    font-size: 16px !important;
+  }
+
+  .form-label {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
 }
 
+/* ============================================================
+   RESPONSIVE — SMALL MOBILE  (≤ 576px)
+   ============================================================ */
 @media (max-width: 576px) {
-  .purchase-invoice-main-title {
-    font-size: 24px;
+
+  .admin-content-wrapper {
+    padding: 8px;
   }
-  
-  .purchase-invoice-stat-value {
-    font-size: 20px;
+
+  /* Tabs */
+  .purchase-invoice-tabs-section {
+    padding: 0 8px;
   }
-  
+
   .purchase-invoice-tab {
-    padding: 10px 12px;
+    padding: 10px 13px;
     font-size: 12px;
+  }
+
+  /* Header */
+  .purchase-invoice-header-section {
+    padding: 12px 10px;
+    margin-top: 8px;
+    margin-bottom: 10px;
+  }
+
+  .purchase-invoice-main-title {
+    font-size: 17px;
+  }
+
+  .purchase-invoice-subtitle {
+    font-size: 13px;
+  }
+
+  /* Stats — tighter 2-column */
+  .purchase-invoice-stats-grid {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .purchase-invoice-stat-card {
+    padding: 11px 9px;
+  }
+
+  .purchase-invoice-stat-value {
+    font-size: 16px;
+  }
+
+  .purchase-invoice-stat-label {
+    font-size: 10px;
+  }
+
+  .purchase-invoice-stat-change {
+    font-size: 10px;
+  }
+
+  /* Table */
+  .table {
+    font-size: 11px;
+  }
+
+  .table thead th,
+  .table tbody td {
+    padding: 7px 7px;
+  }
+
+  .btn {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+
+  .btn-sm {
+    font-size: 11px;
+    padding: 3px 10px;
   }
 }
