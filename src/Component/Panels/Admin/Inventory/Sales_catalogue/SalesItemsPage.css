@@ -1,0 +1,357 @@
+/* ============================================================
+   SalesItemsPage.css  –  Add / Edit Product Form
+   Mobile-first: all fields stack to a single column on small screens
+   ============================================================ */
+
+/* ── Base form wrapper ── */
+.purchased-items-wrapper {
+  padding: 0 8px;
+}
+
+.purchased-items-wrapper .content-wrapper {
+  padding: 0;
+}
+
+/* ── Section headings inside the form ── */
+.purchased-items-wrapper h3 {
+  font-size: 1.25rem;
+}
+
+/* ── Image upload area ── */
+.purchased-items-wrapper .border.border-dark {
+  border-radius: 6px;
+}
+
+/* ── Action icon (shared with SalesItems, kept here for the page too) ── */
+.purchased-items-wrapper .action-icon {
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+/* ── Barcode centering ── */
+.purchased-items-wrapper svg[id^="barcode"] {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Product image card body text: always readable size ── */
+.purchased-items-wrapper .card-body small {
+  font-size: 13px !important;
+}
+
+/* ============================================================
+   TABLET  (≤ 992px)
+   Two-column grid stays but gets a bit more breathing room
+   ============================================================ */
+@media (max-width: 992px) {
+  .purchased-items-wrapper .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* Make sure row cols don't overflow */
+  .purchased-items-wrapper .row > .col,
+  .purchased-items-wrapper .row > [class*="col-"] {
+    margin-bottom: 12px;
+  }
+}
+
+/* ============================================================
+   MOBILE  (≤ 768px)
+   Every field gets its own full-width row (single column)
+   ============================================================ */
+@media (max-width: 768px) {
+
+  /* ── Full-width container ── */
+  .purchased-items-wrapper .container {
+    padding-left: 8px;
+    padding-right: 8px;
+    max-width: 100%;
+  }
+
+  /* ── Force every Bootstrap column to full width ── */
+  .purchased-items-wrapper .row {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+
+  .purchased-items-wrapper .row > .col,
+  .purchased-items-wrapper .row > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-bottom: 14px !important;
+  }
+
+  /* ── Inputs, selects, textareas ── */
+  .purchased-items-wrapper .form-control,
+  .purchased-items-wrapper .form-select {
+    font-size: 14px;
+    padding: 8px 10px;
+    width: 100% !important;
+  }
+
+  /* ── Inline button (+ add category/company/unit) ── */
+  .purchased-items-wrapper .d-flex > .form-select,
+  .purchased-items-wrapper .d-flex > .form-control {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .purchased-items-wrapper .d-flex > .btn {
+    flex-shrink: 0;
+  }
+
+  /* ── Form labels ── */
+  .purchased-items-wrapper .form-label {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  /* ── Form helper text ── */
+  .purchased-items-wrapper .form-text {
+    font-size: 11px;
+  }
+
+  /* ── Page heading ── */
+  .purchased-items-wrapper h3.text-center {
+    font-size: 1.1rem;
+    margin-bottom: 16px !important;
+  }
+
+  /* ── Section headings (Batch Details, Product Images) ── */
+  .purchased-items-wrapper .border.border-dark h5 {
+    font-size: 1rem;
+    margin-bottom: 12px;
+  }
+
+  /* ── Image grid: 2 per row on mobile ── */
+  .purchased-items-wrapper .row > .col-md-3,
+  .purchased-items-wrapper .row > .col-sm-4,
+  .purchased-items-wrapper .row > .col-6 {
+    flex: 0 0 50% !important;
+    max-width: 50% !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  /* ── Image thumbnail height ── */
+  .purchased-items-wrapper .card-img-top {
+    height: 110px !important;
+  }
+
+  /* ── Image card body text: fix tiny font on mobile ── */
+  .purchased-items-wrapper .card-body {
+    padding: 6px !important;
+  }
+  .purchased-items-wrapper .card-body small {
+    font-size: 12px !important;
+  }
+
+  /* ── Image upload row (file input + browse button) ── */
+  .purchased-items-wrapper .d-flex.align-items-center > .form-control[type="file"] {
+    font-size: 12px;
+  }
+
+  /* ── Batch section rows ── */
+  .purchased-items-wrapper .border.p-2 .row {
+    flex-direction: column !important;
+  }
+
+  .purchased-items-wrapper .border.p-2 .row > .col-md-4,
+  .purchased-items-wrapper .border.p-2 .row > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* ── Barcode shrink ── */
+  .purchased-items-wrapper svg[id^="barcode"] {
+    transform: scale(0.85);
+    transform-origin: left center;
+  }
+
+  /* ── Submit / Cancel buttons: stack and fill ── */
+  .purchased-items-wrapper .d-flex.justify-content-end {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px;
+  }
+
+  .purchased-items-wrapper .d-flex.justify-content-end .btn {
+    width: 100% !important;
+    margin: 0 !important;
+    font-size: 15px;
+    padding: 10px;
+  }
+
+  /* ── Add Batch button ── */
+  .purchased-items-wrapper .border.border-dark > .btn {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  /* ── Checkbox row: keep inline ── */
+  .purchased-items-wrapper .form-check {
+    margin-top: 8px !important;
+  }
+
+  /* ── Alert banner ── */
+  .purchased-items-wrapper + div .alert,
+  .purchased-items-wrapper .alert {
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+
+  /* ── Spinner loading screen ── */
+  .purchased-items-wrapper .d-flex.justify-content-center span {
+    font-size: 14px;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     ADD SERVICE MODAL – mobile single column
+     Targets Bootstrap modal body inside any modal that contains
+     the service/purchased-items form fields
+     ══════════════════════════════════════════════════════════ */
+
+  /* Modal: full-width on mobile */
+  .modal-dialog {
+    margin: 8px !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+
+  .modal-content {
+    border-radius: 8px;
+  }
+
+  /* Modal body padding tighter */
+  .modal-body {
+    padding: 12px !important;
+  }
+
+  /* Modal form rows → single column */
+  .modal-body .row {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+
+  .modal-body .row > .col,
+  .modal-body .row > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* Modal inputs/selects */
+  .modal-body .form-control,
+  .modal-body .form-select {
+    font-size: 14px;
+    padding: 8px 10px;
+    width: 100% !important;
+  }
+
+  /* Modal inline + buttons (add category etc.) */
+  .modal-body .d-flex > .form-select,
+  .modal-body .d-flex > .form-control {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .modal-body .d-flex > .btn {
+    flex-shrink: 0;
+  }
+
+  .modal-body .form-label {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  /* Modal footer buttons: stack */
+  .modal-footer {
+    flex-direction: column !important;
+    gap: 8px;
+    padding: 10px 12px !important;
+  }
+
+  .modal-footer .btn {
+    width: 100% !important;
+    margin: 0 !important;
+    font-size: 15px;
+    padding: 10px;
+  }
+}
+
+/* ============================================================
+   SMALL MOBILE  (≤ 480px)
+   Tighten up further
+   ============================================================ */
+@media (max-width: 480px) {
+
+  .purchased-items-wrapper .container {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .purchased-items-wrapper .form-control,
+  .purchased-items-wrapper .form-select {
+    font-size: 13px;
+  }
+
+  .purchased-items-wrapper h3.text-center {
+    font-size: 1rem;
+  }
+
+  /* Image grid: 1 per row on very small screens */
+  .purchased-items-wrapper .row > .col-md-3,
+  .purchased-items-wrapper .row > .col-sm-4,
+  .purchased-items-wrapper .row > .col-6 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Image card body text on very small screens */
+  .purchased-items-wrapper .card-body small {
+    font-size: 11px !important;
+  }
+
+  /* Tighter batch section padding */
+  .purchased-items-wrapper .border.p-2 {
+    padding: 8px !important;
+  }
+
+  /* Remove batch button: full width */
+  .purchased-items-wrapper .border.p-2 .text-end .btn {
+    width: 100%;
+  }
+
+  /* Barcode: no scale transform needed, just constrain */
+  .purchased-items-wrapper svg[id^="barcode"] {
+    transform: none;
+    max-width: 100%;
+  }
+
+  /* Modal even tighter on very small screens */
+  .modal-dialog {
+    margin: 4px !important;
+    max-width: calc(100vw - 8px) !important;
+  }
+
+  .modal-body {
+    padding: 8px !important;
+  }
+
+  .modal-body .form-control,
+  .modal-body .form-select {
+    font-size: 13px;
+  }
+}
