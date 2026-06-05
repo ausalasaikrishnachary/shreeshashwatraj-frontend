@@ -154,6 +154,9 @@ import Jrtable from "./Component/Panels/Admin/Jr/Jrtable";
 import PaymentTable from "./Component/Panels/Admin/Payment/PaymentTable";
 import Bulkreceipts_payments from "./Component/Panels/Admin/Receipts_Paymentsbulk/Bulkreceipts_payments";
 import BankStatementTable from "./Component/Panels/Admin/Receipts_Paymentsbulk/BankStatementTable";
+import GSPTokenManager from "./Component/GSPTokenManager";
+import EInvoiceView from "./Component/Panels/Admin/SalesInvoicePage/EInvoiceView";
+import IRNGenerator from "./Component/Panels/Admin/SalesInvoicePage/IRNGenerator";
 
 function App() {
   return (
@@ -174,6 +177,20 @@ function App() {
               </PrivateRoute>
             }
           />
+
+
+          <Route
+            path="/gsp"
+            element={
+              <PrivateRoute allowedRoles={["admin"]}>
+                <GSPTokenManager />
+              </PrivateRoute>
+            }
+          />
+
+          
+
+
           <Route
             path="/staffdashboard"
             element={
@@ -382,6 +399,27 @@ function App() {
               </PrivateRoute>
             }
           />
+
+          
+          <Route
+            path="/einvoice/:id?"
+            element={
+              <PrivateRoute allowedRoles={["admin"]}>
+                <EInvoiceView />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/irn-generator"
+            element={
+              <PrivateRoute allowedRoles={["admin"]}>
+                <IRNGenerator />
+              </PrivateRoute>
+            }
+          />
+
+
           <Route
             path="/purchase/invoice-preview/:id"
             element={
@@ -1416,7 +1454,7 @@ function App() {
               </PrivateRoute>
             }
           />
-            <Route
+          <Route
             path="/bulkreceipts_payments"
             element={
               <PrivateRoute allowedRoles={["admin"]}>
@@ -1424,7 +1462,7 @@ function App() {
               </PrivateRoute>
             }
           />
-            <Route
+          <Route
             path="/BankStatementTable"
             element={
               <PrivateRoute allowedRoles={["admin"]}>

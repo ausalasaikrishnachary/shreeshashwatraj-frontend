@@ -102,6 +102,159 @@ const InvoicePDFPreview = () => {
   });
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
+  const [showEInvoiceModal, setShowEInvoiceModal] = useState(false);
+const [einvoiceData, setEinvoiceData] = useState(null);
+
+// Add this function to generate e-invoice data
+const generateEInvoiceData = () => {
+  if (!currentData) return null;
+  
+  const gstBreakdown = calculateGSTBreakdown();
+  
+  // Create comprehensive invoice JSON data
+  const einvoiceJson = {
+    invoice: {
+      invoiceNumber: currentData.invoiceNumber,
+      invoiceDate: currentData.invoiceDate,
+      validityDate: currentData.validityDate,
+      documentType: currentData.document_type || "Sales Invoice",
+      voucherId: currentData.voucherId
+    },
+    companyInfo: {
+      name: currentData.companyInfo.name,
+      address: currentData.companyInfo.address,
+      email: currentData.companyInfo.email,
+      phone: currentData.companyInfo.phone,
+      gstin: currentData.companyInfo.gstin,
+      state: currentData.companyInfo.state,
+      stateCode: currentData.companyInfo.stateCode
+    },
+    customerInfo: {
+      name: currentData.supplierInfo.name,
+      businessName: currentData.supplierInfo.business_name || "",
+      gstin: currentData.supplierInfo.gstin || "",
+      state: currentData.supplierInfo.state || "",
+      mobileNumber: currentData.supplierInfo.mobile_number || "",
+      email: currentData.supplierInfo.email || "",
+      customerId: currentData.supplierInfo.id
+    },
+    billingAddress: {
+      addressLine1: currentData.billingAddress.addressLine1,
+      addressLine2: currentData.billingAddress.addressLine2,
+      city: currentData.billingAddress.city,
+      pincode: currentData.billingAddress.pincode,
+      state: currentData.billingAddress.state
+    },
+    shippingAddress: {
+      addressLine1: currentData.shippingAddress.addressLine1,
+      addressLine2: currentData.shippingAddress.addressLine2,
+      city: currentData.shippingAddress.city,
+      pincode: currentData.shippingAddress.pincode,
+      state: currentData.shippingAddress.state
+    },
+    items: currentData.items.map((item, index) => ({
+      slNo: index + 1,
+      product: item.product,
+      productId: item.product_id,
+      description: item.description,
+      hsnCode: item.hsn_code,
+      quantity: parseFloat(item.quantity),
+      unit: unitData[item.unit_id] || item.unit_name || "",
+      price: parseFloat(item.price),
+      originalPrice: parseFloat(item.original_price),
+      discount: parseFloat(item.discount),
+      gstPercentage: parseFloat(item.gst),
+      cgstPercentage: parseFloat(item.cgst),
+      sgstPercentage: parseFloat(item.sgst),
+      igstPercentage: parseFloat(item.igst),
+      cess: parseFloat(item.cess),
+      taxableAmount: (parseFloat(item.quantity) * parseFloat(item.price)).toFixed(2),
+      discountAmount: ((parseFloat(item.quantity) * parseFloat(item.price)) * (parseFloat(item.discount) / 100)).toFixed(2),
+      gstAmount: ((parseFloat(item.quantity) * parseFloat(item.price) * (1 - parseFloat(item.discount) / 100)) * (parseFloat(item.gst) / 100)).toFixed(2),
+      totalAmount: parseFloat(item.total)
+    })),
+    financialSummary: {
+      taxableAmount: parseFloat(currentData.taxableAmount),
+      totalCGST: parseFloat(gstBreakdown.totalCGST),
+      totalSGST: parseFloat(gstBreakdown.totalSGST),
+      totalIGST: parseFloat(gstBreakdown.totalIGST),
+      totalGST: parseFloat(currentData.totalGST),
+      additionalCharges: currentData.additionalCharge || "",
+      additionalChargesAmount: parseFloat(currentData.additionalChargeAmount) || 0,
+      roundOff: parseFloat(currentData.roundOff) || 0,
+      grandTotal: parseFloat(currentData.grandTotal)
+    },
+    paymentInfo: paymentData ? {
+      totalPaid: paymentData.summary.totalPaid,
+      totalCreditNotes: paymentData.summary.totalCreditNotes,
+      balanceDue: paymentData.summary.balanceDue,
+      status: paymentData.summary.status,
+      receipts: paymentData.receipts || [],
+      creditNotes: paymentData.creditnotes || []
+    } : null,
+    transportDetails: {
+      transport: currentData.transportDetails?.transport || "",
+      grNumber: currentData.transportDetails?.grNumber || "",
+      vehicleNo: currentData.transportDetails?.vehicleNo || "",
+      station: currentData.transportDetails?.station || ""
+    },
+    additionalInfo: {
+      note: currentData.note || "",
+      assignedStaff: currentData.assigned_staff || "",
+      bb_bc: currentData.bb_bc || "b2b",
+      taxType: currentData.taxType || "CGST/SGST"
+    },
+    generatedOn: new Date().toISOString(),
+    generatedBy: "Invoice System"
+  };
+  
+  return einvoiceJson;
+};
+
+
+// Replace the existing handleEInvoice function with:
+// const handleEInvoice = () => {
+//   try {
+//     if (!currentData) {
+//       alert("No invoice data available");
+//       return;
+//     }
+    
+//     // Navigate to e-invoice page with data
+//     navigate('/einvoice', { 
+//       state: { 
+//         invoiceData: currentData,
+//         invoiceId: currentData.voucherId 
+//       } 
+//     });
+//   } catch (error) {
+//     console.error("Error opening e-invoice:", error);
+//     alert("Error opening e-invoice: " + error.message);
+//   }
+// };
+
+// In your invoice component, update the handleEInvoice function:
+const handleEInvoice = () => {
+  try {
+    if (!currentData) {
+      alert("No invoice data available");
+      return;
+    }
+    
+    // Generate e-invoice JSON data
+    const einvoiceJson = generateEInvoiceData();
+    
+    // Navigate to IRN generator with e-invoice data
+    navigate('/irn-generator', { 
+      state: { 
+        einvoiceData: einvoiceJson 
+      } 
+    });
+  } catch (error) {
+    console.error("Error opening e-invoice:", error);
+    alert("Error opening e-invoice: " + error.message);
+  }
+};
 
 const fetchCompanyInfo = async () => {
   try {
@@ -2078,6 +2231,16 @@ useEffect(() => {
                       </>
                     )}
                   </Button>
+
+                  {/* NEW E-INVOICE BUTTON */}
+    <Button
+      variant="primary"
+      onClick={handleEInvoice}
+      className="me-2"
+      style={{ backgroundColor: '#6f42c1', borderColor: '#6f42c1' }}
+    >
+      <FaReceipt className="me-1" /> E-Invoice
+    </Button>
 
                   <Button
                     variant="secondary"

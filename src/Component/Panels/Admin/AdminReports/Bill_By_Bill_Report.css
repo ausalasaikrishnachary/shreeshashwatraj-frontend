@@ -156,7 +156,7 @@
 .modal-content {
   background: white;
   border-radius: 8px;
-  width: 90%;
+  /* width: 90%; */
   max-width: 1000px;
   max-height: 80vh;
   overflow: auto;

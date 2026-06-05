@@ -239,8 +239,8 @@ const [isSubmitting, setIsSubmitting] = useState(false);
       try {
         const response = await axios.post(`${baseurl}/gstin-details`, { gstin });
 
-        if (response.data.success && response.data.result) {
-          const result = response.data.result;
+       if (response.data.success && response.data.data) {
+  const result = response.data.data;
 
           console.log("GSTIN API Response:", result);
 
@@ -249,31 +249,52 @@ const [isSubmitting, setIsSubmitting] = useState(false);
           const address = result.pradr?.addr || {};
 
           // Build address lines
-          const addressLine1 = [address.bno, address.bnm, address.st].filter(Boolean).join(', ');
-          const addressLine2 = [address.loc, address.dst].filter(Boolean).join(', ');
+          // const addressLine1 = [address.bno, address.bnm, address.st].filter(Boolean).join(', ');
+          // const addressLine2 = [address.loc, address.dst].filter(Boolean).join(', ');
 
           // Get state name from state code
           const stateName = getStateName(result.stjCd || address.stcd);
 
-          setFormData(prev => ({
-            ...prev,
-            gst_registered_name: result.lgnm || '',
-            business_name: businessName,
-            additional_business_name: result.tradeNam || '',
-            display_name: businessName,
-            shipping_address_line1: addressLine1 || '',
-            shipping_address_line2: addressLine2 || '',
-            shipping_city: address.loc || address.dst || '',
-            shipping_pin_code: address.pncd || '',
-            shipping_state: stateName,
-            shipping_country: 'India',
-            billing_address_line1: addressLine1 || '',
-            billing_address_line2: addressLine2 || '',
-            billing_city: address.loc || address.dst || '',
-            billing_pin_code: address.pncd || '',
-            billing_state: stateName,
-            billing_country: 'India'
-          }));
+const gstData = result.raw || {};
+
+const addressLine1 = [
+  gstData.AddrBno,
+  gstData.AddrFlno
+].filter(Boolean).join(', ');
+
+const addressLine2 = [
+  gstData.AddrLoc,
+  gstData.AddrSt
+].filter(Boolean).join(', ');
+
+const stateObj = getStateByCode(String(gstData.StateCode).padStart(2, '0'));
+
+setFormData(prev => ({
+  ...prev,
+
+  gst_registered_name: gstData.LegalName || '',
+  business_name: gstData.TradeName || '',
+  additional_business_name: gstData.TradeName || '',
+  display_name: gstData.TradeName || gstData.LegalName || '',
+
+  shipping_address_line1: addressLine1,
+  shipping_address_line2: addressLine2,
+  shipping_city: gstData.AddrLoc || '',
+  shipping_pin_code: gstData.AddrPncd || '',
+  shipping_state: stateObj?.name || '',
+  shipping_state_code: String(gstData.StateCode).padStart(2, '0'),
+  shipping_country: 'India',
+
+  billing_address_line1: addressLine1,
+  billing_address_line2: addressLine2,
+  billing_city: gstData.AddrLoc || '',
+  billing_pin_code: gstData.AddrPncd || '',
+  billing_state: stateObj?.name || '',
+  billing_state_code: String(gstData.StateCode).padStart(2, '0'),
+  billing_country: 'India'
+}));
+
+setSameAsShipping(true);
 
           setSameAsShipping(true);
         } else {

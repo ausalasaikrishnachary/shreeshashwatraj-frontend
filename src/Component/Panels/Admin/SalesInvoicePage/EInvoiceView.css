@@ -1,0 +1,23 @@
+.einvoice-view-page {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+
+.einvoice-header {
+  border-bottom: 3px solid #667eea;
+}
+
+@media print {
+  .einvoice-view-page {
+    background: white;
+  }
+  
+  .btn {
+    display: none !important;
+  }
+  
+  .card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

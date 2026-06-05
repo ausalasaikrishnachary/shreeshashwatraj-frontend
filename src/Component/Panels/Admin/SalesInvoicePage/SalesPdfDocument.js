@@ -465,16 +465,16 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
             {/* ── Header row ── */}
             <View style={[styles.tableRow, styles.tableHeader]}>
               <View style={styles.colSNo}>
-                <Text style={[styles.tableCellHeader, styles.tableCellCenter]}>#</Text>
+                <Text style={[styles.tableCellHeader, styles.tableCellCenter]}>SNo</Text>
               </View>
               <View style={styles.colProduct}>
-                <Text style={[styles.tableCellHeader, styles.tableCellLeft]}>Product</Text>
+                <Text style={[styles.tableCellHeader, styles.tableCellLeft]}>Description of Goods </Text>
               </View>
               <View style={styles.colHsn}>
                 <Text style={[styles.tableCellHeader, styles.tableCellCenter]}>HSN</Text>
               </View>
               <View style={styles.colQuantity}>
-                <Text style={[styles.tableCellHeader, styles.tableCellCenter]}>Units</Text>
+                <Text style={[styles.tableCellHeader, styles.tableCellCenter]}>Qty</Text>
               </View>
               <View style={styles.colRateIncl}>
                 <Text style={[styles.tableCellHeader, styles.tableCellRight]}>Rate (Incl)</Text>
@@ -482,9 +482,9 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
               <View style={styles.colRateExcl}>
                 <Text style={[styles.tableCellHeader, styles.tableCellRight]}>Rate (Excl)</Text>
               </View>
-              <View style={styles.colDiscount}>
+              {/* <View style={styles.colDiscount}>
                 <Text style={[styles.tableCellHeader, styles.tableCellCenter]}>Disc%</Text>
-              </View>
+              </View> */}
               <View style={styles.colGST}>
                 <Text style={[styles.tableCellHeader, styles.tableCellCenter]}>GST%</Text>
               </View>
@@ -537,9 +537,9 @@ const SalesPdfDocument = ({ invoiceData, invoiceNumber, gstBreakdown, isSameStat
                   <View style={styles.colRateExcl}>
                     <Text style={[styles.tableCell, styles.tableCellRight]}>{'\u20B9'}{price.toFixed(2)}</Text>
                   </View>
-                  <View style={styles.colDiscount}>
+                  {/* <View style={styles.colDiscount}>
                     <Text style={[styles.tableCell, styles.tableCellCenter]}>{discount}%</Text>
-                  </View>
+                  </View> */}
                   <View style={styles.colGST}>
                     <Text style={[styles.tableCell, styles.tableCellCenter]}>{gst}%</Text>
                   </View>
