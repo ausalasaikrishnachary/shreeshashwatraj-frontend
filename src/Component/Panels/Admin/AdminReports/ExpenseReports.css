@@ -108,6 +108,7 @@
 
 .expense-stat-content {
   flex: 1;
+  min-width: 0;
 }
 
 .expense-stat-content h4 {
@@ -136,17 +137,9 @@
   color: white;
 }
 
-.orange-text {
-  color: #FF9F40;
-}
-
-.green-text {
-  color: #22C55E;
-}
-
-.red-text {
-  color: #EF4444;
-}
+.orange-text { color: #FF9F40; }
+.green-text  { color: #22C55E; }
+.red-text    { color: #EF4444; }
 
 .expense-stat-card.link-card .orange-text,
 .expense-stat-card.link-card .green-text,
@@ -158,30 +151,22 @@
   font-size: 12px;
   color: #9ca3af;
   margin: 0;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .expense-stat-card.link-card .expense-stat-subtext {
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* Charts Grid */
+/* ========== CHARTS GRID ========== */
 .expense-charts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
   gap: 25px;
   margin-bottom: 30px;
-}
-
-@media (max-width: 1100px) {
-  .expense-charts-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .expense-charts-grid {
-    gap: 20px;
-  }
 }
 
 .expense-chart-card {
@@ -190,10 +175,13 @@
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   border: 1px solid #e5e7eb;
+  min-width: 0;
+  /* Prevent labels from escaping the card */
+  overflow: hidden;
 }
 
 .expense-chart-header {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .expense-chart-header h3 {
@@ -209,10 +197,25 @@
   margin: 0;
 }
 
+/* Chart container: extra top padding so the top label has room */
 .expense-chart-container {
-  height: 350px;
+  height: 380px;
   width: 100%;
   position: relative;
+  /* Clip any SVG text that escapes the container */
+  overflow: hidden;
+}
+
+/* Force Recharts SVG to clip its contents */
+.expense-chart-container > div,
+.expense-chart-container svg {
+  overflow: hidden !important;
+}
+
+/* Recharts label text – smaller so it stays inside */
+.expense-chart-container .recharts-pie-label-text {
+  font-size: 16px !important;
+  font-weight: 500;
 }
 
 /* Custom Tooltip */
@@ -341,11 +344,8 @@
   box-shadow: 0 0 0 3px rgba(79, 129, 255, 0.1);
 }
 
-.custom-search-input::placeholder {
-  color: #9ca3af;
-}
+.custom-search-input::placeholder { color: #9ca3af; }
 
-/* Clear search button */
 .clear-search-btn {
   position: absolute;
   right: 36px;
@@ -372,11 +372,8 @@
 }
 
 /* Data Table Container */
-.expense-data-table-container {
-  width: 100%;
-}
+.expense-data-table-container { width: 100%; }
 
-/* Override ReusableTable styles */
 .expense-data-table-container .data-table-container {
   border: none !important;
   box-shadow: none !important;
@@ -418,6 +415,7 @@
 
 .expense-data-table-container .data-table-container .table-wrapper {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   background: white;
   min-height: 200px;
 }
@@ -425,7 +423,7 @@
 .expense-data-table-container .data-table-container table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 800px;
+  min-width: 700px;
 }
 
 .expense-data-table-container .data-table-container thead {
@@ -462,7 +460,6 @@
   vertical-align: middle;
 }
 
-/* Highlight table headers and rows */
 .expense-data-table-container .data-table-container th:nth-child(1),
 .expense-data-table-container .data-table-container td:nth-child(1) {
   font-weight: bold;
@@ -476,14 +473,10 @@
 }
 
 .expense-data-table-container .data-table-container th:nth-child(5),
-.expense-data-table-container .data-table-container td:nth-child(5) {
-  text-align: center;
-}
+.expense-data-table-container .data-table-container td:nth-child(5) { text-align: center; }
 
 .expense-data-table-container .data-table-container th:nth-child(6),
-.expense-data-table-container .data-table-container td:nth-child(6) {
-  text-align: center;
-}
+.expense-data-table-container .data-table-container td:nth-child(6) { text-align: center; }
 
 /* Pagination */
 .expense-data-table-container .data-table-container .pagination-container {
@@ -614,145 +607,7 @@
   transform: translateY(-1px);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .expense-report-dashboard {
-    padding: 15px;
-  }
-  
-  .expense-cards-grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-  
-  .expense-chart-card {
-    padding: 20px;
-  }
-  
-  .expense-chart-container {
-    height: 300px;
-  }
-  
-  .exp_rep-table-section {
-    padding: 20px;
-  }
-  
-  .custom-search-container {
-    padding: 12px 16px;
-  }
-  
-  .custom-search-input {
-    max-width: 100%;
-    padding-right: 40px;
-  }
-  
-  .clear-search-btn {
-    right: 28px;
-  }
-  
-  .expense-data-table-container .data-table-container th,
-  .expense-data-table-container .data-table-container td {
-    padding: 12px 16px;
-    font-size: 13px;
-  }
-  
-  .expense-data-table-container .data-table-container .table-controls {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-  
-  .expense-data-table-container .data-table-container .entries-per-page {
-    justify-content: space-between;
-  }
-  
-  .expense-data-table-container .data-table-container .pagination-container {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 15px;
-  }
-  
-  .expense-data-table-container .data-table-container .pagination-buttons {
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-  
-  .status-badge {
-    padding: 6px 12px;
-    min-width: 80px;
-    font-size: 11px;
-  }
-}
-
-@media (max-width: 480px) {
-  .expense-stat-card {
-    padding: 15px;
-  }
-  
-  .expense-icon-container {
-    width: 50px;
-    height: 50px;
-  }
-  
-  .expense-icon {
-    font-size: 20px;
-  }
-  
-  .expense-stat-value {
-    font-size: 20px;
-  }
-  
-  .expense-data-table-container .data-table-container .pagination-button {
-    padding: 4px 8px;
-    min-width: 30px;
-    font-size: 13px;
-  }
-  
-  .custom-search-input {
-    padding: 8px 14px;
-    padding-left: 36px;
-    font-size: 13px;
-  }
-  
-  .custom-search-icon {
-    left: 28px;
-    font-size: 14px;
-  }
-  
-  .clear-search-btn {
-    right: 24px;
-    font-size: 14px;
-  }
-}
-
-/* Print Styles */
-@media print {
-  .expense-cards-grid,
-  .expense-charts-grid {
-    display: none;
-  }
-  
-  .expense-report-dashboard {
-    padding: 0;
-    background: white;
-  }
-  
-  .exp_rep-table-section {
-    box-shadow: none;
-    border: none;
-    padding: 0;
-  }
-  
-  .expense-data-table-container .data-table-container table {
-    min-width: 100%;
-  }
-  
-  .custom-search-container {
-    display: none;
-  }
-}
-
-/* ========== EXPENSE REPORT FILTER ROW STYLES ========== */
+/* ========== FILTER ROW STYLES ========== */
 .exp_rep-filter-row {
   display: flex;
   justify-content: space-between;
@@ -799,6 +654,7 @@
   background: white;
   color: #374151;
   transition: all 0.3s ease;
+  box-sizing: border-box;
 }
 
 .exp_rep-search-input:focus {
@@ -861,6 +717,7 @@
   min-width: 140px;
   background: white;
   color: #374151;
+  box-sizing: border-box;
 }
 
 .exp_rep-date-input:focus {
@@ -891,9 +748,7 @@
   box-shadow: 0 4px 12px rgba(79, 129, 255, 0.2);
 }
 
-.exp_rep-generate-icon {
-  font-size: 14px;
-}
+.exp_rep-generate-icon { font-size: 14px; }
 
 /* ========== MODAL STYLES ========== */
 .exp_rep-modal {
@@ -922,14 +777,8 @@
 }
 
 @keyframes expRepModalSlide {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .exp_rep-close-modal {
@@ -1030,9 +879,7 @@
   cursor: not-allowed;
 }
 
-.exp_rep-modal-footer {
-  text-align: center;
-}
+.exp_rep-modal-footer { text-align: center; }
 
 .exp_rep-modal-footer p {
   color: #9ca3af;
@@ -1057,61 +904,361 @@
   transform: translateY(-1px);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .exp_rep-filter-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 15px;
+/* ========== TABLET (max-width: 1024px) ========== */
+@media (max-width: 1024px) {
+  .expense-report-dashboard { padding: 20px; }
+
+  .expense-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
   }
-  
-  .exp_rep-search-left,
-  .exp_rep-date-right {
-    width: 100%;
-    min-width: auto;
-  }
-  
-  .exp_rep-search-box {
-    max-width: 100%;
-  }
-  
-  .exp_rep-date-group {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-  
-  .exp_rep-date-field {
-    flex: 1;
-    min-width: 140px;
-  }
-  
-  .exp_rep-format-options {
+
+  .expense-charts-grid {
     grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .expense-chart-container { height: 340px; }
+
+  /* Tighten pie label font on tablet */
+  .expense-chart-container .recharts-pie-label-text {
+    font-size: 10px !important;
   }
 }
 
-@media (max-width: 480px) {
-  .exp_rep-date-group {
+/* ========== MOBILE (max-width: 768px) ========== */
+@media (max-width: 768px) {
+  .expense-report-dashboard { padding: 12px; }
+
+  /* 2-column cards */
+  .expense-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .expense-stat-card {
+    padding: 14px 12px;
+    gap: 10px;
+    border-radius: 10px;
+  }
+
+  .expense-icon-container {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+
+  .expense-icon { font-size: 18px; }
+
+  .expense-stat-content h4 {
+    font-size: 10px;
+    margin-bottom: 5px;
+    letter-spacing: 0.3px;
+  }
+
+  .expense-stat-value { font-size: 18px; margin-bottom: 3px; }
+  .expense-stat-subtext { font-size: 10px; }
+
+  /* Charts */
+  .expense-charts-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .expense-chart-card {
+    padding: 16px;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .expense-chart-header { margin-bottom: 14px; }
+  .expense-chart-header h3 { font-size: 15px; }
+  .expense-chart-subtitle { font-size: 12px; }
+
+  .expense-chart-container {
+    height: 300px;
+    padding-top: 10px;
+    overflow: hidden;
+  }
+
+  .expense-chart-container .recharts-pie-label-text {
+    font-size: 9px !important;
+  }
+
+  /* Table section */
+  .exp_rep-table-section {
+    padding: 16px 12px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+  }
+
+  .exp_rep-table-header h3 { font-size: 15px; }
+  .exp_rep-table-subtitle  { font-size: 12px; }
+
+  /* ── Filter row: stack search above date group ── */
+  .exp_rep-filter-row {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
+    padding: 12px 0;
+    margin-bottom: 16px;
   }
-  
-  .exp_rep-date-field {
-    flex-direction: column;
-    align-items: flex-start;
+
+  .exp_rep-search-left,
+  .exp_rep-date-right {
+    width: 100%;
+    min-width: unset;
+    flex: none;
   }
-  
-  .exp_rep-date-input {
+
+  .exp_rep-search-box {
+    max-width: 100%;
     width: 100%;
   }
-  
+
+  .exp_rep-search-input {
+    font-size: 13px;
+    padding: 9px 14px;
+    padding-left: 38px;
+  }
+
+  /* ── Date group: two date fields side-by-side, Generate full-width below ── */
+  .exp_rep-date-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 10px;
+    justify-content: unset;
+    width: 100%;
+  }
+
+  /* From field → column 1 */
+  .exp_rep-date-field:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  /* To field → column 2 */
+  .exp_rep-date-field:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  /* Clear filter button → spans both columns on row 2 (if present) */
+  .ret-rep-clear-filter-btn {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    justify-content: center;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    font-size: 13px;
+    border-radius: 7px;
+    background: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .ret-rep-clear-filter-btn:hover {
+    background: #e5e7eb;
+  }
+
+  /* Generate button → always spans both columns, last row */
+  .exp_rep-generate-btn {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: center;
+    padding: 9px 16px;
+    font-size: 13px;
+    border-radius: 7px;
+  }
+
+  .exp_rep-date-field {
+    flex: unset;
+    min-width: unset;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: flex-start;
+  }
+
+  .exp_rep-date-field label {
+    font-size: 12px;
+    min-width: unset;
+    white-space: nowrap;
+  }
+
+  .exp_rep-date-input {
+    min-width: unset;
+    width: 100%;
+    font-size: 13px;
+    padding: 8px 10px;
+    box-sizing: border-box;
+  }
+
+  /* Table horizontal scroll */
+  .exp_rep-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+  }
+
+  .expense-data-table-container .data-table-container th {
+    padding: 12px 14px;
+    font-size: 11px;
+  }
+
+  .expense-data-table-container .data-table-container td {
+    padding: 12px 14px;
+    font-size: 12px;
+  }
+
+  .expense-data-table-container .data-table-container .table-controls {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .expense-data-table-container .data-table-container .entries-per-page {
+    font-size: 12px;
+  }
+
+  .expense-data-table-container .data-table-container .pagination-container {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  .expense-data-table-container .data-table-container .pagination-info {
+    font-size: 12px;
+    width: 100%;
+  }
+
+  .expense-data-table-container .data-table-container .pagination-buttons {
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .expense-data-table-container .data-table-container .pagination-button {
+    padding: 5px 10px;
+    min-width: 34px;
+    font-size: 13px;
+  }
+
+  .status-badge {
+    padding: 5px 10px;
+    min-width: 80px;
+    font-size: 10px;
+    border-radius: 14px;
+  }
+
+  /* Modal */
+  .exp_rep-modal-content {
+    padding: 24px 20px;
+    width: 92%;
+    border-radius: 14px;
+  }
+
+  .exp_rep-modal-title { font-size: 20px; }
+  .exp_rep-format-options { gap: 12px; }
+  .exp_rep-format-option { padding: 16px; }
+}
+
+/* ========== SMALL MOBILE (max-width: 480px) ========== */
+@media (max-width: 480px) {
+  .expense-report-dashboard { padding: 10px; }
+
+  .expense-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .expense-stat-card { padding: 12px 10px; gap: 8px; }
+
+  .expense-icon-container {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+  }
+
+  .expense-icon { font-size: 16px; }
+
+  .expense-stat-content h4 { font-size: 9px; margin-bottom: 4px; }
+  .expense-stat-value { font-size: 15px; }
+  .expense-stat-subtext { font-size: 9px; }
+
+  .expense-chart-container {
+    height: 260px;
+    padding-top: 8px;
+  }
+
+  .expense-chart-container .recharts-pie-label-text {
+    font-size: 8px !important;
+  }
+
+  .exp_rep-table-section { padding: 14px 10px; }
+
+  /* Keep 2-column date grid on small mobile too */
+  .exp_rep-date-group {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .exp_rep-date-field label { font-size: 11px; }
+  .exp_rep-date-input { font-size: 12px; padding: 7px 8px; }
+
   .exp_rep-generate-btn {
     width: 100%;
     justify-content: center;
+    padding: 10px 16px;
+    grid-column: 1 / -1;
   }
-  
+
+  .expense-data-table-container .data-table-container .pagination-button {
+    padding: 4px 8px;
+    min-width: 30px;
+    font-size: 12px;
+  }
+
   .exp_rep-modal-content {
-    padding: 20px;
+    padding: 20px 16px;
     width: 95%;
   }
+
+  .exp_rep-modal-title { font-size: 18px; }
+  .exp_rep-format-options { grid-template-columns: 1fr; }
+  .exp_rep-format-option { padding: 14px; }
+}
+
+/* ========== PRINT ========== */
+@media print {
+  .expense-cards-grid,
+  .expense-charts-grid { display: none; }
+
+  .expense-report-dashboard {
+    padding: 0;
+    background: white;
+  }
+
+  .exp_rep-table-section {
+    box-shadow: none;
+    border: none;
+    padding: 0;
+  }
+
+  .expense-data-table-container .data-table-container table {
+    min-width: 100%;
+  }
+
+  .custom-search-container { display: none; }
 }

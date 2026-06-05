@@ -77,25 +77,33 @@
   .sales-items-search-input {
     font-size: 14px;
   }
-  /* Button row: wrap and fill width */
+
+  /* ── Button row: stack every button/dropdown to full width ── */
   .sales-items-wrapper .d-flex.gap-2.flex-shrink-0 {
-    flex-wrap: wrap !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
     width: 100%;
     gap: 8px !important;
   }
+
+  /* Every direct child (button OR dropdown wrapper) → full width */
   .sales-items-wrapper .d-flex.gap-2.flex-shrink-0 > * {
-    flex: 1 1 calc(50% - 4px);
-    min-width: 120px;
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
   }
-  .sales-items-wrapper .d-flex.gap-2.flex-shrink-0 .btn,
-  .sales-items-wrapper .d-flex.gap-2.flex-shrink-0 .dropdown > .btn {
-    width: 100%;
-    justify-content: center;
-    font-size: 13px;
-    padding: 8px 10px;
+
+  /* The toggle button inside a dropdown → full width */
+  .sales-items-wrapper .d-flex.gap-2.flex-shrink-0 .dropdown {
+    width: 100% !important;
   }
-  .sales-items-wrapper .dropdown {
-    flex: 1 1 calc(50% - 4px);
+  .sales-items-wrapper .d-flex.gap-2.flex-shrink-0 .dropdown > .btn,
+  .sales-items-wrapper .d-flex.gap-2.flex-shrink-0 > .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    font-size: 14px;
+    padding: 10px 16px;
+    margin: 0 !important;
   }
 
   /* Action icons: always one horizontal row, never wrap */
@@ -120,13 +128,30 @@
     min-width: 600px;
   }
 }
+
 @media (max-width: 480px) {
+  /* Ensure full-width buttons on very small screens too */
+  .sales-items-wrapper .d-flex.gap-2.flex-shrink-0 {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
   .sales-items-wrapper .d-flex.gap-2.flex-shrink-0 > * {
-    flex: 1 1 100%;
+    flex: 1 1 100% !important;
+    width: 100% !important;
   }
-  .sales-items-wrapper .dropdown {
-    flex: 1 1 100%;
+  .sales-items-wrapper .d-flex.gap-2.flex-shrink-0 .dropdown {
+    width: 100% !important;
   }
+  .sales-items-wrapper .d-flex.gap-2.flex-shrink-0 .dropdown > .btn,
+  .sales-items-wrapper .d-flex.gap-2.flex-shrink-0 > .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    font-size: 14px;
+    padding: 10px 16px;
+    margin: 0 !important;
+  }
+
   .sales-items-wrapper .mt-3 {
     margin-top: 8px !important;
   }
@@ -139,5 +164,250 @@
   .sales-items-wrapper td .d-flex.align-items-center {
     flex-wrap: nowrap !important;
     gap: 3px !important;
+  }
+}
+
+/* ============================================================
+   MODAL – centered, equal left/right gap, responsive content
+   Applies to ALL modals triggered from SalesItems
+   (AddServiceModal, AddStockModal, DeductStockModal,
+    StockDetailsModal, ProductImagesModal)
+   ============================================================ */
+
+/* ── Center dialog on all screen sizes ── */
+.modal {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.modal-dialog {
+  margin: 0 auto !important;
+  width: calc(100% - 32px) !important;
+  max-width: 560px !important;
+}
+
+/* ── Tablet (≤ 992px) ── */
+@media (max-width: 992px) {
+  .modal-dialog {
+    width: calc(100% - 40px) !important;
+    max-width: 520px !important;
+    margin: 0 auto !important;
+  }
+
+  .modal-content {
+    border-radius: 10px;
+  }
+
+  .modal-header,
+  .modal-footer {
+    padding: 14px 18px !important;
+  }
+
+  .modal-body {
+    padding: 16px 18px !important;
+  }
+
+  /* Two-column rows become single column */
+  .modal-body .row {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+
+  .modal-body .row > .col,
+  .modal-body .row > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-bottom: 12px !important;
+  }
+
+  .modal-body .form-control,
+  .modal-body .form-select {
+    font-size: 14px;
+    padding: 8px 10px;
+    width: 100% !important;
+  }
+
+  .modal-body .d-flex > .form-select,
+  .modal-body .d-flex > .form-control {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .modal-body .d-flex > .btn {
+    flex-shrink: 0;
+  }
+
+  .modal-body .form-label {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .modal-footer {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .modal-footer .btn {
+    flex: 1 1 auto;
+    min-width: 100px;
+    font-size: 14px;
+    padding: 9px 16px;
+    margin: 0 !important;
+  }
+}
+
+/* ── Mobile (≤ 768px) ── */
+@media (max-width: 768px) {
+  .modal {
+    align-items: center !important;
+    padding: 0 !important;
+  }
+
+  .modal-dialog {
+    width: calc(100% - 24px) !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+  }
+
+  .modal-content {
+    border-radius: 10px;
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-header {
+    padding: 12px 14px !important;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 10;
+  }
+
+  .modal-header .modal-title {
+    font-size: 15px;
+  }
+
+  .modal-body {
+    padding: 12px 14px !important;
+  }
+
+  .modal-body .row {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+
+  .modal-body .row > .col,
+  .modal-body .row > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-bottom: 12px !important;
+  }
+
+  .modal-body .form-control,
+  .modal-body .form-select {
+    font-size: 14px;
+    padding: 8px 10px;
+    width: 100% !important;
+  }
+
+  .modal-body .d-flex > .form-select,
+  .modal-body .d-flex > .form-control {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .modal-body .d-flex > .btn {
+    flex-shrink: 0;
+  }
+
+  .modal-body .form-label {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .modal-body .form-text {
+    font-size: 11px;
+  }
+
+  /* Image grid inside ProductImagesModal */
+  .modal-body .row > .col-md-3,
+  .modal-body .row > .col-sm-4,
+  .modal-body .row > .col-6 {
+    flex: 0 0 50% !important;
+    max-width: 50% !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  .modal-footer {
+    padding: 10px 14px !important;
+    flex-direction: column !important;
+    gap: 8px;
+  }
+
+  .modal-footer .btn {
+    width: 100% !important;
+    margin: 0 !important;
+    font-size: 15px;
+    padding: 10px;
+  }
+}
+
+/* ── Small mobile (≤ 480px) ── */
+@media (max-width: 480px) {
+  .modal-dialog {
+    width: calc(100% - 16px) !important;
+    margin: 0 auto !important;
+  }
+
+  .modal-content {
+    border-radius: 8px;
+    max-height: 92vh;
+  }
+
+  .modal-header {
+    padding: 10px 12px !important;
+  }
+
+  .modal-header .modal-title {
+    font-size: 14px;
+  }
+
+  .modal-body {
+    padding: 10px 12px !important;
+  }
+
+  .modal-body .form-control,
+  .modal-body .form-select {
+    font-size: 13px;
+    padding: 7px 9px;
+  }
+
+  /* Image grid: 1 per row on very small screens */
+  .modal-body .row > .col-md-3,
+  .modal-body .row > .col-sm-4,
+  .modal-body .row > .col-6 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .modal-footer {
+    padding: 8px 12px !important;
+  }
+
+  .modal-footer .btn {
+    font-size: 14px;
+    padding: 9px;
   }
 }

@@ -1,6 +1,8 @@
 .gst-report-container {
   background-color: #f8f9fa;
   min-height: 100vh;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
 .gst-report-header {
@@ -13,83 +15,101 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-/* Date filter specific styles */
-.gst-report-date-filters {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  flex-wrap: wrap;
-}
 
-.gst-report-apply-date-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  height: 38px;
-  margin-bottom: 2px;
-}
-
-.gst-report-apply-date-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.gst-report-apply-icon {
-  font-size: 12px;
-}
-
-.gst-report-reset-dates-btn {
-  padding: 8px 16px;
-  background: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  height: 38px;
-  margin-bottom: 2px;
-}
-
-.gst-report-reset-dates-btn:hover {
-  background: #5a6268;
-}
-
-.gst-report-active-filters {
-  margin: 12px 0 0 0;
-  padding: 8px 12px;
-  background: #e3f2fd;
-  border-radius: 6px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.gst-report-filter-badge {
-  background: #2196f3;
-  color: white;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-}
 .gst-report-title {
   font-size: 24px;
   font-weight: 600;
   color: #333;
   margin: 0;
 }
-/* New Filter Dropdown Styles */
+
+.gst-report-summary {
+  display: flex;
+  gap: 20px;
+  color: #666;
+  font-size: 14px;
+}
+
+.gst-report-summary span {
+  padding: 5px 10px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+/* Filters Section */
+.gst-report-filters-section {
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.gst-report-filters-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+/* Search */
+.gst-report-search-wrapper {
+  flex: 1;
+  min-width: 200px;
+}
+
+.gst-report-search-input-group {
+  position: relative;
+  width: 100%;
+}
+
+.gst-report-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+  font-size: 16px;
+}
+
+.gst-report-search-input {
+  width: 100%;
+  height: 40px;
+  padding: 8px 35px 8px 40px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.gst-report-search-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.gst-report-clear-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gst-report-clear-btn:hover {
+  color: #ff4444;
+}
+
+/* Filter Dropdown */
 .gst-report-filter-wrapper {
   display: flex;
   flex-direction: column;
@@ -105,7 +125,7 @@
 
 .gst-report-filter-select {
   height: 40px;
-  padding: 8px 12px;
+  padding: 8px 35px 8px 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
@@ -117,7 +137,8 @@
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 16px;
-  padding-right: 35px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .gst-report-filter-select:focus {
@@ -130,7 +151,7 @@
   border-color: #999;
 }
 
-/* KACHA/PAKKA Buttons Styles */
+/* KACHA / PAKKA Buttons */
 .gst-report-kacha-pakka-wrapper {
   display: flex;
   gap: 5px;
@@ -175,121 +196,12 @@
   border-color: #FF9800;
 }
 
-/* Update responsive styles */
-@media (max-width: 768px) {
-  .gst-report-kacha-pakka-wrapper {
-    width: 100%;
-    justify-content: stretch;
-  }
-  
-  .gst-report-kacha-pakka-btn {
-    flex: 1;
-    text-align: center;
-  }
-}
-/* Update existing responsive styles */
-@media (max-width: 768px) {
-  .gst-report-filter-wrapper {
-    width: 100%;
-    min-width: 100%;
-  }
-  
-  .gst-report-filter-select {
-    width: 100%;
-  }
-}
-
-.gst-report-summary {
-  display: flex;
-  gap: 20px;
-  color: #666;
-  font-size: 14px;
-}
-
-.gst-report-summary span {
-  padding: 5px 10px;
-  background-color: #f0f0f0;
-  border-radius: 4px;
-}
-
-/* Filters Section */
-.gst-report-filters-section {
-  background-color: #ffffff;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.gst-report-filters-wrapper {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  align-items: flex-end;
-}
-
-/* Search */
-.gst-report-search-wrapper {
-  flex: 1;
-  min-width: 250px;
-}
-
-.gst-report-search-input-group {
-  position: relative;
-  width: 100%;
-}
-
-.gst-report-search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #999;
-  font-size: 16px;
-}
-
-.gst-report-search-input {
-  width: 100%;
-  height: 40px;
-  padding: 8px 35px 8px 40px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.gst-report-search-input:focus {
-  outline: none;
-  border-color: #4CAF50;
-  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
-}
-
-.gst-report-clear-btn {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: #999;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 0 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.gst-report-clear-btn:hover {
-  color: #ff4444;
-}
-
 /* Date Filters */
 .gst-report-date-filters {
   display: flex;
+  align-items: flex-end;
   gap: 10px;
   flex-wrap: wrap;
-  align-items: flex-end;
 }
 
 .gst-report-date-input-wrapper {
@@ -312,6 +224,8 @@
   border-radius: 4px;
   font-size: 14px;
   transition: all 0.3s ease;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .gst-report-date-input:focus {
@@ -320,6 +234,59 @@
   box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
 }
 
+/* Apply Date Button */
+.gst-report-apply-date-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  height: 38px;
+  white-space: nowrap;
+}
+
+.gst-report-apply-date-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.gst-report-apply-date-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.gst-report-apply-icon {
+  font-size: 12px;
+}
+
+/* Reset Dates Button */
+.gst-report-reset-dates-btn {
+  padding: 8px 16px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  height: 38px;
+  white-space: nowrap;
+}
+
+.gst-report-reset-dates-btn:hover {
+  background: #5a6268;
+}
+
+/* Clear Date Button */
 .gst-report-clear-date-btn {
   height: 40px;
   padding: 0 15px;
@@ -335,6 +302,26 @@
 
 .gst-report-clear-date-btn:hover {
   background-color: #f57c00;
+}
+
+/* Active Filters Badge */
+.gst-report-active-filters {
+  margin: 12px 0 0 0;
+  padding: 8px 12px;
+  background: #e3f2fd;
+  border-radius: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gst-report-filter-badge {
+  background: #2196f3;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 /* Export Button */
@@ -399,6 +386,7 @@
   padding: 20px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Footer Totals */
@@ -458,7 +446,7 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
+  0%   { transform: rotate(0deg);   }
   100% { transform: rotate(360deg); }
 }
 
@@ -488,41 +476,113 @@
   background-color: #45a049;
 }
 
-/* Responsive Design */
+/* ============================================
+   TABLET — 768px to 1024px
+   ============================================ */
+@media (max-width: 1024px) {
+  .gst-report-filters-wrapper {
+    gap: 10px;
+  }
+
+  .gst-report-date-input-wrapper {
+    min-width: 120px;
+  }
+
+  .gst-report-filter-wrapper {
+    min-width: 150px;
+  }
+}
+
+/* ============================================
+   TABLET PORTRAIT — max 768px
+   ============================================ */
 @media (max-width: 768px) {
+  .gst-report-container {
+    padding: 8px;
+  }
+
   .gst-report-header {
     flex-direction: column;
     gap: 10px;
     text-align: center;
+    padding: 12px 15px;
+  }
+
+  .gst-report-title {
+    font-size: 20px;
   }
 
   .gst-report-summary {
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .gst-report-summary span {
+    width: 100%;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  .gst-report-filters-section {
+    padding: 12px;
   }
 
   .gst-report-filters-wrapper {
     flex-direction: column;
+    gap: 10px;
   }
 
   .gst-report-search-wrapper {
     width: 100%;
+    min-width: unset;
+  }
+
+  .gst-report-filter-wrapper {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .gst-report-filter-select {
+    width: 100%;
+  }
+
+  .gst-report-kacha-pakka-wrapper {
+    width: 100%;
+    justify-content: stretch;
+    margin-bottom: 0;
+  }
+
+  .gst-report-kacha-pakka-btn {
+    flex: 1;
+    text-align: center;
+    height: 42px;
   }
 
   .gst-report-date-filters {
-    width: 100%;
     flex-direction: column;
+    width: 100%;
+    gap: 10px;
   }
 
   .gst-report-date-input-wrapper {
     width: 100%;
+    min-width: unset;
   }
 
-  .gst-report-export-btn,
-  .gst-report-clear-all-btn,
+  .gst-report-apply-date-btn,
+  .gst-report-reset-dates-btn,
   .gst-report-clear-date-btn {
     width: 100%;
     justify-content: center;
+    height: 42px;
+  }
+
+  .gst-report-export-btn,
+  .gst-report-clear-all-btn {
+    width: 100%;
+    justify-content: center;
+    height: 42px;
   }
 
   .gst-report-totals {
@@ -533,5 +593,283 @@
   .gst-report-totals span {
     width: 100%;
     text-align: center;
+  }
+
+  .gst-report-table-section {
+    padding: 10px;
+  }
+}
+
+/* ============================================
+   MOBILE LARGE — max 480px (Galaxy S, iPhone Plus)
+   ============================================ */
+@media (max-width: 480px) {
+  .gst-report-container {
+    padding: 6px;
+  }
+
+  .gst-report-filters-section {
+    padding: 10px;
+    border-radius: 6px;
+  }
+
+  .gst-report-title {
+    font-size: 18px;
+  }
+
+  .gst-report-search-input {
+    font-size: 13px;
+    height: 42px;
+  }
+
+  .gst-report-date-input {
+    height: 42px;
+    font-size: 13px;
+  }
+
+  .gst-report-filter-select {
+    height: 42px;
+    font-size: 13px;
+  }
+
+  .gst-report-date-label,
+  .gst-report-filter-label {
+    font-size: 11px;
+  }
+
+  .gst-report-apply-date-btn,
+  .gst-report-reset-dates-btn,
+  .gst-report-clear-date-btn,
+  .gst-report-export-btn,
+  .gst-report-clear-all-btn {
+    font-size: 13px;
+    height: 42px;
+  }
+
+  .gst-report-kacha-pakka-btn {
+    font-size: 13px;
+    height: 42px;
+    padding: 0 10px;
+  }
+
+  .gst-report-table-section {
+    padding: 8px;
+    border-radius: 6px;
+  }
+
+  .gst-report-filter-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .gst-report-active-filters {
+    padding: 8px 10px;
+  }
+}
+
+/* ============================================
+   MOBILE STANDARD — max 375px (iPhone 14, Pixel)
+   ============================================ */
+@media (max-width: 375px) {
+  .gst-report-container {
+    padding: 4px;
+  }
+
+  .gst-report-header {
+    padding: 10px 12px;
+    border-radius: 6px;
+  }
+
+  .gst-report-title {
+    font-size: 16px;
+  }
+
+  .gst-report-filters-section {
+    padding: 8px;
+    margin-bottom: 12px;
+  }
+
+  .gst-report-search-input {
+    font-size: 12px;
+    padding: 8px 30px 8px 36px;
+  }
+
+  .gst-report-search-icon {
+    font-size: 14px;
+    left: 10px;
+  }
+
+  .gst-report-date-input,
+  .gst-report-filter-select {
+    font-size: 12px;
+    padding: 8px 8px;
+    height: 40px;
+  }
+
+  .gst-report-apply-date-btn,
+  .gst-report-reset-dates-btn,
+  .gst-report-clear-date-btn,
+  .gst-report-export-btn,
+  .gst-report-clear-all-btn {
+    font-size: 12px;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 5px;
+  }
+
+  .gst-report-kacha-pakka-btn {
+    font-size: 12px;
+    height: 40px;
+    padding: 0 8px;
+  }
+
+  .gst-report-spinner {
+    width: 32px;
+    height: 32px;
+  }
+
+  .gst-report-filter-badge {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+
+  .gst-report-active-filters {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+
+  .gst-report-totals span {
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+}
+
+/* ============================================
+   MOBILE XS — max 320px (iPhone SE, older devices)
+   ============================================ */
+@media (max-width: 320px) {
+  .gst-report-title {
+    font-size: 14px;
+  }
+
+  .gst-report-date-label,
+  .gst-report-filter-label {
+    font-size: 10px;
+  }
+
+  .gst-report-date-input,
+  .gst-report-search-input,
+  .gst-report-filter-select {
+    font-size: 11px;
+    height: 38px;
+  }
+
+  .gst-report-apply-date-btn,
+  .gst-report-reset-dates-btn,
+  .gst-report-clear-date-btn,
+  .gst-report-export-btn,
+  .gst-report-clear-all-btn {
+    font-size: 11px;
+    height: 38px;
+    padding: 0 10px;
+  }
+
+  .gst-report-kacha-pakka-btn {
+    font-size: 11px;
+    height: 38px;
+    padding: 0 6px;
+  }
+
+  .gst-report-totals span {
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+}
+
+/* ============================================
+   TOUCH DEVICE IMPROVEMENTS
+   ============================================ */
+@media (hover: none) and (pointer: coarse) {
+  /* Minimum 44px tap targets for all interactive elements */
+  .gst-report-apply-date-btn,
+  .gst-report-reset-dates-btn,
+  .gst-report-clear-date-btn,
+  .gst-report-export-btn,
+  .gst-report-clear-all-btn,
+  .gst-report-retry-btn,
+  .gst-report-kacha-pakka-btn {
+    min-height: 44px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .gst-report-date-input,
+  .gst-report-search-input,
+  .gst-report-filter-select {
+    min-height: 44px;
+  }
+
+  .gst-report-clear-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Remove hover transforms on touch to avoid sticky hover states */
+  .gst-report-export-btn:hover:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .gst-report-apply-date-btn:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+/* ============================================
+   LANDSCAPE MOBILE — wide but short screens
+   ============================================ */
+@media (max-width: 768px) and (orientation: landscape) {
+  .gst-report-filters-wrapper {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .gst-report-search-wrapper {
+    flex: 1;
+    min-width: 180px;
+  }
+
+  .gst-report-filter-wrapper {
+    min-width: 140px;
+    flex: 1;
+    width: auto;
+  }
+
+  .gst-report-date-input-wrapper {
+    min-width: 130px;
+    flex: 1;
+  }
+
+  .gst-report-date-filters {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: auto;
+  }
+
+  .gst-report-apply-date-btn,
+  .gst-report-reset-dates-btn,
+  .gst-report-clear-date-btn,
+  .gst-report-export-btn,
+  .gst-report-clear-all-btn {
+    width: auto;
+  }
+
+  .gst-report-kacha-pakka-wrapper {
+    width: auto;
+  }
+
+  .gst-report-kacha-pakka-btn {
+    flex: none;
   }
 }

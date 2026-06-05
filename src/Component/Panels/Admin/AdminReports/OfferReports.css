@@ -54,18 +54,10 @@
   opacity: 0.9;
 }
 
-.red {
-  color: #e74c3c;
-}
-.green {
-  color: #27ae60;
-}
-.blue {
-  color: #3498db;
-}
-.orange {
-  color: #f39c12;
-}
+.red { color: #e74c3c; }
+.green { color: #27ae60; }
+.blue { color: #3498db; }
+.orange { color: #f39c12; }
 
 /* Filters Section */
 .filters-section {
@@ -208,6 +200,8 @@
   border-radius: 6px;
   font-size: 14px;
   background: white;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .date-input input:focus {
@@ -315,6 +309,7 @@
   border: 1px solid #3498db;
   color: #3498db;
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .btn-outline-primary:hover {
@@ -642,109 +637,479 @@ tr:hover {
   font-weight: 500;
 }
 
-/* Responsive Design */
+/* ============================================
+   TABLET VIEW — 768px to 1024px
+   ============================================ */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .offers-dashboard {
+    padding: 16px;
+  }
+
+  .cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  .value {
+    font-size: 22px;
+  }
+
+  .icon {
+    font-size: 28px;
+  }
+
+  .filters-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .date-range {
+    grid-column: span 2;
+  }
+
+  .date-inputs {
+    flex-direction: row;
+    gap: 12px;
+  }
+
+  .filters-header {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .filters-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .filter-actions {
+    gap: 8px;
+  }
+
+  .btn-clear,
+  .btn-export {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .table-box {
+    padding: 16px;
+    overflow: hidden;
+  }
+
+  .table-header {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    margin: 10px 0;
+  }
+
+  th, td {
+    padding: 11px 12px;
+    font-size: 13px;
+  }
+
+  .offer-title .offer-desc {
+    max-width: 160px;
+    white-space: normal;
+  }
+
+  .stats-summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .stat-item {
+    padding: 14px;
+  }
+}
+
+/* ============================================
+   MOBILE VIEW — up to 768px
+   ============================================ */
 @media (max-width: 768px) {
   .offers-dashboard {
-    padding: 15px;
+    padding: 12px;
   }
-  
+
+  /* Cards: 2-column grid on mobile */
   .cards {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
+    margin-bottom: 16px;
   }
-  
+
   .card {
-    padding: 15px;
+    padding: 14px 12px;
+    border-radius: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
-  
+
+  .card .text {
+    width: 100%;
+  }
+
+  .card h4 {
+    font-size: 12px;
+  }
+
   .value {
     font-size: 20px;
   }
-  
+
+  .card-subtext {
+    font-size: 11px;
+  }
+
+  .icon {
+    font-size: 26px;
+    align-self: flex-end;
+  }
+
+  /* Filters Section */
+  .filters-section {
+    padding: 14px;
+    margin-bottom: 16px;
+    border-radius: 10px;
+  }
+
+  .filters-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+  }
+
+  .filters-header h3 {
+    font-size: 1rem;
+  }
+
+  .filter-actions {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .btn-clear,
+  .btn-export {
+    flex: 1;
+    justify-content: center;
+    padding: 9px 10px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+
   .filters-grid {
     grid-template-columns: 1fr;
-    gap: 15px;
+    gap: 12px;
+    margin-bottom: 0;
   }
-  
+
+  .filter-group label {
+    font-size: 13px;
+  }
+
+  .search-input,
+  .filter-select {
+    padding: 10px 12px;
+    font-size: 14px;
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Date Range — full width stacked */
+  .date-range {
+    width: 100%;
+  }
+
   .date-inputs {
     flex-direction: column;
     gap: 10px;
   }
-  
-  .filters-header {
-    flex-direction: column;
-    gap: 15px;
-    align-items: flex-start;
-  }
-  
-  .filter-actions {
+
+  .date-input {
     width: 100%;
   }
-  
-  .btn-clear, .btn-export {
-    flex: 1;
-    justify-content: center;
+
+  .date-input input {
+    width: 100%;
+    font-size: 14px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    box-sizing: border-box;
   }
-  
+
+  /* Filter Summary */
+  .filter-summary {
+    padding: 12px;
+    margin-top: 12px;
+  }
+
+  .filter-tags {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .filter-tag {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+
+  .results-count {
+    font-size: 13px;
+    padding: 7px;
+  }
+
+  /* Table Box */
+  .table-box {
+    padding: 14px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+  }
+
+  .table-box h3 {
+    font-size: 16px;
+  }
+
+  .subtitle {
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
   .table-header {
     flex-direction: column;
-    gap: 15px;
     align-items: flex-start;
-  }
-  
-  .stats-summary {
-    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
+    margin-bottom: 12px;
   }
-  
-  .stat-item {
-    padding: 12px;
-  }
-  
-  .stat-value {
-    font-size: 22px;
-  }
-  
-  table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-    margin: 10px 0;
-  }
-  
-  th, td {
-    padding: 10px;
-    font-size: 13px;
-  }
-  
-  .offer-title .offer-desc {
-    max-width: 150px;
-  }
-}
 
-@media (max-width: 480px) {
-  .cards {
-    grid-template-columns: 1fr;
-  }
-  
-  .stats-summary {
-    grid-template-columns: 1fr;
-  }
-  
-  .filter-tags {
-    flex-direction: column;
-  }
-  
-  .filter-tag {
-    width: fit-content;
-  }
-  
   .table-actions {
     width: 100%;
   }
-  
+
   .btn-sm {
     flex: 1;
     text-align: center;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Scrollable Table */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    margin: 8px 0;
+  }
+
+  th {
+    padding: 10px 12px;
+    font-size: 12px;
+    letter-spacing: 0.3px;
+  }
+
+  td {
+    padding: 12px;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+
+  .offer-title .offer-desc {
+    max-width: 140px;
+    white-space: normal;
+  }
+
+  .discount-badge {
+    padding: 5px 10px;
+    font-size: 13px;
+    min-width: 52px;
+  }
+
+  .usage-bar {
+    min-width: 70px;
+    height: 22px;
+  }
+
+  .usage-bar span {
+    font-size: 11px;
+  }
+
+  .star {
+    font-size: 14px;
+  }
+
+  .rating-text {
+    font-size: 11px;
+    margin-left: 6px;
+  }
+
+  .badge {
+    padding: 5px 10px;
+    font-size: 11px;
+    min-width: 52px;
+  }
+
+  /* Stats Summary — 2-col on mobile */
+  .stats-summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 12px;
+    margin-top: 16px;
+  }
+
+  .stat-item {
+    padding: 12px 8px;
+    border-radius: 8px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+
+  /* Export Info */
+  .export-info {
+    padding: 12px 14px;
+    border-radius: 8px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .export-info p {
+    font-size: 13px;
+  }
+}
+
+/* ============================================
+   SMALL MOBILE — up to 480px
+   ============================================ */
+@media (max-width: 480px) {
+  .offers-dashboard {
+    padding: 10px;
+  }
+
+  /* Cards stay 2-col but smaller */
+  .cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .card {
+    padding: 12px 10px;
+  }
+
+  .card h4 {
+    font-size: 11px;
+  }
+
+  .value {
+    font-size: 18px;
+  }
+
+  .card-subtext {
+    font-size: 10px;
+  }
+
+  .icon {
+    font-size: 22px;
+  }
+
+  /* Filters */
+  .filters-section {
+    padding: 12px;
+  }
+
+  .btn-clear,
+  .btn-export {
+    font-size: 12px;
+    padding: 8px 8px;
+  }
+
+  .search-input,
+  .filter-select,
+  .date-input input {
+    font-size: 13px;
+    padding: 9px 10px;
+  }
+
+  /* Table */
+  .table-box {
+    padding: 12px;
+  }
+
+  .table-box h3 {
+    font-size: 15px;
+  }
+
+  th {
+    padding: 9px 10px;
+    font-size: 11px;
+  }
+
+  td {
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .offer-title .offer-desc {
+    max-width: 120px;
+  }
+
+  /* Stats — stack to 1 col on very small */
+  .stats-summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .stat-item {
+    padding: 10px 6px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .filter-tag {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .export-info p {
+    font-size: 12px;
   }
 }

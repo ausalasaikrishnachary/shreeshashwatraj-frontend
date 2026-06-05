@@ -16,7 +16,6 @@
   flex-grow: 1;
   margin-left: 250px;
   transition: all 0.3s ease;
-
 }
 
 .salesitems-content-area.collapsed {
@@ -37,7 +36,7 @@
   margin-bottom: 20px;
 }
 
-.salesitems-table { 
+.salesitems-table {
   width: 650px;
   border-collapse: collapse;
 }
@@ -89,7 +88,6 @@
   background: #0b5ed7;
 }
 
-
 /* Stock Alert Animations */
 .stock-alert {
   animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards;
@@ -107,12 +105,8 @@
 }
 
 @keyframes fadeOut {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
 
 /* Alert styling */
@@ -161,7 +155,6 @@
 
 .salesitems-main-content {
   padding: 20px;
-  /* margin-top: 70px; */
 }
 
 /* Page Header */
@@ -187,12 +180,17 @@
   padding: 0.5rem 0.75rem;
 }
 
-/* Cards */
+/* Cards
+   KEY: overflow must NOT be hidden at the card level —
+   that would clip the horizontal table scroll inside .table-container.
+   Use overflow: visible so the scroll chain reaches .table-container. */
 .card {
   border: none;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   transition: all 0.3s ease;
+  min-width: 0;
+  overflow: visible; /* was: hidden — changed so table scroll is not clipped */
 }
 
 .card:hover {
@@ -213,8 +211,11 @@
   margin-bottom: 0;
 }
 
+/* KEY: card-body must NOT clip overflow either */
 .card-body {
   padding: 1.5rem;
+  min-width: 0;
+  overflow: visible; /* was: hidden — changed so table scroll is not clipped */
 }
 
 /* Product Info Card */
@@ -310,10 +311,17 @@
   color: #2c3e50;
 }
 
-/* Tables */
+/* Tables
+   The scroll lives ONLY here — card and card-body must stay overflow:visible
+   so this element can actually scroll end-to-end. */
 .table-container {
   overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
   border-radius: 8px;
+  width: 100%;
+  max-width: 100%;
+  display: block;
 }
 
 .data-table {
@@ -322,6 +330,7 @@
   background: white;
   border-radius: 8px;
   overflow: hidden;
+  table-layout: auto;
 }
 
 .data-table thead {
@@ -335,6 +344,7 @@
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .data-table td {
@@ -342,6 +352,7 @@
   border-bottom: 1px solid #e9ecef;
   font-size: 0.9rem;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .data-table tbody tr:hover {
@@ -409,20 +420,9 @@
   font-weight: 500;
 }
 
-.status-paid {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status-pending {
-  background: #fff3cd;
-  color: #856404;
-}
-
-.status-unknown {
-  background: #e2e3e5;
-  color: #383d41;
-}
+.status-paid    { background: #d4edda; color: #155724; }
+.status-pending { background: #fff3cd; color: #856404; }
+.status-unknown { background: #e2e3e5; color: #383d41; }
 
 /* Stock Alerts */
 .stock-alerts-container {
@@ -440,17 +440,6 @@
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   border: none;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
 }
 
 /* Loading and Error States */
@@ -483,45 +472,13 @@
   align-items: center;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .salesitems-content-area {
-    margin-left: 0;
-    width: 100%;
-  }
-  
-  .salesitems-main-content {
-    padding: 15px;
-    margin-top: 60px;
-  }
-  
-  .info-grid, .stock-stats {
-    grid-template-columns: 1fr;
-  }
-  
-  .product-badges {
-    margin-top: 1rem;
-  }
-  
-  .stock-alerts-container {
-    position: static;
-    min-width: auto;
-    margin-bottom: 1rem;
-  }
-}
-
 /* Utility Classes */
 .text-primary { color: #667eea !important; }
-.bg-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
+.bg-primary   { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
 
 /* Table row states */
-.table-warning {
-  background-color: #fff3cd !important;
-}
-
-.table-info {
-  background-color: #d1ecf1 !important;
-}
+.table-warning { background-color: #fff3cd !important; }
+.table-info    { background-color: #d1ecf1 !important; }
 
 .invoice-number {
   color: #667eea;
@@ -533,6 +490,384 @@
   color: #495057;
 }
 
-.amount-value {
-  color: #28a745;
+.amount-value { color: #28a745; }
+
+/* ============================================================
+   TABLET  (≤ 992px)
+   ============================================================ */
+@media (max-width: 992px) {
+  .salesitems-content-area {
+    margin-left: 80px;
+    width: calc(100% - 80px);
+  }
+
+  .salesitems-content-area.collapsed {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .page-title {
+    font-size: 1.4rem;
+  }
+
+  .product-info-card .info-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 0.75rem 0.6rem;
+    font-size: 0.82rem;
+  }
+
+  /* Tablet: ensure scroll chain is unbroken */
+  .card {
+    overflow: visible !important;
+  }
+
+  .card-body {
+    overflow: visible !important;
+  }
+
+  .table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  /* Tablet table min-widths */
+  .stock-details-card      .data-table { min-width: 650px; }
+  .sales-transactions-card .data-table { min-width: 520px; }
+  .purchases-card          .data-table { min-width: 380px; }
+}
+
+/* ============================================================
+   MOBILE  (≤ 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+
+  /* Sidebar: overlay mode – content fills full width */
+  .salesitems-content-area {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .salesitems-main-content {
+    padding: 3px !important;
+    margin-top: 5px;
+    border-radius: 0;
+    box-shadow: none;
+    /* KEY: do NOT set overflow:hidden here — kills table scroll */
+    overflow-x: visible;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .salesitems-main-content .container-fluid {
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+    /* KEY: do NOT set overflow:hidden here */
+    overflow-x: visible;
+  }
+
+  /* Page header */
+  .page-header {
+    padding: 1rem;
+    margin-bottom: 3px !important;
+    border-radius: 8px;
+  }
+
+  .page-title {
+    font-size: 1.05rem;
+    word-break: break-word;
+  }
+
+  .page-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .page-header .d-flex.justify-content-between {
+    flex-direction: column !important;
+    gap: 8px;
+  }
+
+  /* Bootstrap row: stack columns */
+  .salesitems-main-content .row.g-4 {
+    flex-direction: column !important;
+    /* KEY: do NOT set overflow:hidden here */
+    overflow-x: visible;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    gap: 3px !important;
+  }
+
+  .salesitems-main-content .row.g-4 > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-bottom: 3px !important;
+    /* KEY: do NOT set overflow:hidden on columns */
+    overflow: visible !important;
+  }
+
+  /* Cards: overflow MUST be visible so table scroll works */
+  .card {
+    border-radius: 8px;
+    margin-bottom: 3px !important;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: visible !important; /* was: hidden — must be visible for table scroll */
+  }
+
+  .card:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  .card-header {
+    padding: 0.9rem 1rem;
+    border-radius: 8px 8px 0 0;
+  }
+
+  .card-title {
+    font-size: 0.92rem;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .card-header .d-flex.justify-content-between {
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: flex-start;
+  }
+
+  .card-header .d-flex.justify-content-between .card-title {
+    flex: 1 1 auto;
+  }
+
+  .card-header .d-flex.justify-content-between .badge {
+    flex-shrink: 0;
+  }
+
+  /* card-body: overflow MUST be visible so table scroll works */
+  .card-body {
+    padding: 0.85rem;
+    overflow: visible !important; /* was: hidden — must be visible for table scroll */
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* TABLE SCROLL: this is the ONLY element that clips horizontally */
+  .table-container {
+    overflow-x: auto !important;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100%;
+    scrollbar-width: thin;
+    display: block;
+  }
+
+  .table-container::-webkit-scrollbar {
+    height: 4px;
+  }
+  .table-container::-webkit-scrollbar-thumb {
+    background: #cbd3da;
+    border-radius: 4px;
+  }
+
+  /* Min-widths force horizontal scroll instead of squishing */
+  .stock-details-card      .data-table { min-width: 620px; }
+  .sales-transactions-card .data-table { min-width: 500px; }
+  .purchases-card          .data-table { min-width: 380px; }
+
+  .data-table th {
+    padding: 0.65rem 0.5rem;
+    font-size: 0.74rem;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+  }
+
+  .data-table td {
+    padding: 0.65rem 0.5rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .batch-number {
+    font-size: 0.76rem;
+    padding: 0.15rem 0.3rem;
+  }
+
+  .date-value   { font-size: 0.76rem; }
+  .price-value  { font-size: 0.8rem; }
+
+  .status-badge {
+    padding: 0.25rem 0.45rem;
+    font-size: 0.72rem;
+  }
+
+  .quantity-badge {
+    font-size: 0.73rem;
+    padding: 0.18rem 0.35rem;
+  }
+
+  .product-name-cell {
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+
+  .product-name { font-size: 0.8rem; }
+
+  /* Product Info Grid: single column */
+  .product-info-card .info-grid {
+    grid-template-columns: 1fr;
+    gap: 3px !important;
+  }
+
+  .info-item {
+    margin-bottom: 3px !important;
+    padding-bottom: 3px !important;
+  }
+
+  .info-item.full-width {
+    grid-column: auto;
+  }
+
+  .info-item label  { font-size: 0.74rem; }
+  .info-item .value { font-size: 0.88rem; }
+
+  /* Stock Stats: 2-col compact */
+  .stock-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 3px !important;
+  }
+
+  .stock-stat-item {
+    padding: 0.55rem 0.35rem;
+    margin-bottom: 3px !important;
+  }
+  .stat-label { font-size: 0.7rem; }
+  .stat-value { font-size: 0.95rem; }
+
+  /* Audit */
+  .audit-info { gap: 3px !important; }
+
+  .audit-item {
+    padding: 0.5rem 0;
+    margin-bottom: 3px !important;
+  }
+
+  .audit-item label,
+  .audit-item span { font-size: 0.78rem; }
+
+  .section-title { font-size: 0.86rem; }
+
+  .card-header .badge {
+    font-size: 0.68rem;
+    padding: 0.28rem 0.45rem;
+  }
+
+  /* Stock Alerts: static + full width */
+  .stock-alerts-container {
+    position: static;
+    min-width: auto;
+    width: 100%;
+    margin-bottom: 3px !important;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  .stock-alert {
+    font-size: 0.8rem;
+    padding: 0.55rem 0.85rem;
+    margin-bottom: 3px !important;
+  }
+
+  /* Loading / error states */
+  .loading-container,
+  .error-container,
+  .loading-state,
+  .error-state,
+  .empty-state {
+    padding: 1.75rem 0.75rem;
+    margin-bottom: 3px !important;
+  }
+
+  .error-message { font-size: 0.9rem; }
+
+  hr {
+    margin-top: 3px !important;
+    margin-bottom: 3px !important;
+  }
+
+  .stock-details-card,
+  .sales-transactions-card,
+  .purchases-card {
+    margin-bottom: 3px !important;
+  }
+
+  .mb-4 { margin-bottom: 3px !important; }
+
+  .row.g-4 { row-gap: 3px !important; }
+
+  .mt-3, .mt-2, .mb-3, .mb-2 {
+    margin-top: 3px !important;
+    margin-bottom: 3px !important;
+  }
+}
+
+/* ============================================================
+   SMALL MOBILE  (≤ 480px)
+   ============================================================ */
+@media (max-width: 480px) {
+
+  .salesitems-main-content {
+    padding: 3px !important;
+    margin-top: 5px;
+  }
+
+  .page-header  { padding: 0.75rem; }
+  .page-title   { font-size: 0.95rem; }
+  .card-header  { padding: 0.7rem 0.75rem; }
+  .card-body    { padding: 0.7rem; }
+
+  /* Scroll chain: must stay visible on smallest screens too */
+  .card         { overflow: visible !important; }
+  .card-body    { overflow: visible !important; }
+  .table-container { overflow-x: auto !important; }
+
+  .stock-stat-item { padding: 0.45rem 0.2rem; }
+  .stat-value      { font-size: 0.9rem; }
+
+  /* Tighter min-widths for very small phones */
+  .stock-details-card      .data-table { min-width: 540px; }
+  .sales-transactions-card .data-table { min-width: 440px; }
+  .purchases-card          .data-table { min-width: 320px; }
+
+  .data-table th,
+  .data-table td {
+    padding: 0.5rem 0.4rem;
+    font-size: 0.74rem;
+  }
+
+  .stock-alerts-container { padding: 0; }
+
+  .stock-alert {
+    font-size: 0.75rem;
+    padding: 0.45rem 0.65rem;
+    margin-bottom: 3px !important;
+  }
+
+  .salesitems-main-content .container-fluid {
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+  }
+
+  .card { margin-bottom: 3px !important; }
+
+  .row.g-4 { gap: 3px !important; }
 }

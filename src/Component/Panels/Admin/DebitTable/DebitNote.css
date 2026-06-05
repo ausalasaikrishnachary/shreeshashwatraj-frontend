@@ -1,310 +1,318 @@
-.debit-note-wrapper {
-  display: flex;
-  min-height: 100vh;
-  background-color: #f8f9fa;
-}
+/* ============================================
+   MOBILE FULL RESPONSIVENESS
+   ============================================ */
 
-.debit-note-main-content {
-  flex: 1;
-  margin-left: 250px;
-  transition: margin-left 0.3s ease;
-}
-
-.debit-note-main-content.collapsed {
-  margin-left: 80px;
-}
-
-.debit-note-content-area {
-  padding: 20px;
-}
-
-/* Navigation Tabs */
-.debit-note-tabs-section {
-  background: white;
-  border-radius: 10px 10px 0 0;
-  padding: 0 25px;
-  margin-bottom: 0;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  border-bottom: 1px solid #dee2e6;
-}
-
-.debit-note-tabs-container {
-  display: flex;
-  gap: 0;
-  overflow-x: auto;
-}
-
-.debit-note-tab {
-  padding: 16px 24px;
-  background: none;
-  border: none;
-  border-bottom: 3px solid transparent;
-  font-weight: 500;
-  color: #6c757d;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  font-size: 14px;
-}
-
-.debit-note-tab:hover {
-  color: #007bff;
-  background-color: #f8f9fa;
-}
-
-.debit-note-tab--active {
-  color: #007bff;
-  border-bottom-color: #007bff;
-  background-color: #f8f9fa;
-}
-
-.debit-note-header-section {
-  background: white;
-  margin-top:10px;
-  border-radius: 0 0 10px 10px;
-  padding: 25px;
-  margin-bottom: 24px;
-  /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); */
-}
-
-.debit-note-header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.debit-note-title-section {
-  flex: 1;
-}
-
-.debit-note-main-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 8px;
-}
-
-.debit-note-subtitle {
-  font-size: 16px;
-  color: #6c757d;
-  margin-bottom: 0;
-}
-
-/* Stats Grid */
-.debit-note-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.debit-note-stat-card {
-  background: white;
-  border-radius: 10px;
-  padding: 24px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  border-left: 4px solid #007bff;
-}
-
-.debit-note-stat-card--total {
-  border-left-color: #007bff;
-}
-
-.debit-note-stat-card--month {
-  border-left-color: #28a745;
-}
-
-.debit-note-stat-card--pending {
-  border-left-color: #ffc107;
-}
-
-.debit-note-stat-card--approved {
-  border-left-color: #17a2b8;
-}
-
-.debit-note-stat-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #6c757d;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.debit-note-stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 8px;
-}
-
-.debit-note-stat-change {
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.debit-note-stat-change--positive {
-  color: #28a745;
-}
-
-.debit-note-stat-change--negative {
-  color: #dc3545;
-}
-
-/* Actions Section */
-.debit-note-actions-section {
-  background: white;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.quotation-container {
-  background: white;
-}
-
-/* Form Controls */
-.form-label {
-  font-weight: 600;
-  color: #495057;
-  font-size: 14px;
-}
-
-.form-select, .form-control {
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 14px;
-}
-
-.form-select:focus, .form-control:focus {
-  border-color: #007bff;
-  box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
-}
-
-/* Buttons */
-.btn {
-  border-radius: 6px;
-  font-weight: 500;
-  padding: 8px 16px;
-  font-size: 14px;
-  transition: all 0.2s ease;
-}
-
-.btn-success {
-  background-color: #28a745;
-  border-color: #28a745;
-}
-
-.btn-success:hover {
-  background-color: #218838;
-  border-color: #1e7e34;
-}
-
-.btn-info {
-  background-color: #17a2b8;
-  border-color: #17a2b8;
-}
-
-.btn-info:hover {
-  background-color: #138496;
-  border-color: #117a8b;
-}
-
-.btn-primary {
-  background-color: #007bff;
-  border-color: #007bff;
-}
-
-.btn-primary:hover {
-  background-color: #0056b3;
-  border-color: #004085;
-}
-
-.btn-sm {
-  padding: 4px 12px;
-  font-size: 12px;
-}
-
-/* Document Link */
-.document-link {
-  color: #007bff;
-  text-decoration: none;
-  font-size: 14px;
-  transition: color 0.2s ease;
-}
-
-.document-link:hover {
-  color: #0056b3;
-  text-decoration: underline;
-}
-
-/* Responsive Design */
+/* Medium devices (tablets, max-width: 768px) - enhancements */
 @media (max-width: 768px) {
-  .debit-note-main-content {
-    margin-left: 0;
+  /* Reduce overall spacing */
+  .debit-note-header-section {
+    padding: 20px 16px;
   }
-  
-  .debit-note-main-content.collapsed {
-    margin-left: 0;
-  }
-  
+
   .debit-note-stats-grid {
-    grid-template-columns: 1fr;
+    gap: 14px;
   }
-  
-  .debit-note-header-top {
-    flex-direction: column;
-    gap: 16px;
+
+  .debit-note-stat-card {
+    padding: 18px;
   }
-  
-  .debit-note-tabs-container {
-    flex-wrap: wrap;
-  }
-  
+
+  /* Touch-friendly tabs (wrap + larger tap area) */
   .debit-note-tab {
-    flex: 1;
-    min-width: 120px;
-    text-align: center;
     padding: 12px 16px;
-    font-size: 13px;
+    font-size: 14px;
+    min-height: 48px; /* better tap target */
   }
-  
-  .row.align-items-end {
-    flex-direction: column;
-    align-items: stretch !important;
-  }
-  
-  .col-md-auto {
+
+  /* Stack actions like search, filters, buttons */
+  .debit-note-actions-section .row > [class*="col-"],
+  .row.align-items-end > [class*="col-"] {
     width: 100%;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
-  
-  .d-flex {
-    flex-direction: column;
+
+  .row.align-items-end {
     gap: 8px;
   }
-  
-  .me-2 {
-    margin-right: 0 !important;
+
+  /* Make any button group stack vertically */
+  .debit-note-actions-section .d-flex,
+  .d-flex.gap-2 {
+    flex-direction: column;
+    gap: 10px !important;
+  }
+
+  .debit-note-actions-section .d-flex .btn,
+  .d-flex.gap-2 .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Form controls full width & better spacing */
+  .form-select,
+  .form-control {
+    font-size: 16px; /* prevents zoom on iOS */
+    padding: 10px 12px;
+  }
+
+  /* Document links – bigger tap area */
+  .document-link {
+    display: inline-block;
+    padding: 6px 0;
   }
 }
 
+/* Small devices (phones, max-width: 576px) – already some rules, extend further */
 @media (max-width: 576px) {
   .debit-note-content-area {
-    padding: 15px;
+    padding: 12px;
   }
-  
+
+  .debit-note-header-section {
+    padding: 16px;
+  }
+
   .debit-note-main-title {
-    font-size: 24px;
+    font-size: 22px;
   }
-  
+
+  .debit-note-subtitle {
+    font-size: 14px;
+  }
+
+  /* Stats grid – full width with tighter spacing */
+  .debit-note-stats-grid {
+    gap: 12px;
+  }
+
+  .debit-note-stat-card {
+    padding: 16px;
+  }
+
+  .debit-note-stat-label {
+    font-size: 12px;
+  }
+
   .debit-note-stat-value {
     font-size: 20px;
   }
-  
+
+  /* Tabs – wrap, smaller padding but still tappable */
+  .debit-note-tabs-section {
+    padding: 0 12px;
+  }
+
   .debit-note-tab {
-    padding: 10px 12px;
+    padding: 10px 14px;
+    font-size: 13px;
+    min-height: 44px;
+  }
+
+  /* Action buttons full width + margin */
+  .btn {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 6px;
+  }
+
+  /* Grouped inline buttons (like in a filter bar) become column */
+  .d-flex.align-items-center {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .me-2 {
+    margin-right: 0 !important;
+    margin-bottom: 8px;
+  }
+
+  /* table responsiveness (if any) */
+  .table-responsive {
+    border-radius: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table.data-table,
+  .debit-note-table {
+    font-size: 13px;
+  }
+
+  table.data-table th,
+  table.data-table td,
+  .debit-note-table th,
+  .debit-note-table td {
+    padding: 10px 8px;
+    white-space: nowrap;
+  }
+
+  /* Improve any card-like lists */
+  .list-group-item {
+    flex-wrap: wrap;
+  }
+}
+
+/* Extra small devices (≤480px, e.g. iPhone SE, Galaxy Fold) */
+@media (max-width: 480px) {
+  .debit-note-main-title {
+    font-size: 20px;
+  }
+
+  .debit-note-stat-value {
+    font-size: 18px;
+  }
+
+  .debit-note-stat-card {
+    padding: 14px;
+  }
+
+  .debit-note-tab {
+    padding: 8px 12px;
     font-size: 12px;
+    min-height: 40px;
+  }
+
+  /* reduce header section spacing */
+  .debit-note-header-section {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  /* smaller gap for stats */
+  .debit-note-stats-grid {
+    gap: 10px;
+  }
+
+  /* make form labels smaller */
+  .form-label {
+    font-size: 13px;
+  }
+
+  /* ensure buttons have enough padding for touch */
+  .btn {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  /* pagination or other inline elements wrap */
+  .pagination {
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  /* adjust spacing for any modals or popups if used */
+  .modal-body {
+    padding: 16px;
+  }
+}
+
+/* Landscape orientation on mobiles – keep content readable */
+@media (max-width: 768px) and (orientation: landscape) {
+  .debit-note-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .debit-note-tabs-container {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .debit-note-tab {
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+}
+
+/* ============================================
+   TABLES & DATA LISTS – FULL MOBILE OPTIMIZATION
+   (for any debit note tables inside the content)
+   ============================================ */
+@media (max-width: 768px) {
+  .table-responsive {
+    border: 0;
+    margin-bottom: 1rem;
+  }
+
+  /* Make tables card‑like on very small screens (optional, uncomment if needed) */
+  /*
+  .table-responsive table,
+  .table-responsive thead,
+  .table-responsive tbody,
+  .table-responsive th,
+  .table-responsive td,
+  .table-responsive tr {
+    display: block;
+  }
+  .table-responsive thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+  .table-responsive tr {
+    border: 1px solid #dee2e6;
+    margin-bottom: 12px;
+    border-radius: 8px;
+  }
+  .table-responsive td {
+    border: none;
+    border-bottom: 1px solid #eee;
+    position: relative;
+    padding-left: 50%;
+    white-space: normal;
+    text-align: right;
+  }
+  .table-responsive td:before {
+    content: attr(data-label);
+    position: absolute;
+    left: 12px;
+    width: 45%;
+    padding-right: 10px;
+    white-space: nowrap;
+    font-weight: 600;
+    text-align: left;
+  }
+  */
+}
+
+/* ============================================
+   BETTER TOUCH TARGETS & SCROLLING
+   ============================================ */
+@media (hover: none) and (pointer: coarse) {
+  .btn,
+  .debit-note-tab,
+  .document-link,
+  .pagination a,
+  .form-select,
+  button,
+  [role="button"] {
+    cursor: pointer;
+    min-height: 44px; /* iOS minimum tap target size */
+  }
+
+  .debit-note-tab {
+    min-height: 48px;
+  }
+
+  .form-select,
+  .form-control {
+    font-size: 16px; /* prevents zoom on focus in iOS */
+  }
+}
+
+/* Prevent horizontal scroll on all mobile devices */
+@media (max-width: 768px) {
+  body,
+  .debit-note-wrapper,
+  .debit-note-main-content,
+  .debit-note-content-area {
+    overflow-x: hidden;
+  }
+
+  img,
+  svg,
+  .table-responsive {
+    max-width: 100%;
+    height: auto;
   }
 }

@@ -128,5 +128,31 @@
 
   .d-flex.gap-2.flex-shrink-0.mt-2.mt-md-0 {
     justify-content: flex-start;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  /* Make every button/dropdown-toggle full width on mobile */
+  .d-flex.gap-2.flex-shrink-0.mt-2.mt-md-0 .dropdown,
+  .d-flex.gap-2.flex-shrink-0.mt-2.mt-md-0 > .btn {
+    width: 100%;
+  }
+
+  .d-flex.gap-2.flex-shrink-0.mt-2.mt-md-0 .dropdown .btn,
+  .d-flex.gap-2.flex-shrink-0.mt-2.mt-md-0 > .btn {
+    width: 100%;
+    justify-content: center;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    font-size: 15px;
+  }
+
+  /* Remove the dropdown underline/divider line that appears under toggle buttons */
+  .d-flex.gap-2.flex-shrink-0.mt-2.mt-md-0 .dropdown-toggle::after {
+    display: none;
+  }
+
+  .d-flex.gap-2.flex-shrink-0.mt-2.mt-md-0 .dropdown .btn::after {
+    display: none;
   }
 }

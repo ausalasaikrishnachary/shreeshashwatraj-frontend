@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Container,
@@ -77,15 +76,6 @@ const CreateInvoice = ({ user }) => {
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
         .toISOString()
         .split("T")[0],
-      //   companyInfo: {
-      //     name: "SHREE SHASHWATRAJ AGRO PVT LTD ",
-      //     address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-      //     email: "spmathur56@gmail.com",
-      //     phone: "9801049700",
-      //     gstin: "10AAOCS1541B1ZZ",
-      //     state: "Bihar",
-      //     stateCode: "10",
-      //   },
       companyInfo: {
         name: "",
         address: "",
@@ -141,8 +131,9 @@ const CreateInvoice = ({ user }) => {
     product_id: "",
     description: "",
     quantity: 0,
+    weight: 0,
     price: 0,
-    original_price: 0, // ← ADD THIS LINE
+    original_price: 0,
     discount: 0,
     gst: 0,
     cgst: 0,
@@ -180,10 +171,9 @@ const CreateInvoice = ({ user }) => {
 
         const res = await fetch(url);
 
-        const text = await res.text(); // 👈 FIRST GET TEXT
+        const text = await res.text();
         console.log("RAW RESPONSE:", text);
 
-        // 👇 TRY PARSE JSON SAFELY
         let result;
         try {
           result = JSON.parse(text);
@@ -223,7 +213,6 @@ const CreateInvoice = ({ user }) => {
         const apiData = result.data;
         const transformedData = transformApiDataToFormFormat(apiData);
 
-        // document_type is now derived from GST rate via DocumentType() — no API fetch needed
         setInvoiceData(transformedData);
         setSelectedSupplierId(apiData.PartyID);
         setSelected(true);
@@ -278,13 +267,13 @@ const CreateInvoice = ({ user }) => {
     const items =
       batchDetails.map((batch, index) => {
         const quantity = parseFloat(batch.quantity) || 0;
+        const weight = parseFloat(batch.weight) || 0;
         const price = parseFloat(batch.price) || 0;
         const discount = parseFloat(batch.discount) || 0;
         const gst = parseFloat(batch.gst) || 0;
         const cess = parseFloat(batch.cess) || 0;
         const original_price = parseFloat(batch.original_price) || 0;
 
-        // Calculate item total
         const subtotal = quantity * price;
         const discountAmount = subtotal * (discount / 100);
         const amountAfterDiscount = subtotal - discountAmount;
@@ -297,6 +286,7 @@ const CreateInvoice = ({ user }) => {
           product_id: batch.product_id || "",
           description: batch.description || "",
           quantity: quantity,
+          weight: weight,
           price: price,
           original_price: original_price,
           discount: discount,
@@ -322,7 +312,6 @@ const CreateInvoice = ({ user }) => {
         };
       }) || [];
 
-    // Find the account details to get business_name
     const account = accounts.find((acc) => acc.id === apiData.PartyID);
 
     let transportDetails = {
@@ -343,16 +332,6 @@ const CreateInvoice = ({ user }) => {
             .toISOString()
             .split("T")[0]
         : new Date().toISOString().split("T")[0],
-
-      //   companyInfo: {
-      //     name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-      //     address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-      //     email: "spmathur56@gmail.com",
-      //     phone: "9801049700",
-      //     gstin: "10AAOCS1541B1ZZ",
-      //     state: "Bihar",
-      //     stateCode: "10",
-      //   },
 
       companyInfo: {
         name: "",
@@ -448,11 +427,10 @@ const CreateInvoice = ({ user }) => {
       }
     };
   }, [isEditMode]);
-  // Update the fetchNextInvoiceNumber function
+
   const fetchNextInvoiceNumber = async (transactionType = "Sales") => {
     try {
       console.log("Fetching next invoice number for:", transactionType);
-      // Add transactionType as query parameter
       const response = await fetch(
         `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}`,
       );
@@ -464,7 +442,7 @@ const CreateInvoice = ({ user }) => {
         setInvoiceData((prev) => ({
           ...prev,
           invoiceNumber: data.nextInvoiceNumber,
-          transactionType: transactionType, // Store transaction type in state
+          transactionType: transactionType,
         }));
 
         setHasFetchedInvoiceNumber(true);
@@ -486,7 +464,6 @@ const CreateInvoice = ({ user }) => {
     }
   };
 
-  // Update generateFallbackInvoiceNumber
   const generateFallbackInvoiceNumber = async (transactionType = "Sales") => {
     try {
       const getFinancialYearShort = () => {
@@ -505,7 +482,6 @@ const CreateInvoice = ({ user }) => {
       const prefix = `SSA/`;
       const suffix = `/${currentFY}`;
 
-      // Pass transactionType to API
       const response = await fetch(
         `${baseurl}/last-invoice?transactionType=${encodeURIComponent(transactionType)}`,
       );
@@ -529,7 +505,6 @@ const CreateInvoice = ({ user }) => {
         }
       }
 
-      // Default fallback
       const defaultNumber = `${prefix}000001${suffix}`;
       setNextInvoiceNumber(defaultNumber);
       setInvoiceData((prev) => ({
@@ -587,6 +562,7 @@ const CreateInvoice = ({ user }) => {
     const fy = getCurrentFinancialYear();
     return `SSA/${number.toString().padStart(6, "0")}/${fy}`;
   };
+
   const isSameState = () => {
     const companyState = invoiceData.companyInfo.state;
     const billingState = invoiceData.billingAddress?.state;
@@ -601,14 +577,12 @@ const CreateInvoice = ({ user }) => {
     return companyState.toLowerCase() === supplierState.toLowerCase();
   };
 
-  // Save to localStorage whenever invoiceData changes
   useEffect(() => {
     if (hasFetchedInvoiceNumber) {
       localStorage.setItem("draftInvoice", JSON.stringify(invoiceData));
     }
   }, [invoiceData, hasFetchedInvoiceNumber]);
 
-  // Update tax type when supplier info changes
   useEffect(() => {
     const taxType = isSameState() ? "CGST/SGST" : "IGST";
     setInvoiceData((prev) => ({
@@ -625,7 +599,6 @@ const CreateInvoice = ({ user }) => {
     invoiceData.shippingAddress.state,
   ]);
 
-  // Open PDF preview - ONLY after form is submitted
   const handlePreview = () => {
     if (!isPreviewReady) {
       window.alert("⚠️ Please submit the invoice first to generate preview");
@@ -761,6 +734,7 @@ const CreateInvoice = ({ user }) => {
       items: updatedItems,
     }));
   };
+
   const addItem = () => {
     if (!itemForm.product) {
       window.alert("⚠️ Please select a product");
@@ -778,7 +752,6 @@ const CreateInvoice = ({ user }) => {
       const availableQuantity = parseFloat(selectedBatchDetails.quantity) || 0;
 
       if (availableQuantity <= 0) {
-        // Show confirmation dialog for zero stock
         const confirmAdd = window.confirm(
           `⚠️ WARNING: Selected batch "${selectedBatch}" has ZERO stock available.\n\n` +
             `You are trying to add ${quantity} units.\n\n` +
@@ -786,11 +759,9 @@ const CreateInvoice = ({ user }) => {
         );
 
         if (!confirmAdd) {
-          return; // User clicked Cancel - don't add item
+          return;
         }
-        // User clicked OK - proceed with adding item
       } else if (quantity > availableQuantity) {
-        // Show warning for insufficient stock
         const confirmAdd = window.confirm(
           `⚠️ WARNING: Insufficient stock!\n\n` +
             `Batch: "${selectedBatch}"\n` +
@@ -801,13 +772,12 @@ const CreateInvoice = ({ user }) => {
         );
 
         if (!confirmAdd) {
-          return; // User clicked Cancel - don't add item
+          return;
         }
       }
     }
 
     if (editingItemIndex !== null) {
-      // Check if editing an existing item
       const existingItem = invoiceData.items[editingItemIndex];
 
       if (selectedBatchDetails) {
@@ -830,7 +800,6 @@ const CreateInvoice = ({ user }) => {
             }
           }
         } else {
-          // Changing to a different batch
           if (quantity > availableQuantity && availableQuantity > 0) {
             const confirmUpdate = window.confirm(
               `⚠️ WARNING: Insufficient stock in new batch!\n\n` +
@@ -859,6 +828,7 @@ const CreateInvoice = ({ user }) => {
         inclusive_gst: itemForm.inclusive_gst,
         unit_id: itemForm.unit_id,
         unit_name: itemForm.unit_name,
+        weight: parseFloat(itemForm.weight) || 0,
         document_type: DocumentType(itemForm.gst),
       };
 
@@ -870,7 +840,6 @@ const CreateInvoice = ({ user }) => {
       }));
       setEditingItemIndex(null);
 
-      // Success message with stock warning if applicable
       if (
         selectedBatchDetails &&
         parseFloat(selectedBatchDetails.quantity) <= 0
@@ -882,7 +851,6 @@ const CreateInvoice = ({ user }) => {
         window.alert(`✅ Item "${finalItem.product}" updated successfully!`);
       }
     } else {
-      // Add new item
       const calculatedItem = calculateItemTotal();
       const finalItem = {
         ...calculatedItem,
@@ -894,6 +862,7 @@ const CreateInvoice = ({ user }) => {
         original_price: itemForm.original_price,
         unit_id: itemForm.unit_id,
         unit_name: itemForm.unit_name,
+        weight: parseFloat(itemForm.weight) || 0,
         document_type: DocumentType(itemForm.gst),
       };
 
@@ -902,7 +871,6 @@ const CreateInvoice = ({ user }) => {
         items: [...prev.items, finalItem],
       }));
 
-      // Success message with stock warning if applicable
       if (
         selectedBatchDetails &&
         parseFloat(selectedBatchDetails.quantity) <= 0
@@ -915,12 +883,12 @@ const CreateInvoice = ({ user }) => {
       }
     }
 
-    // Reset form
     setItemForm({
       product: "",
       product_id: "",
       description: "",
       quantity: 0,
+      weight: 0,
       original_price: 0,
       price: 0,
       discount: 0,
@@ -970,6 +938,7 @@ const CreateInvoice = ({ user }) => {
       product_id: itemToEdit.product_id,
       description: itemToEdit.description,
       quantity: itemToEdit.quantity,
+      weight: itemToEdit.weight || 0,
       price: productNetPrice,
       discount: itemToEdit.discount,
       gst: itemToEdit.gst,
@@ -993,7 +962,6 @@ const CreateInvoice = ({ user }) => {
     setSelectedBatchDetails(itemToEdit.batchDetails);
     setEditingItemIndex(index);
 
-    // Fetch batches for the product
     if (itemToEdit.product_id) {
       fetchBatchesForProduct(itemToEdit.product_id);
     }
@@ -1006,6 +974,7 @@ const CreateInvoice = ({ user }) => {
       });
     }
   }, [products]);
+
   const fetchBatchesForProduct = async (productId) => {
     try {
       const res = await fetch(`${baseurl}/products/${productId}/batches`);
@@ -1035,7 +1004,6 @@ const CreateInvoice = ({ user }) => {
       field === "amount" ? parseFloat(value) || 0 : value;
     setCharges(updatedCharges);
 
-    // Recalculate total additional charges
     const totalAdditionalCharges = updatedCharges.reduce(
       (sum, charge) => sum + (parseFloat(charge.amount) || 0),
       0,
@@ -1050,7 +1018,6 @@ const CreateInvoice = ({ user }) => {
     const updatedCharges = charges.filter((_, i) => i !== index);
     setCharges(updatedCharges);
 
-    // Recalculate total additional charges
     const totalAdditionalCharges = updatedCharges.reduce(
       (sum, charge) => sum + (parseFloat(charge.amount) || 0),
       0,
@@ -1060,6 +1027,7 @@ const CreateInvoice = ({ user }) => {
       additionalChargeAmount: totalAdditionalCharges,
     }));
   };
+
   const cancelEdit = () => {
     setEditingItemIndex(null);
     setItemForm({
@@ -1067,6 +1035,7 @@ const CreateInvoice = ({ user }) => {
       product_id: "",
       description: "",
       quantity: 0,
+      weight: 0,
       price: 0,
       discount: 0,
       gst: 0,
@@ -1090,6 +1059,7 @@ const CreateInvoice = ({ user }) => {
       items: prev.items.filter((_, i) => i !== index),
     }));
   };
+
   const calculateTotals = () => {
     const taxableAmount = invoiceData.items.reduce((sum, item) => {
       const quantity = parseFloat(item.quantity) || 0;
@@ -1167,21 +1137,10 @@ const CreateInvoice = ({ user }) => {
     localStorage.removeItem("draftInvoice");
 
     const resetData = {
-      // invoiceNumber: formatInvoiceNumber(1), // SSA/000001/26-27
       invoiceDate: new Date().toISOString().split("T")[0],
       validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
         .toISOString()
         .split("T")[0],
-      //   companyInfo: {
-      //     name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-      //     address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-      //     email: "spmathur56@gmail.com",
-      //     phone: "9801049700",
-      //     gstin: "10AAOCS1541B1ZZ",
-      //     state: "Bihar",
-      //     stateCode: "10",
-      //   },
-
       companyInfo: {
         name: invoiceData.companyInfo?.name || "",
         address: invoiceData.companyInfo?.address || "",
@@ -1260,7 +1219,6 @@ const CreateInvoice = ({ user }) => {
     }
 
     try {
-      // ✅ FIRST: Get the next invoice number from API
       let finalInvoiceNumber = invoiceData.invoiceNumber;
 
       if (!isEditMode) {
@@ -1287,7 +1245,6 @@ const CreateInvoice = ({ user }) => {
       }
       console.log("Submitting invoice with number:", finalInvoiceNumber);
 
-      // Get staff information
       const staffAccount = accounts.find(
         (acc) => acc.staffid == selectedStaffId,
       );
@@ -1383,6 +1340,7 @@ const CreateInvoice = ({ user }) => {
           batch: item.batch,
           batch_id: item.batch_id,
           quantity: quantity,
+          weight: parseFloat(item.weight) || 0,
           unit_id: item.unit_id,
           price: price,
           original_price: parseFloat(item.original_price) || 0,
@@ -1420,7 +1378,6 @@ const CreateInvoice = ({ user }) => {
         voucherDocumentType = "Bill of Supply cum Tax Invoice";
       }
 
-      // const sameState = isSameState();
       const taxTypeValue = sameState ? "local" : "interstate";
       const customerTypeValue = customerType || "b2b";
       const payload = {
@@ -1471,7 +1428,6 @@ const CreateInvoice = ({ user }) => {
         round_off: roundOff.toFixed(2),
       };
 
-      // Remove unused fields
       delete payload.companyState;
       delete payload.supplierState;
       delete payload.items;
@@ -1513,7 +1469,6 @@ const CreateInvoice = ({ user }) => {
       );
       setIsPreviewReady(true);
 
-      // Store preview data
       const previewData = {
         ...invoiceData,
         invoiceNumber: responseData.invoiceNumber || finalInvoiceNumber,
@@ -1557,7 +1512,6 @@ const CreateInvoice = ({ user }) => {
 
   const filteredAccounts = accounts.filter((acc) => {
     const searchLower = searchTerm.toLowerCase();
-    // const name = (acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name)?.toLowerCase() || "";
     const name = (acc.name || acc.display_name)?.toLowerCase() || "";
     const businessName = acc.business_name?.toLowerCase() || "";
     const displayName = acc.display_name?.toLowerCase() || "";
@@ -1572,6 +1526,7 @@ const CreateInvoice = ({ user }) => {
         displayName.includes(searchLower))
     );
   });
+
   const calculateTotalPrice = () => {
     const price = parseFloat(itemForm.price) || 0;
     const gst = parseFloat(itemForm.gst) || 0;
@@ -1581,6 +1536,13 @@ const CreateInvoice = ({ user }) => {
     const priceAfterDiscount = price - (price * discount) / 100;
     const priceWithGst = priceAfterDiscount + (priceAfterDiscount * gst) / 100;
     return (priceWithGst * quantity).toFixed(2);
+  };
+
+  // ── NEW: Compute total weight for the form (qty × weight per unit) ──
+  const calculateFormTotalWeight = () => {
+    const qty = parseFloat(itemForm.quantity) || 0;
+    const wt = parseFloat(itemForm.weight) || 0;
+    return (qty * wt).toFixed(2);
   };
 
   const handleInclPriceChange = (e) => {
@@ -1604,6 +1566,7 @@ const CreateInvoice = ({ user }) => {
       original_price: parseFloat(inclPrice.toFixed(2)),
     }));
   };
+
   return (
     <div className="admin-layout">
       <AdminSidebar
@@ -1733,8 +1696,9 @@ const CreateInvoice = ({ user }) => {
                     <Form.Label className="fw-bold">Validity Date</Form.Label>
                   </Form.Group>
                 </Col>
-                {/* B2B / B2C Checkboxes */}
               </Row>
+
+              {/* B2B / B2C Checkboxes */}
               <div className="d-flex gap-3 mb-3">
                 <Form.Check
                   type="checkbox"
@@ -1744,7 +1708,6 @@ const CreateInvoice = ({ user }) => {
                   onChange={(e) => {
                     if (e.target.checked) {
                       setCustomerType("b2b");
-                      // Restore GSTIN when switching back to B2B
                       if (selectedSupplierId) {
                         const supplier = accounts.find(
                           (acc) => acc.id === selectedSupplierId,
@@ -1761,7 +1724,6 @@ const CreateInvoice = ({ user }) => {
                       }
                     } else if (customerType === "b2b") {
                       setCustomerType("b2c");
-                      // Set GSTIN to null for B2C
                       setInvoiceData((prev) => ({
                         ...prev,
                         supplierInfo: {
@@ -1780,7 +1742,6 @@ const CreateInvoice = ({ user }) => {
                   onChange={(e) => {
                     if (e.target.checked) {
                       setCustomerType("b2c");
-                      // Set GSTIN to null for B2C
                       setInvoiceData((prev) => ({
                         ...prev,
                         supplierInfo: {
@@ -1790,7 +1751,6 @@ const CreateInvoice = ({ user }) => {
                       }));
                     } else if (customerType === "b2c") {
                       setCustomerType("b2b");
-                      // Restore GSTIN when switching back to B2B
                       if (selectedSupplierId) {
                         const supplier = accounts.find(
                           (acc) => acc.id === selectedSupplierId,
@@ -1809,6 +1769,7 @@ const CreateInvoice = ({ user }) => {
                   }}
                 />
               </div>
+
               <div className="bg-white rounded border">
                 <Row className="mb-0">
                   <Col md={4} className="border-end p-3">
@@ -1855,7 +1816,6 @@ const CreateInvoice = ({ user }) => {
                                 overflowY: "auto",
                               }}
                             >
-                              {/* Header */}
                               <div
                                 style={{
                                   padding: "8px 16px",
@@ -1871,7 +1831,6 @@ const CreateInvoice = ({ user }) => {
                                 Select Retailer
                               </div>
 
-                              {/* Scrollable retailer list */}
                               <div>
                                 {filteredAccounts.length === 0 ? (
                                   <div
@@ -1924,7 +1883,6 @@ const CreateInvoice = ({ user }) => {
                                           setInvoiceData((prev) => ({
                                             ...prev,
                                             supplierInfo: {
-                                              // name: supplier.gstin ? supplier.display_name : supplier.name,
                                               name:
                                                 supplier.name ||
                                                 supplier.display_name,
@@ -2006,7 +1964,6 @@ const CreateInvoice = ({ user }) => {
                                             fontSize: "13px",
                                           }}
                                         >
-                                          {/* {acc.gstin?.trim() ? acc.display_name || acc.name : acc.name || acc.display_name} */}
                                           {acc.name || acc.display_name}
                                         </div>
                                         <div
@@ -2033,7 +1990,6 @@ const CreateInvoice = ({ user }) => {
                                 )}
                               </div>
 
-                              {/* Footer: close button */}
                               <div
                                 style={{
                                   padding: "8px 16px",
@@ -2064,7 +2020,6 @@ const CreateInvoice = ({ user }) => {
                             Customer Info
                           </strong>
 
-                          {/* Edit + Change Retailer Buttons */}
                           <div className="btn-group">
                             <Button
                               variant="info"
@@ -2195,6 +2150,7 @@ const CreateInvoice = ({ user }) => {
                   </Col>
                 </Row>
               </div>
+
               {/* Item Section */}
               <div className="item-section mb-3 mt-3 bg-white p-2 rounded">
                 <h6 className="text-primary mb-3">
@@ -2289,7 +2245,6 @@ const CreateInvoice = ({ user }) => {
                         }
                       />
 
-                      {/* Clear/Change button when product is selected */}
                       {itemForm.product && (
                         <button
                           type="button"
@@ -2381,121 +2336,137 @@ const CreateInvoice = ({ user }) => {
                                   parseFloat(p.net_price) || 0;
                                 const inclusiveGst = p.inclusive_gst || "";
                                 const productOriginalPrice =
-                                  parseFloat(p.price) || 0; // ← GET ORIGINAL PRICE
+                                  parseFloat(p.price) || 0;
 
-                                return (
-                                  <div
-                                    key={p.id}
-                                    onClick={async () => {
-                                      const retailerDiscount =
-                                        parseFloat(
-                                          accounts.find(
-                                            (acc) =>
-                                              acc.id === selectedSupplierId,
-                                          )?.discount || 0,
-                                        ) || 0;
+                               return (
+  <div
+    key={p.id}
+    onClick={async () => {
+      const retailerDiscount =
+        parseFloat(
+          accounts.find(
+            (acc) =>
+              acc.id === selectedSupplierId,
+          )?.discount || 0,
+        ) || 0;
 
-                                      let unitName = "";
-                                      if (p.unit) {
-                                        unitName = await fetchUnitName(p.unit);
-                                      }
-                                      setItemForm((prev) => ({
-                                        ...prev,
-                                        product: p.goods_name,
-                                        product_id: p.id,
-                                        price: productNetPrice,
-                                        original_price: productOriginalPrice, // ← SET ORIGINAL PRICE
-                                        gst: parseFloat(
-                                          p.gst_rate?.replace("%", "") || 0,
-                                        ),
-                                        description: p.description || "",
-                                        discount: retailerDiscount,
-                                        quantity: prev.quantity || 0,
-                                        batch: "",
-                                        batch_id: "",
-                                        hsn_code: p.hsn_code || "",
-                                        inclusive_gst: inclusiveGst,
-                                        unit_id: p.unit || null,
-                                        unit_name: unitName,
-                                      }));
+      let unitName = "";
+      if (p.unit) {
+        unitName = await fetchUnitName(p.unit);
+      }
+      
+      let productWeight = 0;
+      try {
+        if (p.weight) {
+          productWeight = parseFloat(p.weight);
+        }
+        const weightRes = await fetch(`${baseurl}/products/${p.id}/batches`);
+        const batchDataWeight = await weightRes.json();
+        if (batchDataWeight.length > 0 && batchDataWeight[0].weight) {
+          productWeight = parseFloat(batchDataWeight[0].weight);
+        }
+      } catch (err) {
+        console.error("Failed to fetch weight:", err);
+      }
+      
+      setItemForm((prev) => ({
+        ...prev,
+        product: p.goods_name,
+        product_id: p.id,
+        price: productNetPrice,
+        original_price: productOriginalPrice,
+        gst: parseFloat(
+          p.gst_rate?.replace("%", "") || 0,
+        ),
+        description: p.description || "",
+        discount: retailerDiscount,
+        quantity: prev.quantity || 0,
+        weight: productWeight,
+        batch: "",
+        batch_id: "",
+        hsn_code: p.hsn_code || "",
+        inclusive_gst: inclusiveGst,
+        unit_id: p.unit || null,
+        unit_name: unitName,
+      }));
 
-                                      try {
-                                        const res = await fetch(
-                                          `${baseurl}/products/${p.id}/batches`,
-                                        );
-                                        const batchData = await res.json();
-                                        setBatches(batchData);
+      try {
+        const res = await fetch(
+          `${baseurl}/products/${p.id}/batches`,
+        );
+        const batchData = await res.json();
+        setBatches(batchData);
 
-                                        if (
-                                          p.maintain_batch === 0 &&
-                                          batchData.length > 0
-                                        ) {
-                                          const defaultBatch = batchData[0];
-                                          setSelectedBatch(
-                                            defaultBatch.batch_number,
-                                          );
-                                          setSelectedBatchDetails(defaultBatch);
-                                          setItemForm((prev) => ({
-                                            ...prev,
-                                            batch: defaultBatch.batch_number,
-                                            batch_id: defaultBatch.batch_number,
-                                            price: productNetPrice,
-                                          }));
-                                        } else {
-                                          setSelectedBatch("");
-                                          setSelectedBatchDetails(null);
-                                        }
-                                      } catch (err) {
-                                        console.error(
-                                          "Failed to fetch batches:",
-                                          err,
-                                        );
-                                        setBatches([]);
-                                        setSelectedBatch("");
-                                        setSelectedBatchDetails(null);
-                                      }
+        if (
+          p.maintain_batch === 0 &&
+          batchData.length > 0
+        ) {
+          const defaultBatch = batchData[0];
+          setSelectedBatch(
+            defaultBatch.batch_number,
+          );
+          setSelectedBatchDetails(defaultBatch);
+          setItemForm((prev) => ({
+            ...prev,
+            batch: defaultBatch.batch_number,
+            batch_id: defaultBatch.batch_number,
+            price: productNetPrice,
+          }));
+        } else {
+          setSelectedBatch("");
+          setSelectedBatchDetails(null);
+        }
+      } catch (err) {
+        console.error(
+          "Failed to fetch batches:",
+          err,
+        );
+        setBatches([]);
+        setSelectedBatch("");
+        setSelectedBatchDetails(null);
+      }
 
-                                      setIsProductDropdownOpen(false);
-                                      setProductSearchTerm("");
-                                    }}
-                                    style={{
-                                      padding: "8px 16px",
-                                      cursor: "pointer",
-                                      borderLeft: "3px solid transparent",
-                                      transition: "background-color 0.2s",
-                                      backgroundColor: isSelected
-                                        ? "#4cbe1bc7"
-                                        : "transparent",
-                                      position: "relative",
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.backgroundColor =
-                                        isSelected ? "#bbdef5" : "#f8f9fa";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.backgroundColor =
-                                        isSelected ? "#e3f2fd" : "transparent";
-                                    }}
-                                    title={`${p.goods_name} - Qty: ${availableQty}`}
-                                  >
-                                    <div
-                                      style={{
-                                        fontWeight: 400,
-                                        fontSize: "13px",
-                                      }}
-                                    >
-                                      {p.goods_name}
-                                    </div>
-                                    <div
-                                      style={{
-                                        fontSize: "12px",
-                                        color: "#6c757d",
-                                      }}
-                                    >
-                                      Qty: {availableQty} | {inclusiveGst}
-                                    </div>
-                                  </div>
-                                );
+      setIsProductDropdownOpen(false);
+      setProductSearchTerm("");
+    }}
+    style={{
+      padding: "8px 16px",
+      cursor: "pointer",
+      borderLeft: "3px solid transparent",
+      transition: "background-color 0.2s",
+      backgroundColor: isSelected
+        ? "#4cbe1bc7"
+        : "transparent",
+      position: "relative",
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.backgroundColor =
+        isSelected ? "#bbdef5" : "#f8f9fa";
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.backgroundColor =
+        isSelected ? "#e3f2fd" : "transparent";
+    }}
+    title={`${p.goods_name} - Qty: ${availableQty}`}
+  >
+    <div
+      style={{
+        fontWeight: 400,
+        fontSize: "13px",
+      }}
+    >
+      {p.goods_name}
+    </div>
+    <div
+      style={{
+        fontSize: "12px",
+        color: "#6c757d",
+      }}
+    >
+      Qty: {availableQty} | Weight: {p.weight || 0} | {inclusiveGst}
+    </div>
+  </div>
+);
                               })}
                           </div>
 
@@ -2583,6 +2554,32 @@ const CreateInvoice = ({ user }) => {
                     />
                   </Col>
 
+                  {/* Column 3: WEIGHT */}
+                  <Col md={1}>
+                    <Form.Label className="fw-bold">Weight</Form.Label>
+                    <Form.Control
+                      name="weight"
+                      type="number"
+                      step="0.01"
+                      value={itemForm.weight}
+                      onChange={handleItemChange}
+                      className="border-primary"
+                      placeholder="0.00"
+                    />
+                  </Col>
+
+                  {/* ── NEW Column: TOTAL WEIGHT (read-only, qty × weight) ── */}
+                  <Col md={1}>
+                    <Form.Label className="fw-bold">Total Weight</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={calculateFormTotalWeight()}
+                      readOnly
+                      className="border-primary bg-light"
+                      placeholder="0.00"
+                    />
+                  </Col>
+
                   <Col md={2}>
                     <Form.Label className="fw-bold text-primary">
                       Price Type
@@ -2603,10 +2600,10 @@ const CreateInvoice = ({ user }) => {
                       placeholder=" product type"
                     />
                   </Col>
+
                   {/* Product Price Inclusive */}
-                  <Col md={2}>
+                  <Col md={1}>
                     <Form.Label className="fw-bold text-primary">
-                      {" "}
                       Price (Incl)
                     </Form.Label>
                     <Form.Control
@@ -2615,12 +2612,12 @@ const CreateInvoice = ({ user }) => {
                       value={itemForm.original_price || ""}
                       onChange={handleInclPriceChange}
                       className="border-primary"
-                      placeholder="Enter incl. price"
+                      placeholder="Incl."
                     />
                   </Col>
 
                   {/* Price Exclusive */}
-                  <Col md={2}>
+                  <Col md={1}>
                     <Form.Label className="fw-bold text-primary">
                       Price (Excl)
                     </Form.Label>
@@ -2630,14 +2627,14 @@ const CreateInvoice = ({ user }) => {
                       step="0.01"
                       value={itemForm.price || ""}
                       onChange={handleExclPriceChange}
-                      placeholder="Enter excl. price"
+                      placeholder="Excl."
                       className="border-primary shadow-sm"
                     />
                   </Col>
 
                   {/* Column 5: DISCOUNT (%) */}
                   <Col md={1}>
-                    <Form.Label className="fw-bold">Discount (%)</Form.Label>
+                    <Form.Label className="fw-bold">Disc (%)</Form.Label>
                     <Form.Control
                       name="discount"
                       type="number"
@@ -2662,8 +2659,8 @@ const CreateInvoice = ({ user }) => {
                   </Col>
 
                   {/* Column 7: TOTAL PRICE */}
-                  <Col md={2}>
-                    <Form.Label className="fw-bold">Total Price (₹)</Form.Label>
+                  <Col md={1}>
+                    <Form.Label className="fw-bold">Total (₹)</Form.Label>
                     <Form.Control
                       type="text"
                       value={calculateTotalPrice()}
@@ -2714,6 +2711,7 @@ const CreateInvoice = ({ user }) => {
                   </Col>
                 </Row>
               </div>
+
               {/* Items Table */}
               <div className="bg-white p-3 rounded">
                 <h6 className="text-primary mb-3">Items List</h6>
@@ -2723,10 +2721,11 @@ const CreateInvoice = ({ user }) => {
                       <th>PRODUCT</th>
                       <th>DESCRIPTION</th>
                       <th>QTY</th>
+                      <th>WEIGHT</th>
+                      <th>TOTAL WEIGHT</th>  {/* ── NEW COLUMN ── */}
                       <th>PRICE TYPE</th>
                       <th>PRICE (Incl)</th>
                       <th>PRICE (Excl)</th>
-
                       <th>DISCOUNT</th>
                       <th>GST</th>
                       <th>CGST</th>
@@ -2735,7 +2734,6 @@ const CreateInvoice = ({ user }) => {
                       <th>CESS</th>
                       <th>TOTAL</th>
                       <th>BATCH</th>
-                      {/* <th>BATCH DETAILS</th> */}
                       <th>ACTION</th>
                     </tr>
                   </thead>
@@ -2743,7 +2741,7 @@ const CreateInvoice = ({ user }) => {
                     {invoiceData.items.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={14}
+                          colSpan={17}
                           className="text-center text-muted py-3"
                         >
                           No items added. Please add items using the form above.
@@ -2759,13 +2757,23 @@ const CreateInvoice = ({ user }) => {
                               ? `${item.quantity} ${item.unit_name}`
                               : item.quantity}
                           </td>
+                          {/* WEIGHT CELL */}
+                          <td className="text-center">
+                            {parseFloat(item.weight || 0).toFixed(2)}
+                          </td>
+                          {/* ── NEW: TOTAL WEIGHT CELL (qty × weight) ── */}
+                          <td className="text-center">
+                            {(
+                              (parseFloat(item.quantity) || 0) *
+                              (parseFloat(item.weight) || 0)
+                            ).toFixed(2)}
+                          </td>
                           <td className="text-center">
                             {item.inclusive_gst || "-"}
                           </td>
                           <td className="text-end">
                             ₹{parseFloat(item.original_price).toFixed(2)}
                           </td>
-
                           <td className="text-end">₹{item.price}</td>
                           <td className="text-center">{item.discount}%</td>
                           <td className="text-center">{item.gst}%</td>
@@ -2775,24 +2783,6 @@ const CreateInvoice = ({ user }) => {
                           <td className="text-center">{item.cess}</td>
                           <td className="text-end fw-bold">₹{item.total}</td>
                           <td>{item.batch}</td>
-                          {/* <td>
-                            {item.batchDetails && (
-                             <small>
-  MFG: {item.batchDetails.mfg_date 
-    ? new Date(item.batchDetails.mfg_date).toLocaleDateString('en-GB') 
-    : item.batchDetails.manufacturing_date 
-      ? new Date(item.batchDetails.manufacturing_date).toLocaleDateString('en-GB') 
-      : ''}<br/>
-
-  EXP: {item.batchDetails.exp_date 
-    ? new Date(item.batchDetails.exp_date).toLocaleDateString('en-GB') 
-    : item.batchDetails.expiry_date 
-      ? new Date(item.batchDetails.expiry_date).toLocaleDateString('en-GB') 
-      : ''}
-</small>
-
-                            )}
-                          </td> */}
                           <td className="salesinvoice-edit">
                             <div className="d-flex flex-column gap-1 align-items-center">
                               <Button
@@ -2928,7 +2918,6 @@ const CreateInvoice = ({ user }) => {
                     )}
                   </div>
 
-                  {/* Totals with Round Off Column - UPDATED LAYOUT */}
                   <Row>
                     <Col
                       md={7}
@@ -2968,6 +2957,7 @@ const CreateInvoice = ({ user }) => {
                   </Row>
                 </Col>
               </Row>
+
               <Row className="mb-3 bg-white p-3 rounded">
                 <Col md={6}>
                   <h6 className="text-primary mb-3">Transportation Details</h6>
@@ -3086,7 +3076,6 @@ const CreateInvoice = ({ user }) => {
                   </Row>
                 </Col>
 
-                {/* RIGHT SIDE - Other Details (Original - DO NOT CHANGE) */}
                 <Col md={6}>
                   <h6 className="text-primary">Other Details</h6>
                   <div className="bg-light p-2 rounded">

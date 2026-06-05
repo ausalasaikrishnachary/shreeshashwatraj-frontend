@@ -1,3 +1,5 @@
+// src/Component/Panels/Admin/Inventory/Sales_catalogue/SalesItemsPage.js
+
 import React, { useState, useEffect } from 'react';
 import { Button, Form, Alert, Spinner } from 'react-bootstrap';
 import { BsPlus } from 'react-icons/bs';
@@ -9,7 +11,7 @@ import { baseurl } from './../../../../BaseURL/BaseURL';
 import AdminSidebar from './../../../../Shared/AdminSidebar/AdminSidebar';
 import Header from './../../../../Shared/AdminSidebar/AdminHeader';
 import { useNavigate, useParams } from 'react-router-dom';
-import './salesitems.css';
+import './SalesItemsPage.css';
 import Barcode from 'react-barcode';
 import { FaUpload, FaTrash } from 'react-icons/fa';
 

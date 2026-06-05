@@ -1,0 +1,648 @@
+/* ============================================================
+   SalesItemsPage.css  –  Add / Edit Product Form
+   Mobile-first: all fields stack to a single column on small screens
+   ============================================================ */
+
+/* ── Base form wrapper ── */
+.purchased-items-wrapper {
+  padding: 0 8px;
+}
+
+.purchased-items-wrapper .content-wrapper {
+  padding: 0;
+}
+
+/* ── Section headings inside the form ── */
+.purchased-items-wrapper h3 {
+  font-size: 1.25rem;
+}
+
+/* ── Image upload area ── */
+.purchased-items-wrapper .border.border-dark {
+  border-radius: 6px;
+}
+
+/* ── Action icon (shared with SalesItems, kept here for the page too) ── */
+.purchased-items-wrapper .action-icon {
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+/* ── Barcode centering ── */
+.purchased-items-wrapper svg[id^="barcode"] {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Product image card body text: always readable size ── */
+.purchased-items-wrapper .card-body small {
+  font-size: 13px !important;
+}
+
+/* ============================================================
+   TABLET  (≤ 992px)
+   Two-column grid stays but gets a bit more breathing room
+   ============================================================ */
+@media (max-width: 992px) {
+  .purchased-items-wrapper .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* Make sure row cols don't overflow */
+  .purchased-items-wrapper .row > .col,
+  .purchased-items-wrapper .row > [class*="col-"] {
+    margin-bottom: 12px;
+  }
+
+  /* ── Keep inline select + add-button pairs horizontal ── */
+  .purchased-items-wrapper .d-flex.align-items-center,
+  .purchased-items-wrapper .col .d-flex,
+  .purchased-items-wrapper .row > .col > .d-flex,
+  .purchased-items-wrapper .row > [class*="col-"] > .d-flex {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 6px;
+  }
+
+  .purchased-items-wrapper .col .d-flex > .form-select,
+  .purchased-items-wrapper .col .d-flex > .form-control,
+  .purchased-items-wrapper .row > .col > .d-flex > .form-select,
+  .purchased-items-wrapper .row > .col > .d-flex > .form-control {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  .purchased-items-wrapper .col .d-flex > .btn,
+  .purchased-items-wrapper .row > .col > .d-flex > .btn {
+    flex-shrink: 0 !important;
+    width: auto !important;
+    min-width: 38px;
+  }
+
+  /* ── Modal: centered with equal side gaps ── */
+  .modal {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .modal-dialog {
+    margin: 0 auto !important;
+    width: calc(100% - 40px) !important;
+    max-width: 520px !important;
+  }
+
+  .modal-content {
+    border-radius: 10px;
+  }
+
+  .modal-header,
+  .modal-footer {
+    padding: 14px 18px !important;
+  }
+
+  .modal-body {
+    padding: 16px 18px !important;
+  }
+
+  .modal-body .row {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+
+  .modal-body .row > .col,
+  .modal-body .row > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-bottom: 12px !important;
+  }
+
+  .modal-body .form-control,
+  .modal-body .form-select {
+    font-size: 14px;
+    padding: 8px 10px;
+    width: 100% !important;
+  }
+
+  /* ── Keep inline + button pairs horizontal inside modals too ── */
+  .modal-body .d-flex {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 6px;
+  }
+
+  .modal-body .d-flex > .form-select,
+  .modal-body .d-flex > .form-control {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  .modal-body .d-flex > .btn {
+    flex-shrink: 0 !important;
+    width: auto !important;
+  }
+
+  .modal-body .form-label {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .modal-footer {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .modal-footer .btn {
+    flex: 1 1 auto;
+    min-width: 100px;
+    font-size: 14px;
+    padding: 9px 16px;
+    margin: 0 !important;
+  }
+}
+
+/* ============================================================
+   MOBILE  (≤ 768px)
+   Every field gets its own full-width row (single column)
+   ============================================================ */
+@media (max-width: 768px) {
+
+  /* ── Full-width container ── */
+  .purchased-items-wrapper .container {
+    padding-left: 8px;
+    padding-right: 8px;
+    max-width: 100%;
+  }
+
+  /* ── Force every Bootstrap column to full width ── */
+  .purchased-items-wrapper .row {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+
+  .purchased-items-wrapper .row > .col,
+  .purchased-items-wrapper .row > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-bottom: 14px !important;
+  }
+
+  /* ── Inputs, selects, textareas ── */
+  .purchased-items-wrapper .form-control,
+  .purchased-items-wrapper .form-select {
+    font-size: 14px;
+    padding: 8px 10px;
+    width: 100% !important;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     INLINE SELECT + ADD (+) BUTTON — always stay in one row
+     Targets the .d-flex wrapper inside each col that holds
+     a <Form.Select> (or input) and a <Button variant="outline-primary">
+     ══════════════════════════════════════════════════════ */
+  .purchased-items-wrapper .col .d-flex,
+  .purchased-items-wrapper .row > .col > .d-flex,
+  .purchased-items-wrapper .row > [class*="col-"] > .d-flex {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  /* Select / control inside that row: take remaining space */
+  .purchased-items-wrapper .col .d-flex > .form-select,
+  .purchased-items-wrapper .col .d-flex > .form-control,
+  .purchased-items-wrapper .row > .col > .d-flex > .form-select,
+  .purchased-items-wrapper .row > .col > .d-flex > .form-control,
+  .purchased-items-wrapper .row > [class*="col-"] > .d-flex > .form-select,
+  .purchased-items-wrapper .row > [class*="col-"] > .d-flex > .form-control {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  /* + Button: fixed size, never grows or wraps */
+  .purchased-items-wrapper .col .d-flex > .btn,
+  .purchased-items-wrapper .row > .col > .d-flex > .btn,
+  .purchased-items-wrapper .row > [class*="col-"] > .d-flex > .btn {
+    flex-shrink: 0 !important;
+    width: auto !important;
+    min-width: 38px !important;
+    padding: 8px 10px !important;
+  }
+
+  /* ── Form labels ── */
+  .purchased-items-wrapper .form-label {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  /* ── Form helper text ── */
+  .purchased-items-wrapper .form-text {
+    font-size: 11px;
+  }
+
+  /* ── Page heading ── */
+  .purchased-items-wrapper h3.text-center {
+    font-size: 1.1rem;
+    margin-bottom: 16px !important;
+  }
+
+  /* ── Section headings (Batch Details, Product Images) ── */
+  .purchased-items-wrapper .border.border-dark h5 {
+    font-size: 1rem;
+    margin-bottom: 12px;
+  }
+
+  /* ── Image grid: 2 per row on mobile ── */
+  .purchased-items-wrapper .row > .col-md-3,
+  .purchased-items-wrapper .row > .col-sm-4,
+  .purchased-items-wrapper .row > .col-6 {
+    flex: 0 0 50% !important;
+    max-width: 50% !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  /* ── Image thumbnail height ── */
+  .purchased-items-wrapper .card-img-top {
+    height: 110px !important;
+  }
+
+  /* ── Image card body text: fix tiny font on mobile ── */
+  .purchased-items-wrapper .card-body {
+    padding: 6px !important;
+  }
+  .purchased-items-wrapper .card-body small {
+    font-size: 12px !important;
+  }
+
+  /* ── Image upload row (file input + browse button) ── */
+  .purchased-items-wrapper .d-flex.align-items-center {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+  }
+
+  .purchased-items-wrapper .d-flex.align-items-center > .form-control[type="file"] {
+    font-size: 12px;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  .purchased-items-wrapper .d-flex.align-items-center > .btn {
+    flex-shrink: 0 !important;
+    width: auto !important;
+  }
+
+  /* ── Batch section rows ── */
+  .purchased-items-wrapper .border.p-2 .row {
+    flex-direction: column !important;
+  }
+
+  .purchased-items-wrapper .border.p-2 .row > .col-md-4,
+  .purchased-items-wrapper .border.p-2 .row > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* ── Barcode shrink ── */
+  .purchased-items-wrapper svg[id^="barcode"] {
+    transform: scale(0.85);
+    transform-origin: left center;
+  }
+
+  /* ── Submit / Cancel buttons: stack and fill ── */
+  .purchased-items-wrapper .d-flex.justify-content-end {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .purchased-items-wrapper .d-flex.justify-content-end .btn {
+    width: 100% !important;
+    margin: 0 !important;
+    font-size: 15px;
+    padding: 12px;
+  }
+
+  /* ── Add Batch button ── */
+  .purchased-items-wrapper .border.border-dark > .btn {
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 10px;
+  }
+
+  /* ── Checkbox row: keep inline ── */
+  .purchased-items-wrapper .form-check {
+    margin-top: 8px !important;
+  }
+
+  /* ── Alert banner ── */
+  .purchased-items-wrapper + div .alert,
+  .purchased-items-wrapper .alert {
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+
+  /* ── Spinner loading screen ── */
+  .purchased-items-wrapper .d-flex.justify-content-center span {
+    font-size: 14px;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     MODAL – centered, equal left/right gap, responsive fields
+     Covers AddCompanyModal, AddCategoryModal, AddUnitModal
+     and any other modal opened from the SalesItemsPage form
+     ══════════════════════════════════════════════════════════ */
+
+  /* Center dialog */
+  .modal {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+
+  .modal-dialog {
+    margin: 0 auto !important;
+    width: calc(100% - 24px) !important;
+    max-width: 100% !important;
+  }
+
+  .modal-content {
+    border-radius: 10px;
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-header {
+    padding: 12px 14px !important;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 10;
+  }
+
+  .modal-header .modal-title {
+    font-size: 15px;
+  }
+
+  /* Modal body padding tighter */
+  .modal-body {
+    padding: 12px 14px !important;
+  }
+
+  /* Modal form rows → single column */
+  .modal-body .row {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+
+  .modal-body .row > .col,
+  .modal-body .row > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* Modal inputs/selects */
+  .modal-body .form-control,
+  .modal-body .form-select {
+    font-size: 14px;
+    padding: 8px 10px;
+    width: 100% !important;
+  }
+
+  /* ── Keep inline + button pairs horizontal inside modals ── */
+  .modal-body .d-flex {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+  }
+
+  .modal-body .d-flex > .form-select,
+  .modal-body .d-flex > .form-control {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  .modal-body .d-flex > .btn {
+    flex-shrink: 0 !important;
+    width: auto !important;
+    min-width: 38px !important;
+  }
+
+  .modal-body .form-label {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .modal-body .form-text {
+    font-size: 11px;
+  }
+
+  /* Modal footer buttons: stack */
+  .modal-footer {
+    flex-direction: column !important;
+    gap: 8px;
+    padding: 10px 14px !important;
+  }
+
+  .modal-footer .btn {
+    width: 100% !important;
+    margin: 0 !important;
+    font-size: 15px;
+    padding: 10px;
+  }
+}
+
+/* ============================================================
+   SMALL MOBILE  (≤ 480px)
+   Tighten up further
+   ============================================================ */
+@media (max-width: 480px) {
+
+  .purchased-items-wrapper .container {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .purchased-items-wrapper .form-control,
+  .purchased-items-wrapper .form-select {
+    font-size: 13px;
+  }
+
+  .purchased-items-wrapper h3.text-center {
+    font-size: 1rem;
+  }
+
+  /* Image grid: 1 per row on very small screens */
+  .purchased-items-wrapper .row > .col-md-3,
+  .purchased-items-wrapper .row > .col-sm-4,
+  .purchased-items-wrapper .row > .col-6 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Image card body text on very small screens */
+  .purchased-items-wrapper .card-body small {
+    font-size: 11px !important;
+  }
+
+  /* Tighter batch section padding */
+  .purchased-items-wrapper .border.p-2 {
+    padding: 8px !important;
+  }
+
+  /* Remove batch button: full width */
+  .purchased-items-wrapper .border.p-2 .text-end .btn {
+    width: 100%;
+  }
+
+  /* Barcode: no scale transform needed, just constrain */
+  .purchased-items-wrapper svg[id^="barcode"] {
+    transform: none;
+    max-width: 100%;
+  }
+
+  /* ── Keep inline + button pairs horizontal on very small screens too ── */
+  .purchased-items-wrapper .col .d-flex,
+  .purchased-items-wrapper .row > .col > .d-flex,
+  .purchased-items-wrapper .row > [class*="col-"] > .d-flex {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+  }
+
+  .purchased-items-wrapper .col .d-flex > .form-select,
+  .purchased-items-wrapper .col .d-flex > .form-control,
+  .purchased-items-wrapper .row > .col > .d-flex > .form-select,
+  .purchased-items-wrapper .row > .col > .d-flex > .form-control {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  .purchased-items-wrapper .col .d-flex > .btn,
+  .purchased-items-wrapper .row > .col > .d-flex > .btn {
+    flex-shrink: 0 !important;
+    width: auto !important;
+    min-width: 36px !important;
+    padding: 7px 8px !important;
+  }
+
+  /* Modal even tighter on very small screens */
+  .modal {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+
+  .modal-dialog {
+    margin: 0 auto !important;
+    width: calc(100% - 16px) !important;
+    max-width: 100% !important;
+  }
+
+  .modal-content {
+    border-radius: 8px;
+    max-height: 92vh;
+  }
+
+  .modal-header {
+    padding: 10px 12px !important;
+  }
+
+  .modal-header .modal-title {
+    font-size: 14px;
+  }
+
+  .modal-body {
+    padding: 10px 12px !important;
+  }
+
+  .modal-body .form-control,
+  .modal-body .form-select {
+    font-size: 13px;
+    padding: 7px 9px;
+  }
+
+  /* Keep inline + buttons horizontal in modal on very small screens */
+  .modal-body .d-flex {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+  }
+
+  .modal-body .d-flex > .form-select,
+  .modal-body .d-flex > .form-control {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  .modal-body .d-flex > .btn {
+    flex-shrink: 0 !important;
+    width: auto !important;
+    min-width: 36px !important;
+  }
+
+  .modal-footer {
+    padding: 8px 12px !important;
+    flex-direction: column !important;
+    gap: 8px;
+  }
+
+  .modal-footer .btn {
+    width: 100% !important;
+    margin: 0 !important;
+    font-size: 14px;
+    padding: 9px;
+  }
+}
+
+/* Fix for inline add buttons (Company, Category, Unit) */
+.purchased-items-wrapper .d-flex .btn-outline-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+}
+
+@media (max-width: 768px) {
+  .purchased-items-wrapper .d-flex .btn-outline-primary {
+    min-width: 42px;
+    padding: 8px;
+  }
+}
