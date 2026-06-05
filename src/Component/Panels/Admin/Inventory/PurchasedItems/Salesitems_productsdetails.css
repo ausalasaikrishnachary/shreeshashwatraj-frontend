@@ -180,15 +180,17 @@
   padding: 0.5rem 0.75rem;
 }
 
-/* Cards */
+/* Cards
+   KEY: overflow must NOT be hidden at the card level —
+   that would clip the horizontal table scroll inside .table-container.
+   Use overflow: visible so the scroll chain reaches .table-container. */
 .card {
   border: none;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   transition: all 0.3s ease;
-  /* KEY: prevent card from expanding beyond its container */
   min-width: 0;
-  overflow: hidden;
+  overflow: visible; /* was: hidden — changed so table scroll is not clipped */
 }
 
 .card:hover {
@@ -209,11 +211,11 @@
   margin-bottom: 0;
 }
 
+/* KEY: card-body must NOT clip overflow either */
 .card-body {
   padding: 1.5rem;
-  /* KEY: prevent card-body from expanding beyond card */
   min-width: 0;
-  overflow: hidden;
+  overflow: visible; /* was: hidden — changed so table scroll is not clipped */
 }
 
 /* Product Info Card */
@@ -309,14 +311,14 @@
   color: #2c3e50;
 }
 
-/* Tables */
+/* Tables
+   The scroll lives ONLY here — card and card-body must stay overflow:visible
+   so this element can actually scroll end-to-end. */
 .table-container {
-  /* KEY FIX: scroll horizontally, never overflow the card */
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   border-radius: 8px;
-  /* Ensures the container itself doesn't exceed its parent width */
   width: 100%;
   max-width: 100%;
   display: block;
@@ -328,7 +330,6 @@
   background: white;
   border-radius: 8px;
   overflow: hidden;
-  /* Allow table to be wider than its container — scrolls inside .table-container */
   table-layout: auto;
 }
 
@@ -343,7 +344,6 @@
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  /* Prevent header text from wrapping — keeps columns narrow and readable */
   white-space: nowrap;
 }
 
@@ -352,7 +352,6 @@
   border-bottom: 1px solid #e9ecef;
   font-size: 0.9rem;
   vertical-align: middle;
-  /* Prevent cell content from wrapping — consistent column widths */
   white-space: nowrap;
 }
 
@@ -520,6 +519,26 @@
     padding: 0.75rem 0.6rem;
     font-size: 0.82rem;
   }
+
+  /* Tablet: ensure scroll chain is unbroken */
+  .card {
+    overflow: visible !important;
+  }
+
+  .card-body {
+    overflow: visible !important;
+  }
+
+  .table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  /* Tablet table min-widths */
+  .stock-details-card      .data-table { min-width: 650px; }
+  .sales-transactions-card .data-table { min-width: 520px; }
+  .purchases-card          .data-table { min-width: 380px; }
 }
 
 /* ============================================================
@@ -533,27 +552,29 @@
     width: 100% !important;
   }
 
-  /* KEY: main content must not overflow the viewport */
   .salesitems-main-content {
-    padding: 12px;
-    margin-top: 60px;
+    padding: 3px !important;
+    margin-top: 5px;
     border-radius: 0;
     box-shadow: none;
-    overflow-x: hidden;
+    /* KEY: do NOT set overflow:hidden here — kills table scroll */
+    overflow-x: visible;
     width: 100%;
     box-sizing: border-box;
   }
 
-  /* container-fluid must be bounded */
   .salesitems-main-content .container-fluid {
-    padding-left: 0;
-    padding-right: 0;
-    overflow-x: hidden;
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+    /* KEY: do NOT set overflow:hidden here */
+    overflow-x: visible;
   }
 
-  /* ── Page header ── */
+  /* Page header */
   .page-header {
     padding: 1rem;
+    margin-bottom: 3px !important;
+    border-radius: 8px;
   }
 
   .page-title {
@@ -570,14 +591,15 @@
     gap: 8px;
   }
 
-  /* ── Bootstrap row: stack columns ── */
+  /* Bootstrap row: stack columns */
   .salesitems-main-content .row.g-4 {
     flex-direction: column !important;
-    /* critical: row must not overflow */
-    overflow-x: hidden;
+    /* KEY: do NOT set overflow:hidden here */
+    overflow-x: visible;
     width: 100%;
     margin-left: 0;
     margin-right: 0;
+    gap: 3px !important;
   }
 
   .salesitems-main-content .row.g-4 > [class*="col-"] {
@@ -586,31 +608,36 @@
     flex: 0 0 100% !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
+    margin-bottom: 3px !important;
+    /* KEY: do NOT set overflow:hidden on columns */
+    overflow: visible !important;
   }
 
-  /* ── Cards: must not overflow their column ── */
+  /* Cards: overflow MUST be visible so table scroll works */
   .card {
     border-radius: 8px;
-    margin-bottom: 16px;
-    /* Critical: card stays within column width */
+    margin-bottom: 3px !important;
     width: 100%;
     max-width: 100%;
-    overflow: hidden;
     box-sizing: border-box;
+    overflow: visible !important; /* was: hidden — must be visible for table scroll */
+  }
+
+  .card:last-child {
+    margin-bottom: 0 !important;
   }
 
   .card-header {
     padding: 0.9rem 1rem;
+    border-radius: 8px 8px 0 0;
   }
 
   .card-title {
     font-size: 0.92rem;
-    /* Allow title text to wrap rather than push card wide */
     white-space: normal;
     word-break: break-word;
   }
 
-  /* card-header flex: wrap badge below title on small screens */
   .card-header .d-flex.justify-content-between {
     flex-wrap: wrap;
     gap: 6px;
@@ -625,29 +652,25 @@
     flex-shrink: 0;
   }
 
+  /* card-body: overflow MUST be visible so table scroll works */
   .card-body {
     padding: 0.85rem;
-    /* Prevent card body from expanding beyond card */
-    overflow: hidden;
+    overflow: visible !important; /* was: hidden — must be visible for table scroll */
     width: 100%;
     box-sizing: border-box;
   }
 
-  /* ── TABLE SCROLL FIX ──
-     The table-container scrolls; the card clips it.
-     Nothing bleeds outside the card edge.              */
+  /* TABLE SCROLL: this is the ONLY element that clips horizontally */
   .table-container {
-    overflow-x: auto;
+    overflow-x: auto !important;
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
-    /* Must be constrained to the card-body width */
     width: 100%;
     max-width: 100%;
-    /* Show a subtle scrollbar hint on iOS */
     scrollbar-width: thin;
+    display: block;
   }
 
-  /* Scrollbar styling for webkit (Chrome/Safari) */
   .table-container::-webkit-scrollbar {
     height: 4px;
   }
@@ -656,10 +679,10 @@
     border-radius: 4px;
   }
 
-  /* Tables: fixed minimum width forces scroll instead of squish */
-  .stock-details-card  .data-table { min-width: 600px; }
-  .sales-transactions-card .data-table { min-width: 480px; }
-  .purchases-card      .data-table { min-width: 360px; }
+  /* Min-widths force horizontal scroll instead of squishing */
+  .stock-details-card      .data-table { min-width: 620px; }
+  .sales-transactions-card .data-table { min-width: 500px; }
+  .purchases-card          .data-table { min-width: 380px; }
 
   .data-table th {
     padding: 0.65rem 0.5rem;
@@ -692,7 +715,6 @@
     padding: 0.18rem 0.35rem;
   }
 
-  /* product-name-cell: allow wrap so badge drops below on very small */
   .product-name-cell {
     flex-wrap: wrap;
     gap: 3px;
@@ -700,10 +722,15 @@
 
   .product-name { font-size: 0.8rem; }
 
-  /* ── Product Info Grid: single column ── */
+  /* Product Info Grid: single column */
   .product-info-card .info-grid {
     grid-template-columns: 1fr;
-    gap: 0.7rem;
+    gap: 3px !important;
+  }
+
+  .info-item {
+    margin-bottom: 3px !important;
+    padding-bottom: 3px !important;
   }
 
   .info-item.full-width {
@@ -713,35 +740,43 @@
   .info-item label  { font-size: 0.74rem; }
   .info-item .value { font-size: 0.88rem; }
 
-  /* ── Stock Stats: 2-col compact ── */
+  /* Stock Stats: 2-col compact */
   .stock-stats {
     grid-template-columns: 1fr 1fr;
-    gap: 0.55rem;
+    gap: 3px !important;
   }
 
-  .stock-stat-item { padding: 0.55rem 0.35rem; }
-  .stat-label      { font-size: 0.7rem; }
-  .stat-value      { font-size: 0.95rem; }
+  .stock-stat-item {
+    padding: 0.55rem 0.35rem;
+    margin-bottom: 3px !important;
+  }
+  .stat-label { font-size: 0.7rem; }
+  .stat-value { font-size: 0.95rem; }
 
-  /* ── Audit ── */
+  /* Audit */
+  .audit-info { gap: 3px !important; }
+
+  .audit-item {
+    padding: 0.5rem 0;
+    margin-bottom: 3px !important;
+  }
+
   .audit-item label,
   .audit-item span { font-size: 0.78rem; }
 
-  /* ── Section title ── */
   .section-title { font-size: 0.86rem; }
 
-  /* ── SKU badge ── */
   .card-header .badge {
     font-size: 0.68rem;
     padding: 0.28rem 0.45rem;
   }
 
-  /* ── Stock Alerts: static + full width ── */
+  /* Stock Alerts: static + full width */
   .stock-alerts-container {
     position: static;
     min-width: auto;
     width: 100%;
-    margin-bottom: 12px;
+    margin-bottom: 3px !important;
     padding: 0;
     box-sizing: border-box;
   }
@@ -749,18 +784,40 @@
   .stock-alert {
     font-size: 0.8rem;
     padding: 0.55rem 0.85rem;
+    margin-bottom: 3px !important;
   }
 
-  /* ── Loading / error states ── */
+  /* Loading / error states */
   .loading-container,
   .error-container,
   .loading-state,
   .error-state,
   .empty-state {
     padding: 1.75rem 0.75rem;
+    margin-bottom: 3px !important;
   }
 
   .error-message { font-size: 0.9rem; }
+
+  hr {
+    margin-top: 3px !important;
+    margin-bottom: 3px !important;
+  }
+
+  .stock-details-card,
+  .sales-transactions-card,
+  .purchases-card {
+    margin-bottom: 3px !important;
+  }
+
+  .mb-4 { margin-bottom: 3px !important; }
+
+  .row.g-4 { row-gap: 3px !important; }
+
+  .mt-3, .mt-2, .mb-3, .mb-2 {
+    margin-top: 3px !important;
+    margin-bottom: 3px !important;
+  }
 }
 
 /* ============================================================
@@ -769,8 +826,8 @@
 @media (max-width: 480px) {
 
   .salesitems-main-content {
-    padding: 8px;
-    margin-top: 56px;
+    padding: 3px !important;
+    margin-top: 5px;
   }
 
   .page-header  { padding: 0.75rem; }
@@ -778,13 +835,18 @@
   .card-header  { padding: 0.7rem 0.75rem; }
   .card-body    { padding: 0.7rem; }
 
+  /* Scroll chain: must stay visible on smallest screens too */
+  .card         { overflow: visible !important; }
+  .card-body    { overflow: visible !important; }
+  .table-container { overflow-x: auto !important; }
+
   .stock-stat-item { padding: 0.45rem 0.2rem; }
   .stat-value      { font-size: 0.9rem; }
 
-  /* Even tighter table min-widths for very small phones */
-  .stock-details-card      .data-table { min-width: 520px; }
-  .sales-transactions-card .data-table { min-width: 420px; }
-  .purchases-card          .data-table { min-width: 300px; }
+  /* Tighter min-widths for very small phones */
+  .stock-details-card      .data-table { min-width: 540px; }
+  .sales-transactions-card .data-table { min-width: 440px; }
+  .purchases-card          .data-table { min-width: 320px; }
 
   .data-table th,
   .data-table td {
@@ -797,5 +859,15 @@
   .stock-alert {
     font-size: 0.75rem;
     padding: 0.45rem 0.65rem;
+    margin-bottom: 3px !important;
   }
+
+  .salesitems-main-content .container-fluid {
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+  }
+
+  .card { margin-bottom: 3px !important; }
+
+  .row.g-4 { gap: 3px !important; }
 }

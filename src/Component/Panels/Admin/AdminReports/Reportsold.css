@@ -1,4 +1,3 @@
-
 /* ============================================================
    BASE LAYOUT
    ============================================================ */
@@ -1103,4 +1102,243 @@
   }
 }
 
+/* ============================================================
+   CHARTS SIDE-BY-SIDE — mobile & tablet (matches screenshot)
+   Override the earlier stacked / single-column rules so both
+   "Retailers by State" and "Retailers by Business Type" sit
+   in one horizontal row at ALL viewport sizes.
+   ============================================================ */
 
+/* ── Tablet override (was set to 1fr at 1024px) ── */
+@media (max-width: 1024px) {
+  .ret-rep-charts-container {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 14px !important;
+  }
+
+  .ret-rep-chart-card {
+    height: auto !important;
+    min-height: 320px !important;
+    padding: 16px 14px !important;
+  }
+
+  .ret-rep-chart-header h3 {
+    font-size: 1rem !important;
+  }
+}
+
+/* ── Mobile override (was set to 1fr at 768px) ── */
+@media (max-width: 768px) {
+  .ret-rep-charts-container {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  .ret-rep-chart-card {
+    height: auto !important;
+    min-height: 260px !important;
+    padding: 12px 8px !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+  }
+
+  /* Tighten the card header so chart canvas gets maximum vertical room */
+  .ret-rep-chart-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  .ret-rep-chart-header h3 {
+    font-size: 0.82rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .ret-rep-chart-subtitle {
+    font-size: 0.68rem !important;
+    padding: 2px 6px !important;
+    margin-left: 0 !important;
+  }
+
+  /* chart icon slightly smaller */
+  .ret-rep-chart-icon {
+    font-size: 1rem !important;
+  }
+}
+
+/* ── Small mobile — keep side-by-side, just tighter ── */
+@media (max-width: 480px) {
+  .ret-rep-charts-container {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .ret-rep-chart-card {
+    min-height: 230px !important;
+    padding: 10px 6px !important;
+  }
+
+  .ret-rep-chart-header h3 {
+    font-size: 0.75rem !important;
+  }
+}
+
+/* ── Extra small — still side-by-side ── */
+@media (max-width: 360px) {
+  .ret-rep-charts-container {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+
+  .ret-rep-chart-card {
+    min-height: 200px !important;
+    padding: 8px 5px !important;
+  }
+
+  .ret-rep-chart-header h3 {
+    font-size: 0.68rem !important;
+  }
+}
+
+/* ============================================================
+   CHARTS — EQUAL HEIGHT SIDE-BY-SIDE (all responsive sizes)
+   Both cards must be identical height with the chart canvas
+   filling the remaining space below the header.
+   align-items: stretch on the grid row guarantees equal height.
+   ============================================================ */
+
+/* ── Tablet ≤ 1024px ── */
+@media (max-width: 1024px) {
+  .ret-rep-charts-container {
+    grid-template-columns: 1fr 1fr !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+
+  .ret-rep-chart-card {
+    height: 340px !important;
+    min-height: unset !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    padding: 14px 12px !important;
+    overflow: hidden !important;
+  }
+
+  .ret-rep-chart-wrapper {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+
+  .ret-rep-chart-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
+
+/* ── Mobile ≤ 768px ── */
+@media (max-width: 768px) {
+  .ret-rep-charts-container {
+    grid-template-columns: 1fr 1fr !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .ret-rep-chart-card {
+    height: 300px !important;
+    min-height: unset !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    padding: 10px 8px !important;
+    overflow: hidden !important;
+    border-radius: 10px !important;
+  }
+
+  /* header row — icon + title on one line, compact */
+  .ret-rep-chart-header {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 5px !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .ret-rep-chart-icon {
+    font-size: 0.9rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  .ret-rep-chart-header h3 {
+    font-size: 0.75rem !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 0 !important;
+    flex: 1 !important;
+  }
+
+  /* hide subtitle badge on mobile — saves header height */
+  .ret-rep-chart-subtitle {
+    display: none !important;
+  }
+
+  /* chart canvas fills all remaining card height */
+  .ret-rep-chart-wrapper {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    position: relative !important;
+    overflow: hidden !important;
+    width: 100% !important;
+  }
+
+  .ret-rep-chart-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
+
+/* ── Small mobile ≤ 480px ── */
+@media (max-width: 480px) {
+  .ret-rep-charts-container {
+    grid-template-columns: 1fr 1fr !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .ret-rep-chart-card {
+    height: 260px !important;
+    min-height: unset !important;
+    padding: 8px 6px !important;
+  }
+
+  .ret-rep-chart-header h3 {
+    font-size: 0.68rem !important;
+  }
+}
+
+/* ── Extra small ≤ 360px ── */
+@media (max-width: 360px) {
+  .ret-rep-charts-container {
+    grid-template-columns: 1fr 1fr !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+  }
+
+  .ret-rep-chart-card {
+    height: 230px !important;
+    min-height: unset !important;
+    padding: 7px 5px !important;
+  }
+
+  .ret-rep-chart-header h3 {
+    font-size: 0.62rem !important;
+  }
+}
