@@ -50,6 +50,8 @@ import AdminRoleAccess from "./Component/Panels/Admin/AdminRoleAccess/RoleAccess
 import DashboardCard from "./Component/Panels/Admin/AdminDashboard/DashboardCard";
 import ExpenseReportPage from "./Component/Panels/Admin/AdminReports/ExpenseReportPage";
 import CompanyInfo from "./Component/Panels/Admin/Company/CompanyInfo";
+import GSTReports from "./Component/Panels/Admin/AdminReports/Gstreportnavya";
+
 
 // Staff Pages (Mobile Only)
 import MyRetailers from "./Component/Panels/Staff/StaffPages/Staff_MyRetailers/MyRetailers";
@@ -726,6 +728,15 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/GSTReportnavya"
+            element={
+              <PrivateRoute allowedRoles={["admin"]}>
+                <GSTReports />
+              </PrivateRoute>
+            }
+          />
+
           <Route
             path="/roleaccess"
             element={

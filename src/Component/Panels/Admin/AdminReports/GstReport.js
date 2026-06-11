@@ -1,12 +1,46 @@
+//C:\WorkTasks\sai_krishna\shreeshashwatraj-frontend\src\Component\Panels\Admin\AdminReports\GstReport.js
+
 import React, { useState, useEffect } from 'react';
 import { FaSearch, FaFileExcel, FaFilter } from "react-icons/fa";
 import * as XLSX from 'xlsx';
 import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
+import GSTReportNavya from "./Gstreportnavya";
 import "./GstReport.css";
 
+// ══════════════════════════════════════════════════════════════════════════════
+// SegmentedControl — pill-style tab switcher, top-right aligned
+// ══════════════════════════════════════════════════════════════════════════════
+function SegmentedControl({ activeTab, onTabChange }) {
+  return (
+    <div className="gst-report-seg-control">
+      {/* GSTR-1: active when activeTab === "gstr1" */}
+      <button
+        className={`gst-report-seg-btn${activeTab === "gstr1" ? " gst-report-seg-btn--active" : ""}`}
+        type="button"
+        aria-current={activeTab === "gstr1" ? "page" : undefined}
+        onClick={() => onTabChange("gstr1")}
+      >
+        GSTR-1
+      </button>
+
+      {/* GSTR-3B: active when activeTab === "gstr3b" */}
+      <button
+        className={`gst-report-seg-btn${activeTab === "gstr3b" ? " gst-report-seg-btn--active" : ""}`}
+        type="button"
+        aria-current={activeTab === "gstr3b" ? "page" : undefined}
+        onClick={() => onTabChange("gstr3b")}
+      >
+        GSTR-3B
+      </button>
+    </div>
+  );
+}
+
 const GstReport = () => {
+  const [activeTab, setActiveTab] = useState("gstr1");
+
   const [searchTerm, setSearchTerm] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -308,6 +342,12 @@ const fetchGstData = async () => {
     igstAmt: acc.igstAmt + item.igstAmt
   }), { billAmt: 0, taxableAmt: 0, sgstAmt: 0, cgstAmt: 0, igstAmt: 0 });
 
+  // ── If GSTR-3B tab is active, render Gstreportnavya inline ──────────────────
+  if (activeTab === "gstr3b") {
+    return <GSTReportNavya onTabChange={setActiveTab} activeTab={activeTab} />;
+  }
+
+  // ── GSTR-1 tab ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="gst-report-container">
@@ -332,6 +372,13 @@ const fetchGstData = async () => {
 
   return (
     <div className="gst-report-container">
+
+      {/* ── Page header: title left, segmented control right ── */}
+      <div className="gst-report-page-header">
+        <h1 className="gst-report-page-title">Business Reports</h1>
+        <SegmentedControl activeTab={activeTab} onTabChange={setActiveTab} />
+      </div>
+
       <div className="gst-report-filters-section">
         <div className="gst-report-filters-wrapper">
 
