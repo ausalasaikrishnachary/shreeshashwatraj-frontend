@@ -37,12 +37,27 @@ const formatDateForDisplay = (dateStr) => {
   return `${day}-${month}-${year}`;
 };
 
+// ── TransactionType badge helper ──────────────────────────────────────────────
+function TxTypeBadge({ type }) {
+  const t = (type || "").toLowerCase();
+  let cls = "gst-txtype-badge";
+  if (t === "sales")        cls += " gst-txtype-badge--sales";
+  else if (t === "receipt") cls += " gst-txtype-badge--receipt";
+  else if (t === "payment") cls += " gst-txtype-badge--payment";
+  else if (t === "contra")  cls += " gst-txtype-badge--contra";
+  else if (t === "journal") cls += " gst-txtype-badge--journal";
+  else if (t === "purchase")cls += " gst-txtype-badge--purchase";
+  else                      cls += " gst-txtype-badge--other";
+  return <span className={cls}>{type || "—"}</span>;
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // TRANSACTION HISTORY PAGE
-// Shown when a Bill No. is clicked; matches the UI in the reference image
+// mode="party"  → fetches all line items for the party (existing /transactions)
+// mode="bill"   → fetches line items for a single invoice (/bill-transactions)
 // ══════════════════════════════════════════════════════════════════════════════
 
-function TransactionHistoryPage({ bill, onBack }) {
+function TransactionHistoryPage({ bill, mode, onBack }) {
   const firstDay    = getFirstDayOfCurrentMonth();
   const currentDate = getCurrentDate();
 
@@ -61,25 +76,32 @@ function TransactionHistoryPage({ bill, onBack }) {
     totalProductsSold: 0, avgTransactionValue: 0,
   });
 
-  // Fetch ALL invoice line items for the party who created this bill.
-  // The backend resolves PartyName/PartyID from the clicked billNo, then
-  // returns ALL voucherdetails rows for ALL that party's invoices —
-  // matching the behaviour seen yesterday (9 records for John Doe).
-  // Date range is sent so the user can filter by period on this page.
+  // ── Fetch logic — branches on mode ─────────────────────────────────────────
   const fetchTx = useCallback(async () => {
     setTxLoading(true);
     setTxError("");
     try {
-      const params = new URLSearchParams({ billNo: bill.billNo });
-      if (appliedFrom) params.set("fromDate", appliedFrom);
-      if (appliedTo)   params.set("toDate",   appliedTo);
-      const res  = await fetch(`${API_BASE}/api/gstr3b/transactions?${params}`);
+      let url;
+      if (mode === "bill") {
+        // Single invoice: use voucherId (b.id) for exact lookup — avoids
+        // invoice-number ambiguity when multiple TransactionTypes share the same billNo
+        const params = new URLSearchParams({ billNo: bill.billNo });
+        if (bill.id) params.set("voucherId", bill.id);
+        url = `${API_BASE}/api/gstr3b/bill-transactions?${params}`;
+      } else {
+        // Party: all invoices for the party (existing behaviour)
+        const params = new URLSearchParams({ billNo: bill.billNo });
+        if (appliedFrom) params.set("fromDate", appliedFrom);
+        if (appliedTo)   params.set("toDate",   appliedTo);
+        url = `${API_BASE}/api/gstr3b/transactions?${params}`;
+      }
+
+      const res  = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const rows = data.transactions || data.data || [];
       setTxData(rows);
 
-      // Prefer server-computed summary; fall back to client-side computation
       if (data.summary) {
         setKpi({
           totalSales:          data.summary.totalSales          || 0,
@@ -99,16 +121,16 @@ function TransactionHistoryPage({ bill, onBack }) {
       }
     } catch (err) {
       setTxError(err.message);
-      // Fallback: build a single row from the bill itself so the page isn't empty
       const fallback = [{
-        id:          bill.id,
-        partyName:   bill.party,
-        date:        bill.date,
-        invoiceNo:   bill.billNo,
-        productName: "—",
-        ratePerUnit: bill.taxableAmt,
-        quantity:    1,
-        amount:      bill.billAmt,
+        id:              bill.id,
+        partyName:       bill.party,
+        date:            bill.date,
+        invoiceNo:       bill.billNo,
+        transactionType: bill.transactionType || "Sales",
+        productName:     "—",
+        ratePerUnit:     bill.taxableAmt,
+        quantity:        1,
+        amount:          bill.billAmt,
       }];
       setTxData(fallback);
       setKpi({
@@ -120,7 +142,7 @@ function TransactionHistoryPage({ bill, onBack }) {
     } finally {
       setTxLoading(false);
     }
-  }, [bill, appliedFrom, appliedTo]);
+  }, [bill, mode, appliedFrom, appliedTo]);
 
   useEffect(() => { fetchTx(); }, [fetchTx]);
 
@@ -131,66 +153,104 @@ function TransactionHistoryPage({ bill, onBack }) {
     setAppliedFrom(firstDay); setAppliedTo(currentDate);
   };
 
-  const showClearDates = fromDate !== firstDay || toDate !== currentDate;
+  // Date filter controls are only meaningful in party mode
+  const showDateFilter  = mode === "party";
+  const showClearDates  = showDateFilter && (fromDate !== firstDay || toDate !== currentDate);
 
-  // Client-side search filter — now also searches productName
+  // Page title: party name for party mode, invoice number for bill mode
+  const pageTitle = mode === "bill" ? bill.billNo : (bill.party || bill.billNo);
+
+  // Client-side search filter
   const filtered = txData.filter((r) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
-      String(r.invoiceNo   || "").toLowerCase().includes(q) ||
-      String(r.partyName   || "").toLowerCase().includes(q) ||
-      String(r.productName || "").toLowerCase().includes(q) ||
-      String(r.hsnCode     || "").toLowerCase().includes(q)
+      String(r.invoiceNo       || "").toLowerCase().includes(q) ||
+      String(r.partyName       || "").toLowerCase().includes(q) ||
+      String(r.productName     || "").toLowerCase().includes(q) ||
+      String(r.hsnCode         || "").toLowerCase().includes(q) ||
+      String(r.transactionType || "").toLowerCase().includes(q)
     );
   });
 
-  // Excel export for transaction history — includes Product Name column
+  // Excel export — includes TransactionType column when in bill mode
   const handleExport = () => {
     if (!filtered.length) { alert("No data to export"); return; }
     const displayFrom = formatDateForDisplay(appliedFrom);
     const displayTo   = formatDateForDisplay(appliedTo);
+    const titleLine   = mode === "bill"
+      ? `BILL TRANSACTIONS — ${bill.billNo}`
+      : `TRANSACTION HISTORY — ${bill.party} — ${displayFrom} to ${displayTo}`;
+
+    const headers = mode === "bill"
+      ? ["S.No", "Party Name", "Date", "Invoice No", "Transaction Type", "Product Name", "HSN Code", "Rate Per Unit", "Quantity", "GST %", "Amount"]
+      : ["S.No", "Party Name", "Date", "Invoice No", "Product Name", "HSN Code", "Rate Per Unit", "Quantity", "GST %", "Amount"];
+
+    const rows = filtered.map((r, i) =>
+      mode === "bill"
+        ? [
+            i + 1,
+            r.partyName       || "",
+            r.date            || "",
+            r.invoiceNo       || "",
+            r.transactionType || "",
+            r.productName     || "",
+            r.hsnCode         || "",
+            Number(r.ratePerUnit || 0),
+            Number(r.quantity    || 0),
+            r.gstPct != null ? `${r.gstPct}%` : "",
+            Number(r.amount      || 0),
+          ]
+        : [
+            i + 1,
+            r.partyName   || "",
+            r.date        || "",
+            r.invoiceNo   || "",
+            r.productName || "",
+            r.hsnCode     || "",
+            Number(r.ratePerUnit || 0),
+            Number(r.quantity    || 0),
+            r.gstPct != null ? `${r.gstPct}%` : "",
+            Number(r.amount      || 0),
+          ]
+    );
+
+    const colCount = headers.length;
     const wsData = [
       ["SHREE SHASHWAT RAJ AGRO PVT.LTD."],
-      [`TRANSACTION HISTORY — ${bill.billNo} — ${displayFrom} to ${displayTo}`],
+      [titleLine],
       [],
-      ["S.No", "Party Name", "Date", "Invoice No", "Product Name", "HSN Code", "Rate Per Unit", "Quantity", "GST %", "Amount"],
-      ...filtered.map((r, i) => [
-        i + 1,
-        r.partyName   || "",
-        r.date        || "",
-        r.invoiceNo   || "",
-        r.productName || "",
-        r.hsnCode     || "",
-        Number(r.ratePerUnit || 0),
-        Number(r.quantity    || 0),
-        r.gstPct != null ? `${r.gstPct}%` : "",
-        Number(r.amount      || 0),
-      ]),
+      headers,
+      ...rows,
     ];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws["!cols"] = [
-      { wch: 6 }, { wch: 25 }, { wch: 12 }, { wch: 22 },
-      { wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 8 }, { wch: 14 },
-    ];
+    ws["!cols"] = mode === "bill"
+      ? [{ wch: 6 }, { wch: 25 }, { wch: 12 }, { wch: 22 }, { wch: 16 }, { wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 8 }, { wch: 14 }]
+      : [{ wch: 6 }, { wch: 25 }, { wch: 12 }, { wch: 22 }, { wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 8 }, { wch: 14 }];
     ws["!merges"] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
+      { s: { r: 0, c: 0 }, e: { r: 0, c: colCount - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: colCount - 1 } },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Transactions");
-    XLSX.writeFile(wb, `Transactions_${bill.billNo}_${displayFrom}_to_${displayTo}.xlsx`);
+    const fileName = mode === "bill"
+      ? `Transactions_Bill_${bill.billNo}.xlsx`
+      : `Transactions_${bill.party}_${displayFrom}_to_${displayTo}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   };
+
+  // ── bill mode: 11 columns (adds Transaction Type) | party mode: 10 columns ──
+  const colSpan = mode === "bill" ? 11 : 10;
 
   return (
     <div className="txh-page">
 
-      {/* ── Gradient header: ← Back  |  Bill title ── */}
+      {/* ── Gradient header: ← Back  |  Title ── */}
       <div className="txh-header">
         <button className="txh-back-btn" onClick={onBack}>
           <span className="txh-back-arrow">←</span> Back
         </button>
-        <h2 className="txh-header-title">{bill.party || bill.billNo}</h2>
+        <h2 className="txh-header-title">{pageTitle}</h2>
         <div className="txh-header-spacer" />
       </div>
 
@@ -199,7 +259,7 @@ function TransactionHistoryPage({ bill, onBack }) {
         <div className="txh-kpi-card">
           <p className="txh-kpi-label">TOTAL SALES</p>
           <p className="txh-kpi-value">{fmt(kpi.totalSales)}</p>
-          <p className="txh-kpi-sub">All time</p>
+          <p className="txh-kpi-sub">{mode === "bill" ? "This Invoice" : "All time"}</p>
         </div>
         <div className="txh-kpi-card">
           <p className="txh-kpi-label">TOTAL TRANSACTIONS</p>
@@ -235,28 +295,28 @@ function TransactionHistoryPage({ bill, onBack }) {
           )}
         </div>
 
-        {/* Date pickers */}
-        <div className="txh-date-group">
-          <span className="txh-date-lbl">From Date</span>
-          <input type="date" className="txh-date-inp" value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)} />
-        </div>
-        <div className="txh-date-group">
-          <span className="txh-date-lbl">To Date</span>
-          <input type="date" className="txh-date-inp" value={toDate}
-            onChange={(e) => setToDate(e.target.value)} />
-        </div>
-
-        {/* Apply */}
-        <button className="txh-btn txh-btn--apply" onClick={handleApply}>
-          Apply Date Filter
-        </button>
-
-        {/* Clear dates (only when changed) */}
-        {showClearDates && (
-          <button className="txh-btn txh-btn--clear" onClick={handleClearDates}>
-            Clear Dates
-          </button>
+        {/* Date pickers — only shown in party mode */}
+        {showDateFilter && (
+          <>
+            <div className="txh-date-group">
+              <span className="txh-date-lbl">From Date</span>
+              <input type="date" className="txh-date-inp" value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)} />
+            </div>
+            <div className="txh-date-group">
+              <span className="txh-date-lbl">To Date</span>
+              <input type="date" className="txh-date-inp" value={toDate}
+                onChange={(e) => setToDate(e.target.value)} />
+            </div>
+            <button className="txh-btn txh-btn--apply" onClick={handleApply}>
+              Apply Date Filter
+            </button>
+            {showClearDates && (
+              <button className="txh-btn txh-btn--clear" onClick={handleClearDates}>
+                Clear Dates
+              </button>
+            )}
+          </>
         )}
 
         {/* Generate Report */}
@@ -267,7 +327,7 @@ function TransactionHistoryPage({ bill, onBack }) {
         </button>
       </div>
 
-      {/* ── Table — now includes PRODUCT NAME and HSN CODE columns ── */}
+      {/* ── Table ── */}
       <div className="txh-tbl-card">
         <div className="txh-tbl-scroll">
           <table className="txh-tbl">
@@ -277,6 +337,8 @@ function TransactionHistoryPage({ bill, onBack }) {
                 <th>PARTY NAME</th>
                 <th>DATE</th>
                 <th>INVOICE NO</th>
+                {/* TransactionType column — only in bill mode */}
+                {mode === "bill" && <th>TRANSACTION TYPE</th>}
                 <th>PRODUCT NAME</th>
                 <th>HSN CODE</th>
                 <th>RATE PER UNIT</th>
@@ -287,11 +349,11 @@ function TransactionHistoryPage({ bill, onBack }) {
             </thead>
             <tbody>
               {txLoading ? (
-                <tr><td colSpan={10} className="txh-tbl-empty">Loading...</td></tr>
+                <tr><td colSpan={colSpan} className="txh-tbl-empty">Loading...</td></tr>
               ) : txError && filtered.length === 0 ? (
-                <tr><td colSpan={10} className="txh-tbl-empty" style={{ color: "#dc2626" }}>{txError}</td></tr>
+                <tr><td colSpan={colSpan} className="txh-tbl-empty" style={{ color: "#dc2626" }}>{txError}</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={10} className="txh-tbl-empty">No transactions found.</td></tr>
+                <tr><td colSpan={colSpan} className="txh-tbl-empty">No transactions found.</td></tr>
               ) : (
                 filtered.map((r, idx) => (
                   <tr key={r.id || idx}>
@@ -299,6 +361,9 @@ function TransactionHistoryPage({ bill, onBack }) {
                     <td>{r.partyName    || "—"}</td>
                     <td>{r.date        || "—"}</td>
                     <td>{r.invoiceNo   || "—"}</td>
+                    {mode === "bill" && (
+                      <td><TxTypeBadge type={r.transactionType} /></td>
+                    )}
                     <td>{r.productName || "—"}</td>
                     <td>{r.hsnCode     || "—"}</td>
                     <td>{fmt(r.ratePerUnit || 0)}</td>
@@ -312,7 +377,7 @@ function TransactionHistoryPage({ bill, onBack }) {
             {!txLoading && filtered.length > 0 && (
               <tfoot>
                 <tr>
-                  <td colSpan={7} className="txh-tfoot-label">
+                  <td colSpan={mode === "bill" ? 8 : 7} className="txh-tfoot-label">
                     Total ({filtered.length} records)
                   </td>
                   <td className="txh-tfoot-val">
@@ -409,7 +474,9 @@ function FilterChips({ active, onChange }) {
   );
 }
 
-function GSTTable({ bills, startIdx, loading, error, onBillClick }) {
+// ── GSTTable — Bill No. click opens bill detail, Party click opens party detail
+// ── NOW includes TRANSACTION TYPE column (14 columns total)
+function GSTTable({ bills, startIdx, loading, error, onBillClick, onPartyClick }) {
   const totalBillAmt = bills.reduce((s, b) => s + b.billAmt,    0);
   const totalTaxable = bills.reduce((s, b) => s + b.taxableAmt, 0);
   const totalSgst    = bills.reduce((s, b) => s + b.sgst,       0);
@@ -421,33 +488,50 @@ function GSTTable({ bills, startIdx, loading, error, onBillClick }) {
       <table className="gst-tbl">
         <thead>
           <tr>
-            <th>S.NO</th><th>BILL NO.</th><th>DATE</th><th>PARTY</th>
-            <th>GST NO.</th><th>BB/BC</th><th>HSN CODE</th>
-            <th>BILL AMT</th><th>TAXABLE AMT</th><th>GST %</th>
-            <th>SGST</th><th>CGST</th><th>IGST</th>
+            <th>S.NO</th>
+            <th>BILL NO.</th>
+            <th>DATE</th>
+            <th>PARTY</th>
+            <th>GST NO.</th>
+            <th>BB/BC</th>
+            <th>TRANSACTION TYPE</th>
+            <th>HSN CODE</th>
+            <th>BILL AMT</th>
+            <th>TAXABLE AMT</th>
+            <th>GST %</th>
+            <th>SGST</th>
+            <th>CGST</th>
+            <th>IGST</th>
           </tr>
         </thead>
         <tbody>
           {loading ? (
-            <tr><td colSpan={13} className="gst-tbl-empty">Loading...</td></tr>
+            <tr><td colSpan={14} className="gst-tbl-empty">Loading...</td></tr>
           ) : error ? (
-            <tr><td colSpan={13} className="gst-tbl-empty" style={{ color: "#dc2626" }}>{error}</td></tr>
+            <tr><td colSpan={14} className="gst-tbl-empty" style={{ color: "#dc2626" }}>{error}</td></tr>
           ) : bills.length === 0 ? (
-            <tr><td colSpan={13} className="gst-tbl-empty">No bills found for the selected filters.</td></tr>
+            <tr><td colSpan={14} className="gst-tbl-empty">No bills found for the selected filters.</td></tr>
           ) : (
             bills.map((b, idx) => (
               <tr key={b.id}>
                 <td>{startIdx + idx + 1}</td>
                 <td>
-                  {/* Clickable Bill No — opens TransactionHistoryPage */}
+                  {/* Clickable Bill No → opens bill-level line items */}
                   <span className="gst-bill-link" onClick={() => onBillClick(b)}>
                     {b.billNo}
                   </span>
                 </td>
                 <td>{b.date}</td>
-                <td>{b.party}</td>
+                <td>
+                  {/* Clickable Party Name → opens all party transactions */}
+                  <span className="gst-party-link" onClick={() => onPartyClick(b)}>
+                    {b.party}
+                  </span>
+                </td>
                 <td className={b.gstNo === "N/A" ? "gst-na" : ""}>{b.gstNo}</td>
                 <td><span className={`gst-badge gst-badge--${b.bbbc}`}>{b.bbbc}</span></td>
+                {/* ── NEW: Transaction Type badge ── */}
+                <td><TxTypeBadge type={b.transactionType} /></td>
                 <td>{b.hsnCode}</td>
                 <td>{fmt(b.billAmt)}</td>
                 <td>{fmt(b.taxableAmt)}</td>
@@ -462,7 +546,7 @@ function GSTTable({ bills, startIdx, loading, error, onBillClick }) {
         {!loading && !error && bills.length > 0 && (
           <tfoot>
             <tr>
-              <td colSpan={7} className="gst-tfoot-label">Total ({bills.length} bills shown)</td>
+              <td colSpan={8} className="gst-tfoot-label">Total ({bills.length} bills shown)</td>
               <td className="gst-tfoot-val">{fmt(totalBillAmt)}</td>
               <td className="gst-tfoot-val">{fmt(totalTaxable)}</td>
               <td></td>
@@ -531,10 +615,12 @@ export default function GSTReport({ onTabChange, activeTab }) {
   const firstDay    = getFirstDayOfCurrentMonth();
   const currentDate = getCurrentDate();
 
-  // ── drill-down state: null = list view, object = detail view ─────────────────
+  // ── drill-down state ──────────────────────────────────────────────────────
+  // drillMode: null = list view | "party" = party transactions | "bill" = bill line items
   const [selectedBill, setSelectedBill] = useState(null);
+  const [drillMode,    setDrillMode]    = useState(null); // "party" | "bill"
 
-  // ── filter state ──────────────────────────────────────────────────────────────
+  // ── filter state ──────────────────────────────────────────────────────────
   const [search,        setSearch]        = useState("");
   const [fromDate,      setFromDate]      = useState(firstDay);
   const [toDate,        setToDate]        = useState(currentDate);
@@ -545,7 +631,7 @@ export default function GSTReport({ onTabChange, activeTab }) {
   const [pageSize,      setPageSize]      = useState(10);
   const [exportLoading, setExportLoading] = useState(false);
 
-  // ── API data state ────────────────────────────────────────────────────────────
+  // ── API data state ────────────────────────────────────────────────────────
   const [summary, setSummary] = useState({
     totalBillAmount: 0, taxableAmount: 0,
     totalTransactions: 0, totalGSTCollected: 0,
@@ -605,6 +691,24 @@ export default function GSTReport({ onTabChange, activeTab }) {
 
   const showClearDates = fromDate !== firstDay || toDate !== currentDate;
 
+  // ── Drill-down handlers ───────────────────────────────────────────────────
+  // Bill No. click → bill mode (single invoice line items)
+  const handleBillClick = (b) => {
+    setSelectedBill(b);
+    setDrillMode("bill");
+  };
+
+  // Party name click → party mode (all transactions for the party)
+  const handlePartyClick = (b) => {
+    setSelectedBill(b);
+    setDrillMode("party");
+  };
+
+  const handleBack = () => {
+    setSelectedBill(null);
+    setDrillMode(null);
+  };
+
   const handleGenerateReport = () => {
     if (!bills || bills.length === 0) { alert("No data to export"); return; }
     setExportLoading(true);
@@ -615,16 +719,16 @@ export default function GSTReport({ onTabChange, activeTab }) {
         ["SHREE SHASHWAT RAJ AGRO PVT.LTD."],
         [`GSTR-3B REPORT FROM ${displayFrom} To ${displayTo}`],
         [],
-        ["S.No","Bill No.","Date","Party","GST No.","BB/BC","HSN Code",
+        ["S.No","Bill No.","Date","Party","GST No.","BB/BC","Transaction Type","HSN Code",
          "Bill Amt","Taxable Amt","GST %","SGST","CGST","IGST"],
         ...bills.map((b, idx) => [
           idx + 1, b.billNo||"", b.date||"", b.party||"", b.gstNo||"",
-          b.bbbc||"", b.hsnCode||"",
+          b.bbbc||"", b.transactionType||"", b.hsnCode||"",
           Number(b.billAmt||0), Number(b.taxableAmt||0), b.gst||"",
           Number(b.sgst||0), Number(b.cgst||0), Number(b.igst||0),
         ]),
         [],
-        ["","","","","","","TOTALS",
+        ["","","","","","","","TOTALS",
           bills.reduce((s,b)=>s+(b.billAmt||0),0),
           bills.reduce((s,b)=>s+(b.taxableAmt||0),0),"",
           bills.reduce((s,b)=>s+(b.sgst||0),0),
@@ -634,12 +738,12 @@ export default function GSTReport({ onTabChange, activeTab }) {
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       ws["!cols"] = [
         {wch:6},{wch:18},{wch:12},{wch:25},{wch:20},
-        {wch:8},{wch:12},{wch:14},{wch:14},{wch:10},
-        {wch:14},{wch:14},{wch:14},
+        {wch:8},{wch:16},{wch:12},{wch:14},{wch:14},
+        {wch:10},{wch:14},{wch:14},{wch:14},
       ];
       ws["!merges"] = [
-        {s:{r:0,c:0},e:{r:0,c:12}},
-        {s:{r:1,c:0},e:{r:1,c:12}},
+        {s:{r:0,c:0},e:{r:0,c:13}},
+        {s:{r:1,c:0},e:{r:1,c:13}},
       ];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "GSTR-3B");
@@ -653,12 +757,18 @@ export default function GSTReport({ onTabChange, activeTab }) {
   const startIdx  = (page - 1) * pageSize;
   const dateLabel = appliedFrom && appliedTo ? `${appliedFrom} to ${appliedTo}` : "All dates";
 
-  // ── If a bill is selected, show transaction history page ─────────────────────
-  if (selectedBill) {
-    return <TransactionHistoryPage bill={selectedBill} onBack={() => setSelectedBill(null)} />;
+  // ── Drill-down page ───────────────────────────────────────────────────────
+  if (selectedBill && drillMode) {
+    return (
+      <TransactionHistoryPage
+        bill={selectedBill}
+        mode={drillMode}
+        onBack={handleBack}
+      />
+    );
   }
 
-  // ── Main GSTR-3B list page ────────────────────────────────────────────────────
+  // ── Main GSTR-3B list page ────────────────────────────────────────────────
   return (
     <div className="gst-page">
 
@@ -698,7 +808,8 @@ export default function GSTReport({ onTabChange, activeTab }) {
         <GSTTable
           bills={bills} startIdx={startIdx}
           loading={tableLoading} error={tableError}
-          onBillClick={setSelectedBill}
+          onBillClick={handleBillClick}
+          onPartyClick={handlePartyClick}
         />
         <Pagination
           page={page} totalPages={totalPages} totalItems={totalRecords}

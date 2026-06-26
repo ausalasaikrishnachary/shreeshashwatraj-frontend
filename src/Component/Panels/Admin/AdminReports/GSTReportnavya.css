@@ -297,6 +297,16 @@
 }
 .gst-bill-link:hover { text-decoration: underline; }
 
+/* ── ADD THIS after the .gst-bill-link rule in GSTReportnavya.css ── */
+
+/* Clickable party name in GSTR-3B table — opens all-party transactions */
+.gst-party-link {
+  color: #7c3aed;
+  font-weight: 500;
+  cursor: pointer;
+}
+.gst-party-link:hover { text-decoration: underline; }
+
 .gst-rate-pos  { color: #16a34a; font-weight: 600; }
 .gst-rate-zero { color: #9ca3af; }
 .gst-na        { color: #9ca3af; font-style: italic; }
@@ -983,3 +993,34 @@
   .txh-header-spacer { display: none; }
   .txh-header-title  { text-align: right; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TransactionType badge — used in bill-detail table (TxTypeBadge component)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.gst-txtype-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* Sales — green */
+.gst-txtype-badge--sales    { background: #dcfce7; color: #15803d; }
+/* Receipt — blue */
+.gst-txtype-badge--receipt  { background: #eff6ff; color: #2563eb; }
+/* Payment — amber */
+.gst-txtype-badge--payment  { background: #fef9c3; color: #a16207; }
+/* Contra — purple */
+.gst-txtype-badge--contra   { background: #f3e8ff; color: #7c3aed; }
+/* Journal — slate */
+.gst-txtype-badge--journal  { background: #f1f5f9; color: #475569; }
+/* Purchase — orange */
+.gst-txtype-badge--purchase { background: #fff7ed; color: #c2410c; }
+/* Fallback — grey */
+.gst-txtype-badge--other    { background: #f3f4f6; color: #6b7280; }
