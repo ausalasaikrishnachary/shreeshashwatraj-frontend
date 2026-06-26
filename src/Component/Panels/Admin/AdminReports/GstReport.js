@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import ReusableTable from "../../../Layouts/TableLayout/DataTable";
-import GSTReportNavya from "./Gstreportnavya";
+import GSTReportNavya from "./Gstreportb3";
 import "./GstReport.css";
 
 // ══════════════════════════════════════════════════════════════════════════════
