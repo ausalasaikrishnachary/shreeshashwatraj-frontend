@@ -1,0 +1,1026 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   GSTReportnavya.css  —  Full updated version
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.gst-page {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  color: #111827;
+  background: #f3f4f6;
+  min-height: 100vh;
+  padding: 24px 28px;
+}
+
+.gst-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 22px;
+  letter-spacing: -0.01em;
+}
+
+/* ─── Tab card ───────────────────────────────────────────────────────────────── */
+.gst-tab-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  padding: 18px 20px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+
+.gst-tab-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: nowrap;
+  min-width: max-content;
+}
+
+.gst-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  padding: 0 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+  font-family: inherit;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(37,99,235,0.32);
+  transition: opacity 0.14s, box-shadow 0.14s;
+}
+.gst-tab-btn:hover { opacity: 0.87; }
+
+.gst-tab-btn--active {
+  background: #ffffff;
+  color: #1e3a8a;
+  border: 1.5px solid #2563eb;
+  box-shadow: none;
+}
+.gst-tab-btn--active:hover { background: #eff6ff; opacity: 1; }
+
+/* ─── KPI cards ──────────────────────────────────────────────────────────────── */
+.gst-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 22px;
+}
+@media (max-width: 960px) { .gst-kpi-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 520px)  { .gst-kpi-grid { grid-template-columns: 1fr; } }
+
+.gst-kpi-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  padding: 22px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gst-kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.gst-kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.1;
+}
+
+.gst-kpi-sub {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* ─── OLD filter bar (kept for reference, replaced by gst3b-* below) ─────────── */
+.gst-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.gst-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 300px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0 14px;
+  height: 44px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.gst-search-ico { color: #9ca3af; flex-shrink: 0; }
+.gst-search-inp {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  color: #111827;
+  width: 100%;
+  font-family: inherit;
+}
+.gst-search-inp::placeholder { color: #9ca3af; }
+
+.gst-filter-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.gst-date-lbl {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.gst-date-inp {
+  height: 44px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0 10px;
+  font-size: 13px;
+  color: #111827;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.gst-date-inp:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+
+.gst-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: opacity 0.14s;
+}
+.gst-btn:hover { opacity: 0.87; }
+
+.gst-btn--apply {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(37,99,235,0.30);
+}
+
+.gst-btn--generate {
+  background: #1e3a8a;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(30,58,138,0.28);
+}
+
+/* ─── Filter chips ───────────────────────────────────────────────────────────── */
+.gst-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.gst-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 18px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  background: #ffffff;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all 0.14s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.gst-chip:hover  { border-color: #93c5fd; color: #2563eb; }
+.gst-chip--on    { background: #eff6ff; color: #2563eb; border-color: #93c5fd; font-weight: 600; }
+
+/* ─── Table card ─────────────────────────────────────────────────────────────── */
+.gst-tbl-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  overflow: hidden;
+}
+
+/* ─── Table ──────────────────────────────────────────────────────────────────── */
+.gst-tbl-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gst-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
+}
+
+.gst-tbl thead tr {
+  background: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+.gst-tbl thead th {
+  padding: 14px 16px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #6b7280;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: #f9fafb;
+  z-index: 1;
+}
+
+.gst-tbl tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.1s;
+}
+.gst-tbl tbody tr:hover      { background: #f9fafb; }
+.gst-tbl tbody tr:last-child { border-bottom: none; }
+.gst-tbl tbody td {
+  padding: 15px 16px;
+  font-size: 13px;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.gst-tbl-empty {
+  text-align: center !important;
+  padding: 48px !important;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.gst-bill-link {
+  color: #2563eb;
+  font-weight: 500;
+  cursor: pointer;
+}
+.gst-bill-link:hover { text-decoration: underline; }
+
+/* ── ADD THIS after the .gst-bill-link rule in GSTReportnavya.css ── */
+
+/* Clickable party name in GSTR-3B table — opens all-party transactions */
+.gst-party-link {
+  color: #7c3aed;
+  font-weight: 500;
+  cursor: pointer;
+}
+.gst-party-link:hover { text-decoration: underline; }
+
+.gst-rate-pos  { color: #16a34a; font-weight: 600; }
+.gst-rate-zero { color: #9ca3af; }
+.gst-na        { color: #9ca3af; font-style: italic; }
+
+.gst-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.gst-badge--b2b { background: #eff6ff; color: #2563eb; }
+.gst-badge--b2c { background: #fff7ed; color: #ea580c; }
+
+.gst-tfoot-label,
+.gst-tfoot-val {
+  background: #f9fafb;
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  padding: 13px 16px;
+  border-top: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+/* ─── Pagination ─────────────────────────────────────────────────────────────── */
+.gst-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 18px;
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.gst-pg-info  { font-size: 12px; color: #6b7280; }
+.gst-pg-right { display: flex; align-items: center; gap: 6px; }
+.gst-pg-show  { font-size: 12px; color: #6b7280; white-space: nowrap; }
+
+.gst-pg-select {
+  height: 32px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0 6px;
+  font-size: 12px;
+  color: #374151;
+  background: #ffffff;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.gst-pg-btns {
+  display: flex;
+  gap: 3px;
+  margin-left: 6px;
+}
+
+.gst-pg-btn {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+}
+.gst-pg-btn:hover:not(:disabled) {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #2563eb;
+}
+.gst-pg-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+
+.gst-pg-btn--active {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .gst-filter-right { margin-left: 0; }
+  .gst-filter-bar   { flex-direction: column; align-items: flex-start; }
+  .gst-search-wrap  { width: 100%; }
+}
+
+@media (max-width: 768px) {
+  .gst-page      { padding: 16px 14px; }
+  .gst-kpi-value { font-size: 22px; }
+  .gst-btn       { height: 40px; padding: 0 16px; font-size: 12px; }
+}
+
+@media (max-width: 520px) {
+  .gst-filter-right { flex-direction: column; align-items: stretch; }
+  .gst-btn          { width: 100%; justify-content: center; }
+  .gst-date-inp     { width: 100%; }
+  .gst-pagination   { flex-direction: column; align-items: flex-start; }
+  .gst-pg-right     { flex-wrap: wrap; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Page header row & Pill segmented control
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.gst-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.gst-page-header .gst-page-title {
+  margin-bottom: 0;
+}
+
+.gst-seg-control {
+  display: inline-flex;
+  align-items: center;
+  background: #e5e7eb;
+  border-radius: 999px;
+  padding: 3px;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.gst-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+  background: transparent;
+  color: #6b7280;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gst-seg-btn:hover:not(.gst-seg-btn--active) {
+  background: rgba(255, 255, 255, 0.55);
+  color: #374151;
+}
+
+.gst-seg-btn--active {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.30);
+  cursor: default;
+}
+
+.gst-seg-btn--active:hover {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+@media (max-width: 520px) {
+  .gst-page-header { flex-direction: column; align-items: flex-start; }
+  .gst-seg-control { width: 100%; }
+  .gst-seg-btn     { flex: 1; justify-content: center; padding: 0 12px; font-size: 12px; height: 38px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   NEW — Filter bar matching GSTR-1 single-row horizontal layout
+   (gst3b-* prefix — zero conflict with existing rules above)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Card wrapper — same white card + shadow as GSTR-1 filter section */
+.gst3b-filter-section {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* Single horizontal flex row */
+.gst3b-filters-wrapper {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Search — grows to fill available space */
+.gst3b-search-wrapper {
+  flex: 1 1 260px;
+  min-width: 200px;
+}
+
+.gst3b-search-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.gst3b-search-icon {
+  position: absolute;
+  left: 12px;
+  color: #9ca3af;
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.gst3b-search-input {
+  width: 100%;
+  padding: 9px 36px 9px 36px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: #374151;
+  background: #f9fafb;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.gst3b-search-input:focus {
+  border-color: #6366f1;
+  background: #fff;
+}
+
+.gst3b-clear-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #9ca3af;
+  line-height: 1;
+  padding: 0;
+}
+.gst3b-clear-btn:hover { color: #374151; }
+
+/* Date filters group */
+.gst3b-date-filters {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.gst3b-date-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gst3b-date-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.gst3b-date-input {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #374151;
+  background: #f9fafb;
+  outline: none;
+  transition: border-color 0.2s;
+  cursor: pointer;
+  font-family: inherit;
+}
+.gst3b-date-input:focus { border-color: #6366f1; background: #fff; }
+
+/* Apply Filter — matches GSTR-1 "Add Filter" purple button */
+.gst3b-apply-date-btn {
+  padding: 8px 18px;
+  background: #6366f1;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s;
+  align-self: flex-end;
+  font-family: inherit;
+}
+.gst3b-apply-date-btn:hover { background: #4f46e5; }
+
+/* Clear Dates */
+.gst3b-reset-dates-btn {
+  padding: 8px 14px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s;
+  align-self: flex-end;
+  font-family: inherit;
+}
+.gst3b-reset-dates-btn:hover { background: #e5e7eb; }
+
+/* Generate Report — matches GSTR-1 "Export Excel" red button */
+.gst3b-export-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s;
+  align-self: flex-end;
+  font-family: inherit;
+}
+.gst3b-export-btn:hover:not(:disabled) { background: #b91c1c; }
+.gst3b-export-btn:disabled             { background: #fca5a5; cursor: not-allowed; }
+.gst3b-export-btn--loading             { background: #ef4444; cursor: wait; }
+
+.gst3b-export-icon { font-size: 15px; }
+
+/* Small spinner for loading state */
+.gst3b-spinner-small {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: gst3b-spin 0.7s linear infinite;
+}
+
+@keyframes gst3b-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive — stack on small screens */
+@media (max-width: 1100px) {
+  .gst3b-filters-wrapper { flex-direction: column; align-items: stretch; }
+  .gst3b-search-wrapper  { width: 100%; }
+  .gst3b-date-filters    { flex-wrap: wrap; }
+}
+
+@media (max-width: 520px) {
+  .gst3b-filter-section  { padding: 14px 14px; }
+  .gst3b-apply-date-btn,
+  .gst3b-reset-dates-btn,
+  .gst3b-export-btn      { width: 100%; justify-content: center; }
+  .gst3b-date-input      { width: 100%; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TRANSACTION HISTORY PAGE  (txh-* prefix — zero conflict with existing rules)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.txh-page {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  color: #111827;
+  background: #f3f4f6;
+  min-height: 100vh;
+  padding: 0 0 32px;
+}
+
+/* ── Gradient header bar (matches reference image) ── */
+.txh-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 60%, #9333ea 100%);
+  padding: 20px 28px;
+  margin-bottom: 28px;
+  border-radius: 0 0 4px 4px;
+}
+
+.txh-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.18);
+  border: 1.5px solid rgba(255,255,255,0.40);
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.18s;
+  white-space: nowrap;
+}
+.txh-back-btn:hover { background: rgba(255,255,255,0.28); }
+
+.txh-back-arrow { font-size: 16px; line-height: 1; }
+
+.txh-header-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+  text-align: center;
+  flex: 1;
+  padding: 0 16px;
+}
+
+/* Spacer keeps title centred */
+.txh-header-spacer { width: 120px; flex-shrink: 0; }
+
+/* ── KPI grid ── */
+.txh-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 18px;
+  margin: 0 28px 22px;
+}
+@media (max-width: 960px) { .txh-kpi-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 520px)  { .txh-kpi-grid { grid-template-columns: 1fr; } }
+
+.txh-kpi-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  padding: 22px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.txh-kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.txh-kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.1;
+}
+
+.txh-kpi-sub { font-size: 12px; color: #9ca3af; }
+
+/* ── Filter bar ── */
+.txh-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 28px 20px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px 18px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+/* Search */
+.txh-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+
+.txh-search-icon {
+  position: absolute;
+  left: 12px;
+  color: #9ca3af;
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.txh-search-input {
+  width: 100%;
+  padding: 9px 34px 9px 36px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #374151;
+  background: #f9fafb;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.18s;
+  box-sizing: border-box;
+}
+.txh-search-input:focus { border-color: #6366f1; background: #fff; }
+
+.txh-search-clear {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #9ca3af;
+  line-height: 1;
+  padding: 0;
+}
+.txh-search-clear:hover { color: #374151; }
+
+/* Date group */
+.txh-date-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.txh-date-lbl {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.txh-date-inp {
+  height: 38px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  padding: 0 10px;
+  font-size: 13px;
+  color: #374151;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.18s;
+}
+.txh-date-inp:focus { border-color: #6366f1; background: #fff; }
+
+/* Buttons */
+.txh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: background 0.18s, opacity 0.14s;
+}
+
+/* Apply Date Filter — blue (matches reference image) */
+.txh-btn--apply   { background: #2563eb; color: #fff; }
+.txh-btn--apply:hover { background: #1d4ed8; }
+
+/* Clear Dates — outlined grey */
+.txh-btn--clear {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+.txh-btn--clear:hover { background: #e5e7eb; }
+
+/* Generate Report — dark navy (matches reference image) */
+.txh-btn--generate { background: #1e3a8a; color: #fff; }
+.txh-btn--generate:hover:not(:disabled) { background: #1e40af; }
+.txh-btn--generate:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Table card ── */
+.txh-tbl-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  overflow: hidden;
+  margin: 0 28px;
+}
+
+.txh-tbl-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.txh-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+.txh-tbl thead tr {
+  background: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+.txh-tbl thead th {
+  padding: 14px 16px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #6b7280;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.txh-tbl tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.1s;
+}
+.txh-tbl tbody tr:hover { background: #f9fafb; }
+.txh-tbl tbody tr:last-child { border-bottom: none; }
+.txh-tbl tbody td {
+  padding: 15px 16px;
+  font-size: 13px;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.txh-tbl-empty {
+  text-align: center !important;
+  padding: 48px !important;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.txh-tfoot-label,
+.txh-tfoot-val {
+  background: #f9fafb;
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  padding: 13px 16px;
+  border-top: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .txh-header        { padding: 16px 16px; }
+  .txh-header-title  { font-size: 16px; }
+  .txh-header-spacer { width: 80px; }
+  .txh-kpi-grid,
+  .txh-filter-bar,
+  .txh-tbl-card      { margin-left: 14px; margin-right: 14px; }
+  .txh-kpi-value     { font-size: 22px; }
+}
+
+@media (max-width: 520px) {
+  .txh-filter-bar    { flex-direction: column; align-items: stretch; }
+  .txh-btn           { width: 100%; }
+  .txh-date-group    { flex-wrap: wrap; }
+  .txh-date-inp      { flex: 1; }
+  .txh-header-spacer { display: none; }
+  .txh-header-title  { text-align: right; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TransactionType badge — used in bill-detail table (TxTypeBadge component)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.gst-txtype-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* Sales — green */
+.gst-txtype-badge--sales    { background: #dcfce7; color: #15803d; }
+/* Receipt — blue */
+.gst-txtype-badge--receipt  { background: #eff6ff; color: #2563eb; }
+/* Payment — amber */
+.gst-txtype-badge--payment  { background: #fef9c3; color: #a16207; }
+/* Contra — purple */
+.gst-txtype-badge--contra   { background: #f3e8ff; color: #7c3aed; }
+/* Journal — slate */
+.gst-txtype-badge--journal  { background: #f1f5f9; color: #475569; }
+/* Purchase — orange */
+.gst-txtype-badge--purchase { background: #fff7ed; color: #c2410c; }
+/* Fallback — grey */
+.gst-txtype-badge--other    { background: #f3f4f6; color: #6b7280; }

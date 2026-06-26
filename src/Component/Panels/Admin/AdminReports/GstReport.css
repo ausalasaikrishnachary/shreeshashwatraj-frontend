@@ -476,6 +476,83 @@
   background-color: #45a049;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════════
+   PAGE HEADER + PILL SEGMENTED CONTROL
+   Additive only — zero existing rules modified above this line
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Header row: title left, segmented control pinned right */
+.gst-report-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* Page title */
+.gst-report-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+/* Pill track */
+.gst-report-seg-control {
+  display: inline-flex;
+  align-items: center;
+  background: #e5e7eb;
+  border-radius: 999px;
+  padding: 3px;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+/* Individual pill button */
+.gst-report-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+
+  /* inactive default */
+  background: transparent;
+  color: #6b7280;
+
+  /* smooth tab-switch animation */
+  transition: background 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.gst-report-seg-btn:hover:not(.gst-report-seg-btn--active) {
+  background: rgba(255, 255, 255, 0.60);
+  color: #374151;
+}
+
+/* Active pill: solid primary blue, white text, subtle lift shadow */
+.gst-report-seg-btn--active {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.30);
+  cursor: default;
+}
+
+.gst-report-seg-btn--active:hover {
+  background: #2563eb;
+  color: #ffffff;
+}
+
 /* ============================================
    TABLET — 768px to 1024px
    ============================================ */
@@ -597,6 +674,24 @@
 
   .gst-report-table-section {
     padding: 10px;
+  }
+
+  /* Segmented control responsive */
+  .gst-report-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .gst-report-seg-control {
+    width: 100%;
+  }
+
+  .gst-report-seg-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 0 12px;
+    font-size: 12px;
+    height: 38px;
   }
 }
 
@@ -824,6 +919,11 @@
     transform: none;
     box-shadow: none;
   }
+
+  /* Segmented control: ensure comfortable tap targets on touch */
+  .gst-report-seg-btn {
+    min-height: 44px;
+  }
 }
 
 /* ============================================
@@ -871,5 +971,20 @@
 
   .gst-report-kacha-pakka-btn {
     flex: none;
+  }
+
+  /* Restore natural segmented control width in landscape */
+  .gst-report-page-header {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .gst-report-seg-control {
+    width: auto;
+  }
+
+  .gst-report-seg-btn {
+    flex: none;
+    padding: 0 22px;
   }
 }
