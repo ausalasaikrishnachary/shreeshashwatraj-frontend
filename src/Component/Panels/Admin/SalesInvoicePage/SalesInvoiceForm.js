@@ -2554,8 +2554,8 @@ const CreateInvoice = ({ user }) => {
                     />
                   </Col>
 
-                  {/* Column 3: WEIGHT */}
-                  <Col md={1}>
+                  
+                  {/* <Col md={1}>
                     <Form.Label className="fw-bold">Weight</Form.Label>
                     <Form.Control
                       name="weight"
@@ -2568,7 +2568,7 @@ const CreateInvoice = ({ user }) => {
                     />
                   </Col>
 
-                  {/* ── NEW Column: TOTAL WEIGHT (read-only, qty × weight) ── */}
+                  
                   <Col md={1}>
                     <Form.Label className="fw-bold">Total Weight</Form.Label>
                     <Form.Control
@@ -2578,7 +2578,7 @@ const CreateInvoice = ({ user }) => {
                       className="border-primary bg-light"
                       placeholder="0.00"
                     />
-                  </Col>
+                  </Col> */}
 
                   <Col md={2}>
                     <Form.Label className="fw-bold text-primary">
@@ -2602,7 +2602,7 @@ const CreateInvoice = ({ user }) => {
                   </Col>
 
                   {/* Product Price Inclusive */}
-                  <Col md={1}>
+                  <Col md={2}>
                     <Form.Label className="fw-bold text-primary">
                       Price (Incl)
                     </Form.Label>
@@ -2617,7 +2617,7 @@ const CreateInvoice = ({ user }) => {
                   </Col>
 
                   {/* Price Exclusive */}
-                  <Col md={1}>
+                  <Col md={2}>
                     <Form.Label className="fw-bold text-primary">
                       Price (Excl)
                     </Form.Label>
@@ -2659,7 +2659,7 @@ const CreateInvoice = ({ user }) => {
                   </Col>
 
                   {/* Column 7: TOTAL PRICE */}
-                  <Col md={1}>
+                  <Col md={2}>
                     <Form.Label className="fw-bold">Total (₹)</Form.Label>
                     <Form.Control
                       type="text"
@@ -2721,8 +2721,8 @@ const CreateInvoice = ({ user }) => {
                       <th>PRODUCT</th>
                       <th>DESCRIPTION</th>
                       <th>QTY</th>
-                      <th>WEIGHT</th>
-                      <th>TOTAL WEIGHT</th>  {/* ── NEW COLUMN ── */}
+                      {/* <th>WEIGHT</th>
+                      <th>TOTAL WEIGHT</th>   */}
                       <th>PRICE TYPE</th>
                       <th>PRICE (Incl)</th>
                       <th>PRICE (Excl)</th>
@@ -2758,16 +2758,16 @@ const CreateInvoice = ({ user }) => {
                               : item.quantity}
                           </td>
                           {/* WEIGHT CELL */}
-                          <td className="text-center">
+                          {/* <td className="text-center">
                             {parseFloat(item.weight || 0).toFixed(2)}
-                          </td>
+                          </td> */}
                           {/* ── NEW: TOTAL WEIGHT CELL (qty × weight) ── */}
-                          <td className="text-center">
+                          {/* <td className="text-center">
                             {(
                               (parseFloat(item.quantity) || 0) *
                               (parseFloat(item.weight) || 0)
                             ).toFixed(2)}
-                          </td>
+                          </td> */}
                           <td className="text-center">
                             {item.inclusive_gst || "-"}
                           </td>

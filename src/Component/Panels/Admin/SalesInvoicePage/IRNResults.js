@@ -25,40 +25,79 @@ const IRNResults = ({ invoiceData }) => {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td data-label="Invoice ID">{invoiceData.id}</td>
-              <td data-label="IRN No" className="irn-number">
-                {invoiceData.irn_no || 'N/A'}
-              </td>
-              <td data-label="Acknowledgment No">{invoiceData.ack_no || 'N/A'}</td>
-              <td data-label="Acknowledgment Date">{invoiceData.ack_date || 'N/A'}</td>
-              <td data-label="QR Image">
-                <QRImage src={invoiceData.qr_image} alt="QR Image" />
-              </td>
-              <td data-label="E-way Bill No">{invoiceData.e_way_bill_no || 'N/A'}</td>
-              <td data-label="E-way Bill Date">{invoiceData.e_way_bill_date || 'N/A'}</td>
-              <td data-label="E-way Bill Valid Till">{invoiceData.e_way_bill_valid_till || 'N/A'}</td>
-              <td data-label="Signed QR Code">
-                {invoiceData.signed_qr_code ? (
-                  <a href={invoiceData.signed_qr_code} target="_blank" rel="noopener noreferrer" className="view-link">
-                    View
-                  </a>
-                ) : 'N/A'}
-              </td>
-              <td data-label="Signed Invoice">
-                {invoiceData.signed_invoice ? (
-                  <a href={invoiceData.signed_invoice} target="_blank" rel="noopener noreferrer" className="view-link">
-                    View
-                  </a>
-                ) : 'N/A'}
-              </td>
-              <td data-label="IRN Status">
-                <span className={`status-badge ${invoiceData.IRNgenerated_status === 'Yes' ? 'status-success' : 'status-pending'}`}>
-                  {invoiceData.IRNgenerated_status === 'Yes' ? 'Generated' : 'Pending'}
-                </span>
-              </td>
-            </tr>
-          </tbody>
+  <tr>
+    <td data-label="Invoice ID">
+      {invoiceData?.qrImage?.fileName || 'N/A'}
+    </td>
+
+    <td data-label="IRN No" className="irn-number">
+      {invoiceData?.result?.Irn || 'N/A'}
+    </td>
+
+    <td data-label="Acknowledgment No">
+      {invoiceData?.result?.AckNo || 'N/A'}
+    </td>
+
+    <td data-label="Acknowledgment Date">
+      {invoiceData?.result?.AckDt || 'N/A'}
+    </td>
+
+    <td data-label="QR Image">
+  {invoiceData?.qrImage?.imageUrl ? (
+    <img
+      src={invoiceData.qrImage.imageUrl}
+      alt="QR Code"
+      width="150"
+      onLoad={() => console.log("QR Loaded")}
+      onError={(e) => {
+        console.log("QR Failed:", invoiceData.qrImage.imageUrl);
+        e.target.style.display = "none";
+      }}
+    />
+  ) : (
+    "N/A"
+  )}
+</td>
+
+    <td data-label="E-way Bill No">
+      {invoiceData?.result?.EwbNo || 'N/A'}
+    </td>
+
+    <td data-label="E-way Bill Date">
+      {invoiceData?.result?.EwbDt || 'N/A'}
+    </td>
+
+    <td data-label="E-way Bill Valid Till">
+      {invoiceData?.result?.EwbValidTill || 'N/A'}
+    </td>
+
+    <td data-label="Signed QR Code">
+      {invoiceData?.result?.SignedQRCode ? (
+        <span style={{ color: 'green' }}>
+          Available
+        </span>
+      ) : (
+        'N/A'
+      )}
+    </td>
+
+    <td data-label="Signed Invoice">
+      {invoiceData?.result?.SignedInvoice ? (
+        <span style={{ color: 'green' }}>
+          Available
+        </span>
+      ) : (
+        'N/A'
+      )}
+    </td>
+
+    <td data-label="IRN Status">
+      <span className="status-badge status-success">
+        Generated
+      </span>
+    </td>
+  </tr>
+</tbody>
         </table>
       </div>
     </div>

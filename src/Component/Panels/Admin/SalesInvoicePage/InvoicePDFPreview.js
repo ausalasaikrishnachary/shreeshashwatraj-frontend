@@ -31,6 +31,9 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { baseurl } from "../../../BaseURL/BaseURL";
 import QRCodeGenerator_normal from "./QRCodeGenerator_normal";
+import useIRNGeneration from '../../../Panels/Hook/useIRNGeneration';
+import EInvoicePdfDocument from './EInvoicePdfDocument';
+import axios from 'axios';
 
 const InvoicePDFPreview = () => {
   const navigate = useNavigate();
@@ -62,6 +65,21 @@ const InvoicePDFPreview = () => {
   const [selectedAdvanceReceipts, setSelectedAdvanceReceipts] = useState([]);
   const [totalAdvanceAmount, setTotalAdvanceAmount] = useState(0);
   const [successMessage, setSuccessMessage] = useState(null);
+  const {
+    generateIRN,
+    cancelIRN,
+    getIRNStatus,
+    loading: irnGenerating,
+    cancelling: irnCancelling
+  } = useIRNGeneration();
+
+  const [irnStatus, setIrnStatus] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('1');
+  const [cancelRemark, setCancelRemark] = useState('Cancelled by user');
+  const [irnDetails, setIrnDetails] = useState(null);
+
+
   const [companyInfo, setCompanyInfo] = useState({
     name: "",
     address: "",
@@ -103,187 +121,682 @@ const InvoicePDFPreview = () => {
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
   const invoiceRef = useRef(null);
   const [showEInvoiceModal, setShowEInvoiceModal] = useState(false);
-const [einvoiceData, setEinvoiceData] = useState(null);
+  const [einvoiceData, setEinvoiceData] = useState(null);
+  const [downloadingEInvoice, setDownloadingEInvoice] = useState(false);
+  const [ewayBillStatus, setEwayBillStatus] = useState(null);
 
-// Add this function to generate e-invoice data
-const generateEInvoiceData = () => {
-  if (!currentData) return null;
-  
-  const gstBreakdown = calculateGSTBreakdown();
-  
-  // Create comprehensive invoice JSON data
-  const einvoiceJson = {
-    invoice: {
-      invoiceNumber: currentData.invoiceNumber,
-      invoiceDate: currentData.invoiceDate,
-      validityDate: currentData.validityDate,
-      documentType: currentData.document_type || "Sales Invoice",
-      voucherId: currentData.voucherId
-    },
-    companyInfo: {
-      name: currentData.companyInfo.name,
-      address: currentData.companyInfo.address,
-      email: currentData.companyInfo.email,
-      phone: currentData.companyInfo.phone,
-      gstin: currentData.companyInfo.gstin,
-      state: currentData.companyInfo.state,
-      stateCode: currentData.companyInfo.stateCode
-    },
-    customerInfo: {
-      name: currentData.supplierInfo.name,
-      businessName: currentData.supplierInfo.business_name || "",
-      gstin: currentData.supplierInfo.gstin || "",
-      state: currentData.supplierInfo.state || "",
-      mobileNumber: currentData.supplierInfo.mobile_number || "",
-      email: currentData.supplierInfo.email || "",
-      customerId: currentData.supplierInfo.id
-    },
-    billingAddress: {
-      addressLine1: currentData.billingAddress.addressLine1,
-      addressLine2: currentData.billingAddress.addressLine2,
-      city: currentData.billingAddress.city,
-      pincode: currentData.billingAddress.pincode,
-      state: currentData.billingAddress.state
-    },
-    shippingAddress: {
-      addressLine1: currentData.shippingAddress.addressLine1,
-      addressLine2: currentData.shippingAddress.addressLine2,
-      city: currentData.shippingAddress.city,
-      pincode: currentData.shippingAddress.pincode,
-      state: currentData.shippingAddress.state
-    },
-    items: currentData.items.map((item, index) => ({
-      slNo: index + 1,
-      product: item.product,
-      productId: item.product_id,
-      description: item.description,
-      hsnCode: item.hsn_code,
-      quantity: parseFloat(item.quantity),
-      unit: unitData[item.unit_id] || item.unit_name || "",
-      price: parseFloat(item.price),
-      originalPrice: parseFloat(item.original_price),
-      discount: parseFloat(item.discount),
-      gstPercentage: parseFloat(item.gst),
-      cgstPercentage: parseFloat(item.cgst),
-      sgstPercentage: parseFloat(item.sgst),
-      igstPercentage: parseFloat(item.igst),
-      cess: parseFloat(item.cess),
-      taxableAmount: (parseFloat(item.quantity) * parseFloat(item.price)).toFixed(2),
-      discountAmount: ((parseFloat(item.quantity) * parseFloat(item.price)) * (parseFloat(item.discount) / 100)).toFixed(2),
-      gstAmount: ((parseFloat(item.quantity) * parseFloat(item.price) * (1 - parseFloat(item.discount) / 100)) * (parseFloat(item.gst) / 100)).toFixed(2),
-      totalAmount: parseFloat(item.total)
-    })),
-    financialSummary: {
-      taxableAmount: parseFloat(currentData.taxableAmount),
-      totalCGST: parseFloat(gstBreakdown.totalCGST),
-      totalSGST: parseFloat(gstBreakdown.totalSGST),
-      totalIGST: parseFloat(gstBreakdown.totalIGST),
-      totalGST: parseFloat(currentData.totalGST),
-      additionalCharges: currentData.additionalCharge || "",
-      additionalChargesAmount: parseFloat(currentData.additionalChargeAmount) || 0,
-      roundOff: parseFloat(currentData.roundOff) || 0,
-      grandTotal: parseFloat(currentData.grandTotal)
-    },
-    paymentInfo: paymentData ? {
-      totalPaid: paymentData.summary.totalPaid,
-      totalCreditNotes: paymentData.summary.totalCreditNotes,
-      balanceDue: paymentData.summary.balanceDue,
-      status: paymentData.summary.status,
-      receipts: paymentData.receipts || [],
-      creditNotes: paymentData.creditnotes || []
-    } : null,
-    transportDetails: {
-      transport: currentData.transportDetails?.transport || "",
-      grNumber: currentData.transportDetails?.grNumber || "",
-      vehicleNo: currentData.transportDetails?.vehicleNo || "",
-      station: currentData.transportDetails?.station || ""
-    },
-    additionalInfo: {
-      note: currentData.note || "",
-      assignedStaff: currentData.assigned_staff || "",
-      bb_bc: currentData.bb_bc || "b2b",
-      taxType: currentData.taxType || "CGST/SGST"
-    },
-    generatedOn: new Date().toISOString(),
-    generatedBy: "Invoice System"
+  // Add this function for downloading e-invoice PDF
+  const handleDownloadEInvoicePDF = async () => {
+    try {
+      setDownloadingEInvoice(true);
+      setError(null);
+
+      if (!currentData) {
+        throw new Error("No invoice data available");
+      }
+
+      // Check if IRN is generated
+      if (!irnStatus?.IRNgenerated_status || irnStatus.IRNgenerated_status !== 'Generated') {
+        alert('❌ E-Invoice not generated yet. Please generate IRN first.');
+        return;
+      }
+
+      let pdf;
+      let EInvoicePdfDocumentModule;
+
+      try {
+        const reactPdf = await import("@react-pdf/renderer");
+        pdf = reactPdf.pdf;
+
+        // Import the E-Invoice PDF document
+        const pdfModule = await import("./EInvoicePdfDocument");
+        EInvoicePdfDocumentModule = pdfModule.default;
+      } catch (importError) {
+        console.error("Error importing PDF modules:", importError);
+        throw new Error("Failed to load PDF generation libraries");
+      }
+
+      const gstBreakdown = calculateGSTBreakdown();
+      const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+
+      // Get QR data
+      let qrImageData = qrDataUrl;
+      let qrAmountData = qrAmount || parseFloat(currentData.grandTotal);
+
+      // If QR data is not available, try to get it from the IRN response
+      if (!qrImageData && irnStatus?.signed_qr_code) {
+        try {
+          const qrResponse = await axios.post(
+            `${baseurl}/api/generate-qr-image`,
+            {
+              signedQrCode: irnStatus.signed_qr_code,
+              gstin: currentData.companyInfo?.gstin || "02AMBPG7773M002",
+              invoiceCode: currentData.invoiceNumber || ""
+            }
+          );
+
+          if (qrResponse.data && qrResponse.data.imageUrl) {
+            qrImageData = qrResponse.data.imageUrl;
+            qrAmountData = qrAmount || parseFloat(currentData.grandTotal);
+          }
+        } catch (qrError) {
+          console.warn("Could not generate QR image:", qrError);
+        }
+      }
+
+      // Generate e-invoice JSON data
+      const einvoiceJson = generateEInvoiceData();
+
+      // Create E-Invoice PDF document
+      const pdfDoc = (
+        <EInvoicePdfDocument
+          invoiceData={currentData}
+          invoiceNumber={currentData.invoiceNumber}
+          gstBreakdown={gstBreakdown}
+          isSameState={isSameState}
+          qrDataUrl={qrImageData}
+          qrAmount={qrAmountData}
+          unitData={unitData}
+          irnDetails={irnDetails}
+          irnStatus={irnStatus}
+          einvoiceJson={einvoiceJson}
+        />
+      );
+
+      let blob;
+      try {
+        blob = await pdf(pdfDoc).toBlob();
+      } catch (pdfError) {
+        console.error("Error generating PDF blob:", pdfError);
+        throw new Error("Failed to generate E-Invoice PDF file");
+      }
+
+      const filename = `E-Invoice_${currentData.invoiceNumber}_${new Date().toISOString().split("T")[0]}.pdf`;
+
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+
+      setSuccess("E-Invoice PDF downloaded successfully!");
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (error) {
+      console.error("Error generating E-Invoice PDF:", error);
+      setError("Failed to generate E-Invoice PDF: " + error.message);
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setDownloadingEInvoice(false);
+    }
   };
-  
-  return einvoiceJson;
-};
 
+  // Add this function to render E-Invoice button with download option
+  const renderEInvoiceButtons = () => {
+    // Check if IRN is already generated
+    if (irnStatus?.IRNgenerated_status === 'Generated') {
+      return (
+        <>
+          {/* Cancel E-Invoice button */}
+          <Button
+            variant="danger"
+            onClick={handleCancelEInvoice}
+            className="me-2"
+            disabled={irnCancelling}
+          >
+            {irnCancelling ? (
+              <>
+                <div className="spinner-border spinner-border-sm me-1" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                Cancelling...
+              </>
+            ) : (
+              <>
+                <FaTimes className="me-1" /> Cancel E-Invoice
+              </>
+            )}
+          </Button>
 
-// Replace the existing handleEInvoice function with:
-// const handleEInvoice = () => {
-//   try {
-//     if (!currentData) {
-//       alert("No invoice data available");
-//       return;
-//     }
-    
-//     // Navigate to e-invoice page with data
-//     navigate('/einvoice', { 
-//       state: { 
-//         invoiceData: currentData,
-//         invoiceId: currentData.voucherId 
-//       } 
-//     });
-//   } catch (error) {
-//     console.error("Error opening e-invoice:", error);
-//     alert("Error opening e-invoice: " + error.message);
-//   }
-// };
+          {/* Download E-Invoice PDF button */}
+          <Button
+            variant="primary"
+            onClick={handleDownloadEInvoicePDF}
+            className="me-2"
+            style={{ backgroundColor: '#28a745', borderColor: '#28a745' }}
+            disabled={downloadingEInvoice}
+          >
+            {downloadingEInvoice ? (
+              <>
+                <div className="spinner-border spinner-border-sm me-1" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                Downloading...
+              </>
+            ) : (
+              <>
+                <FaFilePdf className="me-1" /> E-Invoice PDF
+              </>
+            )}
+          </Button>
+          {irnStatus?.IRNgenerated_status === 'Generated' && (
+            <>
+              {!ewayBillStatus?.status && (
+                <Button
+                  variant="success"
+                  onClick={handleGenerateEWayBill}
+                  className="me-2"
+                >
+                  Generate E-Way Bill
+                </Button>
+              )}
 
-// In your invoice component, update the handleEInvoice function:
-const handleEInvoice = () => {
-  try {
-    if (!currentData) {
-      alert("No invoice data available");
+              {ewayBillStatus?.status === 'Generated' && (
+                <Button
+                  variant="danger"
+                  onClick={handleCancelEWayBill}
+                  className="me-2"
+                >
+                  Cancel E-Way Bill
+                </Button>
+              )}
+
+              {ewayBillStatus?.status === 'Cancelled' && (
+                <Button
+                  variant="secondary"
+                  disabled
+                  className="me-2"
+                >
+                  E-Way Bill Cancelled
+                </Button>
+              )}
+            </>
+          )}
+        </>
+      );
+    } else if (irnStatus?.IRNgenerated_status === 'Cancelled') {
+      // Show disabled button
+      return (
+        <Button
+          variant="secondary"
+          className="me-2"
+          disabled
+          title="This e-invoice has been cancelled"
+        >
+          <FaTimes className="me-1" /> E-Invoice Cancelled
+        </Button>
+      );
+    } else {
+      // Show Generate E-Invoice button
+      return (
+        <Button
+          variant="primary"
+          onClick={handleEInvoice}
+          className="me-2"
+          style={{ backgroundColor: '#6f42c1', borderColor: '#6f42c1' }}
+          disabled={irnGenerating}
+        >
+          {irnGenerating ? (
+            <>
+              <div className="spinner-border spinner-border-sm me-1" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              Generating IRN...
+            </>
+          ) : (
+            <>
+              <FaReceipt className="me-1" /> Generate E-Invoice
+            </>
+          )}
+        </Button>
+      );
+    }
+  };
+
+  // Fetch IRN status when component loads
+  useEffect(() => {
+    if (invoiceData?.invoiceNumber) {
+      fetchIRNStatus(invoiceData.invoiceNumber);
+    }
+  }, [invoiceData]);
+
+  // Function to fetch IRN status
+  const fetchIRNStatus = async (invoiceNumber) => {
+    try {
+      const result = await getIRNStatus(invoiceNumber);
+      if (result.success) {
+        setIrnStatus(result.data);
+        setIrnDetails({
+          irn_no: result.data.irn_no,
+          ack_no: result.data.ack_no,
+          ack_date: result.data.ack_date,
+          status: result.data.IRNgenerated_status
+        });
+        console.log('IRN Status:', result.data);
+      } else {
+        // Handle case where invoice doesn't have IRN yet (404 is expected)
+        if (result.error && result.error.includes('404')) {
+          console.log('No IRN generated yet for this invoice');
+          setIrnStatus(null);
+          setIrnDetails(null);
+        } else {
+          console.error('Error fetching IRN status:', result.error);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching IRN status:', error);
+      // Don't show error to user if invoice doesn't have IRN yet
+    }
+  };
+
+  const generateEInvoiceData = () => {
+    if (!currentData) return null;
+
+    const gstBreakdown = calculateGSTBreakdown();
+
+    // Create comprehensive invoice JSON data
+    const einvoiceJson = {
+      invoice: {
+        // invoiceNumber: "INV2026052817",
+        invoiceNumber: currentData.invoiceNumber,
+        invoiceDate: currentData.invoiceDate,
+        validityDate: currentData.validityDate,
+        documentType: currentData.document_type || "Sales Invoice",
+        voucherId: currentData.voucherId,
+        bb_bc: currentData.bb_bc || "b2b"
+      },
+      companyInfo: {
+        name: currentData.companyInfo.name,
+        address: currentData.companyInfo.address,
+        email: currentData.companyInfo.email,
+        phone: currentData.companyInfo.phone,
+        gstin: currentData.companyInfo.gstin,
+        state: currentData.companyInfo.state,
+        stateCode: currentData.companyInfo.stateCode
+      },
+      customerInfo: {
+        name: currentData.supplierInfo.name,
+        businessName: currentData.supplierInfo.business_name || "",
+        gstin: currentData.supplierInfo.gstin || "",
+        state: currentData.supplierInfo.state || "",
+        mobileNumber: currentData.supplierInfo.mobile_number || "",
+        email: currentData.supplierInfo.email || "",
+        customerId: currentData.supplierInfo.id
+      },
+      billingAddress: {
+        addressLine1: currentData.billingAddress.addressLine1,
+        addressLine2: currentData.billingAddress.addressLine2,
+        city: currentData.billingAddress.city,
+        pincode: currentData.billingAddress.pincode,
+        state: currentData.billingAddress.state
+      },
+      shippingAddress: {
+        addressLine1: currentData.shippingAddress.addressLine1,
+        addressLine2: currentData.shippingAddress.addressLine2,
+        city: currentData.shippingAddress.city,
+        pincode: currentData.shippingAddress.pincode,
+        state: currentData.shippingAddress.state
+      },
+      items: currentData.items.map((item, index) => ({
+        slNo: index + 1,
+        product: item.product,
+        productId: item.product_id,
+        description: item.description,
+        hsnCode: item.hsn_code,
+        quantity: parseFloat(item.quantity),
+        unit: unitData[item.unit_id] || item.unit_name || "",
+        price: parseFloat(item.price),
+        originalPrice: parseFloat(item.original_price),
+        discount: parseFloat(item.discount),
+        gstPercentage: parseFloat(item.gst),
+        cgstPercentage: parseFloat(item.cgst),
+        sgstPercentage: parseFloat(item.sgst),
+        igstPercentage: parseFloat(item.igst),
+        cess: parseFloat(item.cess),
+        taxableAmount: (parseFloat(item.quantity) * parseFloat(item.price)).toFixed(2),
+        discountAmount: ((parseFloat(item.quantity) * parseFloat(item.price)) * (parseFloat(item.discount) / 100)).toFixed(2),
+        gstAmount: ((parseFloat(item.quantity) * parseFloat(item.price) * (1 - parseFloat(item.discount) / 100)) * (parseFloat(item.gst) / 100)).toFixed(2),
+        totalAmount: parseFloat(item.total)
+      })),
+      financialSummary: {
+        taxableAmount: parseFloat(currentData.taxableAmount),
+        totalCGST: parseFloat(gstBreakdown.totalCGST),
+        totalSGST: parseFloat(gstBreakdown.totalSGST),
+        totalIGST: parseFloat(gstBreakdown.totalIGST),
+        totalGST: parseFloat(currentData.totalGST),
+        additionalCharges: currentData.additionalCharge || "",
+        additionalChargesAmount: parseFloat(currentData.additionalChargeAmount) || 0,
+        roundOff: parseFloat(currentData.roundOff) || 0,
+        grandTotal: parseFloat(currentData.grandTotal)
+      },
+      paymentInfo: paymentData ? {
+        totalPaid: paymentData.summary.totalPaid,
+        totalCreditNotes: paymentData.summary.totalCreditNotes,
+        balanceDue: paymentData.summary.balanceDue,
+        status: paymentData.summary.status,
+        receipts: paymentData.receipts || [],
+        creditNotes: paymentData.creditnotes || []
+      } : null,
+      transportDetails: {
+        transport: currentData.transportDetails?.transport || "",
+        grNumber: currentData.transportDetails?.grNumber || "",
+        vehicleNo: currentData.transportDetails?.vehicleNo || "",
+        station: currentData.transportDetails?.station || ""
+      },
+      additionalInfo: {
+        note: currentData.note || "",
+        assignedStaff: currentData.assigned_staff || "",
+        bb_bc: currentData.bb_bc || "b2b",
+        taxType: currentData.taxType || "CGST/SGST"
+      },
+      generatedOn: new Date().toISOString(),
+      generatedBy: "Invoice System"
+    };
+
+    return einvoiceJson;
+  };
+
+  // Handle E-Invoice Generation
+  const handleEInvoice = async () => {
+    try {
+      if (!currentData) {
+        alert("No invoice data available");
+        return;
+      }
+
+      // Generate e-invoice JSON data
+      const einvoiceJson = generateEInvoiceData();
+
+      // Get credentials
+      const username = localStorage.getItem('irn_username') || 'adqgsphpusr1';
+      const password = localStorage.getItem('irn_password') || 'Gsp@1234';
+      const accessToken = localStorage.getItem('accessToken') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+
+      // Call the IRN generation
+      const result = await generateIRN(einvoiceJson, username, password, accessToken);
+
+      if (result.success) {
+        // Prepare success message
+        const irn = result.data.result?.Irn || 'N/A';
+        const ackNo = result.data.result?.AckNo || 'N/A';
+        const transactionType = result.data.transactionTypeUsed?.toUpperCase() || 'N/A';
+
+        let successMessage = `✅ IRN Generated Successfully!\n\n`;
+        successMessage += `Invoice: ${currentData.invoiceNumber}\n`;
+        successMessage += `IRN: ${irn}\n`;
+        successMessage += `Ack No: ${ackNo}\n`;
+        successMessage += `Transaction Type: ${transactionType}\n\n`;
+
+        if (result.dbUpdated) {
+          successMessage += `✅ Database updated with IRN details.`;
+        } else if (result.dbUpdateWarning) {
+          successMessage += `⚠️ Database update warning: ${result.dbUpdateWarning}`;
+        }
+
+        alert(successMessage);
+        console.log("IRN Generated and stored:", result.data);
+
+        // Refresh the IRN status
+        await fetchIRNStatus(currentData.invoiceNumber);
+
+        // Refresh the page data to show updated info
+        await fetchTransactionData();
+
+      } else {
+        alert(`❌ IRN Generation Failed!\n\nInvoice: ${currentData.invoiceNumber}\nError: ${result.error}\n\nPlease check the invoice details and try again.`);
+      }
+
+    } catch (error) {
+      console.error("Error generating IRN:", error);
+      alert("❌ Error generating IRN: " + error.message);
+    }
+  };
+
+  // Handle E-Way Bill Generation
+  const handleGenerateEWayBill = async () => {
+    try {
+      // Check if IRN is generated
+      if (irnStatus?.IRNgenerated_status !== 'Generated') {
+        alert('❌ Please generate E-Invoice first.');
+        return;
+      }
+
+      const response = await axios.post(
+        `${baseurl}/api/generate-ewaybill`,
+        {
+          invoiceId: currentData.invoiceNumber,
+          irn_no: irnStatus.irn_no,
+          transId: "02AMBPG7773M002",
+          transName: currentData.transportDetails?.transport_name,
+          transDocNo: currentData.transportDetails?.gr_rr_number,
+          vehicleNo:
+            currentData.transportDetails?.vehicleNo || "KA12ER1234",
+          vehicleType: "R",
+          distance: 0,
+          transMode: "1"
+        }
+      );
+
+      if (response.data.success) {
+        alert(
+          `✅ E-Way Bill Generated Successfully\n\nEWB No: ${response.data.ewaybill.EwbNo}`
+        );
+
+        // window.location.reload();
+        await fetchTransactionData();
+      } else {
+        alert(`❌ ${response.data.message}`);
+      }
+
+    } catch (error) {
+      console.error(error);
+      alert(
+        error.response?.data?.message ||
+        "Failed to generate E-Way Bill"
+      );
+    }
+  };
+
+  const handleCancelEWayBill = async () => {
+    try {
+      const confirm = window.confirm(
+        `Are you sure you want to cancel EWB No: ${ewayBillStatus.ewbNo}?`
+      );
+
+      if (!confirm) return;
+
+      const response = await axios.post(`${baseurl}/api/cancel-ewaybill`, {
+        invoiceId: currentData.invoiceNumber,
+        ewbNo: ewayBillStatus.ewbNo,
+        cancelRsnCode: "4",
+        cancelRmrk: "Other"
+      });
+
+      if (response.data.success) {
+        alert("✅ E-Way Bill cancelled successfully");
+
+        setEwayBillStatus(prev => ({
+          ...prev,
+          status: 'Cancelled'
+        }));
+
+        fetchTransactionData();
+      } else {
+        alert(response.data.message);
+      }
+
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        error.response?.data?.message ||
+        "Failed to cancel E-Way Bill"
+      );
+    }
+  };
+
+  // Handle Cancel E-Invoice with confirmation alert
+  const handleCancelEInvoice = async () => {
+    if (!irnDetails?.irn_no) {
+      alert("No IRN found to cancel");
       return;
     }
-    
-    // Generate e-invoice JSON data
-    const einvoiceJson = generateEInvoiceData();
-    
-    // Navigate to IRN generator with e-invoice data
-    navigate('/irn-generator', { 
-      state: { 
-        einvoiceData: einvoiceJson 
-      } 
-    });
-  } catch (error) {
-    console.error("Error opening e-invoice:", error);
-    alert("Error opening e-invoice: " + error.message);
-  }
-};
 
-const fetchCompanyInfo = async () => {
-  try {
-    console.log("🔵 FETCHING COMPANY INFO...");
-    const res = await fetch(`${baseurl}/api/company-info`);
-    const result = await res.json();
-    console.log("🔵 COMPANY INFO RESPONSE:", result);
-    
-    if (result.success && result.data) {
-      console.log("🔵 EMAIL FROM DB:", result.data.email);
-      console.log("🔵 PHONE FROM DB:", result.data.phone);
-      console.log("🔵 GSTIN FROM DB:", result.data.gstin);
-      
-      const apiCompanyInfo = {
-        name: result.data.company_name || "",
-        address: result.data.address || "",
-        email: result.data.email || "",
-        phone: result.data.phone || "",
-        gstin: result.data.gstin || "",
-        state: result.data.state || "",
-        stateCode: result.data.state_code || "",
-      };
-      
-      setCompanyInfo(apiCompanyInfo);
+    // Show confirmation alert
+    const confirmCancel = window.confirm(
+      `⚠️ Are you sure you want to cancel the e-invoice?\n\n` +
+      `Invoice: ${currentData.invoiceNumber}\n` +
+      `IRN: ${irnDetails.irn_no}\n\n` +
+      `This action cannot be undone!`
+    );
+
+    if (!confirmCancel) {
+      return;
     }
-  } catch (error) {
-    console.error("Company info fetch error:", error);
-  }
-};
+
+    try {
+      // Ask for cancellation reason and remark
+      const reason = prompt(
+        "Enter cancellation reason:\n" +
+        "1 - Duplicate\n" +
+        "2 - Data Entry Error\n" +
+        "3 - Order Cancelled\n" +
+        "4 - Other\n\n" +
+        "Default: 1 (Duplicate)"
+      ) || "1";
+
+      const remark = prompt(
+        "Enter cancellation remark:",
+        "Cancelled by user"
+      ) || "Cancelled by user";
+
+      const result = await cancelIRN(
+        irnDetails.irn_no,
+        currentData.invoiceNumber,
+        currentData.companyInfo?.gstin || "02AMBPG7773M002",
+        reason,
+        remark
+      );
+
+      if (result.success) {
+        alert(
+          `✅ E-Invoice Cancelled Successfully!\n\n` +
+          `Invoice: ${currentData.invoiceNumber}\n` +
+          `IRN: ${irnDetails.irn_no}\n` +
+          `Reason: ${reason}\n` +
+          `Remark: ${remark}`
+        );
+
+        // Refresh IRN status
+        await fetchIRNStatus(currentData.invoiceNumber);
+
+        // Refresh page data
+        await fetchTransactionData();
+
+      } else {
+        alert(`❌ E-Invoice Cancellation Failed!\n\nError: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error cancelling IRN:", error);
+      alert("❌ Error cancelling e-invoice: " + error.message);
+    }
+  };
+
+  // Determine which button to show
+  const renderEInvoiceButton = () => {
+    // Check if IRN is already generated
+    if (irnStatus?.IRNgenerated_status === 'Generated') {
+      // Show Cancel E-Invoice button
+      return (
+        <Button
+          variant="danger"
+          onClick={handleCancelEInvoice}
+          className="me-2"
+          disabled={irnCancelling}
+        >
+          {irnCancelling ? (
+            <>
+              <div className="spinner-border spinner-border-sm me-1" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              Cancelling...
+            </>
+          ) : (
+            <>
+              <FaTimes className="me-1" /> Cancel E-Invoice
+            </>
+          )}
+        </Button>
+      );
+    } else if (irnStatus?.IRNgenerated_status === 'Cancelled') {
+      // Show disabled button
+      return (
+        <Button
+          variant="secondary"
+          className="me-2"
+          disabled
+          title="This e-invoice has been cancelled"
+        >
+          <FaTimes className="me-1" /> E-Invoice Cancelled
+        </Button>
+      );
+    } else {
+      // Show Generate E-Invoice button
+      return (
+        <Button
+          variant="primary"
+          onClick={handleEInvoice}
+          className="me-2"
+          style={{ backgroundColor: '#6f42c1', borderColor: '#6f42c1' }}
+          disabled={irnGenerating}
+        >
+          {irnGenerating ? (
+            <>
+              <div className="spinner-border spinner-border-sm me-1" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              Generating IRN...
+            </>
+          ) : (
+            <>
+              <FaReceipt className="me-1" /> Generate E-Invoice
+            </>
+          )}
+        </Button>
+      );
+    }
+  };
+
+  const fetchCompanyInfo = async () => {
+    try {
+      console.log("🔵 FETCHING COMPANY INFO...");
+      const res = await fetch(`${baseurl}/api/company-info`);
+      const result = await res.json();
+      console.log("🔵 COMPANY INFO RESPONSE:", result);
+
+      if (result.success && result.data) {
+        console.log("🔵 EMAIL FROM DB:", result.data.email);
+        console.log("🔵 PHONE FROM DB:", result.data.phone);
+        console.log("🔵 GSTIN FROM DB:", result.data.gstin);
+
+        const apiCompanyInfo = {
+          name: result.data.company_name || "",
+          address: result.data.address || "",
+          email: result.data.email || "",
+          phone: result.data.phone || "",
+          gstin: result.data.gstin || "",
+          state: result.data.state || "",
+          stateCode: result.data.state_code || "",
+        };
+
+        setCompanyInfo(apiCompanyInfo);
+      }
+    } catch (error) {
+      console.error("Company info fetch error:", error);
+    }
+  };
 
   const fetchAdvanceReceipts = async () => {
     try {
@@ -480,7 +993,7 @@ const fetchCompanyInfo = async () => {
         formDataToSend.append(
           "note",
           receiptFormData.note ||
-            `Payment for invoice ${receiptFormData.invoiceNumber}`,
+          `Payment for invoice ${receiptFormData.invoiceNumber}`,
         );
         formDataToSend.append("bank_name", receiptFormData.bankName);
         formDataToSend.append(
@@ -516,12 +1029,12 @@ const fetchCompanyInfo = async () => {
         formDataToSend.append("data_type", "Sales");
 
         formDataToSend.append('company_name', companyInfo.name || '');
-formDataToSend.append('company_address', companyInfo.address || '');
-formDataToSend.append('company_email', companyInfo.email || '');
-formDataToSend.append('company_phone', companyInfo.phone || '');
-formDataToSend.append('company_gstin', companyInfo.gstin || '');
-formDataToSend.append('company_state', companyInfo.state || '');
-formDataToSend.append('company_state_code', companyInfo.stateCode || '');
+        formDataToSend.append('company_address', companyInfo.address || '');
+        formDataToSend.append('company_email', companyInfo.email || '');
+        formDataToSend.append('company_phone', companyInfo.phone || '');
+        formDataToSend.append('company_gstin', companyInfo.gstin || '');
+        formDataToSend.append('company_state', companyInfo.state || '');
+        formDataToSend.append('company_state_code', companyInfo.stateCode || '');
 
         if (invoiceData && invoiceData.voucherId) {
           formDataToSend.append("voucher_id", invoiceData.voucherId);
@@ -565,8 +1078,8 @@ formDataToSend.append('company_state_code', companyInfo.stateCode || '');
           for (const advanceReceipt of selectedAdvanceReceipts) {
             const availableAmount = parseFloat(
               advanceReceipt.available_amount ||
-                advanceReceipt.total_amount ||
-                0,
+              advanceReceipt.total_amount ||
+              0,
             );
 
             const formData = new FormData();
@@ -632,7 +1145,7 @@ formDataToSend.append('company_state_code', companyInfo.stateCode || '');
           formDataToSend.append(
             "note",
             receiptFormData.note ||
-              `Payment for invoice ${receiptFormData.invoiceNumber}`,
+            `Payment for invoice ${receiptFormData.invoiceNumber}`,
           );
           formDataToSend.append("bank_name", receiptFormData.bankName);
           formDataToSend.append(
@@ -677,12 +1190,12 @@ formDataToSend.append('company_state_code', companyInfo.stateCode || '');
           formDataToSend.append("data_type", "Sales");
 
           formDataToSend.append('company_name', companyInfo.name || '');
-formDataToSend.append('company_address', companyInfo.address || '');
-formDataToSend.append('company_email', companyInfo.email || '');
-formDataToSend.append('company_phone', companyInfo.phone || '');
-formDataToSend.append('company_gstin', companyInfo.gstin || '');
-formDataToSend.append('company_state', companyInfo.state || '');
-formDataToSend.append('company_state_code', companyInfo.stateCode || '');
+          formDataToSend.append('company_address', companyInfo.address || '');
+          formDataToSend.append('company_email', companyInfo.email || '');
+          formDataToSend.append('company_phone', companyInfo.phone || '');
+          formDataToSend.append('company_gstin', companyInfo.gstin || '');
+          formDataToSend.append('company_state', companyInfo.state || '');
+          formDataToSend.append('company_state_code', companyInfo.stateCode || '');
 
           if (invoiceData && invoiceData.voucherId) {
             formDataToSend.append("voucher_id", invoiceData.voucherId);
@@ -795,13 +1308,13 @@ formDataToSend.append('company_state_code', companyInfo.stateCode || '');
     }
   };
 
-useEffect(() => {
-  const loadData = async () => {
-    await fetchCompanyInfo();        // First load company info
-    await fetchTransactionData();    // Then load transaction data
-  };
-  loadData();
-}, [id]);
+  useEffect(() => {
+    const loadData = async () => {
+      await fetchCompanyInfo();        // First load company info
+      await fetchTransactionData();    // Then load transaction data
+    };
+    loadData();
+  }, [id]);
 
   useEffect(() => {
     if (invoiceData && invoiceData.invoiceNumber) {
@@ -810,19 +1323,19 @@ useEffect(() => {
   }, [invoiceData]);
 
   // Add this NEW useEffect after your existing ones
-useEffect(() => {
-  // This updates invoiceData whenever companyInfo is fetched
-  if (invoiceData && companyInfo.name) {
-    setInvoiceData(prev => ({
-      ...prev,
-      companyInfo: companyInfo
-    }));
-    setEditedData(prev => ({
-      ...prev,
-      companyInfo: companyInfo
-    }));
-  }
-}, [companyInfo]);  // Runs when companyInfo changes
+  useEffect(() => {
+    // This updates invoiceData whenever companyInfo is fetched
+    if (invoiceData && companyInfo.name) {
+      setInvoiceData(prev => ({
+        ...prev,
+        companyInfo: companyInfo
+      }));
+      setEditedData(prev => ({
+        ...prev,
+        companyInfo: companyInfo
+      }));
+    }
+  }, [companyInfo]);  // Runs when companyInfo changes
 
   const fetchPaymentData = async (invoiceNumber) => {
     try {
@@ -1070,6 +1583,11 @@ useEffect(() => {
 
       if (result.success && result.data) {
         const apiData = result.data;
+        // Set E-Way Bill Status
+        setEwayBillStatus({
+          status: apiData.e_way_bill_status,
+          ewbNo: apiData.e_way_bill_no
+        });
         const transformedData = transformApiDataToInvoiceFormat(apiData);
         setInvoiceData(transformedData);
         setEditedData(transformedData);
@@ -1187,8 +1705,8 @@ useEffect(() => {
     const totalGST =
       parseFloat(apiData.TaxAmount) ||
       parseFloat(apiData.IGSTAmount) +
-        parseFloat(apiData.CGSTAmount) +
-        parseFloat(apiData.SGSTAmount) ||
+      parseFloat(apiData.CGSTAmount) +
+      parseFloat(apiData.SGSTAmount) ||
       0;
     const grandTotal = parseFloat(apiData.TotalAmount) || 0;
     const roundOff = parseFloat(apiData.round_off) || 0;
@@ -1214,8 +1732,8 @@ useEffect(() => {
         : new Date().toISOString().split("T")[0],
       validityDate: apiData.Date
         ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split("T")[0]
+          .toISOString()
+          .split("T")[0]
         : new Date().toISOString().split("T")[0],
       // companyInfo: {
       //   name: "SHREE SHASHWATRAJ AGRO PVT LTD",
@@ -1228,14 +1746,14 @@ useEffect(() => {
       // },
 
       companyInfo: {
-  name: companyInfo.name || "SHREE SHASHWATRAJ AGRO PVT LTD",
-  address: companyInfo.address || "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-  email: companyInfo.email || "spmathur56@gmail.com",
-  phone: companyInfo.phone || "9801049700",
-  gstin: companyInfo.gstin || "10AAOCS1541B1ZZ",
-  state: companyInfo.state || "Bihar",
-  stateCode: companyInfo.stateCode || "10"
-},
+        name: companyInfo.name || "SHREE SHASHWATRAJ AGRO PVT LTD",
+        address: companyInfo.address || "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+        email: companyInfo.email || "spmathur56@gmail.com",
+        phone: companyInfo.phone || "9801049700",
+        gstin: companyInfo.gstin || "10AAOCS1541B1ZZ",
+        state: companyInfo.state || "Bihar",
+        stateCode: companyInfo.stateCode || "10"
+      },
 
       supplierInfo: {
         name: apiData.PartyName || "Customer",
@@ -1296,26 +1814,26 @@ useEffect(() => {
         items.length > 0
           ? items
           : [
-              {
-                id: 1,
-                product: "Product",
-                description: "No batch details available",
-                hsn_code: apiData.hsn_code || "",
-                quantity: 1,
-                price: grandTotal,
-                discount: 0,
-                gst: parseFloat(apiData.IGSTPercentage) || 0,
-                cgst: parseFloat(apiData.CGSTPercentage) || 0,
-                sgst: parseFloat(apiData.SGSTPercentage) || 0,
-                igst: parseFloat(apiData.IGSTPercentage) || 0,
-                cess: 0,
-                total: grandTotal.toFixed(2),
-                batch: "",
-                batch_id: "",
-                product_id: "",
-                assigned_staff: assignedStaff,
-              },
-            ],
+            {
+              id: 1,
+              product: "Product",
+              description: "No batch details available",
+              hsn_code: apiData.hsn_code || "",
+              quantity: 1,
+              price: grandTotal,
+              discount: 0,
+              gst: parseFloat(apiData.IGSTPercentage) || 0,
+              cgst: parseFloat(apiData.CGSTPercentage) || 0,
+              sgst: parseFloat(apiData.SGSTPercentage) || 0,
+              igst: parseFloat(apiData.IGSTPercentage) || 0,
+              cess: 0,
+              total: grandTotal.toFixed(2),
+              batch: "",
+              batch_id: "",
+              product_id: "",
+              assigned_staff: assignedStaff,
+            },
+          ],
 
       taxableAmount: taxableAmount.toFixed(2),
       totalGST: totalGST.toFixed(2),
@@ -1512,11 +2030,10 @@ useEffect(() => {
                   .map((transaction, index) => (
                     <div
                       key={`${transaction.type}-${index}`}
-                      className={`d-flex justify-content-between align-items-center mb-2 ps-3 border-start ${
-                        transaction.type === "receipt"
-                          ? "border-success"
-                          : "border-warning"
-                      }`}
+                      className={`d-flex justify-content-between align-items-center mb-2 ps-3 border-start ${transaction.type === "receipt"
+                        ? "border-success"
+                        : "border-warning"
+                        }`}
                     >
                       <span
                         className={
@@ -1539,11 +2056,10 @@ useEffect(() => {
                         {transaction.receiptNumber}
                       </small>
                       <span
-                        className={`fw-bold ${
-                          transaction.type === "receipt"
-                            ? "text-success"
-                            : "text-warning"
-                        }`}
+                        className={`fw-bold ${transaction.type === "receipt"
+                          ? "text-success"
+                          : "text-warning"
+                          }`}
                       >
                         ₹{(transaction.paidAmount || 0).toFixed(2)}
                       </span>
@@ -2155,11 +2671,12 @@ useEffect(() => {
   return (
     <div className="invoice-preview-page">
       {/* Action Bar */}
+      {/* Action Bar */}
       <div className="action-bar bg-white shadow-sm p-3 mb-3 sticky-top d-print-none no-print">
         <Container fluid>
-          <div className="d-flex justify-content-between align-items-center">
+          <div className="d-flex justify-content-between align-items-center flex-wrap">
             <h4 className="mb-0">Invoice Preview - {displayInvoiceNumber}</h4>
-            <div>
+            <div className="d-flex flex-wrap align-items-center">
               {!isEditMode ? (
                 <>
                   <Button
@@ -2169,6 +2686,7 @@ useEffect(() => {
                   >
                     <FaRegFileAlt className="me-1" /> Create Receipt
                   </Button>
+
                   {paymentData && !isInvoiceEditable(paymentData) ? (
                     <Button
                       variant="warning"
@@ -2187,6 +2705,7 @@ useEffect(() => {
                       <FaEdit className="me-1" /> Edit Invoice
                     </Button>
                   )}
+
                   <Button
                     variant="success"
                     onClick={handlePrint}
@@ -2209,6 +2728,7 @@ useEffect(() => {
                       </>
                     )}
                   </Button>
+
                   <Button
                     variant="danger"
                     onClick={handleDownloadPDF}
@@ -2232,15 +2752,8 @@ useEffect(() => {
                     )}
                   </Button>
 
-                  {/* NEW E-INVOICE BUTTON */}
-    <Button
-      variant="primary"
-      onClick={handleEInvoice}
-      className="me-2"
-      style={{ backgroundColor: '#6f42c1', borderColor: '#6f42c1' }}
-    >
-      <FaReceipt className="me-1" /> E-Invoice
-    </Button>
+                  {/* E-Invoice Buttons - Renders based on status */}
+                  {renderEInvoiceButtons()}
 
                   <Button
                     variant="secondary"
@@ -2273,6 +2786,7 @@ useEffect(() => {
                       </>
                     )}
                   </Button>
+
                   <Button
                     variant="secondary"
                     onClick={handleCancelEdit}
@@ -2280,6 +2794,7 @@ useEffect(() => {
                   >
                     <FaTimes className="me-1" /> Cancel
                   </Button>
+
                   <Button
                     variant="danger"
                     onClick={() => setShowDeleteModal(true)}
@@ -2900,12 +3415,12 @@ useEffect(() => {
                         <p className="company-contact text-muted small mb-1">
                           Email: {currentData.companyInfo.email || "spmathur56@gmail.com"} | Phone: {currentData.companyInfo.phone || "9801049700"}
                         </p>
-                         <p className="text-muted small mb-0">
-                            GSTIN/UIN: {currentData.companyInfo.gstin || "10AAOCS1541B1ZZ"}
-                         </p>
-                         <p className="text-muted small mb-0">
-                           State Name : {currentData.companyInfo.state || "Bihar"}, Code : {currentData.companyInfo.stateCode || "10"}
-                         </p>
+                        <p className="text-muted small mb-0">
+                          GSTIN/UIN: {currentData.companyInfo.gstin || "10AAOCS1541B1ZZ"}
+                        </p>
+                        <p className="text-muted small mb-0">
+                          State Name : {currentData.companyInfo.state || "Bihar"}, Code : {currentData.companyInfo.stateCode || "10"}
+                        </p>
                       </>
                     )}
                   </Col>
@@ -3094,14 +3609,14 @@ useEffect(() => {
                           {/* Mobile Number Display */}
                           {(currentData.supplierInfo.mobile_number ||
                             currentData.supplierInfo.phone_number) && (
-                            <p className="mb-1">
-                              <small>
-                                Mobile:{" "}
-                                {currentData.supplierInfo.mobile_number ||
-                                  currentData.supplierInfo.phone_number}
-                              </small>
-                            </p>
-                          )}
+                              <p className="mb-1">
+                                <small>
+                                  Mobile:{" "}
+                                  {currentData.supplierInfo.mobile_number ||
+                                    currentData.supplierInfo.phone_number}
+                                </small>
+                              </p>
+                            )}
 
                           {/* Only show GSTIN for B2B */}
                           {currentData.bb_bc !== "b2c" && (
@@ -3421,7 +3936,7 @@ useEffect(() => {
 
                       <div className="bg-light p-3 rounded">
                         <div className="transport-field">
-                          <strong>Vehicle No.:</strong>
+                          <strong>Vehicle No:</strong>
                           <p className="mb-0 text-muted">
                             {currentData.transportDetails?.vehicleNo || "-"}
                           </p>
