@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import * as XLSX from "xlsx";
 import { FaSearch, FaFileExcel } from "react-icons/fa";
 import "./GSTReportb3.css";
+import { baseurl } from "../../../BaseURL/BaseURL";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -17,7 +18,7 @@ const CHIPS = [
   { label: "No GSTIN",   key: "noGstin"   },
 ];
 
-const API_BASE = "http://localhost:5000";
+// const API_BASE = "http://localhost:5000";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (n) =>
@@ -87,13 +88,13 @@ function TransactionHistoryPage({ bill, mode, onBack }) {
         // invoice-number ambiguity when multiple TransactionTypes share the same billNo
         const params = new URLSearchParams({ billNo: bill.billNo });
         if (bill.id) params.set("voucherId", bill.id);
-        url = `${API_BASE}/api/gstr3b/bill-transactions?${params}`;
+        url = `${baseurl}/api/gstr3b/bill-transactions?${params}`;
       } else {
         // Party: all invoices for the party (existing behaviour)
         const params = new URLSearchParams({ billNo: bill.billNo });
         if (appliedFrom) params.set("fromDate", appliedFrom);
         if (appliedTo)   params.set("toDate",   appliedTo);
-        url = `${API_BASE}/api/gstr3b/transactions?${params}`;
+        url = `${baseurl}/api/gstr3b/transactions?${params}`;
       }
 
       const res  = await fetch(url);
@@ -650,7 +651,7 @@ export default function GSTReport({ onTabChange, activeTab }) {
       const params = new URLSearchParams();
       if (appliedFrom) params.set("fromDate", appliedFrom);
       if (appliedTo)   params.set("toDate",   appliedTo);
-      const res = await fetch(`${API_BASE}/api/gstr3b/summary?${params}`);
+      const res = await fetch(`${baseurl}/api/gstr3b/summary?${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
       setSummary(await res.json());
     } catch (err) { setSummaryError(err.message); }
@@ -663,7 +664,7 @@ export default function GSTReport({ onTabChange, activeTab }) {
       const params = new URLSearchParams({ page, limit: pageSize, search, filterType: chip });
       if (appliedFrom) params.set("fromDate", appliedFrom);
       if (appliedTo)   params.set("toDate",   appliedTo);
-      const res  = await fetch(`${API_BASE}/api/gstr3b/list?${params}`);
+      const res  = await fetch(`${baseurl}/api/gstr3b/list?${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
       const data = await res.json();
       setBills(data.data || []);

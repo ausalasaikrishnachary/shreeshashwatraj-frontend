@@ -159,6 +159,7 @@ import BankStatementTable from "./Component/Panels/Admin/Receipts_Paymentsbulk/B
 import GSPTokenManager from "./Component/GSPTokenManager";
 import EInvoiceView from "./Component/Panels/Admin/SalesInvoicePage/EInvoiceView";
 import IRNGenerator from "./Component/Panels/Admin/SalesInvoicePage/IRNGenerator";
+import SaleType from "./Component/Panels/Admin/SaleType/SaleType";
 
 function App() {
   return (
@@ -190,7 +191,14 @@ function App() {
             }
           />
 
-          
+          <Route
+            path="/saletype"
+            element={
+              <PrivateRoute allowedRoles={["admin"]}>
+                <SaleType />
+              </PrivateRoute>
+            }
+          />
 
 
           <Route

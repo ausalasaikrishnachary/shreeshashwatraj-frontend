@@ -139,6 +139,11 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       icon: <FaHourglass />,
     },
     {
+      path: "/saletype",
+      name: "Sale Type",
+      icon: <FaTags />,
+    },
+    {
       name: "Scores",
       icon: <FaStar />,
       subMenu: [
@@ -321,9 +326,8 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       )}
 
       <div
-        className={`sidebar ${isCollapsed ? "collapsed" : ""} ${
-          isMobileOpen ? "open" : ""
-        } ${isMobile ? "mobile" : ""} ${isTablet ? "tablet" : ""}`}
+        className={`sidebar ${isCollapsed ? "collapsed" : ""} ${isMobileOpen ? "open" : ""
+          } ${isMobile ? "mobile" : ""} ${isTablet ? "tablet" : ""}`}
       >
         {/* ── Sidebar Header ── */}
         <div className="sidebar-header">
@@ -335,8 +339,8 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
             {isCollapsed || isTablet
               ? "RP"
               : isMobile
-              ? "RetailPro"
-              : "RetailPro"}
+                ? "RetailPro"
+                : "RetailPro"}
           </h2>
 
           {/* Desktop collapse button */}
@@ -368,23 +372,21 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
                 {item.subMenu ? (
                   <>
                     <button
-                      className={`dropdown-btn-link ${
-                        openDropdown === item.name ? "open" : ""
-                      } ${
-                        (item.name === "Inventory" &&
+                      className={`dropdown-btn-link ${openDropdown === item.name ? "open" : ""
+                        } ${(item.name === "Inventory" &&
                           (location.pathname.startsWith("/sale_items") ||
                             location.pathname.startsWith("/purchased_items") ||
                             location.pathname.startsWith("/category") ||
                             location.pathname.startsWith("/company") ||
                             location.pathname.startsWith("/units"))) ||
-                        (item.name === "Sales" &&
-                          location.pathname.startsWith("/sales/")) ||
-                        (item.name === "Purchase" && isPurchaseActive) ||
-                        (item.name === "Kacha Sales" && isKachaSalesActive) ||
-                        (item.name === "Kacha Purchase" && isKachaPurchaseActive)
+                          (item.name === "Sales" &&
+                            location.pathname.startsWith("/sales/")) ||
+                          (item.name === "Purchase" && isPurchaseActive) ||
+                          (item.name === "Kacha Sales" && isKachaSalesActive) ||
+                          (item.name === "Kacha Purchase" && isKachaPurchaseActive)
                           ? "active"
                           : ""
-                      }`}
+                        }`}
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleDropdown(item.name);

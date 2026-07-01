@@ -33,13 +33,17 @@ const CreateInvoice = ({ user }) => {
   const [selectedStaffId, setSelectedStaffId] = useState("");
   const [isPriceEditing, setIsPriceEditing] = useState(false);
   const [tempPrice, setTempPrice] = useState("");
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [productSearchTerm, setProductSearchTerm] = useState("");
   const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const [editingItemIndex, setEditingItemIndex] = useState(null);
   const [editingVoucherId, setEditingVoucherId] = useState(null);
+  const [saleTypes, setSaleTypes] = useState([]);
+  const [selectedSaleType, setSelectedSaleType] = useState("");
+
+
   const navigate = useNavigate();
   const { id } = useParams();
   const DocumentType = (gstRate) => {
@@ -152,6 +156,23 @@ const CreateInvoice = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    fetchSaleTypes();
+  }, []);
+
+  const fetchSaleTypes = async () => {
+    try {
+      const response = await fetch(`${baseurl}/api/saletypes`);
+      const data = await response.json();
+
+      if (data.success) {
+        setSaleTypes(data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching sale types:", err);
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -329,8 +350,8 @@ const CreateInvoice = ({ user }) => {
         : new Date().toISOString().split("T")[0],
       validityDate: apiData.Date
         ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split("T")[0]
+          .toISOString()
+          .split("T")[0]
         : new Date().toISOString().split("T")[0],
 
       companyInfo: {
@@ -428,39 +449,42 @@ const CreateInvoice = ({ user }) => {
     };
   }, [isEditMode]);
 
-  const fetchNextInvoiceNumber = async (transactionType = "Sales") => {
+  const fetchNextInvoiceNumber = async (
+    transactionType = "Sales",
+    saleType = selectedSaleType
+  ) => {
     try {
-      console.log("Fetching next invoice number for:", transactionType);
-      const response = await fetch(
-        `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}`,
-      );
+      let url = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(
+        transactionType
+      )}`;
+
+      // Only send saleType for Sales
+      if (transactionType === "Sales" && saleType) {
+        url += `&saleType=${encodeURIComponent(saleType)}`;
+      }
+
+      console.log("Fetching invoice number:", url);
+
+      const response = await fetch(url);
+
       if (response.ok) {
         const data = await response.json();
-        console.log("Received next invoice number:", data.nextInvoiceNumber);
+
         setNextInvoiceNumber(data.nextInvoiceNumber);
 
         setInvoiceData((prev) => ({
           ...prev,
           invoiceNumber: data.nextInvoiceNumber,
-          transactionType: transactionType,
+          transactionType,
+          saleType,
         }));
 
         setHasFetchedInvoiceNumber(true);
-
-        const currentDraft = localStorage.getItem("draftInvoice");
-        if (currentDraft) {
-          const draftData = JSON.parse(currentDraft);
-          draftData.invoiceNumber = data.nextInvoiceNumber;
-          draftData.transactionType = transactionType;
-          localStorage.setItem("draftInvoice", JSON.stringify(draftData));
-        }
       } else {
-        console.error("Failed to fetch next invoice number");
-        generateFallbackInvoiceNumber(transactionType);
+        console.error("Failed to fetch invoice number");
       }
     } catch (err) {
-      console.error("Error fetching next invoice number:", err);
-      generateFallbackInvoiceNumber(transactionType);
+      console.error("Error fetching invoice number:", err);
     }
   };
 
@@ -542,9 +566,6 @@ const CreateInvoice = ({ user }) => {
       setIsEditMode(true);
       setEditingVoucherId(id);
       fetchInvoiceDataForEdit(id);
-    } else {
-      const defaultTransactionType = "Sales";
-      fetchNextInvoiceNumber(defaultTransactionType);
     }
   }, [id]);
 
@@ -754,8 +775,8 @@ const CreateInvoice = ({ user }) => {
       if (availableQuantity <= 0) {
         const confirmAdd = window.confirm(
           `⚠️ WARNING: Selected batch "${selectedBatch}" has ZERO stock available.\n\n` +
-            `You are trying to add ${quantity} units.\n\n` +
-            `This will create a negative stock entry. Are you sure you want to continue?`,
+          `You are trying to add ${quantity} units.\n\n` +
+          `This will create a negative stock entry. Are you sure you want to continue?`,
         );
 
         if (!confirmAdd) {
@@ -764,11 +785,11 @@ const CreateInvoice = ({ user }) => {
       } else if (quantity > availableQuantity) {
         const confirmAdd = window.confirm(
           `⚠️ WARNING: Insufficient stock!\n\n` +
-            `Batch: "${selectedBatch}"\n` +
-            `Available stock: ${availableQuantity} units\n` +
-            `Requested quantity: ${quantity} units\n\n` +
-            `This will create a negative stock entry of ${quantity - availableQuantity} units.\n\n` +
-            `Are you sure you want to continue?`,
+          `Batch: "${selectedBatch}"\n` +
+          `Available stock: ${availableQuantity} units\n` +
+          `Requested quantity: ${quantity} units\n\n` +
+          `This will create a negative stock entry of ${quantity - availableQuantity} units.\n\n` +
+          `Are you sure you want to continue?`,
         );
 
         if (!confirmAdd) {
@@ -788,11 +809,11 @@ const CreateInvoice = ({ user }) => {
           if (quantity > availableQuantity && availableQuantity > 0) {
             const confirmUpdate = window.confirm(
               `⚠️ WARNING: Insufficient stock!\n\n` +
-                `Batch: "${selectedBatch}"\n` +
-                `Available stock: ${availableQuantity} units\n` +
-                `Updated quantity: ${quantity} units\n\n` +
-                `This will increase negative stock by ${quantity - availableQuantity} units.\n\n` +
-                `Are you sure you want to update?`,
+              `Batch: "${selectedBatch}"\n` +
+              `Available stock: ${availableQuantity} units\n` +
+              `Updated quantity: ${quantity} units\n\n` +
+              `This will increase negative stock by ${quantity - availableQuantity} units.\n\n` +
+              `Are you sure you want to update?`,
             );
 
             if (!confirmUpdate) {
@@ -803,11 +824,11 @@ const CreateInvoice = ({ user }) => {
           if (quantity > availableQuantity && availableQuantity > 0) {
             const confirmUpdate = window.confirm(
               `⚠️ WARNING: Insufficient stock in new batch!\n\n` +
-                `New Batch: "${selectedBatch}"\n` +
-                `Available stock: ${availableQuantity} units\n` +
-                `Requested quantity: ${quantity} units\n\n` +
-                `This will create a negative stock entry.\n\n` +
-                `Are you sure you want to continue?`,
+              `New Batch: "${selectedBatch}"\n` +
+              `Available stock: ${availableQuantity} units\n` +
+              `Requested quantity: ${quantity} units\n\n` +
+              `This will create a negative stock entry.\n\n` +
+              `Are you sure you want to continue?`,
             );
 
             if (!confirmUpdate) {
@@ -1659,7 +1680,39 @@ const CreateInvoice = ({ user }) => {
                   </div>
                 </Col>
                 <Col md={4}>
+
                   <Form.Group className="mb-2">
+                    
+<Form.Label className="fw-bold">Sale Type</Form.Label>
+                    <Form.Select
+                      value={selectedSaleType}
+                      className="border-primary"
+                      onChange={(e) => {
+                        const saleType = e.target.value;
+
+                        setSelectedSaleType(saleType);
+
+                        // Fetch new invoice number whenever Sale Type changes
+                        if (saleType) {
+                          fetchNextInvoiceNumber("Sales", saleType);
+                        }
+                      }}
+                    >
+                      <option value="">Select Sale Type</option>
+
+                      {saleTypes.map((item) => (
+                        <option
+                          key={item.id}
+                          value={item.sale_type}
+                        >
+                          {item.sale_type}
+                        </option>
+                      ))}
+                    </Form.Select>
+                    
+                  </Form.Group>
+                  <Form.Group className="mb-2">
+                    <Form.Label className="fw-bold">Invoice No</Form.Label>
                     <Form.Control
                       name="invoiceNumber"
                       value={invoiceData.invoiceNumber || nextInvoiceNumber}
@@ -1668,7 +1721,7 @@ const CreateInvoice = ({ user }) => {
                       disabled
                       readOnly={isEditMode}
                     />
-                    <Form.Label className="fw-bold">Invoice No</Form.Label>
+                    
                     {!hasFetchedInvoiceNumber && !isEditMode && (
                       <small className="text-muted">
                         Loading invoice number...
@@ -1676,6 +1729,7 @@ const CreateInvoice = ({ user }) => {
                     )}
                   </Form.Group>
                   <Form.Group className="mb-2">
+                    <Form.Label className="fw-bold">Invoice Date</Form.Label>
                     <Form.Control
                       type="date"
                       name="invoiceDate"
@@ -1683,9 +1737,10 @@ const CreateInvoice = ({ user }) => {
                       onChange={handleInputChange}
                       className="border-primary"
                     />
-                    <Form.Label className="fw-bold">Invoice Date</Form.Label>
+                    
                   </Form.Group>
                   <Form.Group>
+                    <Form.Label className="fw-bold">Validity Date</Form.Label>
                     <Form.Control
                       type="date"
                       name="validityDate"
@@ -1693,7 +1748,7 @@ const CreateInvoice = ({ user }) => {
                       onChange={handleInputChange}
                       className="border-primary"
                     />
-                    <Form.Label className="fw-bold">Validity Date</Form.Label>
+                    
                   </Form.Group>
                 </Col>
               </Row>
@@ -2069,12 +2124,12 @@ const CreateInvoice = ({ user }) => {
 
                           {(invoiceData.supplierInfo.mobile_number ||
                             invoiceData.supplierInfo.phone_number) && (
-                            <div>
-                              <strong>Mobile:</strong>{" "}
-                              {invoiceData.supplierInfo.mobile_number ||
-                                invoiceData.supplierInfo.phone_number}
-                            </div>
-                          )}
+                              <div>
+                                <strong>Mobile:</strong>{" "}
+                                {invoiceData.supplierInfo.mobile_number ||
+                                  invoiceData.supplierInfo.phone_number}
+                              </div>
+                            )}
 
                           {customerType === "b2b" && (
                             <div>
@@ -2231,16 +2286,16 @@ const CreateInvoice = ({ user }) => {
                         title={
                           itemForm.product_id
                             ? (() => {
-                                const selectedProduct = products.find(
-                                  (p) => p.id === itemForm.product_id,
-                                );
-                                const availableQty =
-                                  productStock[itemForm.product_id] || 0;
-                                if (selectedProduct) {
-                                  return `${selectedProduct.goods_name} - Qty: ${availableQty}`;
-                                }
-                                return "";
-                              })()
+                              const selectedProduct = products.find(
+                                (p) => p.id === itemForm.product_id,
+                              );
+                              const availableQty =
+                                productStock[itemForm.product_id] || 0;
+                              if (selectedProduct) {
+                                return `${selectedProduct.goods_name} - Qty: ${availableQty}`;
+                              }
+                              return "";
+                            })()
                             : "Select a product"
                         }
                       />
@@ -2338,135 +2393,135 @@ const CreateInvoice = ({ user }) => {
                                 const productOriginalPrice =
                                   parseFloat(p.price) || 0;
 
-                               return (
-  <div
-    key={p.id}
-    onClick={async () => {
-      const retailerDiscount =
-        parseFloat(
-          accounts.find(
-            (acc) =>
-              acc.id === selectedSupplierId,
-          )?.discount || 0,
-        ) || 0;
+                                return (
+                                  <div
+                                    key={p.id}
+                                    onClick={async () => {
+                                      const retailerDiscount =
+                                        parseFloat(
+                                          accounts.find(
+                                            (acc) =>
+                                              acc.id === selectedSupplierId,
+                                          )?.discount || 0,
+                                        ) || 0;
 
-      let unitName = "";
-      if (p.unit) {
-        unitName = await fetchUnitName(p.unit);
-      }
-      
-      let productWeight = 0;
-      try {
-        if (p.weight) {
-          productWeight = parseFloat(p.weight);
-        }
-        const weightRes = await fetch(`${baseurl}/products/${p.id}/batches`);
-        const batchDataWeight = await weightRes.json();
-        if (batchDataWeight.length > 0 && batchDataWeight[0].weight) {
-          productWeight = parseFloat(batchDataWeight[0].weight);
-        }
-      } catch (err) {
-        console.error("Failed to fetch weight:", err);
-      }
-      
-      setItemForm((prev) => ({
-        ...prev,
-        product: p.goods_name,
-        product_id: p.id,
-        price: productNetPrice,
-        original_price: productOriginalPrice,
-        gst: parseFloat(
-          p.gst_rate?.replace("%", "") || 0,
-        ),
-        description: p.description || "",
-        discount: retailerDiscount,
-        quantity: prev.quantity || 0,
-        weight: productWeight,
-        batch: "",
-        batch_id: "",
-        hsn_code: p.hsn_code || "",
-        inclusive_gst: inclusiveGst,
-        unit_id: p.unit || null,
-        unit_name: unitName,
-      }));
+                                      let unitName = "";
+                                      if (p.unit) {
+                                        unitName = await fetchUnitName(p.unit);
+                                      }
 
-      try {
-        const res = await fetch(
-          `${baseurl}/products/${p.id}/batches`,
-        );
-        const batchData = await res.json();
-        setBatches(batchData);
+                                      let productWeight = 0;
+                                      try {
+                                        if (p.weight) {
+                                          productWeight = parseFloat(p.weight);
+                                        }
+                                        const weightRes = await fetch(`${baseurl}/products/${p.id}/batches`);
+                                        const batchDataWeight = await weightRes.json();
+                                        if (batchDataWeight.length > 0 && batchDataWeight[0].weight) {
+                                          productWeight = parseFloat(batchDataWeight[0].weight);
+                                        }
+                                      } catch (err) {
+                                        console.error("Failed to fetch weight:", err);
+                                      }
 
-        if (
-          p.maintain_batch === 0 &&
-          batchData.length > 0
-        ) {
-          const defaultBatch = batchData[0];
-          setSelectedBatch(
-            defaultBatch.batch_number,
-          );
-          setSelectedBatchDetails(defaultBatch);
-          setItemForm((prev) => ({
-            ...prev,
-            batch: defaultBatch.batch_number,
-            batch_id: defaultBatch.batch_number,
-            price: productNetPrice,
-          }));
-        } else {
-          setSelectedBatch("");
-          setSelectedBatchDetails(null);
-        }
-      } catch (err) {
-        console.error(
-          "Failed to fetch batches:",
-          err,
-        );
-        setBatches([]);
-        setSelectedBatch("");
-        setSelectedBatchDetails(null);
-      }
+                                      setItemForm((prev) => ({
+                                        ...prev,
+                                        product: p.goods_name,
+                                        product_id: p.id,
+                                        price: productNetPrice,
+                                        original_price: productOriginalPrice,
+                                        gst: parseFloat(
+                                          p.gst_rate?.replace("%", "") || 0,
+                                        ),
+                                        description: p.description || "",
+                                        discount: retailerDiscount,
+                                        quantity: prev.quantity || 0,
+                                        weight: productWeight,
+                                        batch: "",
+                                        batch_id: "",
+                                        hsn_code: p.hsn_code || "",
+                                        inclusive_gst: inclusiveGst,
+                                        unit_id: p.unit || null,
+                                        unit_name: unitName,
+                                      }));
 
-      setIsProductDropdownOpen(false);
-      setProductSearchTerm("");
-    }}
-    style={{
-      padding: "8px 16px",
-      cursor: "pointer",
-      borderLeft: "3px solid transparent",
-      transition: "background-color 0.2s",
-      backgroundColor: isSelected
-        ? "#4cbe1bc7"
-        : "transparent",
-      position: "relative",
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.backgroundColor =
-        isSelected ? "#bbdef5" : "#f8f9fa";
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.backgroundColor =
-        isSelected ? "#e3f2fd" : "transparent";
-    }}
-    title={`${p.goods_name} - Qty: ${availableQty}`}
-  >
-    <div
-      style={{
-        fontWeight: 400,
-        fontSize: "13px",
-      }}
-    >
-      {p.goods_name}
-    </div>
-    <div
-      style={{
-        fontSize: "12px",
-        color: "#6c757d",
-      }}
-    >
-      Qty: {availableQty} | Weight: {p.weight || 0} | {inclusiveGst}
-    </div>
-  </div>
-);
+                                      try {
+                                        const res = await fetch(
+                                          `${baseurl}/products/${p.id}/batches`,
+                                        );
+                                        const batchData = await res.json();
+                                        setBatches(batchData);
+
+                                        if (
+                                          p.maintain_batch === 0 &&
+                                          batchData.length > 0
+                                        ) {
+                                          const defaultBatch = batchData[0];
+                                          setSelectedBatch(
+                                            defaultBatch.batch_number,
+                                          );
+                                          setSelectedBatchDetails(defaultBatch);
+                                          setItemForm((prev) => ({
+                                            ...prev,
+                                            batch: defaultBatch.batch_number,
+                                            batch_id: defaultBatch.batch_number,
+                                            price: productNetPrice,
+                                          }));
+                                        } else {
+                                          setSelectedBatch("");
+                                          setSelectedBatchDetails(null);
+                                        }
+                                      } catch (err) {
+                                        console.error(
+                                          "Failed to fetch batches:",
+                                          err,
+                                        );
+                                        setBatches([]);
+                                        setSelectedBatch("");
+                                        setSelectedBatchDetails(null);
+                                      }
+
+                                      setIsProductDropdownOpen(false);
+                                      setProductSearchTerm("");
+                                    }}
+                                    style={{
+                                      padding: "8px 16px",
+                                      cursor: "pointer",
+                                      borderLeft: "3px solid transparent",
+                                      transition: "background-color 0.2s",
+                                      backgroundColor: isSelected
+                                        ? "#4cbe1bc7"
+                                        : "transparent",
+                                      position: "relative",
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.backgroundColor =
+                                        isSelected ? "#bbdef5" : "#f8f9fa";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.backgroundColor =
+                                        isSelected ? "#e3f2fd" : "transparent";
+                                    }}
+                                    title={`${p.goods_name} - Qty: ${availableQty}`}
+                                  >
+                                    <div
+                                      style={{
+                                        fontWeight: 400,
+                                        fontSize: "13px",
+                                      }}
+                                    >
+                                      {p.goods_name}
+                                    </div>
+                                    <div
+                                      style={{
+                                        fontSize: "12px",
+                                        color: "#6c757d",
+                                      }}
+                                    >
+                                      Qty: {availableQty} | Weight: {p.weight || 0} | {inclusiveGst}
+                                    </div>
+                                  </div>
+                                );
                               })}
                           </div>
 
@@ -2554,7 +2609,7 @@ const CreateInvoice = ({ user }) => {
                     />
                   </Col>
 
-                  
+
                   {/* <Col md={1}>
                     <Form.Label className="fw-bold">Weight</Form.Label>
                     <Form.Control
@@ -2946,7 +3001,7 @@ const CreateInvoice = ({ user }) => {
                       <div className="mb-2 text-danger">
                         ₹
                         {invoiceData.roundOff &&
-                        parseFloat(invoiceData.roundOff) < 0
+                          parseFloat(invoiceData.roundOff) < 0
                           ? invoiceData.roundOff
                           : `+${invoiceData.roundOff || "0.00"}`}
                       </div>
