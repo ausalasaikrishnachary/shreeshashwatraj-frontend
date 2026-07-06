@@ -42,7 +42,7 @@ const CreateInvoice = ({ user }) => {
   const [editingVoucherId, setEditingVoucherId] = useState(null);
   const [saleTypes, setSaleTypes] = useState([]);
   const [selectedSaleType, setSelectedSaleType] = useState("");
-
+  const [invoiceLoaded, setInvoiceLoaded] = useState(false);
 
   const navigate = useNavigate();
   const { id } = useParams();
@@ -227,6 +227,7 @@ const CreateInvoice = ({ user }) => {
   const fetchInvoiceDataForEdit = async (voucherId) => {
     try {
       setLoading(true);
+
       const response = await fetch(`${baseurl}/transactions/${voucherId}`);
       const result = await response.json();
 
@@ -238,29 +239,23 @@ const CreateInvoice = ({ user }) => {
         setSelectedSupplierId(apiData.PartyID);
         setSelected(true);
 
-        if (
-          apiData.additional_charges_type &&
-          apiData.additional_charges_amount
-        ) {
-          setCharges([
-            {
-              type: apiData.additional_charges_type,
-              amount: parseFloat(apiData.additional_charges_amount) || 0,
-            },
-          ]);
+        if (apiData.SaleType || apiData.saleType) {
+          const saleType = apiData.SaleType || apiData.saleType;
+          setSelectedSaleType(saleType);
         }
 
-        const supplierAccount = accounts.find(
-          (acc) => acc.id === apiData.PartyID,
-        );
-        if (supplierAccount) setInputName(supplierAccount.business_name);
-        if (apiData.staffid) setSelectedStaffId(apiData.staffid);
-
-        alert("✅ Invoice loaded for editing!");
+        // Show alert only once
+        // if (!invoiceLoaded) {
+        //   setInvoiceLoaded(true);
+        //   alert("✅ Invoice loaded for editing!");
+        // }
       }
     } catch (err) {
       console.error("Error:", err);
-      alert("Failed to load invoice");
+
+      if (!invoiceLoaded) {
+        alert("Failed to load invoice");
+      }
     } finally {
       setLoading(false);
     }
@@ -438,16 +433,16 @@ const CreateInvoice = ({ user }) => {
 
       staffid: apiData.staffid || apiData.staff_id || null,
       assigned_staff: apiData.assigned_staff || apiData.AssignedStaff || "N/A",
+      // 🔥 Add saleType to the return object
+      saleType: apiData.SaleType || apiData.saleType || "",
     };
   };
 
   useEffect(() => {
-    return () => {
-      if (!isEditMode) {
-        localStorage.removeItem("draftInvoice");
-      }
-    };
-  }, [isEditMode]);
+    if (isEditMode && invoiceData.saleType) {
+      setSelectedSaleType(invoiceData.saleType);
+    }
+  }, [isEditMode, invoiceData.saleType]);
 
   const fetchNextInvoiceNumber = async (
     transactionType = "Sales",
@@ -561,13 +556,13 @@ const CreateInvoice = ({ user }) => {
     }
   };
 
-  useEffect(() => {
-    if (id) {
-      setIsEditMode(true);
-      setEditingVoucherId(id);
-      fetchInvoiceDataForEdit(id);
-    }
-  }, [id]);
+  // useEffect(() => {
+  //   if (id) {
+  //     setIsEditMode(true);
+  //     setEditingVoucherId(id);
+  //     fetchInvoiceDataForEdit(id);
+  //   }
+  // }, [id]);
 
   const getCurrentFinancialYear = () => {
     const now = new Date();
@@ -1403,6 +1398,7 @@ const CreateInvoice = ({ user }) => {
       const customerTypeValue = customerType || "b2b";
       const payload = {
         ...invoiceData,
+        saleType: selectedSaleType,
         invoiceNumber: finalInvoiceNumber,
         selectedSupplierId: selectedSupplierId,
         staffid: selectedStaffId,
@@ -1682,24 +1678,21 @@ const CreateInvoice = ({ user }) => {
                 <Col md={4}>
 
                   <Form.Group className="mb-2">
-                    
-<Form.Label className="fw-bold">Sale Type</Form.Label>
+
+                    <Form.Label className="fw-bold">Sale Type Series</Form.Label>
                     <Form.Select
                       value={selectedSaleType}
                       className="border-primary"
                       onChange={(e) => {
                         const saleType = e.target.value;
-
                         setSelectedSaleType(saleType);
 
-                        // Fetch new invoice number whenever Sale Type changes
                         if (saleType) {
                           fetchNextInvoiceNumber("Sales", saleType);
                         }
                       }}
                     >
                       <option value="">Select Sale Type</option>
-
                       {saleTypes.map((item) => (
                         <option
                           key={item.id}
@@ -1709,7 +1702,7 @@ const CreateInvoice = ({ user }) => {
                         </option>
                       ))}
                     </Form.Select>
-                    
+
                   </Form.Group>
                   <Form.Group className="mb-2">
                     <Form.Label className="fw-bold">Invoice No</Form.Label>
@@ -1721,7 +1714,7 @@ const CreateInvoice = ({ user }) => {
                       disabled
                       readOnly={isEditMode}
                     />
-                    
+
                     {!hasFetchedInvoiceNumber && !isEditMode && (
                       <small className="text-muted">
                         Loading invoice number...
@@ -1737,7 +1730,7 @@ const CreateInvoice = ({ user }) => {
                       onChange={handleInputChange}
                       className="border-primary"
                     />
-                    
+
                   </Form.Group>
                   <Form.Group>
                     <Form.Label className="fw-bold">Validity Date</Form.Label>
@@ -1748,7 +1741,7 @@ const CreateInvoice = ({ user }) => {
                       onChange={handleInputChange}
                       className="border-primary"
                     />
-                    
+
                   </Form.Group>
                 </Col>
               </Row>
