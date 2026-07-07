@@ -1,7 +1,7 @@
 //C:\WorkTasks\sai_krishna\shreeshashwatraj-frontend\src\Component\Panels\Admin\AdminReports\GstReport.js
 
 import React, { useState, useEffect } from 'react';
-import { FaSearch, FaFileExcel, FaFilter } from "react-icons/fa";
+import { FaSearch, FaFileExcel, FaFilePdf, FaFilter } from "react-icons/fa";
 import * as XLSX from 'xlsx';
 import axios from "axios";
 import { baseurl } from "../../../BaseURL/BaseURL";
@@ -38,6 +38,74 @@ function SegmentedControl({ activeTab, onTabChange }) {
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// NEW — FilterChips — same classes/markup as GSTR-3B's chip row
+// ══════════════════════════════════════════════════════════════════════════════
+const CHIPS = [
+  { label: "All",        key: "all"       },
+  { label: "B2B only",   key: "b2b"       },
+  { label: "B2C only",   key: "b2c"       },
+  { label: "5% GST",     key: "5gst"      },
+  { label: "0% GST",     key: "0gst"      },
+  { label: "18% GST",    key: "18gst"     },
+  { label: "12% GST",    key: "12gst"     },
+  { label: "With GSTIN", key: "withGstin" },
+  { label: "No GSTIN",   key: "noGstin"   },
+];
+
+function FilterChips({ active, onChange }) {
+  return (
+    <div className="gst-chips-row">
+      {CHIPS.map((c) => (
+        <button key={c.key}
+          className={`gst-chip${active === c.key ? " gst-chip--on" : ""}`}
+          onClick={() => onChange(c.key)}>
+          {c.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function GenerateReportModal({
+  visible, onClose, subtitleText, reportFormat, onFormatChange, onGenerate, generating, hasData,
+}) {
+  if (!visible) return null;
+
+  return (
+    <div className="gst-report-modal-overlay" onClick={onClose}>
+      <div className="gst-report-modal-content" onClick={(e) => e.stopPropagation()}>
+        <button className="gst-report-modal-close-btn" onClick={onClose} aria-label="Close">✕</button>
+
+        <h2 className="gst-report-modal-title">Generate GST Report</h2>
+        <p className="gst-report-modal-subtitle">{subtitleText}</p>
+
+        <div className="gst-report-modal-format-options">
+          <label className={`gst-report-modal-format-option${reportFormat === "pdf" ? " gst-report-modal-format-option--selected" : ""}`}>
+            <input type="radio" name="gstReportFormat" value="pdf"
+              checked={reportFormat === "pdf"} onChange={() => onFormatChange("pdf")} />
+            <FaFilePdf className="gst-report-modal-format-icon gst-report-modal-format-icon--pdf" />
+            <span>PDF Format</span>
+          </label>
+
+          <label className={`gst-report-modal-format-option${reportFormat === "excel" ? " gst-report-modal-format-option--selected" : ""}`}>
+            <input type="radio" name="gstReportFormat" value="excel"
+              checked={reportFormat === "excel"} onChange={() => onFormatChange("excel")} />
+            <FaFileExcel className="gst-report-modal-format-icon gst-report-modal-format-icon--excel" />
+            <span>Excel Format</span>
+          </label>
+        </div>
+
+        <button className="gst-report-modal-generate-btn" onClick={onGenerate} disabled={generating || !hasData}>
+          {generating ? "Generating..." : "Generate Report"}
+        </button>
+
+        <p className="gst-report-modal-footer-note">Report will include all filtered data and statistics</p>
+      </div>
+    </div>
+  );
+}
+
 const GstReport = () => {
   const [activeTab, setActiveTab] = useState("gstr1");
 
@@ -51,6 +119,9 @@ const GstReport = () => {
   const [error, setError] = useState("");
   const [exportLoading, setExportLoading] = useState(false);
   const [applyDateFilter, setApplyDateFilter] = useState(true);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [reportFormat, setReportFormat] = useState("excel");
+  const [chip, setChip] = useState("all"); // NEW — active filter chip
 
   const getCurrentDate = () => {
     const today = new Date();
@@ -177,6 +248,37 @@ const fetchGstData = async () => {
     }
   };
 
+  // NEW — chip matching logic
+  const matchesChipFilter = (item, chipKey) => {
+    if (chipKey === "all") return true;
+
+    const bbbc = (item.bb_bc || "").toLowerCase();
+    const gstPct = item.gstPercentage || "";
+    const gstRates = gstPct === "N/A" ? [] : gstPct.split(",").map((s) => s.trim());
+    const hasGstin = item.gstNo && item.gstNo !== "N/A" && item.gstNo.trim() !== "";
+
+    switch (chipKey) {
+      case "b2b":
+        return bbbc === "b2b";
+      case "b2c":
+        return bbbc === "b2c";
+      case "5gst":
+        return gstRates.includes("5%");
+      case "0gst":
+        return gstPct === "N/A" || gstRates.includes("0%") || gstRates.includes("0.00%");
+      case "18gst":
+        return gstRates.includes("18%");
+      case "12gst":
+        return gstRates.includes("12%");
+      case "withGstin":
+        return hasGstin;
+      case "noGstin":
+        return !hasGstin;
+      default:
+        return true;
+    }
+  };
+
   const applyDateFilterHandler = () => {
     setFromDate(tempFromDate);
     setToDate(tempToDate);
@@ -215,7 +317,9 @@ const fetchGstData = async () => {
       }
     }
 
-    return matchesSearch && matchesDate;
+    const matchesChip = matchesChipFilter(item, chip); // NEW
+
+    return matchesSearch && matchesDate && matchesChip;
   });
 
   const processedTableData = filteredData.map((item) => ({
@@ -295,6 +399,55 @@ const fetchGstData = async () => {
       setExportLoading(false);
     }
   };
+
+  const handleConfirmGenerateReport = async () => {
+  if (reportFormat === "excel") {
+    exportToExcel();          // existing, untouched client-side XLSX export
+    setShowGenerateModal(false);
+    return;
+  }
+
+  // PDF path — hits the new backend endpoint, same download pattern used
+  // by GSTR-3B (blob → object URL → programmatic <a> click).
+  setExportLoading(true);
+  try {
+    const res = await fetch(`${baseurl}/gstreport/download`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        format: "pdf",
+        fromDate: applyDateFilter ? fromDate : null,
+        toDate: applyDateFilter ? toDate : null,
+        search: searchTerm,
+      }),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const blob = await res.blob();
+    const displayFrom = fromDate || "ALL";
+    const displayTo = toDate || "ALL";
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `GST_Register_${displayFrom}_to_${displayTo}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+
+    alert("✅ Successfully generated PDF report");
+    setShowGenerateModal(false);
+  } catch (err) {
+    console.error("❌ PDF download error:", err);
+    alert(`❌ Failed to generate PDF report: ${err.message}`);
+  } finally {
+    setExportLoading(false);
+  }
+};
+
+
+
 
   const clearFilters = () => {
     const firstDay = getFirstDayOfCurrentMonth();
@@ -399,6 +552,7 @@ const fetchGstData = async () => {
             </div>
           </div>
 
+
           {/* Date Filters - With Apply Button */}
           <div className="gst-report-date-filters">
             <div className="gst-report-date-input-wrapper">
@@ -444,14 +598,14 @@ const fetchGstData = async () => {
 
           {/* Export Excel */}
           <button
-            onClick={exportToExcel}
+            onClick={() => setShowGenerateModal(true)}
             disabled={exportLoading || filteredData.length === 0}
             className={`gst-report-export-btn ${exportLoading ? 'gst-report-export-btn--loading' : ''}`}
           >
             {exportLoading ? (
               <><span className="gst-report-spinner-small"></span>Exporting...</>
             ) : (
-              <><FaFileExcel className="gst-report-export-icon" />Export Excel</>
+              <><FaFileExcel className="gst-report-export-icon" />Generate Report</>
             )}
           </button>
 
@@ -461,6 +615,9 @@ const fetchGstData = async () => {
 
         </div>
       </div>
+
+      {/* NEW — Filter chips row, same markup/classes as GSTR-3B */}
+      <FilterChips active={chip} onChange={setChip} />
 
       <div className="gst-report-table-section">
         <ReusableTable
@@ -472,6 +629,16 @@ const fetchGstData = async () => {
           showPagination={true}
         />
       </div>
+      <GenerateReportModal
+        visible={showGenerateModal}
+        onClose={() => setShowGenerateModal(false)}
+        subtitleText={`Period: ${fromDate} to ${toDate}`}
+        reportFormat={reportFormat}
+        onFormatChange={setReportFormat}
+        onGenerate={handleConfirmGenerateReport}
+        generating={exportLoading}
+        hasData={filteredData.length > 0}
+      />
     </div>
   );
 };

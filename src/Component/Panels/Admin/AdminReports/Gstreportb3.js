@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import * as XLSX from "xlsx";
-import { FaSearch, FaFileExcel } from "react-icons/fa";
+import { FaSearch, FaFileExcel, FaFilePdf } from "react-icons/fa";
 import "./GSTReportb3.css";
 import { baseurl } from "../../../BaseURL/BaseURL";
 
@@ -14,6 +14,8 @@ const CHIPS = [
   { label: "B2C only",   key: "b2c"       },
   { label: "5% GST",     key: "5gst"      },
   { label: "0% GST",     key: "0gst"      },
+  { label: "18% GST",    key: "18gst"     },
+  { label: "12% GST",    key: "12gst"     },
   { label: "With GSTIN", key: "withGstin" },
   { label: "No GSTIN",   key: "noGstin"   },
 ];
@@ -610,6 +612,63 @@ function SegmentedControl({ onTabChange, activeTab }) {
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// NEW — Generate Report Modal (matches SalesReport.js modal design)
+// PDF option is a placeholder for GSTR-3B — there is no PDF generator wired up
+// for this report yet, so selecting PDF and clicking Generate shows a notice
+// instead of silently doing nothing. Excel path uses the existing, untouched
+// handleGenerateReport() XLSX export exactly as before.
+// ══════════════════════════════════════════════════════════════════════════════
+
+function GenerateReportModal({
+  visible, onClose, subtitleText, reportFormat, onFormatChange, onGenerate, generating, hasData,
+}) {
+  if (!visible) return null;
+
+  return (
+    <div className="gst3b-modal-overlay" onClick={onClose}>
+      <div className="gst3b-modal-content" onClick={(e) => e.stopPropagation()}>
+        <button className="gst3b-modal-close-btn" onClick={onClose} aria-label="Close">✕</button>
+
+        <h2 className="gst3b-modal-title">Generate GSTR-3B Report</h2>
+        <p className="gst3b-modal-subtitle">{subtitleText}</p>
+
+        <div className="gst3b-modal-format-options">
+          <label className={`gst3b-modal-format-option${reportFormat === "pdf" ? " gst3b-modal-format-option--selected" : ""}`}>
+            <input
+              type="radio" name="gst3bReportFormat" value="pdf"
+              checked={reportFormat === "pdf"}
+              onChange={() => onFormatChange("pdf")}
+            />
+            <FaFilePdf className="gst3b-modal-format-icon gst3b-modal-format-icon--pdf" />
+            <span>PDF Format</span>
+          </label>
+
+          <label className={`gst3b-modal-format-option${reportFormat === "excel" ? " gst3b-modal-format-option--selected" : ""}`}>
+            <input
+              type="radio" name="gst3bReportFormat" value="excel"
+              checked={reportFormat === "excel"}
+              onChange={() => onFormatChange("excel")}
+            />
+            <FaFileExcel className="gst3b-modal-format-icon gst3b-modal-format-icon--excel" />
+            <span>Excel Format</span>
+          </label>
+        </div>
+
+        <button
+          className="gst3b-modal-generate-btn"
+          onClick={onGenerate}
+          disabled={generating || !hasData}
+        >
+          {generating ? "Generating..." : "Generate Report"}
+        </button>
+
+        <p className="gst3b-modal-footer-note">Report will include all filtered data and statistics</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Root export ──────────────────────────────────────────────────────────────
 
 export default function GSTReport({ onTabChange, activeTab }) {
@@ -631,6 +690,10 @@ export default function GSTReport({ onTabChange, activeTab }) {
   const [page,          setPage]          = useState(1);
   const [pageSize,      setPageSize]      = useState(10);
   const [exportLoading, setExportLoading] = useState(false);
+
+  // ── NEW — Generate Report modal state ─────────────────────────────────────
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [reportFormat,      setReportFormat]      = useState("excel");
 
   // ── API data state ────────────────────────────────────────────────────────
   const [summary, setSummary] = useState({
@@ -710,6 +773,7 @@ export default function GSTReport({ onTabChange, activeTab }) {
     setDrillMode(null);
   };
 
+  // ── EXISTING — unchanged Excel export logic ──────────────────────────────
   const handleGenerateReport = () => {
     if (!bills || bills.length === 0) { alert("No data to export"); return; }
     setExportLoading(true);
@@ -755,8 +819,64 @@ export default function GSTReport({ onTabChange, activeTab }) {
     } finally { setExportLoading(false); }
   };
 
+  // ── NEW — modal open/confirm handlers ─────────────────────────────────────
+  // Opens the format-picker popup instead of exporting immediately.
+  const openGenerateModal = () => setShowGenerateModal(true);
+
+  // Runs when "Generate Report" is clicked inside the modal.
+// Runs when "Generate Report" is clicked inside the modal.
+  const handleConfirmGenerateReport = async () => {
+    if (reportFormat === "excel") {
+      handleGenerateReport();     // existing, untouched XLSX export
+      setShowGenerateModal(false);
+      return;
+    }
+
+    // PDF path — hits the backend PDF generator, same download pattern
+    // as SalesReport.js (blob → object URL → programmatic <a> click).
+    setExportLoading(true);
+    try {
+      const res = await fetch(`${baseurl}/api/gstr3b/download`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          format: "pdf",
+          fromDate: appliedFrom || null,
+          toDate: appliedTo || null,
+          search,
+          filterType: chip,
+        }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const blob = await res.blob();
+      const displayFrom = formatDateForDisplay(appliedFrom) || "ALL";
+      const displayTo   = formatDateForDisplay(appliedTo)   || "ALL";
+
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `GSTR3B_Report_${displayFrom}_to_${displayTo}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+
+      alert("✅ Successfully generated PDF report");
+      setShowGenerateModal(false);
+    } catch (err) {
+      console.error("❌ PDF download error:", err);
+      alert(`❌ Failed to generate PDF report: ${err.message}`);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const startIdx  = (page - 1) * pageSize;
   const dateLabel = appliedFrom && appliedTo ? `${appliedFrom} to ${appliedTo}` : "All dates";
+  const modalSubtitle = appliedFrom && appliedTo
+    ? `Period: ${appliedFrom} to ${appliedTo}`
+    : "All GSTR-3B data";
 
   // ── Drill-down page ───────────────────────────────────────────────────────
   if (selectedBill && drillMode) {
@@ -799,7 +919,7 @@ export default function GSTReport({ onTabChange, activeTab }) {
         toDate={toDate}           onToDate={setToDate}
         onApply={handleApplyDate} onClearDates={handleClearDates}
         showClearDates={showClearDates}
-        onGenerateReport={handleGenerateReport}
+        onGenerateReport={openGenerateModal}
         exportLoading={exportLoading} hasData={bills.length > 0}
       />
 
@@ -817,6 +937,18 @@ export default function GSTReport({ onTabChange, activeTab }) {
           pageSize={pageSize} onPageChange={setPage} onSizeChange={handleSize}
         />
       </div>
+
+      {/* ── NEW — Generate Report popup (PDF / Excel picker) ── */}
+      <GenerateReportModal
+        visible={showGenerateModal}
+        onClose={() => setShowGenerateModal(false)}
+        subtitleText={modalSubtitle}
+        reportFormat={reportFormat}
+        onFormatChange={setReportFormat}
+        onGenerate={handleConfirmGenerateReport}
+        generating={exportLoading}
+        hasData={bills.length > 0}
+      />
 
     </div>
   );
