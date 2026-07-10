@@ -22,6 +22,20 @@ const InvoicePreview_preview = ({
   const [updatedItems, setUpdatedItems] = useState([]);
   const [unitData, setUnitData] = useState({});
   const [loadingUnits, setLoadingUnits] = useState(false);
+  const [companyInfo, setCompanyInfo] = useState({
+  name: "",
+  address: "",
+  email: "",
+  phone: "",
+  gstin: "",
+  state: "",
+  stateCode: "",
+  bankName: "",
+  accountName: "",
+  branch: "",
+  accountNumber: "",
+  ifscCode: "",
+});
   
   // ✅ DEFINE displayItems HERE - at the top, before any useEffect that uses it
   const displayItems = updatedItems.length > 0 ? updatedItems : (invoiceData?.items || []);
@@ -172,6 +186,36 @@ const InvoicePreview_preview = ({
     }
   };
 
+
+  useEffect(() => {
+  const fetchCompanyInfo = async () => {
+    try {
+      const res = await fetch(`${baseurl}/api/company-info`);
+      const result = await res.json();
+
+      if (result.success && result.data) {
+        setCompanyInfo({
+          name: result.data.company_name || "",
+          address: result.data.address || "",
+          email: result.data.email || "",
+          phone: result.data.phone || "",
+          gstin: result.data.gstin || "",
+          state: result.data.state || "",
+          stateCode: result.data.state_code || "",
+          bankName: result.data.bank_name || "STATE BANK OF INDIA",
+          accountName: result.data.account_name || "SHREE SHASHWATRAJ AGRO PVT LTD",
+          branch: result.data.branch || "SME AURANGABAD",
+          accountNumber: result.data.account_number || "44773710377",
+          ifscCode: result.data.ifsc_code || "SBIN0063699",
+        });
+      }
+    } catch (error) {
+      console.error("Company info fetch error:", error);
+    }
+  };
+
+  fetchCompanyInfo();
+}, []);
   const getTaxableAmountPerUnit = (item) => {
     if (item.taxable_amount !== undefined && item.taxable_amount !== null) {
       return parseFloat(item.taxable_amount) || 0;
@@ -821,29 +865,23 @@ const getNetPricePerUnit = (item) => {
       Bank Details:
     </h6>
     
-    <div className="bg-light p-2 rounded" style={{ fontSize: '11px', lineHeight: '1.2' }}>
-      
-      <p className="mb-1" style={{ fontSize: '12px', }}  >
-        Account Name: SHREE SHASHWATRAJ AGRO PVT LTD
-      </p>
-      
-      <p className="mb-1" style={{ fontSize: '12px', }}>
-        Bank Name: STATE BANK OF INDIA
-      </p>
-      
-      <p className="mb-1" style={{ fontSize: '12px', }}>
-        Branch: SME AURANGABAD
-      </p>
-      
-      <p className="mb-1" style={{ fontSize: '12px', }}>
-        Account Number: 44773710377
-      </p>
-      
-      <p className="mb-0" style={{ fontSize: '12px', }}>
-        IFSC Code: SBIN0063699
-      </p>
-      
-    </div>
+<div className="bg-light p-2 rounded" style={{ fontSize: '11px', lineHeight: '1.2' }}>
+  <p className="mb-1" style={{ fontSize: '12px' }}>
+    Account Name: {companyInfo.accountName || "SHREE SHASHWATRAJ AGRO PVT LTD"}
+  </p>
+  <p className="mb-1" style={{ fontSize: '12px' }}>
+    Bank Name: {companyInfo.bankName || "STATE BANK OF INDIA"}
+  </p>
+  <p className="mb-1" style={{ fontSize: '12px' }}>
+    Branch: {companyInfo.branch || "SME AURANGABAD"}
+  </p>
+  <p className="mb-1" style={{ fontSize: '12px' }}>
+    Account Number: {companyInfo.accountNumber || "44773710377"}
+  </p>
+  <p className="mb-0" style={{ fontSize: '12px' }}>
+    IFSC Code: {companyInfo.ifscCode || "SBIN0063699"}
+  </p>
+</div>
   </div>
           </Col>
           <Col md={6} className="text-end">

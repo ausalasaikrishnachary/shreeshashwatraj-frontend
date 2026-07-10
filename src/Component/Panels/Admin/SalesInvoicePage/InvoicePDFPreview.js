@@ -88,6 +88,11 @@ const InvoicePDFPreview = () => {
     gstin: "",
     state: "",
     stateCode: "",
+    bankName: "",
+    accountName: "",
+    branch: "",
+    accountNumber: "",
+    ifscCode: "",
   });
 
   const [receiptFormData, setReceiptFormData] = useState({
@@ -789,6 +794,11 @@ const InvoicePDFPreview = () => {
           gstin: result.data.gstin || "",
           state: result.data.state || "",
           stateCode: result.data.state_code || "",
+          bankName: result.data.bank_name || "STATE BANK OF INDIA",
+          accountName: result.data.account_name || "SHREE SHASHWATRAJ AGRO PVT LTD",
+          branch: result.data.branch || "SME AURANGABAD",
+          accountNumber: result.data.account_number || "44773710377",
+          ifscCode: result.data.ifsc_code || "SBIN0063699",
         };
 
         setCompanyInfo(apiCompanyInfo);
@@ -3850,30 +3860,23 @@ const InvoicePDFPreview = () => {
                         Bank Details:
                       </h6>
 
-                      <div
-                        className="bg-light p-2 rounded"
-                        style={{ fontSize: "11px", lineHeight: "1.2" }}
-                      >
-                        <p className="mb-1" style={{ fontSize: "12px" }}>
-                          Account Name: SHREE SHASHWATRAJ AGRO PVT LTD
-                        </p>
-
-                        <p className="mb-1" style={{ fontSize: "12px" }}>
-                          Bank Name: STATE BANK OF INDIA
-                        </p>
-
-                        <p className="mb-1" style={{ fontSize: "12px" }}>
-                          Branch: SME AURANGABAD
-                        </p>
-
-                        <p className="mb-1" style={{ fontSize: "12px" }}>
-                          Account Number: 44773710377
-                        </p>
-
-                        <p className="mb-0" style={{ fontSize: "12px" }}>
-                          IFSC Code: SBIN0063699
-                        </p>
-                      </div>
+<div className="bg-light p-2 rounded" style={{ fontSize: "11px", lineHeight: "1.2" }}>
+  <p className="mb-1" style={{ fontSize: "12px" }}>
+    Account Name: {companyInfo.accountName || "SHREE SHASHWATRAJ AGRO PVT LTD"}
+  </p>
+  <p className="mb-1" style={{ fontSize: "12px" }}>
+    Bank Name: {companyInfo.bankName || "STATE BANK OF INDIA"}
+  </p>
+  <p className="mb-1" style={{ fontSize: "12px" }}>
+    Branch: {companyInfo.branch || "SME AURANGABAD"}
+  </p>
+  <p className="mb-1" style={{ fontSize: "12px" }}>
+    Account Number: {companyInfo.accountNumber || "44773710377"}
+  </p>
+  <p className="mb-0" style={{ fontSize: "12px" }}>
+    IFSC Code: {companyInfo.ifscCode || "SBIN0063699"}
+  </p>
+</div>
                     </div>
                     {/* <h6 className="text-primary">Notes:</h6>
                       {isEditMode ? (

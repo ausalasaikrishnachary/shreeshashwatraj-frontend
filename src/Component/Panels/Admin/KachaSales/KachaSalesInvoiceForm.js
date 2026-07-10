@@ -205,190 +205,208 @@ const KachaSalesInvoiceForm = ({ user }) => {
     fetchStaffMembers();
   }, []);
 
-  const fetchInvoiceDataForEdit = async (voucherId) => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${baseurl}/transactions/${voucherId}`);
-      const result = await response.json();
+const fetchInvoiceDataForEdit = async (voucherId) => {
+  try {
+    setLoading(true);
+    const response = await fetch(`${baseurl}/transactions/${voucherId}`);
+    const result = await response.json();
 
-      if (result.success && result.data) {
-        const apiData = result.data;
-        const transformedData = transformApiDataToFormFormat(apiData);
+    if (result.success && result.data) {
+      const apiData = result.data;
+      const transformedData = transformApiDataToFormFormat(apiData);
 
-        setInvoiceData(transformedData);
-        setSelectedSupplierId(apiData.PartyID);
-        setSelected(true);
+      // PRESERVE company info when editing
+      setInvoiceData((prev) => ({
+        ...transformedData,
+        // Keep the company info from the current state (which came from the API)
+        companyInfo: prev.companyInfo || {
+          name: "Your Company Name",
+          address: "Your Address",
+          email: "your@email.com",
+          phone: "Your Phone",
+          gstin: "Your GSTIN",
+          state: "Bihar",
+          stateCode: "10",
+        },
+      }));
+      
+      setSelectedSupplierId(apiData.PartyID);
+      setSelected(true);
 
-        // Load charges
-        if (
-          apiData.additional_charges_type &&
-          apiData.additional_charges_amount
-        ) {
-          setCharges([
-            {
-              type: apiData.additional_charges_type,
-              amount: parseFloat(apiData.additional_charges_amount) || 0,
-            },
-          ]);
-        } else {
-          setCharges([]); // Reset if no charges
-        }
-
-        const supplierAccount = accounts.find(
-          (acc) => acc.id === apiData.PartyID,
-        );
-        if (supplierAccount) setInputName(supplierAccount.business_name);
-        if (apiData.staffid) setSelectedStaffId(apiData.staffid);
-
-        alert("✅ Invoice loaded for editing!");
-      }
-    } catch (err) {
-      console.error("Error:", err);
-      alert("Failed to load invoice");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Transform API data to form format
-  const transformApiDataToFormFormat = (apiData) => {
-    console.log("Transforming API data for form:", apiData);
-
-    let batchDetails = [];
-    try {
-      if (apiData.batch_details && typeof apiData.batch_details === "string") {
-        batchDetails = JSON.parse(apiData.batch_details);
-      } else if (Array.isArray(apiData.batch_details)) {
-        batchDetails = apiData.batch_details;
-      } else if (
-        apiData.BatchDetails &&
-        typeof apiData.BatchDetails === "string"
+      // Load charges
+      if (
+        apiData.additional_charges_type &&
+        apiData.additional_charges_amount
       ) {
-        batchDetails = JSON.parse(apiData.BatchDetails);
+        setCharges([
+          {
+            type: apiData.additional_charges_type,
+            amount: parseFloat(apiData.additional_charges_amount) || 0,
+          },
+        ]);
+      } else {
+        setCharges([]); // Reset if no charges
       }
-    } catch (error) {
-      console.error("Error parsing batch details:", error);
+
+      const supplierAccount = accounts.find(
+        (acc) => acc.id === apiData.PartyID,
+      );
+      if (supplierAccount) setInputName(supplierAccount.business_name);
+      if (apiData.staffid) setSelectedStaffId(apiData.staffid);
+
+      alert("✅ Invoice loaded for editing!");
     }
+  } catch (err) {
+    console.error("Error:", err);
+    alert("Failed to load invoice");
+  } finally {
+    setLoading(false);
+  }
+};
 
-    // Transform items for form display
-    const items =
-      batchDetails.map((batch, index) => {
-        const quantity = parseFloat(batch.quantity) || 0;
-        const price = parseFloat(batch.price) || 0;
-        const discount = parseFloat(batch.discount) || 0;
 
-        // Calculate item total
-        const subtotal = quantity * price;
-        const discountAmount = subtotal * (discount / 100);
-        const total = subtotal - discountAmount;
+// Transform API data to form format
+const transformApiDataToFormFormat = (apiData) => {
+  console.log("Transforming API data for form:", apiData);
 
-        return {
-          product: batch.product || "Product",
-          product_id: batch.product_id || "",
-          description: batch.description || "",
-          quantity: quantity,
-          price: price,
-          discount: discount,
-          total: total.toFixed(2),
-          batch: batch.batch || "",
-          batch_id: batch.batch_id || "",
-          batchDetails: batch.batchDetails || null,
-          hsn_code: batch.hsn_code || "",
-          unit_id: batch.unit_id || "",
-          unit_name: batch.unit_name || "",
-        };
-      }) || [];
+  let batchDetails = [];
+  try {
+    if (apiData.batch_details && typeof apiData.batch_details === "string") {
+      batchDetails = JSON.parse(apiData.batch_details);
+    } else if (Array.isArray(apiData.batch_details)) {
+      batchDetails = apiData.batch_details;
+    } else if (
+      apiData.BatchDetails &&
+      typeof apiData.BatchDetails === "string"
+    ) {
+      batchDetails = JSON.parse(apiData.BatchDetails);
+    }
+  } catch (error) {
+    console.error("Error parsing batch details:", error);
+  }
 
-    let transportDetails = {
-      transport: apiData.transport_name || "",
-      grNumber: apiData.gr_rr_number || "",
-      vehicleNo: apiData.vehicle_number || "",
-      station: apiData.station_name || "",
-    };
-    return {
-      voucherId: apiData.VoucherID,
-      invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
-      invoiceDate: apiData.Date
-        ? new Date(apiData.Date).toISOString().split("T")[0]
-        : new Date().toISOString().split("T")[0],
-      validityDate: apiData.Date
-        ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split("T")[0]
-        : new Date().toISOString().split("T")[0],
+  // Transform items for form display
+  const items =
+    batchDetails.map((batch, index) => {
+      const quantity = parseFloat(batch.quantity) || 0;
+      const price = parseFloat(batch.price) || 0;
+      const discount = parseFloat(batch.discount) || 0;
 
-   companyInfo: {
-  name: invoiceData.companyInfo?.name || "",
-  address: invoiceData.companyInfo?.address || "",
-  email: invoiceData.companyInfo?.email || "",
-  phone: invoiceData.companyInfo?.phone || "",
-  gstin: invoiceData.companyInfo?.gstin || "",
-  state: invoiceData.companyInfo?.state || "",
-  stateCode: invoiceData.companyInfo?.stateCode || "",
-},
-      supplierInfo: {
-        name: apiData.PartyName || "Customer",
-        business_name: apiData.business_name || apiData.AccountName || "",
-        state: apiData.billing_state || apiData.BillingState || "",
-        id: apiData.PartyID || null,
-        gstin: apiData.gstin || "",
-        assigned_staff: apiData.assigned_staff || "",
-        mobile_number:
-          apiData.mobile_number ||
-          apiData.retailer_mobile ||
-          apiData.phone_number ||
-          apiData.retailer_phone ||
-          "",
-      },
+      // Calculate item total
+      const subtotal = quantity * price;
+      const discountAmount = subtotal * (discount / 100);
+      const total = subtotal - discountAmount;
 
-      billingAddress: {
-        addressLine1:
-          apiData.billing_address_line1 || apiData.BillingAddress || "",
-        addressLine2: apiData.billing_address_line2 || "",
-        city: apiData.billing_city || apiData.BillingCity || "",
-        pincode: apiData.billing_pin_code || apiData.BillingPincode || "",
-        state: apiData.billing_state || apiData.BillingState || "",
-      },
+      return {
+        product: batch.product || "Product",
+        product_id: batch.product_id || "",
+        description: batch.description || "",
+        quantity: quantity,
+        price: price,
+        discount: discount,
+        total: total.toFixed(2),
+        batch: batch.batch || "",
+        batch_id: batch.batch_id || "",
+        batchDetails: batch.batchDetails || null,
+        hsn_code: batch.hsn_code || "",
+        unit_id: batch.unit_id || "",
+        unit_name: batch.unit_name || "",
+      };
+    }) || [];
 
-      shippingAddress: {
-        addressLine1:
-          apiData.shipping_address_line1 ||
-          apiData.ShippingAddress ||
-          apiData.billing_address_line1 ||
-          apiData.BillingAddress ||
-          "",
-        addressLine2:
-          apiData.shipping_address_line2 || apiData.billing_address_line2 || "",
-        city:
-          apiData.shipping_city ||
-          apiData.ShippingCity ||
-          apiData.billing_city ||
-          apiData.BillingCity ||
-          "",
-        pincode:
-          apiData.shipping_pin_code ||
-          apiData.ShippingPincode ||
-          apiData.billing_pin_code ||
-          apiData.BillingPincode ||
-          "",
-        state:
-          apiData.shipping_state ||
-          apiData.ShippingState ||
-          apiData.billing_state ||
-          apiData.BillingState ||
-          "",
-      },
-
-      items: items,
-      note: apiData.Notes || "Thank you for your business!",
-      taxableAmount: parseFloat(apiData.BasicAmount) || 0,
-      grandTotal: parseFloat(apiData.TotalAmount) || 0,
-      transportDetails: transportDetails,
-
-      additionalCharge: "",
-      additionalChargeAmount: "0.00",
-    };
+  let transportDetails = {
+    transport: apiData.transport_name || "",
+    grNumber: apiData.gr_rr_number || "",
+    vehicleNo: apiData.vehicle_number || "",
+    station: apiData.station_name || "",
   };
+  
+  return {
+    voucherId: apiData.VoucherID,
+    invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
+    invoiceDate: apiData.Date
+      ? new Date(apiData.Date).toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0],
+    validityDate: apiData.Date
+      ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0]
+      : new Date().toISOString().split("T")[0],
+
+    // REMOVE companyInfo from here - it will be preserved from state
+    // companyInfo: {
+    //   name: invoiceData.companyInfo?.name || "",
+    //   address: invoiceData.companyInfo?.address || "",
+    //   email: invoiceData.companyInfo?.email || "",
+    //   phone: invoiceData.companyInfo?.phone || "",
+    //   gstin: invoiceData.companyInfo?.gstin || "",
+    //   state: invoiceData.companyInfo?.state || "",
+    //   stateCode: invoiceData.companyInfo?.stateCode || "",
+    // },
+
+    supplierInfo: {
+      name: apiData.PartyName || "Customer",
+      business_name: apiData.business_name || apiData.AccountName || "",
+      state: apiData.billing_state || apiData.BillingState || "",
+      id: apiData.PartyID || null,
+      gstin: apiData.gstin || "",
+      assigned_staff: apiData.assigned_staff || "",
+      mobile_number:
+        apiData.mobile_number ||
+        apiData.retailer_mobile ||
+        apiData.phone_number ||
+        apiData.retailer_phone ||
+        "",
+    },
+
+    billingAddress: {
+      addressLine1:
+        apiData.billing_address_line1 || apiData.BillingAddress || "",
+      addressLine2: apiData.billing_address_line2 || "",
+      city: apiData.billing_city || apiData.BillingCity || "",
+      pincode: apiData.billing_pin_code || apiData.BillingPincode || "",
+      state: apiData.billing_state || apiData.BillingState || "",
+    },
+
+    shippingAddress: {
+      addressLine1:
+        apiData.shipping_address_line1 ||
+        apiData.ShippingAddress ||
+        apiData.billing_address_line1 ||
+        apiData.BillingAddress ||
+        "",
+      addressLine2:
+        apiData.shipping_address_line2 || apiData.billing_address_line2 || "",
+      city:
+        apiData.shipping_city ||
+        apiData.ShippingCity ||
+        apiData.billing_city ||
+        apiData.BillingCity ||
+        "",
+      pincode:
+        apiData.shipping_pin_code ||
+        apiData.ShippingPincode ||
+        apiData.billing_pin_code ||
+        apiData.BillingPincode ||
+        "",
+      state:
+        apiData.shipping_state ||
+        apiData.ShippingState ||
+        apiData.billing_state ||
+        apiData.BillingState ||
+        "",
+    },
+
+    items: items,
+    note: apiData.Notes || "Thank you for your business!",
+    taxableAmount: parseFloat(apiData.BasicAmount) || 0,
+    grandTotal: parseFloat(apiData.TotalAmount) || 0,
+    transportDetails: transportDetails,
+
+    additionalCharge: "",
+    additionalChargeAmount: "0.00",
+  };
+};
 
   const fetchUnitName = async (unitId) => {
     if (!unitId) return "";
@@ -1000,90 +1018,90 @@ const KachaSalesInvoiceForm = ({ user }) => {
     }));
   };
 
-  const clearDraft = () => {
-    localStorage.removeItem("draftInvoice");
+const clearDraft = () => {
+  localStorage.removeItem("draftInvoice");
 
-    const getFinancialYearShort = () => {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth();
+  const getFinancialYearShort = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
 
-      if (month >= 3) {
-        return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
-      } else {
-        return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
-      }
-    };
-
-    const currentFY = getFinancialYearShort();
-
-    const resetData = {
-      // invoiceNumber: `SSA/000001/${currentFY}`, // Format: SSA/000001/25-26
-      invoiceDate: new Date().toISOString().split("T")[0],
-      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0],
-      companyInfo: {
-  name: invoiceData.companyInfo?.name || "",
-  address: invoiceData.companyInfo?.address || "",
-  email: invoiceData.companyInfo?.email || "",
-  phone: invoiceData.companyInfo?.phone || "",
-  gstin: invoiceData.companyInfo?.gstin || "",
-  state: invoiceData.companyInfo?.state || "",
-  stateCode: invoiceData.companyInfo?.stateCode || "",
-},
-      supplierInfo: {
-        name: "",
-        business_name: "",
-        state: "",
-        discount: 0,
-      },
-      billingAddress: {
-        addressLine1: "",
-        addressLine2: "",
-        city: "",
-        pincode: "",
-        state: "",
-      },
-      shippingAddress: {
-        addressLine1: "",
-        addressLine2: "",
-        city: "",
-        pincode: "",
-        state: "",
-      },
-      items: [],
-      note: "",
-      taxableAmount: 0,
-      grandTotal: 0,
-      transportDetails: {
-        transport: "",
-        grNumber: "",
-        vehicleNo: "",
-        station: "",
-      },
-      additionalCharge: "",
-      additionalChargeAmount: 0,
-      otherDetails: "Authorized Signatory",
-      batchDetails: [],
-    };
-
-    setInvoiceData(resetData);
-    localStorage.setItem("draftInvoice", JSON.stringify(resetData));
-
-    setSelected(false);
-    setSelectedSupplierId(null);
-    setSelectedStaffId("");
-    setIsPreviewReady(false);
-
-    // Reset itemForm discount
-    setItemForm((prev) => ({
-      ...prev,
-      discount: 0,
-    }));
-
-    window.alert("✅ Draft cleared successfully!");
+    if (month >= 3) {
+      return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+    } else {
+      return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+    }
   };
+
+  const currentFY = getFinancialYearShort();
+
+  const resetData = {
+    invoiceDate: new Date().toISOString().split("T")[0],
+    validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0],
+    // PRESERVE company info when clearing draft
+    companyInfo: invoiceData.companyInfo || {
+      name: "Your Company Name",
+      address: "Your Address",
+      email: "your@email.com",
+      phone: "Your Phone",
+      gstin: "Your GSTIN",
+      state: "Bihar",
+      stateCode: "10",
+    },
+    supplierInfo: {
+      name: "",
+      business_name: "",
+      state: "",
+      discount: 0,
+    },
+    billingAddress: {
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      pincode: "",
+      state: "",
+    },
+    shippingAddress: {
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      pincode: "",
+      state: "",
+    },
+    items: [],
+    note: "",
+    taxableAmount: 0,
+    grandTotal: 0,
+    transportDetails: {
+      transport: "",
+      grNumber: "",
+      vehicleNo: "",
+      station: "",
+    },
+    additionalCharge: "",
+    additionalChargeAmount: 0,
+    otherDetails: "Authorized Signatory",
+    batchDetails: [],
+  };
+
+  setInvoiceData(resetData);
+  localStorage.setItem("draftInvoice", JSON.stringify(resetData));
+
+  setSelected(false);
+  setSelectedSupplierId(null);
+  setSelectedStaffId("");
+  setIsPreviewReady(false);
+
+  // Reset itemForm discount
+  setItemForm((prev) => ({
+    ...prev,
+    discount: 0,
+  }));
+
+  window.alert("✅ Draft cleared successfully!");
+};
 
   useEffect(() => {
     return () => {
@@ -1326,64 +1344,64 @@ const KachaSalesInvoiceForm = ({ user }) => {
                 {isEditMode ? "Edit Invoice" : "Create Invoice"}
               </h5>
 
-              {/* Company Info Section */}
-              <Row className="mb-3 company-info bg-white p-3 rounded">
-                <Col md={8}>
-                  <div>
-                    <strong className="text-primary">
-                      {invoiceData.companyInfo.name}
-                    </strong>
-                    <br />
-                    {invoiceData.companyInfo.address}
-                    <br />
-                    Email: {invoiceData.companyInfo.email} | Phone:{" "}
-                    {invoiceData.companyInfo.phone}
-                    <br />
-                    GSTIN/UIN: {invoiceData.companyInfo.gstin}
-                    <br />
-                   State Name : {invoiceData.companyInfo.state}, 
-                   Code : {invoiceData.companyInfo.stateCode}
-                  </div>
-                </Col>
-                <Col md={4}>
-                  <Form.Group className="mb-2">
-                    <Form.Control
-                      name="invoiceNumber"
-                      value={invoiceData.invoiceNumber || nextInvoiceNumber}
-                      onChange={handleInputChange}
-                      className="border-primary"
-                      disabled
-                      readOnly={isEditMode}
-                    />
-                    <Form.Label className="fw-bold">Invoice No</Form.Label>
-                    {!hasFetchedInvoiceNumber && !isEditMode && (
-                      <small className="text-muted">
-                        Loading invoice number...
-                      </small>
-                    )}
-                  </Form.Group>
-                  <Form.Group className="mb-2">
-                    <Form.Control
-                      type="date"
-                      name="invoiceDate"
-                      value={invoiceData.invoiceDate}
-                      onChange={handleInputChange}
-                      className="border-primary"
-                    />
-                    <Form.Label className="fw-bold">Invoice Date</Form.Label>
-                  </Form.Group>
-                  <Form.Group>
-                    <Form.Control
-                      type="date"
-                      name="validityDate"
-                      value={invoiceData.validityDate}
-                      onChange={handleInputChange}
-                      className="border-primary"
-                    />
-                    <Form.Label className="fw-bold">Validity Date</Form.Label>
-                  </Form.Group>
-                </Col>
-              </Row>
+             {/* Company Info Section */}
+<Row className="mb-3 company-info bg-white p-3 rounded">
+  <Col md={8}>
+    <div>
+      <strong className="text-primary">
+        {invoiceData.companyInfo?.name || "Company Name"}
+      </strong>
+      <br />
+      {invoiceData.companyInfo?.address || "Address"}
+      <br />
+      Email: {invoiceData.companyInfo?.email || "Email"} | Phone:{" "}
+      {invoiceData.companyInfo?.phone || "Phone"}
+      <br />
+      GSTIN/UIN: {invoiceData.companyInfo?.gstin || "GSTIN"}
+      <br />
+      State Name : {invoiceData.companyInfo?.state || "Bihar"}, 
+      Code : {invoiceData.companyInfo?.stateCode || "10"}
+    </div>
+  </Col>
+  <Col md={4}>
+    <Form.Group className="mb-2">
+      <Form.Control
+        name="invoiceNumber"
+        value={invoiceData.invoiceNumber || nextInvoiceNumber}
+        onChange={handleInputChange}
+        className="border-primary"
+        disabled
+        readOnly={isEditMode}
+      />
+      <Form.Label className="fw-bold">Invoice No</Form.Label>
+      {!hasFetchedInvoiceNumber && !isEditMode && (
+        <small className="text-muted">
+          Loading invoice number...
+        </small>
+      )}
+    </Form.Group>
+    <Form.Group className="mb-2">
+      <Form.Control
+        type="date"
+        name="invoiceDate"
+        value={invoiceData.invoiceDate}
+        onChange={handleInputChange}
+        className="border-primary"
+      />
+      <Form.Label className="fw-bold">Invoice Date</Form.Label>
+    </Form.Group>
+    <Form.Group>
+      <Form.Control
+        type="date"
+        name="validityDate"
+        value={invoiceData.validityDate}
+        onChange={handleInputChange}
+        className="border-primary"
+      />
+      <Form.Label className="fw-bold">Validity Date</Form.Label>
+    </Form.Group>
+  </Col>
+</Row>
 
               {/* Retailer Info Section */}
               {/* Retailer Info Section */}

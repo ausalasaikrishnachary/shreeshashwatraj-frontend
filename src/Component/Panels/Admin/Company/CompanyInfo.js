@@ -296,6 +296,10 @@ const CompanyInfo = () => {
     state_code: "",
     location: "",
     address: "",
+    bank_name: "",
+    account_name: "",
+    account_number: "",
+    ifsc_code: "",
   });
 
   useEffect(() => {
@@ -328,6 +332,10 @@ const CompanyInfo = () => {
           state_code: stateCode,
           location: result.data.location || "",
           address: result.data.address || "",
+          bank_name: result.data.bank_name || "",
+          account_name: result.data.account_name || "",
+          account_number: result.data.account_number || "",
+          ifsc_code: result.data.ifsc_code || "",
         });
       }
     } catch (error) {
@@ -524,6 +532,61 @@ const CompanyInfo = () => {
                   />
                 </div>
               </div>
+              <div className="company-info-row">
+  <div className="company-info-field company-info-full">
+    <label>Bank Details</label>
+    <p className="text-muted small mb-2">Enter company bank account details</p>
+  </div>
+</div>
+
+<div className="company-info-row">
+  <div className="company-info-field">
+    <label>Bank Name</label>
+    <input
+      type="text"
+      name="bank_name"
+      value={formData.bank_name}
+      onChange={handleChange}
+      placeholder="Enter bank name"
+    />
+  </div>
+
+  <div className="company-info-field">
+    <label>Account Name</label>
+    <input
+      type="text"
+      name="account_name"
+      value={formData.account_name}
+      onChange={handleChange}
+      placeholder="Enter account holder name"
+    />
+  </div>
+</div>
+
+<div className="company-info-row">
+  <div className="company-info-field">
+    <label>Account Number</label>
+    <input
+      type="text"
+      name="account_number"
+      value={formData.account_number}
+      onChange={handleChange}
+      placeholder="Enter account number"
+    />
+  </div>
+
+  <div className="company-info-field">
+    <label>IFSC Code</label>
+    <input
+      type="text"
+      name="ifsc_code"
+      value={formData.ifsc_code}
+      onChange={handleChange}
+      placeholder="Enter IFSC code"
+      style={{ textTransform: "uppercase" }}
+    />
+  </div>
+</div>
 
               <div className="company-info-actions">
                 <button

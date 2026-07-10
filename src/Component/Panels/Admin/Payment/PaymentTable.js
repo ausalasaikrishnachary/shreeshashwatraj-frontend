@@ -64,6 +64,37 @@ const PaymentTable = () => {
     business_name: '' // Add this
   });
 
+const [companyInfo, setCompanyInfo] = useState({
+  name: "",
+  address: "",
+  email: "",
+  phone: "",
+  gstin: "",
+  state: "",
+  stateCode: "",
+});
+
+const fetchCompanyInfo = async () => {
+  try {
+    const res = await fetch(`${baseurl}/api/company-info`);
+    const result = await res.json();
+
+    if (result.success && result.data) {
+      setCompanyInfo({
+        name: result.data.company_name || "",
+        address: result.data.address || "",
+        email: result.data.email || "",
+        phone: result.data.phone || "",
+        gstin: result.data.gstin || "",
+        state: result.data.state || "",
+        stateCode: result.data.state_code || "",
+      });
+    }
+  } catch (error) {
+    console.error("Company info fetch error:", error);
+  }
+};
+
   const fetchInvoices = async () => {
     try {
       console.log('Fetching invoices from:', `${baseurl}/api/vouchersnumber`);
@@ -685,6 +716,7 @@ const PaymentTable = () => {
 
   useEffect(() => {
     console.log('Component mounted, fetching initial data...');
+    fetchCompanyInfo();
     fetchAccounts();
     fetchReceipts();
     fetchNextReceiptNumber();
@@ -1208,14 +1240,23 @@ const PaymentTable = () => {
                   <div className="modal-body">
                     <div className="row mb-4">
                       <div className="col-md-6">
-                        <div className="company-info-recepits-table text-center">
-                          <label className="form-label-recepits-table">SHREE SHASHWATRAJ AGRO PVT LTD</label>
-                          <p>Growth Center, Jasoiya, Aurangabad</p>
-                          <p>Bihar, 824101</p>
-                          <p>GST : 10AAOCS1541B1ZZ</p>
-                          <p>Email: spmathur56@gmail.com</p>
-                          <p>Phone: 9801049700</p>
-                        </div>
+<div className="company-info-recepits-table text-center">
+  {companyInfo.name ? (
+    <>
+      <label className="form-label-recepits-table">{companyInfo.name}</label>
+      <p>{companyInfo.address}</p>
+      <p>
+        {companyInfo.state}
+        {companyInfo.stateCode ? `, ${companyInfo.stateCode}` : ""}
+      </p>
+      <p>GST : {companyInfo.gstin}</p>
+      <p>Email: {companyInfo.email}</p>
+      <p>Phone: {companyInfo.phone}</p>
+    </>
+  ) : (
+    <p className="text-muted">Loading company info...</p>
+  )}
+</div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">

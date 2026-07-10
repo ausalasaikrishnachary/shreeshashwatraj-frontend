@@ -31,6 +31,20 @@ const [showAllTransactions, setShowAllTransactions] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [companyInfo, setCompanyInfo] = useState({
+  name: "",
+  address: "",
+  email: "",
+  phone: "",
+  gstin: "",
+  state: "",
+  stateCode: "",
+  bankName: "",
+  accountName: "",
+  branch: "",
+  accountNumber: "",
+  ifscCode: "",
+});
   const [receiptFormData, setReceiptFormData] = useState({
     receiptNumber: '',
     retailerId: '',
@@ -102,6 +116,7 @@ const [showAllTransactions, setShowAllTransactions] = useState(false);
   };
 
   useEffect(() => {
+    fetchCompanyInfo();
     fetchTransactionData();
   }, [id]);
 
@@ -159,7 +174,31 @@ const fetchPaymentData = async (invoiceNumber) => {
     setPaymentLoading(false);
   }
 };
+const fetchCompanyInfo = async () => {
+  try {
+    const res = await fetch(`${baseurl}/api/company-info`);
+    const result = await res.json();
 
+    if (result.success && result.data) {
+      setCompanyInfo({
+        name: result.data.company_name || "",
+        address: result.data.address || "",
+        email: result.data.email || "",
+        phone: result.data.phone || "",
+        gstin: result.data.gstin || "",
+        state: result.data.state || "",
+        stateCode: result.data.state_code || "",
+        bankName: result.data.bank_name || "STATE BANK OF INDIA",
+        accountName: result.data.account_name || "SHREE SHASHWATRAJ AGRO PVT LTD",
+        branch: result.data.branch || "SME AURANGABAD",
+        accountNumber: result.data.account_number || "44773710377",
+        ifscCode: result.data.ifsc_code || "SBIN0063699",
+      });
+    }
+  } catch (error) {
+    console.error("Company info fetch error:", error);
+  }
+};
 const transformPaymentData = (apiData) => {
   // Handle both Sales AND Stock Transfer
   const salesEntry = apiData.sales || apiData.stocktransfer || {};
@@ -471,14 +510,14 @@ useEffect(() => {
       invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       
-         companyInfo: {
-  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-  email: "spmathur56@gmail.com",
-  phone: "9801049700",
-  gstin: "10AAOCS1541B1ZZ",
-  state: "Bihar",
-  stateCode: "10"
+companyInfo: {
+  name: companyInfo.name || "SHREE SHASHWATRAJ AGRO PVT LTD",
+  address: companyInfo.address || "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+  email: companyInfo.email || "spmathur56@gmail.com",
+  phone: companyInfo.phone || "9801049700",
+  gstin: companyInfo.gstin || "10AAOCS1541B1ZZ",
+  state: companyInfo.state || "Bihar",
+  stateCode: companyInfo.stateCode || "10"
 },
       
       supplierInfo: {
@@ -1473,15 +1512,23 @@ const handleOpenReceiptModal = () => {
         <Modal.Body>  
           <div className="row mb-4">
             <div className="col-md-6">
-              <div className="company-info-recepits-table text-center">
-                <label className="form-label-recepits-table">SHREE SHASHWATRAJ AGRO PVT LTD</label>
-  <p>Growth Center, Jasoiya, Aurangabad</p>
-  <p>Bihar, 824101</p>
-  <p>GST : 10AAOCS1541B1ZZ</p>
-  <p>Email: spmathur56@gmail.com</p>
-  <p>Phone: 9801049700</p>
-
-              </div>
+<div className="company-info-recepits-table text-center">
+  {companyInfo.name ? (
+    <>
+      <label className="form-label-recepits-table">{companyInfo.name}</label>
+      <p>{companyInfo.address}</p>
+      <p>
+        {companyInfo.state}
+        {companyInfo.stateCode ? `, ${companyInfo.stateCode}` : ""}
+      </p>
+      <p>GST : {companyInfo.gstin}</p>
+      <p>Email: {companyInfo.email}</p>
+      <p>Phone: {companyInfo.phone}</p>
+    </>
+  ) : (
+    <p className="text-muted">Loading company info...</p>
+  )}
+</div>
             </div>
             <div className="col-md-6">
               <div className="mb-3">
@@ -2044,29 +2091,23 @@ const handleOpenReceiptModal = () => {
                         Bank Details:
                       </h6>
 
-                      <div className="bg-light p-2 rounded" style={{ fontSize: '11px', lineHeight: '1.2' }}>
-
-                        <p className="mb-1" style={{ fontSize: '12px', }}  >
-                          Account Name: SHREE SHASHWATRAJ AGRO PVT LTD
-                        </p>
-
-                        <p className="mb-1" style={{ fontSize: '12px', }}>
-                          Bank Name: STATE BANK OF INDIA
-                        </p>
-
-                        <p className="mb-1" style={{ fontSize: '12px', }}>
-                          Branch: SME AURANGABAD
-                        </p>
-
-                        <p className="mb-1" style={{ fontSize: '12px', }}>
-                          Account Number: 44773710377
-                        </p>
-
-                        <p className="mb-0" style={{ fontSize: '12px', }}>
-                          IFSC Code: SBIN0063699
-                        </p>
-
-                      </div>
+<div className="bg-light p-2 rounded" style={{ fontSize: '11px', lineHeight: '1.2' }}>
+  <p className="mb-1" style={{ fontSize: '12px' }}>
+    Account Name: {companyInfo.accountName || "SHREE SHASHWATRAJ AGRO PVT LTD"}
+  </p>
+  <p className="mb-1" style={{ fontSize: '12px' }}>
+    Bank Name: {companyInfo.bankName || "STATE BANK OF INDIA"}
+  </p>
+  <p className="mb-1" style={{ fontSize: '12px' }}>
+    Branch: {companyInfo.branch || "SME AURANGABAD"}
+  </p>
+  <p className="mb-1" style={{ fontSize: '12px' }}>
+    Account Number: {companyInfo.accountNumber || "44773710377"}
+  </p>
+  <p className="mb-0" style={{ fontSize: '12px' }}>
+    IFSC Code: {companyInfo.ifscCode || "SBIN0063699"}
+  </p>
+</div>
                     </div>
                       {/* <h6 className="text-primary">Notes:</h6>
                       {isEditMode ? (
