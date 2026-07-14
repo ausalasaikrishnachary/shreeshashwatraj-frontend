@@ -165,34 +165,35 @@ const fetchProductById = async (id) => {
       }
     };
 
-    // Set initial form data
-    setFormData({
-      group_by: product.group_by || groupType,
-      goods_name: product.goods_name || product.name || '',
-      category_id: product.category_id || '',
-      company_id: product.company_id || '',
-      price: product.price || '',
-      mrp: product.mrp || '',
-      inclusive_gst: product.inclusive_gst || '',
-      purchase_price: product.purchase_price || '',
-      gst_rate: product.gst_rate || '',
-      non_taxable: product.non_taxable || '',
-      net_price: product.net_price || '',
-      hsn_code: product.hsn_code || '',
-      unit: product.unit || product.unit_id || '',
-      cess_rate: product.cess_rate || '',
-      cess_amount: product.cess_amount || '',
-      sku: product.sku || '',
-      opening_stock: product.opening_stock || '',
-      opening_stock_date: formatDateForInput(product.opening_stock_date), // Use helper function
-      min_stock_alert: product.min_stock_alert || '',
-      max_stock_alert: product.max_stock_alert || '',
-      min_sale_price: product.min_sale_price || '',
-      description: product.description || '',
-      maintain_batch: product.maintain_batch || false,
-      product_type: product.product_type || '',
-        weight: product.weight || '', // Add this line
-    });
+// Set initial form data
+setFormData({
+  group_by: product.group_by || groupType,
+  goods_name: product.goods_name || product.name || '',
+  category_id: product.category_id || '',
+  company_id: product.company_id || '',
+  // CHANGE: When maintain_batch is true, set these to 0
+  price: product.maintain_batch ? '0' : (product.price || ''),
+  mrp: product.maintain_batch ? '0' : (product.mrp || ''),
+  inclusive_gst: product.inclusive_gst || '',
+  purchase_price: product.maintain_batch ? '0' : (product.purchase_price || ''),
+  gst_rate: product.gst_rate || '',
+  non_taxable: product.non_taxable || '',
+  net_price: product.net_price || '',
+  hsn_code: product.hsn_code || '',
+  unit: product.unit || product.unit_id || '',
+  cess_rate: product.cess_rate || '',
+  cess_amount: product.cess_amount || '',
+  sku: product.sku || '',
+  opening_stock: product.maintain_batch ? '0' : (product.opening_stock || ''),
+  opening_stock_date: formatDateForInput(product.opening_stock_date),
+  min_stock_alert: product.min_stock_alert || '',
+  max_stock_alert: product.max_stock_alert || '',
+  min_sale_price: product.min_sale_price || '',
+  description: product.description || '',
+  maintain_batch: product.maintain_batch || false,
+  product_type: product.product_type || '',
+  weight: product.maintain_batch ? '0' : (product.weight || ''),
+});
 
     // Log the formatted date
     console.log('📅 Date conversion:', {
@@ -319,16 +320,16 @@ const fetchProductById = async (id) => {
     }
   };
 
-  const fetchBatches = async (id = productId) => {
-    if (!id) {
-      setBatches([]);
-      return;
-    }
+const fetchBatches = async (id = productId) => {
+  if (!id) {
+    setBatches([]);
+    return;
+  }
 
-    try {
-      const response = await axios.get(`${baseurl}/products/${id}/batches`);
-      const mappedBatches = response.data?.length
-        ? response.data.map(batch => ({
+  try {
+    const response = await axios.get(`${baseurl}/products/${id}/batches`);
+    const mappedBatches = response.data?.length
+      ? response.data.map(batch => ({
           id: batch.id,
           dbId: batch.id,
           batchNumber: batch.batch_number || '',
@@ -340,42 +341,44 @@ const fetchProductById = async (id) => {
           sellingPrice: batch.selling_price || '',
           purchasePrice: batch.purchase_price || '',
           mrp: batch.mrp || '',
-            weight: batch.weight || '', 
+          weight: batch.weight || '', 
           barcode: batch.barcode || '',
           stock_in: batch.stock_in || 0,
           stock_out: batch.stock_out || 0,
           isExisting: true
         }))
-        : [];
-      
-      console.log('📦 Fetched batches:', mappedBatches.map(b => ({
-        batchNumber: b.batchNumber,
-        opening_stock: b.opening_stock,
-        sellingPrice: b.sellingPrice,
-        mrp: b.mrp,
-          weight: b.weight ,
-        purchasePrice: b.purchasePrice
-      })));
-      
-      setBatches(mappedBatches);
-      
-      // Update form totals from all batches
-      if (mappedBatches.length > 0 && productId) {
-        const totals = calculateBatchTotals(mappedBatches);
-        setFormData(prev => ({
-          ...prev,
-          opening_stock: totals.totalOpeningStock,
-          price: totals.totalSellingPrice,
-          purchase_price: totals.totalPurchasePrice,
-          mrp: totals.totalMRP,
-            weight: totals.totalWeight 
-        }));
-      }
-    } catch (error) {
-      console.error('Error fetching batches:', error);
-      setBatches([]);
+      : [];
+    
+    console.log('📦 Fetched batches:', mappedBatches.map(b => ({
+      batchNumber: b.batchNumber,
+      opening_stock: b.opening_stock,
+      sellingPrice: b.sellingPrice,
+      mrp: b.mrp,
+      weight: b.weight,
+      purchasePrice: b.purchasePrice
+    })));
+    
+    setBatches(mappedBatches);
+    
+    // CHANGE: Only update form data if NO productId (new product)
+    if (!productId && mappedBatches.length > 0) {
+      const totals = calculateBatchTotals(mappedBatches);
+      setFormData(prev => ({
+        ...prev,
+        opening_stock: totals.totalOpeningStock,
+        price: totals.totalSellingPrice,
+        purchase_price: totals.totalPurchasePrice,
+        mrp: totals.totalMRP,
+        weight: totals.totalWeight 
+      }));
     }
-  };
+    // When editing (productId exists), we keep the form fields as they are (0)
+    
+  } catch (error) {
+    console.error('Error fetching batches:', error);
+    setBatches([]);
+  }
+};
 
   const generateUniqueBarcode = async () => {
     let isUnique = false;
@@ -425,10 +428,10 @@ const createDefaultBatch = async () => {
     quantity: '0', 
     min_sale_price: '',
     opening_stock: '0', 
-    sellingPrice: '', 
-    purchasePrice: '',
-    mrp: '',  
-    weight: '', 
+    sellingPrice: '0',  // Change from '' to '0'
+    purchasePrice: '0',  // Change from '' to '0'
+    mrp: '0',  // Change from '' to '0'
+    weight: '0',  // Change from '' to '0'
     barcode: newBarcode,
     stock_in: 0,
     stock_out: 0,
@@ -476,11 +479,14 @@ const handleBatchChange = async (index, e) => {
     const stockOut = parseFloat(updated[index].stock_out) || 0;
     updated[index].quantity = (openingStock + stockIn - stockOut).toString();
     
-    const totals = calculateBatchTotals(updated);
-    setFormData(prev => ({
-      ...prev,
-      opening_stock: totals.totalOpeningStock
-    }));
+    // CHANGE: Only update for new products
+    if (!productId) {
+      const totals = calculateBatchTotals(updated);
+      setFormData(prev => ({
+        ...prev,
+        opening_stock: totals.totalOpeningStock
+      }));
+    }
   }
 
   if (name === 'stock_in' || name === 'stock_out') {
@@ -489,6 +495,7 @@ const handleBatchChange = async (index, e) => {
     const stockOut = parseFloat(updated[index].stock_out) || 0;
     updated[index].quantity = (openingStock + stockIn - stockOut).toString();
   }
+  
   if (name === 'batchNumber' && value) {
     const isValid = await validateBatchNumber(value, updated[index].id);
     if (!isValid) {
@@ -501,15 +508,18 @@ const handleBatchChange = async (index, e) => {
 
   setBatches(updated);
 
+  // CHANGE: Only update form totals for new products
   if (name === 'sellingPrice' || name === 'purchasePrice' || name === 'mrp' || name === 'weight') {
-    const totals = calculateBatchTotals(updated);
-    setFormData(prev => ({
-      ...prev,
-      price: totals.totalSellingPrice,
-      purchase_price: totals.totalPurchasePrice,
-      mrp: totals.totalMRP,
-      weight: totals.totalWeight 
-    }));
+    if (!productId) {
+      const totals = calculateBatchTotals(updated);
+      setFormData(prev => ({
+        ...prev,
+        price: totals.totalSellingPrice,
+        purchase_price: totals.totalPurchasePrice,
+        mrp: totals.totalMRP,
+        weight: totals.totalWeight 
+      }));
+    }
   }
 };
 
@@ -570,14 +580,15 @@ const handleChange = async (e) => {
       const defaultBatch = await createDefaultBatch();
       setBatches([defaultBatch]);
       
+      // Force totals to 0 for initial batch
       const totals = calculateBatchTotals([defaultBatch]);
       setFormData(prev => ({
         ...prev,
-        opening_stock: totals.totalOpeningStock,
-        price: totals.totalSellingPrice,
-        purchase_price: totals.totalPurchasePrice,
-        mrp: totals.totalMRP,
-        weight: totals.totalWeight, 
+        opening_stock: '0',  // Force to 0
+        price: '0',          // Force to 0 - this will show 0 in Selling Price
+        purchase_price: '0', // Force to 0
+        mrp: '0',            // Force to 0
+        weight: '0',         // Force to 0
         maintain_batch: true
       }));
     } else if (!checked && batches.length > 0) {
@@ -643,15 +654,17 @@ const handleChange = async (e) => {
     const updatedBatches = [...batches, newBatch];
     setBatches(updatedBatches);
 
-    const totals = calculateBatchTotals(updatedBatches);
-    setFormData(prev => ({
-      ...prev,
-      opening_stock: totals.totalOpeningStock,
-      price: totals.totalSellingPrice,
-      purchase_price: totals.totalPurchasePrice,
-      mrp: totals.totalMRP,
+ if (!productId) {
+      const totals = calculateBatchTotals(updatedBatches);
+      setFormData(prev => ({
+        ...prev,
+        opening_stock: totals.totalOpeningStock,
+        price: totals.totalSellingPrice,
+        purchase_price: totals.totalPurchasePrice,
+        mrp: totals.totalMRP,
         weight: totals.totalWeight 
-    }));
+      }));
+    }
 
   } catch (error) {
     console.error('❌ Error adding new batch:', error);
