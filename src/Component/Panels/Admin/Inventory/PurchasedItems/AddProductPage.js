@@ -124,38 +124,22 @@ const fetchProductById = async (id) => {
       if (!dateString) return new Date().toISOString().split('T')[0];
       
       try {
-        // Try different date formats
         let date;
-        
-        // If it's already in YYYY-MM-DD format
         if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
           return dateString;
         }
-        
-        // If it has T separator (ISO format)
         if (dateString.includes('T')) {
           date = new Date(dateString);
         } else {
-          // Try parsing as-is
           date = new Date(dateString);
         }
-        
-        // Check if date is valid
         if (isNaN(date.getTime())) {
           console.log('⚠️ Invalid date, using current date');
           return new Date().toISOString().split('T')[0];
         }
-        
-        // Format as YYYY-MM-DD
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        
-        console.log('📅 Date conversion:', {
-          original: dateString,
-          formatted: `${year}-${month}-${day}`
-        });
-        
         return `${year}-${month}-${day}`;
       } catch (error) {
         console.log('⚠️ Error formatting date, using current date');
@@ -179,35 +163,22 @@ const fetchProductById = async (id) => {
 
     await fetchBatches(id);
 
+    const isBatchMaintained = product.maintain_batch || false;
+
     setTimeout(() => {
-      let finalPurchasePrice = product.purchase_price || 0;
-      let finalPrice = product.price || 0; 
-      let finalMRP = product.mrp || 0;
-
-      if (product.maintain_batch && batches.length > 0) {
-        const totalPurchasePrice = batches.reduce((sum, batch) => {
-          return sum + (parseFloat(batch.purchasePrice) || 0);
-        }, 0);
-
-        const totalPrice = batches.reduce((sum, batch) => {
-          return sum + (parseFloat(batch.sellingPrice) || 0);
-        }, 0);
-
-        const totalMRP = batches.reduce((sum, batch) => {
-          return sum + (parseFloat(batch.mrp) || 0);
-        }, 0);
-
-        finalPurchasePrice = totalPurchasePrice > 0 ? totalPurchasePrice : product.purchase_price || 0;
-        finalPrice = totalPrice > 0 ? totalPrice : product.price || 0;
-        finalMRP = totalMRP > 0 ? totalMRP : product.mrp || 0;
-      }
+      // When maintain_batch is true, set purchase_price to 0
+      let finalPurchasePrice = isBatchMaintained ? '0' : (product.purchase_price || 0);
+      let finalPrice = isBatchMaintained ? '0' : (product.price || 0);
+      let finalMRP = isBatchMaintained ? '0' : (product.mrp || 0);
+      let finalWeight = isBatchMaintained ? '0' : (product.weight || 0);
 
       console.log('💰 Calculated prices:', {
         purchase: finalPurchasePrice,
         price: finalPrice,
         mrp: finalMRP,
+        weight: finalWeight,
         hasBatches: batches.length,
-        maintainBatch: product.maintain_batch
+        maintainBatch: isBatchMaintained
       });
 
       setFormData({
@@ -216,7 +187,7 @@ const fetchProductById = async (id) => {
         category_id: product.category_id || '',
         company_id: product.company_id || '',
         purchase_price: finalPurchasePrice,
-        price: finalPrice, 
+        price: finalPrice,
         mrp: finalMRP,
         inclusive_gst: product.inclusive_gst || '',
         gst_rate: product.gst_rate || '',
@@ -227,20 +198,19 @@ const fetchProductById = async (id) => {
         cess_rate: product.cess_rate || '',
         cess_amount: product.cess_amount || '',
         sku: product.sku || '',
-        opening_stock: product.opening_stock || '',
-        opening_stock_date: formatDateForInput(product.opening_stock_date), // Use helper function
+        opening_stock: isBatchMaintained ? '0' : (product.opening_stock || ''),
+        opening_stock_date: formatDateForInput(product.opening_stock_date),
         min_stock_alert: product.min_stock_alert || '',
         max_stock_alert: product.max_stock_alert || '',
         description: product.description || '',
-        maintain_batch: product.maintain_batch || false,
+        maintain_batch: isBatchMaintained,
         can_be_sold: product.can_be_sold || false,
-        product_type: product.product_type || '', 
-        min_sale_price: product.min_sale_price || '',
-                weight: product.weight || '', // Add this line
-
+        product_type: product.product_type || '',
+        min_sale_price: isBatchMaintained ? '0' : (product.min_sale_price || ''),
+        weight: finalWeight,
       });
 
-      setMaintainBatch(product.maintain_batch || false);
+      setMaintainBatch(isBatchMaintained);
     }, 100);
   } catch (error) {
     console.error('Error fetching product:', error);
@@ -298,29 +268,9 @@ const fetchBatches = async (id = productId) => {
     console.log('📦 Fetched batches:', mappedBatches);
     setBatches(mappedBatches);
 
-    // Calculate totals from batches
-    if (mappedBatches.length > 0) {
-      const totalPurchasePrice = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.purchasePrice) || 0), 0);
-      const totalPrice = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.sellingPrice) || 0), 0);
-      const totalMRP = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.mrp) || 0), 0);
-      const totalWeight = mappedBatches.reduce((sum, batch) => sum + (parseFloat(batch.weight) || 0), 0); // DECLARE totalWeight here
-
-      console.log('💰 Batch totals:', {
-        purchase: totalPurchasePrice,
-        price: totalPrice,
-        mrp: totalMRP,
-        weight: totalWeight // Now totalWeight is defined
-      });
-
-      // Update form data with batch totals
-      setFormData(prev => ({
-        ...prev,
-        purchase_price: totalPurchasePrice > 0 ? totalPurchasePrice : prev.purchase_price,
-        price: totalPrice > 0 ? totalPrice : prev.price,
-        mrp: totalMRP > 0 ? totalMRP : prev.mrp,
-        weight: totalWeight > 0 ? totalWeight.toFixed(2) : prev.weight // Use totalWeight
-      }));
-    }
+    // DO NOT update form data with batch totals when editing
+    // Only set the batches state
+    // The form data will be set to 0 by fetchProductById
   } catch (error) {
     console.error('Error fetching batches:', error);
     setBatches([]);
@@ -368,25 +318,25 @@ const fetchBatches = async (id = productId) => {
     return newBarcode;
   };
   
-  const createDefaultBatch = async () => {
-    const newBarcode = await generateUniqueBarcode();
+const createDefaultBatch = async () => {
+  const newBarcode = await generateUniqueBarcode();
 
-    return {
-      id: `temp_${Date.now()}_${Math.random()}`,
-      dbId: null,
-      batchNumber: '', 
-      mfgDate: '',
-      expDate: '',
-      quantity: '', 
-    min_sale_price: '', 
-      sellingPrice: '', 
-      purchasePrice: '', 
-      mrp: '', 
-       weight: '',  
-      barcode: newBarcode,
-      isExisting: false
-    };
+  return {
+    id: `temp_${Date.now()}_${Math.random()}`,
+    dbId: null,
+    batchNumber: '',
+    mfgDate: '',
+    expDate: '',
+    quantity: '',
+    min_sale_price: '',
+    sellingPrice: '',
+    purchasePrice: '',
+    mrp: '',
+    weight: '',
+    barcode: newBarcode,
+    isExisting: false
   };
+};
 
   const validateBatchNumber = async (batchNumber, currentBatchId = null) => {
     if (!batchNumber) return true; 
@@ -415,39 +365,43 @@ const fetchBatches = async (id = productId) => {
     }
   };
 
-  const handleBatchChange = async (index, e) => {
-    const { name, value } = e.target;
-    const updated = [...batches];
-    updated[index][name] = value;
+const handleBatchChange = async (index, e) => {
+  const { name, value } = e.target;
+  const updated = [...batches];
+  updated[index][name] = value;
 
-    if (name === 'batchNumber' && value) {
-      const isValid = await validateBatchNumber(value, updated[index].id);
-      if (!isValid) {
-        window.alert(`Batch number "${value}" already exists in ${formData.group_by || 'Purchaseditems'}. Please select another batch number.`);
-        updated[index][name] = batches[index][name];
-      }
+  if (name === 'batchNumber' && value) {
+    const isValid = await validateBatchNumber(value, updated[index].id);
+    if (!isValid) {
+      window.alert(`Batch number "${value}" already exists in ${formData.group_by || 'Purchaseditems'}. Please select another batch number.`);
+      updated[index][name] = batches[index][name];
     }
+  }
 
-    setBatches(updated);
+  setBatches(updated);
 
+  // Only update main form fields if this is a NEW product (no productId)
+  // For editing, keep the main fields at 0
+  if (!productId) {
     if (name === 'purchasePrice') {
       calculateAndUpdateMainPurchasePrice(updated);
     }
-
     if (name === 'sellingPrice') {
-      calculateAndUpdateMainPrice(updated); 
+      calculateAndUpdateMainPrice(updated);
     }
-
     if (name === 'mrp') {
       calculateAndUpdateMainMRP(updated);
     }
-  if (name === 'min_sale_price') {
-    calculateAndUpdateMainMinSalePrice(updated);
-  }
+    if (name === 'min_sale_price') {
+      calculateAndUpdateMainMinSalePrice(updated);
+    }
     if (name === 'weight') {
-    calculateAndUpdateMainWeight(updated); 
+      calculateAndUpdateMainWeight(updated);
+    }
   }
-  };
+};
+
+
 
 const calculateAndUpdateMainWeight = (updatedBatches) => {
   const totalWeight = updatedBatches.reduce((sum, batch) => {
@@ -680,30 +634,51 @@ if (name === 'purchase_price' || name === 'price' || name === 'gst_rate' || name
       setBatches(updatedBatches);
     }
 
-    if (name === 'maintain_batch') {
-      if (checked && batches.length === 0) {
-        const defaultBatch = await createDefaultBatch();
-        setBatches([defaultBatch]);
-      } else if (!checked) {
-        const defaultBatch = {
-          id: `temp_${Date.now()}_${Math.random()}`,
-          dbId: null,
-          batchNumber: 'DEFAULT',
-          mfgDate: '',
-          expDate: '',
-          quantity: updatedFormData.opening_stock || '',
-          min_sale_price: '',
-          sellingPrice: '', 
-          purchasePrice: '', 
-          mrp: '', 
-             weight: updatedFormData.weight || '', 
-          barcode: '',
-          isExisting: false
-        };
-        setBatches([defaultBatch]);
-      }
-      setMaintainBatch(checked);
-    }
+if (name === 'maintain_batch') {
+  if (checked && batches.length === 0) {
+    const defaultBatch = await createDefaultBatch();
+    setBatches([defaultBatch]);
+    // Set purchase_price and other fields to 0
+    setFormData(prev => ({
+      ...prev,
+      purchase_price: '0',
+      price: '0',
+      mrp: '0',
+      opening_stock: '0',
+      weight: '0',
+      min_sale_price: '0',
+      maintain_batch: true
+    }));
+  } else if (!checked) {
+    const defaultBatch = {
+      id: `temp_${Date.now()}_${Math.random()}`,
+      dbId: null,
+      batchNumber: 'DEFAULT',
+      mfgDate: '',
+      expDate: '',
+      quantity: updatedFormData.opening_stock || '',
+      min_sale_price: '',
+      sellingPrice: '',
+      purchasePrice: '',
+      mrp: '',
+      weight: updatedFormData.weight || '',
+      barcode: '',
+      isExisting: false
+    };
+    setBatches([defaultBatch]);
+    // Restore values from form data when unchecking
+    setFormData(prev => ({
+      ...prev,
+      purchase_price: prev.purchase_price || '0',
+      price: prev.price || '0',
+      mrp: prev.mrp || '0',
+      opening_stock: prev.opening_stock || '0',
+      weight: prev.weight || '0',
+      maintain_batch: false
+    }));
+  }
+  setMaintainBatch(checked);
+}
 
     if (name === 'can_be_sold' && checked && !formData.price && formData.purchase_price) {
       updatedFormData.price = formData.purchase_price;
@@ -769,16 +744,8 @@ const addNewBatch = async () => {
   try {
     console.log('➕ Starting to add new batch...');
     console.log('📊 Current batches count:', batches.length);
-    console.log('📦 Current product ID:', productId);
 
     const newBatch = await createDefaultBatch();
-    
-    // if (formData.min_sale_price) {
-    //   newBatch.min_sale_price = formData.min_sale_price;
-    // }
-    //   if (formData.weight) {
-    //   newBatch.weight = formData.weight;
-    // }
     
     console.log('✅ New batch created:', {
       batchNumber: newBatch.batchNumber,
@@ -790,8 +757,14 @@ const addNewBatch = async () => {
       const updated = [...prev, newBatch];
       console.log('📦 Batches after add:', updated.map(b => b.batchNumber));
 
-      calculateAndUpdateMainMinSalePrice(updated);
-        calculateAndUpdateMainWeight(updated); 
+      // Only update main form fields if this is a NEW product (no productId)
+      if (!productId) {
+        calculateAndUpdateMainMinSalePrice(updated);
+        calculateAndUpdateMainWeight(updated);
+        calculateAndUpdateMainPurchasePrice(updated);
+        calculateAndUpdateMainPrice(updated);
+        calculateAndUpdateMainMRP(updated);
+      }
       return updated;
     });
 
@@ -801,21 +774,24 @@ const addNewBatch = async () => {
   }
 };
 
-  const removeBatch = (id) => {
-    if (batches.length <= 1 && maintainBatch) {
-      showAlert('At least one batch is required when Maintain Batch is enabled.', 'warning');
-      return;
-    }
+const removeBatch = (id) => {
+  if (batches.length <= 1 && maintainBatch) {
+    showAlert('At least one batch is required when Maintain Batch is enabled.', 'warning');
+    return;
+  }
 
-    const updated = batches.filter((b) => b.id !== id);
-    setBatches(updated);
+  const updated = batches.filter((b) => b.id !== id);
+  setBatches(updated);
 
+  // Only update main form fields if this is a NEW product (no productId)
+  if (!productId) {
     calculateAndUpdateMainPurchasePrice(updated);
-    calculateAndUpdateMainPrice(updated); 
+    calculateAndUpdateMainPrice(updated);
     calculateAndUpdateMainMRP(updated);
-      calculateAndUpdateMainMinSalePrice(updated); 
-       calculateAndUpdateMainWeight(updated); 
-  };
+    calculateAndUpdateMainMinSalePrice(updated);
+    calculateAndUpdateMainWeight(updated);
+  }
+};
 
   const showAlert = (message, variant = 'success') => {
     setAlert({ show: true, message, variant });
@@ -1081,7 +1057,9 @@ const handleSubmit = async (e) => {
       min_sale_price: formData.min_sale_price || 0,
     };
 
+    // Remove fields that don't exist in the database
     delete dataToSend.selling_price;
+    delete dataToSend.exclusive_gst; // FIX: Remove exclusive_gst from data being sent
 
     console.log('📤 Preparing data to send:', {
       maintain_batch: maintainBatch,

@@ -683,245 +683,152 @@ const transformApiDataToFormFormat = (apiData) => {
     }));
   };
 
-  const addItem = () => {
-    if (!itemForm.product) {
-      window.alert("⚠️ Please select a product");
-      return;
-    }
+const addItem = () => {
+  if (!itemForm.product) {
+    window.alert("⚠️ Please select a product");
+    return;
+  }
 
-    const quantity = parseFloat(itemForm.quantity) || 0;
-    if (quantity <= 0) {
-      window.alert(
-        "⚠️ Cannot add item - Quantity is zero. Please enter a quantity greater than 0.",
-      );
-      return;
-    }
-
-    if (selectedBatchDetails) {
-      const availableQuantity = parseFloat(selectedBatchDetails.quantity) || 0;
-
-      if (availableQuantity <= 0) {
-        // Show confirmation dialog for zero stock
-        const confirmAdd = window.confirm(
-          `⚠️ WARNING: Selected batch "${selectedBatch}" has ZERO stock available.\n\n` +
-            `You are trying to add ${quantity} units.\n\n` +
-            `This will create a negative stock entry. Are you sure you want to continue?`,
-        );
-
-        if (!confirmAdd) {
-          return; // User clicked Cancel - don't add item
-        }
-        // User clicked OK - proceed with adding item
-      } else if (quantity > availableQuantity) {
-        // Show warning for insufficient stock
-        const confirmAdd = window.confirm(
-          `⚠️ WARNING: Insufficient stock!\n\n` +
-            `Batch: "${selectedBatch}"\n` +
-            `Available stock: ${availableQuantity} units\n` +
-            `Requested quantity: ${quantity} units\n\n` +
-            `This will create a negative stock entry of ${quantity - availableQuantity} units.\n\n` +
-            `Are you sure you want to continue?`,
-        );
-
-        if (!confirmAdd) {
-          return; // User clicked Cancel - don't add item
-        }
-        // User clicked OK - proceed with adding item
-      }
-    }
-
-    if (editingItemIndex !== null) {
-      // Check if editing an existing item
-      const existingItem = invoiceData.items[editingItemIndex];
-
-      if (selectedBatchDetails) {
-        const availableQuantity =
-          parseFloat(selectedBatchDetails.quantity) || 0;
-
-        if (existingItem.batch_id === selectedBatchDetails.batch_number) {
-          if (quantity > availableQuantity && availableQuantity > 0) {
-            const confirmUpdate = window.confirm(
-              `⚠️ WARNING: Insufficient stock!\n\n` +
-                `Batch: "${selectedBatch}"\n` +
-                `Available stock: ${availableQuantity} units\n` +
-                `Updated quantity: ${quantity} units\n\n` +
-                `This will increase negative stock by ${quantity - availableQuantity} units.\n\n` +
-                `Are you sure you want to update?`,
-            );
-
-            if (!confirmUpdate) {
-              return;
-            }
-          } else if (availableQuantity <= 0) {
-            const confirmUpdate = window.confirm(
-              `⚠️ WARNING: Batch "${selectedBatch}" has ZERO stock available.\n\n` +
-                `You are trying to update quantity to ${quantity} units.\n\n` +
-                `This will create a negative stock entry. Are you sure you want to continue?`,
-            );
-
-            if (!confirmUpdate) {
-              return;
-            }
-          }
-        } else {
-          // Changing to a different batch
-          if (availableQuantity <= 0) {
-            const confirmUpdate = window.confirm(
-              `⚠️ WARNING: New batch "${selectedBatch}" has ZERO stock available.\n\n` +
-                `You are trying to assign ${quantity} units to this batch.\n\n` +
-                `This will create a negative stock entry. Are you sure you want to continue?`,
-            );
-
-            if (!confirmUpdate) {
-              return;
-            }
-          } else if (quantity > availableQuantity) {
-            const confirmUpdate = window.confirm(
-              `⚠️ WARNING: Insufficient stock in new batch!\n\n` +
-                `New Batch: "${selectedBatch}"\n` +
-                `Available stock: ${availableQuantity} units\n` +
-                `Requested quantity: ${quantity} units\n\n` +
-                `This will create a negative stock entry of ${quantity - availableQuantity} units.\n\n` +
-                `Are you sure you want to continue?`,
-            );
-
-            if (!confirmUpdate) {
-              return;
-            }
-          }
-        }
-      }
-
-      const calculatedItem = calculateItemTotal();
-      const finalItem = {
-        ...calculatedItem,
-        batch: selectedBatch,
-        batch_id: itemForm.batch_id,
-        product_id: itemForm.product_id,
-        batchDetails: selectedBatchDetails,
-        unit_id: itemForm.unit_id,
-        unit_name: itemForm.unit_name,
-      };
-
-      setInvoiceData((prev) => ({
-        ...prev,
-        items: prev.items.map((item, index) =>
-          index === editingItemIndex ? finalItem : item,
-        ),
-      }));
-      setEditingItemIndex(null);
-
-      // Success message with stock warning if applicable
-      if (
-        selectedBatchDetails &&
-        parseFloat(selectedBatchDetails.quantity) <= 0
-      ) {
-        window.alert(
-          `⚠️ Item "${finalItem.product}" updated with ZERO stock! Negative stock created.`,
-        );
-      } else if (
-        selectedBatchDetails &&
-        parseFloat(selectedBatchDetails.quantity) < quantity
-      ) {
-        window.alert(
-          `⚠️ Item "${finalItem.product}" updated with insufficient stock! Negative stock created.`,
-        );
-      } else {
-        window.alert(`✅ Item "${finalItem.product}" updated successfully!`);
-      }
-    } else {
-      // Add new item
-      const calculatedItem = calculateItemTotal();
-      const finalItem = {
-        ...calculatedItem,
-        batch: selectedBatch,
-        batch_id: itemForm.batch_id,
-        product_id: itemForm.product_id,
-        batchDetails: selectedBatchDetails,
-        unit_id: itemForm.unit_id, // ← ADD THIS
-        unit_name: itemForm.unit_name, // ← ADD THIS
-      };
-
-      setInvoiceData((prev) => ({
-        ...prev,
-        items: [...prev.items, finalItem],
-      }));
-
-      // Success message with stock warning if applicable
-      if (
-        selectedBatchDetails &&
-        parseFloat(selectedBatchDetails.quantity) <= 0
-      ) {
-        window.alert(
-          `⚠️ Item "${finalItem.product}" added with ZERO stock! Negative stock created.`,
-        );
-      } else if (
-        selectedBatchDetails &&
-        parseFloat(selectedBatchDetails.quantity) < quantity
-      ) {
-        window.alert(
-          `⚠️ Item "${finalItem.product}" added with insufficient stock! Negative stock created.`,
-        );
-      } else {
-        window.alert(`✅ Item "${finalItem.product}" added successfully!`);
-      }
-    }
-
-    // Reset form
-    setItemForm({
-      product: "",
-      product_id: "",
-      description: "",
-      quantity: 0,
-      price: 0,
-      discount: 0,
-      total: 0,
-      batch: "",
-      batch_id: "",
-      batchDetails: null,
-      hsn_code: "",
-      unit_id: "",
-      unit_name: "",
-    });
-    setBatches([]);
-    setSelectedBatch("");
-    setSelectedBatchDetails(null);
-  };
-  const editItem = (index) => {
-    const itemToEdit = invoiceData.items[index];
-
-    const selectedProduct = products.find(
-      (p) => p.id === itemToEdit.product_id,
+  const quantity = parseFloat(itemForm.quantity) || 0;
+  if (quantity <= 0) {
+    window.alert(
+      "⚠️ Cannot add item - Quantity is zero. Please enter a quantity greater than 0.",
     );
-    const productNetPrice = selectedProduct
-      ? parseFloat(selectedProduct.net_price) || 0
-      : itemToEdit.price;
+    return;
+  }
 
-    setItemForm({
-      product: itemToEdit.product,
-      product_id: itemToEdit.product_id,
-      description: itemToEdit.description,
-      quantity: itemToEdit.quantity,
-      price: productNetPrice,
-      discount: itemToEdit.discount, // Load the existing discount
-      total: itemToEdit.total,
-      batch: itemToEdit.batch,
-      batch_id: itemToEdit.batch_id,
-      batchDetails: itemToEdit.batchDetails,
-      hsn_code: itemToEdit.hsn_code || "",
-      unit_id: itemToEdit.unit_id || "", // ← ADD THIS
-      unit_name: itemToEdit.unit_name || "", // ← ADD THIS
-    });
+  // Ensure we have the latest price from the form
+  const currentPrice = parseFloat(itemForm.price) || 0;
 
-    setSelectedBatch(itemToEdit.batch);
-    setSelectedBatchDetails(itemToEdit.batchDetails);
-    setEditingItemIndex(index);
+  if (selectedBatchDetails) {
+    const availableQuantity = parseFloat(selectedBatchDetails.quantity) || 0;
 
-    // Fetch batches for the product
-    if (itemToEdit.product_id) {
-      fetchBatchesForProduct(itemToEdit.product_id);
+    if (availableQuantity <= 0) {
+      const confirmAdd = window.confirm(
+        `⚠️ WARNING: Selected batch "${selectedBatch}" has ZERO stock available.\n\n` +
+          `You are trying to add ${quantity} units.\n\n` +
+          `This will create a negative stock entry. Are you sure you want to continue?`,
+      );
+
+      if (!confirmAdd) {
+        return;
+      }
+    } else if (quantity > availableQuantity) {
+      const confirmAdd = window.confirm(
+        `⚠️ WARNING: Insufficient stock!\n\n` +
+          `Batch: "${selectedBatch}"\n` +
+          `Available stock: ${availableQuantity} units\n` +
+          `Requested quantity: ${quantity} units\n\n` +
+          `This will create a negative stock entry of ${quantity - availableQuantity} units.\n\n` +
+          `Are you sure you want to continue?`,
+      );
+
+      if (!confirmAdd) {
+        return;
+      }
     }
-  };
+  }
+
+  if (editingItemIndex !== null) {
+    // ... existing edit logic ...
+  } else {
+    // Add new item - use the current price
+    const finalItem = {
+      product: itemForm.product,
+      product_id: itemForm.product_id,
+      description: itemForm.description,
+      quantity: quantity,
+      price: currentPrice, // Use the current price from the form
+      discount: parseFloat(itemForm.discount) || 0,
+      total: (quantity * currentPrice * (1 - (parseFloat(itemForm.discount) || 0) / 100)).toFixed(2),
+      batch: selectedBatch,
+      batch_id: itemForm.batch_id,
+      batchDetails: selectedBatchDetails,
+      unit_id: itemForm.unit_id,
+      unit_name: itemForm.unit_name,
+      hsn_code: itemForm.hsn_code || "",
+    };
+
+    setInvoiceData((prev) => ({
+      ...prev,
+      items: [...prev.items, finalItem],
+    }));
+
+    // Success message
+    if (
+      selectedBatchDetails &&
+      parseFloat(selectedBatchDetails.quantity) <= 0
+    ) {
+      window.alert(
+        `⚠️ Item "${finalItem.product}" added with ZERO stock! Negative stock created.`,
+      );
+    } else if (
+      selectedBatchDetails &&
+      parseFloat(selectedBatchDetails.quantity) < quantity
+    ) {
+      window.alert(
+        `⚠️ Item "${finalItem.product}" added with insufficient stock! Negative stock created.`,
+      );
+    } else {
+      window.alert(`✅ Item "${finalItem.product}" added successfully!`);
+    }
+  }
+
+  // Reset form after adding item
+  setItemForm({
+    product: "",
+    product_id: "",
+    description: "",
+    quantity: 0,
+    price: 0,
+    discount: 0,
+    total: 0,
+    batch: "",
+    batch_id: "",
+    batchDetails: null,
+    hsn_code: "",
+    unit_id: "",
+    unit_name: "",
+  });
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+};
+const editItem = (index) => {
+  const itemToEdit = invoiceData.items[index];
+
+  const selectedProduct = products.find(
+    (p) => p.id === itemToEdit.product_id,
+  );
+  
+  // Use the item's saved price
+  const itemPrice = parseFloat(itemToEdit.price) || 0;
+
+  setItemForm({
+    product: itemToEdit.product,
+    product_id: itemToEdit.product_id,
+    description: itemToEdit.description,
+    quantity: itemToEdit.quantity,
+    price: itemPrice,
+    discount: itemToEdit.discount,
+    total: itemToEdit.total,
+    batch: itemToEdit.batch,
+    batch_id: itemToEdit.batch_id,
+    batchDetails: itemToEdit.batchDetails,
+    hsn_code: itemToEdit.hsn_code || "",
+    unit_id: itemToEdit.unit_id || "",
+    unit_name: itemToEdit.unit_name || "",
+  });
+
+  setSelectedBatch(itemToEdit.batch);
+  setSelectedBatchDetails(itemToEdit.batchDetails);
+  setEditingItemIndex(index);
+
+  // Fetch batches for the product
+  if (itemToEdit.product_id) {
+    fetchBatchesForProduct(itemToEdit.product_id);
+  }
+};
 
   useEffect(() => {
     if (products.length > 0) {
@@ -1974,121 +1881,138 @@ const clearDraft = () => {
                                 const productNetPrice =
                                   parseFloat(p.net_price) || 0;
                                 return (
-                                  <div
-                                    key={p.id}
-                                    onClick={async () => {
-                                      // Fetch unit name if unit ID exists
-                                      let unitName = "";
-                                      if (p.unit) {
-                                        try {
-                                          const unitResponse = await fetch(
-                                            `${baseurl}/units/${p.unit}`,
-                                          );
-                                          if (unitResponse.ok) {
-                                            const unitData =
-                                              await unitResponse.json();
-                                            unitName = unitData.name || "";
-                                          }
-                                        } catch (err) {
-                                          console.error(
-                                            "Failed to fetch unit:",
-                                            err,
-                                          );
-                                        }
-                                      }
+<div
+  key={p.id}
+  onClick={async () => {
+    // Fetch unit name if unit ID exists
+    let unitName = "";
+    if (p.unit) {
+      try {
+        const unitResponse = await fetch(`${baseurl}/units/${p.unit}`);
+        if (unitResponse.ok) {
+          const unitData = await unitResponse.json();
+          unitName = unitData.name || "";
+        }
+      } catch (err) {
+        console.error("Failed to fetch unit:", err);
+      }
+    }
 
-                                      setItemForm((prev) => ({
-                                        ...prev,
-                                        product: p.goods_name,
-                                        product_id: p.id,
-                                        price: productNetPrice,
-                                        description: p.description || "",
-                                        discount: retailerDiscount,
-                                        quantity: prev.quantity || 0,
-                                        batch: "",
-                                        batch_id: "",
-                                        hsn_code: p.hsn_code || "",
-                                        unit_id: p.unit || null,
-                                        unit_name: unitName, // ✅ Now unitName is defined
-                                      }));
+    const retailerDiscount = parseFloat(
+      invoiceData.supplierInfo?.discount || 0,
+    );
 
-                                      try {
-                                        const res = await fetch(
-                                          `${baseurl}/products/${p.id}/batches`,
-                                        );
-                                        const batchData = await res.json();
-                                        setBatches(batchData);
+    // Fetch batches first to get the batch price
+    try {
+      const res = await fetch(`${baseurl}/products/${p.id}/batches`);
+      const batchData = await res.json();
+      setBatches(batchData);
 
-                                        if (
-                                          p.maintain_batch === 0 &&
-                                          batchData.length > 0
-                                        ) {
-                                          const defaultBatch = batchData[0];
-                                          setSelectedBatch(
-                                            defaultBatch.batch_number,
-                                          );
-                                          setSelectedBatchDetails(defaultBatch);
-                                          setItemForm((prev) => ({
-                                            ...prev,
-                                            batch: defaultBatch.batch_number,
-                                            batch_id: defaultBatch.batch_number,
-                                            price: productNetPrice,
-                                            discount: retailerDiscount,
-                                          }));
-                                        } else {
-                                          setSelectedBatch("");
-                                          setSelectedBatchDetails(null);
-                                        }
-                                      } catch (err) {
-                                        console.error(
-                                          "Failed to fetch batches:",
-                                          err,
-                                        );
-                                        setBatches([]);
-                                        setSelectedBatch("");
-                                        setSelectedBatchDetails(null);
-                                      }
+      // Initialize with first batch if available
+      let defaultBatch = null;
+      let defaultBatchPrice = 0;
+      
+      if (batchData.length > 0) {
+        // Find the first batch with quantity > 0, or just the first one
+        defaultBatch = batchData.find(b => parseFloat(b.quantity) > 0) || batchData[0];
+        defaultBatchPrice = parseFloat(defaultBatch.selling_price) || 0;
+        
+        setSelectedBatch(defaultBatch.batch_number);
+        setSelectedBatchDetails(defaultBatch);
+      } else {
+        setSelectedBatch("");
+        setSelectedBatchDetails(null);
+      }
 
-                                      setIsProductDropdownOpen(false);
-                                      setProductSearchTerm("");
-                                    }}
-                                    style={{
-                                      padding: "8px 16px",
-                                      cursor: "pointer",
-                                      borderLeft: "3px solid transparent",
-                                      transition: "background-color 0.2s",
-                                      backgroundColor: isSelected
-                                        ? "#e3f2fd"
-                                        : "transparent",
-                                      position: "relative",
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.backgroundColor =
-                                        isSelected ? "#bbdef5" : "#f8f9fa";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.backgroundColor =
-                                        isSelected ? "#e3f2fd" : "transparent";
-                                    }}
-                                    title={`${p.goods_name} - Qty: ${availableQty}`}
-                                  >
-                                    <div
-                                      style={{
-                                        fontWeight: 400,
-                                        fontSize: "13px",
-                                      }}
-                                    >
-                                      {p.goods_name}
-                                    </div>
-                                    <div
-                                      style={{
-                                        fontSize: "12px",
-                                        color: "#6c757d",
-                                      }}
-                                    >
-                                      Qty: {availableQty}
-                                    </div>
-                                  </div>
+      // Use batch price instead of product net price
+      const productPrice = defaultBatchPrice > 0 ? defaultBatchPrice : (parseFloat(p.net_price) || 0);
+
+      setItemForm((prev) => ({
+        ...prev,
+        product: p.goods_name,
+        product_id: p.id,
+        price: productPrice,
+        description: p.description || "",
+        discount: retailerDiscount,
+        quantity: prev.quantity || 0,
+        batch: defaultBatch ? defaultBatch.batch_number : "",
+        batch_id: defaultBatch ? defaultBatch.batch_number : "",
+        hsn_code: p.hsn_code || "",
+        unit_id: p.unit || null,
+        unit_name: unitName,
+      }));
+
+      // Also update productStock
+      const totalQty = batchData.reduce(
+        (sum, batch) => sum + Number(batch.quantity || 0),
+        0,
+      );
+      setProductStock((prev) => ({
+        ...prev,
+        [p.id]: totalQty,
+      }));
+
+    } catch (err) {
+      console.error("Failed to fetch batches:", err);
+      setBatches([]);
+      setSelectedBatch("");
+      setSelectedBatchDetails(null);
+      
+      // Fallback to product price
+      setItemForm((prev) => ({
+        ...prev,
+        product: p.goods_name,
+        product_id: p.id,
+        price: parseFloat(p.net_price) || 0,
+        description: p.description || "",
+        discount: retailerDiscount,
+        quantity: prev.quantity || 0,
+        batch: "",
+        batch_id: "",
+        hsn_code: p.hsn_code || "",
+        unit_id: p.unit || null,
+        unit_name: unitName,
+      }));
+    }
+
+    setIsProductDropdownOpen(false);
+    setProductSearchTerm("");
+  }}
+  style={{
+    padding: "8px 16px",
+    cursor: "pointer",
+    borderLeft: "3px solid transparent",
+    transition: "background-color 0.2s",
+    backgroundColor: isSelected ? "#e3f2fd" : "transparent",
+    position: "relative",
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.backgroundColor =
+      isSelected ? "#bbdef5" : "#f8f9fa";
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.backgroundColor =
+      isSelected ? "#e3f2fd" : "transparent";
+  }}
+  title={`${p.goods_name} - Qty: ${availableQty}`}
+>
+  <div
+    style={{
+      fontWeight: 400,
+      fontSize: "13px",
+    }}
+  >
+    {p.goods_name}
+  </div>
+  <div
+    style={{
+      fontSize: "12px",
+      color: "#6c757d",
+    }}
+  >
+    Qty: {availableQty}
+  </div>
+</div>
                                 );
                               })}
                           </div>
@@ -2118,51 +2042,50 @@ const clearDraft = () => {
                     </div>
 
                     {/* Batch Dropdown */}
-                    {batches.length > 0 && itemForm.maintain_batch !== 0 && (
-                      <Form.Select
-                        className="mt-2 border-primary"
-                        name="batch"
-                        value={selectedBatch}
-                        onChange={(e) => {
-                          const batchNumber = e.target.value;
-                          setSelectedBatch(batchNumber);
-                          const batch = batches.find(
-                            (b) => b.batch_number === batchNumber,
-                          );
-                          setSelectedBatchDetails(batch || null);
-                          const currentDiscount = itemForm.discount || 0;
-                          const selectedProduct = products.find(
-                            (p) => p.id === itemForm.product_id,
-                          );
-                          const productNetPrice = selectedProduct
-                            ? parseFloat(selectedProduct.net_price) || 0
-                            : 0;
-                          if (batch) {
-                            setItemForm((prev) => ({
-                              ...prev,
-                              batch: batchNumber,
-                              batch_id: batch.batch_number,
-                              price: productNetPrice,
+{/* Batch Dropdown */}
+{batches.length > 0 && itemForm.maintain_batch !== 0 && (
+  <Form.Select
+    className="mt-2 border-primary"
+    name="batch"
+    value={selectedBatch}
+    onChange={(e) => {
+      const batchNumber = e.target.value;
+      setSelectedBatch(batchNumber);
+      const batch = batches.find(
+        (b) => b.batch_number === batchNumber,
+      );
+      setSelectedBatchDetails(batch || null);
+      const currentDiscount = itemForm.discount || 0;
 
-                              discount: currentDiscount,
-                            }));
-                          } else {
-                            setItemForm((prev) => ({
-                              ...prev,
-                              batch: "",
-                              batch_id: "",
-                            }));
-                          }
-                        }}
-                      >
-                        <option value="">Select Batch</option>
-                        {batches.map((batch) => (
-                          <option key={batch.id} value={batch.batch_number}>
-                            {batch.batch_number} (Qty: {batch.quantity})
-                          </option>
-                        ))}
-                      </Form.Select>
-                    )}
+      if (batch) {
+        // Get the batch selling price
+        const batchPrice = parseFloat(batch.selling_price) || 0;
+        
+        setItemForm((prev) => ({
+          ...prev,
+          batch: batchNumber,
+          batch_id: batch.batch_number,
+          // Update price with selected batch price
+          price: batchPrice,
+          discount: currentDiscount,
+        }));
+      } else {
+        setItemForm((prev) => ({
+          ...prev,
+          batch: "",
+          batch_id: "",
+        }));
+      }
+    }}
+  >
+    <option value="">Select Batch</option>
+    {batches.map((batch) => (
+      <option key={batch.id} value={batch.batch_number}>
+        {batch.batch_number} (Qty: {batch.quantity})
+      </option>
+    ))}
+  </Form.Select>
+)}
                   </Col>
 
                   <Col md={1}>

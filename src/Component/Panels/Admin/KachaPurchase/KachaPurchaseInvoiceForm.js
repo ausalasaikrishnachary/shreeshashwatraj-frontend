@@ -344,46 +344,61 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
     }));
   };
 
-  const editItem = async (index) => {
-    const itemToEdit = invoiceData.items[index];
+const editItem = async (index) => {
+  const itemToEdit = invoiceData.items[index];
 
-    // Set the form data
-    setItemForm({
-      ...itemToEdit,
-      product: itemToEdit.product,
-      product_id: itemToEdit.product_id,
-      batch: itemToEdit.batch,
-      batchDetails: itemToEdit.batchDetails,
-      hsn_code: itemToEdit.hsn_code || "",
-      unit_id: itemToEdit.unit_id || "",
-      unit_name: itemToEdit.unit_name || "",
-    });
+  // Set the form data
+  setItemForm({
+    ...itemToEdit,
+    product: itemToEdit.product,
+    product_id: itemToEdit.product_id,
+    batch: itemToEdit.batch,
+    batchDetails: itemToEdit.batchDetails,
+    hsn_code: itemToEdit.hsn_code || "",
+    unit_id: itemToEdit.unit_id || "",
+    unit_name: itemToEdit.unit_name || "",
+    price: parseFloat(itemToEdit.price) || 0, // Use the saved item price
+  });
 
-    setSelectedBatch(itemToEdit.batch || "");
-    setSelectedBatchDetails(itemToEdit.batchDetails || null);
-    setEditingIndex(index);
+  setSelectedBatch(itemToEdit.batch || "");
+  setSelectedBatchDetails(itemToEdit.batchDetails || null);
+  setEditingIndex(index);
 
-    // Fetch batches for the product being edited
-    if (itemToEdit.product_id) {
-      try {
-        const res = await fetch(
-          `${baseurl}/products/${itemToEdit.product_id}/batches`,
-        );
-        if (res.ok) {
-          const batchData = await res.json();
-          setBatches(batchData);
-        } else {
-          console.error("Failed to fetch batches for editing");
-          setBatches([]);
+  // Fetch batches for the product being edited
+  if (itemToEdit.product_id) {
+    try {
+      const res = await fetch(
+        `${baseurl}/products/${itemToEdit.product_id}/batches`,
+      );
+      if (res.ok) {
+        const batchData = await res.json();
+        setBatches(batchData);
+        
+        // If there's a selected batch, find its price
+        if (itemToEdit.batch) {
+          const selectedBatch = batchData.find(
+            (b) => b.batch_number === itemToEdit.batch
+          );
+          if (selectedBatch) {
+            const batchPrice = parseFloat(selectedBatch.selling_price) || 0;
+            setItemForm(prev => ({
+              ...prev,
+              price: batchPrice,
+            }));
+          }
         }
-      } catch (err) {
-        console.error("Failed to fetch batches for editing:", err);
+      } else {
+        console.error("Failed to fetch batches for editing");
         setBatches([]);
       }
-    } else {
+    } catch (err) {
+      console.error("Failed to fetch batches for editing:", err);
       setBatches([]);
     }
-  };
+  } else {
+    setBatches([]);
+  }
+};
   const calculateItemTotal = () => {
     const quantity = parseFloat(itemForm.quantity) || 0;
     const price = parseFloat(itemForm.price) || 0;
@@ -423,56 +438,66 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
     }));
   };
 
-  const addItem = () => {
-    if (!itemForm.product) {
-      window.alert("⚠️ Please select a product");
-      return;
-    }
+const addItem = () => {
+  if (!itemForm.product) {
+    window.alert("⚠️ Please select a product");
+    return;
+  }
 
-    const calculatedItem = {
-      ...calculateItemTotal(),
-      batch: selectedBatch,
-      batch_id: itemForm.batch_id,
-      batchDetails: selectedBatchDetails,
-      product_id: itemForm.product_id,
-      discount: itemForm.discount,
-      unit_id: itemForm.unit_id,
-      unit_name: itemForm.unit_name,
-    };
+  const quantity = parseFloat(itemForm.quantity) || 0;
+  if (quantity <= 0) {
+    window.alert("⚠️ Please enter a quantity greater than 0");
+    return;
+  }
 
-    setInvoiceData((prev) => ({
-      ...prev,
-      items: [...prev.items, calculatedItem],
-    }));
+  // Ensure we have the latest price from the form
+  const currentPrice = parseFloat(itemForm.price) || 0;
 
-    window.alert(`✅ Item "${calculatedItem.product}" added successfully!`);
-
-    // Reset form but keep supplier discount
-    setItemForm({
-      product: "",
-      product_id: null,
-      description: "",
-      quantity: 0,
-      price: 0,
-      discount: parseFloat(invoiceData.supplierInfo?.discount) || 0,
-      gst: 0,
-      cgst: 0,
-      sgst: 0,
-      igst: 0,
-      cess: 0,
-      total: 0,
-      batch: "",
-      batch_id: "",
-      batchDetails: null,
-      hsn_code: "",
-      unit_id: "",
-      unit_name: "",
-    });
-
-    setBatches([]);
-    setSelectedBatch("");
-    setSelectedBatchDetails(null);
+  const calculatedItem = {
+    ...calculateItemTotal(),
+    batch: selectedBatch,
+    batch_id: itemForm.batch_id,
+    batchDetails: selectedBatchDetails,
+    product_id: itemForm.product_id,
+    discount: itemForm.discount,
+    unit_id: itemForm.unit_id,
+    unit_name: itemForm.unit_name,
+    price: currentPrice, // Use the current price from the form
   };
+
+  setInvoiceData((prev) => ({
+    ...prev,
+    items: [...prev.items, calculatedItem],
+  }));
+
+  window.alert(`✅ Item "${calculatedItem.product}" added successfully!`);
+
+  // Reset form but keep supplier discount
+  setItemForm({
+    product: "",
+    product_id: null,
+    description: "",
+    quantity: 0,
+    price: 0,
+    discount: parseFloat(invoiceData.supplierInfo?.discount) || 0,
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0,
+    total: 0,
+    batch: "",
+    batch_id: "",
+    batchDetails: null,
+    hsn_code: "",
+    unit_id: "",
+    unit_name: "",
+  });
+
+  setBatches([]);
+  setSelectedBatch("");
+  setSelectedBatchDetails(null);
+};
   const removeItem = (index) => {
     setInvoiceData((prev) => ({
       ...prev,
@@ -828,24 +853,29 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
       });
     }
   }, [products]);
-  const fetchBatchesForProduct = async (productId) => {
-    try {
-      const res = await fetch(`${baseurl}/products/${productId}/batches`);
-      const batchData = await res.json();
-      setBatches(batchData);
-      const totalQty = batchData.reduce(
-        (sum, batch) => sum + Number(batch.quantity || 0),
-        0,
-      );
-      setProductStock((prev) => ({
-        ...prev,
-        [productId]: totalQty,
-      }));
-    } catch (err) {
-      console.error("Failed to fetch batches:", err);
-      setBatches([]);
-    }
-  };
+const fetchBatchesForProduct = async (productId) => {
+  try {
+    const res = await fetch(`${baseurl}/products/${productId}/batches`);
+    const batchData = await res.json();
+    console.log('Fetched batches with prices:', batchData.map(b => ({
+      batch_number: b.batch_number,
+      selling_price: b.selling_price,
+      quantity: b.quantity
+    })));
+    setBatches(batchData);
+    const totalQty = batchData.reduce(
+      (sum, batch) => sum + Number(batch.quantity || 0),
+      0,
+    );
+    setProductStock((prev) => ({
+      ...prev,
+      [productId]: totalQty,
+    }));
+  } catch (err) {
+    console.error("Failed to fetch batches:", err);
+    setBatches([]);
+  }
+};
   const calculateTotalPrice = () => {
     const price = parseFloat(itemForm.price) || 0;
     const discount = parseFloat(itemForm.discount) || 0;
@@ -1494,116 +1524,148 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                                 const productNetPrice =
                                   parseFloat(p.net_price) || 0;
                                 return (
-                                  <div
-                                    key={p.id}
-                                    onClick={async () => {
-                                      // Fetch unit name if unit ID exists
-                                      let unitName = "";
-                                      if (p.unit) {
-                                        try {
-                                          const unitResponse = await fetch(
-                                            `${baseurl}/units/${p.unit}`,
-                                          );
-                                          if (unitResponse.ok) {
-                                            const unitData =
-                                              await unitResponse.json();
-                                            unitName = unitData.name || "";
-                                          }
-                                        } catch (err) {
-                                          console.error(
-                                            "Failed to fetch unit:",
-                                            err,
-                                          );
-                                        }
-                                      }
+<div
+  key={p.id}
+  onClick={async () => {
+    // Fetch unit name if unit ID exists
+    let unitName = "";
+    if (p.unit) {
+      try {
+        const unitResponse = await fetch(`${baseurl}/units/${p.unit}`);
+        if (unitResponse.ok) {
+          const unitData = await unitResponse.json();
+          unitName = unitData.name || "";
+        }
+      } catch (err) {
+        console.error("Failed to fetch unit:", err);
+      }
+    }
 
-                                      setItemForm((prev) => ({
-                                        ...prev,
-                                        product: p.goods_name,
-                                        product_id: p.id,
-                                        price: productNetPrice,
-                                        description: p.description || "",
-                                        discount: supplierDiscount,
-                                        batch: "",
-                                        batch_id: "",
-                                        hsn_code: p.hsn_code || "",
-                                        unit_id: p.unit || null, // ← ADD THIS
-                                        unit_name: unitName, // ← ADD THIS
-                                      }));
+    const supplierDiscount =
+      parseFloat(invoiceData.supplierInfo?.discount) || 0;
 
-                                      try {
-                                        const res = await fetch(
-                                          `${baseurl}/products/${p.id}/batches`,
-                                        );
-                                        const batchData = await res.json();
-                                        setBatches(batchData);
+    // Fetch batches first to get the batch price
+    try {
+      const res = await fetch(`${baseurl}/products/${p.id}/batches`);
+      const batchData = await res.json();
+      setBatches(batchData);
 
-                                        if (
-                                          p.maintain_batch === 0 &&
-                                          batchData.length > 0
-                                        ) {
-                                          const defaultBatch = batchData[0];
-                                          setSelectedBatch(
-                                            defaultBatch.batch_number,
-                                          );
-                                          setSelectedBatchDetails(defaultBatch);
-                                          setItemForm((prev) => ({
-                                            ...prev,
-                                            batch: defaultBatch.batch_number,
-                                            batch_id: defaultBatch.batch_number,
-                                            price: productNetPrice,
-                                            discount: supplierDiscount,
-                                          }));
-                                        } else {
-                                          setSelectedBatch("");
-                                          setSelectedBatchDetails(null);
-                                        }
-                                      } catch (err) {
-                                        console.error(
-                                          "Failed to fetch batches:",
-                                          err,
-                                        );
-                                        setBatches([]);
-                                        setSelectedBatch("");
-                                        setSelectedBatchDetails(null);
-                                      }
+      // Initialize with first batch if available
+      let defaultBatch = null;
+      let defaultBatchPrice = 0;
+      
+      if (batchData.length > 0) {
+        // Find the first batch with quantity > 0, or just the first one
+        defaultBatch = batchData.find(b => parseFloat(b.quantity) > 0) || batchData[0];
+        defaultBatchPrice = parseFloat(defaultBatch.selling_price) || 0;
+        
+        setSelectedBatch(defaultBatch.batch_number);
+        setSelectedBatchDetails(defaultBatch);
+      } else {
+        setSelectedBatch("");
+        setSelectedBatchDetails(null);
+      }
 
-                                      setIsProductDropdownOpen(false);
-                                      setProductSearchTerm("");
-                                    }}
-                                    style={{
-                                      padding: "8px 16px",
-                                      cursor: "pointer",
-                                      borderLeft: "3px solid transparent",
-                                      transition: "background-color 0.2s",
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.backgroundColor =
-                                        "#f8f9fa";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.backgroundColor =
-                                        "transparent";
-                                    }}
-                                    title={`${p.goods_name} - Qty: ${availableQty}`}
-                                  >
-                                    <div
-                                      style={{
-                                        fontWeight: 400,
-                                        fontSize: "13px",
-                                      }}
-                                    >
-                                      {p.goods_name}
-                                    </div>
-                                    <div
-                                      style={{
-                                        fontSize: "12px",
-                                        color: "#6c757d",
-                                      }}
-                                    >
-                                      Qty: {availableQty}
-                                    </div>
-                                  </div>
+      // Use batch price instead of product net price
+      const productPrice = defaultBatchPrice > 0 ? defaultBatchPrice : (parseFloat(p.net_price) || 0);
+
+      setItemForm((prev) => ({
+        ...prev,
+        product: p.goods_name,
+        product_id: p.id,
+        price: productPrice,
+        description: p.description || "",
+        discount: supplierDiscount,
+        batch: defaultBatch ? defaultBatch.batch_number : "",
+        batch_id: defaultBatch ? defaultBatch.batch_number : "",
+        hsn_code: p.hsn_code || "",
+        unit_id: p.unit || null,
+        unit_name: unitName,
+      }));
+
+      // Update productStock
+      const totalQty = batchData.reduce(
+        (sum, batch) => sum + Number(batch.quantity || 0),
+        0,
+      );
+      setProductStock((prev) => ({
+        ...prev,
+        [p.id]: totalQty,
+      }));
+
+      // If maintain_batch is 0, auto-select default batch
+      if (p.maintain_batch === 0 && batchData.length > 0) {
+        const defaultBatch = batchData[0];
+        setSelectedBatch(defaultBatch.batch_number);
+        setSelectedBatchDetails(defaultBatch);
+        setItemForm((prev) => ({
+          ...prev,
+          batch: defaultBatch.batch_number,
+          batch_id: defaultBatch.batch_number,
+          price: parseFloat(defaultBatch.selling_price) || productPrice,
+          discount: supplierDiscount,
+        }));
+      } else {
+        setSelectedBatch("");
+        setSelectedBatchDetails(null);
+      }
+
+    } catch (err) {
+      console.error("Failed to fetch batches:", err);
+      setBatches([]);
+      setSelectedBatch("");
+      setSelectedBatchDetails(null);
+      
+      // Fallback to product price
+      setItemForm((prev) => ({
+        ...prev,
+        product: p.goods_name,
+        product_id: p.id,
+        price: parseFloat(p.net_price) || 0,
+        description: p.description || "",
+        discount: supplierDiscount,
+        batch: "",
+        batch_id: "",
+        hsn_code: p.hsn_code || "",
+        unit_id: p.unit || null,
+        unit_name: unitName,
+      }));
+    }
+
+    setIsProductDropdownOpen(false);
+    setProductSearchTerm("");
+  }}
+  style={{
+    padding: "8px 16px",
+    cursor: "pointer",
+    borderLeft: "3px solid transparent",
+    transition: "background-color 0.2s",
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.backgroundColor = "#f8f9fa";
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.backgroundColor = "transparent";
+  }}
+  title={`${p.goods_name} - Qty: ${availableQty}`}
+>
+  <div
+    style={{
+      fontWeight: 400,
+      fontSize: "13px",
+    }}
+  >
+    {p.goods_name}
+  </div>
+  <div
+    style={{
+      fontSize: "12px",
+      color: "#6c757d",
+    }}
+  >
+    Qty: {availableQty}
+  </div>
+</div>
                                 );
                               })}
                           </div>
@@ -1633,53 +1695,58 @@ const KachaPurchaseInvoiceForm = ({ user }) => {
                     </div>
 
                     {/* Batch Dropdown */}
-                    {batches.length > 0 && itemForm.maintain_batch !== 0 && (
-                      <Form.Select
-                        className="mt-2 border-primary"
-                        name="batch"
-                        value={selectedBatch}
-                        onChange={(e) => {
-                          const batchNumber = e.target.value;
-                          setSelectedBatch(batchNumber);
-                          const batch = batches.find(
-                            (b) => b.batch_number === batchNumber,
-                          );
-                          setSelectedBatchDetails(batch || null);
+{/* Batch Dropdown */}
+{batches.length > 0 && itemForm.maintain_batch !== 0 && (
+  <Form.Select
+    className="mt-2 border-primary"
+    name="batch"
+    value={selectedBatch}
+    onChange={(e) => {
+      const batchNumber = e.target.value;
+      setSelectedBatch(batchNumber);
+      const batch = batches.find(
+        (b) => b.batch_number === batchNumber,
+      );
+      setSelectedBatchDetails(batch || null);
 
-                          const supplierDiscount =
-                            parseFloat(invoiceData.supplierInfo?.discount) || 0;
-                          const selectedProduct = products.find(
-                            (p) => p.id === itemForm.product_id,
-                          );
-                          const productNetPrice = selectedProduct
-                            ? parseFloat(selectedProduct.net_price) || 0
-                            : 0;
+      const supplierDiscount =
+        parseFloat(invoiceData.supplierInfo?.discount) || 0;
+      const selectedProduct = products.find(
+        (p) => p.id === itemForm.product_id,
+      );
+      const productNetPrice = selectedProduct
+        ? parseFloat(selectedProduct.net_price) || 0
+        : 0;
 
-                          if (batch) {
-                            setItemForm((prev) => ({
-                              ...prev,
-                              batch: batchNumber,
-                              batch_id: batch.batch_number,
-                              price: productNetPrice,
-                              discount: supplierDiscount,
-                            }));
-                          } else {
-                            setItemForm((prev) => ({
-                              ...prev,
-                              batch: "",
-                              batch_id: "",
-                            }));
-                          }
-                        }}
-                      >
-                        <option value="">Select Batch</option>
-                        {batches.map((batch) => (
-                          <option key={batch.id} value={batch.batch_number}>
-                            {batch.batch_number} (Qty: {batch.quantity})
-                          </option>
-                        ))}
-                      </Form.Select>
-                    )}
+      if (batch) {
+        // Get the batch selling price
+        const batchPrice = parseFloat(batch.selling_price) || 0;
+        
+        setItemForm((prev) => ({
+          ...prev,
+          batch: batchNumber,
+          batch_id: batch.batch_number,
+          // Update price with selected batch price
+          price: batchPrice,
+          discount: supplierDiscount,
+        }));
+      } else {
+        setItemForm((prev) => ({
+          ...prev,
+          batch: "",
+          batch_id: "",
+        }));
+      }
+    }}
+  >
+    <option value="">Select Batch</option>
+    {batches.map((batch) => (
+      <option key={batch.id} value={batch.batch_number}>
+        {batch.batch_number} (Qty: {batch.quantity})
+      </option>
+    ))}
+  </Form.Select>
+)}
                   </Col>
 
                   <Col md={1}>
