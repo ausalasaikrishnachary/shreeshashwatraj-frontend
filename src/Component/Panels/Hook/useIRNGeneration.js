@@ -195,7 +195,7 @@
 
 //     return apiRequest;
 //   };
-  
+
 
 //   const sendRequestWithRetry = async (einvoiceData, transactionType, username, password, accessToken) => {
 //     const requestData = mapEInvoiceToAPIFormat(einvoiceData, transactionType);
@@ -288,7 +288,7 @@
 
 
 // hooks/useIRNGeneration.js
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { baseurl } from '../../BaseURL/BaseURL';
 
@@ -299,18 +299,63 @@ const useIRNGeneration = () => {
   const [cancelling, setCancelling] = useState(false);
 
 
-  // Static Seller Details (copied from IRNGenerator)
-  const staticSellerDetails = {
-    Gstin: "02AMBPG7773M002",
-    LglNm: "NIC company pvt ltd",
-    TrdNm: "NIC Industries",
-    Addr1: "5th block, kuvempu layout",
-    Addr2: "kuvempu layout",
-    Loc: "GANDHINAGAR",
-    Pin: 175121,
-    Stcd: "02",
-    Ph: "9000000000",
-    Em: "abc@gmail.com"
+  // Static Seller Details (kept for reference)
+  // const staticSellerDetails = {
+  //   Gstin: "02AMBPG7773M002",
+  //   LglNm: "NIC company pvt ltd",
+  //   TrdNm: "NIC Industries",
+  //   Addr1: "5th block, kuvempu layout",
+  //   Addr2: "kuvempu layout",
+  //   Loc: "GANDHINAGAR",
+  //   Pin: 175121,
+  //   Stcd: "02",
+  //   Ph: "9000000000",
+  //   Em: "abc@gmail.com"
+  // };
+
+  const [staticSellerDetails, setSellerDetails] = useState({
+    Gstin: "",
+    LglNm: "",
+    TrdNm: "",
+    Addr1: "",
+    Addr2: "",
+    Loc: "",
+    Pin: 0,
+    Stcd: "",
+    Ph: "",
+    Em: ""
+  });
+
+  useEffect(() => {
+    fetchCompanyInfo();
+  }, []);
+
+  const fetchCompanyInfo = async () => {
+    try {
+      const response = await axios.get(`${baseurl}/api/company-info`);
+
+      if (response.data.success) {
+        const company = response.data.data;
+        console.log("sellerdetails", company);
+        // Extract pincode from address
+        const pinMatch = company.address?.match(/\b\d{6}\b/);
+
+        setSellerDetails({
+          Gstin: company.gstin || "",
+          LglNm: company.company_name || "",
+          TrdNm: company.company_name || "",
+          Addr1: company.address || "",
+          Addr2: company.branch || "",
+          Loc: company.location || "",
+          Pin: pinMatch ? Number(pinMatch[0]) : 0,
+          Stcd: company.state_code || "",
+          Ph: company.phone || "",
+          Em: company.email || ""
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch company info:", err);
+    }
   };
 
   const getStateCodeFromGSTIN = (gstin) => {
@@ -344,7 +389,7 @@ const useIRNGeneration = () => {
 
   const mapEInvoiceToAPIFormat = (einvoiceData, transactionType) => {
     const isB2B = einvoiceData.invoice?.bb_bc === 'b2b' || einvoiceData.customerInfo?.gstin;
-
+console.log("einvoiceData:", einvoiceData);
     const sellerStateCode = staticSellerDetails.Stcd;
     const buyerGSTIN = einvoiceData.customerInfo?.gstin;
     let buyerStateCode = getStateCodeFromGSTIN(buyerGSTIN);
@@ -387,7 +432,7 @@ const useIRNGeneration = () => {
 
       return {
         SlNo: (index + 1).toString(),
-        PrdDesc: item.product || item.description || "Product",
+        PrdDesc: item.product || item.description,
         IsServc: "N",
         HsnCd: getValidHSN(item.hsnCode),
         Barcde: String(item.productId || "").length >= 3 ? String(item.productId) : "123456",
@@ -443,6 +488,7 @@ const useIRNGeneration = () => {
       },
       SellerDtls: {
         Gstin: String(staticSellerDetails.Gstin),
+        //  Gstin: "02AMBPG7773M002",
         LglNm: String(staticSellerDetails.LglNm),
         TrdNm: String(staticSellerDetails.TrdNm),
         Addr1: String(staticSellerDetails.Addr1),
@@ -454,17 +500,18 @@ const useIRNGeneration = () => {
         Em: String(staticSellerDetails.Em)
       },
       BuyerDtls: {
-        Gstin: String(buyerGSTIN || "URP"),
-        LglNm: String(einvoiceData.customerInfo?.businessName || einvoiceData.customerInfo?.name || "Buyer Company"),
-        TrdNm: String(einvoiceData.customerInfo?.name || "Buyer"),
+        Gstin: String(buyerGSTIN ),
+        LglNm: String(einvoiceData.customerInfo?.businessName || einvoiceData.customerInfo?.name ),
+        TrdNm: String(einvoiceData.customerInfo?.name ),
         Pos: String(buyerStateCode),
-        Addr1: String(einvoiceData.billingAddress?.addressLine1 || "Commercial Complex"),
-        Addr2: String(einvoiceData.billingAddress?.addressLine2 || "Sector 1"),
-        Loc: String(buyerStateCode === "02" ? "GANDHINAGAR" : "PATNA"),
+        Addr1: String(einvoiceData.billingAddress?.addressLine1 ),
+        Addr2: String(einvoiceData.billingAddress?.addressLine2 ),
+        Loc: String(einvoiceData.billingAddress?.addressLine1 ),
         Pin: Number(buyerPincode),
         Stcd: String(buyerStateCode),
-        Ph: String(einvoiceData.customerInfo?.mobileNumber?.replace(/\D/g, '').slice(0, 10) || "9876543210"),
-        Em: String(einvoiceData.customerInfo?.email || "buyer@company.com")
+        Ph: String(einvoiceData.customerInfo?.mobileNumber?.replace(/\D/g, '').slice(0, 10)),
+        // Em: String(einvoiceData.customerInfo?.email)
+        Em: "asaikrishnachary103@gmail.com"
       },
       ItemList: itemList,
       ValDtls: {
@@ -491,16 +538,16 @@ const useIRNGeneration = () => {
     return apiRequest;
   };
 
-    // NEW: Function to cancel IRN
+  // NEW: Function to cancel IRN
   const cancelIRN = async (irnNo, invoiceNumber, gstin, reason = "1", remark = "Cancelled by user") => {
     setCancelling(true);
     setError(null);
 
     try {
       // Get credentials
-      const username = localStorage.getItem('irn_username') || 'adqgsphpusr1';
-      const password = localStorage.getItem('irn_password') || 'Gsp@1234';
-      const accessToken = localStorage.getItem('accessToken') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+      // const username = localStorage.getItem('irn_username') || 'adqgsphpusr1';
+      // const password = localStorage.getItem('irn_password') || 'Gsp@1234';
+      // const accessToken = localStorage.getItem('accessToken') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
 
       // Call backend cancel API
       const response = await axios.post(
@@ -509,7 +556,7 @@ const useIRNGeneration = () => {
           irn: irnNo,
           cnlrsn: reason,
           cnlrem: remark,
-          gstin: gstin || "02AMBPG7773M002",
+          gstin: gstin,
           invoiceNumber: invoiceNumber
         },
         {
@@ -524,25 +571,25 @@ const useIRNGeneration = () => {
       if (response.data.success) {
         // Update database status to 'Cancelled'
         const updateResult = await updateInvoiceIRNStatus(invoiceNumber, 'Cancelled');
-        
+
         if (updateResult.success) {
-          return { 
-            success: true, 
+          return {
+            success: true,
             data: response.data.data,
             message: 'E-Invoice cancelled successfully'
           };
         } else {
           // IRN cancelled but DB update failed
-          return { 
-            success: true, 
+          return {
+            success: true,
             data: response.data.data,
             warning: 'IRN cancelled but database update failed',
             dbError: updateResult.error
           };
         }
       } else {
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: response.data.message || 'Failed to cancel e-invoice'
         };
       }
@@ -576,42 +623,42 @@ const useIRNGeneration = () => {
       }
     } catch (error) {
       console.error('❌ Error updating IRN status:', error);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: error.response?.data?.message || error.message || 'Failed to update status'
       };
     }
   };
 
-// hooks/useIRNGeneration.js
+  // hooks/useIRNGeneration.js
 
-const getIRNStatus = async (invoiceNumber) => {
-  try {
-    // Properly encode the invoice number for URL
-    const encodedInvoiceNumber = encodeURIComponent(invoiceNumber);
-    const response = await axios.get(
-      `${baseurl}/api/invoice-irn-status/${encodedInvoiceNumber}`
-    );
+  const getIRNStatus = async (invoiceNumber) => {
+    try {
+      // Properly encode the invoice number for URL
+      const encodedInvoiceNumber = encodeURIComponent(invoiceNumber);
+      const response = await axios.get(
+        `${baseurl}/api/invoice-irn-status/${encodedInvoiceNumber}`
+      );
 
-    if (response.data.success) {
-      return { 
-        success: true, 
-        data: response.data.data 
-      };
-    } else {
-      return { 
-        success: false, 
-        error: response.data.message 
+      if (response.data.success) {
+        return {
+          success: true,
+          data: response.data.data
+        };
+      } else {
+        return {
+          success: false,
+          error: response.data.message
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching IRN status:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
       };
     }
-  } catch (error) {
-    console.error('Error fetching IRN status:', error);
-    return { 
-      success: false, 
-      error: error.response?.data?.message || error.message 
-    };
-  }
-};
+  };
 
   const sendRequestWithRetry = async (einvoiceData, transactionType, username, password, accessToken) => {
     const requestData = mapEInvoiceToAPIFormat(einvoiceData, transactionType);
@@ -636,7 +683,7 @@ const getIRNStatus = async (invoiceNumber) => {
   const updateInvoiceInDatabase = async (updateData) => {
     try {
       console.log('Updating invoice with IRN details:', updateData);
-      
+
       const response = await axios.put(
         `${baseurl}/api/update-invoice-irn`,
         updateData
@@ -651,8 +698,8 @@ const getIRNStatus = async (invoiceNumber) => {
       }
     } catch (error) {
       console.error('❌ Error updating invoice with IRN details:', error);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: error.response?.data?.message || error.message || 'Failed to update invoice'
       };
     }
@@ -725,20 +772,20 @@ const getIRNStatus = async (invoiceNumber) => {
 
         // Update database
         const dbUpdateResult = await updateInvoiceInDatabase(updateData);
-        
+
         if (!dbUpdateResult.success) {
           console.warn('⚠️ IRN generated but database update failed:', dbUpdateResult.error);
           // Still return success for IRN generation, but include warning
-          return { 
-            success: true, 
+          return {
+            success: true,
             data: finalData,
             dbUpdateWarning: dbUpdateResult.error
           };
         }
 
         // Return success with both IRN data and DB update info
-        return { 
-          success: true, 
+        return {
+          success: true,
           data: finalData,
           dbUpdated: true,
           dbUpdateData: dbUpdateResult.data

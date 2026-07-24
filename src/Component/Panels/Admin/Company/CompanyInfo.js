@@ -303,6 +303,10 @@ const CompanyInfo = () => {
   });
 
   useEffect(() => {
+  console.log(formData);
+}, [formData]);
+
+  useEffect(() => {
     fetchCompanyInfo();
   }, []);
 

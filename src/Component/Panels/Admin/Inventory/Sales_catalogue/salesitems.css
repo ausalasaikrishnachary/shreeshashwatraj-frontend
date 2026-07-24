@@ -184,7 +184,7 @@
 .modal-dialog {
   margin: 0 auto !important;
   width: calc(100% - 32px) !important;
-  max-width: 560px !important;
+  /* max-width: 560px !important; */
 }
 
 /* ── Tablet (≤ 992px) ── */

@@ -129,6 +129,85 @@ const InvoicePDFPreview = () => {
   const [einvoiceData, setEinvoiceData] = useState(null);
   const [downloadingEInvoice, setDownloadingEInvoice] = useState(false);
   const [ewayBillStatus, setEwayBillStatus] = useState(null);
+  const [downloadingEWayBill, setDownloadingEWayBill] = useState(false);
+
+  const handleDownloadEWayBillPDF = async () => {
+  try {
+    setDownloadingEWayBill(true);
+    setError(null);
+
+    if (!currentData) {
+      throw new Error("No invoice data available");
+    }
+
+    // Check if E-Way Bill is generated
+    if (ewayBillStatus?.status !== 'Generated') {
+      alert('❌ E-Way Bill not generated yet. Please generate E-Way Bill first.');
+      return;
+    }
+
+    // Import PDF modules
+    let pdf;
+    let EWayBillPdfDocument;
+
+    try {
+      const reactPdf = await import("@react-pdf/renderer");
+      pdf = reactPdf.pdf;
+
+      // Import the E-Way Bill PDF document
+      const pdfModule = await import("./EWayBillPdfDocument");
+      EWayBillPdfDocument = pdfModule.default;
+    } catch (importError) {
+      console.error("Error importing PDF modules:", importError);
+      throw new Error("Failed to load PDF generation libraries");
+    }
+
+    const gstBreakdown = calculateGSTBreakdown();
+    const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
+
+    // Create E-Way Bill PDF document
+    const pdfDoc = (
+      <EWayBillPdfDocument
+        invoiceData={currentData}
+        invoiceNumber={currentData.invoiceNumber}
+        gstBreakdown={gstBreakdown}
+        isSameState={isSameState}
+        unitData={unitData}
+        ewayBillStatus={ewayBillStatus}
+        irnDetails={irnDetails}
+        companyInfo={companyInfo}
+      />
+    );
+
+    let blob;
+    try {
+      blob = await pdf(pdfDoc).toBlob();
+    } catch (pdfError) {
+      console.error("Error generating PDF blob:", pdfError);
+      throw new Error("Failed to generate E-Way Bill PDF file");
+    }
+
+    const filename = `E-WayBill_${currentData.invoiceNumber}_${new Date().toISOString().split("T")[0]}.pdf`;
+
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(downloadUrl);
+
+    setSuccess("E-Way Bill PDF downloaded successfully!");
+    setTimeout(() => setSuccess(false), 3000);
+  } catch (error) {
+    console.error("Error generating E-Way Bill PDF:", error);
+    setError("Failed to generate E-Way Bill PDF: " + error.message);
+    setTimeout(() => setError(null), 5000);
+  } finally {
+    setDownloadingEWayBill(false);
+  }
+};
 
   // Add this function for downloading e-invoice PDF
   const handleDownloadEInvoicePDF = async () => {
@@ -175,7 +254,7 @@ const InvoicePDFPreview = () => {
             `${baseurl}/api/generate-qr-image`,
             {
               signedQrCode: irnStatus.signed_qr_code,
-              gstin: currentData.companyInfo?.gstin || "02AMBPG7773M002",
+              gstin: currentData.companyInfo?.gstin,
               invoiceCode: currentData.invoiceNumber || ""
             }
           );
@@ -239,66 +318,90 @@ const InvoicePDFPreview = () => {
   };
 
   // Add this function to render E-Invoice button with download option
-  const renderEInvoiceButtons = () => {
-    // Check if IRN is already generated
-    if (irnStatus?.IRNgenerated_status === 'Generated') {
-      return (
-        <>
-          {/* Cancel E-Invoice button */}
-          <Button
-            variant="danger"
-            onClick={handleCancelEInvoice}
-            className="me-2"
-            disabled={irnCancelling}
-          >
-            {irnCancelling ? (
-              <>
-                <div className="spinner-border spinner-border-sm me-1" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-                Cancelling...
-              </>
-            ) : (
-              <>
-                <FaTimes className="me-1" /> Cancel E-Invoice
-              </>
-            )}
-          </Button>
-
-          {/* Download E-Invoice PDF button */}
-          <Button
-            variant="primary"
-            onClick={handleDownloadEInvoicePDF}
-            className="me-2"
-            style={{ backgroundColor: '#28a745', borderColor: '#28a745' }}
-            disabled={downloadingEInvoice}
-          >
-            {downloadingEInvoice ? (
-              <>
-                <div className="spinner-border spinner-border-sm me-1" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-                Downloading...
-              </>
-            ) : (
-              <>
-                <FaFilePdf className="me-1" /> E-Invoice PDF
-              </>
-            )}
-          </Button>
-          {irnStatus?.IRNgenerated_status === 'Generated' && (
+// Update the renderEInvoiceButtons function
+const renderEInvoiceButtons = () => {
+  // Check if IRN is already generated
+  if (irnStatus?.IRNgenerated_status === 'Generated') {
+    return (
+      <>
+        {/* Cancel E-Invoice button */}
+        <Button
+          variant="danger"
+          onClick={handleCancelEInvoice}
+          className="me-2"
+          disabled={irnCancelling}
+        >
+          {irnCancelling ? (
             <>
-              {!ewayBillStatus?.status && (
-                <Button
-                  variant="success"
-                  onClick={handleGenerateEWayBill}
-                  className="me-2"
-                >
-                  Generate E-Way Bill
-                </Button>
-              )}
+              <div className="spinner-border spinner-border-sm me-1" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              Cancelling...
+            </>
+          ) : (
+            <>
+              <FaTimes className="me-1" /> Cancel E-Invoice
+            </>
+          )}
+        </Button>
 
-              {ewayBillStatus?.status === 'Generated' && (
+        {/* Download E-Invoice PDF button */}
+        <Button
+          variant="primary"
+          onClick={handleDownloadEInvoicePDF}
+          className="me-2"
+          style={{ backgroundColor: '#28a745', borderColor: '#28a745' }}
+          disabled={downloadingEInvoice}
+        >
+          {downloadingEInvoice ? (
+            <>
+              <div className="spinner-border spinner-border-sm me-1" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              Downloading...
+            </>
+          ) : (
+            <>
+              <FaFilePdf className="me-1" /> E-Invoice PDF
+            </>
+          )}
+        </Button>
+
+        {/* E-Way Bill buttons section */}
+        {irnStatus?.IRNgenerated_status === 'Generated' && (
+          <>
+            {!ewayBillStatus?.status || ewayBillStatus?.status !== 'Generated' ? (
+              <Button
+                variant="success"
+                onClick={handleGenerateEWayBill}
+                className="me-2"
+              >
+                Generate E-Way Bill
+              </Button>
+            ) : (
+              <>
+                {/* Download E-Way Bill PDF button */}
+                <Button
+                  variant="info"
+                  onClick={handleDownloadEWayBillPDF}
+                  className="me-2"
+                  style={{ backgroundColor: '#17a2b8', borderColor: '#17a2b8' }}
+                  disabled={downloadingEWayBill}
+                >
+                  {downloadingEWayBill ? (
+                    <>
+                      <div className="spinner-border spinner-border-sm me-1" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <FaFilePdf className="me-1" /> E-Way Bill PDF
+                    </>
+                  )}
+                </Button>
+
                 <Button
                   variant="danger"
                   onClick={handleCancelEWayBill}
@@ -306,59 +409,60 @@ const InvoicePDFPreview = () => {
                 >
                   Cancel E-Way Bill
                 </Button>
-              )}
+              </>
+            )}
 
-              {ewayBillStatus?.status === 'Cancelled' && (
-                <Button
-                  variant="secondary"
-                  disabled
-                  className="me-2"
-                >
-                  E-Way Bill Cancelled
-                </Button>
-              )}
-            </>
-          )}
-        </>
-      );
-    } else if (irnStatus?.IRNgenerated_status === 'Cancelled') {
-      // Show disabled button
-      return (
-        <Button
-          variant="secondary"
-          className="me-2"
-          disabled
-          title="This e-invoice has been cancelled"
-        >
-          <FaTimes className="me-1" /> E-Invoice Cancelled
-        </Button>
-      );
-    } else {
-      // Show Generate E-Invoice button
-      return (
-        <Button
-          variant="primary"
-          onClick={handleEInvoice}
-          className="me-2"
-          style={{ backgroundColor: '#6f42c1', borderColor: '#6f42c1' }}
-          disabled={irnGenerating}
-        >
-          {irnGenerating ? (
-            <>
-              <div className="spinner-border spinner-border-sm me-1" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-              Generating IRN...
-            </>
-          ) : (
-            <>
-              <FaReceipt className="me-1" /> Generate E-Invoice
-            </>
-          )}
-        </Button>
-      );
-    }
-  };
+            {ewayBillStatus?.status === 'Cancelled' && (
+              <Button
+                variant="secondary"
+                disabled
+                className="me-2"
+              >
+                E-Way Bill Cancelled
+              </Button>
+            )}
+          </>
+        )}
+      </>
+    );
+  } else if (irnStatus?.IRNgenerated_status === 'Cancelled') {
+    // Show disabled button
+    return (
+      <Button
+        variant="secondary"
+        className="me-2"
+        disabled
+        title="This e-invoice has been cancelled"
+      >
+        <FaTimes className="me-1" /> E-Invoice Cancelled
+      </Button>
+    );
+  } else {
+    // Show Generate E-Invoice button
+    return (
+      <Button
+        variant="primary"
+        onClick={handleEInvoice}
+        className="me-2"
+        style={{ backgroundColor: '#6f42c1', borderColor: '#6f42c1' }}
+        disabled={irnGenerating}
+      >
+        {irnGenerating ? (
+          <>
+            <div className="spinner-border spinner-border-sm me-1" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            Generating IRN...
+          </>
+        ) : (
+          <>
+            <FaReceipt className="me-1" /> Generate E-Invoice
+          </>
+        )}
+      </Button>
+    );
+  }
+};
 
   // Fetch IRN status when component loads
   useEffect(() => {
@@ -573,7 +677,7 @@ const InvoicePDFPreview = () => {
         {
           invoiceId: currentData.invoiceNumber,
           irn_no: irnStatus.irn_no,
-          transId: "02AMBPG7773M002",
+          transId: currentData.companyInfo?.gstin,
           transName: currentData.transportDetails?.transport_name,
           transDocNo: currentData.transportDetails?.gr_rr_number,
           vehicleNo:
@@ -614,6 +718,7 @@ const InvoicePDFPreview = () => {
 
       const response = await axios.post(`${baseurl}/api/cancel-ewaybill`, {
         invoiceId: currentData.invoiceNumber,
+        transId: currentData.companyInfo?.gstin,
         ewbNo: ewayBillStatus.ewbNo,
         cancelRsnCode: "4",
         cancelRmrk: "Other"
@@ -680,7 +785,7 @@ const InvoicePDFPreview = () => {
       const result = await cancelIRN(
         irnDetails.irn_no,
         currentData.invoiceNumber,
-        currentData.companyInfo?.gstin || "02AMBPG7773M002",
+        currentData.companyInfo?.gstin,
         reason,
         remark
       );
@@ -2677,7 +2782,7 @@ const InvoicePDFPreview = () => {
   const gstBreakdown = calculateGSTBreakdown();
   const isSameState = parseFloat(gstBreakdown.totalIGST) === 0;
   const displayInvoiceNumber = currentData.invoiceNumber || "INV001";
-
+console.log("Rendering Invoice Preview with currentData:", currentData);
   return (
     <div className="invoice-preview-page">
       {/* Action Bar */}

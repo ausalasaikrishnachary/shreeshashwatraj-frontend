@@ -2,7 +2,7 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer';
 
-// Register fonts if needed
+// Register fonts
 Font.register({
   family: 'Helvetica',
   fonts: [
@@ -13,12 +13,8 @@ Font.register({
 
 const getImageSource = (qrData) => {
   if (!qrData) return null;
-  if (qrData.startsWith('data:image')) {
-    return qrData;
-  }
-  if (qrData.startsWith('/9j/') || qrData.startsWith('iVBOR')) {
-    return `data:image/png;base64,${qrData}`;
-  }
+  if (qrData.startsWith('data:image')) return qrData;
+  if (qrData.startsWith('/9j/') || qrData.startsWith('iVBOR')) return `data:image/png;base64,${qrData}`;
   return qrData;
 };
 
@@ -46,142 +42,194 @@ const EInvoicePdfDocument = ({
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size="A5" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>E-INVOICE</Text>
           <Text style={styles.subtitle}>Government of India - GST E-Invoice</Text>
         </View>
 
-        {/* Invoice Details */}
-        <View style={styles.invoiceDetails}>
-          <View style={styles.row}>
-            <Text style={styles.label}>Invoice Number:</Text>
-            <Text style={styles.value}>{invoiceNumber}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Invoice Date:</Text>
-            <Text style={styles.value}>{formatDate(invoiceData?.invoiceDate)}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Document Type:</Text>
-            <Text style={styles.value}>{invoiceData?.document_type || 'Sales Invoice'}</Text>
-          </View>
-        </View>
-
-        {/* IRN Details */}
-        <View style={styles.irnSection}>
-          <Text style={styles.sectionTitle}>E-Invoice Details</Text>
-          <View style={styles.irnDetails}>
-            <View style={styles.row}>
-              <Text style={styles.label}>IRN:</Text>
-              <Text style={[styles.value, styles.irnValue]}>{irnDetails?.irn_no || 'N/A'}</Text>
+        {/* Invoice Details - Bordered Table */}
+        <View style={styles.borderedTable}>
+          <View style={styles.tableRow}>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>Invoice Number</Text>
             </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Ack No:</Text>
-              <Text style={styles.value}>{irnDetails?.ack_no || 'N/A'}</Text>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{invoiceNumber}</Text>
             </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Ack Date:</Text>
-              <Text style={styles.value}>{formatDate(irnDetails?.ack_date) || 'N/A'}</Text>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>Invoice Date</Text>
             </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Status:</Text>
-              <Text style={[styles.value, styles.statusBadge]}>
-                {irnStatus?.IRNgenerated_status || 'N/A'}
-              </Text>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{formatDate(invoiceData?.invoiceDate)}</Text>
+            </View>
+          </View>
+          <View style={styles.tableRow}>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>Document Type</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{invoiceData?.document_type || 'Sales Invoice'}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>Transaction Type</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{isSameState ? 'INTRA-STATE' : 'INTER-STATE'}</Text>
             </View>
           </View>
         </View>
 
-        {/* QR Code Section */}
-        {qrDataUrl && (
-          <View style={styles.qrSection}>
-            <Text style={styles.sectionTitle}>QR Code</Text>
-            <View style={styles.qrContainer}>
-              <Image 
-                src={getImageSource(qrDataUrl)} 
-                style={styles.qrImage}
-              />
-              {qrAmount && (
-                <Text style={styles.qrAmount}>Amount: ₹{qrAmount.toFixed(2)}</Text>
-              )}
+        {/* IRN Details - Bordered Table */}
+        <View style={styles.borderedTable}>
+          <View style={styles.tableRow}>
+            <View style={[styles.tableCell, styles.tableCellLabel, styles.irnLabel]}>
+              <Text style={styles.cellText}>IRN</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue, styles.irnValueCell]}>
+              <Text style={[styles.cellText, styles.irnValue]}>{irnDetails?.irn_no || 'N/A'}</Text>
             </View>
           </View>
-        )}
+          <View style={styles.tableRow}>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>Ack No</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{irnDetails?.ack_no || 'N/A'}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>Ack Date</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{formatDate(irnDetails?.ack_date) || 'N/A'}</Text>
+            </View>
+          </View>
+          <View style={styles.tableRow}>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>Status</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue, styles.statusCell]}>
+              <Text style={[styles.cellText, styles.statusText]}>{irnStatus?.IRNgenerated_status || 'N/A'}</Text>
+            </View>
+          </View>
+        </View>
 
-        {/* Company Details */}
-        <View style={styles.companySection}>
-          <Text style={styles.sectionTitle}>Seller Details</Text>
-          <View style={styles.companyDetails}>
+        {/* QR Code Section - Balanced with details */}
+        <View style={styles.qrSection}>
+          <View style={styles.qrLeft}>
+            <Text style={styles.sectionTitle}>Seller Details</Text>
             <Text style={styles.companyName}>{invoiceData?.companyInfo?.name || 'N/A'}</Text>
-            <Text style={styles.companyAddress}>{invoiceData?.companyInfo?.address || 'N/A'}</Text>
-            <Text style={styles.companyInfo}>GSTIN: {invoiceData?.companyInfo?.gstin || 'N/A'}</Text>
-            <Text style={styles.companyInfo}>State: {invoiceData?.companyInfo?.state || 'N/A'} (Code: {invoiceData?.companyInfo?.stateCode || 'N/A'})</Text>
-            <Text style={styles.companyInfo}>Email: {invoiceData?.companyInfo?.email || 'N/A'}</Text>
-            <Text style={styles.companyInfo}>Phone: {invoiceData?.companyInfo?.phone || 'N/A'}</Text>
+            <Text style={styles.addressText}>{invoiceData?.companyInfo?.address || 'N/A'}</Text>
+            <Text style={styles.detailText}>GSTIN: {invoiceData?.companyInfo?.gstin || 'N/A'}</Text>
+            <Text style={styles.detailText}>State: {invoiceData?.companyInfo?.state || 'N/A'} (Code: {invoiceData?.companyInfo?.stateCode || 'N/A'})</Text>
+            <Text style={styles.detailText}>Email: {invoiceData?.companyInfo?.email || 'N/A'}</Text>
+            <Text style={styles.detailText}>Phone: {invoiceData?.companyInfo?.phone || 'N/A'}</Text>
           </View>
-        </View>
-
-        {/* Customer Details */}
-        <View style={styles.customerSection}>
-          <Text style={styles.sectionTitle}>Buyer Details</Text>
-          <View style={styles.customerDetails}>
-            <Text style={styles.customerName}>{invoiceData?.supplierInfo?.business_name || invoiceData?.supplierInfo?.name || 'N/A'}</Text>
-            <Text style={styles.customerInfo}>GSTIN: {invoiceData?.supplierInfo?.gstin || 'URP'}</Text>
-            <Text style={styles.customerInfo}>State: {invoiceData?.supplierInfo?.state || 'N/A'}</Text>
-            {invoiceData?.supplierInfo?.mobile_number && (
-              <Text style={styles.customerInfo}>Mobile: {invoiceData?.supplierInfo?.mobile_number}</Text>
-            )}
-            {invoiceData?.billingAddress && (
-              <Text style={styles.customerInfo}>
-                Address: {invoiceData?.billingAddress?.addressLine1 || ''} {invoiceData?.billingAddress?.addressLine2 || ''}
-              </Text>
-            )}
-          </View>
-        </View>
-
-        {/* Tax Summary */}
-        <View style={styles.taxSection}>
-          <Text style={styles.sectionTitle}>Tax Summary</Text>
-          <View style={styles.taxDetails}>
-            <View style={styles.row}>
-              <Text style={styles.label}>Taxable Amount:</Text>
-              <Text style={styles.value}>₹{invoiceData?.taxableAmount || '0.00'}</Text>
-            </View>
-            {isSameState ? (
-              <>
-                <View style={styles.row}>
-                  <Text style={styles.label}>CGST:</Text>
-                  <Text style={styles.value}>₹{gstBreakdown?.totalCGST || '0.00'}</Text>
-                </View>
-                <View style={styles.row}>
-                  <Text style={styles.label}>SGST:</Text>
-                  <Text style={styles.value}>₹{gstBreakdown?.totalSGST || '0.00'}</Text>
-                </View>
-              </>
-            ) : (
-              <View style={styles.row}>
-                <Text style={styles.label}>IGST:</Text>
-                <Text style={styles.value}>₹{gstBreakdown?.totalIGST || '0.00'}</Text>
+          <View style={styles.qrRight}>
+            {qrDataUrl && (
+              <View style={styles.qrContainer}>
+                <Image 
+                  src={getImageSource(qrDataUrl)} 
+                  style={styles.qrImage}
+                />
+                {qrAmount && (
+                  <Text style={styles.qrAmount}>{qrAmount.toFixed(2)}</Text>
+                )}
               </View>
             )}
-            <View style={styles.row}>
-              <Text style={styles.label}>Total GST:</Text>
-              <Text style={styles.value}>₹{invoiceData?.totalGST || '0.00'}</Text>
+          </View>
+        </View>
+
+        {/* Buyer Details - Bordered */}
+        <View style={styles.borderedTable}>
+          <View style={styles.tableRow}>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>Buyer Name</Text>
             </View>
-            <View style={[styles.row, styles.grandTotal]}>
-              <Text style={styles.grandTotalLabel}>Grand Total:</Text>
-              <Text style={styles.grandTotalValue}>₹{invoiceData?.grandTotal || '0.00'}</Text>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{invoiceData?.supplierInfo?.business_name || invoiceData?.supplierInfo?.name || 'N/A'}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>GSTIN</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{invoiceData?.supplierInfo?.gstin || 'URP'}</Text>
+            </View>
+          </View>
+          <View style={styles.tableRow}>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>State</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{invoiceData?.supplierInfo?.state || 'N/A'}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>Mobile</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{invoiceData?.supplierInfo?.mobile_number || 'N/A'}</Text>
+            </View>
+          </View>
+          <View style={styles.tableRow}>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>Address</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue, styles.addressCell]}>
+              <Text style={styles.cellText}>
+                {invoiceData?.billingAddress?.addressLine1 || ''} {invoiceData?.billingAddress?.addressLine2 || ''}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Tax Summary - Bordered Table */}
+        <View style={styles.borderedTable}>
+          <View style={styles.tableRow}>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>Taxable Amount</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{invoiceData?.taxableAmount || '0.00'}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>Total GST</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{invoiceData?.totalGST || '0.00'}</Text>
+            </View>
+          </View>
+          <View style={styles.tableRow}>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>
+                {isSameState ? 'CGST' : 'IGST'}
+              </Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{isSameState ? (gstBreakdown?.totalCGST || '0.00') : (gstBreakdown?.totalIGST || '0.00')}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellLabel]}>
+              <Text style={styles.cellText}>
+                {isSameState ? 'SGST' : 'CESS'}
+              </Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue]}>
+              <Text style={styles.cellText}>{isSameState ? (gstBreakdown?.totalSGST || '0.00') : '0.00'}</Text>
+            </View>
+          </View>
+          <View style={[styles.tableRow, styles.grandTotalRow]}>
+            <View style={[styles.tableCell, styles.tableCellLabel, styles.grandTotalLabel]}>
+              <Text style={[styles.cellText, styles.grandTotalText]}>Grand Total</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableCellValue, styles.grandTotalValue]}>
+              <Text style={[styles.cellText, styles.grandTotalAmount]}>{invoiceData?.grandTotal || '0.00'}</Text>
             </View>
           </View>
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>This is a system generated e-invoice</Text>
-          <Text style={styles.footerText}>Generated on: {new Date().toLocaleString()}</Text>
-          <Text style={styles.footerText}>Transaction Type: {isSameState ? 'INTRA-STATE' : 'INTER-STATE'}</Text>
+          <Text style={styles.footerText}>This is a system generated e-invoice | Generated on: {new Date().toLocaleString()}</Text>
         </View>
       </Page>
     </Document>
@@ -190,174 +238,166 @@ const EInvoicePdfDocument = ({
 
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
+    padding: 20,
     backgroundColor: '#ffffff',
     fontFamily: 'Helvetica',
   },
   header: {
-    marginBottom: 20,
+    marginBottom: 12,
     borderBottom: 2,
     borderBottomColor: '#1a237e',
-    paddingBottom: 10,
+    paddingBottom: 6,
   },
   title: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#1a237e',
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#666',
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
-  invoiceDetails: {
-    marginBottom: 15,
-    padding: 10,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 5,
-  },
-  irnSection: {
-    marginBottom: 15,
-    padding: 10,
-    backgroundColor: '#e8f5e9',
-    borderRadius: 5,
+  borderedTable: {
     borderWidth: 1,
-    borderColor: '#4caf50',
+    borderColor: '#333',
+    borderRadius: 2,
+    marginBottom: 6,
+    overflow: 'hidden',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+    minHeight: 20,
+  },
+  tableCell: {
+    padding: 4,
+    borderRightWidth: 1,
+    borderRightColor: '#333',
+    justifyContent: 'center',
+  },
+  tableCellLabel: {
+    backgroundColor: '#f0f0f0',
+    width: '25%',
+    flexShrink: 0,
+  },
+  tableCellValue: {
+    backgroundColor: '#ffffff',
+    width: '25%',
+    flexShrink: 0,
+  },
+  cellText: {
+    fontSize: 8,
+    color: '#000',
+    lineHeight: 1.2,
+  },
+  irnLabel: {
+    width: '15%',
+  },
+  irnValueCell: {
+    width: '85%',
   },
   irnValue: {
-    color: '#1a237e',
+    fontSize: 7,
     fontWeight: 'bold',
-    fontSize: 10,
+    color: '#1a237e',
   },
-  statusBadge: {
+  statusCell: {
+    width: '85%',
+  },
+  statusText: {
     color: '#4caf50',
     fontWeight: 'bold',
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#1a237e',
-    marginBottom: 8,
+  addressCell: {
+    width: '75%',
   },
   qrSection: {
-    marginBottom: 15,
-    padding: 10,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 5,
+    flexDirection: 'row',
+    marginBottom: 6,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#333',
+    borderRadius: 2,
+    padding: 6,
+    minHeight: 100,
+  },
+  qrLeft: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  qrRight: {
+    width: 100,
+    justifyContent: 'center',
     alignItems: 'center',
+    borderLeftWidth: 1,
+    borderLeftColor: '#333',
+    paddingLeft: 8,
+  },
+  sectionTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#1a237e',
+    marginBottom: 3,
+  },
+  companyName: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  addressText: {
+    fontSize: 7,
+    color: '#555',
+    marginBottom: 1,
+  },
+  detailText: {
+    fontSize: 7,
+    color: '#555',
+    marginBottom: 1,
   },
   qrContainer: {
     alignItems: 'center',
-    padding: 10,
   },
   qrImage: {
-    width: 120,
-    height: 120,
+    width: 80,
+    height: 80,
   },
   qrAmount: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#007bff',
-    marginTop: 8,
-  },
-  companySection: {
-    marginBottom: 15,
-    padding: 10,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 5,
-  },
-  companyDetails: {
-    marginTop: 5,
-  },
-  companyName: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  companyAddress: {
-    fontSize: 10,
-    color: '#555',
-    marginBottom: 2,
-  },
-  companyInfo: {
-    fontSize: 10,
-    color: '#555',
-    marginBottom: 2,
-  },
-  customerSection: {
-    marginBottom: 15,
-    padding: 10,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 5,
-  },
-  customerDetails: {
-    marginTop: 5,
-  },
-  customerName: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  customerInfo: {
-    fontSize: 10,
-    color: '#555',
-    marginBottom: 2,
-  },
-  taxSection: {
-    marginBottom: 15,
-    padding: 10,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 5,
-  },
-  taxDetails: {
-    marginTop: 5,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 3,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#eee',
-  },
-  label: {
-    fontSize: 10,
-    color: '#666',
-  },
-  value: {
     fontSize: 10,
     fontWeight: 'bold',
+    color: '#1a237e',
+    marginTop: 4,
   },
-  grandTotal: {
-    borderTopWidth: 2,
-    borderTopColor: '#1a237e',
-    marginTop: 5,
-    paddingTop: 5,
+  grandTotalRow: {
+    borderBottomWidth: 0,
   },
   grandTotalLabel: {
-    fontSize: 12,
+    backgroundColor: '#e8f5e9',
+  },
+  grandTotalText: {
     fontWeight: 'bold',
     color: '#1a237e',
   },
   grandTotalValue: {
-    fontSize: 14,
+    backgroundColor: '#e8f5e9',
+  },
+  grandTotalAmount: {
     fontWeight: 'bold',
     color: '#4caf50',
+    fontSize: 12,
   },
   footer: {
-    marginTop: 20,
-    paddingTop: 10,
+    marginTop: 8,
+    paddingTop: 4,
     borderTopWidth: 1,
     borderTopColor: '#ddd',
     alignItems: 'center',
   },
   footerText: {
-    fontSize: 9,
+    fontSize: 7,
     color: '#999',
-    marginBottom: 2,
   },
 });
 
