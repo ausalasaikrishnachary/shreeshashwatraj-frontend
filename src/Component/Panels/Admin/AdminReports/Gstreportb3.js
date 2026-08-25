@@ -186,8 +186,8 @@ function TransactionHistoryPage({ bill, mode, onBack }) {
       : `TRANSACTION HISTORY — ${bill.party} — ${displayFrom} to ${displayTo}`;
 
     const headers = mode === "bill"
-      ? ["S.No", "Party Name", "Date", "Invoice No", "Transaction Type", "Product Name", "HSN Code", "Rate Per Unit", "Quantity", "GST %", "Amount"]
-      : ["S.No", "Party Name", "Date", "Invoice No", "Product Name", "HSN Code", "Rate Per Unit", "Quantity", "GST %", "Amount"];
+      ? ["S.No", "Party Name", "Date", "Invoice No", "Transaction Type", "Product Name",  "Rate Per Unit", "Quantity", "GST %", "Amount"]
+      : ["S.No", "Party Name", "Date", "Invoice No", "Product Name",  "Rate Per Unit", "Quantity", "GST %", "Amount"];
 
     const rows = filtered.map((r, i) =>
       mode === "bill"
@@ -343,7 +343,6 @@ function TransactionHistoryPage({ bill, mode, onBack }) {
                 {/* TransactionType column — only in bill mode */}
                 {mode === "bill" && <th>TRANSACTION TYPE</th>}
                 <th>PRODUCT NAME</th>
-                <th>HSN CODE</th>
                 <th>RATE PER UNIT</th>
                 <th>QUANTITY</th>
                 <th>GST %</th>
@@ -498,7 +497,6 @@ function GSTTable({ bills, startIdx, loading, error, onBillClick, onPartyClick }
             <th>GST NO.</th>
             <th>BB/BC</th>
             <th>TRANSACTION TYPE</th>
-            <th>HSN CODE</th>
             <th>BILL AMT</th>
             <th>TAXABLE AMT</th>
             <th>GST %</th>
@@ -784,11 +782,11 @@ export default function GSTReport({ onTabChange, activeTab }) {
         ["SHREE SHASHWAT RAJ AGRO PVT.LTD."],
         [`GSTR-3B REPORT FROM ${displayFrom} To ${displayTo}`],
         [],
-        ["S.No","Bill No.","Date","Party","GST No.","BB/BC","Transaction Type","HSN Code",
+        ["S.No","Bill No.","Date","Party","GST No.","BB/BC","Transaction Type",
          "Bill Amt","Taxable Amt","GST %","SGST","CGST","IGST"],
         ...bills.map((b, idx) => [
           idx + 1, b.billNo||"", b.date||"", b.party||"", b.gstNo||"",
-          b.bbbc||"", b.transactionType||"", b.hsnCode||"",
+          b.bbbc||"", b.transactionType||"",
           Number(b.billAmt||0), Number(b.taxableAmt||0), b.gst||"",
           Number(b.sgst||0), Number(b.cgst||0), Number(b.igst||0),
         ]),

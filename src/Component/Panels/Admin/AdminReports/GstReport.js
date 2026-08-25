@@ -354,7 +354,7 @@ const fetchGstData = async () => {
         [`GST REGISTER REPORT FROM ${displayFromDate} To ${displayToDate}`],
         [],
         [
-          "Bill No.", "Date", "Party", "GST No.", "BB/BC", "HSN Code", 
+          "Bill No.", "Date", "Party", "GST No.", "BB/BC", 
           "Bill Amt", "Taxable Amt","GST", "SGST Amt", "CGST Amt", "IGST Amt"
         ],
         ...filteredData.map((item) => [
@@ -363,7 +363,7 @@ const fetchGstData = async () => {
           item.party || "",
           item.gstNo || "",
           item.bb_bc || "",
-          item.hsnCode || "",
+          
         
           Number(item.billAmt || 0),
           Number(item.taxableAmt || 0),
@@ -477,7 +477,6 @@ const fetchGstData = async () => {
     { key: "party", title: "Party", style: { textAlign: "center" } },
     { key: "gstNo", title: "GST No.", style: { textAlign: "center", width: "250px" } },
     { key: "bb_bc", title: "BB/BC", style: { textAlign: "center", width: "100px" } },
-    { key: "hsnCode", title: "HSN Code", style: { textAlign: "center", width: "110px" } },
     { key: "billAmt", title: "Bill Amt", style: { textAlign: "center", width: "120px" } },
     { key: "taxableAmt", title: "Taxable Amt", style: { textAlign: "center", width: "120px" } },
         { key: "gstPercentage", title: "GST", style: { textAlign: "center", width: "100px" } },
@@ -541,7 +540,7 @@ const fetchGstData = async () => {
               <FaSearch className="gst-report-search-icon" />
               <input
                 type="text"
-                placeholder="Search by Bill No., Party, GST No., BB/BC, HSN Code, GST %..."
+                placeholder="Search by Bill No., Party, GST No., BB/BC, GST %..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="gst-report-search-input"

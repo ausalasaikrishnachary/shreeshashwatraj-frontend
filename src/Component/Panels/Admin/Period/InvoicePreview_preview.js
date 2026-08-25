@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Button, Form } from 'react-bootstrap';
 import { baseurl } from "../../../BaseURL/BaseURL";
 import axios from "axios";
+
 const InvoicePreview_preview = ({
   invoiceData,
   isEditing,
@@ -16,26 +17,27 @@ const InvoicePreview_preview = ({
   onOrderModeChange,
   periodInvoiceData
 }) => {
-  const [localOrderMode, setLocalOrderMode] = useState("PAKKA");
+  // Force order mode to PAKKA (hidden from UI)
+  const localOrderMode = "PAKKA";
   const [allProducts, setAllProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [updatedItems, setUpdatedItems] = useState([]);
   const [unitData, setUnitData] = useState({});
   const [loadingUnits, setLoadingUnits] = useState(false);
   const [companyInfo, setCompanyInfo] = useState({
-  name: "",
-  address: "",
-  email: "",
-  phone: "",
-  gstin: "",
-  state: "",
-  stateCode: "",
-  bankName: "",
-  accountName: "",
-  branch: "",
-  accountNumber: "",
-  ifscCode: "",
-});
+    name: "",
+    address: "",
+    email: "",
+    phone: "",
+    gstin: "",
+    state: "",
+    stateCode: "",
+    bankName: "",
+    accountName: "",
+    branch: "",
+    accountNumber: "",
+    ifscCode: "",
+  });
   
   // ✅ DEFINE displayItems HERE - at the top, before any useEffect that uses it
   const displayItems = updatedItems.length > 0 ? updatedItems : (invoiceData?.items || []);
@@ -62,8 +64,6 @@ const InvoicePreview_preview = ({
   useEffect(() => {
     if (invoiceData) {
       const mode = invoiceData.order_mode?.toUpperCase() || "PAKKA";
-      setLocalOrderMode(mode);
-      
       // Initialize items
       if (invoiceData.items) {
         setUpdatedItems(invoiceData.items);
@@ -136,86 +136,56 @@ const InvoicePreview_preview = ({
         ...item,
         product_id: variant.id,
         product_type: variant.product_type,
+        // If switching to KACHA, remove GST
         ...(newProductType.toUpperCase() === "KACHA" ? {
           gst: 0,
           cgst: 0,
           sgst: 0,
+          igst: 0,
           tax_amount: 0,
           cgst_amount: 0,
-          sgst_amount: 0
+          sgst_amount: 0,
+          tax_percentage: 0,
+          cgst_percentage: 0,
+          sgst_percentage: 0
         } : {})
       };
-    }
-    
-    return item;
-  };
-
-  // In InvoicePreview_preview component - modify handleOrderModeChange:
-  const handleOrderModeChange = async (value) => {
-    const normalizedValue = value.toUpperCase();
-    
-    if (normalizedValue !== localOrderMode) {
-      console.log(`🔄 Switching order mode from ${localOrderMode} to ${normalizedValue}`);
-      
-      if (updatedItems.length > 0 && allProducts.length > 0) {
-        // Switch product variants for all items
-        const newItems = updatedItems.map(item => 
-          switchItemVariant(item, normalizedValue)
-        );
-        
-        setUpdatedItems(newItems);
-        
-        // Notify parent with updated items containing new product_ids
-        if (onOrderModeChange) {
-          onOrderModeChange({
-            orderMode: normalizedValue,
-            updatedItems: newItems // Pass items with updated product_ids
-          });
-        }
-      } else {
-        // Just pass the order mode
-        if (onOrderModeChange) {
-          onOrderModeChange({
-            orderMode: normalizedValue,
-            updatedItems: []
-          });
-        }
-      }
-      
-      setLocalOrderMode(normalizedValue);
+    } else {
+      console.warn(`⚠️ No ${newProductType} variant found for ${item.product}, keeping original`);
+      return item;
     }
   };
-
 
   useEffect(() => {
-  const fetchCompanyInfo = async () => {
-    try {
-      const res = await fetch(`${baseurl}/api/company-info`);
-      const result = await res.json();
+    const fetchCompanyInfo = async () => {
+      try {
+        const res = await fetch(`${baseurl}/api/company-info`);
+        const result = await res.json();
 
-      if (result.success && result.data) {
-        setCompanyInfo({
-          name: result.data.company_name || "",
-          address: result.data.address || "",
-          email: result.data.email || "",
-          phone: result.data.phone || "",
-          gstin: result.data.gstin || "",
-          state: result.data.state || "",
-          stateCode: result.data.state_code || "",
-          bankName: result.data.bank_name || "STATE BANK OF INDIA",
-          accountName: result.data.account_name || "SHREE SHASHWATRAJ AGRO PVT LTD",
-          branch: result.data.branch || "SME AURANGABAD",
-          accountNumber: result.data.account_number || "44773710377",
-          ifscCode: result.data.ifsc_code || "SBIN0063699",
-        });
+        if (result.success && result.data) {
+          setCompanyInfo({
+            name: result.data.company_name || "",
+            address: result.data.address || "",
+            email: result.data.email || "",
+            phone: result.data.phone || "",
+            gstin: result.data.gstin || "",
+            state: result.data.state || "",
+            stateCode: result.data.state_code || "",
+            bankName: result.data.bank_name || "STATE BANK OF INDIA",
+            accountName: result.data.account_name || "SHREE SHASHWATRAJ AGRO PVT LTD",
+            branch: result.data.branch || "SME AURANGABAD",
+            accountNumber: result.data.account_number || "44773710377",
+            ifscCode: result.data.ifsc_code || "SBIN0063699",
+          });
+        }
+      } catch (error) {
+        console.error("Company info fetch error:", error);
       }
-    } catch (error) {
-      console.error("Company info fetch error:", error);
-    }
-  };
+    };
 
-  fetchCompanyInfo();
-}, []);
+    fetchCompanyInfo();
+  }, []);
+
   const getTaxableAmountPerUnit = (item) => {
     if (item.taxable_amount !== undefined && item.taxable_amount !== null) {
       return parseFloat(item.taxable_amount) || 0;
@@ -223,20 +193,21 @@ const InvoicePreview_preview = ({
     return 0;
   };
 
-const getNetPricePerUnit = (item) => {
-  if (item.net_price !== undefined && item.net_price !== null) {
-    const netPrice = parseFloat(item.net_price);
-    if (!isNaN(netPrice) && netPrice > 0) {
-      console.log(`📊 Using net_price: ${netPrice} for ${item.product || item.item_name}`);
-      return netPrice;
-    } else {
-      console.log(`⚠️ net_price found but invalid: ${item.net_price} for ${item.product || item.item_name}`);
+  const getNetPricePerUnit = (item) => {
+    if (item.net_price !== undefined && item.net_price !== null) {
+      const netPrice = parseFloat(item.net_price);
+      if (!isNaN(netPrice) && netPrice > 0) {
+        console.log(`📊 Using net_price: ${netPrice} for ${item.product || item.item_name}`);
+        return netPrice;
+      } else {
+        console.log(`⚠️ net_price found but invalid: ${item.net_price} for ${item.product || item.item_name}`);
+      }
     }
-  }
-  
-  console.log(`❌ No valid net_price found for ${item.product || item.item_name}, returning 0`);
-  return 0;
-};
+    
+    console.log(`❌ No valid net_price found for ${item.product || item.item_name}, returning 0`);
+    return 0;
+  };
+
   // Get total taxable amount (PER UNIT × QUANTITY)
   const getItemTotalTaxableAmount = (item) => {
     const taxablePerUnit = getTaxableAmountPerUnit(item);
@@ -448,17 +419,17 @@ const getNetPricePerUnit = (item) => {
       <div className="invoice-header border-bottom pb-3 mb-3">
         <Row>
           <Col md={8}>
-    <h2 className="company-name text-primary mb-1">{invoiceData.companyInfo.name}</h2>
-      <p className="company-address text-muted mb-1">{invoiceData.companyInfo.address}</p>
-      <p className="company-contact text-muted small mb-1">
-        Email: {invoiceData.companyInfo.email} | Phone: {invoiceData.companyInfo.phone}
-      </p>
-      <p className="text-muted small mb-0">
-        GSTIN/UIN: {invoiceData.companyInfo.gstin}
-      </p>
-      <p className="text-muted small mb-0">
-        State Name : {invoiceData.companyInfo.state || "Bihar"}, Code : {invoiceData.companyInfo.stateCode || "10"}
-      </p>
+            <h2 className="company-name text-primary mb-1">{invoiceData.companyInfo.name}</h2>
+            <p className="company-address text-muted mb-1">{invoiceData.companyInfo.address}</p>
+            <p className="company-contact text-muted small mb-1">
+              Email: {invoiceData.companyInfo.email} | Phone: {invoiceData.companyInfo.phone}
+            </p>
+            <p className="text-muted small mb-0">
+              GSTIN/UIN: {invoiceData.companyInfo.gstin}
+            </p>
+            <p className="text-muted small mb-0">
+              State Name : {invoiceData.companyInfo.state || "Bihar"}, Code : {invoiceData.companyInfo.stateCode || "10"}
+            </p>
           </Col>
           
           <Col md={4} className="text-end">
@@ -483,42 +454,13 @@ const getNetPricePerUnit = (item) => {
               
               <p className="mb-1"><strong>{invoiceData.supplierInfo.name}</strong></p>
               <p className="mb-1 text-muted">{invoiceData.supplierInfo.businessName}</p>
-               <p className="mb-0"><small>Mobile: {invoiceData.supplierInfo.phone || 'N/A'}</small></p>
+              <p className="mb-0"><small>Mobile: {invoiceData.supplierInfo.phone || 'N/A'}</small></p>
               <p className="mb-1"><small>GSTIN: {invoiceData.supplierInfo.gstin || 'N/A'}</small></p>
               <p className="mb-1"><small>State: {invoiceData.supplierInfo.state || 'N/A'}</small></p>
               <p className="mb-1"><small>Email: {invoiceData.supplierInfo.email || 'N/A'}</small></p>
             </div>
             
-            {/* Order Mode Dropdown */}
-            <div className="order-mode-section mt-3">
-              <div className="order-mode-dropdown" style={{ width: "280px" }}>
-                <Form.Group controlId="orderMode" className="mb-0">
-                  <div className="d-flex align-items-center">
-                    <Form.Label className="mb-0 me-2" style={{ minWidth: "100px" }}>
-                      <strong>Order Type:</strong>
-                    </Form.Label>
-                    <Form.Select 
-                      value={localOrderMode}
-                      onChange={(e) => handleOrderModeChange(e.target.value)}
-                      size="sm"
-                      className="flex-grow-1"
-                      disabled={loadingProducts}
-                    >
-                      <option value="PAKKA">PAKKA</option>
-                      <option value="KACHA">KACHA</option>
-                    </Form.Select>
-                  </div>
-                  <div className="mt-1">
-                    <small className={localOrderMode === "KACHA" ? "text-danger" : "text-success"}>
-                      {localOrderMode === "KACHA" ? "No GST applicable" : "GST applicable as per item rates"}
-                    </small>
-                    {loadingProducts && (
-                      <small className="text-warning ms-2">Loading products...</small>
-                    )}
-                  </div>
-                </Form.Group>
-              </div>
-            </div>
+            {/* Order Mode Section - COMPLETELY REMOVED */}
           </Col>
           
           <Col md={6}>
@@ -617,25 +559,26 @@ const getNetPricePerUnit = (item) => {
                       )}
                     </td>
                     
-                <td className="text-center align-middle">
-  {flashOffer === 1 ? (
-    <div className="fw-bold text-primary">
-      {buyQuantity} {unitData[item.unit_id] || item.unit_name || ''}
-    </div>
-  ) : (
-    <div className="fw-medium text-muted">
-      {quantity} {unitData[item.unit_id] || item.unit_name || ''}
-    </div>
-  )}
-</td><td className="text-center align-middle">
-  {flashOffer === 1 ? (
-    <div className="fw-bold text-success">
-      {getQuantity} {unitData[item.unit_id] || item.unit_name || ''}
-    </div>
-  ) : (
-    <div className="text-muted">-</div>
-  )}
-</td>
+                    <td className="text-center align-middle">
+                      {flashOffer === 1 ? (
+                        <div className="fw-bold text-primary">
+                          {buyQuantity} {unitData[item.unit_id] || item.unit_name || ''}
+                        </div>
+                      ) : (
+                        <div className="fw-medium text-muted">
+                          {quantity} {unitData[item.unit_id] || item.unit_name || ''}
+                        </div>
+                      )}
+                    </td>
+                    <td className="text-center align-middle">
+                      {flashOffer === 1 ? (
+                        <div className="fw-bold text-success">
+                          {getQuantity} {unitData[item.unit_id] || item.unit_name || ''}
+                        </div>
+                      ) : (
+                        <div className="text-muted">-</div>
+                      )}
+                    </td>
                     
                     <td className="text-end align-middle">
                       <div className="fw-medium">₹{netPrice.toFixed(2)}</div>
@@ -731,65 +674,63 @@ const getNetPricePerUnit = (item) => {
                   {invoiceData.note || 'No note added'}
                 </div>
               )}
-            
-              
             </div>
             {/* Transportation Details */}
-<div className="transport-details-section mt-4">
-  <h6 className="text-primary mb-3">Transportation Details</h6>
-  <div className="bg-light p-3 rounded">
-    <Row>
-      <Col md={6} className="mb-2">
-        <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>Transport</Form.Label>
-        <Form.Control
-          type="text"
-          placeholder="Enter transport name"
-          size="sm"
-          value={transportDetails?.transport || ""}
-          onChange={(e) => onTransportChange && onTransportChange({ ...transportDetails, transport: e.target.value })}
-          className="border-primary"
-          style={{ fontSize: '13px', height: '32px' }}
-        />
-      </Col>
-      <Col md={6} className="mb-2">
-        <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>GR/RR No.</Form.Label>
-        <Form.Control
-          type="text"
-          placeholder="Enter GR/RR number"
-          size="sm"
-          value={transportDetails?.grNumber || ""}
-          onChange={(e) => onTransportChange && onTransportChange({ ...transportDetails, grNumber: e.target.value })}
-          className="border-primary"
-          style={{ fontSize: '13px', height: '32px' }}
-        />
-      </Col>
-      <Col md={6} className="mb-2">
-        <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>Vehicle No.</Form.Label>
-        <Form.Control
-          type="text"
-          placeholder="Enter vehicle number"
-          size="sm"
-          value={transportDetails?.vehicleNo || ""}
-          onChange={(e) => onTransportChange && onTransportChange({ ...transportDetails, vehicleNo: e.target.value })}
-          className="border-primary"
-          style={{ fontSize: '13px', height: '32px' }}
-        />
-      </Col>
-      <Col md={6} className="mb-2">
-        <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>Station</Form.Label>
-        <Form.Control
-          type="text"
-          placeholder="Enter station name"
-          size="sm"
-          value={transportDetails?.station || ""}
-          onChange={(e) => onTransportChange && onTransportChange({ ...transportDetails, station: e.target.value })}
-          className="border-primary"
-          style={{ fontSize: '13px', height: '32px' }}
-        />
-      </Col>
-    </Row>
-  </div>
-</div>
+            <div className="transport-details-section mt-4">
+              <h6 className="text-primary mb-3">Transportation Details</h6>
+              <div className="bg-light p-3 rounded">
+                <Row>
+                  <Col md={6} className="mb-2">
+                    <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>Transport</Form.Label>
+                    <Form.Control
+                      type="text"
+                      placeholder="Enter transport name"
+                      size="sm"
+                      value={transportDetails?.transport || ""}
+                      onChange={(e) => onTransportChange && onTransportChange({ ...transportDetails, transport: e.target.value })}
+                      className="border-primary"
+                      style={{ fontSize: '13px', height: '32px' }}
+                    />
+                  </Col>
+                  <Col md={6} className="mb-2">
+                    <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>GR/RR No.</Form.Label>
+                    <Form.Control
+                      type="text"
+                      placeholder="Enter GR/RR number"
+                      size="sm"
+                      value={transportDetails?.grNumber || ""}
+                      onChange={(e) => onTransportChange && onTransportChange({ ...transportDetails, grNumber: e.target.value })}
+                      className="border-primary"
+                      style={{ fontSize: '13px', height: '32px' }}
+                    />
+                  </Col>
+                  <Col md={6} className="mb-2">
+                    <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>Vehicle No.</Form.Label>
+                    <Form.Control
+                      type="text"
+                      placeholder="Enter vehicle number"
+                      size="sm"
+                      value={transportDetails?.vehicleNo || ""}
+                      onChange={(e) => onTransportChange && onTransportChange({ ...transportDetails, vehicleNo: e.target.value })}
+                      className="border-primary"
+                      style={{ fontSize: '13px', height: '32px' }}
+                    />
+                  </Col>
+                  <Col md={6} className="mb-2">
+                    <Form.Label className="fw-bold" style={{ fontSize: '12px' }}>Station</Form.Label>
+                    <Form.Control
+                      type="text"
+                      placeholder="Enter station name"
+                      size="sm"
+                      value={transportDetails?.station || ""}
+                      onChange={(e) => onTransportChange && onTransportChange({ ...transportDetails, station: e.target.value })}
+                      className="border-primary"
+                      style={{ fontSize: '13px', height: '32px' }}
+                    />
+                  </Col>
+                </Row>
+              </div>
+            </div>
           </Col>
           
           <Col md={5}>
@@ -859,30 +800,29 @@ const getNetPricePerUnit = (item) => {
       <div className="invoice-footer border-top pt-3">
         <Row>
           <Col md={6}>
-<div className="bank-details">
-    
-    <h6 className="text-primary mb-1" style={{ fontSize: '15px' }}>
-      Bank Details:
-    </h6>
-    
-<div className="bg-light p-2 rounded" style={{ fontSize: '11px', lineHeight: '1.2' }}>
-  <p className="mb-1" style={{ fontSize: '12px' }}>
-    Account Name: {companyInfo.accountName || "SHREE SHASHWATRAJ AGRO PVT LTD"}
-  </p>
-  <p className="mb-1" style={{ fontSize: '12px' }}>
-    Bank Name: {companyInfo.bankName || "STATE BANK OF INDIA"}
-  </p>
-  <p className="mb-1" style={{ fontSize: '12px' }}>
-    Branch: {companyInfo.branch || "SME AURANGABAD"}
-  </p>
-  <p className="mb-1" style={{ fontSize: '12px' }}>
-    Account Number: {companyInfo.accountNumber || "44773710377"}
-  </p>
-  <p className="mb-0" style={{ fontSize: '12px' }}>
-    IFSC Code: {companyInfo.ifscCode || "SBIN0063699"}
-  </p>
-</div>
-  </div>
+            <div className="bank-details">
+              <h6 className="text-primary mb-1" style={{ fontSize: '15px' }}>
+                Bank Details:
+              </h6>
+              
+              <div className="bg-light p-2 rounded" style={{ fontSize: '11px', lineHeight: '1.2' }}>
+                <p className="mb-1" style={{ fontSize: '12px' }}>
+                  Account Name: {companyInfo.accountName || "SHREE SHASHWATRAJ AGRO PVT LTD"}
+                </p>
+                <p className="mb-1" style={{ fontSize: '12px' }}>
+                  Bank Name: {companyInfo.bankName || "STATE BANK OF INDIA"}
+                </p>
+                <p className="mb-1" style={{ fontSize: '12px' }}>
+                  Branch: {companyInfo.branch || "SME AURANGABAD"}
+                </p>
+                <p className="mb-1" style={{ fontSize: '12px' }}>
+                  Account Number: {companyInfo.accountNumber || "44773710377"}
+                </p>
+                <p className="mb-0" style={{ fontSize: '12px' }}>
+                  IFSC Code: {companyInfo.ifscCode || "SBIN0063699"}
+                </p>
+              </div>
+            </div>
           </Col>
           <Col md={6} className="text-end">
             <div className="signature-section">

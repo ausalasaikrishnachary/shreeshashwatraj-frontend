@@ -66,47 +66,165 @@ const [appliedEndDate, setAppliedEndDate] = useState("");
     };
   }, [openDropdown]);
 
-  const fetchNextInvoiceNumber = async () => {
-    try {
-      console.log('Fetching next invoice number...');
-      const response = await fetch(`${baseurl}/next-invoice-number`);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Received next invoice number:', data.nextInvoiceNumber);
-        setNextInvoiceNumber(data.nextInvoiceNumber);
-      } else {
-        console.error('Failed to fetch next invoice number');
-        generateFallbackInvoiceNumber();
+const fetchNextInvoiceNumber = async (transactionType = "Sales", saleType = null) => {
+  try {
+    console.log(`📞 Fetching next invoice number for: ${transactionType}${saleType ? `, saleType: ${saleType}` : ''}`);
+    
+    let url = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}`;
+    
+    // For Sales, we MUST provide a saleType
+    if (transactionType === "Sales") {
+      // If no saleType provided, use default from your saletypes table
+      if (!saleType) {
+        // ✅ This matches your saletypes table: sale_type = "shree shashwath"
+        saleType = "shree shashwath";
+        console.log(`⚠️ No saleType provided, using default: ${saleType}`);
       }
-    } catch (err) {
-      console.error('Error fetching next invoice number:', err);
-      generateFallbackInvoiceNumber();
+      url += `&saleType=${encodeURIComponent(saleType)}`;
     }
-  };
+    
+    console.log(`🌐 Request URL: ${url}`);
+    
+    const response = await fetch(url);
 
-  const generateFallbackInvoiceNumber = async () => {
-    try {
-      const response = await fetch(`${baseurl}/last-invoice`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.lastInvoiceNumber) {
-          const lastNumber = data.lastInvoiceNumber;
-          const numberMatch = lastNumber.match(/INV(\d+)/);
-          if (numberMatch) {
-            const nextNum = parseInt(numberMatch[1]) + 1;
-            const fallbackInvoiceNumber = `INV${nextNum.toString().padStart(3, '0')}`;
-            setNextInvoiceNumber(fallbackInvoiceNumber);
-            return;
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`✅ Received next invoice number for ${transactionType}:`, data.nextInvoiceNumber);
+      setNextInvoiceNumber(data.nextInvoiceNumber);
+      return data.nextInvoiceNumber;
+    } else {
+      const errorText = await response.text();
+      console.error(`❌ Failed to fetch next invoice number for ${transactionType}:`, response.status, errorText);
+      
+      // If saleType not found, try with alternative saleTypes from your table
+      if (response.status === 404 && errorText.includes('Sale Type not found')) {
+        // ✅ These match your saletypes table
+        const alternativeSaleTypes = ["godown1", "godown2", "shree shashwath"];
+        
+        for (const altSaleType of alternativeSaleTypes) {
+          if (altSaleType === saleType) continue;
+          
+          console.log(`🔄 Trying alternative saleType: ${altSaleType}`);
+          const altUrl = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}&saleType=${encodeURIComponent(altSaleType)}`;
+          const altResponse = await fetch(altUrl);
+          
+          if (altResponse.ok) {
+            const altData = await altResponse.json();
+            console.log(`✅ Received next invoice number with saleType ${altSaleType}:`, altData.nextInvoiceNumber);
+            setNextInvoiceNumber(altData.nextInvoiceNumber);
+            return altData.nextInvoiceNumber;
           }
         }
       }
-      setNextInvoiceNumber('INV001');
-    } catch (err) {
-      console.error('Error in fallback invoice number generation:', err);
-      setNextInvoiceNumber('INV001');
+      
+      // Fallback to generate locally
+      const fallbackNumber = await generateFallbackInvoiceNumber(transactionType);
+      return fallbackNumber;
     }
-  };
+  } catch (err) {
+    console.error(`❌ Error fetching next invoice number for ${transactionType}:`, err);
+    const fallbackNumber = await generateFallbackInvoiceNumber(transactionType);
+    return fallbackNumber;
+  }
+};
+
+const generateFallbackInvoiceNumber = async (transactionType = "Sales") => {
+  try {
+    const getFinancialYearShort = () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+
+      if (month >= 3) {
+        return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+      } else {
+        return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+      }
+    };
+
+    const currentFY = getFinancialYearShort();
+    
+    // Different prefixes based on transaction type
+    let prefix = '';
+    switch(transactionType?.toLowerCase()) {
+      case 'sales':
+        prefix = 'SSA/';
+        break;
+      case 'stock transfer':
+        prefix = 'CS/';
+        break;
+      case 'stock inward':
+        prefix = 'SSk/';
+        break;
+      case 'purchase':
+        prefix = 'SSA/';
+        break;
+      default:
+        prefix = 'SSA/';
+    }
+    
+    const suffix = `/${currentFY}`;
+
+    // Try to get the last invoice number for this transaction type
+    let url = `${baseurl}/last-invoice?transactionType=${encodeURIComponent(transactionType)}`;
+    console.log(`📞 Fetching last invoice for ${transactionType} from:`, url);
+    
+    try {
+      const response = await fetch(url);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`📥 Last invoice response for ${transactionType}:`, data);
+        
+        if (data.lastInvoiceNumber) {
+          const lastNumber = data.lastInvoiceNumber;
+          console.log(`📄 Last invoice number found: ${lastNumber}`);
+          
+          const pattern = new RegExp(`${prefix}(\\d+)/\\d{2}-\\d{2}`);
+          const numberMatch = lastNumber.match(pattern);
+          
+          if (numberMatch) {
+            const nextNum = parseInt(numberMatch[1]) + 1;
+            const fallbackInvoiceNumber = `${prefix}${nextNum.toString().padStart(6, "0")}${suffix}`;
+            console.log(`✅ Generated fallback invoice number: ${fallbackInvoiceNumber}`);
+            setNextInvoiceNumber(fallbackInvoiceNumber);
+            return fallbackInvoiceNumber;
+          } else {
+            console.log(`⚠️ Last invoice ${lastNumber} doesn't match pattern for ${prefix}`);
+          }
+        } else {
+          console.log(`ℹ️ No last invoice found for ${transactionType}`);
+        }
+      } else {
+        console.error(`❌ Failed to fetch last invoice: ${response.status}`);
+      }
+    } catch (err) {
+      console.warn('Could not fetch last invoice:', err);
+    }
+
+    // Ultimate fallback - start from 000001
+    const defaultNumber = `${prefix}000001${suffix}`;
+    console.log(`ℹ️ Using default fallback invoice number: ${defaultNumber}`);
+    setNextInvoiceNumber(defaultNumber);
+    return defaultNumber;
+  } catch (err) {
+    console.error(`❌ Error in fallback invoice number generation for ${transactionType}:`, err);
+    const getFinancialYearShort = () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+
+      if (month >= 3) {
+        return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+      } else {
+        return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+      }
+    };
+    const defaultNumber = `INV/000001/${getFinancialYearShort()}`;
+    setNextInvoiceNumber(defaultNumber);
+    return defaultNumber;
+  }
+};
 
   const fetchInvoicesForOrder = async (orderNumber) => {
     try {
@@ -822,7 +940,7 @@ const fetchOrders = async () => {
     setModalData(null);
   };
 
- const handleGenerateInvoice = async  (order) => {
+const handleGenerateInvoice = async (order) => {
   try {
     setGeneratingInvoice(true);
 
@@ -833,7 +951,6 @@ const fetchOrders = async () => {
       return;
     }
 
-    
     const itemsWithApprovalIssue = orderSelectedItems.map(itemId => {
       const item = order.items.find(i => i.id === itemId);
       return item;
@@ -859,23 +976,99 @@ const fetchOrders = async () => {
       return;
     }
 
+    // ✅ FIXED: Determine transaction type based on order mode
+    const orderMode = order.order_mode?.toUpperCase() || "PAKKA";
+    // PAKKA = Sales, KACHA = stock transfer
+    const transactionType = orderMode === "PAKKA" ? "Sales" : "stock transfer";
+    
+    console.log(`📌 Order Mode: ${orderMode}, Transaction Type: ${transactionType}`);
+
     let invoiceNumber = null;
+    // ✅ Declare saleType outside the try block so it's accessible everywhere
+    let saleType = null;
+    
     try {
-      console.log('📞 Fetching next invoice number from API...');
-      const invoiceNumberResponse = await fetch(`${baseurl}/next-invoice-number`);
+      console.log(`📞 Fetching next invoice number for ${transactionType}...`);
+      
+      let url = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}`;
+      
+      // ✅ FIX: For Sales, we MUST provide a saleType
+      if (transactionType === "Sales") {
+        // Try to get saleType from various sources
+        // 1. Check if order has sale_type
+        if (order.sale_type) {
+          saleType = order.sale_type;
+          console.log(`✅ Using saleType from order: ${saleType}`);
+        }
+        // 2. Check if account has sale_type
+        else if (order.account_details?.sale_type) {
+          saleType = order.account_details.sale_type;
+          console.log(`✅ Using saleType from account: ${saleType}`);
+        }
+        // 3. Use default - "shree shashwath" from your saletypes table
+        else {
+          // ✅ This matches your saletypes table: sale_type = "shree shashwath", series = "SSA"
+          saleType = "shree shashwath";
+          console.log(`⚠️ No saleType found, using default: ${saleType}`);
+        }
+        
+        // Add saleType to URL
+        url += `&saleType=${encodeURIComponent(saleType)}`;
+        console.log(`🌐 Request URL with saleType: ${url}`);
+      }
+      
+      const invoiceNumberResponse = await fetch(url);
       
       if (invoiceNumberResponse.ok) {
         const invoiceNumberData = await invoiceNumberResponse.json();
         invoiceNumber = invoiceNumberData.nextInvoiceNumber;
-        console.log('✅ Received next invoice number:', invoiceNumber);
+        console.log(`✅ Received next invoice number for ${transactionType}:`, invoiceNumber);
         setNextInvoiceNumber(invoiceNumber);
       } else {
-        console.error('Failed to fetch next invoice number, using fallback');
-        invoiceNumber = nextInvoiceNumber || `INV${order.order_number.replace('ORD', '')}`;
+        const errorText = await invoiceNumberResponse.text();
+        console.error(`❌ Failed to fetch next invoice number for ${transactionType}:`, invoiceNumberResponse.status, errorText);
+        
+        // If saleType not found in database, try with alternative saleTypes
+        if (invoiceNumberResponse.status === 404 && errorText.includes('Sale Type not found')) {
+          console.log('🔄 SaleType not found, trying alternatives...');
+          
+          // ✅ These match your saletypes table
+          const alternativeSaleTypes = ["godown1", "godown2", "shree shashwath"];
+          
+          for (const altSaleType of alternativeSaleTypes) {
+            if (altSaleType === saleType) continue; // Skip the one that failed
+            
+            console.log(`🔄 Trying alternative saleType: ${altSaleType}`);
+            const altUrl = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}&saleType=${encodeURIComponent(altSaleType)}`;
+            const altResponse = await fetch(altUrl);
+            
+            if (altResponse.ok) {
+              const altData = await altResponse.json();
+              invoiceNumber = altData.nextInvoiceNumber;
+              console.log(`✅ Received next invoice number with saleType ${altSaleType}:`, invoiceNumber);
+              setNextInvoiceNumber(invoiceNumber);
+              break;
+            }
+          }
+        }
+        
+        // If still no invoice number, use fallback
+        if (!invoiceNumber) {
+          console.log(`🔄 Using fallback generation for ${transactionType}...`);
+          const fallbackNumber = await generateFallbackInvoiceNumber(transactionType);
+          invoiceNumber = fallbackNumber;
+        }
       }
     } catch (err) {
-      console.error('Error fetching next invoice number:', err);
-      invoiceNumber = nextInvoiceNumber || `INV${order.order_number.replace('ORD', '')}`;
+      console.error('❌ Error fetching next invoice number:', err);
+      const fallbackNumber = await generateFallbackInvoiceNumber(transactionType);
+      invoiceNumber = fallbackNumber;
+    }
+
+    // If still no invoice number, use the order number as fallback
+    if (!invoiceNumber) {
+      invoiceNumber = `INV${order.order_number.replace('ORD', '')}`;
+      console.log(`⚠️ Using final fallback invoice number: ${invoiceNumber}`);
     }
 
     const accountDetails = order.account_details;
@@ -892,15 +1085,15 @@ const fetchOrders = async () => {
       edited_sale_price: item.edited_sale_price,
       net_price: item.net_price || 0, 
       weight: item.weight || 0, 
-   flash_offer: item.flash_offer || 0,
-     hsn_code: item.hsn_code || ""  ,
+      flash_offer: item.flash_offer || 0,
+      hsn_code: item.hsn_code || "",
       buy_quantity: item.buy_quantity || 0,
       get_quantity: item.get_quantity || 0,
       credit_charge: item.credit_charge,
       customer_sale_price: item.customer_sale_price,
       final_amount: item.final_amount,
-  quantity: item.flash_offer === 1 ? item.buy_quantity : item.quantity,
-        total_amount: item.total_amount,
+      quantity: item.flash_offer === 1 ? item.buy_quantity : item.quantity,
+      total_amount: item.total_amount,
       discount_percentage: item.discount_percentage,
       discount_amount: item.discount_amount,
       taxable_amount: item.taxable_amount,
@@ -926,8 +1119,8 @@ const fetchOrders = async () => {
       assigned_staff: item.assigned_staff,
       staff_incentive: item.staff_incentive,
       price: item.price,
-       unit_id: item.unit_id || null,      // ← ADD THIS
-  unit_name: item.unit_name || ""     
+      unit_id: item.unit_id || null,
+      unit_name: item.unit_name || ""
     }));
 
     const parseCreditValue = (value) => {
@@ -946,7 +1139,7 @@ const fetchOrders = async () => {
     const parsedBalanceAmount = parseCreditValue(accountDetails?.balance_amount);
 
     const invoiceData = {
-      transactionType: 'stock transfer',
+      transactionType: transactionType,
       orderNumber: order.order_number,
       invoiceNumber: invoiceNumber,
       invoiceDate: new Date().toISOString().split('T')[0],
@@ -957,7 +1150,6 @@ const fetchOrders = async () => {
         items: undefined
       },
 
-        // Add flash offer summary
       flashOfferSummary: {
         hasFlashOffer: selectedItemsData.some(item => item.flash_offer === 1),
         totalItemsWithFlashOffer: selectedItemsData.filter(item => item.flash_offer === 1).length
@@ -974,16 +1166,15 @@ const fetchOrders = async () => {
         creditChargeTotal: selectedItemsData.reduce((sum, item) => sum + (item.credit_charge || 0), 0)
       },
 
-         companyInfo: {
-  name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-  address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-  email: "spmathur56@gmail.com",
-  phone: "9801049700",
-  gstin: "10AAOCS1541B1ZZ",
-  state: "Bihar",
-  stateCode: "10"
-},
-     
+      companyInfo: {
+        name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+        address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+        email: "spmathur56@gmail.com",
+        phone: "9801049700",
+        gstin: "10AAOCS1541B1ZZ",
+        state: "Bihar",
+        stateCode: "10"
+      },
 
       customerInfo: {
         name: accountDetails?.name || order.customer_name,
@@ -1034,7 +1225,6 @@ const fetchOrders = async () => {
       otherDetails: "Authorized Signatory",
       taxType: "CGST/SGST",
 
-      transactionType: 'stock transfer',
       selectedSupplierId: order.customer_id,
       PartyID: order.customer_id,
       AccountID: order.customer_id,
@@ -1056,9 +1246,9 @@ const fetchOrders = async () => {
         order_number: item.order_number,
         item_name: item.item_name,
         product_id: item.product_id,
-      quantity: item.flash_offer === 1 ? item.buy_quantity : item.quantity,
+        quantity: item.flash_offer === 1 ? item.buy_quantity : item.quantity,
         edited_sale_price: item.edited_sale_price,
-          net_price: item.net_price || 0, 
+        net_price: item.net_price || 0, 
         credit_charge: item.credit_charge,
         customer_sale_price: item.customer_sale_price,
         final_amount: item.final_amount,
@@ -1075,12 +1265,19 @@ const fetchOrders = async () => {
         sgst_amount: item.sgst_amount,
         cgst_percentage: item.cgst_percentage,
         cgst_amount: item.cgst_amount,
-          hsn_code: item.hsn_code || ""  ,
+        hsn_code: item.hsn_code || "",
         discount_applied_scheme: item.discount_applied_scheme,
-          unit_id: item.unit_id || null,      // ← ADD THIS
-  unit_name: item.unit_name || ""     // ← ADD THIS
+        unit_id: item.unit_id || null,
+        unit_name: item.unit_name || ""
       }))
     };
+
+    console.log(`📦 Final invoice data prepared for ${transactionType}:`, {
+      invoiceNumber: invoiceData.invoiceNumber,
+      transactionType: invoiceData.transactionType,
+      orderMode: invoiceData.order_mode,
+      itemCount: invoiceData.selectedItems.length
+    });
 
     navigate(`/periodinvoicepreviewpdf/${order.id}`, {
       state: {
@@ -1092,6 +1289,8 @@ const fetchOrders = async () => {
   } catch (error) {
     console.error("Error preparing invoice:", error);
     alert("Failed to prepare invoice data. Please try again.");
+    setGeneratingInvoice(false);
+  } finally {
     setGeneratingInvoice(false);
   }
 };

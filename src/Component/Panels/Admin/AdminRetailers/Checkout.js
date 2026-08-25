@@ -42,7 +42,8 @@ function Checkout() {
   const [loading, setLoading] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderDetails, setOrderDetails] = useState(null);
-  const [orderMode, setOrderMode] = useState(isEditMode ? 'KACHA' : 'KACHA');
+  // Force order mode to always be 'PAKKA' (hidden from UI)
+  const orderMode = 'PAKKA';
   const [cartItems, setCartItems] = useState(initialCartItems || []);
   
   // Safe initialization of orderTotals with defaults
@@ -563,7 +564,7 @@ function Checkout() {
         credit_period: totalCreditCharges,
         estimated_delivery_date: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
         order_placed_by: actualStaffId,
-        order_mode: orderMode,
+        order_mode: orderMode, // Always 'PAKKA'
         approval_status: "Approved",
         ordered_by: staffName,
         order_status: "Pending",
@@ -588,8 +589,8 @@ function Checkout() {
           mrp: breakdown.mrp || 0,
           sale_price: breakdown.sale_price || 0,
           edited_sale_price: breakdown.edited_sale_price || 0,
-           net_price: item.net_price || 0, // Add net_price from item
-      weight: item.weight || null, // Add weight from item
+          net_price: item.net_price || 0,
+          weight: item.weight || null,
           credit_charge: creditCharge,
           credit_period: item.credit_period || 0,
           credit_percentage: (breakdown.credit_percentage || 0).toString(),
@@ -648,7 +649,7 @@ function Checkout() {
           Order Number: ${result.order_number || orderData.order.order_number}
           Customer: ${customerName || retailerDetails?.name || "Customer"}
           Total Amount: ₹${orderData.order.net_payable.toFixed(2)}
-          Order Mode: ${orderMode}
+          Order Mode: PAKKA
           
           Thank you for your order!
         `;
@@ -784,8 +785,8 @@ function Checkout() {
                 </div>
                 <div className="order-detail-row">
                   <span>Order Mode:</span>
-                  <strong className={`order-mode-badge ${orderDetails.orderMode === 'PAKKA' ? 'pakka' : 'kacha'}`}>
-                    {orderDetails.orderMode}
+                  <strong className="order-mode-badge pakka">
+                    PAKKA
                   </strong>
                 </div>
                 <div className="order-detail-row">
@@ -1020,30 +1021,7 @@ function Checkout() {
           </div>
         )}
 
-        {!isEditMode && (
-          <div className="order-mode-section">
-            <h3>Order Mode</h3>
-            <div className="order-mode-buttons">
-              <button
-                className={`order-mode-btn ${orderMode === 'KACHA' ? 'active' : ''}`}
-                onClick={() => setOrderMode('KACHA')}
-              >
-                KACHA
-              </button>
-              <button
-                className={`order-mode-btn ${orderMode === 'PAKKA' ? 'active' : ''}`}
-                onClick={() => setOrderMode('PAKKA')}
-              >
-                PAKKA
-              </button>
-            </div>
-            <p className="order-mode-note">
-              {orderMode === 'KACHA'
-                ? 'KACHA: Temporary order, invoice will be generated later'
-                : 'PAKKA: Complete order with immediate invoice'}
-            </p>
-          </div>
-        )}
+        {/* Order Mode Section - Completely Removed from UI */}
 
         <div className="order-summary-section">
           <h2>{isEditMode ? "Price Update Summary" : "Order Summary"} ({orderTotals.itemCount || cartItems.length} items)</h2>
@@ -1086,14 +1064,7 @@ function Checkout() {
             <strong>₹{formatCurrency(orderTotals.finalTotal)}</strong>
           </div>
 
-          {!isEditMode && (
-            <div className="summary-row mode-display">
-              <span>Order Mode:</span>
-              <span className={`order-mode-indicator ${orderMode === 'PAKKA' ? 'pakka' : 'kacha'}`}>
-                {orderMode} {orderMode === 'PAKKA' ? '✓' : '⏳'}
-              </span>
-            </div>
-          )}
+          {/* Order Mode display removed from summary */}
 
           {(orderTotals.totalDiscount || 0) > 0 && (
             <div className="savings-note">
@@ -1112,7 +1083,7 @@ function Checkout() {
             {isUpdatingItem ? "Updating..." : 
              loading ? "Processing..." : 
              isEditMode ? `Update Price - ₹${formatCurrency(orderTotals.finalTotal)}` : 
-             `Place ${orderMode} Order - ₹${formatCurrency(orderTotals.finalTotal)}`}
+             `Place Order - ₹${formatCurrency(orderTotals.finalTotal)}`}
           </button>
           
           {isEditMode && editedPrice < (cartItems[0]?.min_sale_price || 0) && (

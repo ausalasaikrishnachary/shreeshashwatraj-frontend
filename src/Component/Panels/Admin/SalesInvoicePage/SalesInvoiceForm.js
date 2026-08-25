@@ -560,7 +560,7 @@ const transformApiDataToFormFormat = (apiData) => {
 
       const response = await fetch(
         `${baseurl}/last-invoice?transactionType=${encodeURIComponent(transactionType)}`,
-      );
+      ); 
       if (response.ok) {
         const data = await response.json();
         if (data.lastInvoiceNumber) {
