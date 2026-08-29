@@ -18,12 +18,13 @@ const InvoicePreview_preview = ({
   periodInvoiceData
 }) => {
   // Force order mode to PAKKA (hidden from UI)
-  const localOrderMode = "PAKKA";
+  const [localOrderMode, setLocalOrderMode] = useState("PAKKA");  
   const [allProducts, setAllProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [updatedItems, setUpdatedItems] = useState([]);
   const [unitData, setUnitData] = useState({});
   const [loadingUnits, setLoadingUnits] = useState(false);
+  const [savedGSTValues, setSavedGSTValues] = useState([]);
   const [companyInfo, setCompanyInfo] = useState({
     name: "",
     address: "",
@@ -39,10 +40,8 @@ const InvoicePreview_preview = ({
     ifscCode: "",
   });
   
-  // ✅ DEFINE displayItems HERE - at the top, before any useEffect that uses it
   const displayItems = updatedItems.length > 0 ? updatedItems : (invoiceData?.items || []);
-
-  // Fetch all products on component mount
+  
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
@@ -64,7 +63,7 @@ const InvoicePreview_preview = ({
   useEffect(() => {
     if (invoiceData) {
       const mode = invoiceData.order_mode?.toUpperCase() || "PAKKA";
-      // Initialize items
+      setLocalOrderMode(mode);
       if (invoiceData.items) {
         setUpdatedItems(invoiceData.items);
       }
@@ -87,7 +86,6 @@ const InvoicePreview_preview = ({
     }
   };
 
-  // ✅ This useEffect uses displayItems - now displayItems is defined above
   useEffect(() => {
     const fetchAllUnitNames = async () => {
       if (!displayItems || displayItems.length === 0) return;
@@ -106,12 +104,10 @@ const InvoicePreview_preview = ({
     fetchAllUnitNames();
   }, [displayItems]);
 
-  // ✅ ADD THESE MISSING FUNCTIONS
   // Function to find matching product variant
   const findProductVariant = (currentProductName, targetProductType) => {
     if (!allProducts || allProducts.length === 0) return null;
     
-    // Find product by goods_name and product_type
     return allProducts.find(product => 
       product.goods_name === currentProductName && 
       product.product_type?.toUpperCase() === targetProductType.toUpperCase()
@@ -122,7 +118,6 @@ const InvoicePreview_preview = ({
   const switchItemVariant = (item, newProductType) => {
     if (!item.product) return item;
     
-    // Find matching variant
     const variant = findProductVariant(item.product, newProductType);
     
     if (variant) {
@@ -131,12 +126,10 @@ const InvoicePreview_preview = ({
         newId: variant.id
       });
       
-      // Return updated item with new product details
       return {
         ...item,
         product_id: variant.id,
         product_type: variant.product_type,
-        // If switching to KACHA, remove GST
         ...(newProductType.toUpperCase() === "KACHA" ? {
           gst: 0,
           cgst: 0,
@@ -208,27 +201,22 @@ const InvoicePreview_preview = ({
     return 0;
   };
 
-  // Get total taxable amount (PER UNIT × QUANTITY)
   const getItemTotalTaxableAmount = (item) => {
     const taxablePerUnit = getTaxableAmountPerUnit(item);
     const quantity = parseFloat(item.quantity) || 1;
     return taxablePerUnit * quantity;
   };
 
-  // Get GST amount PER UNIT from database
+  // ✅ FIXED: GST calculated on Net Price (ignores stored tax_amount)
   const getGSTAmountPerUnit = (item) => {
-    if (item.tax_amount !== undefined && item.tax_amount !== null) {
-      return parseFloat(item.tax_amount) || 0;
-    }
-    if (item.gst && item.taxable_amount) {
+    if (item.gst) {
       const gstPercentage = parseFloat(item.gst) || 0;
-      const taxablePerUnit = getTaxableAmountPerUnit(item);
-      return (taxablePerUnit * gstPercentage) / 100;
+      const netPrice = getNetPricePerUnit(item);
+      return (netPrice * gstPercentage) / 100;
     }
     return 0;
   };
 
-  // Get total GST amount (PER UNIT × QUANTITY)
   const getItemTotalGSTAmount = (item) => {
     if (localOrderMode === "KACHA") {
       return 0;
@@ -239,50 +227,42 @@ const InvoicePreview_preview = ({
     return gstPerUnit * quantity;
   };
 
-  // Get CGST amount PER UNIT from database
+  // ✅ FIXED: CGST = Half of GST
   const getCGSTAmountPerUnit = (item) => {
-    if (item.cgst_amount !== undefined && item.cgst_amount !== null) {
-      return parseFloat(item.cgst_amount) || 0;
-    }
     const gstPerUnit = getGSTAmountPerUnit(item);
     return gstPerUnit / 2;
   };
 
-  // Get total CGST amount (PER UNIT × QUANTITY)
   const getItemTotalCGSTAmount = (item) => {
     const cgstPerUnit = getCGSTAmountPerUnit(item);
     const quantity = parseFloat(item.quantity) || 1;
     return cgstPerUnit * quantity;
   };
 
-  // Get SGST amount PER UNIT from database
+  // ✅ FIXED: SGST = Half of GST
   const getSGSTAmountPerUnit = (item) => {
-    if (item.sgst_amount !== undefined && item.sgst_amount !== null) {
-      return parseFloat(item.sgst_amount) || 0;
-    }
     const gstPerUnit = getGSTAmountPerUnit(item);
     return gstPerUnit / 2;
   };
 
-  // Get total SGST amount (PER UNIT × QUANTITY)
   const getItemTotalSGSTAmount = (item) => {
     const sgstPerUnit = getSGSTAmountPerUnit(item);
     const quantity = parseFloat(item.quantity) || 1;
     return sgstPerUnit * quantity;
   };
 
-  // Calculate item total
+  // ✅ FIXED: Item Total = (Net Price × Quantity) + GST
   const calculateItemTotal = (item) => {
     if (localOrderMode === "KACHA") {
       return getItemTotalTaxableAmount(item);
     } else {
-      const taxableAmount = getItemTotalTaxableAmount(item);
+      const netPrice = getNetPricePerUnit(item);
+      const quantity = parseFloat(item.quantity) || 1;
       const gstAmount = getItemTotalGSTAmount(item);
-      return taxableAmount + gstAmount;
+      return (netPrice * quantity) + gstAmount;
     }
   };
 
-  // Calculate adjusted GST breakdown
   const calculateAdjustedGSTBreakdown = () => {
     const itemsToUse = updatedItems.length > 0 ? updatedItems : (invoiceData?.items || []);
     
@@ -335,7 +315,6 @@ const InvoicePreview_preview = ({
 
   const adjustedGstBreakdown = calculateAdjustedGSTBreakdown();
   
-  // Get adjusted totals
   const getAdjustedTotals = () => {
     const itemsToUse = updatedItems.length > 0 ? updatedItems : (invoiceData?.items || []);
     
@@ -388,7 +367,6 @@ const InvoicePreview_preview = ({
 
   const adjustedTotals = getAdjustedTotals();
 
-  // Debug: Log product switching and net_price usage
   useEffect(() => {
     if (updatedItems.length > 0) {
       console.log("🔄 Current items with net_price:", updatedItems.map(item => ({
@@ -401,7 +379,6 @@ const InvoicePreview_preview = ({
     }
   }, [updatedItems, localOrderMode]);
 
-  // Format date to Indian format
   const formatIndianDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -460,9 +437,78 @@ const InvoicePreview_preview = ({
               <p className="mb-1"><small>Email: {invoiceData.supplierInfo.email || 'N/A'}</small></p>
             </div>
             
-            {/* Order Mode Section - COMPLETELY REMOVED */}
+            {/* Order Type Dropdown - Under Bill To */}
+            <div className="assigned-staff-section mt-3 p-1 bg-light rounded">
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="text-muted">Order Type:</span>
+                <Form.Select
+                  value={localOrderMode || "PAKKA"}
+                  onChange={(e) => {
+                    const newMode = e.target.value;
+                    const normalizedMode = newMode.toUpperCase();
+                    
+                    setLocalOrderMode(normalizedMode);
+                    
+                    const itemsToUpdate = updatedItems.length > 0 ? updatedItems : (invoiceData?.items || []);
+                    
+                    let updatedItemsWithNewMode;
+                    
+                    if (normalizedMode === "KACHA") {
+                      const gstSnapshot = itemsToUpdate.map(item => ({
+                        gst: item.gst || 0,
+                        cgst: item.cgst || 0,
+                        sgst: item.sgst || 0,
+                        igst: item.igst || 0,
+                        tax_amount: item.tax_amount || 0,
+                        cgst_amount: item.cgst_amount || 0,
+                        sgst_amount: item.sgst_amount || 0,
+                        tax_percentage: item.tax_percentage || 0,
+                        cgst_percentage: item.cgst_percentage || 0,
+                        sgst_percentage: item.sgst_percentage || 0
+                      }));
+                      setSavedGSTValues(gstSnapshot);
+                      
+                      updatedItemsWithNewMode = itemsToUpdate.map(item => ({
+                        ...item,
+                        order_mode: normalizedMode,
+                        gst: 0,
+                        cgst: 0,
+                        sgst: 0,
+                        igst: 0,
+                        tax_amount: 0,
+                        cgst_amount: 0,
+                        sgst_amount: 0,
+                        tax_percentage: 0,
+                        cgst_percentage: 0,
+                        sgst_percentage: 0
+                      }));
+                    } else {
+                      updatedItemsWithNewMode = itemsToUpdate.map((item, index) => ({
+                        ...item,
+                        order_mode: normalizedMode,
+                        ...(savedGSTValues[index] || {})
+                      }));
+                    }
+                    
+                    setUpdatedItems(updatedItemsWithNewMode);
+                    
+                    if (onOrderModeChange) {
+                      onOrderModeChange({
+                        orderMode: normalizedMode,
+                        updatedItems: updatedItemsWithNewMode
+                      });
+                    }
+                  }}
+                  className="border-primary form-select-sm"
+                  style={{ width: '140px' }}
+                >
+                  <option value="PAKKA">Pakka</option>
+                  <option value="KACHA">Kacha</option>
+                </Form.Select>
+              </div>
+            </div>
           </Col>
-          
+        
           <Col md={6}>
             <div className="shipping-address bg-light p-3 rounded">
               <h5 className="text-primary mb-2">Ship To:</h5>
@@ -535,7 +581,6 @@ const InvoicePreview_preview = ({
                 const itemTotal = calculateItemTotal(item);
                 
                 const gstPercentage = localOrderMode === "KACHA" ? 0 : (parseFloat(item.gst) || 0);
-                // REPLACED: edited_sale_price with net_price
                 const netPrice = getNetPricePerUnit(item);
                 
                 return (
