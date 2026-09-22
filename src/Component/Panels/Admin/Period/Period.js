@@ -1,254 +1,268 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
-import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
-import './Period.css';
-import { baseurl } from "../../../BaseURL/BaseURL";
-import { FaFilePdf, FaTrash, FaDownload, FaCheck, FaTimes, FaEdit } from 'react-icons/fa';
-import axios from "axios";
-// In your Period.jsx component, add this import and function
-import DispatchReportPDF from './DispatchReportPDF';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import { PDFViewer } from "@react-pdf/renderer";
+  import React, { useState, useEffect } from "react";
+  import { useNavigate } from "react-router-dom";
+  import AdminSidebar from '../../../Shared/AdminSidebar/AdminSidebar';
+  import AdminHeader from '../../../Shared/AdminSidebar/AdminHeader';
+  import './Period.css';
+  import { baseurl } from "../../../BaseURL/BaseURL";
+  import { FaFilePdf, FaTrash, FaDownload, FaCheck, FaTimes, FaEdit } from 'react-icons/fa';
+  import axios from "axios";
+  // In your Period.jsx component, add this import and function
+  import DispatchReportPDF from './DispatchReportPDF';
+  import { PDFDownloadLink } from '@react-pdf/renderer';
+  import { PDFViewer } from "@react-pdf/renderer";
 
-
-const Period = () => {
-  const [openRow, setOpenRow] = useState(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [downloading, setDownloading] = useState({});
-  const [orderInvoices, setOrderInvoices] = useState({}); 
-  const [loadingInvoices, setLoadingInvoices] = useState({});
-  const [startDate, setStartDate] = useState("");   
-  const [endDate, setEndDate] = useState("");
-  const navigate = useNavigate();
-  const [openDropdown, setOpenDropdown] = useState(null);
-  const [showOrderModal, setShowOrderModal] = useState(false);
-  const [showItemModal, setShowItemModal] = useState(false);
-  const [modalData, setModalData] = useState(null);
-  const [selectedItems, setSelectedItems] = useState({});
-  const [generatingInvoice, setGeneratingInvoice] = useState(false);
-  const [nextInvoiceNumber, setNextInvoiceNumber] = useState("");
-  const [itemApprovalStatus, setItemApprovalStatus] = useState({}); 
-const [activeTab, setActiveTab] = useState("pending");
-const [selectedOrdersForDispatch, setSelectedOrdersForDispatch] = useState([]);
-const [customSearch, setCustomSearch] = useState("");
-const [tempStartDate, setTempStartDate] = useState("");
-const [tempEndDate, setTempEndDate] = useState("");
-const [appliedStartDate, setAppliedStartDate] = useState("");
-const [appliedEndDate, setAppliedEndDate] = useState("");
-
-  useEffect(() => {
-    fetchOrders();
-    fetchNextInvoiceNumber();
-  }, []);
-
-  useEffect(() => {
-    if (orders.length > 0) {
-      orders.forEach(order => {
-        fetchInvoicesForOrder(order.order_number);
-      });
+  // ✅ FIX: fetch wrapper with a hard timeout. Without this, a slow/hanging
+  // backend response for `transactionType=stock transfer` (KACHA) leaves the
+  // awaited fetch() unresolved forever — the button stays on "Preparing..."
+  // with no error and no navigation, while "Sales" (PAKKA) happens to be fast
+  // enough that the same missing timeout never shows up as a problem.
+  const fetchWithTimeout = async (url, options = {}, timeoutMs = 10000) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      return response;
+    } finally {
+      clearTimeout(timeoutId);
     }
-  }, [orders]);
+  };
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (openDropdown && !event.target.closest('.p-invoice-dropdown')) {
-        setOpenDropdown(null);
+
+  const Period = () => {
+    const [openRow, setOpenRow] = useState(null);
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState("");
+    const [downloading, setDownloading] = useState({});
+    const [orderInvoices, setOrderInvoices] = useState({}); 
+    const [loadingInvoices, setLoadingInvoices] = useState({});
+    const [startDate, setStartDate] = useState("");   
+    const [endDate, setEndDate] = useState("");
+    const navigate = useNavigate();
+    const [openDropdown, setOpenDropdown] = useState(null);
+    const [showOrderModal, setShowOrderModal] = useState(false);
+    const [showItemModal, setShowItemModal] = useState(false);
+    const [modalData, setModalData] = useState(null);
+    const [selectedItems, setSelectedItems] = useState({});
+    const [generatingInvoice, setGeneratingInvoice] = useState(false);
+    const [nextInvoiceNumber, setNextInvoiceNumber] = useState("");
+    const [itemApprovalStatus, setItemApprovalStatus] = useState({}); 
+  const [activeTab, setActiveTab] = useState("pending");
+  const [selectedOrdersForDispatch, setSelectedOrdersForDispatch] = useState([]);
+  const [customSearch, setCustomSearch] = useState("");
+  const [tempStartDate, setTempStartDate] = useState("");
+  const [tempEndDate, setTempEndDate] = useState("");
+  const [appliedStartDate, setAppliedStartDate] = useState("");
+  const [appliedEndDate, setAppliedEndDate] = useState("");
+
+    useEffect(() => {
+      fetchOrders();
+      fetchNextInvoiceNumber();
+    }, []);
+
+    useEffect(() => {
+      if (orders.length > 0) {
+        orders.forEach(order => {
+          fetchInvoicesForOrder(order.order_number);
+        });
       }
-    };
+    }, [orders]);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [openDropdown]);
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (openDropdown && !event.target.closest('.p-invoice-dropdown')) {
+          setOpenDropdown(null);
+        }
+      };
 
-const fetchNextInvoiceNumber = async (transactionType = "Sales", saleType = null) => {
-  try {
-    console.log(`📞 Fetching next invoice number for: ${transactionType}${saleType ? `, saleType: ${saleType}` : ''}`);
-    
-    let url = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}`;
-    
-    // For Sales, we MUST provide a saleType
-    if (transactionType === "Sales") {
-      // If no saleType provided, use default from your saletypes table
-      if (!saleType) {
-        // ✅ This matches your saletypes table: sale_type = "shree shashwath"
-        saleType = "shree shashwath";
-        console.log(`⚠️ No saleType provided, using default: ${saleType}`);
-      }
-      url += `&saleType=${encodeURIComponent(saleType)}`;
-    }
-    
-    console.log(`🌐 Request URL: ${url}`);
-    
-    const response = await fetch(url);
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, [openDropdown]);
 
-    if (response.ok) {
-      const data = await response.json();
-      console.log(`✅ Received next invoice number for ${transactionType}:`, data.nextInvoiceNumber);
-      setNextInvoiceNumber(data.nextInvoiceNumber);
-      return data.nextInvoiceNumber;
-    } else {
-      const errorText = await response.text();
-      console.error(`❌ Failed to fetch next invoice number for ${transactionType}:`, response.status, errorText);
+  const fetchNextInvoiceNumber = async (transactionType = "Sales", saleType = null) => {
+    try {
+      console.log(`📞 Fetching next invoice number for: ${transactionType}${saleType ? `, saleType: ${saleType}` : ''}`);
       
-      // If saleType not found, try with alternative saleTypes from your table
-      if (response.status === 404 && errorText.includes('Sale Type not found')) {
-        // ✅ These match your saletypes table
-        const alternativeSaleTypes = ["godown1", "godown2", "shree shashwath"];
+      let url = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}`;
+      
+      // For Sales, we MUST provide a saleType
+      if (transactionType === "Sales") {
+        // If no saleType provided, use default from your saletypes table
+        if (!saleType) {
+          // ✅ This matches your saletypes table: sale_type = "shree shashwath"
+          saleType = "shree shashwath";
+          console.log(`⚠️ No saleType provided, using default: ${saleType}`);
+        }
+        url += `&saleType=${encodeURIComponent(saleType)}`;
+      }
+      
+      console.log(`🌐 Request URL: ${url}`);
+      
+      // ✅ FIX: bounded with a timeout so this call can't hang forever for
+      // "stock transfer" and silently block downstream UI state.
+      const response = await fetchWithTimeout(url, {}, 10000);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Received next invoice number for ${transactionType}:`, data.nextInvoiceNumber);
+        setNextInvoiceNumber(data.nextInvoiceNumber);
+        return data.nextInvoiceNumber;
+      } else {
+        const errorText = await response.text();
+        console.error(`❌ Failed to fetch next invoice number for ${transactionType}:`, response.status, errorText);
         
-        for (const altSaleType of alternativeSaleTypes) {
-          if (altSaleType === saleType) continue;
+        // If saleType not found, try with alternative saleTypes from your table
+        if (response.status === 404 && errorText.includes('Sale Type not found')) {
+          // ✅ These match your saletypes table
+          const alternativeSaleTypes = ["godown1", "godown2", "shree shashwath"];
           
-          console.log(`🔄 Trying alternative saleType: ${altSaleType}`);
-          const altUrl = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}&saleType=${encodeURIComponent(altSaleType)}`;
-          const altResponse = await fetch(altUrl);
-          
-          if (altResponse.ok) {
-            const altData = await altResponse.json();
-            console.log(`✅ Received next invoice number with saleType ${altSaleType}:`, altData.nextInvoiceNumber);
-            setNextInvoiceNumber(altData.nextInvoiceNumber);
-            return altData.nextInvoiceNumber;
+          for (const altSaleType of alternativeSaleTypes) {
+            if (altSaleType === saleType) continue;
+            
+            console.log(`🔄 Trying alternative saleType: ${altSaleType}`);
+            const altUrl = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}&saleType=${encodeURIComponent(altSaleType)}`;
+            try {
+              const altResponse = await fetchWithTimeout(altUrl, {}, 10000);
+              if (altResponse.ok) {
+                const altData = await altResponse.json();
+                console.log(`✅ Received next invoice number with saleType ${altSaleType}:`, altData.nextInvoiceNumber);
+                setNextInvoiceNumber(altData.nextInvoiceNumber);
+                return altData.nextInvoiceNumber;
+              }
+            } catch (altErr) {
+              console.warn(`⏱️ Alternative saleType "${altSaleType}" request failed/timed out:`, altErr.message);
+            }
           }
         }
+        
+        // Fallback to generate locally
+        const fallbackNumber = await generateFallbackInvoiceNumber(transactionType);
+        return fallbackNumber;
       }
-      
-      // Fallback to generate locally
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.error(`⏱️ Timed out fetching next invoice number for ${transactionType}`);
+      } else {
+        console.error(`❌ Error fetching next invoice number for ${transactionType}:`, err);
+      }
       const fallbackNumber = await generateFallbackInvoiceNumber(transactionType);
       return fallbackNumber;
     }
-  } catch (err) {
-    console.error(`❌ Error fetching next invoice number for ${transactionType}:`, err);
-    const fallbackNumber = await generateFallbackInvoiceNumber(transactionType);
-    return fallbackNumber;
-  }
-};
+  };
 
-const generateFallbackInvoiceNumber = async (transactionType = "Sales") => {
-  try {
-    const getFinancialYearShort = () => {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth();
-
-      if (month >= 3) {
-        return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
-      } else {
-        return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
-      }
-    };
-
-    const currentFY = getFinancialYearShort();
-    
-    // Different prefixes based on transaction type
-    let prefix = '';
-    switch(transactionType?.toLowerCase()) {
-      case 'sales':
-        prefix = 'SSA/';
-        break;
-      case 'stock transfer':
-        prefix = 'CS/';
-        break;
-      case 'stock inward':
-        prefix = 'SSk/';
-        break;
-      case 'purchase':
-        prefix = 'SSA/';
-        break;
-      default:
-        prefix = 'SSA/';
-    }
-    
-    const suffix = `/${currentFY}`;
-
-    // Try to get the last invoice number for this transaction type
-    let url = `${baseurl}/last-invoice?transactionType=${encodeURIComponent(transactionType)}`;
-    console.log(`📞 Fetching last invoice for ${transactionType} from:`, url);
-    
+  const generateFallbackInvoiceNumber = async (transactionType = "Sales") => {
     try {
-      const response = await fetch(url);
+      const getFinancialYearShort = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+
+        if (month >= 3) {
+          return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+        } else {
+          return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+        }
+      };
+
+      const currentFY = getFinancialYearShort();
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`📥 Last invoice response for ${transactionType}:`, data);
+      // Different prefixes based on transaction type
+      let prefix = '';
+      switch(transactionType?.toLowerCase()) {
+        case 'sales':
+          prefix = 'SSA/';
+          break;
+        case 'stock transfer':
+          prefix = 'CS/';
+          break;
+        case 'stock inward':
+          prefix = 'SSk/';
+          break;
+        case 'purchase':
+          prefix = 'SSA/';
+          break;
+        default:
+          prefix = 'SSA/';
+      }
+      
+      const suffix = `/${currentFY}`;
+
+      // Try to get the last invoice number for this transaction type
+      let url = `${baseurl}/last-invoice?transactionType=${encodeURIComponent(transactionType)}`;
+      console.log(`📞 Fetching last invoice for ${transactionType} from:`, url);
+      
+      try {
+        // ✅ FIX: bounded with a timeout as well
+        const response = await fetchWithTimeout(url, {}, 8000);
         
-        if (data.lastInvoiceNumber) {
-          const lastNumber = data.lastInvoiceNumber;
-          console.log(`📄 Last invoice number found: ${lastNumber}`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`📥 Last invoice response for ${transactionType}:`, data);
           
-          const pattern = new RegExp(`${prefix}(\\d+)/\\d{2}-\\d{2}`);
-          const numberMatch = lastNumber.match(pattern);
-          
-          if (numberMatch) {
-            const nextNum = parseInt(numberMatch[1]) + 1;
-            const fallbackInvoiceNumber = `${prefix}${nextNum.toString().padStart(6, "0")}${suffix}`;
-            console.log(`✅ Generated fallback invoice number: ${fallbackInvoiceNumber}`);
-            setNextInvoiceNumber(fallbackInvoiceNumber);
-            return fallbackInvoiceNumber;
+          if (data.lastInvoiceNumber) {
+            const lastNumber = data.lastInvoiceNumber;
+            console.log(`📄 Last invoice number found: ${lastNumber}`);
+            
+            const pattern = new RegExp(`${prefix}(\\d+)/\\d{2}-\\d{2}`);
+            const numberMatch = lastNumber.match(pattern);
+            
+            if (numberMatch) {
+              const nextNum = parseInt(numberMatch[1]) + 1;
+              const fallbackInvoiceNumber = `${prefix}${nextNum.toString().padStart(6, "0")}${suffix}`;
+              console.log(`✅ Generated fallback invoice number: ${fallbackInvoiceNumber}`);
+              setNextInvoiceNumber(fallbackInvoiceNumber);
+              return fallbackInvoiceNumber;
+            } else {
+              console.log(`⚠️ Last invoice ${lastNumber} doesn't match pattern for ${prefix}`);
+            }
           } else {
-            console.log(`⚠️ Last invoice ${lastNumber} doesn't match pattern for ${prefix}`);
+            console.log(`ℹ️ No last invoice found for ${transactionType}`);
           }
         } else {
-          console.log(`ℹ️ No last invoice found for ${transactionType}`);
+          console.error(`❌ Failed to fetch last invoice: ${response.status}`);
         }
-      } else {
-        console.error(`❌ Failed to fetch last invoice: ${response.status}`);
+      } catch (err) {
+        console.warn('Could not fetch last invoice (or it timed out):', err.message);
       }
+
+      // Ultimate fallback - start from 000001
+      const defaultNumber = `${prefix}000001${suffix}`;
+      console.log(`ℹ️ Using default fallback invoice number: ${defaultNumber}`);
+      setNextInvoiceNumber(defaultNumber);
+      return defaultNumber;
     } catch (err) {
-      console.warn('Could not fetch last invoice:', err);
+      console.error(`❌ Error in fallback invoice number generation for ${transactionType}:`, err);
+      const getFinancialYearShort = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+
+        if (month >= 3) {
+          return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+        } else {
+          return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+        }
+      };
+      const defaultNumber = `INV/000001/${getFinancialYearShort()}`;
+      setNextInvoiceNumber(defaultNumber);
+      return defaultNumber;
     }
-
-    // Ultimate fallback - start from 000001
-    const defaultNumber = `${prefix}000001${suffix}`;
-    console.log(`ℹ️ Using default fallback invoice number: ${defaultNumber}`);
-    setNextInvoiceNumber(defaultNumber);
-    return defaultNumber;
-  } catch (err) {
-    console.error(`❌ Error in fallback invoice number generation for ${transactionType}:`, err);
-    const getFinancialYearShort = () => {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth();
-
-      if (month >= 3) {
-        return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
-      } else {
-        return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
-      }
-    };
-    const defaultNumber = `INV/000001/${getFinancialYearShort()}`;
-    setNextInvoiceNumber(defaultNumber);
-    return defaultNumber;
-  }
-};
+  };
 
   const fetchInvoicesForOrder = async (orderNumber) => {
     try {
       setLoadingInvoices(prev => ({ ...prev, [orderNumber]: true }));
-
-      const response = await fetch(`${baseurl}/transactions/download-pdf?order_number=${encodeURIComponent(orderNumber)}`);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`Fetched invoices for ${orderNumber}:`, data.pdfs);
-
-        setOrderInvoices(prev => ({
-          ...prev,
-          [orderNumber]: data.pdfs || []
-        }));
-      } else {
-        console.error(`Failed to fetch invoices for ${orderNumber}:`, response.status);
-        setOrderInvoices(prev => ({
-          ...prev,
-          [orderNumber]: []
-        }));
-      }
+      
+      setOrderInvoices(prev => ({
+        ...prev,
+        [orderNumber]: []
+      }));
+      
     } catch (error) {
-      console.error(`Error fetching invoices for ${orderNumber}:`, error);
+      console.error(`Error in fetchInvoicesForOrder for ${orderNumber}:`, error);
       setOrderInvoices(prev => ({
         ...prev,
         [orderNumber]: []
@@ -258,1000 +272,854 @@ const generateFallbackInvoiceNumber = async (transactionType = "Sales") => {
     }
   };
 
-const handleDownloadSpecificPDF = async (orderNumber, pdfData) => {
-  try {
-    console.log('Generating new PDF for order:', orderNumber);
-    
-    const pdfModule = await import('./InvoicceprintOrder');
-    const InvoicceprintOrder = pdfModule.default;
-    const { generateQRDataUrl } = pdfModule; 
-    
-    const { pdf } = await import('@react-pdf/renderer');
-    
-    const order = orders.find(o => o.order_number === orderNumber);
-    
-    if (!order) {
-      alert('Order not found');
-      return;
+  const handleDownloadSpecificPDF = async (orderNumber, pdfData) => {
+    try {
+      console.log('Generating new PDF for order:', orderNumber);
+      
+      const pdfModule = await import('./InvoicceprintOrder');
+      const InvoicceprintOrder = pdfModule.default;
+      const { generateQRDataUrl } = pdfModule; 
+      
+      const { pdf } = await import('@react-pdf/renderer');
+      
+      const order = orders.find(o => o.order_number === orderNumber);
+      
+      if (!order) {
+        alert('Order not found');
+        return;
+      }
+      
+      const itemWithInvoice = order.items?.find(item => item.invoice_number);
+  const invoiceNumber = itemWithInvoice?.invoice_number || order.invoice_number || `INV${order.order_number.replace('ORD', '')}`;
+      
+      const accountDetails = order.account_details || {};
+      
+      const invoiceData = {
+        orderNumber: order.order_number,
+        invoiceNumber: invoiceNumber,
+        invoiceDate: new Date().toISOString().split('T')[0],
+        validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        
+        companyInfo: {
+          name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+          address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+          email: "spmathur56@gmail.com",
+          phone: "9801049700",
+          gstin: "10AAOCS1541B1ZZ",
+          state: "Bihar",
+          stateCode: "10"
+        },
+        
+        supplierInfo: {
+          name: accountDetails?.name || order.customer_name,
+          businessName: accountDetails?.business_name || order.customer_name,
+          gstin: accountDetails?.gstin || order.gstin || "N/A",
+          state: accountDetails?.billing_state || order.billing_state || "Karnataka",
+          email: accountDetails?.email || "customer@example.com",
+          mobile_number: accountDetails?.mobile_number || order.mobile_number || "N/A"
+        },
+        
+        shippingAddress: accountDetails ? {
+          addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
+          addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
+          city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
+          pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
+          state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
+          country: accountDetails.shipping_country || "India"
+        } : {
+          addressLine1: order.shipping_address || order.billing_address || "Address not specified",
+          city: order.shipping_city || order.billing_city || "City not specified",
+          pincode: order.shipping_pincode || order.billing_pincode || "000000",
+          state: order.shipping_state || order.billing_state || "Karnataka"
+        },
+        
+        items: order.items.map(item => ({
+          product: item.item_name,
+          description: item.item_name,
+          quantity: item.flash_offer === 1 ? item.buy_quantity || item.quantity : item.quantity,
+          flash_offer: item.flash_offer || 0,
+          buy_quantity: item.buy_quantity || 0,
+          get_quantity: item.get_quantity || 0,
+          price: item.edited_sale_price || item.sale_price,
+          net_price: item.net_price || item.edited_sale_price || item.sale_price,
+          discount_amount: item.discount_amount || 0,
+          credit_charge: item.credit_charge || 0,
+          hsn_code: item.hsn_code || "N/A",
+          taxable_amount: item.taxable_amount || 0,
+          gst: item.tax_percentage || 0,
+          tax_amount: item.tax_amount || 0,
+          cgst_amount: item.cgst_amount || 0,
+          sgst_amount: item.sgst_amount || 0,
+          unit_name: item.unit_name || ""
+        })),
+        
+        order_mode: order.order_mode || "PAKKA",
+        assigned_staff: order.assigned_staff || "N/A",
+        note: "Thank you for your business!",
+        transportDetails: {
+          vehicleNo: ""
+        }
+      };
+      
+      // Generate QR code BEFORE creating the PDF
+      const orderMode = invoiceData.order_mode || "PAKKA";
+      const { dataUrl: qrDataUrl, amount: qrAmount } = await generateQRDataUrl(invoiceData, orderMode);
+      
+      const pdfDoc = <InvoicceprintOrder 
+        invoiceData={invoiceData} 
+        invoiceNumber={invoiceNumber}
+        gstBreakdown={{}}
+        isSameState={true}
+        qrDataUrl={qrDataUrl}
+        qrAmount={qrAmount}
+      />;
+      
+      const blob = await pdf(pdfDoc).toBlob();
+      
+      const fileName = `Invoice_${orderNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.target = '_blank';
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+      
+      console.log(`Generated and downloaded PDF for order ${orderNumber} as ${fileName}`);
+      
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Error downloading PDF: ' + error.message);
     }
-    
-    const invoiceNumber = `INV${order.order_number.replace('ORD', '')}`;
-    
-    const accountDetails = order.account_details || {};
-    
-    const invoiceData = {
-      orderNumber: order.order_number,
-      invoiceNumber: invoiceNumber,
-      invoiceDate: new Date().toISOString().split('T')[0],
-      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      
-      companyInfo: {
-        name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-        address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-        email: "spmathur56@gmail.com",
-        phone: "9801049700",
-        gstin: "10AAOCS1541B1ZZ",
-        state: "Bihar",
-        stateCode: "10"
-      },
-      
-      supplierInfo: {
-        name: accountDetails?.name || order.customer_name,
-        businessName: accountDetails?.business_name || order.customer_name,
-        gstin: accountDetails?.gstin || order.gstin || "N/A",
-        state: accountDetails?.billing_state || order.billing_state || "Karnataka",
-        email: accountDetails?.email || "customer@example.com",
-        mobile_number: accountDetails?.mobile_number || order.mobile_number || "N/A"
-      },
-      
-      shippingAddress: accountDetails ? {
-        addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
-        addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
-        city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
-        pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
-        state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
-        country: accountDetails.shipping_country || "India"
-      } : {
-        addressLine1: order.shipping_address || order.billing_address || "Address not specified",
-        city: order.shipping_city || order.billing_city || "City not specified",
-        pincode: order.shipping_pincode || order.billing_pincode || "000000",
-        state: order.shipping_state || order.billing_state || "Karnataka"
-      },
-      
-      items: order.items.map(item => ({
-        product: item.item_name,
-        description: item.item_name,
-        quantity: item.flash_offer === 1 ? item.buy_quantity || item.quantity : item.quantity,
-        flash_offer: item.flash_offer || 0,
-        buy_quantity: item.buy_quantity || 0,
-        get_quantity: item.get_quantity || 0,
-        price: item.edited_sale_price || item.sale_price,
-        net_price: item.net_price || item.edited_sale_price || item.sale_price,
-        discount_amount: item.discount_amount || 0,
-        credit_charge: item.credit_charge || 0,
-        hsn_code: item.hsn_code || "N/A",
-        taxable_amount: item.taxable_amount || 0,
-        gst: item.tax_percentage || 0,
-        tax_amount: item.tax_amount || 0,
-        cgst_amount: item.cgst_amount || 0,
-        sgst_amount: item.sgst_amount || 0,
-        unit_name: item.unit_name || ""
-      })),
-      
-      order_mode: order.order_mode || "PAKKA",
-      assigned_staff: order.assigned_staff || "N/A",
-      note: "Thank you for your business!",
-      transportDetails: {
-        vehicleNo: ""
-      }
-    };
-    
-    // Generate QR code BEFORE creating the PDF
-    const orderMode = invoiceData.order_mode || "PAKKA";
-    const { dataUrl: qrDataUrl, amount: qrAmount } = await generateQRDataUrl(invoiceData, orderMode);
-    
-    const pdfDoc = <InvoicceprintOrder 
-      invoiceData={invoiceData} 
-      invoiceNumber={invoiceNumber}
-      gstBreakdown={{}}
-      isSameState={true}
-      qrDataUrl={qrDataUrl}
-      qrAmount={qrAmount}
-    />;
-    
-    const blob = await pdf(pdfDoc).toBlob();
-    
-    const fileName = `Invoice_${orderNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
-    
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.target = '_blank';
-    
-    document.body.appendChild(link);
-    link.click();
-    
-    setTimeout(() => {
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    }, 100);
-    
-    console.log(`Generated and downloaded PDF for order ${orderNumber} as ${fileName}`);
-    
-  } catch (error) {
-    console.error('Error downloading PDF:', error);
-    alert('Error downloading PDF: ' + error.message);
-  }
-};
-
-
-
-
-const fetchOrders = async () => {
-  try {
-    setLoading(true);
-    const response = await axios.get(`${baseurl}/orders/all-orders`);
-    const ordersData = response.data;
-    console.log("Raw API ordersData:", ordersData);
-    
-    const filteredOrdersData = ordersData.filter(order => {
-      const approvalStatus = order.approval_status?.toString().toLowerCase();
-      const orderStatus = order.order_status?.toString().toLowerCase();
-      
-      const isApproved = approvalStatus === "approved";
-      const isNotCancelled = orderStatus !== "cancelled";
-      
-      return isApproved && isNotCancelled;
-    });
-    
-    console.log(`Filtered orders: ${filteredOrdersData.length} out of ${ordersData.length}`);
-    
-    const ordersWithItems = await Promise.all(
-      filteredOrdersData.map(async (order) => {
-        try {
-          let itemsData = [];
-          
-          try {
-            // Try first API
-            const itemsRes = await axios.get(`${baseurl}/orders/details/${order.order_number}`);
-            console.log(`Response for order ${order.order_number}:`, itemsRes.data);
-            
-            if (itemsRes.data && itemsRes.data.items) {
-              itemsData = itemsRes.data.items;
-            } else if (itemsRes.data && Array.isArray(itemsRes.data)) {
-              itemsData = itemsRes.data;
-            }
-          } catch (error1) {
-            console.log(`First API failed for ${order.order_number}, trying alternatives:`, error1.message);
-            
-            try {
-              // Try second API - this one has flash offer details
-              const itemsRes2 = await axios.get(`${baseurl}/orders/order-items/${order.order_number}`);
-              console.log(`Alternative response for order ${order.order_number}:`, itemsRes2.data);
-              
-              if (itemsRes2.data && itemsRes2.data.items) {
-                itemsData = itemsRes2.data.items;
-              } else if (itemsRes2.data && Array.isArray(itemsRes2.data)) {
-                itemsData = itemsRes2.data;
-              }
-            } catch (error2) {
-              console.error(`All API attempts failed for order ${order.order_number}:`, error2.message);
-              itemsData = [];
-            }
-          }
-          
-          console.log(`Fetched ${itemsData.length} items for order ${order.order_number}:`, itemsData);
-          
-          const orderMode = order.order_mode || "Pakka";
-          const staffIncentive = parseFloat(order.staff_incentive) || 0;
-
-          let accountDetails = null;
-          try {
-            const accountRes = await axios.get(`${baseurl}/accounts/${order.customer_id}`);
-            accountDetails = accountRes.data;
-          } catch (accountErr) {
-            console.warn(`Could not fetch account details for customer ID ${order.customer_id}:`, accountErr.message);
-            accountDetails = null;
-          }
-
-          const items = await Promise.all(
-            itemsData.map(async (item) => {
-              let min_sale_price = 0;
-              let stock_quantity = 0;
-              let stock_insufficient = false;
-               let hsn_code = "";
-              let gst_rate = 0;
-              let product_net_price = 0;
-              let product_price = 0;
-                 let unit_id = null;      
-    let unit_name = "";     
-
-              try {
-                const productRes = await axios.get(`${baseurl}/products/${item.product_id}`);
-                min_sale_price = productRes.data.min_sale_price || 0;
-                hsn_code = productRes.data.hsn_code || "";
-                gst_rate = parseFloat(productRes.data.gst_rate) || 0;
-                product_net_price = parseFloat(productRes.data.net_price) || 0;
-                product_price = parseFloat(productRes.data.price) || 0;
-                    unit_id = productRes.data.unit || null;     
-                         if (unit_id) {
-        try {
-          const unitRes = await axios.get(`${baseurl}/units/${unit_id}`);
-          unit_name = unitRes.data.name || "";
-          console.log(`Unit found for product ${item.product_id}: ${unit_name}`);
-        } catch (unitErr) {
-          console.warn(`Could not fetch unit for ID ${unit_id}:`, unitErr.message);
-          unit_name = "";
-        }
-      }
-
-                try {
-                  const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
-                  console.log(`Batches for product ${item.product_id}:`, batchesRes.data);
-                  
-                  if (batchesRes.data && Array.isArray(batchesRes.data)) {
-                    stock_quantity = batchesRes.data.reduce((total, batch) => {
-                      return total + (parseFloat(batch.quantity) || 0);
-                    }, 0);
-                    
-                    console.log(`Total stock quantity for product ${item.product_id}: ${stock_quantity}`);
-                    
-                    const itemQuantity = parseInt(item.quantity) || 1;
-                    if (itemQuantity > stock_quantity) {
-                      stock_insufficient = true;
-                      console.warn(`Insufficient stock for product ${item.product_id}: Ordered ${itemQuantity}, Available ${stock_quantity}`);
-                    }
-                  }
-                } catch (batchErr) {
-                  console.warn(`Could not fetch batches for product ${item.product_id}:`, batchErr.message);
-                }
-
-              } catch (productErr) {
-                console.warn(`Could not fetch product details for product ID ${item.product_id}:`, productErr.message);
-                min_sale_price = 0;
-                  hsn_code = ""; 
-                    gst_rate = 0;
-                product_net_price = 0;
-                product_price = 0;
-                 unit_id = null;
-      unit_name = "";
-              }
-
-              const salePrice = parseFloat(item.sale_price) || 0;
-              const editedSalePrice = parseFloat(item.edited_sale_price) || salePrice;
-              
-              const needsApproval = salePrice < parseFloat(min_sale_price);
-              
-              // Extract flash offer details
-              const flashOffer = parseInt(item.flash_offer) || 0;
-              const buyQuantity = parseInt(item.buy_quantity) || 0;
-              const getQuantity = parseInt(item.get_quantity) || 0;
-              
-              return {
-                id: item.id || item.item_id || 0,
-                order_number: item.order_number || order.order_number,
-                item_name: item.item_name || item.product_name || "N/A",
-                product_id: item.product_id || 0,
-                mrp: parseFloat(item.mrp) || 0,
-                sale_price: salePrice,
-                edited_sale_price: editedSalePrice,
-                  net_price: parseFloat(item.net_price) || 0, // Add this line
-                     weight: parseFloat(item.weight) || 0, // Add this line
-                credit_charge: parseFloat(item.credit_charge) || 0,
-                customer_sale_price: parseFloat(item.customer_sale_price) || editedSalePrice,
-                final_amount: parseFloat(item.final_amount) || editedSalePrice,
-                quantity: parseInt(item.quantity) || 1,
-                total_amount: parseFloat(item.total_amount) || 0,
-                discount_percentage: parseFloat(item.discount_percentage) || 0,
-                discount_amount: parseFloat(item.discount_amount) || 0,
-                taxable_amount: parseFloat(item.taxable_amount) || 0,
-                tax_percentage: parseFloat(item.tax_percentage) || 0,
-                tax_amount: parseFloat(item.tax_amount) || 0,
-                item_total: parseFloat(item.item_total) || 0,
-                credit_period: parseInt(item.credit_period) || 0,
-                invoice_number: item.invoice_number || null,
-                invoice_date: item.invoice_date || null,
-                invoice_status: parseInt(item.invoice_status) || 0,
-                credit_percentage: parseFloat(item.credit_percentage) || 0,
-                sgst_percentage: parseFloat(item.sgst_percentage) || 0,
-                sgst_amount: parseFloat(item.sgst_amount) || 0,
-                cgst_percentage: parseFloat(item.cgst_percentage) || 0,
-                cgst_amount: parseFloat(item.cgst_amount) || 0,
-                discount_applied_scheme: item.discount_applied_scheme || "N/A",
-                created_at: item.created_at,
-                updated_at: item.updated_at,
-                min_sale_price: min_sale_price,
-                needs_approval: needsApproval,
-                approval_status: item.approval_status || "pending",
-                staff_id: item.staff_id || order.staff_id || 0,
-                assigned_staff: item.assigned_staff || order.assigned_staff || null,
-                staff_incentive: parseFloat(item.staff_incentive) || 0,
-                price: editedSalePrice,
-                hsn_code: hsn_code  ,
-                stock_quantity: stock_quantity,
-                stock_insufficient: stock_insufficient,
-                can_edit: salePrice < parseFloat(min_sale_price),
-                  product_gst_rate: gst_rate,
-                product_net_price: product_net_price,
-                product_price: product_price,
-                // FLASH OFFER DETAILS
-                flash_offer: flashOffer, // 0 or 1
-                buy_quantity: buyQuantity, // e.g., 2
-                get_quantity: getQuantity  ,
-                 unit_id: unit_id,      
-      unit_name: unit_name 
-              };
-            })
-          );
-
-          console.log(`Processed ${items.length} items for order ${order.order_number}`);
-
-          return {
-            ...order,
-            items: items,
-            assigned_staff: order.assigned_staff || "N/A",
-            staff_id: order.staff_id || "N/A",
-            order_status: order.order_status || "N/A",
-            staff_incentive: staffIncentive,
-            account_details: accountDetails,
-            order_mode: orderMode
-          };
-        } catch (error) {
-          console.error(`Error processing order ${order.order_number}:`, error);
-          return {
-            ...order,
-            items: [],
-            assigned_staff: order.assigned_staff || "N/A",
-            staff_id: order.staff_id || "N/A",
-            order_status: order.order_status || "N/A",
-            staff_incentive: parseFloat(order.staff_incentive) || 0,
-            account_details: null,
-            order_mode: order.order_mode || "Pakka"
-          };
-        }
-      })
-    );
-
-    setOrders(ordersWithItems);
-    setLoading(false);
-  } catch (err) {
-    console.error("Error fetching orders:", err);
-    setLoading(false);
-  }
-};
-
-  const toggleRow = (id) => {
-    setOpenRow(openRow === id ? null : id);
   };
 
-  const handleItemSelect = (orderId, itemId, isSelected, itemCreditPeriod) => {
-    const item = orders.find(o => o.id === orderId)?.items?.find(i => i.id === itemId);
-    
-    if (item && item.needs_approval && item.approval_status !== "approved") {
-      alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
-      return;
+
+
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${baseurl}/orders/all-orders`);
+      const ordersData = response.data;
+      console.log("Raw API ordersData:", ordersData);
+      
+      const filteredOrdersData = ordersData.filter(order => {
+        const approvalStatus = order.approval_status?.toString().toLowerCase();
+        const orderStatus = order.order_status?.toString().toLowerCase();
+        
+        const isApproved = approvalStatus === "approved";
+        const isNotCancelled = orderStatus !== "cancelled";
+        
+        return isApproved && isNotCancelled;
+      });
+      
+      console.log(`Filtered orders: ${filteredOrdersData.length} out of ${ordersData.length}`);
+      
+      const ordersWithItems = await Promise.all(
+        filteredOrdersData.map(async (order) => {
+          try {
+            let itemsData = [];
+            
+            try {
+              // Try first API
+              const itemsRes = await axios.get(`${baseurl}/orders/details/${order.order_number}`);
+              console.log(`Response for order ${order.order_number}:`, itemsRes.data);
+              
+              if (itemsRes.data && itemsRes.data.items) {
+                itemsData = itemsRes.data.items;
+              } else if (itemsRes.data && Array.isArray(itemsRes.data)) {
+                itemsData = itemsRes.data;
+              }
+            } catch (error1) {
+              console.log(`First API failed for ${order.order_number}, trying alternatives:`, error1.message);
+              
+              try {
+                // Try second API - this one has flash offer details
+                const itemsRes2 = await axios.get(`${baseurl}/orders/order-items/${order.order_number}`);
+                console.log(`Alternative response for order ${order.order_number}:`, itemsRes2.data);
+                
+                if (itemsRes2.data && itemsRes2.data.items) {
+                  itemsData = itemsRes2.data.items;
+                } else if (itemsRes2.data && Array.isArray(itemsRes2.data)) {
+                  itemsData = itemsRes2.data;
+                }
+              } catch (error2) {
+                console.error(`All API attempts failed for order ${order.order_number}:`, error2.message);
+                itemsData = [];
+              }
+            }
+            
+            console.log(`Fetched ${itemsData.length} items for order ${order.order_number}:`, itemsData);
+            
+            const orderMode = order.order_mode || "Pakka";
+            const staffIncentive = parseFloat(order.staff_incentive) || 0;
+
+            let accountDetails = null;
+            try {
+              const accountRes = await axios.get(`${baseurl}/accounts/${order.customer_id}`);
+              accountDetails = accountRes.data;
+            } catch (accountErr) {
+              console.warn(`Could not fetch account details for customer ID ${order.customer_id}:`, accountErr.message);
+              accountDetails = null;
+            }
+
+            const items = await Promise.all(
+              itemsData.map(async (item) => {
+                let min_sale_price = 0;
+                let stock_quantity = 0;
+                let stock_insufficient = false;
+                let hsn_code = "";
+                let gst_rate = 0;
+                let product_net_price = 0;
+                let product_price = 0;
+                  let unit_id = null;      
+      let unit_name = "";     
+
+                try {
+                  const productRes = await axios.get(`${baseurl}/products/${item.product_id}`);
+                  min_sale_price = productRes.data.min_sale_price || 0;
+                  hsn_code = productRes.data.hsn_code || "";
+                  gst_rate = parseFloat(productRes.data.gst_rate) || 0;
+                  product_net_price = parseFloat(productRes.data.net_price) || 0;
+                  product_price = parseFloat(productRes.data.price) || 0;
+                      unit_id = productRes.data.unit || null;     
+                          if (unit_id) {
+          try {
+            const unitRes = await axios.get(`${baseurl}/units/${unit_id}`);
+            unit_name = unitRes.data.name || "";
+            console.log(`Unit found for product ${item.product_id}: ${unit_name}`);
+          } catch (unitErr) {
+            console.warn(`Could not fetch unit for ID ${unit_id}:`, unitErr.message);
+            unit_name = "";
+          }
+        }
+
+                  try {
+                    const batchesRes = await axios.get(`${baseurl}/products/${item.product_id}/batches`);
+                    console.log(`Batches for product ${item.product_id}:`, batchesRes.data);
+                    
+                    if (batchesRes.data && Array.isArray(batchesRes.data)) {
+                      stock_quantity = batchesRes.data.reduce((total, batch) => {
+                        return total + (parseFloat(batch.quantity) || 0);
+                      }, 0);
+                      
+                      console.log(`Total stock quantity for product ${item.product_id}: ${stock_quantity}`);
+                      
+                      const itemQuantity = parseInt(item.quantity) || 1;
+                      if (itemQuantity > stock_quantity) {
+                        stock_insufficient = true;
+                        console.warn(`Insufficient stock for product ${item.product_id}: Ordered ${itemQuantity}, Available ${stock_quantity}`);
+                      }
+                    }
+                  } catch (batchErr) {
+                    console.warn(`Could not fetch batches for product ${item.product_id}:`, batchErr.message);
+                  }
+
+                } catch (productErr) {
+                  console.warn(`Could not fetch product details for product ID ${item.product_id}:`, productErr.message);
+                  min_sale_price = 0;
+                    hsn_code = ""; 
+                      gst_rate = 0;
+                  product_net_price = 0;
+                  product_price = 0;
+                  unit_id = null;
+        unit_name = "";
+                }
+
+                const salePrice = parseFloat(item.sale_price) || 0;
+                const editedSalePrice = parseFloat(item.edited_sale_price) || salePrice;
+                
+                const needsApproval = salePrice < parseFloat(min_sale_price);
+                
+                // Extract flash offer details
+                const flashOffer = parseInt(item.flash_offer) || 0;
+                const buyQuantity = parseInt(item.buy_quantity) || 0;
+                const getQuantity = parseInt(item.get_quantity) || 0;
+                
+                return {
+                  id: item.id || item.item_id || 0,
+                  order_number: item.order_number || order.order_number,
+                  item_name: item.item_name || item.product_name || "N/A",
+                  product_id: item.product_id || 0,
+                  mrp: parseFloat(item.mrp) || 0,
+                  sale_price: salePrice,
+                  edited_sale_price: editedSalePrice,
+                    net_price: parseFloat(item.net_price) || 0, // Add this line
+                      weight: parseFloat(item.weight) || 0, // Add this line
+                  credit_charge: parseFloat(item.credit_charge) || 0,
+                  customer_sale_price: parseFloat(item.customer_sale_price) || editedSalePrice,
+                  final_amount: parseFloat(item.final_amount) || editedSalePrice,
+                  quantity: parseInt(item.quantity) || 1,
+                  total_amount: parseFloat(item.total_amount) || 0,
+                  discount_percentage: parseFloat(item.discount_percentage) || 0,
+                  discount_amount: parseFloat(item.discount_amount) || 0,
+                  taxable_amount: parseFloat(item.taxable_amount) || 0,
+                  tax_percentage: parseFloat(item.tax_percentage) || 0,
+                  tax_amount: parseFloat(item.tax_amount) || 0,
+                  item_total: parseFloat(item.item_total) || 0,
+                  credit_period: parseInt(item.credit_period) || 0,
+                  invoice_number: item.invoice_number || null,
+                  invoice_date: item.invoice_date || null,
+                  invoice_status: parseInt(item.invoice_status) || 0,
+                  credit_percentage: parseFloat(item.credit_percentage) || 0,
+                  sgst_percentage: parseFloat(item.sgst_percentage) || 0,
+                  sgst_amount: parseFloat(item.sgst_amount) || 0,
+                  cgst_percentage: parseFloat(item.cgst_percentage) || 0,
+                  cgst_amount: parseFloat(item.cgst_amount) || 0,
+                  discount_applied_scheme: item.discount_applied_scheme || "N/A",
+                  created_at: item.created_at,
+                  updated_at: item.updated_at,
+                  min_sale_price: min_sale_price,
+                  needs_approval: needsApproval,
+                  approval_status: item.approval_status || "pending",
+                  staff_id: item.staff_id || order.staff_id || 0,
+                  assigned_staff: item.assigned_staff || order.assigned_staff || null,
+                  staff_incentive: parseFloat(item.staff_incentive) || 0,
+                  price: editedSalePrice,
+                  hsn_code: hsn_code  ,
+                  stock_quantity: stock_quantity,
+                  stock_insufficient: stock_insufficient,
+                  can_edit: salePrice < parseFloat(min_sale_price),
+                    product_gst_rate: gst_rate,
+                  product_net_price: product_net_price,
+                  product_price: product_price,
+                  // FLASH OFFER DETAILS
+                  flash_offer: flashOffer, // 0 or 1
+                  buy_quantity: buyQuantity, // e.g., 2
+                  get_quantity: getQuantity  ,
+                  unit_id: unit_id,      
+        unit_name: unit_name 
+                };
+              })
+            );
+
+            console.log(`Processed ${items.length} items for order ${order.order_number}`);
+
+            return {
+              ...order,
+              items: items,
+              assigned_staff: order.assigned_staff || "N/A",
+              staff_id: order.staff_id || "N/A",
+              order_status: order.order_status || "N/A",
+              staff_incentive: staffIncentive,
+              account_details: accountDetails,
+              order_mode: orderMode
+            };
+          } catch (error) {
+            console.error(`Error processing order ${order.order_number}:`, error);
+            return {
+              ...order,
+              items: [],
+              assigned_staff: order.assigned_staff || "N/A",
+              staff_id: order.staff_id || "N/A",
+              order_status: order.order_status || "N/A",
+              staff_incentive: parseFloat(order.staff_incentive) || 0,
+              account_details: null,
+              order_mode: order.order_mode || "Pakka"
+            };
+          }
+        })
+      );
+
+      setOrders(ordersWithItems);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching orders:", err);
+      setLoading(false);
     }
+  };
 
-    setSelectedItems(prev => {
-      const newSelected = { ...prev };
-      const currentSelectedIds = newSelected[orderId] || [];
-      const order = orders.find(o => o.id === orderId);
+    const toggleRow = (id) => {
+      setOpenRow(openRow === id ? null : id);
+    };
 
-      if (!order || !order.items) return prev;
+    const handleItemSelect = (orderId, itemId, isSelected, itemCreditPeriod) => {
+      const item = orders.find(o => o.id === orderId)?.items?.find(i => i.id === itemId);
+      
+      if (item && item.needs_approval && item.approval_status !== "approved") {
+        alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
+        return;
+      }
 
-      if (isSelected) {
-        if (currentSelectedIds.length === 0) {
-          const eligibleItems = order.items.filter(item =>
-            item.credit_period === itemCreditPeriod &&
-            item.invoice_status !== 1 &&
-            (!item.needs_approval || item.approval_status === "approved")
-          );
-          newSelected[orderId] = eligibleItems.map(item => item.id);
-        } else {
-          const firstSelectedItemId = currentSelectedIds[0];
-          const firstSelectedItem = order.items.find(item => item.id === firstSelectedItemId);
+      setSelectedItems(prev => {
+        const newSelected = { ...prev };
+        const currentSelectedIds = newSelected[orderId] || [];
+        const order = orders.find(o => o.id === orderId);
 
-          if (firstSelectedItem && firstSelectedItem.credit_period === itemCreditPeriod) {
+        if (!order || !order.items) return prev;
+
+        if (isSelected) {
+          if (currentSelectedIds.length === 0) {
             const eligibleItems = order.items.filter(item =>
               item.credit_period === itemCreditPeriod &&
               item.invoice_status !== 1 &&
-              !currentSelectedIds.includes(item.id) &&
               (!item.needs_approval || item.approval_status === "approved")
             );
-            newSelected[orderId] = [...currentSelectedIds, ...eligibleItems.map(item => item.id)];
+            newSelected[orderId] = eligibleItems.map(item => item.id);
           } else {
-            alert(`Cannot select items with different credit periods. Selected items have ${firstSelectedItem?.credit_period} days, this item has ${itemCreditPeriod} days.`);
-            return prev;
+            const firstSelectedItemId = currentSelectedIds[0];
+            const firstSelectedItem = order.items.find(item => item.id === firstSelectedItemId);
+
+            if (firstSelectedItem && firstSelectedItem.credit_period === itemCreditPeriod) {
+              const eligibleItems = order.items.filter(item =>
+                item.credit_period === itemCreditPeriod &&
+                item.invoice_status !== 1 &&
+                !currentSelectedIds.includes(item.id) &&
+                (!item.needs_approval || item.approval_status === "approved")
+              );
+              newSelected[orderId] = [...currentSelectedIds, ...eligibleItems.map(item => item.id)];
+            } else {
+              alert(`Cannot select items with different credit periods. Selected items have ${firstSelectedItem?.credit_period} days, this item has ${itemCreditPeriod} days.`);
+              return prev;
+            }
+          }
+        } else {
+          if (currentSelectedIds.includes(itemId)) {
+            newSelected[orderId] = currentSelectedIds.filter(id => id !== itemId);
+            if (newSelected[orderId].length === 0) {
+              delete newSelected[orderId];
+            }
           }
         }
-      } else {
-        if (currentSelectedIds.includes(itemId)) {
-          newSelected[orderId] = currentSelectedIds.filter(id => id !== itemId);
-          if (newSelected[orderId].length === 0) {
-            delete newSelected[orderId];
-          }
-        }
-      }
-      return newSelected;
-    });
-  };
-
-  const handleSelectAll = (orderId, items) => {
-    const currentSelectedIds = selectedItems[orderId] || [];
-    const isAllSelected = currentSelectedIds.length === items.length;
-
-    if (isAllSelected) {
-      setSelectedItems(prev => {
-        const newSelected = { ...prev };
-        delete newSelected[orderId];
         return newSelected;
       });
-    } else {
-      const creditPeriods = [...new Set(items.map(item => item.credit_period))];
-      if (creditPeriods.length > 1) {
-        alert(`Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days. Please select items with the same credit period.`);
-        return;
-      }
-
-      const eligibleItems = items.filter(item => {
-        if (item.invoice_status === 1) return false;
-        if (item.needs_approval && item.approval_status !== "approved") return false;
-        return true;
-      });
-
-      if (eligibleItems.length === 0) {
-        alert("No items available for selection. All items either have invoices generated or require approval.");
-        return;
-      }
-
-      setSelectedItems(prev => ({
-        ...prev,
-        [orderId]: eligibleItems.map(item => item.id)
-      }));
-    }
-  };
-
-  const handleApproveItem = async (itemId, orderId) => {
-    try {
-      const order = orders.find(o => o.id === orderId);
-      if (!order) return;
-      
-      const item = order.items.find(i => i.id === itemId);
-      if (!item) return;
-      
-      const response = await axios.put(`${baseurl}/orders/items/${itemId}/approve`, {
-        approval_status: "approved"
-      });
-      
-      if (response.data.success) {
-        setOrders(prevOrders => 
-          prevOrders.map(order => {
-            if (order.id === orderId) {
-              return {
-                ...order,
-                items: order.items.map(item => 
-                  item.id === itemId 
-                    ? { ...item, approval_status: "approved" }
-                    : item
-                )
-              };
-            }
-            return order;
-          })
-        );
-        
-        alert("Item approved successfully!");
-      }
-    } catch (error) {
-      console.error("Error approving item:", error);
-      alert(`Failed to approve item: ${error.response?.data?.error || error.message}`);
-    }
-  };
-
-  const handleRejectItem = async (itemId, orderId) => {
-    try {
-      const order = orders.find(o => o.id === orderId);
-      if (!order) return;
-      
-      const item = order.items.find(i => i.id === itemId);
-      if (!item) return;
-      
-      const response = await axios.put(`${baseurl}/orders/items/${itemId}/approve`, {
-        approval_status: "rejected"
-      });
-      
-      if (response.data.success) {
-        setOrders(prevOrders => 
-          prevOrders.map(order => {
-            if (order.id === orderId) {
-              return {
-                ...order,
-                items: order.items.map(item => 
-                  item.id === itemId 
-                    ? { ...item, approval_status: "rejected" }
-                    : item
-                )
-              };
-            }
-            return order;
-          })
-        );
-        
-        alert("Item rejected successfully!");
-      }
-    } catch (error) {
-      console.error("Error rejecting item:", error);
-      alert(`Failed to reject item: ${error.response?.data?.error || error.message}`);
-    }
-  };
-
-  // NEW: Handle edit item (navigate to checkout page)
-  const handleEditItem = (order, item) => {
-    console.log("Editing item:", item);
-    
-    // Prepare all calculations for the checkout page
-    const newEditedPrice = item.edited_sale_price || item.sale_price;
-    const discountPercentage = item.discount_percentage || 0;
-    const creditPeriod = item.credit_period || 0;
-    const quantity = item.quantity || 1;
-    const gstPercentage = item.tax_percentage || 18; // Use existing tax percentage or default 18%
-    const creditPercentage = item.credit_percentage || 2; // Default 2% per month
-    
-    // Recalculate all values based on the new edited price
-    // 1. Edited price is the taxable amount (base price)
-    const taxableAmount = newEditedPrice;
-    
-    // 2. Calculate discount on taxable amount
-    const discountAmount = taxableAmount * (discountPercentage / 100);
-    
-    // 3. Price after discount
-    const priceAfterDiscount = taxableAmount - discountAmount;
-    
-    // 4. Calculate GST on taxable amount (not on discounted amount)
-    const taxAmount = taxableAmount * (gstPercentage / 100);
-    
-    // 5. Split GST into SGST and CGST (equal split)
-    const sgstPercentage = gstPercentage / 2;
-    const cgstPercentage = gstPercentage / 2;
-    const sgstAmount = taxAmount / 2;
-    const cgstAmount = taxAmount / 2;
-    
-    // 6. Calculate credit charge on taxable amount
-    let creditCharge = 0;
-    if (creditPeriod > 0) {
-      creditCharge = (taxableAmount * creditPercentage * creditPeriod) / (30 * 100);
-    }
-    
-    // 7. Calculate final amount: taxable amount + GST + credit charge
-    const finalAmount = taxableAmount + taxAmount + creditCharge;
-    
-    // 8. Customer sale price is the final amount per unit
-    const customerSalePrice = finalAmount;
-    
-    // 9. Calculate totals for all quantities
-    const itemTotal = finalAmount * quantity;
-    const totalDiscount = discountAmount * quantity;
-    const totalTax = taxAmount * quantity;
-    const totalTaxableAmount = taxableAmount * quantity;
-    const totalCreditCharges = creditCharge * quantity;
-    const finalTotal = itemTotal;
-
-    const cartItem = {
-      product_id: item.product_id,
-      item_name: item.item_name,
-      quantity: item.quantity,
-      sale_price: item.sale_price,
-      edited_sale_price: newEditedPrice,
-      mrp: item.mrp,
-      min_sale_price: item.min_sale_price,
-      credit_period: creditPeriod,
-      staff_incentive: item.staff_incentive || 0,
-      discount_percentage: discountPercentage,
-      tax_percentage: gstPercentage,
-      credit_percentage: creditPercentage,
-      
-      // Include all recalculated breakdown calculations
-      breakdown: {
-        perUnit: {
-          mrp: item.mrp,
-          sale_price: item.sale_price,
-          edited_sale_price: newEditedPrice,
-          credit_charge: creditCharge,
-          credit_percentage: creditPercentage,
-          customer_sale_price: customerSalePrice,
-          discount_percentage: discountPercentage,
-          discount_amount: discountAmount,
-          taxable_amount: taxableAmount,
-          tax_percentage: gstPercentage,
-          tax_amount: taxAmount,
-          sgst_percentage: sgstPercentage,
-          sgst_amount: sgstAmount,
-          cgst_percentage: cgstPercentage,
-          cgst_amount: cgstAmount,
-          final_amount: finalAmount,
-          item_total: finalAmount
-        }
-      }
     };
 
-    // Prepare order totals for checkout with recalculated values
-    const orderTotals = {
-      subtotal: itemTotal,
-      totalTax: totalTax,
-      totalDiscount: totalDiscount,
-      totalTaxableAmount: totalTaxableAmount,
-      totalCreditCharges: totalCreditCharges,
-      finalTotal: finalTotal,
-      itemCount: 1,
-      userDiscount: discountPercentage
-    };
+    const handleSelectAll = (orderId, items) => {
+      const currentSelectedIds = selectedItems[orderId] || [];
+      const isAllSelected = currentSelectedIds.length === items.length;
 
-    // Navigate to checkout with order and item data
-    navigate('/retailers/checkout', {
-      state: {
-        retailerId: order.customer_id,
-        customerName: order.customer_name,
-        displayName: order.customer_name,
-        discount: order.discount_amount || 0,
-        cartItems: [cartItem],
-        staffId: order.staff_id,
-        orderTotals: orderTotals,
-        userDiscountPercentage: discountPercentage,
-        creditPeriods: creditPeriod,
-        isEditMode: true,
-        editOrderNumber: order.order_number,
-        editItemId: item.id,
-        originalItemData: item,
-        
-        // Pass all calculation parameters for recalculation in checkout
-        calculationParams: {
-          discountPercentage: discountPercentage,
-          gstPercentage: gstPercentage,
-          creditPercentage: creditPercentage,
-          quantity: quantity
-        }
-      }
-    });
-  };
-
-  const openOrderModal = (orderId) => {
-    const orderData = orders.find(order => order.id === orderId);
-    if (orderData) {
-      setModalData(orderData);
-      setShowOrderModal(true);
-    }
-  };
-
-  const openItemModal = (orderNumber, itemId) => {
-    const order = orders.find(order => order.order_number === orderNumber);
-    if (order && order.items) {
-      const itemData = order.items.find(item => item.id === itemId);
-      if (itemData) {
-        setModalData(itemData);
-        setShowItemModal(true);
-      }
-    }
-  };
-
-  const closeModals = () => {
-    setShowOrderModal(false);
-    setShowItemModal(false);
-    setModalData(null);
-  };
-
-const handleGenerateInvoice = async (order) => {
-  try {
-    setGeneratingInvoice(true);
-
-    const orderSelectedItems = selectedItems[order.id] || [];
-    if (orderSelectedItems.length === 0) {
-      alert("Please select at least one item to generate invoice!");
-      setGeneratingInvoice(false);
-      return;
-    }
-
-    const itemsWithApprovalIssue = orderSelectedItems.map(itemId => {
-      const item = order.items.find(i => i.id === itemId);
-      return item;
-    }).filter(item => 
-      item.needs_approval && item.approval_status !== "approved"
-    );
-
-    if (itemsWithApprovalIssue.length > 0) {
-      const itemNames = itemsWithApprovalIssue.map(i => i.item_name).join(', ');
-      alert(`Cannot generate invoice for the following items because they require approval but are not approved: ${itemNames}`);
-      setGeneratingInvoice(false);
-      return;
-    }
-
-    const selectedItemsData = order.items.filter(item =>
-      orderSelectedItems.includes(item.id)
-    );
-
-    const itemsWithInvoice = selectedItemsData.filter(item => item.invoice_status === 1);
-    if (itemsWithInvoice.length > 0) {
-      alert(`Some selected items already have invoices generated: ${itemsWithInvoice.map(i => i.item_name).join(', ')}`);
-      setGeneratingInvoice(false);
-      return;
-    }
-
-    // ✅ FIXED: Determine transaction type based on order mode
-    const orderMode = order.order_mode?.toUpperCase() || "PAKKA";
-    // PAKKA = Sales, KACHA = stock transfer
-    const transactionType = orderMode === "PAKKA" ? "Sales" : "stock transfer";
-    
-    console.log(`📌 Order Mode: ${orderMode}, Transaction Type: ${transactionType}`);
-
-    let invoiceNumber = null;
-    // ✅ Declare saleType outside the try block so it's accessible everywhere
-    let saleType = null;
-    
-    try {
-      console.log(`📞 Fetching next invoice number for ${transactionType}...`);
-      
-      let url = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}`;
-      
-      // ✅ FIX: For Sales, we MUST provide a saleType
-      if (transactionType === "Sales") {
-        // Try to get saleType from various sources
-        // 1. Check if order has sale_type
-        if (order.sale_type) {
-          saleType = order.sale_type;
-          console.log(`✅ Using saleType from order: ${saleType}`);
-        }
-        // 2. Check if account has sale_type
-        else if (order.account_details?.sale_type) {
-          saleType = order.account_details.sale_type;
-          console.log(`✅ Using saleType from account: ${saleType}`);
-        }
-        // 3. Use default - "shree shashwath" from your saletypes table
-        else {
-          // ✅ This matches your saletypes table: sale_type = "shree shashwath", series = "SSA"
-          saleType = "shree shashwath";
-          console.log(`⚠️ No saleType found, using default: ${saleType}`);
-        }
-        
-        // Add saleType to URL
-        url += `&saleType=${encodeURIComponent(saleType)}`;
-        console.log(`🌐 Request URL with saleType: ${url}`);
-      }
-      
-      const invoiceNumberResponse = await fetch(url);
-      
-      if (invoiceNumberResponse.ok) {
-        const invoiceNumberData = await invoiceNumberResponse.json();
-        invoiceNumber = invoiceNumberData.nextInvoiceNumber;
-        console.log(`✅ Received next invoice number for ${transactionType}:`, invoiceNumber);
-        setNextInvoiceNumber(invoiceNumber);
+      if (isAllSelected) {
+        setSelectedItems(prev => {
+          const newSelected = { ...prev };
+          delete newSelected[orderId];
+          return newSelected;
+        });
       } else {
-        const errorText = await invoiceNumberResponse.text();
-        console.error(`❌ Failed to fetch next invoice number for ${transactionType}:`, invoiceNumberResponse.status, errorText);
+        const creditPeriods = [...new Set(items.map(item => item.credit_period))];
+        if (creditPeriods.length > 1) {
+          alert(`Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days. Please select items with the same credit period.`);
+          return;
+        }
+
+        const eligibleItems = items.filter(item => {
+          if (item.invoice_status === 1) return false;
+          if (item.needs_approval && item.approval_status !== "approved") return false;
+          return true;
+        });
+
+        if (eligibleItems.length === 0) {
+          alert("No items available for selection. All items either have invoices generated or require approval.");
+          return;
+        }
+
+        setSelectedItems(prev => ({
+          ...prev,
+          [orderId]: eligibleItems.map(item => item.id)
+        }));
+      }
+    };
+
+    const handleApproveItem = async (itemId, orderId) => {
+      try {
+        const order = orders.find(o => o.id === orderId);
+        if (!order) return;
         
-        // If saleType not found in database, try with alternative saleTypes
-        if (invoiceNumberResponse.status === 404 && errorText.includes('Sale Type not found')) {
-          console.log('🔄 SaleType not found, trying alternatives...');
+        const item = order.items.find(i => i.id === itemId);
+        if (!item) return;
+        
+        const response = await axios.put(`${baseurl}/orders/items/${itemId}/approve`, {
+          approval_status: "approved"
+        });
+        
+        if (response.data.success) {
+          setOrders(prevOrders => 
+            prevOrders.map(order => {
+              if (order.id === orderId) {
+                return {
+                  ...order,
+                  items: order.items.map(item => 
+                    item.id === itemId 
+                      ? { ...item, approval_status: "approved" }
+                      : item
+                  )
+                };
+              }
+              return order;
+            })
+          );
           
-          // ✅ These match your saletypes table
-          const alternativeSaleTypes = ["godown1", "godown2", "shree shashwath"];
+          alert("Item approved successfully!");
+        }
+      } catch (error) {
+        console.error("Error approving item:", error);
+        alert(`Failed to approve item: ${error.response?.data?.error || error.message}`);
+      }
+    };
+
+    const handleRejectItem = async (itemId, orderId) => {
+      try {
+        const order = orders.find(o => o.id === orderId);
+        if (!order) return;
+        
+        const item = order.items.find(i => i.id === itemId);
+        if (!item) return;
+        
+        const response = await axios.put(`${baseurl}/orders/items/${itemId}/approve`, {
+          approval_status: "rejected"
+        });
+        
+        if (response.data.success) {
+          setOrders(prevOrders => 
+            prevOrders.map(order => {
+              if (order.id === orderId) {
+                return {
+                  ...order,
+                  items: order.items.map(item => 
+                    item.id === itemId 
+                      ? { ...item, approval_status: "rejected" }
+                      : item
+                  )
+                };
+              }
+              return order;
+            })
+          );
           
-          for (const altSaleType of alternativeSaleTypes) {
-            if (altSaleType === saleType) continue; // Skip the one that failed
-            
-            console.log(`🔄 Trying alternative saleType: ${altSaleType}`);
-            const altUrl = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}&saleType=${encodeURIComponent(altSaleType)}`;
-            const altResponse = await fetch(altUrl);
-            
-            if (altResponse.ok) {
-              const altData = await altResponse.json();
-              invoiceNumber = altData.nextInvoiceNumber;
-              console.log(`✅ Received next invoice number with saleType ${altSaleType}:`, invoiceNumber);
-              setNextInvoiceNumber(invoiceNumber);
-              break;
-            }
+          alert("Item rejected successfully!");
+        }
+      } catch (error) {
+        console.error("Error rejecting item:", error);
+        alert(`Failed to reject item: ${error.response?.data?.error || error.message}`);
+      }
+    };
+
+    // NEW: Handle edit item (navigate to checkout page)
+    const handleEditItem = (order, item) => {
+      console.log("Editing item:", item);
+      
+      // Prepare all calculations for the checkout page
+      const newEditedPrice = item.edited_sale_price || item.sale_price;
+      const discountPercentage = item.discount_percentage || 0;
+      const creditPeriod = item.credit_period || 0;
+      const quantity = item.quantity || 1;
+      const gstPercentage = item.tax_percentage || 18; // Use existing tax percentage or default 18%
+      const creditPercentage = item.credit_percentage || 2; // Default 2% per month
+      
+      // Recalculate all values based on the new edited price
+      // 1. Edited price is the taxable amount (base price)
+      const taxableAmount = newEditedPrice;
+      
+      // 2. Calculate discount on taxable amount
+      const discountAmount = taxableAmount * (discountPercentage / 100);
+      
+      // 3. Price after discount
+      const priceAfterDiscount = taxableAmount - discountAmount;
+      
+      // 4. Calculate GST on taxable amount (not on discounted amount)
+      const taxAmount = taxableAmount * (gstPercentage / 100);
+      
+      // 5. Split GST into SGST and CGST (equal split)
+      const sgstPercentage = gstPercentage / 2;
+      const cgstPercentage = gstPercentage / 2;
+      const sgstAmount = taxAmount / 2;
+      const cgstAmount = taxAmount / 2;
+      
+      // 6. Calculate credit charge on taxable amount
+      let creditCharge = 0;
+      if (creditPeriod > 0) {
+        creditCharge = (taxableAmount * creditPercentage * creditPeriod) / (30 * 100);
+      }
+      
+      // 7. Calculate final amount: taxable amount + GST + credit charge
+      const finalAmount = taxableAmount + taxAmount + creditCharge;
+      
+      // 8. Customer sale price is the final amount per unit
+      const customerSalePrice = finalAmount;
+      
+      // 9. Calculate totals for all quantities
+      const itemTotal = finalAmount * quantity;
+      const totalDiscount = discountAmount * quantity;
+      const totalTax = taxAmount * quantity;
+      const totalTaxableAmount = taxableAmount * quantity;
+      const totalCreditCharges = creditCharge * quantity;
+      const finalTotal = itemTotal;
+
+      const cartItem = {
+        product_id: item.product_id,
+        item_name: item.item_name,
+        quantity: item.quantity,
+        sale_price: item.sale_price,
+        edited_sale_price: newEditedPrice,
+        mrp: item.mrp,
+        min_sale_price: item.min_sale_price,
+        credit_period: creditPeriod,
+        staff_incentive: item.staff_incentive || 0,
+        discount_percentage: discountPercentage,
+        tax_percentage: gstPercentage,
+        credit_percentage: creditPercentage,
+        
+        // Include all recalculated breakdown calculations
+        breakdown: {
+          perUnit: {
+            mrp: item.mrp,
+            sale_price: item.sale_price,
+            edited_sale_price: newEditedPrice,
+            credit_charge: creditCharge,
+            credit_percentage: creditPercentage,
+            customer_sale_price: customerSalePrice,
+            discount_percentage: discountPercentage,
+            discount_amount: discountAmount,
+            taxable_amount: taxableAmount,
+            tax_percentage: gstPercentage,
+            tax_amount: taxAmount,
+            sgst_percentage: sgstPercentage,
+            sgst_amount: sgstAmount,
+            cgst_percentage: cgstPercentage,
+            cgst_amount: cgstAmount,
+            final_amount: finalAmount,
+            item_total: finalAmount
           }
         }
-        
-        // If still no invoice number, use fallback
-        if (!invoiceNumber) {
-          console.log(`🔄 Using fallback generation for ${transactionType}...`);
-          const fallbackNumber = await generateFallbackInvoiceNumber(transactionType);
-          invoiceNumber = fallbackNumber;
+      };
+
+      // Prepare order totals for checkout with recalculated values
+      const orderTotals = {
+        subtotal: itemTotal,
+        totalTax: totalTax,
+        totalDiscount: totalDiscount,
+        totalTaxableAmount: totalTaxableAmount,
+        totalCreditCharges: totalCreditCharges,
+        finalTotal: finalTotal,
+        itemCount: 1,
+        userDiscount: discountPercentage
+      };
+
+      // Navigate to checkout with order and item data
+      navigate('/retailers/checkout', {
+        state: {
+          retailerId: order.customer_id,
+          customerName: order.customer_name,
+          displayName: order.customer_name,
+          discount: order.discount_amount || 0,
+          cartItems: [cartItem],
+          staffId: order.staff_id,
+          orderTotals: orderTotals,
+          userDiscountPercentage: discountPercentage,
+          creditPeriods: creditPeriod,
+          isEditMode: true,
+          editOrderNumber: order.order_number,
+          editItemId: item.id,
+          originalItemData: item,
+          
+          // Pass all calculation parameters for recalculation in checkout
+          calculationParams: {
+            discountPercentage: discountPercentage,
+            gstPercentage: gstPercentage,
+            creditPercentage: creditPercentage,
+            quantity: quantity
+          }
         }
-      }
-    } catch (err) {
-      console.error('❌ Error fetching next invoice number:', err);
-      const fallbackNumber = await generateFallbackInvoiceNumber(transactionType);
-      invoiceNumber = fallbackNumber;
-    }
-
-    // If still no invoice number, use the order number as fallback
-    if (!invoiceNumber) {
-      invoiceNumber = `INV${order.order_number.replace('ORD', '')}`;
-      console.log(`⚠️ Using final fallback invoice number: ${invoiceNumber}`);
-    }
-
-    const accountDetails = order.account_details;
-    const staffId = selectedItemsData[0]?.staff_id || order.staff_id || 0;
-    const staffIncentive = order.staff_incentive || 0;
-
-    const selectedItemsWithAllColumns = selectedItemsData.map(item => ({
-      id: item.id,
-      order_number: item.order_number,
-      item_name: item.item_name,
-      product_id: item.product_id,
-      mrp: item.mrp,
-      sale_price: item.sale_price,
-      edited_sale_price: item.edited_sale_price,
-      net_price: item.net_price || 0, 
-      weight: item.weight || 0, 
-      flash_offer: item.flash_offer || 0,
-      hsn_code: item.hsn_code || "",
-      buy_quantity: item.buy_quantity || 0,
-      get_quantity: item.get_quantity || 0,
-      credit_charge: item.credit_charge,
-      customer_sale_price: item.customer_sale_price,
-      final_amount: item.final_amount,
-      quantity: item.flash_offer === 1 ? item.buy_quantity : item.quantity,
-      total_amount: item.total_amount,
-      discount_percentage: item.discount_percentage,
-      discount_amount: item.discount_amount,
-      taxable_amount: item.taxable_amount,
-      tax_percentage: item.tax_percentage,
-      tax_amount: item.tax_amount,
-      item_total: item.item_total,
-      credit_period: item.credit_period,
-      invoice_number: item.invoice_number,
-      invoice_date: item.invoice_date,
-      invoice_status: item.invoice_status,
-      credit_percentage: item.credit_percentage,
-      sgst_percentage: item.sgst_percentage,
-      sgst_amount: item.sgst_amount,
-      cgst_percentage: item.cgst_percentage,
-      cgst_amount: item.cgst_amount,
-      discount_applied_scheme: item.discount_applied_scheme,
-      created_at: item.created_at,
-      updated_at: item.updated_at,
-      min_sale_price: item.min_sale_price,
-      needs_approval: item.needs_approval,
-      approval_status: item.approval_status,
-      staff_id: item.staff_id,
-      assigned_staff: item.assigned_staff,
-      staff_incentive: item.staff_incentive,
-      price: item.price,
-      unit_id: item.unit_id || null,
-      unit_name: item.unit_name || ""
-    }));
-
-    const parseCreditValue = (value) => {
-      if (value === null || value === undefined || value === "NULL" || value === "null") {
-        return 0;
-      }
-      if (typeof value === 'string') {
-        const cleanValue = value.replace(/[^0-9.-]+/g, '');
-        return parseFloat(cleanValue) || 0;
-      }
-      return parseFloat(value) || 0;
+      });
     };
 
-    const parsedCreditLimit = parseCreditValue(accountDetails?.credit_limit);
-    const parsedUnpaidAmount = parseCreditValue(accountDetails?.unpaid_amount);
-    const parsedBalanceAmount = parseCreditValue(accountDetails?.balance_amount);
+    const openOrderModal = (orderId) => {
+      const orderData = orders.find(order => order.id === orderId);
+      if (orderData) {
+        setModalData(orderData);
+        setShowOrderModal(true);
+      }
+    };
 
-    const invoiceData = {
-      transactionType: transactionType,
-      orderNumber: order.order_number,
-      invoiceNumber: invoiceNumber,
-      invoiceDate: new Date().toISOString().split('T')[0],
-      validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    const openItemModal = (orderNumber, itemId) => {
+      const order = orders.find(order => order.order_number === orderNumber);
+      if (order && order.items) {
+        const itemData = order.items.find(item => item.id === itemId);
+        if (itemData) {
+          setModalData(itemData);
+          setShowItemModal(true);
+        }
+      }
+    };
 
-      originalOrder: {
-        ...order,
-        items: undefined
-      },
+    const closeModals = () => {
+      setShowOrderModal(false);
+      setShowItemModal(false);
+      setModalData(null);
+    };
 
-      flashOfferSummary: {
-        hasFlashOffer: selectedItemsData.some(item => item.flash_offer === 1),
-        totalItemsWithFlashOffer: selectedItemsData.filter(item => item.flash_offer === 1).length
-      },
+  const handleGenerateInvoice = async (order) => {
+    try {
+      setGeneratingInvoice(true);
 
-      selectedItems: selectedItemsWithAllColumns,
-      selectedItemIds: orderSelectedItems,
+      const orderSelectedItems = selectedItems[order.id] || [];
+      if (orderSelectedItems.length === 0) {
+        alert("Please select at least one item to generate invoice!");
+        setGeneratingInvoice(false);
+        return;
+      }
 
-      selectedItemsTotal: {
-        taxableAmount: selectedItemsData.reduce((sum, item) => sum + (item.taxable_amount || 0), 0),
-        taxAmount: selectedItemsData.reduce((sum, item) => sum + (item.tax_amount || 0), 0),
-        discountAmount: selectedItemsData.reduce((sum, item) => sum + (item.discount_amount || 0), 0),
-        grandTotal: selectedItemsData.reduce((sum, item) => sum + (item.item_total || 0), 0),
-        creditChargeTotal: selectedItemsData.reduce((sum, item) => sum + (item.credit_charge || 0), 0)
-      },
+      const itemsWithApprovalIssue = orderSelectedItems.map(itemId => {
+        const item = order.items.find(i => i.id === itemId);
+        return item;
+      }).filter(item => 
+        item.needs_approval && item.approval_status !== "approved"
+      );
 
-      companyInfo: {
-        name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-        address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-        email: "spmathur56@gmail.com",
-        phone: "9801049700",
-        gstin: "10AAOCS1541B1ZZ",
-        state: "Bihar",
-        stateCode: "10"
-      },
+      if (itemsWithApprovalIssue.length > 0) {
+        const itemNames = itemsWithApprovalIssue.map(i => i.item_name).join(', ');
+        alert(`Cannot generate invoice for the following items because they require approval but are not approved: ${itemNames}`);
+        setGeneratingInvoice(false);
+        return;
+      }
 
-      customerInfo: {
-        name: accountDetails?.name || order.customer_name,
-        businessName: accountDetails?.business_name || order.customer_name,
-        state: accountDetails?.billing_state || order.billing_state || "Karnataka",
-        gstin: accountDetails?.gstin || order.gstin || "29AABCD0503B1ZG",
-        id: order.customer_id,
-        account_details: accountDetails,
-        credit_limit: parsedCreditLimit,
-        unpaid_amount: parsedUnpaidAmount,
-        balance_amount: parsedBalanceAmount,
-      },
+      const selectedItemsData = order.items.filter(item =>
+        orderSelectedItems.includes(item.id)
+      );
 
-      billingAddress: accountDetails ? {
-        addressLine1: accountDetails.billing_address_line1 || "Address not specified",
-        addressLine2: accountDetails.billing_address_line2 || "",
-        city: accountDetails.billing_city || "City not specified",
-        pincode: accountDetails.billing_pin_code || "000000",
-        state: accountDetails.billing_state || "Karnataka",
-        gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
-        country: accountDetails.billing_country || "India"
-      } : {
-        addressLine1: order.billing_address || "Address not specified",
-        addressLine2: "",
-        city: order.billing_city || "City not specified",
-        pincode: order.billing_pincode || "000000",
-        state: order.billing_state || "Karnataka"
-      },
+      const itemsWithInvoice = selectedItemsData.filter(item => item.invoice_status === 1);
+      if (itemsWithInvoice.length > 0) {
+        alert(`Some selected items already have invoices generated: ${itemsWithInvoice.map(i => i.item_name).join(', ')}`);
+        setGeneratingInvoice(false);
+        return;
+      }
 
-      shippingAddress: accountDetails ? {
-        addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
-        addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
-        city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
-        pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
-        state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
-        gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
-        country: accountDetails.shipping_country || "India"
-      } : {
-        addressLine1: order.shipping_address || order.billing_address || "Address not specified",
-        addressLine2: "",
-        city: order.shipping_city || order.billing_city || "City not specified",
-        pincode: order.shipping_pincode || order.billing_pincode || "000000",
-        state: order.shipping_state || order.billing_state || "Karnataka"
-      },
-
-      note: "Thank you for your business!",
-      transportDetails: "Standard delivery",
-      otherDetails: "Authorized Signatory",
-      taxType: "CGST/SGST",
-
-      selectedSupplierId: order.customer_id,
-      PartyID: order.customer_id,
-      AccountID: order.customer_id,
-      PartyName: order.customer_name,
-      AccountName: order.customer_name,
-
-      isSingleItemInvoice: orderSelectedItems.length === 1,
-      selectedItemId: orderSelectedItems.length === 1 ? orderSelectedItems[0] : null,
-      originalOrderId: order.id,
-      isMultiSelect: orderSelectedItems.length > 1,
-
-      staff_id: staffId,
-      staff_incentive: staffIncentive,
-      order_mode: order.order_mode || "",
-      fullAccountDetails: accountDetails,
+      // ✅ FIXED: Determine transaction type based on order mode
+      const orderMode = order.order_mode?.toUpperCase() || "PAKKA";
+      // PAKKA = Sales, KACHA = stock transfer
+      const transactionType = orderMode === "PAKKA" ? "Sales" : "stock transfer";
       
-      itemDetails: selectedItemsWithAllColumns.map(item => ({
+      console.log(`📌 Order Mode: ${orderMode}, Transaction Type: ${transactionType}`);
+
+      let invoiceNumber = null;
+      // ✅ Declare saleType outside the try block so it's accessible everywhere
+      let saleType = null;
+      
+      try {
+        console.log(`📞 Fetching next invoice number for ${transactionType}...`);
+        
+        let url = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}`;
+        
+        // ✅ FIX: For Sales, we MUST provide a saleType
+        if (transactionType === "Sales") {
+          // Try to get saleType from various sources
+          // 1. Check if order has sale_type
+          if (order.sale_type) {
+            saleType = order.sale_type;
+            console.log(`✅ Using saleType from order: ${saleType}`);
+          }
+          // 2. Check if account has sale_type
+          else if (order.account_details?.sale_type) {
+            saleType = order.account_details.sale_type;
+            console.log(`✅ Using saleType from account: ${saleType}`);
+          }
+          // 3. Use default - "shree shashwath" from your saletypes table
+          else {
+            // ✅ This matches your saletypes table: sale_type = "shree shashwath", series = "SSA"
+            saleType = "shree shashwath";
+            console.log(`⚠️ No saleType found, using default: ${saleType}`);
+          }
+          
+          // Add saleType to URL
+          url += `&saleType=${encodeURIComponent(saleType)}`;
+          console.log(`🌐 Request URL with saleType: ${url}`);
+        }
+        
+        // ✅ FIX: this is the exact call that used to hang forever whenever
+        // transactionType === "stock transfer" (i.e. whenever the user picked
+        // KACHA). Sales (PAKKA) worked because that endpoint happened to
+        // respond quickly; KACHA never had that guarantee. Now it always
+        // resolves (success, HTTP error, or timeout) within 10s.
+        const invoiceNumberResponse = await fetchWithTimeout(url, {}, 10000);
+        
+        if (invoiceNumberResponse.ok) {
+          const invoiceNumberData = await invoiceNumberResponse.json();
+          invoiceNumber = invoiceNumberData.nextInvoiceNumber;
+          console.log(`✅ Received next invoice number for ${transactionType}:`, invoiceNumber);
+          setNextInvoiceNumber(invoiceNumber);
+        } else {
+          const errorText = await invoiceNumberResponse.text();
+          console.error(`❌ Failed to fetch next invoice number for ${transactionType}:`, invoiceNumberResponse.status, errorText);
+          
+          // If saleType not found in database, try with alternative saleTypes
+          if (invoiceNumberResponse.status === 404 && errorText.includes('Sale Type not found')) {
+            console.log('🔄 SaleType not found, trying alternatives...');
+            
+            // ✅ These match your saletypes table
+            const alternativeSaleTypes = ["godown1", "godown2", "shree shashwath"];
+            
+            for (const altSaleType of alternativeSaleTypes) {
+              if (altSaleType === saleType) continue; // Skip the one that failed
+              
+              console.log(`🔄 Trying alternative saleType: ${altSaleType}`);
+              const altUrl = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}&saleType=${encodeURIComponent(altSaleType)}`;
+              try {
+                const altResponse = await fetchWithTimeout(altUrl, {}, 10000);
+                if (altResponse.ok) {
+                  const altData = await altResponse.json();
+                  invoiceNumber = altData.nextInvoiceNumber;
+                  console.log(`✅ Received next invoice number with saleType ${altSaleType}:`, invoiceNumber);
+                  setNextInvoiceNumber(invoiceNumber);
+                  break;
+                }
+              } catch (altErr) {
+                console.warn(`⏱️ Alternative saleType "${altSaleType}" request failed/timed out:`, altErr.message);
+              }
+            }
+          }
+          
+          // If still no invoice number, use fallback
+          if (!invoiceNumber) {
+            console.log(`🔄 Using fallback generation for ${transactionType}...`);
+            const fallbackNumber = await generateFallbackInvoiceNumber(transactionType);
+            invoiceNumber = fallbackNumber;
+          }
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          console.error(`⏱️ Timed out fetching next invoice number for ${transactionType}. Falling back to local generation.`);
+        } else {
+          console.error('❌ Error fetching next invoice number:', err);
+        }
+        const fallbackNumber = await generateFallbackInvoiceNumber(transactionType);
+        invoiceNumber = fallbackNumber;
+      }
+
+      // If still no invoice number, use the order number as fallback
+      if (!invoiceNumber) {
+        invoiceNumber = `INV${order.order_number.replace('ORD', '')}`;
+        console.log(`⚠️ Using final fallback invoice number: ${invoiceNumber}`);
+      }
+
+      const accountDetails = order.account_details;
+      const staffId = selectedItemsData[0]?.staff_id || order.staff_id || 0;
+      const staffIncentive = order.staff_incentive || 0;
+
+      const selectedItemsWithAllColumns = selectedItemsData.map(item => ({
         id: item.id,
         order_number: item.order_number,
         item_name: item.item_name,
         product_id: item.product_id,
-        quantity: item.flash_offer === 1 ? item.buy_quantity : item.quantity,
+        mrp: item.mrp,
+        sale_price: item.sale_price,
         edited_sale_price: item.edited_sale_price,
         net_price: item.net_price || 0, 
+        weight: item.weight || 0, 
+        flash_offer: item.flash_offer || 0,
+        hsn_code: item.hsn_code || "",
+        buy_quantity: item.buy_quantity || 0,
+        get_quantity: item.get_quantity || 0,
         credit_charge: item.credit_charge,
         customer_sale_price: item.customer_sale_price,
         final_amount: item.final_amount,
+        quantity: item.flash_offer === 1 ? item.buy_quantity : item.quantity,
         total_amount: item.total_amount,
         discount_percentage: item.discount_percentage,
         discount_amount: item.discount_amount,
@@ -1260,764 +1128,880 @@ const handleGenerateInvoice = async (order) => {
         tax_amount: item.tax_amount,
         item_total: item.item_total,
         credit_period: item.credit_period,
+        invoice_number: item.invoice_number,
+        invoice_date: item.invoice_date,
+        invoice_status: item.invoice_status,
         credit_percentage: item.credit_percentage,
         sgst_percentage: item.sgst_percentage,
         sgst_amount: item.sgst_amount,
         cgst_percentage: item.cgst_percentage,
         cgst_amount: item.cgst_amount,
-        hsn_code: item.hsn_code || "",
         discount_applied_scheme: item.discount_applied_scheme,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        min_sale_price: item.min_sale_price,
+        needs_approval: item.needs_approval,
+        approval_status: item.approval_status,
+        staff_id: item.staff_id,
+        assigned_staff: item.assigned_staff,
+        staff_incentive: item.staff_incentive,
+        price: item.price,
         unit_id: item.unit_id || null,
         unit_name: item.unit_name || ""
-      }))
-    };
+      }));
 
-    console.log(`📦 Final invoice data prepared for ${transactionType}:`, {
-      invoiceNumber: invoiceData.invoiceNumber,
-      transactionType: invoiceData.transactionType,
-      orderMode: invoiceData.order_mode,
-      itemCount: invoiceData.selectedItems.length
-    });
+      const parseCreditValue = (value) => {
+        if (value === null || value === undefined || value === "NULL" || value === "null") {
+          return 0;
+        }
+        if (typeof value === 'string') {
+          const cleanValue = value.replace(/[^0-9.-]+/g, '');
+          return parseFloat(cleanValue) || 0;
+        }
+        return parseFloat(value) || 0;
+      };
 
-    navigate(`/periodinvoicepreviewpdf/${order.id}`, {
-      state: {
-        invoiceData,
-        selectedItemIds: orderSelectedItems
+      const parsedCreditLimit = parseCreditValue(accountDetails?.credit_limit);
+      const parsedUnpaidAmount = parseCreditValue(accountDetails?.unpaid_amount);
+      const parsedBalanceAmount = parseCreditValue(accountDetails?.balance_amount);
+
+      const invoiceData = {
+        transactionType: transactionType,
+        orderNumber: order.order_number,
+        invoiceNumber: invoiceNumber,
+        invoiceDate: new Date().toISOString().split('T')[0],
+        validityDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+
+        originalOrder: {
+          ...order,
+          items: undefined
+        },
+
+        flashOfferSummary: {
+          hasFlashOffer: selectedItemsData.some(item => item.flash_offer === 1),
+          totalItemsWithFlashOffer: selectedItemsData.filter(item => item.flash_offer === 1).length
+        },
+
+        selectedItems: selectedItemsWithAllColumns,
+        selectedItemIds: orderSelectedItems,
+
+        selectedItemsTotal: {
+          taxableAmount: selectedItemsData.reduce((sum, item) => sum + (item.taxable_amount || 0), 0),
+          taxAmount: selectedItemsData.reduce((sum, item) => sum + (item.tax_amount || 0), 0),
+          discountAmount: selectedItemsData.reduce((sum, item) => sum + (item.discount_amount || 0), 0),
+          grandTotal: selectedItemsData.reduce((sum, item) => sum + (item.item_total || 0), 0),
+          creditChargeTotal: selectedItemsData.reduce((sum, item) => sum + (item.credit_charge || 0), 0)
+        },
+
+        companyInfo: {
+          name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+          address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+          email: "spmathur56@gmail.com",
+          phone: "9801049700",
+          gstin: "10AAOCS1541B1ZZ",
+          state: "Bihar",
+          stateCode: "10"
+        },
+
+        customerInfo: {
+          name: accountDetails?.name || order.customer_name,
+          businessName: accountDetails?.business_name || order.customer_name,
+          state: accountDetails?.billing_state || order.billing_state || "Karnataka",
+          gstin: accountDetails?.gstin || order.gstin || "29AABCD0503B1ZG",
+          id: order.customer_id,
+          account_details: accountDetails,
+          credit_limit: parsedCreditLimit,
+          unpaid_amount: parsedUnpaidAmount,
+          balance_amount: parsedBalanceAmount,
+        },
+
+        billingAddress: accountDetails ? {
+          addressLine1: accountDetails.billing_address_line1 || "Address not specified",
+          addressLine2: accountDetails.billing_address_line2 || "",
+          city: accountDetails.billing_city || "City not specified",
+          pincode: accountDetails.billing_pin_code || "000000",
+          state: accountDetails.billing_state || "Karnataka",
+          gstin: accountDetails.billing_gstin || accountDetails.gstin || "",
+          country: accountDetails.billing_country || "India"
+        } : {
+          addressLine1: order.billing_address || "Address not specified",
+          addressLine2: "",
+          city: order.billing_city || "City not specified",
+          pincode: order.billing_pincode || "000000",
+          state: order.billing_state || "Karnataka"
+        },
+
+        shippingAddress: accountDetails ? {
+          addressLine1: accountDetails.shipping_address_line1 || accountDetails.billing_address_line1 || "Address not specified",
+          addressLine2: accountDetails.shipping_address_line2 || accountDetails.billing_address_line2 || "",
+          city: accountDetails.shipping_city || accountDetails.billing_city || "City not specified",
+          pincode: accountDetails.shipping_pin_code || accountDetails.billing_pin_code || "000000",
+          state: accountDetails.shipping_state || accountDetails.billing_state || "Karnataka",
+          gstin: accountDetails.shipping_gstin || accountDetails.gstin || "",
+          country: accountDetails.shipping_country || "India"
+        } : {
+          addressLine1: order.shipping_address || order.billing_address || "Address not specified",
+          addressLine2: "",
+          city: order.shipping_city || order.billing_city || "City not specified",
+          pincode: order.shipping_pincode || order.billing_pincode || "000000",
+          state: order.shipping_state || order.billing_state || "Karnataka"
+        },
+
+        note: "Thank you for your business!",
+        transportDetails: "Standard delivery",
+        otherDetails: "Authorized Signatory",
+        taxType: "CGST/SGST",
+
+        selectedSupplierId: order.customer_id,
+        PartyID: order.customer_id,
+        AccountID: order.customer_id,
+        PartyName: order.customer_name,
+        AccountName: order.customer_name,
+
+        isSingleItemInvoice: orderSelectedItems.length === 1,
+        selectedItemId: orderSelectedItems.length === 1 ? orderSelectedItems[0] : null,
+        originalOrderId: order.id,
+        isMultiSelect: orderSelectedItems.length > 1,
+
+        staff_id: staffId,
+        staff_incentive: staffIncentive,
+        order_mode: order.order_mode || "",
+        fullAccountDetails: accountDetails,
+        
+        itemDetails: selectedItemsWithAllColumns.map(item => ({
+          id: item.id,
+          order_number: item.order_number,
+          item_name: item.item_name,
+          product_id: item.product_id,
+          quantity: item.flash_offer === 1 ? item.buy_quantity : item.quantity,
+          edited_sale_price: item.edited_sale_price,
+          net_price: item.net_price || 0, 
+          credit_charge: item.credit_charge,
+          customer_sale_price: item.customer_sale_price,
+          final_amount: item.final_amount,
+          total_amount: item.total_amount,
+          discount_percentage: item.discount_percentage,
+          discount_amount: item.discount_amount,
+          taxable_amount: item.taxable_amount,
+          tax_percentage: item.tax_percentage,
+          tax_amount: item.tax_amount,
+          item_total: item.item_total,
+          credit_period: item.credit_period,
+          credit_percentage: item.credit_percentage,
+          sgst_percentage: item.sgst_percentage,
+          sgst_amount: item.sgst_amount,
+          cgst_percentage: item.cgst_percentage,
+          cgst_amount: item.cgst_amount,
+          hsn_code: item.hsn_code || "",
+          discount_applied_scheme: item.discount_applied_scheme,
+          unit_id: item.unit_id || null,
+          unit_name: item.unit_name || ""
+        }))
+      };
+
+      console.log(`📦 Final invoice data prepared for ${transactionType}:`, {
+        invoiceNumber: invoiceData.invoiceNumber,
+        transactionType: invoiceData.transactionType,
+        orderMode: invoiceData.order_mode,
+        itemCount: invoiceData.selectedItems.length
+      });
+
+      navigate(`/periodinvoicepreviewpdf/${order.id}`, {
+        state: {
+          invoiceData,
+          selectedItemIds: orderSelectedItems
+        }
+      });
+
+    } catch (error) {
+      console.error("Error preparing invoice:", error);
+      if (error.name === 'AbortError') {
+        alert("Failed to prepare invoice data: the request to the server timed out. Please check your connection/backend and try again.");
+      } else {
+        alert("Failed to prepare invoice data. Please try again.");
+      }
+      setGeneratingInvoice(false);
+    } finally {
+      // ✅ This now always fires promptly — no fetch inside this function can
+      // hang indefinitely anymore, so the button can never get stuck on
+      // "Preparing..." the way it could before for KACHA/"stock transfer".
+      setGeneratingInvoice(false);
+    }
+  };
+
+
+  const toggleOrderForDispatch = (orderId) => {
+    setSelectedOrdersForDispatch(prev => {
+      if (prev.includes(orderId)) {
+        return prev.filter(id => id !== orderId);
+      } else {
+        return [...prev, orderId];
       }
     });
+  };
 
-  } catch (error) {
-    console.error("Error preparing invoice:", error);
-    alert("Failed to prepare invoice data. Please try again.");
-    setGeneratingInvoice(false);
-  } finally {
-    setGeneratingInvoice(false);
-  }
-};
-
-
-const toggleOrderForDispatch = (orderId) => {
-  setSelectedOrdersForDispatch(prev => {
-    if (prev.includes(orderId)) {
-      return prev.filter(id => id !== orderId);
+  const toggleAllOrdersForDispatch = () => {
+    if (selectedOrdersForDispatch.length === filteredOrders.length) {
+      setSelectedOrdersForDispatch([]);
     } else {
-      return [...prev, orderId];
+      setSelectedOrdersForDispatch(filteredOrders.map(order => order.id));
     }
-  });
-};
+  };
+  const handleGenerateDispatchReport = async () => {
+    try {
+      if (selectedOrdersForDispatch.length === 0) {
+        alert("Please select at least one order to generate dispatch report!");
+        return;
+      }
 
-const toggleAllOrdersForDispatch = () => {
-  if (selectedOrdersForDispatch.length === filteredOrders.length) {
-    setSelectedOrdersForDispatch([]);
-  } else {
-    setSelectedOrdersForDispatch(filteredOrders.map(order => order.id));
-  }
-};
-const handleGenerateDispatchReport = async () => {
-  try {
-    if (selectedOrdersForDispatch.length === 0) {
-      alert("Please select at least one order to generate dispatch report!");
-      return;
-    }
+      const selectedOrdersData = orders.filter(order => 
+        selectedOrdersForDispatch.includes(order.id)
+      );
 
-    const selectedOrdersData = orders.filter(order => 
-      selectedOrdersForDispatch.includes(order.id)
-    );
-
-    const ordersWithDateMatch = selectedOrdersData.filter(order => {
-      let dateMatch = true;
-      if (startDate) dateMatch = dateMatch && new Date(order.created_at) >= new Date(startDate);
-      if (endDate) dateMatch = dateMatch && new Date(order.created_at) <= new Date(endDate);
-      return dateMatch;
-    });
-
-    if (ordersWithDateMatch.length === 0) {
-      alert("No orders match the selected date range. Please adjust dates or select different orders.");
-      return;
-    }
-
-    const allDispatchItems = [];
-    let totalWeightAllOrders = 0; 
-    let totalAmountAllOrders = 0;
-
-    ordersWithDateMatch.forEach(order => {
-      order.items.forEach(item => {
-        const salePrice = parseFloat(item.sale_price) || 0;
-        const quantity = item.flash_offer === 1 ? 
-          (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
-          (parseInt(item.quantity) || 1);
-        
-        const amount = salePrice * quantity;
-        
-        const weightPerUnit = parseFloat(item.weight) || 0;
-        const itemWeight = weightPerUnit * quantity; 
-        
-        allDispatchItems.push({
-          item_name: item.item_name,
-          weight: itemWeight, 
-          weight_per_unit: weightPerUnit, 
-          quantity: item.flash_offer === 1 ? 
-            `${item.buy_quantity || item.quantity}` : 
-            item.quantity,
-          actual_quantity: quantity,
-          amount: amount,
-          sale_price: salePrice,
-          flash_offer: item.flash_offer,
-          buy_quantity: item.buy_quantity,
-          get_quantity: item.get_quantity,
-          order_number: order.order_number,
-          customer_name: order.customer_name,
-          invoice_number: item.invoice_number || order.invoice_number,
-          invoice_status: item.invoice_status || 0,
-          created_at: order.created_at,
-          has_invoice: item.invoice_status === 1,
-          hsn_code: item.hsn_code || "N/A",
-          product_gst_rate: item.product_gst_rate || item.tax_percentage || 0,
-          product_net_price: item.product_net_price || item.net_price || 0,
-          product_price: item.product_price || item.price || item.sale_price || 0
-        });
-        
-        totalWeightAllOrders += itemWeight; 
-        totalAmountAllOrders += amount;
+      const ordersWithDateMatch = selectedOrdersData.filter(order => {
+        let dateMatch = true;
+        if (startDate) dateMatch = dateMatch && new Date(order.created_at) >= new Date(startDate);
+        if (endDate) dateMatch = dateMatch && new Date(order.created_at) <= new Date(endDate);
+        return dateMatch;
       });
-    });
 
-    if (allDispatchItems.length === 0) {
-      alert("No items found in selected orders.");
-      return;
-    }
+      if (ordersWithDateMatch.length === 0) {
+        alert("No orders match the selected date range. Please adjust dates or select different orders.");
+        return;
+      }
 
-    // Prepare dispatch data - UPDATED to include all fields
-    const dispatchData = {
-      orders: ordersWithDateMatch.map(order => ({
-        orderNumber: order.order_number,
-        customerName: order.account_details?.name || order.customer_name,
-        invoiceNumber: order.invoice_number || `ORD${order.order_number.replace('ORD', '')}`,
-        invoiceDate: new Date().toISOString().split('T')[0],
-        orderDate: order.created_at,
-        orderStatus: order.order_status || "N/A",
-        items: order.items.map(item => {
+      const allDispatchItems = [];
+      let totalWeightAllOrders = 0; 
+      let totalAmountAllOrders = 0;
+
+      ordersWithDateMatch.forEach(order => {
+        order.items.forEach(item => {
           const salePrice = parseFloat(item.sale_price) || 0;
           const quantity = item.flash_offer === 1 ? 
             (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
             (parseInt(item.quantity) || 1);
+          
           const amount = salePrice * quantity;
           
           const weightPerUnit = parseFloat(item.weight) || 0;
-          const itemWeight = weightPerUnit * quantity;
+          const itemWeight = weightPerUnit * quantity; 
           
-          return {
+          allDispatchItems.push({
             item_name: item.item_name,
-            weight: itemWeight,
-            weight_per_unit: weightPerUnit,
+            weight: itemWeight, 
+            weight_per_unit: weightPerUnit, 
             quantity: item.flash_offer === 1 ? 
               `${item.buy_quantity || item.quantity}` : 
               item.quantity,
             actual_quantity: quantity,
             amount: amount,
             sale_price: salePrice,
-            get_quantity: item.get_quantity || 0,
             flash_offer: item.flash_offer,
+            buy_quantity: item.buy_quantity,
+            get_quantity: item.get_quantity,
+            order_number: order.order_number,
+            customer_name: order.customer_name,
+            invoice_number: item.invoice_number || order.invoice_number,
             invoice_status: item.invoice_status || 0,
+            created_at: order.created_at,
             has_invoice: item.invoice_status === 1,
-            // ADD THESE NEW FIELDS:
             hsn_code: item.hsn_code || "N/A",
             product_gst_rate: item.product_gst_rate || item.tax_percentage || 0,
             product_net_price: item.product_net_price || item.net_price || 0,
             product_price: item.product_price || item.price || item.sale_price || 0
-          };
-        })
-      })),
-      
-      allItems: allDispatchItems,
-      totalWeight: totalWeightAllOrders.toFixed(2), 
-      totalAmount: totalAmountAllOrders,
-      totalItemsWithInvoice: allDispatchItems.filter(item => item.has_invoice).length,
-      totalItemsWithoutInvoice: allDispatchItems.filter(item => !item.has_invoice).length,
-      
-      companyInfo: {
-        name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-        address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-        email: "spmathur56@gmail.com",
-        phone: "9801049700",
-        gstin: "10AAOCS1541B1ZZ",
-        state: "Bihar",
-        stateCode: "10"
-      },
-      
-      transportDetails: {
-        vehicleNo: "To be filled"
-      },
-      
-      filterInfo: {
-        fromDate: startDate,
-        toDate: endDate,
-        customerSearch: search,
-        totalOrders: selectedOrdersForDispatch.length,
-        ordersInDateRange: ordersWithDateMatch.length,
-        activeTab: activeTab
-      },
-      
-      totalSelectedOrders: selectedOrdersForDispatch.length,
-      totalFilteredOrders: ordersWithDateMatch.length,
-      totalItems: allDispatchItems.length,
-      reportDate: new Date().toISOString().split('T')[0]
-    };
+          });
+          
+          totalWeightAllOrders += itemWeight; 
+          totalAmountAllOrders += amount;
+        });
+      });
 
-    // Generate PDF
-    const { pdf } = await import('@react-pdf/renderer');
-    const pdfDoc = <DispatchReportPDF invoiceData={dispatchData} />;
-    const blob = await pdf(pdfDoc).toBlob();
+      if (allDispatchItems.length === 0) {
+        alert("No items found in selected orders.");
+        return;
+      }
+
+      // Prepare dispatch data - UPDATED to include all fields
+      const dispatchData = {
+        orders: ordersWithDateMatch.map(order => ({
+          orderNumber: order.order_number,
+          customerName: order.account_details?.name || order.customer_name,
+          invoiceNumber: order.invoice_number || `ORD${order.order_number.replace('ORD', '')}`,
+          invoiceDate: new Date().toISOString().split('T')[0],
+          orderDate: order.created_at,
+          orderStatus: order.order_status || "N/A",
+          items: order.items.map(item => {
+            const salePrice = parseFloat(item.sale_price) || 0;
+            const quantity = item.flash_offer === 1 ? 
+              (parseInt(item.buy_quantity) || parseInt(item.quantity) || 1) : 
+              (parseInt(item.quantity) || 1);
+            const amount = salePrice * quantity;
+            
+            const weightPerUnit = parseFloat(item.weight) || 0;
+            const itemWeight = weightPerUnit * quantity;
+            
+            return {
+              item_name: item.item_name,
+              weight: itemWeight,
+              weight_per_unit: weightPerUnit,
+              quantity: item.flash_offer === 1 ? 
+                `${item.buy_quantity || item.quantity}` : 
+                item.quantity,
+              actual_quantity: quantity,
+              amount: amount,
+              sale_price: salePrice,
+              get_quantity: item.get_quantity || 0,
+              flash_offer: item.flash_offer,
+              invoice_status: item.invoice_status || 0,
+              has_invoice: item.invoice_status === 1,
+              // ADD THESE NEW FIELDS:
+              hsn_code: item.hsn_code || "N/A",
+              product_gst_rate: item.product_gst_rate || item.tax_percentage || 0,
+              product_net_price: item.product_net_price || item.net_price || 0,
+              product_price: item.product_price || item.price || item.sale_price || 0
+            };
+          })
+        })),
+        
+        allItems: allDispatchItems,
+        totalWeight: totalWeightAllOrders.toFixed(2), 
+        totalAmount: totalAmountAllOrders,
+        totalItemsWithInvoice: allDispatchItems.filter(item => item.has_invoice).length,
+        totalItemsWithoutInvoice: allDispatchItems.filter(item => !item.has_invoice).length,
+        
+        companyInfo: {
+          name: "SHREE SHASHWATRAJ AGRO PVT LTD",
+          address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
+          email: "spmathur56@gmail.com",
+          phone: "9801049700",
+          gstin: "10AAOCS1541B1ZZ",
+          state: "Bihar",
+          stateCode: "10"
+        },
+        
+        transportDetails: {
+          vehicleNo: "To be filled"
+        },
+        
+        filterInfo: {
+          fromDate: startDate,
+          toDate: endDate,
+          customerSearch: search,
+          totalOrders: selectedOrdersForDispatch.length,
+          ordersInDateRange: ordersWithDateMatch.length,
+          activeTab: activeTab
+        },
+        
+        totalSelectedOrders: selectedOrdersForDispatch.length,
+        totalFilteredOrders: ordersWithDateMatch.length,
+        totalItems: allDispatchItems.length,
+        reportDate: new Date().toISOString().split('T')[0]
+      };
+
+      // Generate PDF
+      const { pdf } = await import('@react-pdf/renderer');
+      const pdfDoc = <DispatchReportPDF invoiceData={dispatchData} />;
+      const blob = await pdf(pdfDoc).toBlob();
+      
+      const blobUrl = URL.createObjectURL(blob);
+      const newTab = window.open(blobUrl, '_blank');
+      
+      if (newTab) {
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 1000);
+      }
+
+    } catch (error) {
+      console.error("Error generating dispatch report:", error);
+      alert("Failed to generate dispatch report. Please try again.");
+    }
+  };
+
+  const calculateWeight = (item) => {
+    if (item.weight && item.weight > 0) return item.weight;
     
-    const blobUrl = URL.createObjectURL(blob);
-    const newTab = window.open(blobUrl, '_blank');
-    
-    if (newTab) {
-      setTimeout(() => {
-        URL.revokeObjectURL(blobUrl);
-      }, 1000);
+    // Calculate based on quantity
+    const itemWeight = item.weight || 0;
+    return itemWeight * (item.quantity || 1);
+  };
+
+  const pendingOrders = orders.filter(order =>
+    order.items.some(item => item.invoice_status !== 1)
+  );
+
+  const completedOrders = orders.filter(order =>
+    order.items.every(item => item.invoice_status === 1)
+  );
+
+  const displayedOrders = activeTab === "pending" ? pendingOrders : completedOrders;
+
+
+
+  const filteredOrders = orders.filter(order => {
+    // Date filter - use applied dates, not temporary dates
+    let dateMatch = true;
+    if (appliedStartDate) {
+      dateMatch = dateMatch && new Date(order.created_at) >= new Date(appliedStartDate);
+    }
+    if (appliedEndDate) {
+      dateMatch = dateMatch && new Date(order.created_at) <= new Date(appliedEndDate);
     }
 
-  } catch (error) {
-    console.error("Error generating dispatch report:", error);
-    alert("Failed to generate dispatch report. Please try again.");
-  }
-};
+    // Tab filter (pending/completed)
+    let tabMatch = true;
+    if (activeTab === "pending") {
+      tabMatch = order.items.some(item => item.invoice_status !== 1);
+    } else {
+      tabMatch = order.items.some(item => item.invoice_status === 1);
+    }
 
-const calculateWeight = (item) => {
-  if (item.weight && item.weight > 0) return item.weight;
-  
-  // Calculate based on quantity
-  const itemWeight = item.weight || 0;
-  return itemWeight * (item.quantity || 1);
-};
+    if (!dateMatch || !tabMatch) return false;
 
-const pendingOrders = orders.filter(order =>
-  order.items.some(item => item.invoice_status !== 1)
-);
+    // Custom search filter - search across all fields
+    if (customSearch.trim() === "") return true;
 
-const completedOrders = orders.filter(order =>
-  order.items.every(item => item.invoice_status === 1)
-);
-
-const displayedOrders = activeTab === "pending" ? pendingOrders : completedOrders;
-
-
-
-const filteredOrders = orders.filter(order => {
-  // Date filter - use applied dates, not temporary dates
-  let dateMatch = true;
-  if (appliedStartDate) {
-    dateMatch = dateMatch && new Date(order.created_at) >= new Date(appliedStartDate);
-  }
-  if (appliedEndDate) {
-    dateMatch = dateMatch && new Date(order.created_at) <= new Date(appliedEndDate);
-  }
-
-  // Tab filter (pending/completed)
-  let tabMatch = true;
-  if (activeTab === "pending") {
-    tabMatch = order.items.some(item => item.invoice_status !== 1);
-  } else {
-    tabMatch = order.items.some(item => item.invoice_status === 1);
-  }
-
-  if (!dateMatch || !tabMatch) return false;
-
-  // Custom search filter - search across all fields
-  if (customSearch.trim() === "") return true;
-
-  const searchLower = customSearch.toLowerCase().trim();
-  
-  // Get address values
-  const address1 = (order.billing_address_line1 || 
-                    order.account_details?.billing_address_line1 || 
-                    order.billing_address || 
-                    "").toLowerCase();
-  
-  const address2 = (order.billing_address_line2 || 
-                    order.account_details?.billing_address_line2 || 
-                    "").toLowerCase();
-  
-  // Format date for searching
-  const formattedDate = new Date(order.created_at).toLocaleDateString('en-GB');
-  
-  // Search across ALL fields
-  return (
-    order.order_number?.toLowerCase().includes(searchLower) ||
-    order.customer_name?.toLowerCase().includes(searchLower) ||
-    address1.includes(searchLower) ||
-    address2.includes(searchLower) ||
-    (order.order_total ?? 0).toString().includes(searchLower) ||
-    (order.discount_amount ?? 0).toString().includes(searchLower) ||
-    (order.assigned_staff || "N/A").toLowerCase().includes(searchLower) ||
-    (order.order_status || "N/A").toLowerCase().includes(searchLower) ||
-    formattedDate.includes(searchLower)
-  );
-});
-
-  if (loading) return <div className="p-admin-layout">Loading orders...</div>;
-
-  return (
-    <div className="p-admin-layout">
-      <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-      <div className={`p-admin-main ${isCollapsed ? 'p-sidebar-collapsed' : ''}`}>
-        <AdminHeader isCollapsed={isCollapsed} />
-
-        <div className="p-period-page">
-<div className="p-filters-section">
-  <div className="p-filter-row">
-    <div className="p-filter-group" style={{ flex: 1, minWidth: '250px', maxWidth: '350px', position: 'relative' }}>
-      <input
-        type="text"
-        className="p-form-control"
-        placeholder="Search Order, Customer, Address, Staff, Status..."
-        value={customSearch}
-        onChange={(e) => setCustomSearch(e.target.value)}
-        style={{ paddingRight: '35px' }}
-      />
-      {customSearch && (
-        <button
-          onClick={() => setCustomSearch("")}
-          style={{
-            position: 'absolute',
-            right: '8px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '16px',
-            color: '#999',
-            padding: '0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-          title="Clear search"
-        >
-          ✕
-        </button>
-      )}
-    </div>
-    <div className="p-filter-group">
-      <input
-        type="date"
-        className="p-form-control"
-        placeholder="Start Date"
-        value={tempStartDate}
-        onChange={(e) => setTempStartDate(e.target.value)}
-      />
-    </div>
-    <div className="p-filter-group">
-      <input
-        type="date"
-        className="p-form-control"
-        placeholder="End Date"
-        value={tempEndDate}
-        onChange={(e) => setTempEndDate(e.target.value)}
-      />
-    </div>
+    const searchLower = customSearch.toLowerCase().trim();
     
-    <div className="p-filter-group">
-      {(customSearch || appliedStartDate || appliedEndDate) ? (
-        <button 
-          className="p-btn p-btn-clear-filters" 
-          onClick={() => {
-            setCustomSearch("");
-            setTempStartDate("");
-            setTempEndDate("");
-            setAppliedStartDate("");
-            setAppliedEndDate("");
-          }}
-          style={{ 
-            backgroundColor: '#f44336', 
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '2px'
-          }}
-        >
-          Clear 
-        </button>
-      ) : (
-        <button 
-          className="p-btn p-btn-primary" 
-          onClick={() => {
-            // Apply the date filters
-            setAppliedStartDate(tempStartDate);
-            setAppliedEndDate(tempEndDate);
-          }}
-          style={{ backgroundColor: '#007bff', color: 'white' }}
-        >
-          Add 
-        </button>
-      )}
-    </div>
+    // Get address values
+    const address1 = (order.billing_address_line1 || 
+                      order.account_details?.billing_address_line1 || 
+                      order.billing_address || 
+                      "").toLowerCase();
     
-    {/* DISPATCH BUTTON */}
-    <div className="p-filter-group">
-      <button 
-        className="p-btn p-btn-dispatch"
-        onClick={handleGenerateDispatchReport}
-        disabled={selectedOrdersForDispatch.length === 0}
-      >
-        {selectedOrdersForDispatch.length > 0 
-          ? `Dispatch Report (${selectedOrdersForDispatch.length})` 
-          : 'Select orders for dispatch'}
-      </button> 
-    </div>
+    const address2 = (order.billing_address_line2 || 
+                      order.account_details?.billing_address_line2 || 
+                      "").toLowerCase();
     
-    {/* CLEAR SELECTED BUTTON - Only shows when orders are selected */}
-    {selectedOrdersForDispatch.length > 0 && (
-      <div className="p-filter-group">
-        <button
-          className="p-btn p-btn-clear-selected"
-          onClick={() => setSelectedOrdersForDispatch([])}
-          style={{ backgroundColor: '#bc3737', color: 'white' }}
-        >
-          Clear ({selectedOrdersForDispatch.length})
-        </button>
-      </div>
-    )}
-  </div>
-</div>
-<div className="p-period-tabs" style={{ display: 'flex', justifyContent: 'center', gap: '50px' }}>
-  <button
-    className={`p-tab-btn ${activeTab === "pending" ? "active" : ""}`}
-    onClick={() => setActiveTab("pending")}
-  >
-    Orders (Pending Invoice)
-  </button>
-  <button
-    className={`p-tab-btn ${activeTab === "completed" ? "active" : ""}`}
-    onClick={() => setActiveTab("completed")}
-  >
-    Orders Completed (Invoiced)
-  </button>
-</div>
-{/* {showDispatchModal && dispatchData && (
-  <div className="p-modal-overlay" onClick={() => setShowDispatchModal(false)}>
-    <div className="p-modal-content p-wide-modal" onClick={(e) => e.stopPropagation()}>
-      <div className="p-modal-header">
-        <h3>Dispatch Report</h3>
-        <button className="p-modal-close" onClick={() => setShowDispatchModal(false)}>×</button>
-      </div>
-      <div className="p-modal-body">
-        <div style={{ height: '500px' }}>
-          <PDFViewer width="100%" height="100%">
-            <DispatchReportPDF invoiceData={dispatchData} />
-          </PDFViewer>
-        </div>
-        <div className="p-modal-footer" style={{ textAlign: 'center', marginTop: '20px' }}>
-          <PDFDownloadLink
-            document={<DispatchReportPDF invoiceData={dispatchData} />}
-            fileName={`Dispatch_Report_${dispatchData.orderNumber}.pdf`}
-            style={{
-              textDecoration: 'none',
-              padding: '10px 20px',
-              backgroundColor: '#4CAF50',
-              color: 'white',
-              borderRadius: '4px',
-              fontWeight: 'bold'
-            }}
-          >
-            {({ blob, url, loading, error }) =>
-              loading ? 'Loading document...' : 'Download Dispatch Report'
-            }
-          </PDFDownloadLink>
-        </div>
-      </div>
-    </div>
-  </div>
-)} */}
-
-<div className="p-table-container">
-  <table className="p-customers-table">
-<thead>
-  <tr>
-    <th style={{ width: '50px' }}>
-      <input
-        type="checkbox"
-        checked={filteredOrders.length > 0 && selectedOrdersForDispatch.length === filteredOrders.length}
-        onChange={toggleAllOrdersForDispatch}
-        title={filteredOrders.length > 0 ? 
-          (selectedOrdersForDispatch.length === filteredOrders.length ? 
-            "Deselect all orders" : 
-            "Select all orders") : 
-          "No orders to select"}
-        disabled={filteredOrders.length === 0}
-      />
-    </th>
-    <th></th> 
-    <th>Order Number</th>
-    <th>Customer Name</th>
-      <th>Address  1</th> 
-        <th>Address  2</th>
-    <th>Order Total</th>
-    <th>Discount</th>
-    <th>Assigned Staff</th>
-    <th>Status</th>
-    <th>Created At</th>
-    <th>Action</th>
-    {activeTab === "completed" && <th>Download Invoice</th>}
-  </tr>
-</thead>
-   <tbody>
-  {filteredOrders.map((order) => {
-    const isOrderOpen = openRow === order.id;
-    const orderSelectedItems = selectedItems[order.id] || [];
-    const allItemsSelected = order.items &&
-      orderSelectedItems.length === order.items.length;
-    const isSelectedForDispatch = selectedOrdersForDispatch.includes(order.id);
-
-
-      const getAddressLine1 = () => {
-          return order.billing_address_line1 || 
-                 order.account_details?.billing_address_line1 || 
-                 order.billing_address || 
-                 '-';
-        };
-
-        // Get address line 2
-        const getAddressLine2 = () => {
-          return order.billing_address_line2 || 
-                 order.account_details?.billing_address_line2 || 
-                 '-';
-        };
+    // Format date for searching
+    const formattedDate = new Date(order.created_at).toLocaleDateString('en-GB');
+    
+    // Search across ALL fields
     return (
-      <React.Fragment key={order.id}>
-        <tr className="p-customer-row">
-          <td>
-            {/* ALWAYS SHOW CHECKBOX (not conditional) */}
-            <input
-              type="checkbox"
-              checked={isSelectedForDispatch}
-              onChange={() => toggleOrderForDispatch(order.id)}
-              title={isSelectedForDispatch ? 
-                "Deselect for dispatch" : 
-                "Select for dispatch"}
-            />
-          </td>
-          <td>
-            <button className="p-toggle-btn" onClick={() => toggleRow(order.id)}>
-              <span className={isOrderOpen ? "p-arrow-up" : "p-arrow-down"}></span>
-            </button>
-              </td>
-              <td>{order.order_number}</td>
-              <td>{order.customer_name}</td>
-                <td className="p-address-line1-cell">
-                <span title={getAddressLine1()}>
-                  {getAddressLine1().length > 40 ? 
-                    `${getAddressLine1().substring(0, 40)}...` : 
-                    getAddressLine1()}
-                </span>
-              </td>
-              <td className="p-address-line2-cell">
-                <span title={getAddressLine2()}>
-                  {getAddressLine2().length > 40 ? 
-                    `${getAddressLine2().substring(0, 40)}...` : 
-                    getAddressLine2()}
-                </span>
-              </td>
-              <td>₹{(order.order_total ?? 0).toLocaleString()}</td>
-              <td>₹{(order.discount_amount ?? 0).toLocaleString()}</td>
-              <td>{order.assigned_staff || "N/A"}</td>
-              <td>{order.order_status || "N/A"}</td>
-              <td>
-                {new Date(order.created_at).toLocaleDateString('en-GB')}
-              </td>
-           <td>
-  <div className="p-action-buttons">
-    <button
-      className="p-eye-btn"
-      onClick={() => openOrderModal(order.id)}
-      title="View Order Details"
-    >
-      👁️
-    </button>
-  </div>
-</td>
-{/* ONLY SHOW DOWNLOAD INVOICE BUTTON IN COMPLETED TAB */}
-{activeTab === "completed" && (
-  <td>
-    <div className="p-invoice-dropdown">
-      <div className="p-dropdown-toggle">
-        <button
-          className={`p-btn p-btn-pdf ${orderInvoices[order.order_number]?.length > 0 ? 'p-btn-success' : 'p-btn-warning'}`}
-          disabled={loadingInvoices[order.order_number]}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!orderInvoices[order.order_number]) {
-              fetchInvoicesForOrder(order.order_number);
-            }
-            setOpenDropdown(openDropdown === order.order_number ? null : order.order_number);
-          }}
-          title={orderInvoices[order.order_number]?.length > 0
-            ? `Click to view ${orderInvoices[order.order_number].length} invoice(s)`
-            : "Generate PDF"}
-        >
-          {loadingInvoices[order.order_number] ? (
-            <span className="p-download-spinner">Loading...</span>
-          ) : orderInvoices[order.order_number]?.length > 0 ? (
-            <>
-              <FaDownload className="p-icon" />
-              {orderInvoices[order.order_number].length} Invoice(s)
-              <span className="p-dropdown-arrow">▼</span>
-            </>
-          ) : (
-            <>
-              <FaFilePdf className="p-icon" />
-              Generate PDF
-            </>
-          )}
-        </button>
+      order.order_number?.toLowerCase().includes(searchLower) ||
+      order.customer_name?.toLowerCase().includes(searchLower) ||
+      address1.includes(searchLower) ||
+      address2.includes(searchLower) ||
+      (order.order_total ?? 0).toString().includes(searchLower) ||
+      (order.discount_amount ?? 0).toString().includes(searchLower) ||
+      (order.assigned_staff || "N/A").toLowerCase().includes(searchLower) ||
+      (order.order_status || "N/A").toLowerCase().includes(searchLower) ||
+      formattedDate.includes(searchLower)
+    );
+  });
 
-        {openDropdown === order.order_number && orderInvoices[order.order_number]?.length > 0 && (
-          <div className="p-dropdown-menu">
-            <div className="p-dropdown-header">
-              <span>Available Invoices</span>
-              <button
-                className="p-close-dropdown"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenDropdown(null);
-                }}
-                title="Close"
-              >
-                ×
-              </button>
-            </div>
-            {orderInvoices[order.order_number].map((pdf, index) => (
-              <div
-                key={index}
-                className="p-dropdown-item"
-                onClick={() => {
-                  handleDownloadSpecificPDF(order.order_number, pdf);
-                  setOpenDropdown(null);
-                }}
-              >
-                <FaFilePdf className="p-icon-sm" />
-                <span className="p-invoice-filename">
-                  {pdf.fileName || `Invoice_${index + 1}.pdf`}
-                </span>
-                <FaDownload className="p-icon-sm p-download-icon" />
-              </div>
-            ))}
-          </div>
+    if (loading) return <div className="p-admin-layout">Loading orders...</div>;
+
+    return (
+      <div className="p-admin-layout">
+        <AdminSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <div className={`p-admin-main ${isCollapsed ? 'p-sidebar-collapsed' : ''}`}>
+          <AdminHeader isCollapsed={isCollapsed} />
+
+          <div className="p-period-page">
+  <div className="p-filters-section">
+    <div className="p-filter-row">
+      <div className="p-filter-group" style={{ flex: 1, minWidth: '250px', maxWidth: '350px', position: 'relative' }}>
+        <input
+          type="text"
+          className="p-form-control"
+          placeholder="Search Order, Customer, Address, Staff, Status..."
+          value={customSearch}
+          onChange={(e) => setCustomSearch(e.target.value)}
+          style={{ paddingRight: '35px' }}
+        />
+        {customSearch && (
+          <button
+            onClick={() => setCustomSearch("")}
+            style={{
+              position: 'absolute',
+              right: '8px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              color: '#999',
+              padding: '0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Clear search"
+          >
+            ✕
+          </button>
         )}
       </div>
+      <div className="p-filter-group">
+        <input
+          type="date"
+          className="p-form-control"
+          placeholder="Start Date"
+          value={tempStartDate}
+          onChange={(e) => setTempStartDate(e.target.value)}
+        />
+      </div>
+      <div className="p-filter-group">
+        <input
+          type="date"
+          className="p-form-control"
+          placeholder="End Date"
+          value={tempEndDate}
+          onChange={(e) => setTempEndDate(e.target.value)}
+        />
+      </div>
+      
+      <div className="p-filter-group">
+        {(customSearch || appliedStartDate || appliedEndDate) ? (
+          <button 
+            className="p-btn p-btn-clear-filters" 
+            onClick={() => {
+              setCustomSearch("");
+              setTempStartDate("");
+              setTempEndDate("");
+              setAppliedStartDate("");
+              setAppliedEndDate("");
+            }}
+            style={{ 
+              backgroundColor: '#f44336', 
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '2px'
+            }}
+          >
+            Clear 
+          </button>
+        ) : (
+          <button 
+            className="p-btn p-btn-primary" 
+            onClick={() => {
+              // Apply the date filters
+              setAppliedStartDate(tempStartDate);
+              setAppliedEndDate(tempEndDate);
+            }}
+            style={{ backgroundColor: '#007bff', color: 'white' }}
+          >
+            Add 
+          </button>
+        )}
+      </div>
+      
+      {/* DISPATCH BUTTON */}
+      <div className="p-filter-group">
+        <button 
+          className="p-btn p-btn-dispatch"
+          onClick={handleGenerateDispatchReport}
+          disabled={selectedOrdersForDispatch.length === 0}
+        >
+          {selectedOrdersForDispatch.length > 0 
+            ? `Dispatch Report (${selectedOrdersForDispatch.length})` 
+            : 'Select orders for dispatch'}
+        </button> 
+      </div>
+      
+      {/* CLEAR SELECTED BUTTON - Only shows when orders are selected */}
+      {selectedOrdersForDispatch.length > 0 && (
+        <div className="p-filter-group">
+          <button
+            className="p-btn p-btn-clear-selected"
+            onClick={() => setSelectedOrdersForDispatch([])}
+            style={{ backgroundColor: '#bc3737', color: 'white' }}
+          >
+            Clear ({selectedOrdersForDispatch.length})
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+  <div className="p-period-tabs" style={{ display: 'flex', justifyContent: 'center', gap: '50px' }}>
+    <button
+      className={`p-tab-btn ${activeTab === "pending" ? "active" : ""}`}
+      onClick={() => setActiveTab("pending")}
+    >
+      Orders (Pending Invoice)
+    </button>
+    <button
+      className={`p-tab-btn ${activeTab === "completed" ? "active" : ""}`}
+      onClick={() => setActiveTab("completed")}
+    >
+      Orders Completed (Invoiced)
+    </button>
+  </div>
+
+  <div className="p-table-container">
+    <table className="p-customers-table">
+  <thead>
+    <tr>
+      <th style={{ width: '50px' }}>
+        <input
+          type="checkbox"
+          checked={filteredOrders.length > 0 && selectedOrdersForDispatch.length === filteredOrders.length}
+          onChange={toggleAllOrdersForDispatch}
+          title={filteredOrders.length > 0 ? 
+            (selectedOrdersForDispatch.length === filteredOrders.length ? 
+              "Deselect all orders" : 
+              "Select all orders") : 
+            "No orders to select"}
+          disabled={filteredOrders.length === 0}
+        />
+      </th>
+      <th></th> 
+      <th>Order Number</th>
+      <th>Customer Name</th>
+        <th>Address  1</th> 
+          <th>Address  2</th>
+      <th>Order Total</th>
+      <th>Discount</th>
+      <th>Assigned Staff</th>
+      <th>Status</th>
+      <th>Created At</th>
+      <th>Action</th>
+      {activeTab === "completed" && <th>Download Invoice</th>}
+    </tr>
+  </thead>
+    <tbody>
+    {filteredOrders.map((order) => {
+      const isOrderOpen = openRow === order.id;
+      const orderSelectedItems = selectedItems[order.id] || [];
+      const allItemsSelected = order.items &&
+        orderSelectedItems.length === order.items.length;
+      const isSelectedForDispatch = selectedOrdersForDispatch.includes(order.id);
+
+
+        const getAddressLine1 = () => {
+            return order.billing_address_line1 || 
+                  order.account_details?.billing_address_line1 || 
+                  order.billing_address || 
+                  '-';
+          };
+
+          // Get address line 2
+          const getAddressLine2 = () => {
+            return order.billing_address_line2 || 
+                  order.account_details?.billing_address_line2 || 
+                  '-';
+          };
+      return (
+        <React.Fragment key={order.id}>
+          <tr className="p-customer-row">
+            <td>
+              {/* ALWAYS SHOW CHECKBOX (not conditional) */}
+              <input
+                type="checkbox"
+                checked={isSelectedForDispatch}
+                onChange={() => toggleOrderForDispatch(order.id)}
+                title={isSelectedForDispatch ? 
+                  "Deselect for dispatch" : 
+                  "Select for dispatch"}
+              />
+            </td>
+            <td>
+              <button className="p-toggle-btn" onClick={() => toggleRow(order.id)}>
+                <span className={isOrderOpen ? "p-arrow-up" : "p-arrow-down"}></span>
+              </button>
+                </td>
+                <td>{order.order_number}</td>
+                <td>{order.customer_name}</td>
+                  <td className="p-address-line1-cell">
+                  <span title={getAddressLine1()}>
+                    {getAddressLine1().length > 40 ? 
+                      `${getAddressLine1().substring(0, 40)}...` : 
+                      getAddressLine1()}
+                  </span>
+                </td>
+                <td className="p-address-line2-cell">
+                  <span title={getAddressLine2()}>
+                    {getAddressLine2().length > 40 ? 
+                      `${getAddressLine2().substring(0, 40)}...` : 
+                      getAddressLine2()}
+                  </span>
+                </td>
+                <td>₹{(order.order_total ?? 0).toLocaleString()}</td>
+                <td>₹{(order.discount_amount ?? 0).toLocaleString()}</td>
+                <td>{order.assigned_staff || "N/A"}</td>
+                <td>{order.order_status || "N/A"}</td>
+                <td>
+                  {new Date(order.created_at).toLocaleDateString('en-GB')}
+                </td>
+            <td>
+    <div className="p-action-buttons">
+      <button
+        className="p-eye-btn"
+        onClick={() => openOrderModal(order.id)}
+        title="View Order Details"
+      >
+        👁️
+      </button>
     </div>
   </td>
-)}
-            </tr>
+  {activeTab === "completed" && (
+    <td>
+      <div className="p-invoice-dropdown">
+        <div className="p-dropdown-toggle">
+          <button
+            className="p-btn p-btn-pdf p-btn-success"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownloadSpecificPDF(order.order_number, null);
+            }}
+            title="Download Invoice PDF"
+            disabled={downloading[order.order_number]}
+          >
+            {downloading[order.order_number] ? (
+              <span className="p-download-spinner">Generating...</span>
+            ) : (
+              <>
+                <FaFilePdf className="p-icon" />
+                Download PDF
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </td>
+  )}
+              </tr>
 
-        {isOrderOpen && (
-  <tr className="p-invoices-row">
-    <td colSpan={activeTab === "completed" ? 12 : 11}>
-                  <div className="p-invoices-section">
-                    <div className="p-items-header">
-                      <h4>Order Items</h4>
-                      {orderSelectedItems.length > 0 && (
-                        <div className="p-bulk-buttons">
-                          <button
-                            className="p-generate-invoice-btn p-bulk-btn"
-                            onClick={() => handleGenerateInvoice(order)}
-                            disabled={generatingInvoice}
-                            title={`Generate invoice for ${orderSelectedItems.length} selected item(s)`}
-                          >
-                            {generatingInvoice ? "Preparing..." : `Generate Invoice for ${orderSelectedItems.length} Item(s)`}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    {order.items && order.items.length > 0 ? (
-                      <table className="p-invoices-table">
-                        <thead>
-                          <tr>
-                            <th style={{ width: '50px' }}>
-                              <input
-                                type="checkbox"
-                                checked={allItemsSelected}
-                                onChange={() => handleSelectAll(order.id, order.items)}
-                                className="p-item-checkbox"
-                                disabled={(() => {
-                                  const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
-                                  return creditPeriods.length > 1;
-                                })()}
-                                title={(() => {
-                                  const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
-                                  if (creditPeriods.length > 1) {
-                                    return `Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days`;
-                                  }
-                                  return allItemsSelected ? "Deselect all items" : "Select all items";
-                                })()}
-                              />
-                            </th>
-                            <th>Item Name</th>
-                            
-                            {(() => {
-                              const hasFlashOfferInOrder = order.items.some(item => item.flash_offer === 1);
+          {isOrderOpen && (
+    <tr className="p-invoices-row">
+      <td colSpan={activeTab === "completed" ? 12 : 11}>
+                    <div className="p-invoices-section">
+                      <div className="p-items-header">
+                        <h4>Order Items</h4>
+                        {orderSelectedItems.length > 0 && (
+                          <div className="p-bulk-buttons">
+                            <button
+                              className="p-generate-invoice-btn p-bulk-btn"
+                              onClick={() => handleGenerateInvoice(order)}
+                              disabled={generatingInvoice}
+                              title={`Generate invoice for ${orderSelectedItems.length} selected item(s)`}
+                            >
+                              {generatingInvoice ? "Preparing..." : `Generate Invoice for ${orderSelectedItems.length} Item(s)`}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {order.items && order.items.length > 0 ? (
+                        <table className="p-invoices-table">
+                          <thead>
+                            <tr>
+                              <th style={{ width: '50px' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={allItemsSelected}
+                                  onChange={() => handleSelectAll(order.id, order.items)}
+                                  className="p-item-checkbox"
+                                  disabled={(() => {
+                                    const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
+                                    return creditPeriods.length > 1;
+                                  })()}
+                                  title={(() => {
+                                    const creditPeriods = [...new Set(order.items.map(item => item.credit_period))];
+                                    if (creditPeriods.length > 1) {
+                                      return `Cannot select all items because they have different credit periods: ${creditPeriods.join(', ')} days`;
+                                    }
+                                    return allItemsSelected ? "Deselect all items" : "Select all items";
+                                  })()}
+                                />
+                              </th>
+                              <th>Item Name</th>
                               
-                              if (hasFlashOfferInOrder) {
-                                return (
-                                  <>
-                                    <th>Units</th>
-                                    <th>Get Free</th>
-                                  </>
-                                );
-                              } else {
-                                return (
-                                  <>
-                                    <th>Units</th>
-                                    <th>Dst Amnt</th>
-                                    <th>Weight</th>
-                                  </>
-                                );
-                              }
-                            })()}
-                            
-                            <th>Sale Price</th>
-                            <th>MSP</th>
-                            <th>Edited Price</th>
-                            <th>Credit Charge</th>
-                            <th>CP</th>
-                            <th>Inv No</th>
-                            <th>Approval Status</th>
-                            <th>Action</th>
-                            <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {order.items.map((item) => {
-                            const isItemSelected = orderSelectedItems.includes(item.id);
-                            const hasInvoiceGenerated = item.invoice_status === 1;
-                            const needsApproval = item.needs_approval;
-                            const approvalStatus = item.approval_status;
-                            const canEdit = item.can_edit;
-                            
-                            const hasFlashOffer = item.flash_offer === 1;
-                            const buyQuantity = item.buy_quantity || 0;
-                            const getQuantity = item.get_quantity || 0;
+                              {(() => {
+                                const hasFlashOfferInOrder = order.items.some(item => item.flash_offer === 1);
+                                
+                                if (hasFlashOfferInOrder) {
+                                  return (
+                                    <>
+                                      <th>Units</th>
+                                      <th>Get Free</th>
+                                    </>
+                                  );
+                                } else {
+                                  return (
+                                    <>
+                                      <th>Units</th>
+                                      <th>Dst Amnt</th>
+                                      <th>Weight</th>
+                                    </>
+                                  );
+                                }
+                              })()}
+                              
+                              <th>Sale Price</th>
+                              <th>MSP</th>
+                              <th>Edited Price</th>
+                              <th>Credit Charge</th>
+                              <th>CP</th>
+                              <th>Inv No</th>
+                              <th>Approval Status</th>
+                              <th>Action</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {order.items.map((item) => {
+                              const isItemSelected = orderSelectedItems.includes(item.id);
+                              const hasInvoiceGenerated = item.invoice_status === 1;
+                              const needsApproval = item.needs_approval;
+                              const approvalStatus = item.approval_status;
+                              const canEdit = item.can_edit;
+                              
+                              const hasFlashOffer = item.flash_offer === 1;
+                              const buyQuantity = item.buy_quantity || 0;
+                              const getQuantity = item.get_quantity || 0;
 
-                            return (
-                              <tr key={item.id}>
-                                <td>
-                                  {hasInvoiceGenerated ? (
-                                    <span title="Invoice Already Generated">✅</span>
-                                  ) : (
-                                    (() => {
-                                      const currentSelectedIds = selectedItems[order.id] || [];
+                              return (
+                                <tr key={item.id}>
+                                  <td>
+                                    {hasInvoiceGenerated ? (
+                                      <span title="Invoice Already Generated">✅</span>
+                                    ) : (
+                                      (() => {
+                                        const currentSelectedIds = selectedItems[order.id] || [];
 
-                                      if (currentSelectedIds.length === 0) {
-                                        const canSelect = !needsApproval || approvalStatus === "approved";
+                                        if (currentSelectedIds.length === 0) {
+                                          const canSelect = !needsApproval || approvalStatus === "approved";
+                                          return (
+                                            <input
+                                              type="checkbox"
+                                              checked={isItemSelected && canSelect}
+                                              onChange={(e) => {
+                                                if (!canSelect) {
+                                                  alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
+                                                  return;
+                                                }
+                                                handleItemSelect(order.id, item.id, e.target.checked, item.credit_period);
+                                              }}
+                                              className="p-item-checkbox"
+                                              disabled={!canSelect}
+                                              title={!canSelect ? 
+                                                "Item requires approval before selection" : 
+                                                "Select for invoice generation"}
+                                            />
+                                          );
+                                        }
+
+                                        const firstSelectedId = currentSelectedIds[0];
+                                        const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
+                                        const selectedCreditPeriod = firstSelectedItem?.credit_period;
+
+                                        const isSelectable = selectedCreditPeriod === item.credit_period;
+                                        const canSelect = isSelectable && (!needsApproval || approvalStatus === "approved");
+
                                         return (
                                           <input
                                             type="checkbox"
                                             checked={isItemSelected && canSelect}
                                             onChange={(e) => {
                                               if (!canSelect) {
-                                                alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
+                                                if (!isSelectable) {
+                                                  alert(`Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.`);
+                                                } else {
+                                                  alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
+                                                }
                                                 return;
                                               }
                                               handleItemSelect(order.id, item.id, e.target.checked, item.credit_period);
@@ -2025,587 +2009,553 @@ const filteredOrders = orders.filter(order => {
                                             className="p-item-checkbox"
                                             disabled={!canSelect}
                                             title={!canSelect ? 
-                                              "Item requires approval before selection" : 
+                                              (!isSelectable ? 
+                                                `Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.` :
+                                                "Item requires approval before selection") :
                                               "Select for invoice generation"}
                                           />
                                         );
-                                      }
-
-                                      const firstSelectedId = currentSelectedIds[0];
-                                      const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
-                                      const selectedCreditPeriod = firstSelectedItem?.credit_period;
-
-                                      const isSelectable = selectedCreditPeriod === item.credit_period;
-                                      const canSelect = isSelectable && (!needsApproval || approvalStatus === "approved");
-
-                                      return (
-                                        <input
-                                          type="checkbox"
-                                          checked={isItemSelected && canSelect}
-                                          onChange={(e) => {
-                                            if (!canSelect) {
-                                              if (!isSelectable) {
-                                                alert(`Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.`);
-                                              } else {
-                                                alert(`This item requires approval before it can be selected for invoice generation. Sale price (₹${item.sale_price}) is less than minimum sale price (₹${item.min_sale_price}).`);
-                                              }
-                                              return;
-                                            }
-                                            handleItemSelect(order.id, item.id, e.target.checked, item.credit_period);
-                                          }}
-                                          className="p-item-checkbox"
-                                          disabled={!canSelect}
-                                          title={!canSelect ? 
-                                            (!isSelectable ? 
-                                              `Items with different credit periods cannot be selected together. Selected items have ${selectedCreditPeriod} days, this item has ${item.credit_period} days.` :
-                                              "Item requires approval before selection") :
-                                            "Select for invoice generation"}
-                                        />
-                                      );
-                                    })()
-                                  )}
-                                </td>
-                                <td>{item.item_name}</td>
-                                
-                              {hasFlashOffer ? (
-  <>
-    <td className="p-flash-column">
-      <div>
-        <span className="p-flash-buy" title="Quantity">
-          {buyQuantity} {item.unit_name ? item.unit_name : ''}
+                                      })()
+                                    )}
+                                  </td>
+                                  <td>{item.item_name}</td>
+                                  
+                                {hasFlashOffer ? (
+    <>
+      <td className="p-flash-column">
+        <div>
+          <span className="p-flash-buy" title="Quantity">
+            {buyQuantity} {item.unit_name ? item.unit_name : ''}
+          </span>
+        </div>
+      </td>
+      <td className="p-flash-column">
+        <div className="p-flash-free" title="Get Free Quantity">
+          {getQuantity} {item.unit_name ? item.unit_name : ''}
+          <span className="p-flash-badge"></span>
+        </div>
+      </td>
+    </>
+  ) : (
+    <>
+      <td className="p-regular-column">
+        <span title="Ordered Quantity">
+          {item.quantity} {item.unit_name ? item.unit_name : ''}
         </span>
-      </div>
-    </td>
-    <td className="p-flash-column">
-      <div className="p-flash-free" title="Get Free Quantity">
-        {getQuantity} {item.unit_name ? item.unit_name : ''}
-        <span className="p-flash-badge"></span>
-      </div>
-    </td>
-  </>
-) : (
-  <>
-    <td className="p-regular-column">
-      <span title="Ordered Quantity">
-        {item.quantity} {item.unit_name ? item.unit_name : ''}
-      </span>
-    </td>
-    <td className="p-regular-column">
-      ₹{item.discount_amount.toLocaleString()}
-    </td>
-    <td className="p-regular-column">
-      <span title="Weight">{item.weight || 0}</span>
-    </td>
-  </>
-)}
-                                
-                                <td>₹{item.sale_price.toLocaleString()}</td>
-                                <td>₹{item.min_sale_price.toLocaleString()}</td>
-                                <td>₹{item.edited_sale_price.toLocaleString()}</td>
-                                <td>₹{item.credit_charge.toLocaleString()}</td>
-                                <td>{item.credit_period}</td>
-                                <td>{item.invoice_number || "N/A"}</td>
-                                <td>
-                                  {needsApproval ? (
-                                    <div className="p-approval-status">
-                                      <span className={`p-approval-badge p-${approvalStatus}`}>
-                                        {approvalStatus === "approved" ? "Approved" : 
-                                         approvalStatus === "rejected" ? "Rejected" : "Pending"}
+      </td>
+      <td className="p-regular-column">
+        ₹{item.discount_amount.toLocaleString()}
+      </td>
+      <td className="p-regular-column">
+        <span title="Weight">{item.weight || 0}</span>
+      </td>
+    </>
+  )}
+                                  
+                                  <td>₹{item.sale_price.toLocaleString()}</td>
+                                  <td>₹{item.min_sale_price.toLocaleString()}</td>
+                                  <td>₹{item.edited_sale_price.toLocaleString()}</td>
+                                  <td>₹{item.credit_charge.toLocaleString()}</td>
+                                  <td>{item.credit_period}</td>
+                                  <td>{item.invoice_number || "N/A"}</td>
+                                  <td>
+                                    {needsApproval ? (
+                                      <div className="p-approval-status">
+                                        <span className={`p-approval-badge p-${approvalStatus}`}>
+                                          {approvalStatus === "approved" ? "Approved" : 
+                                          approvalStatus === "rejected" ? "Rejected" : "Pending"}
+                                        </span>
+                                        {approvalStatus === "pending" && (
+                                          <div className="p-approval-buttons">
+                                            <button
+                                              className="p-btn p-btn-approve"
+                                              onClick={() => handleApproveItem(item.id, order.id)}
+                                              title="Approve this item"
+                                            >
+                                              <FaCheck />
+                                            </button>
+                                            <button
+                                              className="p-btn p-btn-reject"
+                                              onClick={() => handleRejectItem(item.id, order.id)}
+                                              title="Reject this item"
+                                            >
+                                              <FaTimes />
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="p-approval-badge p-not-required">
+                                        Not Required
                                       </span>
-                                      {approvalStatus === "pending" && (
-                                        <div className="p-approval-buttons">
-                                          <button
-                                            className="p-btn p-btn-approve"
-                                            onClick={() => handleApproveItem(item.id, order.id)}
-                                            title="Approve this item"
-                                          >
-                                            <FaCheck />
-                                          </button>
-                                          <button
-                                            className="p-btn p-btn-reject"
-                                            onClick={() => handleRejectItem(item.id, order.id)}
-                                            title="Reject this item"
-                                          >
-                                            <FaTimes />
-                                          </button>
-                                        </div>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <div className="p-action-buttons">
+                                      <button
+                                        className="p-eye-btn"
+                                        onClick={() => openItemModal(order.order_number, item.id)}
+                                        title="View Item Details"
+                                      >
+                                        👁️
+                                      </button>
+                                      {canEdit && (
+                                        <button
+                                          className="p-edit-btn"
+                                          onClick={() => handleEditItem(order, item)}
+                                          title="Edit Item Price"
+                                        >
+                                          <FaEdit />
+                                        </button>
                                       )}
                                     </div>
-                                  ) : (
-                                    <span className="p-approval-badge p-not-required">
-                                      Not Required
-                                    </span>
-                                  )}
-                                </td>
-                                <td>
-                                  <div className="p-action-buttons">
-                                    <button
-                                      className="p-eye-btn"
-                                      onClick={() => openItemModal(order.order_number, item.id)}
-                                      title="View Item Details"
-                                    >
-                                      👁️
-                                    </button>
-                                    {canEdit && (
-                                      <button
-                                        className="p-edit-btn"
-                                        onClick={() => handleEditItem(order, item)}
-                                        title="Edit Item Price"
-                                      >
-                                        <FaEdit />
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                                <td>
-                                  {hasInvoiceGenerated ? (
-                                    <span className="p-invoice-generated-text" title="Invoice Already Generated">
-                                      Invoice Generated
-                                    </span>
-                                  ) : isItemSelected ? (
-                                    <span className="p-selected-text" title="Selected for invoice">
-                                      Selected ✓
-                                    </span>
-                                  ) : (() => {
-                                    const currentSelectedIds = selectedItems[order.id] || [];
-                                    if (currentSelectedIds.length > 0) {
-                                      const firstSelectedId = currentSelectedIds[0];
-                                      const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
-                                      if (firstSelectedItem && firstSelectedItem.credit_period !== item.credit_period) {
+                                  </td>
+                                  <td>
+                                    {hasInvoiceGenerated ? (
+                                      <span className="p-invoice-generated-text" title="Invoice Already Generated">
+                                        Invoice Generated
+                                      </span>
+                                    ) : isItemSelected ? (
+                                      <span className="p-selected-text" title="Selected for invoice">
+                                        Selected ✓
+                                      </span>
+                                    ) : (() => {
+                                      const currentSelectedIds = selectedItems[order.id] || [];
+                                      if (currentSelectedIds.length > 0) {
+                                        const firstSelectedId = currentSelectedIds[0];
+                                        const firstSelectedItem = order.items.find(it => it.id === firstSelectedId);
+                                        if (firstSelectedItem && firstSelectedItem.credit_period !== item.credit_period) {
+                                          return (
+                                            <span className="p-different-period-text"
+                                              title={`Different credit period (${item.credit_period} days vs selected ${firstSelectedItem.credit_period} days)`}>
+                                              Different Period
+                                            </span>
+                                          );
+                                        }
+                                      }
+                                      
+                                      if (needsApproval && approvalStatus !== "approved") {
                                         return (
-                                          <span className="p-different-period-text"
-                                            title={`Different credit period (${item.credit_period} days vs selected ${firstSelectedItem.credit_period} days)`}>
-                                            Different Period
+                                          <span className="p-requires-approval-text"
+                                            title={`Requires approval. Sale price (₹${item.sale_price}) < Min price (₹${item.min_sale_price})`}>
+                                            Requires Approval
                                           </span>
                                         );
                                       }
-                                    }
-                                    
-                                    if (needsApproval && approvalStatus !== "approved") {
+                                      
                                       return (
-                                        <span className="p-requires-approval-text"
-                                          title={`Requires approval. Sale price (₹${item.sale_price}) < Min price (₹${item.min_sale_price})`}>
-                                          Requires Approval
+                                        <span className="p-select-prompt-text" title="Select this item to generate invoice">
+                                          Available
                                         </span>
                                       );
-                                    }
-                                    
-                                    return (
-                                      <span className="p-select-prompt-text" title="Select this item to generate invoice">
-                                        Available
-                                      </span>
-                                    );
-                                  })()}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <div className="p-no-items">
-                        <p>No items found for this order.</p>
-                      </div>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            )}
-          </React.Fragment>
-        );
-      })}
-    </tbody>
-  </table>
-</div>
+                                    })()}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div className="p-no-items">
+                          <p>No items found for this order.</p>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+          </div>
         </div>
-      </div>
 
- {/* Order Details Modal */}
-{showOrderModal && modalData && (
-  <div className="p-modal-overlay" onClick={closeModals}>
-    <div className="p-modal-content p-wide-modal" onClick={(e) => e.stopPropagation()}>
-      <div className="p-modal-header">
-        <h3>Order Details - {modalData.order_number}</h3>
-        <button className="p-modal-close" onClick={closeModals}>×</button>
-      </div>
-      <div className="p-modal-body">
-        <div className="p-three-column-grid">
-          {/* Row 1 – Core Order Identity */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Order Number:</span>
-              <span className="p-detail-value">{modalData.order_number}</span>
+  {/* Order Details Modal */}
+  {showOrderModal && modalData && (
+    <div className="p-modal-overlay" onClick={closeModals}>
+      <div className="p-modal-content p-wide-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="p-modal-header">
+          <h3>Order Details - {modalData.order_number}</h3>
+          <button className="p-modal-close" onClick={closeModals}>×</button>
+        </div>
+        <div className="p-modal-body">
+          <div className="p-three-column-grid">
+            {/* Row 1 – Core Order Identity */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Order Number:</span>
+                <span className="p-detail-value">{modalData.order_number}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Customer Name:</span>
-              <span className="p-detail-value">{modalData.customer_name}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Customer Name:</span>
+                <span className="p-detail-value">{modalData.customer_name}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Order Date:</span>
-              <span className="p-detail-value">
-                {modalData.created_at ? new Date(modalData.created_at).toLocaleDateString('en-GB') : 'N/A'}
-              </span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Order Date:</span>
+                <span className="p-detail-value">
+                  {modalData.created_at ? new Date(modalData.created_at).toLocaleDateString('en-GB') : 'N/A'}
+                </span>
+              </div>
             </div>
-          </div>
 
-          {/* Row 2 – Financial Summary */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Net Payable:</span>
-              <span className="p-detail-value">₹{(modalData.net_payable ?? 0).toLocaleString()}</span>
+            {/* Row 2 – Financial Summary */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Net Payable:</span>
+                <span className="p-detail-value">₹{(modalData.net_payable ?? 0).toLocaleString()}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Order Total:</span>
-              <span className="p-detail-value">₹{(modalData.order_total ?? 0).toLocaleString()}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Order Total:</span>
+                <span className="p-detail-value">₹{(modalData.order_total ?? 0).toLocaleString()}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Discount Amount:</span>
-              <span className="p-detail-value">₹{(modalData.discount_amount ?? 0).toLocaleString()}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Discount Amount:</span>
+                <span className="p-detail-value">₹{(modalData.discount_amount ?? 0).toLocaleString()}</span>
+              </div>
             </div>
-          </div>
 
-          {/* Row 3 – Tax & Billing */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Taxable Amount:</span>
-              <span className="p-detail-value">₹{(modalData.taxable_amount ?? 0).toLocaleString()}</span>
+            {/* Row 3 – Tax & Billing */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Taxable Amount:</span>
+                <span className="p-detail-value">₹{(modalData.taxable_amount ?? 0).toLocaleString()}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Tax Amount:</span>
-              <span className="p-detail-value">₹{(modalData.tax_amount ?? 0).toLocaleString()}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Tax Amount:</span>
+                <span className="p-detail-value">₹{(modalData.tax_amount ?? 0).toLocaleString()}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Invoice Number:</span>
-              <span className="p-detail-value">{modalData.invoice_number || "N/A"}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Invoice Number:</span>
+                <span className="p-detail-value">{modalData.invoice_number || "N/A"}</span>
+              </div>
             </div>
-          </div>
 
-          {/* Row 4 – Delivery & Credit */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Credit Period:</span>
-              <span className="p-detail-value">{modalData.credit_period || 0} days</span>
+            {/* Row 4 – Delivery & Credit */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Credit Period:</span>
+                <span className="p-detail-value">{modalData.credit_period || 0} days</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Estimated Delivery:</span>
-              <span className="p-detail-value">
-                {modalData.estimated_delivery_date ? new Date(modalData.estimated_delivery_date).toLocaleDateString('en-GB') : 'N/A'}
-              </span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Estimated Delivery:</span>
+                <span className="p-detail-value">
+                  {modalData.estimated_delivery_date ? new Date(modalData.estimated_delivery_date).toLocaleDateString('en-GB') : 'N/A'}
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Invoice Date:</span>
-              <span className="p-detail-value">
-                {modalData.invoice_date ? new Date(modalData.invoice_date).toLocaleDateString('en-GB') : 'N/A'}
-              </span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Invoice Date:</span>
+                <span className="p-detail-value">
+                  {modalData.invoice_date ? new Date(modalData.invoice_date).toLocaleDateString('en-GB') : 'N/A'}
+                </span>
+              </div>
             </div>
-          </div>
 
-          {/* Row 5 – People & Mode */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Customer ID:</span>
-              <span className="p-detail-value">{modalData.customer_id}</span>
+            {/* Row 5 – People & Mode */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Customer ID:</span>
+                <span className="p-detail-value">{modalData.customer_id}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Assigned Staff:</span>
-              <span className="p-detail-value staff-highlight">
-                {modalData.assigned_staff || "N/A"}
-              </span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Assigned Staff:</span>
+                <span className="p-detail-value staff-highlight">
+                  {modalData.assigned_staff || "N/A"}
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Order Mode:</span>
-              <span className="p-detail-value">{modalData.order_mode || 'N/A'}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Order Mode:</span>
+                <span className="p-detail-value">{modalData.order_mode || 'N/A'}</span>
+              </div>
             </div>
-          </div>
 
-          {/* Row 6 – Internal / Meta */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Staff ID:</span>
-              <span className="p-detail-value">{modalData.staff_id || "N/A"}</span>
+            {/* Row 6 – Internal / Meta */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Staff ID:</span>
+                <span className="p-detail-value">{modalData.staff_id || "N/A"}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Staff Incentive:</span>
-              <span className="p-detail-value incentive-highlight">
-                {parseFloat(modalData.staff_incentive) || 0}
-              </span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Staff Incentive:</span>
+                <span className="p-detail-value incentive-highlight">
+                  {parseFloat(modalData.staff_incentive) || 0}
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Last Updated:</span>
-              <span className="p-detail-value">
-                {modalData.updated_at ? new Date(modalData.updated_at).toLocaleDateString('en-GB') : 'N/A'}
-              </span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Last Updated:</span>
+                <span className="p-detail-value">
+                  {modalData.updated_at ? new Date(modalData.updated_at).toLocaleDateString('en-GB') : 'N/A'}
+                </span>
+              </div>
             </div>
-          </div>
 
-          {/* Address 1 */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Address 1:</span>
-              <span className="p-detail-value">
-                {modalData.billing_address_line1 || 
-                 modalData.account_details?.billing_address_line1 || 
-                 modalData.billing_address || 
-                 "N/A"}
-              </span>
+            {/* Address 1 */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Address 1:</span>
+                <span className="p-detail-value">
+                  {modalData.billing_address_line1 || 
+                  modalData.account_details?.billing_address_line1 || 
+                  modalData.billing_address || 
+                  "N/A"}
+                </span>
+              </div>
             </div>
-          </div>
 
-          {/* Address 2 */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Address 2:</span>
-              <span className="p-detail-value">
-                {modalData.billing_address_line2 || 
-                 modalData.account_details?.billing_address_line2 || 
-                 "N/A"}
-              </span>
+            {/* Address 2 */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Address 2:</span>
+                <span className="p-detail-value">
+                  {modalData.billing_address_line2 || 
+                  modalData.account_details?.billing_address_line2 || 
+                  "N/A"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-)}
-{showItemModal && modalData && (
-  <div className="p-modal-overlay" onClick={closeModals}>
-    <div className="p-modal-content p-wide-modal" onClick={(e) => e.stopPropagation()}>
-      <div className="p-modal-header">
-        <h3>Item Details - {modalData.item_name}</h3>
-        <button className="p-modal-close" onClick={closeModals}>×</button>
+  )}
+  {showItemModal && modalData && (
+    <div className="p-modal-overlay" onClick={closeModals}>
+      <div className="p-modal-content p-wide-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="p-modal-header">
+          <h3>Item Details - {modalData.item_name}</h3>
+          <button className="p-modal-close" onClick={closeModals}>×</button>
+        </div>
+        <div className="p-modal-body">
+          <div className="p-two-column-wrapper">
+    <div className="p-column">
+      <div className="p-detail-row">
+        <span className="p-detail-label">Item Name:</span>
+        <span className="p-detail-value">{modalData?.item_name || "N/A"}</span>
       </div>
-      <div className="p-modal-body">
-        <div className="p-two-column-wrapper">
-  <div className="p-column">
-    <div className="p-detail-row">
-      <span className="p-detail-label">Item Name:</span>
-      <span className="p-detail-value">{modalData?.item_name || "N/A"}</span>
+    </div>
+
+    <div className="p-column">
+      <div className="p-detail-row">
+        <span className="p-detail-label">Order Number:</span>
+        <span className="p-detail-value">{modalData?.order_number || "N/A"}</span>
+      </div>
     </div>
   </div>
 
-  <div className="p-column">
-    <div className="p-detail-row">
-      <span className="p-detail-label">Order Number:</span>
-      <span className="p-detail-value">{modalData?.order_number || "N/A"}</span>
-    </div>
-  </div>
-</div>
+          <div className="p-three-column-grid">
+            {/* 🔴 MOST IMPORTANT - Row 2 */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Units:</span>
+                <span className="p-detail-value">{modalData.quantity}</span>
+              </div>
+            </div>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Final Amount:</span>
+                <span className="p-detail-value">₹{modalData.final_amount.toLocaleString()}</span>
+              </div>
+            </div>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Item Total:</span>
+                <span className="p-detail-value">₹{modalData.item_total.toLocaleString()}</span>
+              </div>
+            </div>
 
-        <div className="p-three-column-grid">
-          {/* 🔴 MOST IMPORTANT (Top) - Row 1 (2 columns only) */}
-         
+            {/* 🟠 PRICING DETAILS - Row 1 */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">MRP:</span>
+                <span className="p-detail-value">₹{modalData.mrp.toLocaleString()}</span>
+              </div>
+            </div>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Sale Price:</span>
+                <span className="p-detail-value">₹{modalData.sale_price.toLocaleString()}</span>
+              </div>
+            </div>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Edited Sale Price:</span>
+                <span className="p-detail-value">₹{modalData.edited_sale_price.toLocaleString()}</span>
+              </div>
+            </div>
 
-          {/* 🔴 MOST IMPORTANT - Row 2 */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Units:</span>
-              <span className="p-detail-value">{modalData.quantity}</span>
+            {/* 🟠 PRICING DETAILS - Row 2 */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Customer Sale Price:</span>
+                <span className="p-detail-value">₹{modalData.customer_sale_price.toLocaleString()}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Final Amount:</span>
-              <span className="p-detail-value">₹{modalData.final_amount.toLocaleString()}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Total Amount:</span>
+                <span className="p-detail-value">₹{modalData.total_amount.toLocaleString()}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Item Total:</span>
-              <span className="p-detail-value">₹{modalData.item_total.toLocaleString()}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Discount %:</span>
+                <span className="p-detail-value">{modalData.discount_percentage}%</span>
+              </div>
             </div>
-          </div>
 
-          {/* 🟠 PRICING DETAILS - Row 1 */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">MRP:</span>
-              <span className="p-detail-value">₹{modalData.mrp.toLocaleString()}</span>
+            {/* 🟡 DISCOUNTS & TAX */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Discount Amount:</span>
+                <span className="p-detail-value">₹{modalData.discount_amount.toLocaleString()}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Sale Price:</span>
-              <span className="p-detail-value">₹{modalData.sale_price.toLocaleString()}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Taxable Amount:</span>
+                <span className="p-detail-value">₹{modalData.taxable_amount.toLocaleString()}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Edited Sale Price:</span>
-              <span className="p-detail-value">₹{modalData.edited_sale_price.toLocaleString()}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Tax %:</span>
+                <span className="p-detail-value">{modalData.tax_percentage}%</span>
+              </div>
             </div>
-          </div>
 
-          {/* 🟠 PRICING DETAILS - Row 2 */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Customer Sale Price:</span>
-              <span className="p-detail-value">₹{modalData.customer_sale_price.toLocaleString()}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Tax Amount:</span>
+                <span className="p-detail-value">₹{modalData.tax_amount.toLocaleString()}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Total Amount:</span>
-              <span className="p-detail-value">₹{modalData.total_amount.toLocaleString()}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">SGST %:</span>
+                <span className="p-detail-value">{modalData.sgst_percentage}%</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Discount %:</span>
-              <span className="p-detail-value">{modalData.discount_percentage}%</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">SGST Amount:</span>
+                <span className="p-detail-value">₹{modalData.sgst_amount.toLocaleString()}</span>
+              </div>
             </div>
-          </div>
 
-          {/* 🟡 DISCOUNTS & TAX */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Discount Amount:</span>
-              <span className="p-detail-value">₹{modalData.discount_amount.toLocaleString()}</span>
+            {/* 🟢 GST BREAKUP */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">CGST %:</span>
+                <span className="p-detail-value">{modalData.cgst_percentage}%</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Taxable Amount:</span>
-              <span className="p-detail-value">₹{modalData.taxable_amount.toLocaleString()}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">CGST Amount:</span>
+                <span className="p-detail-value">₹{modalData.cgst_amount.toLocaleString()}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Tax %:</span>
-              <span className="p-detail-value">{modalData.tax_percentage}%</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Credit Period:</span>
+                <span className="p-detail-value">{modalData.credit_period} days</span>
+              </div>
             </div>
-          </div>
 
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Tax Amount:</span>
-              <span className="p-detail-value">₹{modalData.tax_amount.toLocaleString()}</span>
+            {/* 🔵 CREDIT & SCHEME */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Credit Percentage:</span>
+                <span className="p-detail-value">{modalData.credit_percentage}%</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">SGST %:</span>
-              <span className="p-detail-value">{modalData.sgst_percentage}%</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Credit Charge:</span>
+                <span className="p-detail-value">₹{modalData.credit_charge.toLocaleString()}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">SGST Amount:</span>
-              <span className="p-detail-value">₹{modalData.sgst_amount.toLocaleString()}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Discount Scheme:</span>
+                <span className="p-detail-value">{modalData.discount_applied_scheme}</span>
+              </div>
             </div>
-          </div>
 
-          {/* 🟢 GST BREAKUP */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">CGST %:</span>
-              <span className="p-detail-value">{modalData.cgst_percentage}%</span>
+            {/* ⚪ META / INTERNAL */}
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Product ID:</span>
+                <span className="p-detail-value">{modalData.product_id}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">CGST Amount:</span>
-              <span className="p-detail-value">₹{modalData.cgst_amount.toLocaleString()}</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Staff ID:</span>
+                <span className="p-detail-value">{modalData.staff_id || "N/A"}</span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Credit Period:</span>
-              <span className="p-detail-value">{modalData.credit_period} days</span>
+                  <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Net Price:</span>
+                <span className="p-detail-value">{modalData.net_price || "N/A"}</span>
+              </div>
             </div>
-          </div>
-
-          {/* 🔵 CREDIT & SCHEME */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Credit Percentage:</span>
-              <span className="p-detail-value">{modalData.credit_percentage}%</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Approval Status:</span>
+                <span className="p-detail-value">
+                  {modalData.needs_approval ? (
+                    <span className={`p-approval-badge p-${modalData.approval_status}`}>
+                      {modalData.approval_status === "approved" ? "Approved" : 
+                      modalData.approval_status === "rejected" ? "Rejected" : "Pending"}
+                    </span>
+                  ) : (
+                    <span className="p-approval-badge p-not-required">Not Required</span>
+                  )}
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Credit Charge:</span>
-              <span className="p-detail-value">₹{modalData.credit_charge.toLocaleString()}</span>
-            </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Discount Scheme:</span>
-              <span className="p-detail-value">{modalData.discount_applied_scheme}</span>
-            </div>
-          </div>
-
-          {/* ⚪ META / INTERNAL */}
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Product ID:</span>
-              <span className="p-detail-value">{modalData.product_id}</span>
-            </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Staff ID:</span>
-              <span className="p-detail-value">{modalData.staff_id || "N/A"}</span>
-            </div>
-          </div>
-                <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Net Price:</span>
-              <span className="p-detail-value">{modalData.net_price || "N/A"}</span>
-            </div>
-          </div>
-          <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Approval Status:</span>
-              <span className="p-detail-value">
-                {modalData.needs_approval ? (
-                  <span className={`p-approval-badge p-${modalData.approval_status}`}>
-                    {modalData.approval_status === "approved" ? "Approved" : 
-                     modalData.approval_status === "rejected" ? "Rejected" : "Pending"}
-                  </span>
-                ) : (
-                  <span className="p-approval-badge p-not-required">Not Required</span>
-                )}
-              </span>
-            </div>
-          </div>
-           <div className="p-column">
-            <div className="p-detail-row">
-              <span className="p-detail-label">Weight:</span>
-              <span className="p-detail-value">{modalData.weight || 0} g</span>
+            <div className="p-column">
+              <div className="p-detail-row">
+                <span className="p-detail-label">Weight:</span>
+                <span className="p-detail-value">{modalData.weight || 0} g</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
+        
     </div>
-      
-  </div>
-)}
-    </div>
-  );
-};
+  )}
+      </div>
+    );
+  };
 
-export default Period;
+  export default Period;

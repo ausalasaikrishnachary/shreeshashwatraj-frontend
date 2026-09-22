@@ -6,6 +6,7 @@ import './QRCodeGenerator.css'; // Import the CSS file
 
 const QRCodeGenerator = ({ invoiceData, editableOrderMode, onQrDataGenerated }) => {
   
+  // ✅ FIXED: Calculate GST on Net Price
   const calculateGrandTotalForQR = () => {
     if (!invoiceData || !invoiceData.items) {
       console.log('❌ No invoice data or items for QR calculation');
@@ -24,21 +25,30 @@ const QRCodeGenerator = ({ invoiceData, editableOrderMode, onQrDataGenerated }) 
     invoiceData.items.forEach((item, index) => {
       const quantity = parseFloat(item.quantity) || 1;
       
+      // ✅ Get net price (base price)
+      const netPrice = parseFloat(item.net_price) || 0;
+      
+      // ✅ Get taxable amount (after discount and credit charge)
       const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
       const totalTaxable = taxablePerUnit * quantity;
       
-      const gstPerUnit = parseFloat(item.tax_amount) || 0;
-      const totalGST = orderMode === "KACHA" ? 0 : gstPerUnit * quantity;
+      // ✅ GST calculated on Net Price (not Taxable Amount)
+      const gstPercentage = parseFloat(item.gst) || 0;
+      const gstPerUnit = orderMode === "KACHA" ? 0 : (netPrice * gstPercentage) / 100;
+      const totalGST = gstPerUnit * quantity;
       
-      const itemTotal = totalTaxable + totalGST;
+      // ✅ Item Total = Net Price + GST (not Taxable Amount + GST)
+      const itemTotal = (netPrice * quantity) + totalGST;
       
       grandTotal += itemTotal;
       
-      console.log(`💰 Item ${index + 1} Calculation:`, {
+      console.log(`💰 Item ${index + 1} Calculation (QR):`, {
         product: item.product,
         quantity,
+        netPrice,
         taxablePerUnit,
         totalTaxable,
+        gstPercentage,
         gstPerUnit,
         totalGST,
         itemTotal,
@@ -48,9 +58,7 @@ const QRCodeGenerator = ({ invoiceData, editableOrderMode, onQrDataGenerated }) 
     
     console.log('💰 FINAL QR Grand Total:', grandTotal);
     
-    const invoiceGrandTotal = parseFloat(invoiceData.grandTotal) || 0;
-    
-    return Math.max(grandTotal, invoiceGrandTotal);
+    return grandTotal;
   };
 
   const generateQRCodeData = () => {
@@ -114,6 +122,7 @@ const QRCodeGenerator = ({ invoiceData, editableOrderMode, onQrDataGenerated }) 
     }
   }, [invoiceData, editableOrderMode]);
 
+  // ✅ FIXED: Get correct grand total with GST on Net Price
   const getCorrectGrandTotal = () => {
     if (!invoiceData || !invoiceData.items) return 0;
     
@@ -123,12 +132,17 @@ const QRCodeGenerator = ({ invoiceData, editableOrderMode, onQrDataGenerated }) 
     
     invoiceData.items.forEach(item => {
       const quantity = parseFloat(item.quantity) || 1;
-      const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
-      const taxPerUnit = parseFloat(item.tax_amount) || 0;
       
-      const itemTaxable = taxablePerUnit * quantity;
-      const itemTax = orderMode === "KACHA" ? 0 : taxPerUnit * quantity;
-      const itemTotal = itemTaxable + itemTax;
+      // ✅ Get net price (base price)
+      const netPrice = parseFloat(item.net_price) || 0;
+      
+      // ✅ GST calculated on Net Price
+      const gstPercentage = parseFloat(item.gst) || 0;
+      const gstPerUnit = orderMode === "KACHA" ? 0 : (netPrice * gstPercentage) / 100;
+      const totalGST = gstPerUnit * quantity;
+      
+      // ✅ Item Total = Net Price + GST
+      const itemTotal = (netPrice * quantity) + totalGST;
       
       total += itemTotal;
     });

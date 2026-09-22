@@ -9,6 +9,19 @@ import { QRCodeCanvas } from "qrcode.react";
 import axios from "axios";
 
 import QRCodeGenerator from './QRCodeGenerator';
+
+
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 10000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 const Period_InvoicePDFPreview = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -154,17 +167,6 @@ const Period_InvoicePDFPreview = () => {
       originalOrderNumber: orderNumber,
       order_mode: orderMode,
 
-      //   companyInfo: periodData.companyInfo || {
-      //    name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-      // address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-      // email: "spmathur56@gmail.com",
-      // phone: "9801049700",
-      // gstin: "10AAOCS1541B1ZZ",
-      // state: "Bihar",
-      // stateCode: "10"
-      //   },
-
-
       companyInfo: periodData.companyInfo || companyInfo,
 
       supplierInfo: {
@@ -306,7 +308,9 @@ const handleOrderModeChange = async (switchData) => {
     
     console.log(`🌐 Request URL: ${url}`);
     
-    const response = await fetch(url);
+    // ✅ FIX: use fetchWithTimeout so a hanging "stock transfer" lookup
+    // (KACHA) can never block this handler forever.
+    const response = await fetchWithTimeout(url, {}, 10000);
     if (response.ok) {
       const data = await response.json();
       newInvoiceNumber = data.nextInvoiceNumber;
@@ -325,13 +329,16 @@ const handleOrderModeChange = async (switchData) => {
         for (const altSaleType of alternativeSaleTypes) {
           console.log(`🔄 Trying alternative saleType: ${altSaleType}`);
           const altUrl = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(newTransactionType)}&saleType=${encodeURIComponent(altSaleType)}`;
-          const altResponse = await fetch(altUrl);
-          
-          if (altResponse.ok) {
-            const altData = await altResponse.json();
-            newInvoiceNumber = altData.nextInvoiceNumber;
-            console.log(`✅ Received next invoice number with saleType ${altSaleType}:`, newInvoiceNumber);
-            break;
+          try {
+            const altResponse = await fetchWithTimeout(altUrl, {}, 10000);
+            if (altResponse.ok) {
+              const altData = await altResponse.json();
+              newInvoiceNumber = altData.nextInvoiceNumber;
+              console.log(`✅ Received next invoice number with saleType ${altSaleType}:`, newInvoiceNumber);
+              break;
+            }
+          } catch (altErr) {
+            console.warn(`⏱️ Alternative saleType "${altSaleType}" request failed/timed out:`, altErr.message);
           }
         }
       }
@@ -342,7 +349,11 @@ const handleOrderModeChange = async (switchData) => {
       }
     }
   } catch (err) {
-    console.error('❌ Error fetching new invoice number:', err);
+    if (err.name === 'AbortError') {
+      console.error(`⏱️ Timed out fetching next invoice number for ${newTransactionType} (likely backend issue with this transaction type)`);
+    } else {
+      console.error('❌ Error fetching new invoice number:', err);
+    }
     newInvoiceNumber = await generateFallbackInvoiceNumber(newTransactionType);
   }
 
@@ -543,16 +554,6 @@ const handleOrderModeChange = async (switchData) => {
       invoiceNumber: apiData.InvoiceNumber || `INV${apiData.VoucherID}`,
       invoiceDate: apiData.Date ? new Date(apiData.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       validityDate: apiData.Date ? new Date(new Date(apiData.Date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-
-      //     companyInfo: {
-      //    name: "SHREE SHASHWATRAJ AGRO PVT LTD",
-      // address: "Growth Center, Jasoiya, Aurangabad, Bihar, 824101",
-      // email: "spmathur56@gmail.com",
-      // phone: "9801049700",
-      // gstin: "10AAOCS1541B1ZZ",
-      // state: "Bihar",
-      // stateCode: "10"
-      //     },
 
       companyInfo: companyInfo,
 
@@ -879,6 +880,7 @@ const handleOrderModeChange = async (switchData) => {
         reader.readAsDataURL(blob);
       });
 
+      // Already had a timeout — left as-is
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
@@ -1046,7 +1048,10 @@ const handleGenerateInvoice = async () => {
       
       console.log(`🌐 Request URL: ${url}`);
       
-      const invoiceNumberResponse = await fetch(url);
+      // ✅ FIX: use fetchWithTimeout — this is the line that used to hang
+      // indefinitely for "stock transfer" (KACHA) and left the button
+      // stuck on "Generating..." with no error and no navigation.
+      const invoiceNumberResponse = await fetchWithTimeout(url, {}, 10000);
 
       if (invoiceNumberResponse.ok) {
         const invoiceNumberData = await invoiceNumberResponse.json();
@@ -1066,13 +1071,16 @@ const handleGenerateInvoice = async () => {
           for (const altSaleType of alternativeSaleTypes) {
             console.log(`🔄 Trying alternative saleType: ${altSaleType}`);
             const altUrl = `${baseurl}/next-invoice-number?transactionType=${encodeURIComponent(transactionType)}&saleType=${encodeURIComponent(altSaleType)}`;
-            const altResponse = await fetch(altUrl);
-            
-            if (altResponse.ok) {
-              const altData = await altResponse.json();
-              invoiceNumber = altData.nextInvoiceNumber;
-              console.log(`✅ Received next invoice number with saleType ${altSaleType}:`, invoiceNumber);
-              break;
+            try {
+              const altResponse = await fetchWithTimeout(altUrl, {}, 10000);
+              if (altResponse.ok) {
+                const altData = await altResponse.json();
+                invoiceNumber = altData.nextInvoiceNumber;
+                console.log(`✅ Received next invoice number with saleType ${altSaleType}:`, invoiceNumber);
+                break;
+              }
+            } catch (altErr) {
+              console.warn(`⏱️ Alternative saleType "${altSaleType}" request failed/timed out:`, altErr.message);
             }
           }
         }
@@ -1083,7 +1091,11 @@ const handleGenerateInvoice = async () => {
         }
       }
     } catch (err) {
-      console.error('❌ Error fetching next invoice number:', err);
+      if (err.name === 'AbortError') {
+        console.error(`⏱️ Timed out fetching next invoice number for ${transactionType}. Falling back to local generation.`);
+      } else {
+        console.error('❌ Error fetching next invoice number:', err);
+      }
       invoiceNumber = await generateFallbackInvoiceNumber(transactionType);
     }
 
@@ -1564,13 +1576,13 @@ const payload = {
 
 console.log("📦 FINAL INVOICE PAYLOAD:", payload);
 
-const response = await fetch(`${baseurl}/transaction`, {
+const response = await fetchWithTimeout(`${baseurl}/transaction`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
   },
   body: JSON.stringify(payload),
-});
+}, 20000);
 
       const result = await response.json();
 
@@ -1618,7 +1630,11 @@ const response = await fetch(`${baseurl}/transaction`, {
     }
   } catch (error) {
     console.error("Error generating invoice:", error);
-    setErrorMessage(`Failed to generate invoice: ${error.message}`);
+    if (error.name === 'AbortError') {
+      setErrorMessage(`Failed to generate invoice: request to the server timed out. Please check your connection/backend and try again.`);
+    } else {
+      setErrorMessage(`Failed to generate invoice: ${error.message}`);
+    }
 
     setTimeout(() => {
       setErrorMessage(null);
@@ -1671,7 +1687,8 @@ const generateFallbackInvoiceNumber = async (transactionType = "Sales") => {
     console.log(`📞 Fetching last invoice for ${transactionType} from:`, url);
     
     try {
-      const response = await fetch(url);
+      // ✅ FIX: bounded with a timeout as well
+      const response = await fetchWithTimeout(url, {}, 8000);
       
       if (response.ok) {
         const data = await response.json();
@@ -1700,7 +1717,7 @@ const generateFallbackInvoiceNumber = async (transactionType = "Sales") => {
         console.error(`❌ Failed to fetch last invoice: ${response.status}`);
       }
     } catch (err) {
-      console.warn('Could not fetch last invoice:', err);
+      console.warn('Could not fetch last invoice (or it timed out):', err.message);
     }
 
     // Ultimate fallback - start from 000001
@@ -1895,114 +1912,6 @@ const generateFallbackInvoiceNumber = async (transactionType = "Sales") => {
       fetchTransactionData();
     }
   }, [id, location]);
-
-  // const QRCodeGenerator = () => {
-  //   const grandTotal = calculateGrandTotalForQR();
-  //   const navigate = useNavigate();
-
-  //   useEffect(() => {
-  //     if (invoiceData && invoiceData.items && invoiceData.items.length > 0) {
-  //       console.log("🔄 Regenerating QR with updated total:", grandTotal);
-  //       generateQRCodeData();
-  //     }
-  //   }, [invoiceData, editableOrderMode, grandTotal]);
-
-  //   if (!invoiceData) return null;
-
-  //   const orderMode = (editableOrderMode || invoiceData.order_mode || "PAKKA").toUpperCase();
-
-  //   const getCorrectGrandTotal = () => {
-  //     if (!invoiceData || !invoiceData.items) return 0;
-
-  //     let total = 0;
-
-  //     invoiceData.items.forEach(item => {
-  //       const quantity = parseFloat(item.quantity) || 1;
-  //       const taxablePerUnit = parseFloat(item.taxable_amount) || 0;
-  //       const taxPerUnit = parseFloat(item.tax_amount) || 0;
-
-  //       const itemTaxable = taxablePerUnit * quantity;
-  //       const itemTax = orderMode === "KACHA" ? 0 : taxPerUnit * quantity;
-  //       const itemTotal = itemTaxable + itemTax;
-
-  //       total += itemTotal;
-  //     });
-
-  //     return total;
-  //   };
-
-  //   const correctGrandTotal = getCorrectGrandTotal();
-
-  //   const handleViewFullQR = () => {
-  //     // Save QR data to localStorage for the new page
-  //     localStorage.setItem('qrCodeData', qrData);
-  //     localStorage.setItem('invoiceDataForQR', JSON.stringify(invoiceData));
-
-  //     // Navigate to QR code page with state
-  //     navigate('/qr-code', {
-  //       state: {
-  //         qrData: qrData,
-  //         invoiceData: invoiceData,
-  //         grandTotal: correctGrandTotal,
-  //         orderMode: orderMode
-  //       }
-  //     });
-  //   };
-
-  //   return (
-  //     <Card className="shadow-sm border-0 mb-3">
-  //       <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
-  //         <h6 className="mb-0"><FaQrcode className="me-2" /> Scan to Pay</h6>
-  //         <Button 
-  //           variant="light" 
-  //           size="sm" 
-  //           onClick={handleViewFullQR}
-  //           className="no-print"
-  //         >
-  //           View Full Page
-  //         </Button>
-  //       </Card.Header>
-  //       <Card.Body>
-  //         <div className="text-center mb-3">
-  //           <div className="qr-code-box d-inline-block">
-  //             {qrData ? (
-  //               <QRCodeCanvas 
-  //                 value={qrData}
-  //                 size={150}
-  //                 level="H"
-  //                 includeMargin={true}
-  //               />
-  //             ) : (
-  //               <div className="p-3">
-  //                 <div className="spinner-border text-primary" role="status">
-  //                   <span className="visually-hidden">Generating QR...</span>
-  //                 </div>
-  //               </div>
-  //             )}
-  //           </div>
-
-  //           {/* Amount Display */}
-  //           <div className="mt-3">
-  //             <h5 className="text-success fw-bold mb-1">₹{correctGrandTotal.toFixed(2)}</h5>
-  //             <span className={`badge ${orderMode === "KACHA" ? "bg-warning" : "bg-success"}`}>
-  //               {orderMode} ORDER
-  //             </span>
-  //           </div>
-
-  //           {/* Button to view full page */}
-  //           <Button 
-  //             variant="outline-primary" 
-  //             size="sm" 
-  //             onClick={handleViewFullQR}
-  //             className="mt-3 w-100 no-print"
-  //           >
-  //             Open QR Code in Full Page
-  //           </Button>
-  //         </div>
-  //       </Card.Body>
-  //     </Card>
-  //   );
-  // };
 
   if (loading) {
     return (
