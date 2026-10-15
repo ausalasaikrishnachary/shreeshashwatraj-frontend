@@ -10,10 +10,11 @@ import "./Reports.css";
 import { FaChartBar } from "react-icons/fa";
 import HsnReport from "./HsnReport";
 import Bill_By_Bill_Report from "./Bill_By_Bill_Report";
+import ProfitLossReport from "./ProfitLossReport";
 
 function Reports() {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [activeReport, setActiveReport] = useState("retailers");
+  const [activeReport, setActiveReport] = useState("profit-loss");
   const [loading, setLoading] = useState(false);
 
   // Export handlers
@@ -21,6 +22,8 @@ function Reports() {
   // Render report content
   const renderReportContent = () => {
     switch (activeReport) {
+      case "profit-loss":
+        return <ProfitLossReport />;
       case "sales":
         return <SalesReport />;
       case "expense":
@@ -38,7 +41,7 @@ function Reports() {
       case "Bill by Bill":
         return <Bill_By_Bill_Report />;
       default:
-        return <RetailerReports loading={loading} setLoading={setLoading} />;
+        return <ProfitLossReport />;
     }
   };
 
@@ -62,6 +65,11 @@ function Reports() {
           <div className="reports-nav-section">
             <div className="reports-nav-content">
               <div className="report-links-grid">
+                <div className="report-link-item" onClick={() => setActiveReport("profit-loss")}>
+                  <span className={`report-link-text ${activeReport === "profit-loss" ? "active" : ""}`}>
+                    Profit &amp; Loss
+                  </span>
+                </div>
                 <div className="report-link-item" onClick={() => setActiveReport("retailers")}>
                   <span className={`report-link-text ${activeReport === "retailers" ? "active" : ""}`}>
                     Retailer Report

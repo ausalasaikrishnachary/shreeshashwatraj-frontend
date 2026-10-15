@@ -19,6 +19,7 @@ function AdminHeader({ isCollapsed, onToggleSidebar, isMobile }) {
     "/add-marketing": "Add Marketing",
     "/expenses": "Expenses",
     "/reports": "Reports",
+    "/profit-loss": "Profit & Loss Account",
     "/roleaccess": "Role Access",
     "/sales_visit": "Sales Visit",
     "/sale_items": "Sales Items",

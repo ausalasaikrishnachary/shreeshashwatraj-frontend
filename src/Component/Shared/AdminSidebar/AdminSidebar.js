@@ -265,6 +265,7 @@ function AdminSidebar({ isCollapsed, setIsCollapsed, onToggleMobile }) {
       icon: <FaTags />,
     },
     { path: "/reports", name: "Reports", icon: <FaFileAlt /> },
+    { path: "/profit-loss", name: "Profit & Loss", icon: <FaChartBar /> },
     { path: "/roleaccess", name: "Role Access", icon: <FaKey /> },
     {
       name: "Production",

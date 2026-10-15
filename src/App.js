@@ -46,6 +46,7 @@ import AddMarketing from "./Component/Panels/Admin/AdminMarketing/AddMarketing";
 import AdminExpenses from "./Component/Panels/Admin/AdminExpenses/Expenses";
 import AddExpenses from "./Component/Panels/Admin/AdminExpenses/AddExpenses";
 import AdminReports from "./Component/Panels/Admin/AdminReports/Reports";
+import ProfitLossPage from "./Component/Panels/Admin/AdminReports/ProfitLossPage";
 import AdminRoleAccess from "./Component/Panels/Admin/AdminRoleAccess/RoleAccess";
 import DashboardCard from "./Component/Panels/Admin/AdminDashboard/DashboardCard";
 import ExpenseReportPage from "./Component/Panels/Admin/AdminReports/ExpenseReportPage";
@@ -157,6 +158,7 @@ import PaymentTable from "./Component/Panels/Admin/Payment/PaymentTable";
 import Bulkreceipts_payments from "./Component/Panels/Admin/Receipts_Paymentsbulk/Bulkreceipts_payments";
 import BankStatementTable from "./Component/Panels/Admin/Receipts_Paymentsbulk/BankStatementTable";
 import GSPTokenManager from "./Component/GSPTokenManager";
+import Chatbot from "./components/Chatbot/Chatbot";
 import EInvoiceView from "./Component/Panels/Admin/SalesInvoicePage/EInvoiceView";
 import IRNGenerator from "./Component/Panels/Admin/SalesInvoicePage/IRNGenerator";
 import SaleType from "./Component/Panels/Admin/SaleType/SaleType";
@@ -165,6 +167,7 @@ function App() {
   return (
     <GoogleOAuthProvider clientId="77643630750-2f13qfdip7lv5npp634cfu70h0ig7vle.apps.googleusercontent.com">
       <Router>
+        <Chatbot />
         <Routes>
           {/* Public */}
           <Route path="/" element={<Login />} />
@@ -733,6 +736,14 @@ function App() {
             element={
               <PrivateRoute allowedRoles={["admin"]}>
                 <AdminReports />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profit-loss"
+            element={
+              <PrivateRoute allowedRoles={["admin"]}>
+                <ProfitLossPage />
               </PrivateRoute>
             }
           />
