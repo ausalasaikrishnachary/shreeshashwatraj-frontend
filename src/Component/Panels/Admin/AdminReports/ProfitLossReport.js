@@ -35,11 +35,21 @@ function ProfitLossReport() {
     toDate: defaultDates.to,
     totalSales: 0,
     totalPurchase: 0,
+    totalCOGS: 0,
+    totalUnitsSold: 0,
+    grossProfit: 0,
+    totalExpenses: 0,
+    totalSalesReturns: 0,
+    totalPurchaseReturns: 0,
     profit: 0,
     loss: 0,
+    netProfit: 0,
     resultType: "NO_PROFIT_NO_LOSS",
     countSales: 0,
     countPurchase: 0,
+    countExpenses: 0,
+    countSalesReturns: 0,
+    countPurchaseReturns: 0,
   });
 
   const fetchProfitLoss = useCallback(async (fDate, tDate) => {
@@ -103,15 +113,20 @@ function ProfitLossReport() {
 
   // Accounting T-format balancing values
   const totalSalesVal = parseFloat(data.totalSales) || 0;
-  const totalPurchaseVal = parseFloat(data.totalPurchase) || 0;
+  const totalCOGSVal = parseFloat(data.totalCOGS) || 0;
+  const grossProfitVal = parseFloat(data.grossProfit) || 0;
+  const totalExpensesVal = parseFloat(data.totalExpenses) || 0;
+  const netProfitVal = parseFloat(data.netProfit) || 0;
   const isProfit = data.resultType === "PROFIT";
   const isLoss = data.resultType === "LOSS";
 
   // Balancing figures:
   // In classic accounting:
-  // Debit side: Purchases + Gross Profit = Balancing Total
-  // Credit side: Sales + Gross Loss = Balancing Total
-  const balancingTotal = Math.max(totalSalesVal, totalPurchaseVal);
+  // Debit side: COGS + Expenses + Net Profit = Balancing Total
+  // Credit side: Sales + Net Loss = Balancing Total
+  const debitTotal = totalCOGSVal + totalExpensesVal + (isProfit ? netProfitVal : 0);
+  const creditTotal = totalSalesVal + (isLoss ? Math.abs(netProfitVal) : 0);
+  const balancingTotal = Math.max(debitTotal, creditTotal);
 
   return (
     <div className="pl-container">
@@ -241,18 +256,40 @@ function ProfitLossReport() {
                 </div>
 
                 <div className="pl-entries-list">
-                  {/* Purchases Entry */}
+                  {/* COGS Entry */}
                   <div className="pl-entry-row">
                     <div>
-                      <div className="pl-entry-name">To Purchases</div>
+                      <div className="pl-entry-name">To Cost of Goods Sold</div>
                       <div className="pl-entry-sub">
-                        ({data.countPurchase || 0} transaction{data.countPurchase === 1 ? "" : "s"})
+                        ({data.totalUnitsSold || 0} units sold)
                       </div>
                     </div>
-                    <div className="pl-entry-amount">{formatCurrency(data.totalPurchase)}</div>
+                    <div className="pl-entry-amount">{formatCurrency(data.totalCOGS)}</div>
                   </div>
 
-                  {/* If Profit: Appears on Debit side to balance */}
+                  {/* Gross Profit Entry */}
+                  {grossProfitVal > 0 && (
+                    <div className="pl-entry-row">
+                      <div>
+                        <div className="pl-entry-name">To Gross Profit</div>
+                        <div className="pl-entry-sub">(Sales - COGS)</div>
+                      </div>
+                      <div className="pl-entry-amount">{formatCurrency(grossProfitVal)}</div>
+                    </div>
+                  )}
+
+                  {/* Operating Expenses */}
+                  <div className="pl-entry-row">
+                    <div>
+                      <div className="pl-entry-name">To Operating Expenses</div>
+                      <div className="pl-entry-sub">
+                        ({data.countExpenses || 0} transaction{data.countExpenses === 1 ? "" : "s"})
+                      </div>
+                    </div>
+                    <div className="pl-entry-amount">{formatCurrency(data.totalExpenses)}</div>
+                  </div>
+
+                  {/* If Net Profit: Appears on Debit side to balance */}
                   {isProfit && (
                     <div className="pl-entry-row highlight-entry">
                       <div>
@@ -289,7 +326,7 @@ function ProfitLossReport() {
                     <div className="pl-entry-amount">{formatCurrency(data.totalSales)}</div>
                   </div>
 
-                  {/* If Loss: Appears on Credit side to balance */}
+                  {/* If Net Loss: Appears on Credit side to balance */}
                   {isLoss && (
                     <div className="pl-entry-row highlight-loss">
                       <div>
@@ -313,7 +350,7 @@ function ProfitLossReport() {
                 Report Filter: From {formatDisplayDate(data.fromDate || fromDate)} to{" "}
                 {formatDisplayDate(data.toDate || toDate)}
               </span>
-              <span>Calculation: Total Sales - Total Purchase</span>
+              <span>Calculation: Net Profit = (Sales - COGS) - Expenses</span>
             </div>
           </div>
         </>
