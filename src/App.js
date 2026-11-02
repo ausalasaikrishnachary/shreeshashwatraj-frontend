@@ -46,6 +46,7 @@ import AddMarketing from "./Component/Panels/Admin/AdminMarketing/AddMarketing";
 import AdminExpenses from "./Component/Panels/Admin/AdminExpenses/Expenses";
 import AddExpenses from "./Component/Panels/Admin/AdminExpenses/AddExpenses";
 import AdminReports from "./Component/Panels/Admin/AdminReports/Reports";
+import AiReportsPage from "./Component/Panels/Admin/AdminReports/AiReportsPage";
 import ProfitLossPage from "./Component/Panels/Admin/AdminReports/ProfitLossPage";
 import AdminRoleAccess from "./Component/Panels/Admin/AdminRoleAccess/RoleAccess";
 import DashboardCard from "./Component/Panels/Admin/AdminDashboard/DashboardCard";
@@ -736,6 +737,14 @@ function App() {
             element={
               <PrivateRoute allowedRoles={["admin"]}>
                 <AdminReports />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/ai-reports"
+            element={
+              <PrivateRoute allowedRoles={["admin"]}>
+                <AiReportsPage />
               </PrivateRoute>
             }
           />

@@ -11,6 +11,7 @@ import { FaChartBar } from "react-icons/fa";
 import HsnReport from "./HsnReport";
 import Bill_By_Bill_Report from "./Bill_By_Bill_Report";
 import ProfitLossReport from "./ProfitLossReport";
+import ErpAiReporter from "./ErpAiReporter";
 
 function Reports() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -22,6 +23,8 @@ function Reports() {
   // Render report content
   const renderReportContent = () => {
     switch (activeReport) {
+      case "ai-reports":
+        return <ErpAiReporter isEmbedded={true} />;
       case "profit-loss":
         return <ProfitLossReport />;
       case "sales":
@@ -65,6 +68,11 @@ function Reports() {
           <div className="reports-nav-section">
             <div className="reports-nav-content">
               <div className="report-links-grid">
+                <div className="report-link-item" onClick={() => setActiveReport("ai-reports")}>
+                  <span className={`report-link-text ${activeReport === "ai-reports" ? "active" : ""}`} style={{ fontWeight: "bold" }}>
+                    ✨ AI Reports
+                  </span>
+                </div>
                 <div className="report-link-item" onClick={() => setActiveReport("profit-loss")}>
                   <span className={`report-link-text ${activeReport === "profit-loss" ? "active" : ""}`}>
                     Profit &amp; Loss
