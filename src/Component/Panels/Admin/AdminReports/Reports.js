@@ -69,8 +69,8 @@ function Reports() {
             <div className="reports-nav-content">
               <div className="report-links-grid">
                 <div className="report-link-item" onClick={() => setActiveReport("ai-reports")}>
-                  <span className={`report-link-text ${activeReport === "ai-reports" ? "active" : ""}`} style={{ fontWeight: "bold" }}>
-                    ✨ AI Reports
+                  <span className="report-link-text ai-report-link" style={{ fontWeight: "bold" }}>
+                    AI-Reporting
                   </span>
                 </div>
                 <div className="report-link-item" onClick={() => setActiveReport("profit-loss")}>

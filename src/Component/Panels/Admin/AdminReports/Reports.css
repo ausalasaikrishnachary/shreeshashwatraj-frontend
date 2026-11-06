@@ -147,6 +147,12 @@
   transform: none;
 }
 
+.report-link-text.ai-report-link,
+.report-link-text.ai-report-link:hover {
+  background: #4F81FF;
+  color: white;
+}
+
 /* ============================================================
    STATS GRID
    ============================================================ */
@@ -1102,5 +1108,4 @@
     max-width: calc(100% - 80px) !important;
   }
 }
-
 
