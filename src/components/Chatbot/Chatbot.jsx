@@ -1,202 +1,163 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { fetchChatbotConfig, askChatbot } from "../../services/chatbotService";
+import React, { useEffect, useRef, useState } from "react";
+import { fetchAiChatCapabilities, sendAiChatMessage } from "../../services/aiChatService";
 import "./Chatbot.css";
 
-const PARAM_LABELS = {
-  customerId: "Customer",
-  productId: "Product",
-  invoiceNumber: "Invoice Number",
-  fromDate: "From Date",
-  toDate: "To Date",
-  supplierId: "Supplier",
-  salesmanId: "Salesman",
-  saleType: "Sale Type",
-  categoryId: "Category",
-  reportType: "Report Type",
-};
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "application/pdf"];
 
-const PAGE_LIMIT = 15;
+function ActionIcon({ name }) {
+  if (name === "attach") {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15.5 6.5-7.8 7.8a3.1 3.1 0 0 0 4.4 4.4l8-8a4.8 4.8 0 0 0-6.8-6.8l-8.1 8.1a6.5 6.5 0 0 0 9.2 9.2l7.2-7.2" /></svg>;
+  }
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="8" height="13" rx="4" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" /></svg>;
+}
+
+function userEligible() {
+  if (localStorage.getItem("isLoggedIn") !== "true") return false;
+  const role = JSON.parse(localStorage.getItem("user") || "{}")?.role?.toLowerCase();
+  return role === "admin" || role === "staff";
+}
+
+function MessageContent({ message }) {
+  return (
+    <div className={`erp-chat-message erp-chat-${message.role}`}>
+      {message.role === "user" ? <><span className="erp-chat-message-label">You</span><p>{message.text}</p></> : (
+        <>
+          <span className="erp-chat-message-label">ERP assistant</span>
+          <p>{message.answer}</p>
+          {message.blocks?.length > 0 && (
+            <div className="erp-chat-blocks">
+              {message.blocks.map((block, index) => block.type === "metric" ? (
+                <div className="erp-chat-metric" key={`${block.label}-${index}`}>
+                  <span>{block.label}</span><strong>{block.value}</strong>
+                </div>
+              ) : (
+                <div className="erp-chat-table-wrap" key={index}>
+                  <table><thead><tr>{block.columns.map((column) => <th key={column}>{column}</th>)}</tr></thead>
+                    <tbody>{block.rows.map((row, rowIndex) => <tr key={rowIndex}>{block.columns.map((column) => <td key={column}>{String(row[column] ?? "")}</td>)}</tr>)}</tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+          )}
+          {message.citations?.length > 0 && <div className="erp-chat-citations"><span>Verified sources</span>{message.citations.map((citation) => <a href={citation.href} key={citation.href}>{citation.label}</a>)}</div>}
+          {message.navigation?.length > 0 && <div className="erp-chat-navigation">{message.navigation.map((link) => link.href && <a href={link.href} key={link.href}>{link.label}</a>)}</div>}
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function Chatbot() {
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState("categories"); // categories | questions | params | result
-  const [config, setConfig] = useState({ categories: [], questions: [] });
-  const [category, setCategory] = useState(null);
-  const [question, setQuestion] = useState(null);
-  const [params, setParams] = useState({});
-  const [result, setResult] = useState(null);
+  const [enabled, setEnabled] = useState(userEligible());
+  const [messages, setMessages] = useState([]);
+  const [draft, setDraft] = useState("");
+  const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [recording, setRecording] = useState(false);
   const [error, setError] = useState("");
-  const [page, setPage] = useState(0);
-
-  const isAdmin = localStorage.getItem("isAdmin") === "true";
+  const [status, setStatus] = useState("");
+  const mediaRecorder = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
-    if (open && !config.categories.length) {
-      fetchChatbotConfig()
-        .then((cfg) => (cfg && cfg.success ? setConfig(cfg) : setError(cfg?.error || "Failed to load")))
-        .catch(() => setError("Could not reach server"));
-    }
-  }, [open, config.categories.length]);
+    if (!userEligible()) return undefined;
+    fetchAiChatCapabilities().then((data) => setEnabled(data.enabled === true)).catch(() => setEnabled(userEligible()));
+    return undefined;
+  }, []);
 
-  const categoryQuestions = useMemo(
-    () => config.questions.filter((q) => q.category === category?.id),
-    [config, category]
-  );
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (event) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", close);
+    inputRef.current?.focus();
+    return () => document.removeEventListener("keydown", close);
+  }, [open]);
 
-  const reset = () => {
-    setView("categories");
-    setCategory(null);
-    setQuestion(null);
-    setParams({});
-    setResult(null);
+  const selectFiles = (event) => {
     setError("");
-    setPage(0);
+    const files = Array.from(event.target.files || []);
+    const invalid = files.find((file) => !ACCEPTED_TYPES.includes(file.type) || file.size > MAX_FILE_BYTES);
+    if (invalid) {
+      setError("Use JPG, PNG, or PDF files up to 10 MB each.");
+      return;
+    }
+    setAttachments(files);
   };
 
-  const selectQuestion = (q) => {
-    setQuestion(q);
-    setParams({});
-    if (!q.requiredParams || q.requiredParams.length === 0) {
-      submit(q, {});
-    } else {
-      setView("params");
+  const toggleRecording = async () => {
+    if (recording) {
+      mediaRecorder.current?.stop();
+      return;
     }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("Microphone recording is not available in this browser.");
+      return;
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const recorder = new MediaRecorder(stream);
+    const chunks = [];
+    recorder.ondataavailable = (event) => chunks.push(event.data);
+    recorder.onstop = async () => {
+      stream.getTracks().forEach((track) => track.stop());
+      setRecording(false);
+      const audio = new File(chunks, "voice-message.webm", { type: recorder.mimeType || "audio/webm" });
+      if (audio.size > MAX_FILE_BYTES) setError("Audio is limited to 10 MB.");
+      else await submit("", audio);
+    };
+    mediaRecorder.current = recorder;
+    recorder.start();
+    setRecording(true);
+    setStatus("Recording. Select the microphone again to send.");
   };
 
-  const submit = async (q, p) => {
-    setLoading(true);
-    setError("");
-    setView("result");
-    setPage(0);
+  const submit = async (explicitMessage = draft, audio = null) => {
+    const message = explicitMessage.trim();
+    if (!message && !audio && !attachments.length) return;
+    setDraft("");
+    setAttachments([]);
+    setLoading(true); setError(""); setStatus("Processing ERP request.");
+    if (message) setMessages((current) => [...current, { role: "user", text: message }]);
     try {
-      const res = await askChatbot(q.id, p);
-      setResult(res);
-    } catch {
-      setResult({ success: false, error: "Network error" });
-    } finally {
-      setLoading(false);
-    }
+      const result = await sendAiChatMessage({ message, audio, attachments });
+      setMessages((current) => [...current, { role: "assistant", ...result }]);
+      setStatus(result.status === "clarification_needed" ? "Clarification required." : "ERP response ready.");
+    } catch (requestError) {
+      setError(requestError.message);
+      setStatus("Request failed.");
+    } finally { setLoading(false); }
   };
 
-  if (!isAdmin) return null;
-
-  const rows = result?.data || [];
-  const columns = rows.length ? Object.keys(rows[0]) : [];
-  const pageRows = rows.slice(page * PAGE_LIMIT, page * PAGE_LIMIT + PAGE_LIMIT);
-
+  if (!enabled) return null;
   return (
     <>
-      <button className="chatbot-fab" onClick={() => setOpen((o) => !o)} title="Admin AI Assistant">
-        💬
+      <button className="erp-chat-fab" onClick={() => setOpen((value) => !value)} aria-label="Open ERP AI Chat" aria-expanded={open}>
+        <span aria-hidden="true">AI</span>
       </button>
-      {open && (
-        <div className="chatbot-window">
-          <div className="chatbot-header">
-            <span>Admin AI Assistant</span>
-            <button onClick={reset} title="Restart">↺</button>
-            <button onClick={() => setOpen(false)} title="Close">×</button>
-          </div>
-          <div className="chatbot-body">
-            {error && <div className="chatbot-error">{error}</div>}
-
-            {view === "categories" && (
-              <>
-                <div className="chatbot-prompt">How can I help you? Pick a category:</div>
-                <div className="chatbot-grid">
-                  {config.categories.map((c) => (
-                    <button key={c.id} className="chatbot-chip" onClick={() => { setCategory(c); setView("questions"); }}>
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {view === "questions" && (
-              <>
-                <div className="chatbot-prompt">{category?.label} — select a question:</div>
-                <div className="chatbot-questions">
-                  {categoryQuestions.map((q) => (
-                    <button key={q.id} className="chatbot-q" onClick={() => selectQuestion(q)}>{q.question}</button>
-                  ))}
-                </div>
-                <button className="chatbot-back" onClick={() => setView("categories")}>← Back to categories</button>
-              </>
-            )}
-
-            {view === "params" && question && (
-              <>
-                <div className="chatbot-prompt">{question.question}</div>
-                <div className="chatbot-form">
-                  {question.requiredParams.map((p) => (
-                    <label key={p}>
-                      {PARAM_LABELS[p] || p}
-                      <input
-                        type={p === "fromDate" || p === "toDate" ? "date" : "text"}
-                        value={params[p] || ""}
-                        onChange={(e) => setParams({ ...params, [p]: e.target.value })}
-                        placeholder={p === "customerId" || p === "productId" ? "Enter ID" : ""}
-                      />
-                    </label>
-                  ))}
-                  <button className="chatbot-submit" onClick={() => submit(question, params)}>Run</button>
-                  <button className="chatbot-back" onClick={() => setView("questions")}>← Back</button>
-                </div>
-              </>
-            )}
-
-            {view === "result" && (
-              <>
-                {loading ? (
-                  <div className="chatbot-prompt">Fetching…</div>
-                ) : result ? (
-                  <>
-                    {result.error && <div className="chatbot-error">{result.error}</div>}
-                    {result.message && <div className="chatbot-prompt">{result.message}</div>}
-                    {result.summary && (
-                      <div className="chatbot-summary">
-                        {Object.entries(result.summary).map(([k, v]) => (
-                          <div className="chatbot-card" key={k}>
-                            <div className="chatbot-card-label">{k}</div>
-                            <div className="chatbot-card-value">{String(v)}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {rows.length > 0 && (
-                      <div className="chatbot-table-wrap">
-                        <table className="chatbot-table">
-                          <thead>
-                            <tr>{columns.map((c) => <th key={c}>{c}</th>)}</tr>
-                          </thead>
-                          <tbody>
-                            {pageRows.map((r, i) => (
-                              <tr key={i}>{columns.map((c) => <td key={c}>{String(r[c] ?? "")}</td>)}</tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        {rows.length > PAGE_LIMIT && (
-                          <div className="chatbot-pager">
-                            <button disabled={page === 0} onClick={() => setPage(page - 1)}>‹</button>
-                            <span>{page + 1} / {Math.ceil(rows.length / PAGE_LIMIT)}</span>
-                            <button disabled={(page + 1) * PAGE_LIMIT >= rows.length} onClick={() => setPage(page + 1)}>›</button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                ) : null}
-                <div className="chatbot-actions">
-                  <button onClick={() => { setView("questions"); setResult(null); }}>Back to questions</button>
-                  <button onClick={() => { setView("params"); setResult(null); if (question && !question.requiredParams?.length) setView("categories"); }}>Change filters</button>
-                  <button onClick={reset}>New category</button>
-                </div>
-              </>
-            )}
+      {open && <section className="erp-chat-panel" role="dialog" aria-modal="false" aria-labelledby="erp-chat-title">
+        <header className="erp-chat-header">
+          <div className="erp-chat-title-wrap"><div className="erp-chat-mark" aria-hidden="true">ERP</div><div><h2 id="erp-chat-title">ERP AI Chat</h2><span>Read-only workspace assistant</span></div></div>
+          <button onClick={() => setOpen(false)} aria-label="Close ERP AI Chat">Close</button>
+        </header>
+        <div className="erp-chat-body" aria-live="polite">
+          {messages.length === 0 && <div className="erp-chat-empty"><span className="erp-chat-section-label">Workspace intelligence</span><strong>Ask the ledger a question.</strong><p>Answers are read-only and grounded in your ERP records. Include a date, invoice number, or business area for a precise result.</p><div className="erp-chat-suggestions"><button onClick={() => submit("What were today's sales?")}>Today’s sales</button><button onClick={() => submit("Show unpaid invoices")}>Unpaid invoices</button><button onClick={() => submit("Show low stock products")}>Low stock</button></div></div>}
+          {messages.map((message, index) => <MessageContent message={message} key={index} />)}
+          {loading && <div className="erp-chat-loading">Checking approved ERP sources…</div>}
+          {error && <div className="erp-chat-error" role="alert">{error}</div>}
+        </div>
+        <div className="erp-chat-composer">
+          {attachments.length > 0 && <div className="erp-chat-attachments">{attachments.map((file) => <span key={file.name}>{file.name}</span>)}</div>}
+          <label className="erp-chat-input-label" htmlFor="erp-chat-input">Question</label>
+          <textarea id="erp-chat-input" ref={inputRef} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); submit(); } }} placeholder="Ask a read-only ERP question" rows="2" maxLength="4000" />
+          <div className="erp-chat-toolbar">
+            <label className="erp-chat-icon-button" title="Attach JPG, PNG, or PDF" aria-label="Attach JPG, PNG, or PDF"><ActionIcon name="attach" /><input type="file" accept=".jpg,.jpeg,.png,.pdf" multiple onChange={selectFiles} /></label>
+            <button className={`erp-chat-icon-button ${recording ? "is-recording" : ""}`} onClick={toggleRecording} aria-label={recording ? "Stop and send recording" : "Record voice message"}><ActionIcon name="mic" /></button>
+            <span className="erp-chat-status" role="status">{status}</span>
+            <button className="erp-chat-send" onClick={() => submit()} disabled={loading || (!draft.trim() && !attachments.length)}>Send</button>
           </div>
         </div>
-      )}
+      </section>}
     </>
   );
 }

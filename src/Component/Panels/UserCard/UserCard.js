@@ -15,6 +15,7 @@ const UserCard = ({ isCollapsed = false }) => {
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("loginTime");
     localStorage.removeItem("authToken");
+    localStorage.removeItem("accessToken");
     localStorage.removeItem("userRole");
     
     // Navigate to home page

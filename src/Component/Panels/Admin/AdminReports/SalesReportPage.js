@@ -37,7 +37,12 @@ const SalesReportPage = () => {
           params.toDate = toDate;
         }
         const res = await axios.get(url, { params });
-        setRows(res.data || []);
+        const reportRows = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.data)
+            ? res.data.data
+            : [];
+        setRows(reportRows);
       } catch (e) {
         console.error("❌ Error fetching sales:", e);
         setRows([]);

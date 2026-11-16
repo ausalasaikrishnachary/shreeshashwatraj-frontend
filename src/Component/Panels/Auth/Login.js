@@ -34,15 +34,18 @@ function Login() {
       username.trim() === adminData.admin.email &&
       password === adminData.admin.password
     ) {
-      const adminUser = {
-        id: 1,
-        username: "admin",
-        email: adminData.admin.email,
-        role: "admin",
-        name: "Administrator"
-      };
+      const sessionResponse = await fetch(`${baseurl}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+      const session = await sessionResponse.json();
+      if (!session.success || !session.accessToken) {
+        throw new Error(session.error || "Authenticated session could not be established");
+      }
 
-      localStorage.setItem("user", JSON.stringify(adminUser));
+      localStorage.setItem("user", JSON.stringify(session.user));
+      localStorage.setItem("accessToken", session.accessToken);
       localStorage.setItem("isAdmin", "true");
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("loginTime", new Date().toISOString());
@@ -65,6 +68,7 @@ function Login() {
 
     if (data.success) {
       localStorage.setItem("user", JSON.stringify(data.user));
+      if (data.accessToken) localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("loginTime", new Date().toISOString());
 
@@ -114,6 +118,7 @@ function Login() {
       if (data.success) {
         // Store user data
         localStorage.setItem("user", JSON.stringify(data.user));
+        if (data.accessToken) localStorage.setItem("accessToken", data.accessToken);
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("loginTime", new Date().toISOString());
 
