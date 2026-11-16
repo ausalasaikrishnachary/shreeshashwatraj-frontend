@@ -1,5 +1,37 @@
 # Getting Started with Create React App
 
+## ERP AI Reporting and Invoice Capture
+
+The admin Reports page includes the AI Reporting web component. The
+**Invoice Capture** view accepts PDF, JPEG, PNG, and WebP invoices, sends them
+to the local capture API for multimodal extraction, and shows an editable
+confirmation panel before any ledger write is attempted.
+
+Run the host application with the two AI service URLs configured:
+
+```bash
+REACT_APP_AI_API_URL=http://localhost:8000 \
+REACT_APP_CAPTURE_API_URL=http://localhost:8010 \
+npm start
+```
+
+Start the services and rebuild the host bundle from the workspace root using
+the commands in
+`erp-ai-invoice-capture/README.md`. After changing the workspace UI, rebuild
+and copy the web-component bundle:
+
+```bash
+cd erp-ai-workspace-ui
+npm run build:wc
+cp dist/wc/erp-ai-reporter.umd.js \
+  ../shreeshashwatraj-frontend/src/Component/Panels/Admin/AdminReports/erp-ai-reporter.umd.js
+```
+
+Extraction does not create a ledger record automatically. A user with a role
+listed in `CAPTURE_CONFIRM_ROLES` must review and confirm the extracted
+values. Provider failures, validation errors, and ledger authorization or
+database failures are shown in the confirmation panel.
+
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts

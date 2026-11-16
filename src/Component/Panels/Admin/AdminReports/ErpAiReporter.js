@@ -31,7 +31,8 @@ export default function ErpAiReporter({ defaultQuery, isEmbedded = false }) {
     >
       <erp-ai-reporter
         ref={ref}
-        api-url="http://localhost:8000"
+        api-url={process.env.REACT_APP_AI_API_URL || "http://localhost:8000"}
+        capture-api-url={process.env.REACT_APP_CAPTURE_API_URL || "http://localhost:8010"}
         tenant-id={tenantId}
         token={token}
         default-query={defaultQuery || "What is our net profit and gross profit for 2026?"}
